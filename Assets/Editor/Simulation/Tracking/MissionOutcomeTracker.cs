@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 
@@ -102,6 +103,7 @@ public static partial class HeadlessSimulationRunner
         public int TotalManufacturedTrainingFacilities;
         public int TotalManufacturedDefenseFacilities;
         public int TotalManufacturedWeapons;
+        public MineCompletionSummary[] MineCompletions;
         public int ProductionDemandCount;
         public int ProductionProposalCount;
         public int SelectedProductionProposalCount;
@@ -115,6 +117,13 @@ public static partial class HeadlessSimulationRunner
         public int BuildingProductionProposalCount;
         public int SelectedBuildingProductionProposalCount;
         public int SelectedProductionMaintenanceCost;
+        public int ProjectedEconomyMaintenanceHeadroom;
+        public int MineDemandCount;
+        public int RefineryDemandCount;
+        public int MineDestinationCount;
+        public int RefineryDestinationCount;
+        public int AvailableBuildingProducerCount;
+        public ProductionProposalDiagnostic[] ProductionProposalDiagnostics;
         public ConstructionFacilityExpansionSimulationSummary ConstructionFacilityExpansion;
         public TroopProductionSimulationSummary TroopProduction;
         public TroopReinforcementPackageSimulationSummary TroopReinforcementPackages;
@@ -125,10 +134,25 @@ public static partial class HeadlessSimulationRunner
         public PersonnelOutcomeSimulationSummary PersonnelOutcomes;
         public PlanetaryAssaultSimulationSummary PlanetaryAssaults;
         public GarrisonRemovalBombardmentSimulationSummary GarrisonRemovalBombardments;
+        public SpaceCombatCalibrationSummary SpaceCombatCalibration;
         public AttackReadinessSimulationSummary AttackReadiness;
         public ProductionFacilityPlanetSummary[] ProductionFacilityPlanets;
         public CurrentIdlePlanetSummary[] CurrentIdlePlanets;
         public FleetSimulationSummary[] Fleets;
+    }
+
+    [Serializable]
+    private sealed class ProductionProposalDiagnostic
+    {
+        public string DemandKind;
+        public string ProductTypeId;
+        public string DestinationId;
+        public string ProducerId;
+        public double Score;
+        public bool CanSelect;
+        public bool Selected;
+        public int MaintenanceCost;
+        public int MinimumMaintenanceHeadroom;
     }
 
     [Serializable]
@@ -142,6 +166,19 @@ public static partial class HeadlessSimulationRunner
         public int FoiledMissionInjuries;
         public int FoiledMissionCaptures;
         public MissionTypeOutcomeSimulationSummary[] ByMissionType;
+        public DiplomacyOwnershipChangeSimulationRecord[] DiplomacyOwnershipChanges;
+    }
+
+    [Serializable]
+    private sealed class DiplomacyOwnershipChangeSimulationRecord
+    {
+        public int Tick;
+        public string MissionInstanceId;
+        public string FactionId;
+        public string PlanetId;
+        public string PlanetName;
+        public string CurrentOwnerFactionId;
+        public bool IntelligenceRefreshed;
     }
 
     [Serializable]
@@ -162,6 +199,10 @@ public static partial class HeadlessSimulationRunner
         private readonly Dictionary<string, Dictionary<string, MissionOutcomeCounts>> _counts = new(
             StringComparer.Ordinal
         );
+        private readonly Dictionary<
+            string,
+            List<DiplomacyOwnershipChangeSimulationRecord>
+        > _diplomacyOwnershipChanges = new(StringComparer.Ordinal);
 
         /// <summary>
         /// Records authoritative mission and participant outcomes from one resolved result batch.
@@ -194,6 +235,13 @@ public static partial class HeadlessSimulationRunner
                         counts.Foiled++;
                         break;
                 }
+
+                if (
+                    result.MissionTypeID == MissionTypeIDs.Diplomacy
+                    && result.CompletionReason == MissionCompletionReason.TargetChangedSides
+                    && result.Location != null
+                )
+                    RecordDiplomacyOwnershipChange(result, factionId, results);
             }
 
             foreach (OfficerInjuredResult result in results.OfType<OfficerInjuredResult>())
@@ -242,7 +290,66 @@ public static partial class HeadlessSimulationRunner
                     .OrderBy(pair => pair.Key, StringComparer.Ordinal)
                     .Select(pair => pair.Value.BuildSummary(pair.Key))
                     .ToArray(),
+                DiplomacyOwnershipChanges = GetDiplomacyOwnershipChanges(factionId).ToArray(),
             };
+        }
+
+        /// <summary>
+        /// Records an authoritative ownership discovery and whether its intelligence update was emitted.
+        /// </summary>
+        /// <param name="completed">The diplomacy mission that discovered the ownership change.</param>
+        /// <param name="factionId">The faction that ran the mission.</param>
+        /// <param name="results">The resolved result batch containing the mission termination.</param>
+        private void RecordDiplomacyOwnershipChange(
+            MissionCompletedResult completed,
+            string factionId,
+            IReadOnlyList<GameResult> results
+        )
+        {
+            bool intelligenceRefreshed = results
+                .OfType<IntelligenceRevealedResult>()
+                .Any(result =>
+                    result.Recipient?.InstanceID == factionId
+                    && result.Observations.Contains(completed.Location)
+                );
+            GetDiplomacyOwnershipChanges(factionId)
+                .Add(
+                    new DiplomacyOwnershipChangeSimulationRecord
+                    {
+                        Tick = completed.Tick,
+                        MissionInstanceId = completed.MissionInstanceID,
+                        FactionId = factionId ?? string.Empty,
+                        PlanetId = completed.Location.InstanceID,
+                        PlanetName = completed.Location.GetDisplayName(),
+                        CurrentOwnerFactionId =
+                            completed.Location.GetOwnerInstanceID() ?? string.Empty,
+                        IntelligenceRefreshed = intelligenceRefreshed,
+                    }
+                );
+        }
+
+        /// <summary>
+        /// Gets the ownership-change records accumulated for one faction.
+        /// </summary>
+        /// <param name="factionId">The faction instance identifier.</param>
+        /// <returns>The mutable ownership-change record collection.</returns>
+        private List<DiplomacyOwnershipChangeSimulationRecord> GetDiplomacyOwnershipChanges(
+            string factionId
+        )
+        {
+            string key = factionId ?? string.Empty;
+            if (
+                !_diplomacyOwnershipChanges.TryGetValue(
+                    key,
+                    out List<DiplomacyOwnershipChangeSimulationRecord> records
+                )
+            )
+            {
+                records = new List<DiplomacyOwnershipChangeSimulationRecord>();
+                _diplomacyOwnershipChanges[key] = records;
+            }
+
+            return records;
         }
 
         /// <summary>

@@ -1216,7 +1216,7 @@ namespace Rebellion.Tests.Simulation
         {
             GameRoot game = CreateAutomaticCombatGame();
             game.Random = new SequenceRNG();
-            game.Config.Combat.SpaceCombat.AutoResolveRetreatStrengthRatio = 1.01;
+            game.Config.Combat.SpaceCombat.AutoResolveRetreatStrengthRatio = double.MaxValue;
             game.Config.Combat.SpaceCombat.AutoResolveStartingDistance = 0;
             game.Config.Combat.SpaceCombat.AutoResolveWithdrawalDistance = 20;
             game.Config.Combat.SpaceCombat.AutoResolveTargetScanDivisor = 1;
@@ -1947,6 +1947,7 @@ namespace Rebellion.Tests.Simulation
         public void ResolvePending_FleetAndPlanetaryNonHyperdriveFightersWithdraw_DestroysStrandedFighters()
         {
             GameRoot game = CreateAutomaticCombatGame();
+            game.Config.Combat.SpaceCombat.AutoResolveRetreatStrengthRatio = 0.75;
             game.Random = new SequenceRNG();
             game.SetFactionController("empire", "player1", PlayerControllerType.Human);
             (Planet combatPlanet, _) = CreatePlanet(game, "combat", owner: "alliance");
@@ -2025,7 +2026,7 @@ namespace Rebellion.Tests.Simulation
         public void ResolvePending_WithdrawingFleetCarriesNonHyperdriveFighter_PreservesFighter()
         {
             GameRoot game = CreateAutomaticCombatGame();
-            game.Config.Combat.SpaceCombat.AutoResolveRetreatStrengthRatio = 1.01;
+            game.Config.Combat.SpaceCombat.AutoResolveRetreatStrengthRatio = 0.75;
             game.Random = new SequenceRNG();
             game.SetFactionController("empire", "player1", PlayerControllerType.Human);
             (Planet combatPlanet, _) = CreatePlanet(game, "combat", owner: "alliance");
@@ -2042,7 +2043,7 @@ namespace Rebellion.Tests.Simulation
                 combatPlanet,
                 1,
                 1000,
-                76,
+                200,
                 shieldRechargeRate: 0
             );
             Starfighter attackerFighter = new Starfighter
@@ -2308,7 +2309,7 @@ namespace Rebellion.Tests.Simulation
         public void ResolvePending_AutomaticWithdrawalFleetWithoutHyperdrive_DestroysFleet()
         {
             GameRoot game = CreateAutomaticCombatGame();
-            game.Config.Combat.SpaceCombat.AutoResolveRetreatStrengthRatio = 1.01;
+            game.Config.Combat.SpaceCombat.AutoResolveRetreatStrengthRatio = 0.33;
             game.Random = new SequenceRNG();
             game.SetFactionController("empire", "player1", PlayerControllerType.Human);
             (Planet combatPlanet, _) = CreatePlanet(game, "combat", owner: "alliance");

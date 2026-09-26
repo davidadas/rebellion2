@@ -118,7 +118,7 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
             Texture2D frame = new Texture2D(640, 480);
             try
             {
-                Invoke("RevealFrame", frame, 0L);
+                Invoke("RevealFrame", frame);
 
                 Assert.AreSame(frame, _screen.texture);
                 Assert.AreEqual(_authoredScreenColor, _screen.color);

@@ -72,13 +72,79 @@ namespace Rebellion.Simulation
             string ownerInstanceId
         )
         {
+            return StartManufacturingCore(
+                producer,
+                template,
+                destination,
+                count,
+                ownerInstanceId,
+                maintenancePrevalidated: false
+            );
+        }
+
+        /// <summary>
+        /// Starts an AI-selected order whose turn-scoped maintenance budget is already reserved.
+        /// </summary>
+        /// <param name="producer">The planet performing the manufacturing.</param>
+        /// <param name="template">The unit or facility template to manufacture.</param>
+        /// <param name="destination">The node that receives completed items.</param>
+        /// <param name="count">The number of copies to queue.</param>
+        /// <param name="ownerInstanceId">The faction requesting the order.</param>
+        /// <returns>True when the complete order was queued.</returns>
+        internal bool StartPrevalidatedManufacturing(
+            Planet producer,
+            IManufacturable template,
+            ISceneNode destination,
+            int count,
+            string ownerInstanceId
+        )
+        {
+            return StartManufacturingCore(
+                producer,
+                template,
+                destination,
+                count,
+                ownerInstanceId,
+                maintenancePrevalidated: true
+            );
+        }
+
+        /// <summary>
+        /// Creates and queues copies after structural and optional maintenance validation.
+        /// </summary>
+        /// <param name="producer">The planet performing the manufacturing.</param>
+        /// <param name="template">The unit or facility template to manufacture.</param>
+        /// <param name="destination">The node that receives completed items.</param>
+        /// <param name="count">The number of copies to queue.</param>
+        /// <param name="ownerInstanceId">The faction requesting the order.</param>
+        /// <param name="maintenancePrevalidated">Whether the turn budget already reserved maintenance.</param>
+        /// <returns>True when the complete order was queued.</returns>
+        private bool StartManufacturingCore(
+            Planet producer,
+            IManufacturable template,
+            ISceneNode destination,
+            int count,
+            string ownerInstanceId,
+            bool maintenancePrevalidated
+        )
+        {
             if (
-                !_queries.CanStartManufacturing(
-                    producer,
-                    template,
-                    destination,
-                    count,
-                    ownerInstanceId
+                !(
+                    maintenancePrevalidated
+                        ? ManufacturingQueries.CanAcceptManufacturingOrder(
+                            producer,
+                            template,
+                            destination,
+                            count,
+                            ownerInstanceId
+                        )
+                        : _queries.CanStartManufacturing(
+                            producer,
+                            template,
+                            destination,
+                            count,
+                            ownerInstanceId
+                        )
                 )
             )
                 return false;
@@ -512,6 +578,7 @@ namespace Rebellion.Simulation
             if (string.IsNullOrEmpty(ownerInstanceId))
                 return results;
 
+            double cycleIncrement = GetProductionCycleIncrement(planet);
             foreach (ManufacturingType type in GetActiveManufacturingTypes(planet, queue))
             {
                 queue.TryGetValue(type, out List<IManufacturable> items);
@@ -531,7 +598,8 @@ namespace Rebellion.Simulation
                 List<Building> readyFacilities = AdvanceProductionFacilities(
                     planet,
                     type,
-                    hasQueuedItems
+                    hasQueuedItems,
+                    cycleIncrement
                 );
                 if (!hasQueuedItems)
                 {
@@ -654,11 +722,13 @@ namespace Rebellion.Simulation
         /// <param name="planet">The production planet.</param>
         /// <param name="type">The manufacturing type being processed.</param>
         /// <param name="hasQueuedItems">Whether the facility type currently has work.</param>
+        /// <param name="cycleIncrement">The production progress available this tick.</param>
         /// <returns>Facilities with a ready production point.</returns>
         private List<Building> AdvanceProductionFacilities(
             Planet planet,
             ManufacturingType type,
-            bool hasQueuedItems
+            bool hasQueuedItems,
+            double cycleIncrement
         )
         {
             List<Building> productionFacilities = planet
@@ -671,11 +741,19 @@ namespace Rebellion.Simulation
                 )
                 .ToList();
 
-            double cycleIncrement = GetProductionCycleIncrement(planet);
+            List<Building> readyFacilities = new List<Building>();
             foreach (Building facility in productionFacilities)
-                AdvanceProductionFacility(facility, hasQueuedItems, cycleIncrement);
+            {
+                int readyPointCount = AdvanceProductionFacility(
+                    facility,
+                    hasQueuedItems,
+                    cycleIncrement
+                );
+                for (int pointIndex = 0; pointIndex < readyPointCount; pointIndex++)
+                    readyFacilities.Add(facility);
+            }
 
-            return productionFacilities.Where(facility => facility.ProductionPointReady).ToList();
+            return readyFacilities;
         }
 
         /// <summary>
@@ -693,7 +771,12 @@ namespace Rebellion.Simulation
                 config.CapitalShipProductionPenaltyPercent,
                 config.FighterProductionPenaltyPercent
             );
-            return (double)modifier / _productionRateScale;
+            int difficultyPercent = _game
+                .GetDifficultyModifier(planet.GetOwnerInstanceID())
+                .ManufacturingSpeedPercent;
+            return (double)modifier
+                * difficultyPercent
+                / (_productionRateScale * _productionRateScale);
         }
 
         /// <summary>
@@ -702,35 +785,38 @@ namespace Rebellion.Simulation
         /// <param name="facility">The facility to advance.</param>
         /// <param name="hasQueuedItems">Whether the facility type currently has work.</param>
         /// <param name="cycleIncrement">The production progress available this tick.</param>
-        private void AdvanceProductionFacility(
+        /// <returns>The number of production points made ready this tick.</returns>
+        private int AdvanceProductionFacility(
             Building facility,
             bool hasQueuedItems,
             double cycleIncrement
         )
         {
             if (facility.ProductionPointReady)
-                return;
+                return 1;
 
             if (cycleIncrement <= 0)
-                return;
+                return 0;
 
             if (!hasQueuedItems)
-                return;
+                return 0;
 
             int processRate = facility.GetProcessRate();
             if (processRate <= 0)
             {
                 facility.ProductionCycleProgress = 0;
                 facility.ProductionPointReady = false;
-                return;
+                return 0;
             }
 
             facility.ProductionCycleProgress += cycleIncrement;
-            if (facility.ProductionCycleProgress >= processRate)
-            {
-                facility.ProductionCycleProgress = 0;
-                facility.ProductionPointReady = true;
-            }
+            int readyPointCount = (int)(facility.ProductionCycleProgress / processRate);
+            if (readyPointCount <= 0)
+                return 0;
+
+            facility.ProductionCycleProgress -= readyPointCount * processRate;
+            facility.ProductionPointReady = true;
+            return readyPointCount;
         }
 
         /// <summary>

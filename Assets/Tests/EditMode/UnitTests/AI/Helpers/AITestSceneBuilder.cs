@@ -1,5 +1,10 @@
 using System.Collections.Generic;
-using Rebellion.AI.Director;
+using Rebellion.AI;
+using Rebellion.AI.Demands;
+using Rebellion.AI.Planners;
+using Rebellion.AI.Proposals;
+using Rebellion.AI.Scorers;
+using Rebellion.AI.Selectors;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
@@ -136,6 +141,7 @@ namespace Rebellion.Tests.AI.Helpers
             return new Building
             {
                 InstanceID = instanceId,
+                TypeID = instanceId,
                 DisplayName = instanceId,
                 BuildingType = buildingType,
                 ProductionType = productionType,
@@ -167,6 +173,7 @@ namespace Rebellion.Tests.AI.Helpers
             CapitalShip ship = new CapitalShip
             {
                 InstanceID = instanceId,
+                TypeID = instanceId,
                 DisplayName = instanceId,
                 ManufacturingFactionInstanceIDs = new List<string> { ownerInstanceId },
                 OwnerInstanceID = ownerInstanceId,
@@ -198,6 +205,7 @@ namespace Rebellion.Tests.AI.Helpers
             return new Regiment
             {
                 InstanceID = instanceId,
+                TypeID = instanceId,
                 DisplayName = instanceId,
                 OwnerInstanceID = ownerInstanceId,
                 ManufacturingStatus = ManufacturingStatus.Complete,
@@ -301,6 +309,7 @@ namespace Rebellion.Tests.AI.Helpers
         {
             IRandomNumberProvider provider = random ?? new StubRNG();
             FogOfWarCommands fog = new FogOfWarCommands(game);
+            FogOfWarQueries fogQueries = new FogOfWarQueries(game);
             FleetCommands fleetSystem = new FleetCommands(game);
             MovementCommands movementSystem =
                 movement
@@ -308,7 +317,7 @@ namespace Rebellion.Tests.AI.Helpers
                     game,
                     fog,
                     fleetSystem,
-                    new FogOfWarQueries(game),
+                    fogQueries,
                     new MovementQueries(game)
                 );
             MissionCommands missionSystem =
@@ -327,7 +336,7 @@ namespace Rebellion.Tests.AI.Helpers
                 manufacturingSystem,
                 fog,
                 new PlanetaryControlQueries(game),
-                new FogOfWarQueries(game)
+                fogQueries
             );
             BombardmentCommands bombardmentSystem =
                 bombardment
@@ -346,22 +355,26 @@ namespace Rebellion.Tests.AI.Helpers
                     planetaryControl,
                     new PlanetaryAssaultQueries(game)
                 );
+            GalaxyMap factionView = fogQueries.BuildFactionView(faction);
+            AIAssessment assessment = new AIAssessment(game, faction, factionView);
+            AIStrategicPlan strategicPlan = new AIStrategicPlan(game, assessment);
 
-            return new AITurnContext(
+            AITurnContext context = new AITurnContext(
                 game,
                 faction,
                 missionSystem,
-                new MissionQueries(game),
                 movementSystem,
                 manufacturingSystem,
                 bombardmentSystem,
-                new BombardmentQueries(game),
                 planetaryAssaultSystem,
-                new PlanetaryAssaultQueries(game),
                 provider,
-                new FogOfWarQueries(game).BuildFactionView(faction),
+                assessment,
+                strategicPlan,
+                factionView,
                 maintenance
             );
+            new AIAttackDemandGenerator().Generate(context);
+            return context;
         }
 
         /// <summary>

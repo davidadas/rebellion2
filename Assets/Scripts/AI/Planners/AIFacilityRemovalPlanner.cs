@@ -1,6 +1,6 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.AI.Director;
 using Rebellion.AI.Proposals;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
@@ -8,7 +8,7 @@ using Rebellion.Game.Units;
 namespace Rebellion.AI.Planners
 {
     /// <summary>
-    /// Builds proposals for production facilities outside the faction's sector allocation.
+    /// Builds proposals for genuinely surplus shipyards during maintenance distress.
     /// </summary>
     public sealed class AIFacilityRemovalPlanner : IAIProposalPlanner
     {
@@ -27,26 +27,49 @@ namespace Rebellion.AI.Planners
             )
                 return proposals;
 
-            foreach (Planet planet in context.Assessment.OwnedPlanets)
-            {
-                foreach (
-                    IGrouping<BuildingType, Building> facilities in context
-                        .Assessment.GetPlanetBuildings(planet)
+            if (context.Assessment.ProjectedMaintenanceHeadroom >= 0)
+                return proposals;
+
+            int minimumShipyardCount = context.StrategicPlan.GetInfrastructureTarget(
+                BuildingType.Shipyard
+            );
+            List<(Planet Planet, int Count, int Rate)> sites = context
+                .Assessment.OwnedPlanets.Select(planet =>
+                {
+                    List<Building> facilities = AIFacilityRemovalProposal
+                        .GetFacilities(context, planet)
                         .Where(building =>
                             building.GetOwnerInstanceID() == context.Faction.InstanceID
-                            && building.GetBuildingType()
-                                is BuildingType.Shipyard
-                                    or BuildingType.ConstructionFacility
+                            && building.GetBuildingType() == BuildingType.Shipyard
                         )
-                        .GroupBy(building => building.GetBuildingType())
-                )
-                {
-                    if (
-                        facilities.Count()
-                        > context.FacilityAllocation.GetCap(planet, facilities.Key)
+                        .ToList();
+                    return (
+                        Planet: planet,
+                        Count: facilities.Count,
+                        Rate: facilities.Sum(building => building.GetProcessRate())
+                    );
+                })
+                .Where(site => site.Count > 0)
+                .OrderBy(site => site.Rate)
+                .ThenBy(site => context.Assessment.GetPlanetValue(site.Planet))
+                .ThenBy(site => site.Planet.InstanceID, System.StringComparer.Ordinal)
+                .ToList();
+            int surplusCount = Math.Max(0, sites.Sum(site => site.Count) - minimumShipyardCount);
+            foreach ((Planet planet, int count, int _) in sites)
+            {
+                if (surplusCount <= 0)
+                    break;
+
+                int removalCount = Math.Min(count, surplusCount);
+                proposals.Add(
+                    new AIFacilityRemovalProposal(
+                        planet,
+                        BuildingType.Shipyard,
+                        removalCount,
+                        minimumShipyardCount
                     )
-                        proposals.Add(new AIFacilityRemovalProposal(planet, facilities.Key));
-                }
+                );
+                surplusCount -= removalCount;
             }
 
             return proposals;

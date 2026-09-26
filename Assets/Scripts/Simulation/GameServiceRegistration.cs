@@ -1,5 +1,5 @@
 using System;
-using Rebellion.AI.Director;
+using Rebellion.AI;
 using Rebellion.Game;
 using Rebellion.Game.Units;
 using Rebellion.Util.DependencyInjection;

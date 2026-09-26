@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using Rebellion.AI.Director;
 using Rebellion.AI.Proposals;
 
 namespace Rebellion.AI.Planners

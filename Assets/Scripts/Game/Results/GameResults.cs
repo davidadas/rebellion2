@@ -27,6 +27,7 @@ namespace Rebellion.Game.Results
         Failure,
         Foiled,
         TargetUnavailable,
+        TargetChangedSides,
         NoResearchFacilities,
         ResearchProgress,
         ResearchBreakthrough,

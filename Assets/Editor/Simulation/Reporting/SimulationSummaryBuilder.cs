@@ -2,10 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using Rebellion.AI.Director;
+using Rebellion.AI;
+using Rebellion.AI.Demands;
 using Rebellion.AI.Phases;
 using Rebellion.AI.Planners;
-using Rebellion.AI.Planners.Demand;
 using Rebellion.AI.Proposals;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
@@ -32,6 +32,7 @@ public static partial class HeadlessSimulationRunner
     /// <param name="specialForcesLifecycleTracker">The special-forces lifecycle tracker.</param>
     /// <param name="planetaryAssaultTracker">The planetary-assault activity tracker.</param>
     /// <param name="garrisonRemovalBombardmentTracker">The garrison-removal bombardment tracker.</param>
+    /// <param name="spaceCombatCalibrationTracker">The space-combat calibration tracker.</param>
     /// <param name="attackReadinessTracker">The attack-readiness blocker tracker.</param>
     /// <param name="victory">The first victory reached during the simulation.</param>
     /// <returns>The simulation summary.</returns>
@@ -48,6 +49,7 @@ public static partial class HeadlessSimulationRunner
         SpecialForcesLifecycleTracker specialForcesLifecycleTracker,
         PlanetaryAssaultTracker planetaryAssaultTracker,
         GarrisonRemovalBombardmentTracker garrisonRemovalBombardmentTracker,
+        SpaceCombatCalibrationTracker spaceCombatCalibrationTracker,
         AttackReadinessTracker attackReadinessTracker,
         VictoryResult victory
     )
@@ -227,6 +229,9 @@ public static partial class HeadlessSimulationRunner
                         faction.InstanceID,
                         BuildingType.Weapon
                     ),
+                    MineCompletions = manufacturedUnitTracker.GetMineCompletions(
+                        faction.InstanceID
+                    ),
                     ConstructionFacilityExpansion = BuildConstructionFacilityExpansionSummary(
                         faction
                     ),
@@ -239,6 +244,9 @@ public static partial class HeadlessSimulationRunner
                     PersonnelOutcomes = personnelOutcomeTracker.BuildSummary(faction.InstanceID),
                     PlanetaryAssaults = planetaryAssaultTracker.BuildSummary(faction.InstanceID),
                     GarrisonRemovalBombardments = garrisonRemovalBombardmentTracker.BuildSummary(
+                        faction.InstanceID
+                    ),
+                    SpaceCombatCalibration = spaceCombatCalibrationTracker.BuildSummary(
                         faction.InstanceID
                     ),
                     AttackReadiness = attackReadinessTracker.BuildSummary(faction.InstanceID),
@@ -291,30 +299,43 @@ public static partial class HeadlessSimulationRunner
     {
         Faction faction = game.GetFactionByOwnerInstanceID(summary.FactionId);
         FleetCommands fleetSystem = new FleetCommands(game);
+        FogOfWarQueries fogOfWarQueries = new FogOfWarQueries(game);
+        FogOfWarCommands fogOfWar = new FogOfWarCommands(game, fogOfWarQueries);
+        MovementCommands movement = new MovementCommands(
+            game,
+            fogOfWar,
+            fleetSystem,
+            fogOfWarQueries,
+            new MovementQueries(game)
+        );
         ManufacturingCommands manufacturing = new ManufacturingCommands(
             game,
             fleetSystem,
             new ManufacturingQueries(game)
         );
+        GalaxyMap factionView = fogOfWarQueries.BuildFactionView(faction);
+        AIAssessment assessment = new AIAssessment(game, faction, factionView);
+        AIStrategicPlan strategicPlan = new AIStrategicPlan(game, assessment);
         AITurnContext context = new AITurnContext(
             game,
             faction,
             null,
-            null,
-            null,
+            movement,
             manufacturing,
             null,
             null,
-            null,
-            null,
             new SystemRandomProvider(0),
-            new FogOfWarQueries(game).BuildFactionView(faction)
+            assessment,
+            strategicPlan,
+            factionView
         );
-        List<AIDemand> demands = new AIProductionDemandGenerator().Generate(context);
-        List<AIManufactureProposal> proposals = new AIProductionPlanner()
+        AIProductionPlanner productionPlanner = new AIProductionPlanner();
+        new AIDemandGenerationPhase().Execute(context);
+        List<AIManufactureProposal> proposals = productionPlanner
             .Plan(context)
             .OfType<AIManufactureProposal>()
             .ToList();
+        List<AIProductionDemand> demands = context.ProductionDemands.ToList();
         context.AddProposals(proposals);
         new AIScoringPhase().Execute(context);
         List<AIManufactureProposal> selected = new AISelectionPhase()
@@ -323,28 +344,49 @@ public static partial class HeadlessSimulationRunner
             .ToList();
 
         summary.ProductionDemandCount = demands.Count;
+        summary.ProjectedEconomyMaintenanceHeadroom = context
+            .Assessment
+            .ProjectedEconomyMaintenanceHeadroom;
+        summary.MineDemandCount = demands.Count(demand =>
+            demand.Kind == AIProductionDemandKind.Mine
+        );
+        summary.RefineryDemandCount = demands.Count(demand =>
+            demand.Kind == AIProductionDemandKind.Refinery
+        );
+        summary.MineDestinationCount = context.Assessment.OwnedPlanets.Count(planet =>
+            planet.IsColonized
+            && !planet.IsDestroyed
+            && planet.GetUnminedResourceNodeCount() > 0
+            && planet.GetAvailableEnergy() > 0
+        );
+        summary.RefineryDestinationCount = context.Assessment.OwnedPlanets.Count(planet =>
+            planet.IsColonized && !planet.IsDestroyed && planet.GetAvailableEnergy() > 0
+        );
+        summary.AvailableBuildingProducerCount = context.Assessment.OwnedPlanets.Count(planet =>
+            planet.GetAvailableManufacturingCapacity(ManufacturingType.Building) > 0
+        );
         summary.ProductionProposalCount = proposals.Count;
         summary.SelectedProductionProposalCount = selected.Count;
         summary.PlanetaryDefenseDemandCount = demands.Count(demand =>
-            demand.Kind == AIDemandKind.PlanetaryDefense
+            demand.Kind == AIProductionDemandKind.PlanetaryDefense
         );
         summary.PlanetaryDefenseDemandQuantity = demands
-            .Where(demand => demand.Kind == AIDemandKind.PlanetaryDefense)
+            .Where(demand => demand.Kind == AIProductionDemandKind.PlanetaryDefense)
             .Sum(demand => demand.QuantityNeeded);
         summary.PlanetaryDefenseProposalCount = proposals.Count(proposal =>
-            proposal.Demand.Kind == AIDemandKind.PlanetaryDefense
+            proposal.Demand.Kind == AIProductionDemandKind.PlanetaryDefense
         );
         summary.SelectedPlanetaryDefenseProposalCount = selected.Count(proposal =>
-            proposal.Demand.Kind == AIDemandKind.PlanetaryDefense
+            proposal.Demand.Kind == AIProductionDemandKind.PlanetaryDefense
         );
         summary.GarrisonDemandCount = demands.Count(demand =>
-            demand.Kind == AIDemandKind.GarrisonRegimentReserve
+            demand.Kind == AIProductionDemandKind.GarrisonRegimentReserve
         );
         summary.GarrisonProposalCount = proposals.Count(proposal =>
-            proposal.Demand.Kind == AIDemandKind.GarrisonRegimentReserve
+            proposal.Demand.Kind == AIProductionDemandKind.GarrisonRegimentReserve
         );
         summary.SelectedGarrisonProposalCount = selected.Count(proposal =>
-            proposal.Demand.Kind == AIDemandKind.GarrisonRegimentReserve
+            proposal.Demand.Kind == AIProductionDemandKind.GarrisonRegimentReserve
         );
         summary.BuildingProductionProposalCount = proposals.Count(proposal =>
             proposal.Demand.ManufacturingType == ManufacturingType.Building
@@ -355,6 +397,20 @@ public static partial class HeadlessSimulationRunner
         summary.SelectedProductionMaintenanceCost = selected.Sum(proposal =>
             proposal.GetMaintenanceCost()
         );
+        summary.ProductionProposalDiagnostics = proposals
+            .Select(proposal => new ProductionProposalDiagnostic
+            {
+                DemandKind = proposal.Demand.Kind.ToString(),
+                ProductTypeId = proposal.Product?.GetReference()?.GetTypeID(),
+                DestinationId = proposal.Destination?.InstanceID,
+                ProducerId = proposal.ProducerPlanet?.InstanceID,
+                Score = proposal.Score,
+                CanSelect = proposal.CanSelect(context),
+                Selected = selected.Contains(proposal),
+                MaintenanceCost = proposal.GetMaintenanceCost(),
+                MinimumMaintenanceHeadroom = proposal.GetMinimumMaintenanceHeadroom(context),
+            })
+            .ToArray();
         return summary;
     }
 

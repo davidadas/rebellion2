@@ -1,10 +1,13 @@
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
-using Rebellion.AI.Director;
+using Rebellion.AI;
+using Rebellion.AI.Demands;
 using Rebellion.AI.Phases;
 using Rebellion.AI.Planners;
 using Rebellion.AI.Proposals;
+using Rebellion.AI.Scorers;
+using Rebellion.AI.Selectors;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
@@ -12,6 +15,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.Tests.AI.Helpers;
+using OfficerRating = Rebellion.Game.Units.SkillRating;
 
 namespace Rebellion.Tests.AI.Planners
 {
@@ -56,6 +60,51 @@ namespace Rebellion.Tests.AI.Planners
                 .OrderByDescending(candidate => candidate.Score)
                 .First();
             Assert.AreEqual(nearTarget.InstanceID, proposal.TargetPlanet.InstanceID);
+        }
+
+        [Test]
+        public void Plan_WithUnexploredOuterRimPlanet_AddsReconnaissanceProposal()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector core = AITestSceneBuilder.AddSector(game, "core");
+            PlanetSector outerRim = AITestSceneBuilder.AddSector(game, "outer-rim");
+            outerRim.SectorType = PlanetSectorType.OuterRim;
+            Planet origin = AITestSceneBuilder.AddPlanet(game, core, "origin", empire.InstanceID);
+            AITestSceneBuilder.AddPlanet(
+                game,
+                core,
+                "core-target",
+                rebels.InstanceID,
+                positionX: 100
+            );
+            Planet outerRimTarget = AITestSceneBuilder.AddPlanet(
+                game,
+                outerRim,
+                "outer-rim-target",
+                rebels.InstanceID,
+                positionX: 10
+            );
+            SpecialForces reconnaissanceTeam = new SpecialForces
+            {
+                InstanceID = "recon",
+                OwnerInstanceID = empire.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                AllowedMissionTypeIDs = new List<string> { MissionTypeIDs.Reconnaissance },
+            };
+            game.AttachNode(reconnaissanceTeam, origin);
+
+            List<AIMissionProposal> proposals = new AIMissionPlanner()
+                .Plan(AITestSceneBuilder.CreateContext(game, empire))
+                .OfType<AIMissionProposal>()
+                .Where(candidate => candidate.MissionTypeID == MissionTypeIDs.Reconnaissance)
+                .ToList();
+
+            Assert.IsTrue(proposals.Count > 0);
+            Assert.IsTrue(
+                proposals.Any(proposal =>
+                    proposal.TargetPlanet.InstanceID == outerRimTarget.InstanceID
+                )
+            );
         }
 
         [Test]
@@ -589,7 +638,7 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Plan_WithDecoyIntents_DoesNotOfferUnitsAsPrimaryAgents()
+        public void Plan_WithDecoyIntents_RetainsOneUnitAsPrimaryAgent()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
@@ -616,7 +665,7 @@ namespace Rebellion.Tests.AI.Planners
             AITestSceneBuilder.RevealPlanet(game, empire, target);
             game.CurrentTick = game.Config.AI.MissionPlanning.EspionageRefreshIntervalTicks;
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
-            new AISpecialForcesIntentPhase().Execute(context);
+            AIMissionPlanner.AssignSpecialForcesIntent(context);
 
             AIMissionProposal[] proposals = new AIMissionPlanner()
                 .Plan(context)
@@ -624,12 +673,15 @@ namespace Rebellion.Tests.AI.Planners
                 .Where(candidate => candidate.MissionTypeID == EspionageMission.MissionTypeID)
                 .ToArray();
 
-            Assert.AreEqual(SpecialForcesIntent.Decoy, context.GetSpecialForcesIntent(leadSpy));
+            Assert.AreEqual(
+                SpecialForcesIntent.PrimaryAgent,
+                context.GetSpecialForcesIntent(leadSpy)
+            );
             Assert.AreEqual(
                 SpecialForcesIntent.Decoy,
                 context.GetSpecialForcesIntent(specialForcesDecoy)
             );
-            Assert.IsFalse(proposals.Any(proposal => proposal.Participant == leadSpy));
+            Assert.IsTrue(proposals.Any(proposal => proposal.Participant == leadSpy));
             Assert.IsFalse(proposals.Any(proposal => proposal.Participant == specialForcesDecoy));
         }
 
@@ -691,7 +743,7 @@ namespace Rebellion.Tests.AI.Planners
             AITestSceneBuilder.RevealPlanet(game, empire, target);
             game.CurrentTick = game.Config.AI.MissionPlanning.EspionageRefreshIntervalTicks;
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
-            new AISpecialForcesIntentPhase().Execute(context);
+            AIMissionPlanner.AssignSpecialForcesIntent(context);
             AIMissionProposal proposal = new AIMissionPlanner()
                 .Plan(context)
                 .OfType<AIMissionProposal>()
@@ -700,14 +752,14 @@ namespace Rebellion.Tests.AI.Planners
                     && candidate.Participant == leadSpy
                 );
             context.SetSelectedProposals(new[] { proposal });
-            new AIMissionDecoyAssignmentPhase().Execute(context);
+            new AIMissionSelector(new AISelectionState()).FinalizeSelection(context);
             proposal = context.SelectedProposals.OfType<AIMissionProposal>().Single();
 
             proposal.Execute(context);
 
             EspionageMission mission = game.GetSceneNodesByType<EspionageMission>().Single();
             CollectionAssert.AreEqual(new[] { leadSpy }, mission.GetMainParticipants());
-            CollectionAssert.AreEqual(new[] { decoy }, mission.GetDecoyParticipants());
+            CollectionAssert.AreEqual(new[] { primaryAgent }, mission.GetDecoyParticipants());
         }
 
         [Test]
@@ -1131,6 +1183,44 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
+        public void Plan_WithHealthyMaintenance_DoesNotPrioritizeDiplomacyResources()
+        {
+            GameRoot game = CreateDiplomacyPriorityScene(
+                maintenanceReserve: 0,
+                out Faction empire,
+                out Planet lexicalTarget,
+                out Planet _
+            );
+
+            Planet firstTarget = new AIMissionPlanner()
+                .Plan(AITestSceneBuilder.CreateContext(game, empire))
+                .OfType<AIMissionProposal>()
+                .First(proposal => proposal.MissionTypeID == MissionTypeIDs.Diplomacy)
+                .TargetPlanet;
+
+            Assert.AreEqual(lexicalTarget.InstanceID, firstTarget.InstanceID);
+        }
+
+        [Test]
+        public void Plan_WithMaintenancePressure_PrioritizesDiplomacyResources()
+        {
+            GameRoot game = CreateDiplomacyPriorityScene(
+                maintenanceReserve: int.MaxValue,
+                out Faction empire,
+                out Planet _,
+                out Planet resourceTarget
+            );
+
+            Planet firstTarget = new AIMissionPlanner()
+                .Plan(AITestSceneBuilder.CreateContext(game, empire))
+                .OfType<AIMissionProposal>()
+                .First(proposal => proposal.MissionTypeID == MissionTypeIDs.Diplomacy)
+                .TargetPlanet;
+
+            Assert.AreEqual(resourceTarget.InstanceID, firstTarget.InstanceID);
+        }
+
+        [Test]
         public void Plan_WithQualifiedDiplomatAndValidTarget_OffersOnlyDiplomacy()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
@@ -1168,6 +1258,47 @@ namespace Rebellion.Tests.AI.Planners
                 .ToArray();
 
             CollectionAssert.AreEqual(new[] { DiplomacyMission.MissionTypeID }, missionTypeIds);
+        }
+
+        /// <summary>
+        /// Creates two otherwise equal diplomacy targets whose identifiers and resource values
+        /// expose whether maintenance pressure affects candidate priority.
+        /// </summary>
+        /// <param name="maintenanceReserve">The maintenance reserve used by AI selection.</param>
+        /// <param name="empire">The AI faction created for the scene.</param>
+        /// <param name="lexicalTarget">The target favored by the stable identifier tie-breaker.</param>
+        /// <param name="resourceTarget">The target favored when resources have strategic value.</param>
+        /// <returns>The configured game scene.</returns>
+        private static GameRoot CreateDiplomacyPriorityScene(
+            int maintenanceReserve,
+            out Faction empire,
+            out Planet lexicalTarget,
+            out Planet resourceTarget
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out empire, out Faction _);
+            game.Config.AI.Selection.MaintenanceHeadroomReserve = maintenanceReserve;
+            game.Config.AI.MissionPlanning.RetainedAlternativesPerMission = 2;
+            game.Config.AI.MissionPlanning.Utility.Diplomacy.ResourceNode.Weight = 1;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, system, "origin", empire.InstanceID);
+            origin.SetPopularSupport(empire.InstanceID, 100);
+            lexicalTarget = AITestSceneBuilder.AddPlanet(game, system, "a-target", null);
+            resourceTarget = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "z-resource-target",
+                null,
+                rawResourceNodes: 15
+            );
+            lexicalTarget.SetPopularSupport(empire.InstanceID, 50);
+            resourceTarget.SetPopularSupport(empire.InstanceID, 50);
+            Officer diplomat = EntityFactory.CreateOfficer("diplomat", empire.InstanceID);
+            diplomat.Ratings[OfficerRating.Diplomacy] = 100;
+            game.AttachNode(diplomat, origin);
+            AITestSceneBuilder.RevealPlanet(game, empire, lexicalTarget);
+            AITestSceneBuilder.RevealPlanet(game, empire, resourceTarget);
+            return game;
         }
 
         /// <summary>

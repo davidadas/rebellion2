@@ -1,12 +1,14 @@
-using System.Collections.Generic;
-using Rebellion.AI.Director;
+using Rebellion.AI;
+using Rebellion.AI.Demands;
+using Rebellion.AI.Planners;
 using Rebellion.AI.Proposals;
+using Rebellion.AI.Scorers;
+using Rebellion.AI.Selectors;
 
 namespace Rebellion.Tests.AI.Helpers
 {
     public class TestAIProposal : AIProposal
     {
-        private readonly List<string> _claimKeys;
         private readonly string _sortKey;
         private readonly AIProposalPriority _priority;
 
@@ -20,32 +22,20 @@ namespace Rebellion.Tests.AI.Helpers
         /// Initializes a new instance of the TestAIProposal class.
         /// </summary>
         /// <param name="sortKey">The sort key.</param>
-        /// <param name="claimKeys">The claim keys.</param>
         /// <param name="canSelect">Whether can select.</param>
         /// <param name="canExecute">Whether can execute.</param>
         /// <param name="priority">The priority.</param>
         internal TestAIProposal(
             string sortKey = "test",
-            IEnumerable<string> claimKeys = null,
             bool canSelect = true,
             bool canExecute = true,
             AIProposalPriority priority = AIProposalPriority.Optional
         )
         {
             _sortKey = sortKey;
-            _claimKeys = new List<string>(claimKeys ?? new string[0]);
             CanSelectResult = canSelect;
             CanExecuteResult = canExecute;
             _priority = priority;
-        }
-
-        /// <summary>
-        /// Gets claim keys.
-        /// </summary>
-        /// <returns>The requested claim keys.</returns>
-        public override IReadOnlyList<string> GetClaimKeys()
-        {
-            return _claimKeys;
         }
 
         /// <summary>

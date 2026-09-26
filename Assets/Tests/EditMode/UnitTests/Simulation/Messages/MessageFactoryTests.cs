@@ -1702,6 +1702,56 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void CreateMessages_EspionageSuccessWithSectorDetailTemplate_AppendsPlanets()
+        {
+            (GameRoot game, Faction alliance, _, _, Planet target) = BuildTwoFactionMessageScene();
+            Mission mission = new EspionageMission
+            {
+                InstanceID = "espionage-mission",
+                DisplayName = "Espionage",
+                ConfigKey = MissionTypeIDs.Espionage,
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            game.AttachNode(mission, target);
+            MessageDefinition definition = Definition(
+                MessageResultType.MissionReport,
+                MessageType.Mission,
+                "title",
+                "Successful.  {details}",
+                outcome: MessageResultOutcome.Success,
+                missionTypeId: MissionTypeIDs.Espionage
+            );
+            definition.DetailListHeaderTemplate = "Additional sectors:";
+            definition.DetailListItemTemplate = "\n     {sector}";
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[] { definition },
+                    new PlanetsRevealedResult
+                    {
+                        MissionInstanceID = mission.InstanceID,
+                        AdditionalPlanets = new List<Planet>
+                        {
+                            new Planet { DisplayName = "Corellia" },
+                        },
+                    },
+                    new MissionCompletedResult
+                    {
+                        Mission = mission,
+                        MissionInstanceID = mission.InstanceID,
+                        MissionName = "Espionage",
+                        MissionTypeID = MissionTypeIDs.Espionage,
+                        Outcome = MissionOutcome.Success,
+                    }
+                ),
+                alliance
+            );
+
+            Assert.AreEqual("Successful.  Additional sectors:\n     Corellia", message.Body);
+        }
+
+        [Test]
         public void CreateMessages_EspionageSuccessWithoutAdditionalSystems_OmitsDetails()
         {
             (GameRoot game, Faction alliance, _, _, Planet target) = BuildTwoFactionMessageScene();
@@ -1956,7 +2006,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void CreateMessages_TargetUnavailableMission_UsesAbortVoice()
+        public void CreateMessages_AutomaticallyCanceledMission_UsesFailureVoice()
         {
             (GameRoot game, Faction alliance, _, _, Planet target) = BuildTwoFactionMessageScene();
             Officer reporter = new Officer
@@ -2000,7 +2050,51 @@ namespace Rebellion.Tests.Simulation
                 alliance
             );
 
-            Assert.AreEqual("abort-voice", message.OfficerVoicePath);
+            Assert.AreEqual("failure-voice", message.OfficerVoicePath);
+        }
+
+        [Test]
+        public void CreateMessages_NeutralMissionTarget_DoesNotRequireOwner()
+        {
+            (GameRoot game, Faction alliance, _, _, Planet target) = BuildTwoFactionMessageScene();
+            target.OwnerInstanceID = null;
+            Mission mission = new DiplomacyMission
+            {
+                ConfigKey = MissionTypeIDs.Diplomacy,
+                DisplayName = "Diplomacy",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            game.AttachNode(mission, target);
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.MissionReport,
+                            MessageType.Mission,
+                            "failed:{system}",
+                            "no effect",
+                            outcome: MessageResultOutcome.Failed,
+                            missionTypeId: MissionTypeIDs.Diplomacy
+                        ),
+                    },
+                    new MissionCompletedResult
+                    {
+                        Mission = mission,
+                        MissionName = "Diplomacy",
+                        MissionTypeID = MissionTypeIDs.Diplomacy,
+                        Location = target,
+                        Outcome = MissionOutcome.Failed,
+                        CompletionReason = MissionCompletionReason.Failure,
+                    }
+                ),
+                alliance
+            );
+
+            Assert.AreEqual("failed:Yavin", message.Title);
+            Assert.AreEqual("no effect", message.Body);
         }
 
         [Test]

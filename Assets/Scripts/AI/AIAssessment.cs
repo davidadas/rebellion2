@@ -1,0 +1,2300 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Rebellion.Game;
+using Rebellion.Game.Factions;
+using Rebellion.Game.FogOfWar;
+using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
+using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
+using Rebellion.Simulation;
+
+namespace Rebellion.AI
+{
+    /// <summary>
+    /// Derived faction view used during one AI turn.
+    /// </summary>
+    public sealed class AIAssessment
+    {
+        private readonly GameRoot _game;
+        private readonly Faction _faction;
+        private readonly GalaxyMap _factionView;
+
+        // Cached Assessments.
+        private readonly Dictionary<string, double> _planetValues = new Dictionary<string, double>(
+            StringComparer.Ordinal
+        );
+        private readonly Dictionary<string, double> _farthestEnemyPlanetDistances = new Dictionary<
+            string,
+            double
+        >(StringComparer.Ordinal);
+        private double? _highestEnemyPlanetValue;
+        private double? _highestOwnedPlanetValue;
+        private int? _strongestKnownHostileFleetStrength;
+        private int? _totalFleetCombatStrength;
+        private readonly Dictionary<string, int> _planetBuildingCounts = new Dictionary<
+            string,
+            int
+        >(StringComparer.Ordinal);
+        private readonly Dictionary<string, IReadOnlyList<Building>> _planetBuildings =
+            new Dictionary<string, IReadOnlyList<Building>>(StringComparer.Ordinal);
+        private readonly Dictionary<string, IReadOnlyList<Regiment>> _planetRegiments =
+            new Dictionary<string, IReadOnlyList<Regiment>>(StringComparer.Ordinal);
+        private readonly Dictionary<
+            (string PlanetId, string FactionId),
+            int
+        > _activeGarrisonCounts = new Dictionary<(string PlanetId, string FactionId), int>();
+        private readonly Dictionary<string, IReadOnlyList<Starfighter>> _planetStarfighters =
+            new Dictionary<string, IReadOnlyList<Starfighter>>(StringComparer.Ordinal);
+        private readonly HashSet<string> _attackPreparationTargetIds = new HashSet<string>(
+            StringComparer.Ordinal
+        );
+        private readonly Dictionary<string, IReadOnlyList<ISceneNode>> _planetMissionDetectors =
+            new Dictionary<string, IReadOnlyList<ISceneNode>>(StringComparer.Ordinal);
+        private readonly Dictionary<
+            (string PlanetId, ManufacturingType ManufacturingType),
+            int
+        > _planetProductionFacilityCounts =
+            new Dictionary<(string PlanetId, ManufacturingType ManufacturingType), int>();
+        private readonly Dictionary<
+            (string PlanetId, ManufacturingType ManufacturingType),
+            double
+        > _planetProductionRates =
+            new Dictionary<(string PlanetId, ManufacturingType ManufacturingType), double>();
+        private readonly Dictionary<string, int> _planetDefenseStrengths = new Dictionary<
+            string,
+            int
+        >(StringComparer.Ordinal);
+        private readonly Dictionary<string, int> _strongestHostileFleetStrengths = new Dictionary<
+            string,
+            int
+        >(StringComparer.Ordinal);
+        private readonly Dictionary<string, int> _hostilePlanetaryStarfighterStrengths =
+            new Dictionary<string, int>(StringComparer.Ordinal);
+        private readonly Dictionary<string, bool> _activeHostileMilitaryTargets = new Dictionary<
+            string,
+            bool
+        >(StringComparer.Ordinal);
+        private readonly Dictionary<string, int> _planetDefenseThreatStrengths = new Dictionary<
+            string,
+            int
+        >(StringComparer.Ordinal);
+        private readonly Dictionary<string, List<Fleet>> _friendlyFleetsByPlanetId = new Dictionary<
+            string,
+            List<Fleet>
+        >(StringComparer.Ordinal);
+        private readonly Dictionary<string, List<Fleet>> _hostileFleetsByPlanetId = new Dictionary<
+            string,
+            List<Fleet>
+        >(StringComparer.Ordinal);
+        private readonly Dictionary<string, Planet> _fleetPlanets = new Dictionary<string, Planet>(
+            StringComparer.Ordinal
+        );
+        private readonly Dictionary<string, int> _fleetCombatValues = new Dictionary<string, int>(
+            StringComparer.Ordinal
+        );
+        private readonly Dictionary<string, int> _fleetBombardmentStrengths = new Dictionary<
+            string,
+            int
+        >(StringComparer.Ordinal);
+        private readonly Dictionary<string, int> _projectedFleetBombardmentStrengths =
+            new Dictionary<string, int>(StringComparer.Ordinal);
+        private HashSet<string> _hostileSectorIds;
+        private readonly Dictionary<ManufacturingType, int> _availableProductionLaneCounts =
+            new Dictionary<ManufacturingType, int>();
+        private readonly Dictionary<ManufacturingType, double> _productionThroughputs =
+            new Dictionary<ManufacturingType, double>();
+        private readonly Dictionary<ManufacturingType, double> _idleProductionThroughputs =
+            new Dictionary<ManufacturingType, double>();
+        private readonly Dictionary<ManufacturingType, int> _queuedProductionWork =
+            new Dictionary<ManufacturingType, int>();
+        private readonly Dictionary<ManufacturingType, double> _queuedProductionClearTicks =
+            new Dictionary<ManufacturingType, double>();
+        private int? _productionFacilityMaintenance;
+        private readonly Dictionary<
+            (string PlanetId, ManufacturingType ManufacturingType),
+            int
+        > _planetQueuedProductionWork =
+            new Dictionary<(string PlanetId, ManufacturingType ManufacturingType), int>();
+        private readonly Dictionary<
+            (string PlanetId, ManufacturingType ManufacturingType),
+            double
+        > _planetQueuedProductionClearTicks =
+            new Dictionary<(string PlanetId, ManufacturingType ManufacturingType), double>();
+        private readonly Dictionary<string, Planet> _knownPlanets = new Dictionary<string, Planet>(
+            StringComparer.Ordinal
+        );
+        private readonly Dictionary<string, double> _colonizationAnchorProximities = new(
+            StringComparer.Ordinal
+        );
+        private bool _colonizationAnchorProximitiesBuilt;
+        private readonly Dictionary<string, IReadOnlyList<Planet>> _knownPlanetsBySystemId =
+            new Dictionary<string, IReadOnlyList<Planet>>(StringComparer.Ordinal);
+        private readonly Dictionary<string, int> _offensiveSupportLeverage = new Dictionary<
+            string,
+            int
+        >(StringComparer.Ordinal);
+        private readonly Dictionary<string, int> _defensiveSupportRisks = new Dictionary<
+            string,
+            int
+        >(StringComparer.Ordinal);
+        private readonly Dictionary<
+            string,
+            IReadOnlyList<Planet>
+        > _attackCampaignPlanetsBySystemId = new Dictionary<string, IReadOnlyList<Planet>>(
+            StringComparer.Ordinal
+        );
+        private readonly Dictionary<string, int> _enemySystemSupportLeverage = new Dictionary<
+            string,
+            int
+        >(StringComparer.Ordinal);
+        private readonly HashSet<string> _knownGarrisonedPlanetIds = new HashSet<string>(
+            StringComparer.Ordinal
+        );
+        private readonly IReadOnlyList<string> _opposingFactionIds;
+
+        // Planet Intelligence.
+        public IReadOnlyList<Planet> KnownColonizedPlanets { get; }
+
+        public IReadOnlyList<Planet> KnownUncolonizedPlanets { get; }
+
+        public IReadOnlyList<Planet> FactionViewPlanets { get; }
+
+        public IReadOnlyList<Planet> UnexploredPlanets { get; }
+
+        public IReadOnlyList<Planet> OwnedPlanets { get; }
+
+        public IReadOnlyList<Planet> EnemyPlanets { get; }
+
+        public IReadOnlyList<Planet> NeutralPlanets { get; }
+
+        // Economy.
+        public int MaintenanceCapacity { get; }
+
+        public int ProjectedMaintenanceHeadroom { get; }
+
+        public int ProjectedEconomyMaintenanceHeadroom { get; }
+
+        public int RefinedMaterialSupply { get; }
+
+        public int RefinedMaterialStockpile { get; }
+
+        public int NearTermRefinedMaterialCommitment { get; }
+
+        public int PendingRawMaterialRequestCount { get; }
+
+        public int PendingRefinedMaterialRequestCount { get; }
+
+        // Missions.
+        public IReadOnlyList<IMissionParticipant> AvailableMissionParticipants { get; }
+
+        internal IReadOnlyList<Mission> ActiveMissions { get; }
+
+        public IReadOnlyList<(
+            Planet Planet,
+            Officer TargetOfficer
+        )> TargetableEnemyOfficerMissionTargets { get; }
+
+        // Fleets.
+        public IReadOnlyList<Fleet> OwnedFleets { get; }
+
+        public IReadOnlyList<Fleet> AttackOrderedFleets { get; }
+
+        public IReadOnlyList<Fleet> EngagementOrderedFleets { get; }
+
+        public IReadOnlyList<Fleet> ColonizationOrderedFleets { get; }
+
+        /// <summary>
+        /// Creates an AI assessment from the faction-visible turn state.
+        /// </summary>
+        /// <param name="game">The game being assessed.</param>
+        /// <param name="faction">The faction being assessed.</param>
+        /// <param name="factionView">The faction-visible galaxy state.</param>
+        public AIAssessment(GameRoot game, Faction faction, GalaxyMap factionView)
+        {
+            _game = game;
+            _faction = faction;
+            _factionView = factionView;
+            _opposingFactionIds =
+                game?.GetFactions()
+                    .Where(candidate => candidate.InstanceID != faction?.InstanceID)
+                    .Select(candidate => candidate.InstanceID)
+                    .ToList()
+                ?? new List<string>();
+            int availableMaterials = faction?.GetTotalAvailableMaterialsRaw() ?? 0;
+            MaintenanceCapacity =
+                availableMaterials * (faction?.Settings?.ResourceProcessingPointsPerFacility ?? 0);
+            ProjectedMaintenanceHeadroom =
+                MaintenanceCapacity - (faction?.GetTotalProjectedMaintenanceCost() ?? 0);
+            int projectedMaterials = Math.Min(
+                faction?.GetTotalRawResourceNodes() ?? 0,
+                Math.Min(
+                    faction?.GetTotalRawMinedResources() ?? 0,
+                    faction?.GetTotalRawRefinementCapacity() ?? 0
+                )
+            );
+            ProjectedEconomyMaintenanceHeadroom =
+                projectedMaterials * (faction?.Settings?.ResourceProcessingPointsPerFacility ?? 0)
+                - (faction?.GetTotalProjectedMaintenanceCost() ?? 0);
+            RefinedMaterialSupply =
+                availableMaterials * (faction?.Settings?.RefinementMultiplier ?? 0);
+            RefinedMaterialStockpile = faction?.RefinedMaterialStockpile ?? 0;
+            PendingRawMaterialRequestCount = faction?.PendingRawMaterialFacilityIDs?.Count ?? 0;
+            PendingRefinedMaterialRequestCount =
+                faction?.PendingRefinedMaterialFacilityIDs?.Count ?? 0;
+            ActiveMissions = BuildActiveMissions();
+            FactionViewPlanets = BuildFactionViewPlanets();
+            UnexploredPlanets = FactionViewPlanets
+                .Where(planet => planet.IsUnexploredView)
+                .ToList();
+            KnownColonizedPlanets = FactionViewPlanets
+                .Where(planet =>
+                    !planet.IsUnexploredView && planet.IsColonized && !planet.IsDestroyed
+                )
+                .ToList();
+            KnownUncolonizedPlanets = FactionViewPlanets
+                .Where(planet =>
+                    !planet.IsUnexploredView
+                    && !planet.IsColonized
+                    && !planet.IsDestroyed
+                    && string.IsNullOrEmpty(planet.GetOwnerInstanceID())
+                )
+                .ToList();
+            foreach (
+                Planet planet in FactionViewPlanets.Where(planet =>
+                    !planet.IsUnexploredView && !planet.IsDestroyed
+                )
+            )
+                _knownPlanets[planet.InstanceID] = planet;
+            foreach (
+                IGrouping<string, Planet> system in _knownPlanets
+                    .Values.GroupBy(GetPlanetSystemId)
+                    .Where(system => !string.IsNullOrEmpty(system.Key))
+            )
+            {
+                _knownPlanetsBySystemId[system.Key] = system
+                    .OrderBy(planet => planet.InstanceID, StringComparer.Ordinal)
+                    .ToList();
+            }
+            foreach (Planet planet in _knownPlanets.Values)
+            {
+                if (
+                    planet
+                        .GetAllRegiments()
+                        .Any(regiment =>
+                            regiment.ManufacturingStatus == ManufacturingStatus.Complete
+                            && regiment.Movement == null
+                        )
+                )
+                    _knownGarrisonedPlanetIds.Add(planet.InstanceID);
+            }
+            OwnedPlanets = BuildOwnedPlanets();
+            NearTermRefinedMaterialCommitment = GetNearTermRefinedMaterialCommitment();
+            EnemyPlanets = BuildEnemyPlanets();
+            NeutralPlanets = BuildNeutralPlanets();
+            AvailableMissionParticipants = BuildAvailableMissionParticipants();
+            TargetableEnemyOfficerMissionTargets = BuildTargetableEnemyOfficerMissionTargets();
+            OwnedFleets = BuildOwnedFleets();
+            AttackOrderedFleets = BuildAttackOrderedFleets();
+            foreach (Fleet fleet in AttackOrderedFleets)
+            {
+                if (!string.IsNullOrEmpty(fleet.Order?.TargetPlanetId))
+                    _attackPreparationTargetIds.Add(fleet.Order.TargetPlanetId);
+            }
+            EngagementOrderedFleets = BuildEngagementOrderedFleets();
+            ColonizationOrderedFleets = BuildColonizationOrderedFleets();
+        }
+
+        /// <summary>
+        /// Returns whether a planet is the faction's active headquarters.
+        /// </summary>
+        /// <param name="planet">Planet to inspect.</param>
+        /// <returns>True when the planet is the active headquarters.</returns>
+        public bool IsFactionHeadquarters(Planet planet)
+        {
+            return planet != null
+                && _faction != null
+                && planet.InstanceID == _faction.HQInstanceID
+                && planet.GetOwnerInstanceID() == _faction.InstanceID;
+        }
+
+        /// <summary>
+        /// Returns whether the faction controls another faction's fixed headquarters planet.
+        /// </summary>
+        /// <param name="planet">Planet to inspect.</param>
+        /// <returns>True when the planet is a captured enemy headquarters.</returns>
+        public bool IsCapturedEnemyHeadquarters(Planet planet)
+        {
+            if (!IsOwnedPlanet(planet) || _game == null)
+                return false;
+
+            return _game
+                .GetFactions()
+                .Any(faction =>
+                    faction != null
+                    && faction.InstanceID != _faction.InstanceID
+                    && faction.Settings?.Headquarters?.IsMobile != true
+                    && faction.HQInstanceID == planet.InstanceID
+                );
+        }
+
+        /// <summary>
+        /// Returns whether a planet requires headquarters-level protection.
+        /// </summary>
+        /// <param name="planet">Planet to inspect.</param>
+        /// <returns>True for the faction headquarters or a captured enemy headquarters.</returns>
+        public bool IsPriorityDefensePlanet(Planet planet)
+        {
+            return IsFactionHeadquarters(planet) || IsCapturedEnemyHeadquarters(planet);
+        }
+
+        /// <summary>
+        /// Returns a known planet by instance identifier.
+        /// </summary>
+        /// <param name="instanceId">Planet instance identifier.</param>
+        /// <returns>The known planet, or null.</returns>
+        public Planet GetKnownPlanet(string instanceId)
+        {
+            return
+                !string.IsNullOrEmpty(instanceId)
+                && _knownPlanets.TryGetValue(instanceId, out Planet planet)
+                ? planet
+                : null;
+        }
+
+        /// <summary>
+        /// Returns the age of the faction's intelligence for a planet.
+        /// </summary>
+        /// <param name="planet">Planet to inspect.</param>
+        /// <returns>Intel age in ticks, or the maximum integer when unknown.</returns>
+        public int GetPlanetIntelAge(Planet planet)
+        {
+            if (planet == null || _faction?.Fog == null || _game == null)
+                return int.MaxValue;
+
+            if (
+                IsOwnedPlanet(planet)
+                || GetFriendlyFleets(planet)
+                    .Any(fleet => fleet.Movement == null && fleet.HasOperationalCapitalShips())
+            )
+                return 0;
+
+            if (
+                !_faction.Fog.PlanetToSector.TryGetValue(planet.InstanceID, out string sectorId)
+                || !_faction.Fog.Snapshots.TryGetValue(
+                    sectorId,
+                    out PlanetSectorSnapshot sectorSnapshot
+                )
+                || !sectorSnapshot.Planets.TryGetValue(
+                    planet.InstanceID,
+                    out PlanetSnapshot snapshot
+                )
+            )
+                return int.MaxValue;
+
+            return Math.Max(0, _game.CurrentTick - snapshot.TickCaptured);
+        }
+
+        /// <summary>
+        /// Returns whether the faction snapshot contains each requested intelligence category.
+        /// </summary>
+        /// <param name="planet">Planet whose snapshot should be inspected.</param>
+        /// <param name="categories">Intelligence categories required by the caller.</param>
+        /// <returns>True when all requested categories are available.</returns>
+        public bool HasPlanetIntelligence(Planet planet, PlanetIntelligenceCategory categories)
+        {
+            if (planet == null || _faction?.Fog == null)
+                return false;
+
+            if (
+                IsOwnedPlanet(planet)
+                || GetFriendlyFleets(planet)
+                    .Any(fleet => fleet.Movement == null && fleet.HasOperationalCapitalShips())
+            )
+                return true;
+
+            return _faction.Fog.PlanetToSector.TryGetValue(planet.InstanceID, out string sectorId)
+                && _faction.Fog.Snapshots.TryGetValue(
+                    sectorId,
+                    out PlanetSectorSnapshot sectorSnapshot
+                )
+                && sectorSnapshot.Planets.TryGetValue(
+                    planet.InstanceID,
+                    out PlanetSnapshot snapshot
+                )
+                && snapshot.RevealedCategories.HasFlag(categories);
+        }
+
+        /// <summary>
+        /// Returns whether a planet is owned by the faction.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <returns>True if the planet is owned by the faction.</returns>
+        public bool IsOwnedPlanet(Planet planet)
+        {
+            return planet?.GetOwnerInstanceID() == _faction?.InstanceID;
+        }
+
+        /// <summary>
+        /// Returns whether a planet is owned by an opposing faction.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <returns>True if the planet is enemy owned.</returns>
+        public bool IsEnemyPlanet(Planet planet)
+        {
+            string ownerId = planet?.GetOwnerInstanceID();
+            return !string.IsNullOrEmpty(ownerId) && ownerId != _faction?.InstanceID;
+        }
+
+        /// <summary>
+        /// Returns whether a planet has no owner.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <returns>True if the planet is neutral.</returns>
+        public bool IsNeutralPlanet(Planet planet)
+        {
+            return string.IsNullOrEmpty(planet?.GetOwnerInstanceID());
+        }
+
+        /// <summary>
+        /// Returns the strategic value estimate for a planet.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <returns>The planet value.</returns>
+        public double GetPlanetValue(Planet planet)
+        {
+            if (planet == null)
+                return 0;
+
+            return GetOrAdd(
+                _planetValues,
+                planet.InstanceID,
+                () =>
+                    planet.GetRawResourceNodes()
+                    + planet.GetEnergyCapacity()
+                    + GetPlanetBuildingCount(planet)
+                    + GetFactionPopularSupport(planet)
+                    + planet.GetProductionRate(ManufacturingType.Building)
+                    + planet.GetProductionRate(ManufacturingType.Ship)
+                    + planet.GetProductionRate(ManufacturingType.Troop)
+            );
+        }
+
+        /// <summary>
+        /// Returns the highest enemy planet value.
+        /// </summary>
+        /// <returns>The highest enemy planet value.</returns>
+        public double GetHighestEnemyPlanetValue()
+        {
+            if (!_highestEnemyPlanetValue.HasValue)
+            {
+                _highestEnemyPlanetValue = EnemyPlanets
+                    .Select(GetPlanetValue)
+                    .DefaultIfEmpty()
+                    .Max();
+            }
+
+            return _highestEnemyPlanetValue.Value;
+        }
+
+        /// <summary>
+        /// Returns the distance from an origin to its farthest known enemy planet.
+        /// </summary>
+        /// <param name="origin">The origin planet.</param>
+        /// <returns>The farthest enemy-planet distance.</returns>
+        public double GetFarthestEnemyPlanetDistance(Planet origin)
+        {
+            if (origin == null)
+                return 0;
+
+            return GetOrAdd(
+                _farthestEnemyPlanetDistances,
+                origin.InstanceID,
+                () =>
+                    EnemyPlanets
+                        .Select(planet => origin.GetRawDistanceTo(planet))
+                        .DefaultIfEmpty()
+                        .Max()
+            );
+        }
+
+        /// <summary>
+        /// Returns normalized proximity to the nearest headquarters or established Outer Rim colony.
+        /// </summary>
+        /// <param name="planet">Colonization candidate to inspect.</param>
+        /// <returns>One for the nearest candidate and zero for the farthest candidate.</returns>
+        public double GetColonizationAnchorProximity(Planet planet)
+        {
+            if (planet == null)
+                return 0;
+
+            BuildColonizationAnchorProximities();
+            return _colonizationAnchorProximities.TryGetValue(
+                planet.InstanceID,
+                out double proximity
+            )
+                ? proximity
+                : 0;
+        }
+
+        /// <summary>
+        /// Builds turn-scoped colony-network proximity values for every unexplored Outer Rim planet.
+        /// </summary>
+        private void BuildColonizationAnchorProximities()
+        {
+            if (_colonizationAnchorProximitiesBuilt)
+                return;
+
+            _colonizationAnchorProximitiesBuilt = true;
+            List<Planet> anchors = OwnedPlanets
+                .Where(planet =>
+                    IsFactionHeadquarters(planet)
+                    || planet.IsColonized
+                        && planet.GetParentOfType<PlanetSector>()?.SectorType
+                            == PlanetSectorType.OuterRim
+                )
+                .ToList();
+            if (anchors.Count == 0)
+                return;
+
+            List<(Planet Planet, double Distance)> distances = UnexploredPlanets
+                .Where(planet =>
+                    planet.GetParentOfType<PlanetSector>()?.SectorType == PlanetSectorType.OuterRim
+                )
+                .Select(planet => (planet, anchors.Min(anchor => anchor.GetRawDistanceTo(planet))))
+                .ToList();
+            double farthestDistance = distances
+                .Select(candidate => candidate.Distance)
+                .DefaultIfEmpty()
+                .Max();
+            foreach ((Planet candidate, double distance) in distances)
+            {
+                _colonizationAnchorProximities[candidate.InstanceID] =
+                    farthestDistance > 0 ? 1 - Math.Min(1, distance / farthestDistance) : 1;
+            }
+        }
+
+        /// <summary>
+        /// Returns the containing system identifier for a planet.
+        /// </summary>
+        /// <param name="planet">Planet to inspect.</param>
+        /// <returns>The system identifier, or an empty string.</returns>
+        public string GetPlanetSystemId(Planet planet)
+        {
+            return planet?.GetParentOfType<PlanetSector>()?.InstanceID ?? string.Empty;
+        }
+
+        /// <summary>
+        /// Returns known enemy planets in a system.
+        /// </summary>
+        /// <param name="systemId">System instance identifier.</param>
+        /// <returns>The ordered enemy planets.</returns>
+        public IReadOnlyList<Planet> GetAttackCampaignPlanets(string systemId)
+        {
+            if (string.IsNullOrEmpty(systemId))
+                return Array.Empty<Planet>();
+
+            return GetOrAdd(
+                _attackCampaignPlanetsBySystemId,
+                systemId,
+                () =>
+                    EnemyPlanets
+                        .Where(planet => GetPlanetSystemId(planet) == systemId)
+                        .OrderBy(planet => planet.InstanceID, StringComparer.Ordinal)
+                        .ToList()
+            );
+        }
+
+        /// <summary>
+        /// Returns all known planets in a system.
+        /// </summary>
+        /// <param name="systemId">System instance identifier.</param>
+        /// <returns>The indexed known planets, or an empty collection.</returns>
+        internal IReadOnlyList<Planet> GetKnownSystemPlanets(string systemId)
+        {
+            return
+                !string.IsNullOrEmpty(systemId)
+                && _knownPlanetsBySystemId.TryGetValue(systemId, out IReadOnlyList<Planet> planets)
+                ? planets
+                : Array.Empty<Planet>();
+        }
+
+        /// <summary>
+        /// Returns the campaign planets associated with an attack target.
+        /// </summary>
+        /// <param name="targetPlanet">Primary attack target.</param>
+        /// <returns>The ordered campaign planets.</returns>
+        public IReadOnlyList<Planet> GetAttackCampaignPlanets(Planet targetPlanet)
+        {
+            if (targetPlanet == null)
+                return Array.Empty<Planet>();
+
+            List<Planet> targets = GetAttackCampaignPlanets(GetPlanetSystemId(targetPlanet))
+                .ToList();
+            if (
+                IsEnemyPlanet(targetPlanet)
+                && targets.All(planet => planet.InstanceID != targetPlanet.InstanceID)
+            )
+                targets.Add(targetPlanet);
+
+            return targets;
+        }
+
+        /// <summary>
+        /// Returns the faction's share of known planets in a system.
+        /// </summary>
+        /// <param name="systemId">System instance identifier.</param>
+        /// <returns>A ratio from zero through one.</returns>
+        public double GetOwnedSystemPresenceRatio(string systemId)
+        {
+            if (string.IsNullOrEmpty(systemId))
+                return 0;
+
+            List<Planet> systemPlanets = FactionViewPlanets
+                .Where(planet => GetPlanetSystemId(planet) == systemId)
+                .ToList();
+            if (systemPlanets.Count == 0)
+                return 0;
+
+            return (double)systemPlanets.Count(IsOwnedPlanet) / systemPlanets.Count;
+        }
+
+        /// <summary>
+        /// Returns the known enemy planet count in a system.
+        /// </summary>
+        /// <param name="systemId">System instance identifier.</param>
+        /// <returns>The enemy planet count.</returns>
+        public int GetEnemyPlanetCountInSystem(string systemId)
+        {
+            return GetAttackCampaignPlanets(systemId).Count;
+        }
+
+        /// <summary>
+        /// Returns the combined strategic value of known enemy planets in a system.
+        /// </summary>
+        /// <param name="systemId">System instance identifier.</param>
+        /// <returns>The combined strategic value.</returns>
+        public double GetEnemySystemValue(string systemId)
+        {
+            return GetAttackCampaignPlanets(systemId).Sum(GetPlanetValue);
+        }
+
+        /// <summary>
+        /// Returns the highest owned planet value.
+        /// </summary>
+        /// <returns>The highest owned planet value.</returns>
+        public double GetHighestOwnedPlanetValue()
+        {
+            if (!_highestOwnedPlanetValue.HasValue)
+            {
+                _highestOwnedPlanetValue = OwnedPlanets
+                    .Select(GetPlanetValue)
+                    .DefaultIfEmpty()
+                    .Max();
+            }
+
+            return _highestOwnedPlanetValue.Value;
+        }
+
+        /// <summary>
+        /// Returns the highest known uncolonized planet value.
+        /// </summary>
+        /// <returns>The highest value.</returns>
+        public double GetHighestKnownUncolonizedPlanetValue()
+        {
+            return KnownUncolonizedPlanets.Select(GetPlanetValue).DefaultIfEmpty().Max();
+        }
+
+        /// <summary>
+        /// Returns the faction's popular support on a planet.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <returns>The popular support value.</returns>
+        public int GetFactionPopularSupport(Planet planet)
+        {
+            if (planet == null || _faction == null)
+                return 0;
+
+            return planet.GetPopularSupport(_faction.InstanceID);
+        }
+
+        /// <summary>
+        /// Returns the known support leverage gained by capturing a planet.
+        /// </summary>
+        /// <param name="planet">The prospective attack target.</param>
+        /// <returns>The target and follow-on planets exposed by the resulting support shift.</returns>
+        public int GetOffensiveSupportLeverage(Planet planet)
+        {
+            if (planet == null || _faction == null)
+                return 0;
+
+            return GetOrAdd(
+                _offensiveSupportLeverage,
+                planet.InstanceID,
+                () => CalculateSupportLeverage(planet, _faction.InstanceID)
+            );
+        }
+
+        /// <summary>
+        /// Returns the known sector-wide support risk created by losing an owned planet.
+        /// </summary>
+        /// <param name="planet">The owned planet being evaluated.</param>
+        /// <returns>The target and follow-on planets exposed to the opposing faction.</returns>
+        public int GetDefensiveSupportRisk(Planet planet)
+        {
+            if (planet == null || _faction == null || _game == null)
+                return 0;
+
+            return GetOrAdd(
+                _defensiveSupportRisks,
+                planet.InstanceID,
+                () => CalculateSupportLeverage(planet, GetLeadingOpposingFactionId(planet))
+            );
+        }
+
+        /// <summary>
+        /// Returns the combined offensive support leverage for known enemy planets in a system.
+        /// </summary>
+        /// <param name="systemId">The system identifier.</param>
+        /// <returns>The combined support leverage.</returns>
+        public int GetEnemySystemSupportLeverage(string systemId)
+        {
+            if (string.IsNullOrEmpty(systemId))
+                return 0;
+
+            return GetOrAdd(
+                _enemySystemSupportLeverage,
+                systemId,
+                () => GetAttackCampaignPlanets(systemId).Sum(GetOffensiveSupportLeverage)
+            );
+        }
+
+        /// <summary>
+        /// Returns the opposing faction with the greatest known support on a planet.
+        /// </summary>
+        /// <param name="planet">The planet being evaluated.</param>
+        /// <returns>The leading opposing faction identifier, or null when none exists.</returns>
+        private string GetLeadingOpposingFactionId(Planet planet)
+        {
+            string leadingFactionId = null;
+            int leadingSupport = int.MinValue;
+            foreach (string factionId in _opposingFactionIds)
+            {
+                int support = planet.GetPopularSupport(factionId);
+                if (support <= leadingSupport)
+                    continue;
+
+                leadingFactionId = factionId;
+                leadingSupport = support;
+            }
+
+            return leadingFactionId;
+        }
+
+        /// <summary>
+        /// Calculates how many known planets a change of control places within one support shift
+        /// of the beneficiary's ownership threshold.
+        /// </summary>
+        /// <param name="planet">The planet whose control may change.</param>
+        /// <param name="beneficiaryFactionId">The faction receiving the support shift.</param>
+        /// <returns>The number of directly and indirectly exposed planets.</returns>
+        private int CalculateSupportLeverage(Planet planet, string beneficiaryFactionId)
+        {
+            if (
+                planet == null
+                || string.IsNullOrEmpty(beneficiaryFactionId)
+                || _game?.Config?.SupportShift == null
+            )
+                return 0;
+
+            int leverage = 0;
+            string ownerId = planet.GetOwnerInstanceID();
+            int ownerSupport = string.IsNullOrEmpty(ownerId)
+                ? 0
+                : planet.GetPopularSupport(ownerId);
+            if (
+                ownerId != beneficiaryFactionId
+                && planet.GetPopularSupport(beneficiaryFactionId) > ownerSupport
+            )
+                leverage++;
+
+            string systemId = GetPlanetSystemId(planet);
+            if (
+                !_knownPlanetsBySystemId.TryGetValue(
+                    systemId,
+                    out IReadOnlyList<Planet> systemPlanets
+                )
+            )
+                return leverage;
+
+            int threshold = _game.Config.SupportShift.OwnershipTransferThreshold;
+            int shift = _game.Config.SupportShift.GarrisonRemovalSupportShift;
+            foreach (Planet candidate in systemPlanets)
+            {
+                if (
+                    candidate.InstanceID == planet.InstanceID
+                    || candidate.GetOwnerInstanceID() == beneficiaryFactionId
+                    || _knownGarrisonedPlanetIds.Contains(candidate.InstanceID)
+                )
+                    continue;
+
+                int support = candidate.GetPopularSupport(beneficiaryFactionId);
+                if (support < threshold && support + shift >= threshold)
+                    leverage++;
+            }
+
+            return leverage;
+        }
+
+        /// <summary>
+        /// Returns the total building count on a planet.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <returns>The building count.</returns>
+        public int GetPlanetBuildingCount(Planet planet)
+        {
+            if (planet == null)
+                return 0;
+
+            return GetOrAdd(
+                _planetBuildingCounts,
+                planet.InstanceID,
+                () => planet.GetAllBuildings().Count
+            );
+        }
+
+        /// <summary>
+        /// Returns the buildings attached to a planet during this AI turn.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <returns>The planet's buildings.</returns>
+        public IReadOnlyList<Building> GetPlanetBuildings(Planet planet)
+        {
+            if (planet == null)
+                return Array.Empty<Building>();
+
+            return GetOrAdd(
+                _planetBuildings,
+                planet.InstanceID,
+                () => planet.GetAllBuildings().ToList()
+            );
+        }
+
+        /// <summary>
+        /// Returns the regiments attached to a planet during this AI turn.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <returns>The planet's regiments.</returns>
+        public IReadOnlyList<Regiment> GetPlanetRegiments(Planet planet)
+        {
+            if (planet == null)
+                return Array.Empty<Regiment>();
+
+            return GetOrAdd(
+                _planetRegiments,
+                planet.InstanceID,
+                () => planet.GetAllRegiments().ToList()
+            );
+        }
+
+        /// <summary>
+        /// Returns the completed, stationary regiments directly controlling a planet for a faction.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <param name="factionInstanceId">The controlling faction identifier.</param>
+        /// <returns>The active garrison regiment count.</returns>
+        public int GetActiveGarrisonCount(Planet planet, string factionInstanceId)
+        {
+            if (planet == null || string.IsNullOrEmpty(factionInstanceId))
+                return 0;
+
+            return GetOrAdd(
+                _activeGarrisonCounts,
+                (planet.InstanceID, factionInstanceId),
+                () =>
+                    GetPlanetRegiments(planet)
+                        .Count(regiment =>
+                            regiment.GetParent() == planet
+                            && regiment.GetOwnerInstanceID() == factionInstanceId
+                            && regiment.ManufacturingStatus == ManufacturingStatus.Complete
+                            && regiment.Movement == null
+                        )
+            );
+        }
+
+        /// <summary>
+        /// Returns whether the AI faction would control a planet if no active regiment did.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <returns>True when faction support wins the configured ownership threshold.</returns>
+        public bool HasFactionControlSupport(Planet planet)
+        {
+            if (planet == null || _faction == null)
+                return false;
+
+            int factionSupport = GetFactionPopularSupport(planet);
+            int highestOtherSupport = _opposingFactionIds
+                .Select(planet.GetPopularSupport)
+                .DefaultIfEmpty()
+                .Max();
+            return factionSupport >= _game.Config.SupportShift.OwnershipTransferThreshold
+                && factionSupport > highestOtherSupport;
+        }
+
+        /// <summary>
+        /// Returns whether another faction would control an AI-owned planet without its garrison.
+        /// </summary>
+        /// <param name="planet">The AI-owned planet to inspect.</param>
+        /// <returns>True when opposing support wins the configured ownership threshold.</returns>
+        public bool HasEnemyControlSupport(Planet planet)
+        {
+            if (planet == null || _faction == null)
+                return false;
+
+            int factionSupport = GetFactionPopularSupport(planet);
+            int threshold = _game.Config.SupportShift.OwnershipTransferThreshold;
+            return _opposingFactionIds.Any(factionId =>
+                planet.GetPopularSupport(factionId) >= threshold
+                && planet.GetPopularSupport(factionId) > factionSupport
+            );
+        }
+
+        /// <summary>
+        /// Returns the starfighters attached to a planet during this AI turn.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <returns>The planet's starfighters.</returns>
+        public IReadOnlyList<Starfighter> GetPlanetStarfighters(Planet planet)
+        {
+            if (planet == null)
+                return Array.Empty<Starfighter>();
+
+            return GetOrAdd(
+                _planetStarfighters,
+                planet.InstanceID,
+                () => planet.GetAllStarfighters().ToList()
+            );
+        }
+
+        /// <summary>
+        /// Returns the known units that can attempt to detect this faction's missions at a planet.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <returns>The detector candidates indexed for this AI turn.</returns>
+        public IReadOnlyList<ISceneNode> GetMissionDetectorCandidates(Planet planet)
+        {
+            if (planet == null)
+                return Array.Empty<ISceneNode>();
+
+            return GetOrAdd(
+                _planetMissionDetectors,
+                planet.InstanceID,
+                () => BuildMissionDetectorCandidates(planet)
+            );
+        }
+
+        /// <summary>
+        /// Builds detector candidates once from the faction's current view of a planet.
+        /// </summary>
+        /// <param name="planet">The planet whose known forces are indexed.</param>
+        /// <returns>The ordered detector candidates.</returns>
+        private IReadOnlyList<ISceneNode> BuildMissionDetectorCandidates(Planet planet)
+        {
+            List<ISceneNode> detectors = new List<ISceneNode>();
+            AddMissionDetectorCandidates(planet.GetChildren<Starfighter>(), detectors);
+            AddMissionDetectorCandidates(planet.GetChildren<Regiment>(), detectors);
+
+            bool blocksFleetDetection = planet
+                .GetChildren<Building>()
+                .Any(building =>
+                    building.IsDetectionBlocker
+                    && building.OwnerInstanceID == _faction.InstanceID
+                    && building.ManufacturingStatus == ManufacturingStatus.Complete
+                    && building.Movement == null
+                );
+            if (blocksFleetDetection)
+                return detectors;
+
+            foreach (Fleet fleet in planet.GetChildren<Fleet>())
+            {
+                foreach (CapitalShip capitalShip in fleet.GetChildren<CapitalShip>())
+                {
+                    AddMissionDetectorCandidate(capitalShip, detectors);
+                    AddMissionDetectorCandidates(capitalShip.GetChildren<Starfighter>(), detectors);
+                    AddMissionDetectorCandidates(capitalShip.GetChildren<Regiment>(), detectors);
+                }
+            }
+
+            return detectors;
+        }
+
+        /// <summary>
+        /// Adds mission detector candidates.
+        /// </summary>
+        /// <param name="candidates">Whether candidates.</param>
+        /// <param name="detectors">The detectors.</param>
+        /// <typeparam name="T">The t type.</typeparam>
+        private void AddMissionDetectorCandidates<T>(
+            IEnumerable<T> candidates,
+            ICollection<ISceneNode> detectors
+        )
+            where T : ISceneNode
+        {
+            foreach (T candidate in candidates)
+                AddMissionDetectorCandidate(candidate, detectors);
+        }
+
+        /// <summary>
+        /// Adds mission detector candidate.
+        /// </summary>
+        /// <param name="candidate">Whether candidate.</param>
+        /// <param name="detectors">The detectors.</param>
+        private void AddMissionDetectorCandidate(
+            ISceneNode candidate,
+            ICollection<ISceneNode> detectors
+        )
+        {
+            if (Mission.IsEligibleDetectorForOwner(candidate, _faction.InstanceID))
+                detectors.Add(candidate);
+        }
+
+        /// <summary>
+        /// Returns a planet's production facility count during this AI turn.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <param name="manufacturingType">The manufacturing category to count.</param>
+        /// <returns>The number of matching production facilities.</returns>
+        public int GetPlanetProductionFacilityCount(
+            Planet planet,
+            ManufacturingType manufacturingType
+        )
+        {
+            if (planet == null)
+                return 0;
+
+            return GetOrAdd(
+                _planetProductionFacilityCounts,
+                (planet.InstanceID, manufacturingType),
+                () => planet.GetProductionFacilityCount(manufacturingType)
+            );
+        }
+
+        /// <summary>
+        /// Returns a planet's production rate during this AI turn.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <param name="manufacturingType">The manufacturing category to evaluate.</param>
+        /// <returns>The matching production rate.</returns>
+        public double GetPlanetProductionRate(Planet planet, ManufacturingType manufacturingType)
+        {
+            if (planet == null)
+                return 0;
+
+            return GetOrAdd(
+                _planetProductionRates,
+                (planet.InstanceID, manufacturingType),
+                () => planet.GetProductionRate(manufacturingType)
+            );
+        }
+
+        /// <summary>
+        /// Returns officers known to be present at a planet.
+        /// </summary>
+        /// <param name="planet">Planet to inspect.</param>
+        /// <returns>The known officers.</returns>
+        public IEnumerable<Officer> GetKnownOfficers(Planet planet)
+        {
+            return planet?.GetChildren<Officer>(recursive: true) ?? Enumerable.Empty<Officer>();
+        }
+
+        /// <summary>
+        /// Returns the active defending regiment count on a planet.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <returns>The regiment count.</returns>
+        public int GetDefendingRegimentCount(Planet planet)
+        {
+            string ownerId = planet?.GetOwnerInstanceID();
+            if (string.IsNullOrEmpty(ownerId))
+                return 0;
+
+            return planet
+                .GetAllRegiments()
+                .Count(regiment =>
+                    regiment.GetOwnerInstanceID() == ownerId
+                    && regiment.ManufacturingStatus == ManufacturingStatus.Complete
+                    && regiment.Movement == null
+                );
+        }
+
+        /// <summary>
+        /// Returns planetary defense strength.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <returns>The defense strength.</returns>
+        public int GetPlanetDefenseStrength(Planet planet)
+        {
+            if (planet == null)
+                return 0;
+
+            return GetOrAdd(_planetDefenseStrengths, planet.InstanceID, planet.GetDefenseStrength);
+        }
+
+        /// <summary>
+        /// Returns completed defending regiment strength on a planet.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <returns>The defending regiment strength.</returns>
+        public int GetDefendingRegimentDefenseStrength(Planet planet)
+        {
+            if (planet == null || _game?.Config == null)
+                return 0;
+
+            int leadershipBonus = PlanetaryAssaultResolver.GetLeadershipBonus(
+                planet.GetAllOfficers(),
+                OfficerRank.General,
+                planet.GetOwnerInstanceID(),
+                _game.Config.Combat.PlanetaryAssault
+            );
+            return planet
+                .GetAllRegiments()
+                .Where(regiment =>
+                    regiment.GetOwnerInstanceID() == planet.GetOwnerInstanceID()
+                    && regiment.ManufacturingStatus == ManufacturingStatus.Complete
+                    && regiment.Movement == null
+                )
+                .Sum(regiment => regiment.DefenseRating + leadershipBonus);
+        }
+
+        /// <summary>
+        /// Returns friendly fleets at a planet.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <returns>Friendly fleets at the planet.</returns>
+        public IReadOnlyList<Fleet> GetFriendlyFleets(Planet planet)
+        {
+            if (planet == null)
+                return Array.Empty<Fleet>();
+
+            return GetOrAdd(
+                _friendlyFleetsByPlanetId,
+                planet.InstanceID,
+                () =>
+                    planet
+                        .GetChildren<Fleet>()
+                        .Where(fleet => fleet.GetOwnerInstanceID() == _faction?.InstanceID)
+                        .OrderBy(fleet => fleet.InstanceID)
+                        .ToList()
+            );
+        }
+
+        /// <summary>
+        /// Returns whether a fleet is committed to headquarters defense.
+        /// </summary>
+        /// <param name="planet">Headquarters planet to inspect.</param>
+        /// <returns>True when a fleet is committed.</returns>
+        public bool HasCommittedHeadquartersFleet(Planet planet)
+        {
+            if (!IsFactionHeadquarters(planet))
+                return false;
+
+            return GetFriendlyFleets(planet)
+                .Any(fleet => fleet.GetChildren<CapitalShip>().Count > 0);
+        }
+
+        /// <summary>
+        /// Returns the strongest committed headquarters defense.
+        /// </summary>
+        /// <param name="planet">Headquarters planet to inspect.</param>
+        /// <returns>The committed defense strength.</returns>
+        public int GetCommittedHeadquartersDefenseStrength(Planet planet)
+        {
+            if (!IsPriorityDefensePlanet(planet))
+                return 0;
+
+            return OwnedFleets
+                .Where(fleet =>
+                    GetFleetPlanet(fleet)?.InstanceID == planet.InstanceID
+                    || fleet.Order?.OrderType == FleetOrderType.Defend
+                        && fleet.Order.TargetPlanetId == planet.InstanceID
+                        && fleet.Movement != null
+                )
+                .Sum(GetFleetCombatValue);
+        }
+
+        /// <summary>
+        /// Returns the strongest hostile fleet visible to the faction.
+        /// </summary>
+        /// <returns>The hostile fleet strength.</returns>
+        internal int GetStrongestKnownHostileFleetStrength()
+        {
+            if (!_strongestKnownHostileFleetStrength.HasValue)
+            {
+                _strongestKnownHostileFleetStrength = FactionViewPlanets
+                    .SelectMany(planet => GetHostileFleets(planet))
+                    .Select(GetFleetCombatValue)
+                    .DefaultIfEmpty()
+                    .Max();
+            }
+
+            return _strongestKnownHostileFleetStrength.Value;
+        }
+
+        /// <summary>
+        /// Returns the faction's total fleet combat strength.
+        /// </summary>
+        /// <returns>Total fleet combat strength.</returns>
+        internal int GetTotalFleetCombatStrength()
+        {
+            if (!_totalFleetCombatStrength.HasValue)
+                _totalFleetCombatStrength = OwnedFleets.Sum(GetFleetCombatValue);
+
+            return _totalFleetCombatStrength.Value;
+        }
+
+        /// <summary>
+        /// Returns whether an owned planet has enough active shield generators to block a
+        /// planetary assault under the configured combat rules.
+        /// </summary>
+        /// <param name="planet">Planet to inspect.</param>
+        /// <returns>True when the active shield count meets the configured limit.</returns>
+        public bool HasFullShields(Planet planet)
+        {
+            if (!IsOwnedPlanet(planet) || _game?.Config == null)
+                return false;
+
+            int requiredCount = _game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit;
+            return requiredCount > 0
+                && GetPlanetBuildings(planet)
+                    .Count(building =>
+                        building.GetOwnerInstanceID() == _faction.InstanceID
+                        && building.ManufacturingStatus == ManufacturingStatus.Complete
+                        && building.Movement == null
+                        && building.IsPlanetaryShieldGenerator()
+                    ) >= requiredCount;
+        }
+
+        /// <summary>
+        /// Returns hostile fleets at a planet.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <returns>Hostile fleets at the planet.</returns>
+        public IReadOnlyList<Fleet> GetHostileFleets(Planet planet)
+        {
+            if (planet == null)
+                return Array.Empty<Fleet>();
+
+            return GetOrAdd(
+                _hostileFleetsByPlanetId,
+                planet.InstanceID,
+                () =>
+                    planet
+                        .GetChildren<Fleet>()
+                        .Where(fleet =>
+                            !string.IsNullOrEmpty(fleet.GetOwnerInstanceID())
+                            && fleet.GetOwnerInstanceID() != _faction?.InstanceID
+                        )
+                        .OrderBy(fleet => fleet.InstanceID)
+                        .ToList()
+            );
+        }
+
+        /// <summary>
+        /// Returns the strongest hostile fleet strength at a planet.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <returns>The strongest hostile fleet strength.</returns>
+        public int GetStrongestHostileFleetStrength(Planet planet)
+        {
+            if (planet == null)
+                return 0;
+
+            return GetOrAdd(
+                _strongestHostileFleetStrengths,
+                planet.InstanceID,
+                () =>
+                    GetHostileFleets(planet)
+                        .Where(fleet => fleet.Movement == null)
+                        .Select(GetFleetCombatValue)
+                        .DefaultIfEmpty()
+                        .Max()
+            );
+        }
+
+        /// <summary>
+        /// Returns the known hostile planetary starfighter strength.
+        /// </summary>
+        /// <param name="planet">Planet to inspect.</param>
+        /// <returns>The hostile starfighter strength.</returns>
+        public int GetHostilePlanetaryStarfighterStrength(Planet planet)
+        {
+            if (planet == null)
+                return 0;
+
+            return GetOrAdd(
+                _hostilePlanetaryStarfighterStrengths,
+                planet.InstanceID,
+                () =>
+                    planet
+                        .GetAllStarfighters()
+                        .Where(starfighter =>
+                            !string.IsNullOrEmpty(starfighter.GetOwnerInstanceID())
+                            && starfighter.GetOwnerInstanceID() != _faction?.InstanceID
+                        )
+                        .Sum(starfighter => starfighter.GetCombatValue())
+            );
+        }
+
+        /// <summary>
+        /// Returns the strongest known fleet threat to a friendly planet.
+        /// </summary>
+        /// <param name="planet">Planet to inspect.</param>
+        /// <returns>The hostile fleet strength.</returns>
+        public int GetPlanetDefenseThreatStrength(Planet planet)
+        {
+            if (planet == null)
+                return 0;
+
+            return GetOrAdd(
+                _planetDefenseThreatStrengths,
+                planet.InstanceID,
+                () => GetHostileFleets(planet).Select(GetFleetCombatValue).DefaultIfEmpty().Max()
+            );
+        }
+
+        /// <summary>
+        /// Returns whether a planet faces a known enemy presence: a hostile fleet in contact or
+        /// a known enemy colony in the planet's sector.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <returns>True when the planet is threatened.</returns>
+        public bool IsPlanetThreatened(Planet planet)
+        {
+            if (planet == null)
+                return false;
+
+            if (GetPlanetDefenseThreatStrength(planet) > 0)
+                return true;
+
+            string sectorId = planet.GetParentOfType<PlanetSector>()?.InstanceID;
+            if (string.IsNullOrEmpty(sectorId))
+                return false;
+
+            _hostileSectorIds ??= KnownColonizedPlanets
+                .Where(known =>
+                {
+                    string ownerId = known.GetOwnerInstanceID();
+                    return !string.IsNullOrEmpty(ownerId) && ownerId != _faction?.InstanceID;
+                })
+                .Select(known => known.GetParentOfType<PlanetSector>()?.InstanceID)
+                .Where(id => !string.IsNullOrEmpty(id))
+                .ToHashSet(StringComparer.Ordinal);
+
+            return _hostileSectorIds.Contains(sectorId);
+        }
+
+        /// <summary>
+        /// Returns whether a planet belongs to an active attack campaign.
+        /// </summary>
+        /// <param name="planet">Planet to inspect.</param>
+        /// <returns>True when the planet is an attack-preparation target.</returns>
+        public bool IsAttackPreparationTarget(Planet planet)
+        {
+            return planet != null && _attackPreparationTargetIds.Contains(planet.InstanceID);
+        }
+
+        /// <summary>
+        /// Returns the planet currently containing a fleet.
+        /// </summary>
+        /// <param name="fleet">The fleet to inspect.</param>
+        /// <returns>The fleet planet, or null.</returns>
+        public Planet GetFleetPlanet(Fleet fleet)
+        {
+            if (fleet == null)
+                return null;
+
+            return GetOrAdd(_fleetPlanets, fleet.InstanceID, fleet.GetParentOfType<Planet>);
+        }
+
+        /// <summary>
+        /// Returns the active enemy attack target assigned to a fleet.
+        /// </summary>
+        /// <param name="fleet">The fleet to inspect.</param>
+        /// <returns>The attack target planet, or null when the order is not actionable.</returns>
+        public Planet GetAttackTargetPlanet(Fleet fleet)
+        {
+            string targetPlanetId = fleet?.Order?.TargetPlanetId;
+            if (
+                fleet?.Order?.OrderType != FleetOrderType.Attack
+                || string.IsNullOrEmpty(targetPlanetId)
+            )
+                return null;
+
+            Planet targetPlanet = GetKnownPlanet(targetPlanetId);
+            return IsEnemyPlanet(targetPlanet) ? targetPlanet : null;
+        }
+
+        /// <summary>
+        /// Returns whether a fleet has an attack order.
+        /// </summary>
+        /// <param name="fleet">The fleet to inspect.</param>
+        /// <returns>True if the fleet has an attack order.</returns>
+        private static bool HasAttackOrder(Fleet fleet)
+        {
+            return fleet?.Order?.OrderType == FleetOrderType.Attack;
+        }
+
+        /// <summary>
+        /// Returns whether a fleet has a colonization order.
+        /// </summary>
+        /// <param name="fleet">Fleet to inspect.</param>
+        /// <returns>True when the fleet is colonizing.</returns>
+        private static bool HasColonizationOrder(Fleet fleet)
+        {
+            return fleet?.Order?.OrderType == FleetOrderType.Colonize;
+        }
+
+        /// <summary>
+        /// Returns total combat value for a fleet.
+        /// </summary>
+        /// <param name="fleet">The fleet to inspect.</param>
+        /// <returns>The fleet combat value.</returns>
+        public int GetFleetCombatValue(Fleet fleet)
+        {
+            if (fleet == null)
+                return 0;
+
+            return GetOrAdd(_fleetCombatValues, fleet.InstanceID, fleet.GetCombatValue);
+        }
+
+        /// <summary>
+        /// Estimates the chance that a fleet captures a planet in an immediate ground assault.
+        /// </summary>
+        /// <param name="fleet">Fleet assigned to the attack.</param>
+        /// <param name="targetPlanet">Planet being attacked.</param>
+        /// <returns>The estimated success chance from zero through one hundred.</returns>
+        public int GetPlanetaryAssaultSuccessPercent(Fleet fleet, Planet targetPlanet)
+        {
+            if (fleet == null || targetPlanet == null || _game?.Config == null)
+                return 0;
+
+            return PlanetaryAssaultResolver.EstimateSuccessPercent(
+                new List<Fleet> { fleet },
+                targetPlanet,
+                _game.Config.Combat.PlanetaryAssault
+            );
+        }
+
+        /// <summary>
+        /// Returns planetary shield resistance on the bombardment-rating scale.
+        /// </summary>
+        /// <param name="planet">The planet whose shields are evaluated.</param>
+        /// <returns>The bombardment strength absorbed by the shields.</returns>
+        public int GetBombardmentShieldResistance(Planet planet)
+        {
+            return BombardmentQueries.GetBombardmentShieldResistance(
+                BombardmentQueries.GetBombardmentShieldStrength(planet),
+                _game.Config.Combat.Bombardment
+            );
+        }
+
+        /// <summary>
+        /// Returns whether hostile military bombardment targets remain on a planet.
+        /// </summary>
+        /// <param name="targetPlanet">The target planet.</param>
+        /// <returns>True when the bombardment targets condition is met; otherwise false.</returns>
+        public bool HasBombardmentTargets(Planet targetPlanet)
+        {
+            if (targetPlanet == null)
+                return false;
+
+            return GetOrAdd(
+                _activeHostileMilitaryTargets,
+                targetPlanet.InstanceID,
+                () =>
+                    BombardmentQueries.HasActiveMilitaryTargets(
+                        targetPlanet,
+                        targetPlanet.GetOwnerInstanceID()
+                    )
+            );
+        }
+
+        /// <summary>
+        /// Returns combat value from ready units in a fleet.
+        /// </summary>
+        /// <param name="fleet">The fleet to inspect.</param>
+        /// <returns>The ready combat value.</returns>
+        public int GetReadyFleetCombatValue(Fleet fleet)
+        {
+            return fleet?.GetCombatValue() ?? 0;
+        }
+
+        /// <summary>
+        /// Returns fleet combat value including committed reinforcements.
+        /// </summary>
+        /// <param name="fleet">Fleet to inspect.</param>
+        /// <returns>The projected combat value.</returns>
+        public int GetProjectedFleetCombatValue(Fleet fleet)
+        {
+            if (fleet == null)
+                return 0;
+
+            return fleet.GetChildren<CapitalShip>().Sum(GetProjectedCapitalShipCombatValue);
+        }
+
+        /// <summary>
+        /// Returns loaded ready regiments in a fleet.
+        /// </summary>
+        /// <param name="fleet">The fleet to inspect.</param>
+        /// <returns>The ready regiment count.</returns>
+        public int GetReadyFleetRegimentCount(Fleet fleet)
+        {
+            if (fleet == null)
+                return 0;
+
+            return fleet
+                .GetChildren<CapitalShip>()
+                .Where(IsReadyCapitalShip)
+                .SelectMany(ship => ship.GetChildren<Regiment>())
+                .Count(IsReadyRegiment);
+        }
+
+        /// <summary>
+        /// Returns ready regiment capacity in a fleet.
+        /// </summary>
+        /// <param name="fleet">The fleet to inspect.</param>
+        /// <returns>The ready regiment capacity.</returns>
+        public int GetReadyFleetRegimentCapacity(Fleet fleet)
+        {
+            if (fleet == null)
+                return 0;
+
+            return fleet
+                .GetChildren<CapitalShip>()
+                .Where(IsReadyCapitalShip)
+                .Sum(ship => ship.GetRegimentCapacity());
+        }
+
+        /// <summary>
+        /// Returns attack strength from ready loaded regiments in a fleet.
+        /// </summary>
+        /// <param name="fleet">The fleet to inspect.</param>
+        /// <returns>The ready loaded regiment attack strength.</returns>
+        public int GetReadyFleetRegimentAttackStrength(Fleet fleet)
+        {
+            if (fleet == null || _game?.Config == null)
+                return 0;
+
+            int leadershipBonus = PlanetaryAssaultResolver.GetLeadershipBonus(
+                fleet.GetOfficers(),
+                OfficerRank.General,
+                fleet.GetOwnerInstanceID(),
+                _game.Config.Combat.PlanetaryAssault
+            );
+            return fleet
+                .GetChildren<CapitalShip>()
+                .Where(IsReadyCapitalShip)
+                .SelectMany(ship => ship.GetChildren<Regiment>())
+                .Where(IsReadyRegiment)
+                .Sum(regiment => regiment.AttackRating + leadershipBonus);
+        }
+
+        /// <summary>
+        /// Returns loaded regiment strength including committed reinforcements.
+        /// </summary>
+        /// <param name="fleet">Fleet to inspect.</param>
+        /// <returns>The projected regiment strength.</returns>
+        public int GetProjectedFleetRegimentAttackStrength(Fleet fleet)
+        {
+            if (fleet == null || _game?.Config == null)
+                return 0;
+
+            int leadershipBonus = PlanetaryAssaultResolver.GetLeadershipBonus(
+                fleet.GetOfficers(),
+                OfficerRank.General,
+                fleet.GetOwnerInstanceID(),
+                _game.Config.Combat.PlanetaryAssault
+            );
+            return fleet
+                .GetRegiments()
+                .Where(regiment => regiment != null)
+                .Sum(regiment => regiment.AttackRating + leadershipBonus);
+        }
+
+        /// <summary>
+        /// Returns loaded ready regiments on a capital ship.
+        /// </summary>
+        /// <param name="capitalShip">The capital ship to inspect.</param>
+        /// <returns>The ready regiment count.</returns>
+        public int GetReadyCapitalShipRegimentCount(CapitalShip capitalShip)
+        {
+            if (!IsReadyCapitalShip(capitalShip))
+                return 0;
+
+            return capitalShip.GetChildren<Regiment>().Count(IsReadyRegiment);
+        }
+
+        /// <summary>
+        /// Returns ready regiment capacity on a capital ship.
+        /// </summary>
+        /// <param name="capitalShip">The capital ship to inspect.</param>
+        /// <returns>The ready regiment capacity.</returns>
+        public int GetReadyCapitalShipRegimentCapacity(CapitalShip capitalShip)
+        {
+            if (!IsReadyCapitalShip(capitalShip))
+                return 0;
+
+            return capitalShip.GetRegimentCapacity();
+        }
+
+        /// <summary>
+        /// Returns projected loaded regiment strength for a capital ship.
+        /// </summary>
+        /// <param name="targetFleet">Fleet containing the ship.</param>
+        /// <param name="capitalShip">Capital ship to inspect.</param>
+        /// <returns>The projected regiment strength.</returns>
+        public int GetProjectedCapitalShipRegimentAttackStrength(
+            Fleet targetFleet,
+            CapitalShip capitalShip
+        )
+        {
+            if (targetFleet == null || !IsReadyCapitalShip(capitalShip) || _game?.Config == null)
+                return 0;
+
+            int leadershipBonus = PlanetaryAssaultResolver.GetLeadershipBonus(
+                targetFleet.GetOfficers(),
+                OfficerRank.General,
+                targetFleet.GetOwnerInstanceID(),
+                _game.Config.Combat.PlanetaryAssault
+            );
+            return capitalShip
+                .GetChildren<Regiment>()
+                .Where(IsReadyRegiment)
+                .Sum(regiment => regiment.AttackRating + leadershipBonus);
+        }
+
+        /// <summary>
+        /// Returns fleet bombardment strength.
+        /// </summary>
+        /// <param name="fleet">The fleet to inspect.</param>
+        /// <returns>The fleet bombardment strength.</returns>
+        public int GetFleetBombardmentStrength(Fleet fleet)
+        {
+            if (fleet == null || _game?.Config == null)
+                return 0;
+
+            return GetOrAdd(
+                _fleetBombardmentStrengths,
+                fleet.InstanceID,
+                () =>
+                    BombardmentQueries.GetBombardmentStrength(
+                        new[] { fleet },
+                        _game.Config.Combat.Bombardment
+                    )
+            );
+        }
+
+        /// <summary>
+        /// Returns fleet bombardment strength including committed reinforcements.
+        /// </summary>
+        /// <param name="fleet">Fleet to inspect.</param>
+        /// <returns>The projected bombardment strength.</returns>
+        public int GetProjectedFleetBombardmentStrength(Fleet fleet)
+        {
+            if (fleet == null || _game?.Config == null)
+                return 0;
+
+            return GetOrAdd(
+                _projectedFleetBombardmentStrengths,
+                fleet.InstanceID,
+                () =>
+                    BombardmentQueries.GetProjectedBombardmentStrength(
+                        fleet,
+                        _game.Config.Combat.Bombardment
+                    )
+            );
+        }
+
+        /// <summary>
+        /// Returns projected bombardment strength for a capital ship.
+        /// </summary>
+        /// <param name="fleet">Fleet containing the ship.</param>
+        /// <param name="capitalShip">Capital ship to inspect.</param>
+        /// <returns>The projected bombardment strength.</returns>
+        public int GetProjectedCapitalShipBombardmentStrength(Fleet fleet, CapitalShip capitalShip)
+        {
+            if (fleet == null || capitalShip == null || _game?.Config == null)
+                return 0;
+
+            return BombardmentQueries.GetProjectedCapitalShipBombardmentStrength(
+                fleet,
+                capitalShip,
+                _game.Config.Combat.Bombardment
+            );
+        }
+
+        /// <summary>
+        /// Returns loaded regiment count for a fleet.
+        /// </summary>
+        /// <param name="fleet">The fleet to inspect.</param>
+        /// <returns>The loaded regiment count.</returns>
+        public int GetFleetLoadedRegimentCount(Fleet fleet)
+        {
+            return fleet?.GetCurrentRegimentCount() ?? 0;
+        }
+
+        /// <summary>
+        /// Returns regiment capacity for a fleet.
+        /// </summary>
+        /// <param name="fleet">The fleet to inspect.</param>
+        /// <returns>The regiment capacity.</returns>
+        public int GetFleetRegimentCapacity(Fleet fleet)
+        {
+            return fleet?.GetRegimentCapacity() ?? 0;
+        }
+
+        /// <summary>
+        /// Returns loaded starfighter count for a fleet.
+        /// </summary>
+        /// <param name="fleet">The fleet to inspect.</param>
+        /// <returns>The loaded starfighter count.</returns>
+        public int GetFleetLoadedStarfighterCount(Fleet fleet)
+        {
+            return fleet?.GetCurrentStarfighterCount() ?? 0;
+        }
+
+        /// <summary>
+        /// Returns owned planet count with idle production lanes for a manufacturing type.
+        /// </summary>
+        /// <param name="type">Manufacturing type to inspect.</param>
+        /// <returns>The available production lane count.</returns>
+        public int GetAvailableProductionLaneCount(ManufacturingType type)
+        {
+            if (type == ManufacturingType.None)
+                return 0;
+
+            return GetOrAdd(
+                _availableProductionLaneCounts,
+                type,
+                () => OwnedPlanets.Sum(planet => planet.GetAvailableManufacturingCapacity(type))
+            );
+        }
+
+        /// <summary>
+        /// Returns total production throughput for a manufacturing type.
+        /// </summary>
+        /// <param name="type">Manufacturing type to inspect.</param>
+        /// <returns>The total production throughput.</returns>
+        public double GetProductionThroughput(ManufacturingType type)
+        {
+            if (type == ManufacturingType.None)
+                return 0;
+
+            return GetOrAdd(
+                _productionThroughputs,
+                type,
+                () => OwnedPlanets.Sum(planet => planet.GetProductionRate(type))
+            );
+        }
+
+        /// <summary>
+        /// Returns maintenance committed to complete and constructing production facilities.
+        /// </summary>
+        /// <returns>The committed production-facility maintenance.</returns>
+        public int GetProductionFacilityMaintenance()
+        {
+            if (_productionFacilityMaintenance.HasValue)
+                return _productionFacilityMaintenance.Value;
+
+            _productionFacilityMaintenance = OwnedPlanets
+                .SelectMany(GetPlanetBuildings)
+                .Where(building =>
+                    building.GetOwnerInstanceID() == _faction.InstanceID
+                    && building.GetBuildingType()
+                        is BuildingType.ConstructionFacility
+                            or BuildingType.Shipyard
+                            or BuildingType.TrainingFacility
+                )
+                .Sum(building => building.MaintenanceCost);
+            return _productionFacilityMaintenance.Value;
+        }
+
+        /// <summary>
+        /// Returns idle production throughput for a manufacturing type.
+        /// </summary>
+        /// <param name="type">Manufacturing type to inspect.</param>
+        /// <returns>The idle production throughput.</returns>
+        public double GetIdleProductionThroughput(ManufacturingType type)
+        {
+            if (type == ManufacturingType.None)
+                return 0;
+
+            return GetOrAdd(
+                _idleProductionThroughputs,
+                type,
+                () =>
+                    OwnedPlanets
+                        .Where(planet => GetQueuedProductionWork(planet, type) == 0)
+                        .Sum(planet => planet.GetProductionRate(type))
+            );
+        }
+
+        /// <summary>
+        /// Returns queued production work for a manufacturing type.
+        /// </summary>
+        /// <param name="type">Manufacturing type to inspect.</param>
+        /// <returns>The queued production work.</returns>
+        public int GetQueuedProductionWork(ManufacturingType type)
+        {
+            if (type == ManufacturingType.None)
+                return 0;
+
+            return GetOrAdd(
+                _queuedProductionWork,
+                type,
+                () => OwnedPlanets.Sum(planet => GetQueuedProductionWork(planet, type))
+            );
+        }
+
+        /// <summary>
+        /// Returns refined materials queued facilities can consume during the planning horizon.
+        /// </summary>
+        /// <returns>The near-term refined-material commitment.</returns>
+        private int GetNearTermRefinedMaterialCommitment()
+        {
+            if (_game?.Config == null)
+                return 0;
+
+            long commitment = 0;
+            int horizonTicks = Math.Max(
+                0,
+                _game.Config.AI.Selection.RefinedMaterialCommitmentHorizonTicks
+            );
+            foreach (Planet planet in OwnedPlanets)
+            {
+                foreach (
+                    KeyValuePair<
+                        ManufacturingType,
+                        List<IManufacturable>
+                    > entry in planet.GetManufacturingQueue()
+                )
+                {
+                    long queuedWork = entry.Value.Sum(item =>
+                        (long)
+                            Math.Max(
+                                0,
+                                item.GetConstructionCost() - item.GetManufacturingProgress()
+                            )
+                    );
+                    long horizonCapacity = (long)
+                        Math.Ceiling(GetPlanetProductionRate(planet, entry.Key) * horizonTicks);
+                    commitment += Math.Min(queuedWork, Math.Max(0, horizonCapacity));
+                    if (commitment >= int.MaxValue)
+                        return int.MaxValue;
+                }
+            }
+
+            return (int)commitment;
+        }
+
+        /// <summary>
+        /// Returns estimated queue clear time for a manufacturing type.
+        /// </summary>
+        /// <param name="type">Manufacturing type to inspect.</param>
+        /// <returns>The queued production clear ticks.</returns>
+        public double GetQueuedProductionClearTicks(ManufacturingType type)
+        {
+            if (type == ManufacturingType.None)
+                return 0;
+
+            return GetOrAdd(
+                _queuedProductionClearTicks,
+                type,
+                () =>
+                {
+                    int work = GetQueuedProductionWork(type);
+                    if (work <= 0)
+                        return 0;
+
+                    double throughput = GetProductionThroughput(type);
+                    if (throughput <= 0)
+                        return double.PositiveInfinity;
+
+                    return work / throughput;
+                }
+            );
+        }
+
+        /// <summary>
+        /// Returns estimated queue clear time for one planet and manufacturing type.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <param name="type">The manufacturing category.</param>
+        /// <returns>The queued production clear ticks.</returns>
+        public double GetProductionBacklogTicks(Planet planet, ManufacturingType type)
+        {
+            if (planet == null || type == ManufacturingType.None)
+                return 0;
+
+            (string PlanetId, ManufacturingType ManufacturingType) key = (planet.InstanceID, type);
+            return GetOrAdd(
+                _planetQueuedProductionClearTicks,
+                key,
+                () =>
+                {
+                    int work = GetOrAdd(
+                        _planetQueuedProductionWork,
+                        key,
+                        () => GetQueuedProductionWork(planet, type)
+                    );
+                    if (work <= 0)
+                        return 0;
+
+                    double throughput = GetPlanetProductionRate(planet, type);
+                    return throughput <= 0 ? double.PositiveInfinity : work / throughput;
+                }
+            );
+        }
+
+        /// <summary>
+        /// Builds the known colonized planet list.
+        /// </summary>
+        /// <returns>Known colonized planets.</returns>
+        private List<Planet> BuildFactionViewPlanets()
+        {
+            if (_factionView == null)
+                return new List<Planet>();
+
+            return _factionView
+                .GetChildren<PlanetSector>()
+                .SelectMany(sector => sector.GetChildren<Planet>())
+                .ToList();
+        }
+
+        /// <summary>
+        /// Builds the owned planet list.
+        /// </summary>
+        /// <returns>Owned planets.</returns>
+        private List<Planet> BuildOwnedPlanets()
+        {
+            if (_faction == null)
+                return new List<Planet>();
+
+            return _faction
+                .GetOwnedUnitsByType<Planet>()
+                .Where(planet => planet != null)
+                .OrderBy(GetPlanetSystemPositionX)
+                .ThenBy(planet => planet.InstanceID)
+                .ToList();
+        }
+
+        /// <summary>
+        /// Builds the enemy planet list.
+        /// </summary>
+        /// <returns>Enemy planets.</returns>
+        private List<Planet> BuildEnemyPlanets()
+        {
+            return KnownColonizedPlanets.Where(IsEnemyPlanet).ToList();
+        }
+
+        /// <summary>
+        /// Builds the neutral planet list.
+        /// </summary>
+        /// <returns>Neutral planets.</returns>
+        private List<Planet> BuildNeutralPlanets()
+        {
+            return KnownColonizedPlanets.Where(IsNeutralPlanet).ToList();
+        }
+
+        /// <summary>
+        /// Builds the available mission participant list.
+        /// </summary>
+        /// <returns>Available mission participants.</returns>
+        private List<IMissionParticipant> BuildAvailableMissionParticipants()
+        {
+            if (_faction == null)
+                return new List<IMissionParticipant>();
+
+            return _faction.GetAvailableMissionParticipants();
+        }
+
+        /// <summary>
+        /// Builds the active mission list visible to the faction.
+        /// </summary>
+        /// <returns>The active missions.</returns>
+        private List<Mission> BuildActiveMissions()
+        {
+            if (_game == null || _faction == null)
+                return new List<Mission>();
+
+            return _game.GetSceneNodesByType<Mission>(mission =>
+                mission.GetOwnerInstanceID() == _faction.InstanceID
+            );
+        }
+
+        /// <summary>
+        /// Builds targetable enemy officer mission targets.
+        /// </summary>
+        /// <returns>Targetable enemy officer mission targets.</returns>
+        private List<(
+            Planet Planet,
+            Officer TargetOfficer
+        )> BuildTargetableEnemyOfficerMissionTargets()
+        {
+            if (_faction == null)
+                return new List<(Planet Planet, Officer TargetOfficer)>();
+
+            return KnownColonizedPlanets
+                .Where(IsEnemyPlanet)
+                .SelectMany(planet =>
+                    GetKnownOfficers(planet)
+                        .Where(IsTargetableEnemyOfficer)
+                        .Select(officer => (Planet: planet, TargetOfficer: officer))
+                )
+                .OrderBy(candidate => GetPlanetSystemPositionX(candidate.Planet))
+                .ThenBy(candidate => candidate.Planet.InstanceID)
+                .ThenBy(candidate => candidate.TargetOfficer.InstanceID)
+                .ToList();
+        }
+
+        /// <summary>
+        /// Returns whether an officer can be targeted by hostile missions.
+        /// </summary>
+        /// <param name="officer">The officer to inspect.</param>
+        /// <returns>True if the officer can be targeted.</returns>
+        private bool IsTargetableEnemyOfficer(Officer officer)
+        {
+            return officer != null
+                && officer.GetOwnerInstanceID() != _faction.InstanceID
+                && !officer.IsCaptured
+                && !officer.IsKilled;
+        }
+
+        /// <summary>
+        /// Builds the owned fleet list.
+        /// </summary>
+        /// <returns>Owned fleets.</returns>
+        private List<Fleet> BuildOwnedFleets()
+        {
+            if (_faction == null)
+                return new List<Fleet>();
+
+            return _faction
+                .GetOwnedUnitsByType<Fleet>()
+                .Where(fleet => fleet != null)
+                .OrderBy(fleet => fleet.InstanceID)
+                .ToList();
+        }
+
+        /// <summary>
+        /// Builds the attack-ordered fleet list.
+        /// </summary>
+        /// <returns>Attack-ordered fleets.</returns>
+        private List<Fleet> BuildAttackOrderedFleets()
+        {
+            return OwnedFleets.Where(HasAttackOrder).ToList();
+        }
+
+        /// <summary>
+        /// Builds the fleet list assigned to orbital engagements.
+        /// </summary>
+        /// <returns>Engagement-ordered fleets.</returns>
+        private List<Fleet> BuildEngagementOrderedFleets()
+        {
+            return OwnedFleets
+                .Where(fleet => fleet?.Order?.OrderType == FleetOrderType.Engage)
+                .ToList();
+        }
+
+        /// <summary>
+        /// Builds the owned fleet list with active colonization orders.
+        /// </summary>
+        /// <returns>The colonization fleets.</returns>
+        private List<Fleet> BuildColonizationOrderedFleets()
+        {
+            return OwnedFleets.Where(HasColonizationOrder).ToList();
+        }
+
+        /// <summary>
+        /// Returns a planet's system x position.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <returns>The system x position.</returns>
+        private int GetPlanetSystemPositionX(Planet planet)
+        {
+            return planet.GetParentOfType<PlanetSector>()?.PositionX ?? 0;
+        }
+
+        /// <summary>
+        /// Returns queued production work on a planet for a manufacturing type.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <param name="type">Manufacturing type to inspect.</param>
+        /// <returns>The queued production work.</returns>
+        private int GetQueuedProductionWork(Planet planet, ManufacturingType type)
+        {
+            if (
+                planet == null
+                || !planet
+                    .GetManufacturingQueue()
+                    .TryGetValue(type, out List<IManufacturable> manufacturingQueue)
+            )
+                return 0;
+
+            return manufacturingQueue.Sum(item =>
+                Math.Max(0, item.GetConstructionCost() - item.ManufacturingProgress)
+            );
+        }
+
+        /// <summary>
+        /// Returns whether a capital ship is ready for planning.
+        /// </summary>
+        /// <param name="capitalShip">The capital ship to inspect.</param>
+        /// <returns>True if the capital ship is ready.</returns>
+        private static bool IsReadyCapitalShip(CapitalShip capitalShip)
+        {
+            return capitalShip != null
+                && capitalShip.ManufacturingStatus == ManufacturingStatus.Complete
+                && capitalShip.Movement == null;
+        }
+
+        /// <summary>
+        /// Returns projected combat value for a capital ship.
+        /// </summary>
+        /// <param name="capitalShip">Capital ship to inspect.</param>
+        /// <returns>The projected combat value.</returns>
+        public int GetProjectedCapitalShipCombatValue(CapitalShip capitalShip)
+        {
+            if (capitalShip == null)
+                return 0;
+
+            int starfighterCombat = capitalShip
+                .GetChildren<Starfighter>()
+                .Where(starfighter => starfighter != null)
+                .Sum(GetProjectedStarfighterCombatValue);
+
+            return capitalShip.GetProjectedCombatValue() + starfighterCombat;
+        }
+
+        /// <summary>
+        /// Returns current ready combat value for a capital ship.
+        /// </summary>
+        /// <param name="capitalShip">Capital ship to inspect.</param>
+        /// <returns>The ready combat value.</returns>
+        public int GetReadyCapitalShipCombatValue(CapitalShip capitalShip)
+        {
+            if (!IsReadyCapitalShip(capitalShip))
+                return 0;
+
+            return capitalShip.GetCombatValue()
+                + capitalShip
+                    .GetChildren<Starfighter>()
+                    .Where(starfighter => starfighter != null)
+                    .Sum(starfighter => starfighter.GetCombatValue());
+        }
+
+        /// <summary>
+        /// Returns projected combat value for a starfighter unit.
+        /// </summary>
+        /// <param name="starfighter">Starfighter to inspect.</param>
+        /// <returns>The projected combat value.</returns>
+        private static int GetProjectedStarfighterCombatValue(Starfighter starfighter)
+        {
+            int weaponStrength =
+                starfighter.LaserCannon + starfighter.IonCannon + starfighter.Torpedoes;
+            int squadronSize =
+                starfighter.ManufacturingStatus == ManufacturingStatus.Complete
+                    ? starfighter.CurrentSquadronSize
+                    : starfighter.MaxSquadronSize;
+            return starfighter.MaxSquadronSize > 0
+                ? weaponStrength * Math.Max(0, squadronSize) / starfighter.MaxSquadronSize
+                : weaponStrength;
+        }
+
+        /// <summary>
+        /// Returns whether a regiment is ready for planning.
+        /// </summary>
+        /// <param name="regiment">The regiment to inspect.</param>
+        /// <returns>True if the regiment is ready.</returns>
+        private static bool IsReadyRegiment(Regiment regiment)
+        {
+            return regiment != null
+                && regiment.ManufacturingStatus == ManufacturingStatus.Complete
+                && regiment.Movement == null;
+        }
+
+        /// <summary>
+        /// Returns a cached value by string key.
+        /// </summary>
+        /// <param name="cache">Cache to use.</param>
+        /// <param name="key">Cache key.</param>
+        /// <param name="createValue">Value factory used on cache miss.</param>
+        /// <returns>The cached or created value.</returns>
+        /// <typeparam name="TValue">The t value type.</typeparam>
+        private static TValue GetOrAdd<TValue>(
+            Dictionary<string, TValue> cache,
+            string key,
+            Func<TValue> createValue
+        )
+        {
+            if (string.IsNullOrEmpty(key))
+                return createValue();
+
+            if (!cache.TryGetValue(key, out TValue value))
+            {
+                value = createValue();
+                cache[key] = value;
+            }
+
+            return value;
+        }
+
+        /// <summary>
+        /// Returns a cached value by manufacturing type.
+        /// </summary>
+        /// <param name="cache">Cache to use.</param>
+        /// <param name="key">Cache key.</param>
+        /// <param name="createValue">Value factory used on cache miss.</param>
+        /// <returns>The cached or created value.</returns>
+        /// <typeparam name="TValue">The t value type.</typeparam>
+        private static TValue GetOrAdd<TValue>(
+            Dictionary<ManufacturingType, TValue> cache,
+            ManufacturingType key,
+            Func<TValue> createValue
+        )
+        {
+            if (!cache.TryGetValue(key, out TValue value))
+            {
+                value = createValue();
+                cache[key] = value;
+            }
+
+            return value;
+        }
+
+        /// <summary>
+        /// Returns a cached value by composite key.
+        /// </summary>
+        /// <param name="cache">Cache to use.</param>
+        /// <param name="key">Cache key.</param>
+        /// <param name="createValue">Value factory used on cache miss.</param>
+        /// <returns>The cached or created value.</returns>
+        /// <typeparam name="TKey">The t key type.</typeparam>
+        /// <typeparam name="TValue">The t value type.</typeparam>
+        private static TValue GetOrAdd<TKey, TValue>(
+            Dictionary<TKey, TValue> cache,
+            TKey key,
+            Func<TValue> createValue
+        )
+        {
+            if (!cache.TryGetValue(key, out TValue value))
+            {
+                value = createValue();
+                cache[key] = value;
+            }
+
+            return value;
+        }
+    }
+}

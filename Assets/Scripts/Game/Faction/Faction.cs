@@ -627,18 +627,12 @@ namespace Rebellion.Game.Factions
         }
 
         /// <summary>
-        /// Returns the projected maintenance burden of completed and in-progress manufacturables.
+        /// Returns the projected maintenance burden of all committed manufacturables.
         /// </summary>
         /// <returns>The total projected maintenance burden for the faction.</returns>
         public int GetTotalProjectedMaintenanceCost()
         {
-            return GetAllOwnedManufacturables()
-                .Where(m =>
-                    m.GetManufacturingStatus()
-                        is ManufacturingStatus.Complete
-                            or ManufacturingStatus.Building
-                )
-                .Sum(m => m.GetMaintenanceCost());
+            return GetAllOwnedManufacturables().Sum(m => m.GetMaintenanceCost());
         }
 
         /// <summary>

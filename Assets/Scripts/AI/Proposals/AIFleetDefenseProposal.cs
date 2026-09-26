@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-using Rebellion.AI.Director;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 
@@ -23,23 +21,6 @@ namespace Rebellion.AI.Proposals
         {
             Fleet = fleet;
             TargetPlanet = targetPlanet;
-        }
-
-        /// <summary>
-        /// Returns claims that prevent incompatible fleet actions.
-        /// </summary>
-        /// <returns>Claim keys for this proposal.</returns>
-        public override IReadOnlyList<string> GetClaimKeys()
-        {
-            if (Fleet == null || TargetPlanet == null)
-                return new List<string>();
-
-            return new List<string>
-            {
-                AIClaimKeys.FleetOrder(Fleet.InstanceID),
-                AIClaimKeys.FleetMovement(Fleet.InstanceID),
-                AIClaimKeys.PlanetDefense(TargetPlanet.InstanceID),
-            };
         }
 
         /// <summary>
@@ -142,7 +123,7 @@ namespace Rebellion.AI.Proposals
 
             if (
                 !context.Assessment.IsPriorityDefensePlanet(TargetPlanet)
-                && context.Assessment.GetRequiredPlanetDefenseStrength(TargetPlanet) <= 0
+                && context.StrategicPlan.GetPlanetDefenseStrength(TargetPlanet) <= 0
             )
                 return false;
 

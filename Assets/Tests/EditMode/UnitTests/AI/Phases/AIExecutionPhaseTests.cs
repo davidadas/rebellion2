@@ -1,8 +1,12 @@
 using System.Collections.Generic;
 using NUnit.Framework;
-using Rebellion.AI.Director;
+using Rebellion.AI;
+using Rebellion.AI.Demands;
 using Rebellion.AI.Phases;
+using Rebellion.AI.Planners;
 using Rebellion.AI.Proposals;
+using Rebellion.AI.Scorers;
+using Rebellion.AI.Selectors;
 using Rebellion.Tests.AI.Helpers;
 
 namespace Rebellion.Tests.AI.Phases

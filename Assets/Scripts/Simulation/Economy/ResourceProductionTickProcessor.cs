@@ -401,11 +401,12 @@ namespace Rebellion.Simulation
             if (!mine.ProductionInputReserved)
                 mine.ProductionInputReserved = true;
 
-            if (!AdvanceResourceCycle(game, faction, mine))
-                return;
-
-            _smugglingCommands.ResolveProductionRecipient(faction, mine).RawMaterialStockpile++;
-            mine.ProductionInputReserved = true;
+            AdvanceResourceProgress(game, faction, mine);
+            while (TryCompleteResourceCycle(game, faction, mine))
+            {
+                _smugglingCommands.ResolveProductionRecipient(faction, mine).RawMaterialStockpile++;
+                mine.ProductionInputReserved = true;
+            }
         }
 
         /// <summary>
@@ -422,23 +423,28 @@ namespace Rebellion.Simulation
                     return;
             }
 
-            if (!AdvanceResourceCycle(game, faction, refinery))
-                return;
-
-            _smugglingCommands
-                .ResolveProductionRecipient(faction, refinery)
-                .RefinedMaterialStockpile++;
-            faction.RequestRawMaterial(refinery);
+            AdvanceResourceProgress(game, faction, refinery);
+            while (TryCompleteResourceCycle(game, faction, refinery))
+            {
+                _smugglingCommands
+                    .ResolveProductionRecipient(faction, refinery)
+                    .RefinedMaterialStockpile++;
+                if (!faction.RequestRawMaterial(refinery))
+                    break;
+            }
         }
 
         /// <summary>
-        /// Advances a resource facility by one tick and resets it after a completed cycle.
+        /// Advances a resource facility by its configured output rate for one tick.
         /// </summary>
         /// <param name="game">The game state being advanced.</param>
         /// <param name="faction">The owning faction.</param>
         /// <param name="facility">The facility to advance.</param>
-        /// <returns>True when the cycle completes this tick.</returns>
-        private bool AdvanceResourceCycle(GameRoot game, Faction faction, Building facility)
+        private static void AdvanceResourceProgress(
+            GameRoot game,
+            Faction faction,
+            Building facility
+        )
         {
             if (facility.ProductionCycleDuration <= 0)
                 facility.ProductionCycleDuration = CalculateResourceCycleDuration(
@@ -447,11 +453,44 @@ namespace Rebellion.Simulation
                     facility
                 );
 
-            facility.ProductionCycleProgress++;
+            DifficultyModifiers modifier = game.GetDifficultyModifier(faction);
+            int outputPercent =
+                facility.BuildingType == BuildingType.Mine
+                    ? modifier.MineOutputPercent
+                    : modifier.RefineryOutputPercent;
+            if (outputPercent <= 0)
+                return;
+
+            facility.ProductionCycleProgress += (double)outputPercent / _percentScale;
+        }
+
+        /// <summary>
+        /// Completes one ready resource cycle while preserving excess fractional progress.
+        /// </summary>
+        /// <param name="game">The game state being advanced.</param>
+        /// <param name="faction">The owning faction.</param>
+        /// <param name="facility">The facility whose ready cycle is consumed.</param>
+        /// <returns>True when one cycle was completed.</returns>
+        private static bool TryCompleteResourceCycle(
+            GameRoot game,
+            Faction faction,
+            Building facility
+        )
+        {
+            if (!facility.ProductionInputReserved)
+                return false;
+
+            if (facility.ProductionCycleDuration <= 0)
+                facility.ProductionCycleDuration = CalculateResourceCycleDuration(
+                    game,
+                    faction,
+                    facility
+                );
+
             if (facility.ProductionCycleProgress < facility.ProductionCycleDuration)
                 return false;
 
-            facility.ProductionCycleProgress = 0;
+            facility.ProductionCycleProgress -= facility.ProductionCycleDuration;
             facility.ProductionCycleDuration = 0;
             facility.ProductionInputReserved = false;
             facility.ResourceStartupCyclePending = false;

@@ -214,6 +214,7 @@ namespace Rebellion.Simulation
             if (mission == null || detectors == null || detectors.Count == 0)
                 return 0;
 
+            int foilChanceModifier = GetFoilChanceModifier(mission);
             IReadOnlyList<IMissionParticipant> decoys = mission.GetDecoyParticipants();
             if (decoys.Count == 0)
             {
@@ -221,7 +222,12 @@ namespace Rebellion.Simulation
                 foreach (ISceneNode detector in detectors)
                 {
                     unfoiledProbability *=
-                        1d - Math.Clamp(GetFoilProbability(mission, detector) / 100d, 0, 1);
+                        1d
+                        - Math.Clamp(
+                            GetFoilProbability(mission, detector, foilChanceModifier) / 100d,
+                            0,
+                            1
+                        );
                 }
 
                 return (1d - unfoiledProbability) * 100d;
@@ -255,7 +261,12 @@ namespace Rebellion.Simulation
             foreach (ISceneNode detector in detectors)
             {
                 double noFoilProbability =
-                    1d - Math.Clamp(GetFoilProbability(mission, detector) / 100d, 0, 1);
+                    1d
+                    - Math.Clamp(
+                        GetFoilProbability(mission, detector, foilChanceModifier) / 100d,
+                        0,
+                        1
+                    );
                 Dictionary<BigInteger, double> next = new Dictionary<BigInteger, double>();
                 foreach ((BigInteger availableDecoys, double probability) in unfoiledByDecoyPool)
                 {
@@ -409,11 +420,40 @@ namespace Rebellion.Simulation
         /// <returns>The foiling percentage.</returns>
         internal int GetFoilProbability(Mission mission, ISceneNode detector)
         {
+            return GetFoilProbability(mission, detector, GetFoilChanceModifier(mission));
+        }
+
+        /// <summary>
+        /// Returns the configured foil-chance adjustment for the mission owner.
+        /// </summary>
+        /// <param name="mission">The mission whose owner receives the adjustment.</param>
+        /// <returns>The signed percentage-point adjustment.</returns>
+        internal int GetFoilChanceModifier(Mission mission)
+        {
+            return mission == null
+                ? 0
+                : _game.GetDifficultyModifier(mission.GetOwnerInstanceID()).MissionFoilChancePoints;
+        }
+
+        /// <summary>
+        /// Returns one detector's configured chance to foil a mission using a resolved adjustment.
+        /// </summary>
+        /// <param name="mission">The mission attempting to remain undetected.</param>
+        /// <param name="detector">The hostile detector.</param>
+        /// <param name="foilChanceModifier">The signed percentage-point adjustment.</param>
+        /// <returns>The adjusted foiling percentage.</returns>
+        internal int GetFoilProbability(
+            Mission mission,
+            ISceneNode detector,
+            int foilChanceModifier
+        )
+        {
             if (mission == null || detector == null)
                 return 0;
 
             int score = CalculateFoilScore(mission, detector);
-            return LookupProbability(GetMissionTables().Foil, score);
+            int probability = LookupProbability(GetMissionTables().Foil, score);
+            return Math.Clamp(probability + foilChanceModifier, 0, 100);
         }
 
         /// <summary>

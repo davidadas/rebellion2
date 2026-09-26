@@ -1,10 +1,13 @@
+using System;
 using System.Collections.Generic;
 using NUnit.Framework;
-using Rebellion.AI.Director;
+using Rebellion.AI;
+using Rebellion.AI.Demands;
 using Rebellion.AI.Phases;
 using Rebellion.AI.Planners;
-using Rebellion.AI.Planners.Demand;
 using Rebellion.AI.Proposals;
+using Rebellion.AI.Scorers;
+using Rebellion.AI.Selectors;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
@@ -21,8 +24,8 @@ namespace Rebellion.Tests.AI.Phases
         public void Select_WithScoredProposals_ReturnsHighestScoreFirst()
         {
             AITurnContext context = CreateEmptyContext();
-            TestAIProposal lowerScore = new TestAIProposal("lower", new[] { "claim:lower" });
-            TestAIProposal higherScore = new TestAIProposal("higher", new[] { "claim:higher" });
+            TestAIProposal lowerScore = new TestAIProposal("lower");
+            TestAIProposal higherScore = new TestAIProposal("higher");
             lowerScore.SetScore(10);
             higherScore.SetScore(20);
             context.AddProposal(lowerScore);
@@ -36,11 +39,19 @@ namespace Rebellion.Tests.AI.Phases
         }
 
         [Test]
-        public void Select_WithConflictingClaims_SelectsOnlyHighestScoredProposal()
+        public void Select_WithConflictingFleetReservations_SelectsOnlyHighestScoredProposal()
         {
-            AITurnContext context = CreateEmptyContext();
-            TestAIProposal lowerScore = new TestAIProposal("lower", new[] { "claim:shared" });
-            TestAIProposal higherScore = new TestAIProposal("higher", new[] { "claim:shared" });
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet planet = AITestSceneBuilder.AddPlanet(game, sector, "planet", empire.InstanceID);
+            Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
+            game.AttachNode(fleet, planet);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIFleetRoleProposal lowerScore = new AIFleetRoleProposal(
+                fleet,
+                FleetRoleType.Colonization
+            );
+            AIFleetRoleProposal higherScore = new AIFleetRoleProposal(fleet, FleetRoleType.Battle);
             lowerScore.SetScore(10);
             higherScore.SetScore(20);
             context.AddProposal(lowerScore);
@@ -53,31 +64,93 @@ namespace Rebellion.Tests.AI.Phases
         }
 
         [Test]
-        public void Select_WithMandatoryProposal_SelectsItBeforeHigherScoredOptionalProposal()
+        public void Select_WithBuildingProposalsBeyondDestinationEnergy_SelectsHighestValueFit()
         {
-            AITurnContext context = CreateEmptyContext();
-            TestAIProposal optional = new TestAIProposal("optional", new[] { "claim:shared" });
-            TestAIProposal mandatory = new TestAIProposal(
-                "mandatory",
-                new[] { "claim:shared" },
-                priority: AIProposalPriority.Mandatory
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet destination = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "destination",
+                empire.InstanceID,
+                energyCapacity: 1,
+                rawResourceNodes: 1
             );
-            optional.SetScore(100);
-            mandatory.SetScore(0);
-            context.AddProposal(optional);
-            context.AddProposal(mandatory);
+            Planet firstProducer = AddBuildingProducer(game, sector, empire, "first-producer");
+            Planet secondProducer = AddBuildingProducer(game, sector, empire, "second-producer");
+            AIManufactureProposal higher = CreateBuildingProposal(
+                destination,
+                firstProducer,
+                AIProductionDemandKind.Mine,
+                BuildingType.Mine,
+                100
+            );
+            AIManufactureProposal lower = CreateBuildingProposal(
+                destination,
+                secondProducer,
+                AIProductionDemandKind.Refinery,
+                BuildingType.Refinery,
+                90
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            context.AddProposal(lower);
+            context.AddProposal(higher);
 
             List<AIProposal> selected = new AISelectionPhase().Select(context);
 
-            Assert.AreEqual(1, selected.Count);
-            Assert.AreSame(mandatory, selected[0]);
+            CollectionAssert.AreEqual(new[] { higher }, selected);
+        }
+
+        [Test]
+        public void Select_WithEqualScoredConflictingProposals_UsesPersistedRandomTieBreaker()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            AITurnContext context = AITestSceneBuilder.CreateContext(
+                game,
+                empire,
+                random: new SequenceRNG(intValues: new[] { 0 })
+            );
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet planet = AITestSceneBuilder.AddPlanet(game, sector, "planet", empire.InstanceID);
+            Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
+            game.AttachNode(fleet, planet);
+            AIFleetRoleProposal first = new AIFleetRoleProposal(fleet, FleetRoleType.Colonization);
+            AIFleetRoleProposal second = new AIFleetRoleProposal(fleet, FleetRoleType.Battle);
+            first.SetScore(10);
+            second.SetScore(10);
+            context.AddProposal(first);
+            context.AddProposal(second);
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+
+            CollectionAssert.AreEqual(new[] { second }, selected);
+        }
+
+        [Test]
+        public void Select_WithZeroScoreFleetOrderCleanup_SelectsProposal()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector1");
+            Planet planet = AITestSceneBuilder.AddPlanet(game, sector, "planet", empire.InstanceID);
+            Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
+            FleetOrder order = new FleetOrder { OrderType = FleetOrderType.Colonize };
+            fleet.Order = order;
+            game.AttachNode(fleet, planet);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIClearFleetOrderProposal proposal = new AIClearFleetOrderProposal(fleet, order);
+            proposal.SetScore(0);
+            context.AddProposal(proposal);
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+
+            CollectionAssert.AreEqual(new[] { proposal }, selected);
         }
 
         [Test]
         public void Select_WithUnscoredProposal_DoesNotSelectProposal()
         {
             AITurnContext context = CreateEmptyContext();
-            TestAIProposal proposal = new TestAIProposal("proposal", new[] { "claim" });
+            TestAIProposal proposal = new TestAIProposal("proposal");
             context.AddProposal(proposal);
 
             List<AIProposal> selected = new AISelectionPhase().Select(context);
@@ -89,7 +162,7 @@ namespace Rebellion.Tests.AI.Phases
         public void Select_WithNonPositiveScore_DoesNotSelectProposal()
         {
             AITurnContext context = CreateEmptyContext();
-            TestAIProposal proposal = new TestAIProposal("proposal", new[] { "claim" });
+            TestAIProposal proposal = new TestAIProposal("proposal");
             proposal.SetScore(0);
             context.AddProposal(proposal);
 
@@ -123,14 +196,14 @@ namespace Rebellion.Tests.AI.Phases
                 ManufacturingType.Ship
             );
             shipyard.MaintenanceCost = 10;
-            AIDemand demand = new AIDemand(
+            AIProductionDemand demand = new AIProductionDemand(
                 "shipyard-demand",
-                AIDemandKind.Shipyard,
+                AIProductionDemandKind.Shipyard,
                 ManufacturingType.Building,
                 BuildingType.Shipyard,
                 planet,
                 1,
-                100
+                baseDemandPercent: 100
             );
             AIManufactureProposal proposal = new AIManufactureProposal(
                 demand,
@@ -143,6 +216,59 @@ namespace Rebellion.Tests.AI.Phases
             List<AIProposal> selected = new AISelectionPhase().Select(context);
 
             Assert.AreEqual(0, selected.Count);
+        }
+
+        [TestCase(AIProductionDemandKind.Mine, BuildingType.Mine)]
+        [TestCase(AIProductionDemandKind.Refinery, BuildingType.Refinery)]
+        public void Select_WithEconomyRecoveryBelowMaintenanceReserve_SelectsProposal(
+            AIProductionDemandKind kind,
+            BuildingType buildingType
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector1");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "p1",
+                empire.InstanceID,
+                rawResourceNodes: buildingType == BuildingType.Mine ? 1 : 0
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "construction-yard",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            game.Config.AI.Selection.MaintenanceHeadroomReserve =
+                context.Assessment.ProjectedMaintenanceHeadroom + 100;
+            Building economyBuilding = AITestSceneBuilder.CreateBuildingTemplate(
+                $"{kind}-template",
+                buildingType,
+                ManufacturingType.None
+            );
+            economyBuilding.MaintenanceCost = 10;
+            AIManufactureProposal proposal = new AIManufactureProposal(
+                new AIProductionDemand(
+                    $"{kind}-demand",
+                    kind,
+                    ManufacturingType.Building,
+                    buildingType,
+                    planet,
+                    1,
+                    baseDemandPercent: 100
+                ),
+                planet,
+                new Technology(economyBuilding)
+            );
+            proposal.SetScore(100);
+            context.AddProposal(proposal);
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+
+            CollectionAssert.AreEqual(new[] { proposal }, selected);
         }
 
         [Test]
@@ -162,7 +288,7 @@ namespace Rebellion.Tests.AI.Phases
         }
 
         [Test]
-        public void Select_WithFacilityExpansionBeyondSharedBudget_SelectsOneProposal()
+        public void Select_WithFacilityExpansionBeyondLegacyBudget_SelectsBothProposals()
         {
             AITurnContext context = CreateFacilityExpansionContext(
                 allocationPercent: 10,
@@ -174,7 +300,32 @@ namespace Rebellion.Tests.AI.Phases
 
             List<AIProposal> selected = new AISelectionPhase().Select(context);
 
-            Assert.AreEqual(1, selected.Count);
+            CollectionAssert.AreEquivalent(new[] { first, second }, selected);
+        }
+
+        [Test]
+        public void Select_WithPartiallyAffordableFacilityBatch_PreservesFullBatchOrdering()
+        {
+            AITurnContext context = CreateFacilityExpansionContext(
+                allocationPercent: 100,
+                out AIManufactureProposal proposal,
+                out AIManufactureProposal _,
+                quantity: 4
+            );
+            context.Game.Config.AI.Selection.MaintenanceHeadroomReserve =
+                context.Assessment.ProjectedMaintenanceHeadroom - 25;
+            TestAIProposal independent = new TestAIProposal("independent");
+            independent.SetScore(90);
+            context.AddProposal(proposal);
+            context.AddProposal(independent);
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+
+            Assert.AreEqual(2, selected.Count);
+            Assert.AreEqual(2, ((AIManufactureProposal)selected[0]).GetManufacturingCount());
+            Assert.AreEqual(4, proposal.GetManufacturingCount());
+            Assert.Less(selected[0].Score, independent.Score);
+            Assert.AreSame(independent, selected[1]);
         }
 
         [Test]
@@ -184,7 +335,7 @@ namespace Rebellion.Tests.AI.Phases
             AIManufactureProposal proposal = CreateManufactureProposal(
                 context,
                 producer,
-                AIDemandKind.PlanetaryDefense,
+                AIProductionDemandKind.PlanetaryDefense,
                 BuildingType.Defense
             );
             context.AddProposal(proposal);
@@ -194,11 +345,11 @@ namespace Rebellion.Tests.AI.Phases
             CollectionAssert.AreEqual(new[] { proposal }, selected);
         }
 
-        [TestCase(AIDemandKind.Mine, BuildingType.Mine)]
-        [TestCase(AIDemandKind.Refinery, BuildingType.Refinery)]
-        [TestCase(AIDemandKind.ColonizationFleetSeedCapitalShip, BuildingType.None)]
+        [TestCase(AIProductionDemandKind.Mine, BuildingType.Mine)]
+        [TestCase(AIProductionDemandKind.Refinery, BuildingType.Refinery)]
+        [TestCase(AIProductionDemandKind.ColonizationFleetSeedCapitalShip, BuildingType.None)]
         public void Select_WithStrategicReserveExemptionBelowRefinedReserve_SelectsProposal(
-            AIDemandKind demandKind,
+            AIProductionDemandKind demandKind,
             BuildingType buildingType
         )
         {
@@ -216,13 +367,13 @@ namespace Rebellion.Tests.AI.Phases
             CollectionAssert.AreEqual(new[] { proposal }, selected);
         }
 
-        [TestCase(AIDemandKind.FleetCapitalShip)]
-        [TestCase(AIDemandKind.FleetSeedCapitalShip)]
-        [TestCase(AIDemandKind.FleetStarfighter)]
-        [TestCase(AIDemandKind.FleetRegiment)]
-        [TestCase(AIDemandKind.GarrisonRegimentReserve)]
+        [TestCase(AIProductionDemandKind.FleetCapitalShip)]
+        [TestCase(AIProductionDemandKind.FleetSeedCapitalShip)]
+        [TestCase(AIProductionDemandKind.FleetStarfighter)]
+        [TestCase(AIProductionDemandKind.FleetRegiment)]
+        [TestCase(AIProductionDemandKind.GarrisonRegimentReserve)]
         public void Select_WithMilitaryProductionBelowRefinedReserve_SelectsProposal(
-            AIDemandKind demandKind
+            AIProductionDemandKind demandKind
         )
         {
             AITurnContext context = CreateRefinedMaterialReserveContext(out Planet producer);
@@ -239,11 +390,11 @@ namespace Rebellion.Tests.AI.Phases
             CollectionAssert.AreEqual(new[] { proposal }, selected);
         }
 
-        [TestCase(AIDemandKind.ConstructionFacility, BuildingType.ConstructionFacility)]
-        [TestCase(AIDemandKind.Shipyard, BuildingType.Shipyard)]
-        [TestCase(AIDemandKind.TrainingFacility, BuildingType.TrainingFacility)]
+        [TestCase(AIProductionDemandKind.ConstructionFacility, BuildingType.ConstructionFacility)]
+        [TestCase(AIProductionDemandKind.Shipyard, BuildingType.Shipyard)]
+        [TestCase(AIProductionDemandKind.TrainingFacility, BuildingType.TrainingFacility)]
         public void Select_WithStrategicFacilityBelowRefinedReserve_SelectsProposal(
-            AIDemandKind demandKind,
+            AIProductionDemandKind demandKind,
             BuildingType buildingType
         )
         {
@@ -262,13 +413,39 @@ namespace Rebellion.Tests.AI.Phases
         }
 
         [Test]
-        public void Select_WithQueuedAndNewProductionCommitments_PreservesRefinedReserve()
+        public void Select_WithShipyardAndHigherScoredDefense_DrainsDefenseProduction()
+        {
+            AITurnContext context = CreateRefinedMaterialCommitmentContext(out Planet producer);
+            AIManufactureProposal defense = CreateManufactureProposal(
+                context,
+                producer,
+                AIProductionDemandKind.PlanetaryDefense,
+                BuildingType.Defense,
+                score: 100
+            );
+            AIManufactureProposal shipyard = CreateManufactureProposal(
+                context,
+                producer,
+                AIProductionDemandKind.Shipyard,
+                BuildingType.Shipyard,
+                score: 1
+            );
+            context.AddProposal(defense);
+            context.AddProposal(shipyard);
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+
+            Assert.IsEmpty(selected);
+        }
+
+        [Test]
+        public void Select_WithQueuedDefenseAndStrategicManufacturing_DrainsDefenseProduction()
         {
             AITurnContext context = CreateRefinedMaterialCommitmentContext(out Planet producer);
             AIManufactureProposal higherScore = CreateManufactureProposal(
                 context,
                 producer,
-                AIDemandKind.PlanetaryDefense,
+                AIProductionDemandKind.PlanetaryDefense,
                 BuildingType.Defense,
                 constructionCost: 30,
                 score: 100
@@ -276,7 +453,7 @@ namespace Rebellion.Tests.AI.Phases
             AIManufactureProposal lowerScore = CreateManufactureProposal(
                 context,
                 producer,
-                AIDemandKind.Shipyard,
+                AIProductionDemandKind.Shipyard,
                 BuildingType.Shipyard,
                 constructionCost: 30,
                 score: 90
@@ -286,17 +463,17 @@ namespace Rebellion.Tests.AI.Phases
 
             List<AIProposal> selected = new AISelectionPhase().Select(context);
 
-            CollectionAssert.AreEqual(new[] { higherScore }, selected);
+            Assert.IsEmpty(selected);
         }
 
         [Test]
-        public void Select_WithHigherTotalCostButAffordableHorizon_SelectsHigherScoreProposal()
+        public void Select_WithHigherScoredDefense_DrainsForStrategicManufacturing()
         {
             AITurnContext context = CreateRefinedMaterialCommitmentContext(out Planet producer);
             AIManufactureProposal higherTotalCost = CreateManufactureProposal(
                 context,
                 producer,
-                AIDemandKind.PlanetaryDefense,
+                AIProductionDemandKind.PlanetaryDefense,
                 BuildingType.Defense,
                 constructionCost: 60,
                 score: 100
@@ -304,7 +481,7 @@ namespace Rebellion.Tests.AI.Phases
             AIManufactureProposal affordable = CreateManufactureProposal(
                 context,
                 producer,
-                AIDemandKind.Shipyard,
+                AIProductionDemandKind.Shipyard,
                 BuildingType.Shipyard,
                 constructionCost: 40,
                 score: 90
@@ -314,7 +491,7 @@ namespace Rebellion.Tests.AI.Phases
 
             List<AIProposal> selected = new AISelectionPhase().Select(context);
 
-            CollectionAssert.AreEqual(new[] { higherTotalCost }, selected);
+            Assert.IsEmpty(selected);
         }
 
         [Test]
@@ -324,7 +501,7 @@ namespace Rebellion.Tests.AI.Phases
             AIManufactureProposal proposal = CreateManufactureProposal(
                 context,
                 producer,
-                AIDemandKind.PlanetaryDefense,
+                AIProductionDemandKind.PlanetaryDefense,
                 BuildingType.Defense,
                 constructionCost: 400,
                 score: 100
@@ -337,7 +514,59 @@ namespace Rebellion.Tests.AI.Phases
         }
 
         [Test]
-        public void Select_WithUnavailablePreferredManufacturingProducer_SelectsNextProducer()
+        public void Select_WithHigherScoredReplacement_DrainsCurrentProduction()
+        {
+            AITurnContext context = CreateRefinedMaterialCommitmentContext(out Planet producer);
+            AIManufactureProposal replacement = CreateManufactureProposal(
+                context,
+                producer,
+                AIProductionDemandKind.Shipyard,
+                BuildingType.Shipyard,
+                score: 200
+            );
+            AIManufactureProposal continuation = CreateManufactureProposal(
+                context,
+                producer,
+                AIProductionDemandKind.PlanetaryDefense,
+                BuildingType.Defense,
+                score: 100
+            );
+            context.AddProposal(replacement);
+            context.AddProposal(continuation);
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+
+            Assert.AreEqual(0, selected.Count);
+        }
+
+        [Test]
+        public void Select_WithLowerScoredStrategicReplacement_DrainsDefenseProduction()
+        {
+            AITurnContext context = CreateRefinedMaterialCommitmentContext(out Planet producer);
+            AIManufactureProposal continuation = CreateManufactureProposal(
+                context,
+                producer,
+                AIProductionDemandKind.PlanetaryDefense,
+                BuildingType.Defense,
+                score: 200
+            );
+            AIManufactureProposal replacement = CreateManufactureProposal(
+                context,
+                producer,
+                AIProductionDemandKind.Shipyard,
+                BuildingType.Shipyard,
+                score: 100
+            );
+            context.AddProposal(continuation);
+            context.AddProposal(replacement);
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+
+            Assert.IsEmpty(selected);
+        }
+
+        [Test]
+        public void Select_WithUnavailablePreferredManufacturingProducer_PreservesPrimaryOrdering()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "producer-system");
@@ -376,23 +605,23 @@ namespace Rebellion.Tests.AI.Phases
                 BuildingType.Mine,
                 ManufacturingType.Building
             );
-            AIDemand preferredDemand = new AIDemand(
+            AIProductionDemand preferredDemand = new AIProductionDemand(
                 "preferred-demand",
-                AIDemandKind.Mine,
+                AIProductionDemandKind.Mine,
                 ManufacturingType.Building,
                 BuildingType.Mine,
                 preferredProducer,
                 1,
-                100
+                baseDemandPercent: 100
             );
-            AIDemand flexibleDemand = new AIDemand(
+            AIProductionDemand flexibleDemand = new AIProductionDemand(
                 "flexible-demand",
-                AIDemandKind.Mine,
+                AIProductionDemandKind.Mine,
                 ManufacturingType.Building,
                 BuildingType.Mine,
                 fallbackProducer,
                 1,
-                90
+                baseDemandPercent: 90
             );
             AIManufactureProposal preferredProposal = new AIManufactureProposal(
                 preferredDemand,
@@ -407,24 +636,33 @@ namespace Rebellion.Tests.AI.Phases
             );
             preferredProposal.SetScore(100);
             flexibleProposal.SetScore(90);
+            TestAIProposal independent = new TestAIProposal("independent");
+            independent.SetScore(80);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
             context.AddProposal(preferredProposal);
             context.AddProposal(flexibleProposal);
+            context.AddProposal(independent);
 
             List<AIProposal> selected = new AISelectionPhase().Select(context);
 
-            CollectionAssert.AreEqual(
-                new AIProposal[] { preferredProposal, flexibleProposal },
-                selected
+            Assert.AreEqual(3, selected.Count);
+            Assert.AreSame(preferredProposal, selected[0]);
+            AIManufactureProposal selectedFallback = (AIManufactureProposal)selected[1];
+            Assert.AreSame(fallbackProducer, selectedFallback.ProducerPlanet);
+            Assert.AreEqual(
+                new AIProductionProposalScorer().Score(context, selectedFallback),
+                selectedFallback.Score
             );
-            Assert.AreSame(fallbackProducer, flexibleProposal.ProducerPlanet);
+            Assert.Less(selectedFallback.Score, independent.Score);
+            Assert.AreSame(independent, selected[2]);
+            Assert.AreSame(preferredProducer, flexibleProposal.ProducerPlanet);
         }
 
         [Test]
         public void Execute_Default_StoresSelectedProposalsOnContext()
         {
             AITurnContext context = CreateEmptyContext();
-            TestAIProposal proposal = new TestAIProposal("proposal", new[] { "claim" });
+            TestAIProposal proposal = new TestAIProposal("proposal");
             proposal.SetScore(10);
             context.AddProposal(proposal);
 
@@ -540,7 +778,7 @@ namespace Rebellion.Tests.AI.Phases
             }
 
             Building queued = AITestSceneBuilder.CreateBuildingTemplate(
-                "queued-defense",
+                "reserve-Defense",
                 BuildingType.Defense,
                 ManufacturingType.None
             );
@@ -551,6 +789,77 @@ namespace Rebellion.Tests.AI.Phases
             producer.AddToManufacturingQueue(queued);
             empire.RefinedMaterialStockpile = 209;
             return AITestSceneBuilder.CreateContext(game, empire);
+        }
+
+        /// <summary>
+        /// Adds a planet with one building-production facility.
+        /// </summary>
+        /// <param name="game">The game receiving the planet.</param>
+        /// <param name="sector">The containing sector.</param>
+        /// <param name="faction">The owning faction.</param>
+        /// <param name="planetId">The planet identifier.</param>
+        /// <returns>The building producer planet.</returns>
+        private static Planet AddBuildingProducer(
+            GameRoot game,
+            PlanetSector sector,
+            Faction faction,
+            string planetId
+        )
+        {
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                planetId,
+                faction.InstanceID
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                $"{planetId}-yard",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+            return planet;
+        }
+
+        /// <summary>
+        /// Creates a scored building proposal with distinct producer and destination planets.
+        /// </summary>
+        /// <param name="destination">The planet receiving the building.</param>
+        /// <param name="producer">The planet manufacturing the building.</param>
+        /// <param name="kind">The demand category.</param>
+        /// <param name="buildingType">The manufactured building type.</param>
+        /// <param name="score">The proposal score.</param>
+        /// <returns>The scored manufacturing proposal.</returns>
+        private static AIManufactureProposal CreateBuildingProposal(
+            Planet destination,
+            Planet producer,
+            AIProductionDemandKind kind,
+            BuildingType buildingType,
+            double score
+        )
+        {
+            Building building = AITestSceneBuilder.CreateBuildingTemplate(
+                $"{buildingType}-template",
+                buildingType,
+                ManufacturingType.None
+            );
+            building.MaintenanceCost = 0;
+            AIManufactureProposal proposal = new AIManufactureProposal(
+                new AIProductionDemand(
+                    $"{kind}-demand",
+                    kind,
+                    ManufacturingType.Building,
+                    buildingType,
+                    destination,
+                    1,
+                    baseDemandPercent: 100
+                ),
+                producer,
+                new Technology(building)
+            );
+            proposal.SetScore(score);
+            return proposal;
         }
 
         /// <summary>
@@ -566,7 +875,7 @@ namespace Rebellion.Tests.AI.Phases
         private static AIManufactureProposal CreateManufactureProposal(
             AITurnContext context,
             Planet producer,
-            AIDemandKind kind,
+            AIProductionDemandKind kind,
             BuildingType buildingType,
             int constructionCost = 10,
             double score = 100
@@ -577,24 +886,24 @@ namespace Rebellion.Tests.AI.Phases
             Rebellion.SceneGraph.ContainerNode destination = producer;
             switch (kind)
             {
-                case AIDemandKind.FleetCapitalShip:
-                case AIDemandKind.FleetSeedCapitalShip:
-                case AIDemandKind.ColonizationFleetSeedCapitalShip:
+                case AIProductionDemandKind.FleetCapitalShip:
+                case AIProductionDemandKind.FleetSeedCapitalShip:
+                case AIProductionDemandKind.ColonizationFleetSeedCapitalShip:
                     product = AITestSceneBuilder.CreateCapitalShip(
                         $"reserve-{kind}",
                         context.Faction.InstanceID
                     );
                     manufacturingType = ManufacturingType.Ship;
                     break;
-                case AIDemandKind.FleetStarfighter:
+                case AIProductionDemandKind.FleetStarfighter:
                     product = AITestSceneBuilder.CreateStarfighter(
                         $"reserve-{kind}",
                         context.Faction.InstanceID
                     );
                     manufacturingType = ManufacturingType.Ship;
                     break;
-                case AIDemandKind.FleetRegiment:
-                case AIDemandKind.GarrisonRegimentReserve:
+                case AIProductionDemandKind.FleetRegiment:
+                case AIProductionDemandKind.GarrisonRegimentReserve:
                     product = AITestSceneBuilder.CreateRegiment(
                         $"reserve-{kind}",
                         context.Faction.InstanceID
@@ -616,9 +925,9 @@ namespace Rebellion.Tests.AI.Phases
 
             if (
                 kind
-                is AIDemandKind.FleetCapitalShip
-                    or AIDemandKind.FleetStarfighter
-                    or AIDemandKind.FleetRegiment
+                is AIProductionDemandKind.FleetCapitalShip
+                    or AIProductionDemandKind.FleetStarfighter
+                    or AIProductionDemandKind.FleetRegiment
             )
             {
                 Fleet fleet = EntityFactory.CreateFleet(
@@ -635,14 +944,14 @@ namespace Rebellion.Tests.AI.Phases
                 context.Game.AttachNode(carrier, fleet);
                 destination = fleet;
             }
-            AIDemand demand = new AIDemand(
+            AIProductionDemand demand = new AIProductionDemand(
                 $"reserve-{kind}",
                 kind,
                 manufacturingType,
                 buildingType,
                 destination,
                 1,
-                100
+                baseDemandPercent: 100
             );
             AIManufactureProposal proposal = new AIManufactureProposal(
                 demand,
@@ -659,15 +968,17 @@ namespace Rebellion.Tests.AI.Phases
         /// <param name="allocationPercent">Shared maintenance allocation for production facilities.</param>
         /// <param name="first">The first facility proposal.</param>
         /// <param name="second">The second facility proposal.</param>
+        /// <param name="quantity">The quantity represented by the first proposal.</param>
         /// <returns>The configured AI turn context.</returns>
         private static AITurnContext CreateFacilityExpansionContext(
             int allocationPercent,
             out AIManufactureProposal first,
-            out AIManufactureProposal second
+            out AIManufactureProposal second,
+            int quantity = 1
         )
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            game.Config.AI.Selection.MaintenanceHeadroomHardFloor = 0;
+            game.Config.AI.Selection.MaintenanceHeadroomReserve = 0;
             game.Config.AI.Infrastructure.ProductionFacilityMaintenanceAllocationPercent =
                 allocationPercent;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "facility-system");
@@ -716,7 +1027,7 @@ namespace Rebellion.Tests.AI.Phases
                 ManufacturingType.Ship
             );
             shipyard.MaintenanceCost = 10;
-            first = CreateFacilityExpansionProposal(firstPlanet, shipyard, 100);
+            first = CreateFacilityExpansionProposal(firstPlanet, shipyard, 100, quantity);
             second = CreateFacilityExpansionProposal(secondPlanet, shipyard, 90);
             return AITestSceneBuilder.CreateContext(game, empire);
         }
@@ -727,21 +1038,23 @@ namespace Rebellion.Tests.AI.Phases
         /// <param name="planet">The producer and destination planet.</param>
         /// <param name="shipyard">The shipyard template.</param>
         /// <param name="score">The proposal score.</param>
+        /// <param name="quantity">The proposed shipyard count.</param>
         /// <returns>The facility-expansion proposal.</returns>
         private static AIManufactureProposal CreateFacilityExpansionProposal(
             Planet planet,
             Building shipyard,
-            float score
+            float score,
+            int quantity = 1
         )
         {
-            AIDemand demand = new AIDemand(
+            AIProductionDemand demand = new AIProductionDemand(
                 $"shipyard-{planet.InstanceID}",
-                AIDemandKind.Shipyard,
+                AIProductionDemandKind.Shipyard,
                 ManufacturingType.Building,
                 BuildingType.Shipyard,
                 planet,
-                1,
-                100
+                quantity,
+                baseDemandPercent: 100
             );
             AIManufactureProposal proposal = new AIManufactureProposal(
                 demand,

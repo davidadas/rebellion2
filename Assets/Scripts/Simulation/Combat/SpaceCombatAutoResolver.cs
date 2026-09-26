@@ -62,7 +62,6 @@ namespace Rebellion.Simulation
                 defenderWithdrawalGroups,
                 _config
             );
-
             double previousAttackerDurability = GetTacticalDurability(attacker);
             double previousDefenderDurability = GetTacticalDurability(defender);
             int stagnantIterations = 0;

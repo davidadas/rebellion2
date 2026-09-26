@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using Rebellion.Game;
 using Rebellion.Util.Logging;
 
 [UnityEditor.InitializeOnLoad]
@@ -145,6 +146,7 @@ public static class PersistentSimulationRunner
             LogToFile(logPath, startMessage);
 
             bool saveAfterRun = simulationType == SimulationJobType.NormalAndSave;
+            GameDifficulty difficulty = ParseDifficulty(job.Difficulty, runningPath);
             HeadlessSimulationRunner.SimulationRunResult result =
                 HeadlessSimulationRunner.RunPersistentSimulation(
                     job.TickCount > 0 ? job.TickCount : 300,
@@ -152,7 +154,9 @@ public static class PersistentSimulationRunner
                     job.Seed >= 0 ? job.Seed : null,
                     saveAfterRun ? job.SaveFileName : null,
                     saveAfterRun ? job.SaveDisplayName : null,
-                    saveAfterRun ? job.PlayerFactionId : null
+                    saveAfterRun ? job.PlayerFactionId : null,
+                    difficulty,
+                    job.InputSaveFileName
                 );
 
             File.WriteAllText(
@@ -247,6 +251,30 @@ public static class PersistentSimulationRunner
     }
 
     /// <summary>
+    /// Parses a queued simulation's requested difficulty.
+    /// </summary>
+    /// <param name="value">The serialized difficulty name.</param>
+    /// <param name="jobPath">The job path used in validation errors.</param>
+    /// <returns>The requested difficulty, or Medium when omitted.</returns>
+    private static GameDifficulty ParseDifficulty(string value, string jobPath)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return GameDifficulty.Medium;
+
+        if (
+            Enum.TryParse(value, true, out GameDifficulty difficulty)
+            && Enum.IsDefined(typeof(GameDifficulty), difficulty)
+        )
+        {
+            return difficulty;
+        }
+
+        throw new InvalidOperationException(
+            $"Simulation job has unknown difficulty '{value}': {jobPath}"
+        );
+    }
+
+    /// <summary>
     /// Returns the log path for a simulation output file.
     /// </summary>
     /// <param name="outputPath">The simulation output path.</param>
@@ -281,6 +309,8 @@ public static class PersistentSimulationRunner
         public string SaveFileName = string.Empty;
         public string SaveDisplayName = string.Empty;
         public string PlayerFactionId = string.Empty;
+        public string Difficulty = string.Empty;
+        public string InputSaveFileName = string.Empty;
     }
 
     [Serializable]

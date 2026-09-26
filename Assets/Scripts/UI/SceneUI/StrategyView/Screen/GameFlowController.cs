@@ -59,15 +59,11 @@ public sealed class GameFlowController : MonoBehaviour
     {
         try
         {
-            GameStartupTrace.Log("GameFlowController started.");
             AppBootstrap bootstrap = AppBootstrap.EnsureExists();
             await bootstrap.InitializeMainMenuContentAsync();
-            GameStartupTrace.Log("Main Menu content dependency complete.");
             await bootstrap.InitializeStrategyContentAsync();
-            GameStartupTrace.Log("Strategy content dependency complete.");
             ContentPack contentPack = bootstrap.GetContentPack();
             themeLibrary = new FactionThemeLibrary(contentPack.GameData.FactionThemes);
-            GameStartupTrace.Log("Faction themes composed.");
             GameRuntime runtime = bootstrap.GetRuntime();
             if (runtime?.HasActiveGame == true)
             {
@@ -89,7 +85,6 @@ public sealed class GameFlowController : MonoBehaviour
         }
         catch (Exception exception)
         {
-            GameStartupTrace.Complete("Game flow startup failed.");
             Debug.LogException(exception);
         }
     }
@@ -163,9 +158,7 @@ public sealed class GameFlowController : MonoBehaviour
 
         ContentPack contentPack = AppBootstrap.Instance.GetContentPack();
         GameBuilder builder = new GameBuilder(summary, contentPack.GameData);
-        GameStartupTrace.Log("Game generation started.");
         game = builder.Build();
-        GameStartupTrace.Log("Game generation complete.");
         bool briefingsDisabled = AppBootstrap
             .Instance.GetUserSettingsManager()
             .Settings.Gameplay.DisableBriefings;
@@ -176,9 +169,7 @@ public sealed class GameFlowController : MonoBehaviour
         Task briefingReady = playBriefing
             ? strategyController.PrepareBriefingAsync()
             : Task.CompletedTask;
-        GameStartupTrace.Log("Briefing owner preparation requested.");
         await Task.WhenAll(intro, briefingReady);
-        GameStartupTrace.Log("Introduction and briefing preparation complete.");
         ActivateGameplay(session, playBriefing);
     }
 
@@ -193,9 +184,7 @@ public sealed class GameFlowController : MonoBehaviour
             throw new InvalidOperationException("LoadGame called but SaveFileName is null.");
 
         game = SaveGameManager.Instance.LoadGameData(fileName);
-        GameStartupTrace.Log($"Save '{fileName}' deserialized.");
         AppBootstrap.Instance.GetRuntime().ValidateGameContent(game);
-        GameStartupTrace.Log("Loaded game content validated.");
     }
 
     /// <summary>
@@ -216,18 +205,10 @@ public sealed class GameFlowController : MonoBehaviour
             return Task.CompletedTask;
 
         TaskCompletionSource<bool> completion = new TaskCompletionSource<bool>();
-        GameStartupTrace.Log($"Faction introduction starting: '{theme.IntroCutscenePath}'.");
         AppBootstrap
             .EnsureExists()
             .GetCutsceneManager()
-            .Play(
-                theme.IntroCutscenePath,
-                () =>
-                {
-                    GameStartupTrace.Log("Faction introduction finished.");
-                    completion.TrySetResult(true);
-                }
-            );
+            .Play(theme.IntroCutscenePath, () => completion.TrySetResult(true));
         return completion.Task;
     }
 
@@ -240,7 +221,6 @@ public sealed class GameFlowController : MonoBehaviour
     {
         AppBootstrap bootstrap = AppBootstrap.EnsureExists();
         GameRuntime runtime = bootstrap.GetRuntime();
-        GameStartupTrace.Log("Creating the active game session.");
         return loadedGame ? runtime.StartLoadedGame(game) : runtime.StartGame(game);
     }
 
@@ -252,7 +232,6 @@ public sealed class GameFlowController : MonoBehaviour
     {
         AppBootstrap bootstrap = AppBootstrap.Instance;
         ContentPack contentPack = bootstrap.GetContentPack();
-        GameStartupTrace.Log("Building encyclopedia catalog.");
         GameDataCatalog gameData = contentPack.GameData;
         EncyclopediaCatalog encyclopediaCatalog = new EncyclopediaCatalogBuilder().Build(
             gameData.EncyclopediaEntries,
@@ -264,7 +243,6 @@ public sealed class GameFlowController : MonoBehaviour
             gameData.SpecialForces,
             gameData.Officers
         );
-        GameStartupTrace.Log("Encyclopedia catalog complete; creating UI context.");
         uiContext = new UIContext(
             session.Game,
             themeLibrary,
@@ -280,14 +258,12 @@ public sealed class GameFlowController : MonoBehaviour
         session.Pipeline.HeadquartersLost += HandleHeadquartersLost;
         session.Pipeline.VictoryDeclared += HandleVictoryDeclared;
 
-        GameStartupTrace.Log("StrategyController initialization started.");
         strategyController.Initialize(
             session,
             bootstrap.GetRuntime().GetActiveGameManager(),
             bootstrap.GetRuntime(),
             uiContext
         );
-        GameStartupTrace.Log("StrategyController initialization complete.");
     }
 
     /// <summary>
@@ -338,9 +314,6 @@ public sealed class GameFlowController : MonoBehaviour
             activeSession = session;
             activeGameManager = clock;
         }
-        GameStartupTrace.Complete(
-            playBriefing ? "Opening briefing started." : "Strategy gameplay ready."
-        );
     }
 
     /// <summary>

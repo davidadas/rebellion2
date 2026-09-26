@@ -4,6 +4,9 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using Rebellion.AI;
+using Rebellion.AI.Planners;
+using Rebellion.AI.Proposals;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Results;
@@ -19,6 +22,7 @@ public static partial class HeadlessSimulationRunner
     private const string _tickCountFlag = "-simTicks";
     private const string _outputPathFlag = "-simOut";
     private const string _seedFlag = "-simSeed";
+    private const string _difficultyFlag = "-simDifficulty";
     private const string _logDirectory = "/tmp/rebellion2-sim-logs";
     private const string _defaultSimulationSaveFileName = "headless-simulation";
     private const string _savedSimulationPlayerId = "PLAYER1";
@@ -51,6 +55,8 @@ public static partial class HeadlessSimulationRunner
     /// <param name="saveFileName">The optional save-file name override.</param>
     /// <param name="saveDisplayName">The optional save display-name override.</param>
     /// <param name="playerFactionId">The optional player-faction override for the saved game.</param>
+    /// <param name="difficulty">The game difficulty applied to the simulation.</param>
+    /// <param name="inputSaveFileName">The optional save file to continue.</param>
     /// <returns>The completed simulation result.</returns>
     public static SimulationRunResult RunPersistentSimulation(
         int tickCount,
@@ -58,7 +64,9 @@ public static partial class HeadlessSimulationRunner
         int? seed,
         string saveFileName = null,
         string saveDisplayName = null,
-        string playerFactionId = null
+        string playerFactionId = null,
+        GameDifficulty difficulty = GameDifficulty.Medium,
+        string inputSaveFileName = null
     )
     {
         return RunSimulation(
@@ -70,6 +78,8 @@ public static partial class HeadlessSimulationRunner
                 SaveFileName = saveFileName,
                 SaveDisplayName = saveDisplayName,
                 PlayerFactionId = playerFactionId,
+                Difficulty = difficulty,
+                InputSaveFileName = inputSaveFileName,
             }
         );
     }
@@ -84,7 +94,9 @@ public static partial class HeadlessSimulationRunner
         string logPath = GetLogPath(options.OutputPath);
         GameLogger.Configure(logPath, enableFileLogging: true);
         GameLogger.SetMinimumLevel(GameLogger.LogLevel.Warning);
-        BaseGameEntity.SetInstanceIdSeed(options.Seed);
+        BaseGameEntity.SetInstanceIdSeed(
+            string.IsNullOrWhiteSpace(options.InputSaveFileName) ? options.Seed : null
+        );
 
         try
         {
@@ -92,10 +104,10 @@ public static partial class HeadlessSimulationRunner
             GameSummary summary = new GameSummary
             {
                 GalaxySize = GameSize.Large,
-                Difficulty = GameDifficulty.Easy,
+                Difficulty = options.Difficulty,
                 VictoryCondition = GameVictoryCondition.Conquest,
                 ResourceAvailability = GameResourceAvailability.Normal,
-                StartingResearchLevel = 1,
+                StartingResearchLevel = 0,
                 StartingFactionIDs = contentPack.Scenario.PlayableFactionIDs.ToArray(),
                 PlayerFactionID = contentPack.Scenario.PlayableFactionIDs.FirstOrDefault(),
                 PackID = contentPack.Definition.ID,
@@ -110,8 +122,10 @@ public static partial class HeadlessSimulationRunner
             UnityEngine.Debug.Log(startMessage);
             LogToFile(logPath, startMessage);
 
-            GameRoot game = CreateGameBuilder(summary, contentPack.GameData, options.Seed)
-                .BuildGame();
+            GameRoot game = string.IsNullOrWhiteSpace(options.InputSaveFileName)
+                ? CreateGameBuilder(summary, contentPack.GameData, options.Seed).BuildGame()
+                : SaveGameManager.Instance.LoadGameData(options.InputSaveFileName);
+            summary = game.Summary;
             foreach (Faction faction in game.GetFactions())
             {
                 Player player = game.GetFactionPlayer(faction.InstanceID);
@@ -123,6 +137,7 @@ public static partial class HeadlessSimulationRunner
             }
 
             GameSession session = new GameSession(game, contentPack.GameData);
+            AIDirector aiDirector = session.GetService<AIDirector>();
             ManufacturingIdleTracker idleTracker = new ManufacturingIdleTracker();
             ManufacturedUnitTracker manufacturedUnitTracker = new ManufacturedUnitTracker();
             FleetHistoryTracker fleetHistoryTracker = new FleetHistoryTracker();
@@ -134,14 +149,58 @@ public static partial class HeadlessSimulationRunner
             PlanetaryAssaultTracker planetaryAssaultTracker = new PlanetaryAssaultTracker(game);
             GarrisonRemovalBombardmentTracker garrisonRemovalBombardmentTracker =
                 new GarrisonRemovalBombardmentTracker(game);
+            SpaceCombatCalibrationTracker spaceCombatCalibrationTracker =
+                new SpaceCombatCalibrationTracker();
             AttackReadinessTracker attackReadinessTracker = new AttackReadinessTracker();
+            Dictionary<string, long> aiFactionTurnStarts = new Dictionary<string, long>(
+                StringComparer.Ordinal
+            );
+            List<long> aiFactionTurnSamples = new List<long>(
+                options.TickCount
+                    / Math.Max(1, game.Config.AI.TickInterval)
+                    * Math.Max(1, game.GetFactions().Count)
+            );
+            List<(long Elapsed, string FactionId, int Tick)> slowAiFactionTurns = new();
+            Dictionary<(string FactionId, string StepName), long> aiFactionStepStarts = new();
+            Dictionary<string, List<long>> aiFactionStepSamples = new(StringComparer.Ordinal);
+            Dictionary<string, List<long>> aiWorkUnitSamples = new(StringComparer.Ordinal);
+            List<(long Elapsed, int Tick, int Count, string ProductTypeId)> manufactureExecutions =
+                new();
             VictoryResult victory = null;
             session.Pipeline.ResultsResolved += planetaryAssaultTracker.Record;
             session.Pipeline.ResultsResolved += garrisonRemovalBombardmentTracker.Record;
+            session.Pipeline.ResultsResolved += spaceCombatCalibrationTracker.Record;
             session.Pipeline.VictoriesResolved += results => victory ??= results.FirstOrDefault();
             session.Pipeline.ResultsResolved += missionOutcomeTracker.Record;
-            session.Pipeline.ResultsResolved += manufacturedUnitTracker.Record;
+            session.Pipeline.ResultsResolved += results =>
+                manufacturedUnitTracker.Record(game, results);
             session.Pipeline.ResultsResolved += specialForcesLifecycleTracker.Record;
+            aiDirector.FactionTurnStarted += faction =>
+                aiFactionTurnStarts[faction.InstanceID] = Stopwatch.GetTimestamp();
+            aiDirector.FactionTurnCompleted += faction =>
+            {
+                if (!aiFactionTurnStarts.Remove(faction.InstanceID, out long startedAt))
+                    return;
+
+                long elapsed = Stopwatch.GetTimestamp() - startedAt;
+                aiFactionTurnSamples.Add(elapsed);
+                slowAiFactionTurns.Add((elapsed, faction.InstanceID, game.CurrentTick));
+            };
+            aiDirector.FactionTurnStepStarted += (faction, stepName) =>
+                aiFactionStepStarts[(faction.InstanceID, stepName)] = Stopwatch.GetTimestamp();
+            aiDirector.FactionTurnStepCompleted += (faction, stepName) =>
+            {
+                if (!aiFactionStepStarts.Remove((faction.InstanceID, stepName), out long startedAt))
+                    return;
+
+                if (!aiFactionStepSamples.TryGetValue(stepName, out List<long> samples))
+                {
+                    samples = new List<long>();
+                    aiFactionStepSamples.Add(stepName, samples);
+                }
+
+                samples.Add(Stopwatch.GetTimestamp() - startedAt);
+            };
             List<SpecialForces> initialSpecialForces = game.GetSceneNodesByType<SpecialForces>()
                 .ToList();
             manufacturedUnitTracker.RecordInitialState(game, initialSpecialForces);
@@ -164,7 +223,13 @@ public static partial class HeadlessSimulationRunner
                 if (i % 25 == 0)
                     LogToFile(logPath, $"[HeadlessSim] tick {i}");
                 long startTimestamp = Stopwatch.GetTimestamp();
-                ProcessTickIncrementally(session.Tick, gameProcessingStepSamples);
+                ProcessTickIncrementally(
+                    session.Tick,
+                    gameProcessingStepSamples,
+                    aiWorkUnitSamples,
+                    manufactureExecutions,
+                    game.CurrentTick
+                );
                 long gameProcessingElapsed = Stopwatch.GetTimestamp() - startTimestamp;
                 gameProcessingTimestampCount += gameProcessingElapsed;
                 gameProcessingSamples.Add(gameProcessingElapsed);
@@ -207,6 +272,54 @@ public static partial class HeadlessSimulationRunner
                 logPath,
                 $"[HeadlessSim] game-step median={GetPercentileMilliseconds(gameProcessingStepSamples, 50):F3}ms p90={GetPercentileMilliseconds(gameProcessingStepSamples, 90):F3}ms p99={GetPercentileMilliseconds(gameProcessingStepSamples, 99):F3}ms max={GetPercentileMilliseconds(gameProcessingStepSamples, 100):F3}ms"
             );
+            LogToFile(
+                logPath,
+                $"[HeadlessSim] ai-faction-turn median={GetPercentileMilliseconds(aiFactionTurnSamples, 50):F3}ms p90={GetPercentileMilliseconds(aiFactionTurnSamples, 90):F3}ms p99={GetPercentileMilliseconds(aiFactionTurnSamples, 99):F3}ms max={GetPercentileMilliseconds(aiFactionTurnSamples, 100):F3}ms"
+            );
+            foreach (KeyValuePair<string, List<long>> phase in aiFactionStepSamples)
+            {
+                LogToFile(
+                    logPath,
+                    $"[HeadlessSim] ai-step name={phase.Key} median={GetPercentileMilliseconds(phase.Value, 50):F3}ms p90={GetPercentileMilliseconds(phase.Value, 90):F3}ms p99={GetPercentileMilliseconds(phase.Value, 99):F3}ms max={GetPercentileMilliseconds(phase.Value, 100):F3}ms"
+                );
+            }
+            foreach (KeyValuePair<string, List<long>> workUnit in aiWorkUnitSamples)
+            {
+                LogToFile(
+                    logPath,
+                    $"[HeadlessSim] ai-work-unit name={workUnit.Key} median={GetPercentileMilliseconds(workUnit.Value, 50):F3}ms p90={GetPercentileMilliseconds(workUnit.Value, 90):F3}ms p99={GetPercentileMilliseconds(workUnit.Value, 99):F3}ms max={GetPercentileMilliseconds(workUnit.Value, 100):F3}ms"
+                );
+            }
+            foreach (
+                IGrouping<
+                    int,
+                    (long Elapsed, int Tick, int Count, string ProductTypeId)
+                > tickGroup in manufactureExecutions
+                    .GroupBy(sample => sample.Tick)
+                    .OrderByDescending(group => group.Sum(sample => sample.Elapsed))
+                    .Take(20)
+            )
+            {
+                string batches = string.Join(
+                    ",",
+                    tickGroup.Select(sample => $"{sample.ProductTypeId}x{sample.Count}")
+                );
+                LogToFile(
+                    logPath,
+                    $"[HeadlessSim] ai-slow-manufacturing tick={tickGroup.Key} elapsed={GetElapsedMilliseconds(tickGroup.Sum(sample => sample.Elapsed)):F3}ms proposals={tickGroup.Count()} items={tickGroup.Sum(sample => sample.Count)} batches={batches}"
+                );
+            }
+            foreach (
+                (long elapsed, string factionId, int tick) in slowAiFactionTurns
+                    .OrderByDescending(sample => sample.Elapsed)
+                    .Take(10)
+            )
+            {
+                LogToFile(
+                    logPath,
+                    $"[HeadlessSim] ai-slow-turn tick={tick} faction={factionId} elapsed={GetElapsedMilliseconds(elapsed):F3}ms"
+                );
+            }
             string savePath = SaveSimulation(game, options);
             SimulationSummary report = BuildSimulationSummary(
                 game,
@@ -221,6 +334,7 @@ public static partial class HeadlessSimulationRunner
                 specialForcesLifecycleTracker,
                 planetaryAssaultTracker,
                 garrisonRemovalBombardmentTracker,
+                spaceCombatCalibrationTracker,
                 attackReadinessTracker,
                 victory
             );
@@ -366,16 +480,37 @@ public static partial class HeadlessSimulationRunner
         timestampCount / (double)Stopwatch.Frequency;
 
     /// <summary>
+    /// Converts high-resolution timestamp counts to elapsed milliseconds.
+    /// </summary>
+    /// <param name="timestampCount">The elapsed timestamp count.</param>
+    /// <returns>The corresponding elapsed milliseconds.</returns>
+    private static double GetElapsedMilliseconds(long timestampCount) =>
+        timestampCount * 1000d / Stopwatch.Frequency;
+
+    /// <summary>
     /// Drains one incremental game tick while recording each scheduled step.
     /// </summary>
-    /// <param name="processor">The session's tick processor.</param>
+    /// <param name="tickProcessor">The game tick processor advancing the simulation.</param>
     /// <param name="stepSamples">The collection receiving step durations.</param>
+    /// <param name="aiWorkUnitSamples">
+    /// The optional collection receiving AI planner and proposal durations keyed by runtime type.
+    /// </param>
+    /// <param name="manufactureExecutions">The collection receiving manufacturing execution samples.</param>
+    /// <param name="currentTick">The tick being processed.</param>
     private static void ProcessTickIncrementally(
-        GameTickProcessor processor,
-        ICollection<long> stepSamples
+        GameTickProcessor tickProcessor,
+        ICollection<long> stepSamples,
+        IDictionary<string, List<long>> aiWorkUnitSamples = null,
+        ICollection<(
+            long Elapsed,
+            int Tick,
+            int Count,
+            string ProductTypeId
+        )> manufactureExecutions = null,
+        int currentTick = 0
     )
     {
-        IEnumerator tick = processor.ProcessTickIncrementally();
+        IEnumerator tick = tickProcessor.ProcessTickIncrementally();
         try
         {
             bool hasNext;
@@ -383,7 +518,32 @@ public static partial class HeadlessSimulationRunner
             {
                 long startTimestamp = Stopwatch.GetTimestamp();
                 hasNext = tick.MoveNext();
-                stepSamples.Add(Stopwatch.GetTimestamp() - startTimestamp);
+                long elapsed = Stopwatch.GetTimestamp() - startTimestamp;
+                stepSamples.Add(elapsed);
+                object workUnit = tick.Current;
+                if (aiWorkUnitSamples != null && workUnit is AIProposal or IAIProposalPlanner)
+                {
+                    string workUnitName = workUnit.GetType().Name;
+                    if (!aiWorkUnitSamples.TryGetValue(workUnitName, out List<long> samples))
+                    {
+                        samples = new List<long>();
+                        aiWorkUnitSamples.Add(workUnitName, samples);
+                    }
+
+                    samples.Add(elapsed);
+                    if (workUnit is AIManufactureProposal manufactureProposal)
+                    {
+                        manufactureExecutions?.Add(
+                            (
+                                elapsed,
+                                currentTick,
+                                manufactureProposal.ManufacturingCount,
+                                manufactureProposal.Product?.GetReference()?.GetTypeID()
+                                    ?? string.Empty
+                            )
+                        );
+                    }
+                }
             } while (hasNext);
         }
         finally

@@ -372,7 +372,11 @@ namespace Rebellion.Simulation
                 planetArray.Select(planet =>
                     MessageTemplateBuilder.Interpolate(
                         definition.DetailListItemTemplate,
-                        new Dictionary<string, string> { { "system", planet.GetDisplayName() } }
+                        new Dictionary<string, string>
+                        {
+                            { "system", planet.GetDisplayName() },
+                            { "sector", planet.GetDisplayName() },
+                        }
                     )
                 )
             );
@@ -1300,9 +1304,6 @@ namespace Rebellion.Simulation
         /// <returns>The voice line type that matches the mission outcome.</returns>
         private static OfficerVoiceLineType GetMissionVoiceLineType(MissionCompletedResult result)
         {
-            if (result?.CompletionReason == MissionCompletionReason.TargetUnavailable)
-                return OfficerVoiceLineType.MissionAbort;
-
             return result?.Outcome == MissionOutcome.Success
                 ? OfficerVoiceLineType.MissionSuccess
                 : OfficerVoiceLineType.MissionFailure;

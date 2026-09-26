@@ -42,7 +42,8 @@ namespace Rebellion.Game.Units
 
         public string TargetPlanetId { get; set; } = string.Empty;
 
-        /// <summary>Gets or sets the friendly planet from which a temporary engagement departed.</summary>
+        public string TargetSystemId { get; set; } = string.Empty;
+
         public string OriginPlanetId { get; set; } = string.Empty;
 
         /// <summary>
@@ -55,6 +56,7 @@ namespace Rebellion.Game.Units
                 OrderType = OrderType,
                 Status = Status,
                 TargetPlanetId = TargetPlanetId,
+                TargetSystemId = TargetSystemId,
                 OriginPlanetId = OriginPlanetId,
             };
     }

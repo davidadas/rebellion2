@@ -674,13 +674,45 @@ namespace Rebellion.Game.Missions
 
             if (GetParent() is Planet planet)
             {
-                if (planet.IsInUprising)
-                    return MissionCompletionReason.Failure;
                 string owner = planet.GetOwnerInstanceID();
                 if (owner != null && owner != OwnerInstanceID)
+                    return MissionCompletionReason.TargetChangedSides;
+                if (planet.IsInUprising)
                     return MissionCompletionReason.Failure;
             }
             return null;
+        }
+
+        /// <summary>
+        /// Reveals the target's current state when diplomacy discovers that it changed sides.
+        /// </summary>
+        /// <param name="game">The authoritative game state.</param>
+        /// <param name="provider">The random provider, unused by this interruption.</param>
+        /// <returns>The intelligence observation produced by the interrupted mission.</returns>
+        internal override List<GameResult> ResolveInterruption(
+            GameRoot game,
+            IRandomNumberProvider provider
+        )
+        {
+            if (
+                GetParent() is not Planet planet
+                || string.IsNullOrEmpty(planet.GetOwnerInstanceID())
+                || planet.GetOwnerInstanceID() == OwnerInstanceID
+            )
+                return new List<GameResult>();
+
+            Faction recipient = game?.GetFactionByOwnerInstanceID(OwnerInstanceID);
+            return recipient == null
+                ? new List<GameResult>()
+                : new List<GameResult>
+                {
+                    new IntelligenceRevealedResult
+                    {
+                        Recipient = recipient,
+                        Observations = new List<ISceneNode> { planet },
+                        Tick = game.CurrentTick,
+                    },
+                };
         }
 
         /// <summary>

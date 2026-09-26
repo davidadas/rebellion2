@@ -472,10 +472,13 @@ public static partial class HeadlessSimulationRunner
             if (completedFacilityCount <= 0)
                 return;
 
-            int idleCapacity = planet.GetAvailableManufacturingCapacity(type);
-            if (idleCapacity <= 0)
+            if (
+                planet.GetManufacturingQueue().TryGetValue(type, out List<IManufacturable> queue)
+                && queue.Any(item => item?.IsManufacturingComplete() == false)
+            )
                 return;
 
+            int idleCapacity = completedFacilityCount;
             PlanetIdleCounters planetCounters = counters.GetOrCreatePlanet(planet);
             IdleResourceCounters resourceCounters = counters.GetResourceCounters(type);
             resourceCounters.Record(faction, type, idleCapacity);

@@ -1,14 +1,18 @@
 using System.Linq;
 using NUnit.Framework;
-using Rebellion.AI.Director;
+using Rebellion.AI;
+using Rebellion.AI.Demands;
+using Rebellion.AI.Planners;
 using Rebellion.AI.Proposals;
+using Rebellion.AI.Scorers;
+using Rebellion.AI.Selectors;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.Tests.AI.Helpers;
 
-namespace Rebellion.Tests.AI.Proposals
+namespace Rebellion.Tests.AI.Fleets
 {
     [TestFixture]
     public class AIColonizationProposalTests
@@ -57,6 +61,45 @@ namespace Rebellion.Tests.AI.Proposals
         }
 
         [Test]
+        public void Execute_WithFleetReservedAtHeadquarters_MovesColonizationFleet()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.FleetDeployment.MinimumDefenseStrength = 1000;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet headquarters = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "headquarters",
+                empire.InstanceID
+            );
+            headquarters.IsHeadquarters = true;
+            empire.HQInstanceID = headquarters.InstanceID;
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", null);
+            target.IsColonized = false;
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+            Fleet fleet = AddColonizationFleet(game, headquarters, empire.InstanceID);
+            CapitalShip carrier = fleet.GetChildren<CapitalShip>().Single();
+            game.AttachNode(AITestSceneBuilder.CreateRegiment("first", empire.InstanceID), carrier);
+            game.AttachNode(
+                AITestSceneBuilder.CreateRegiment("second", empire.InstanceID),
+                carrier
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            Assert.IsFalse(context.StrategicPlan.CanFleetDepart(fleet));
+            AIColonizationProposal proposal = new AIColonizationProposal(
+                fleet,
+                FleetOrderStatus.Staging,
+                context.Assessment.GetKnownPlanet(target.InstanceID)
+            );
+
+            proposal.Execute(context);
+
+            Assert.AreSame(target, fleet.GetParent());
+            Assert.IsNotNull(fleet.Movement);
+            Assert.AreEqual(FleetOrderType.Colonize, fleet.Order.OrderType);
+        }
+
+        [Test]
         public void Execute_WithFleetAndRegimentAtTarget_ClaimsPlanet()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
@@ -79,7 +122,7 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.AreEqual(empire.InstanceID, target.GetOwnerInstanceID());
             Assert.AreEqual(100, target.GetPopularSupport(empire.InstanceID));
             Assert.AreSame(target, regiment.GetParent());
-            Assert.IsNull(fleet.Order);
+            Assert.AreEqual(FleetOrderType.Colonize, fleet.Order.OrderType);
         }
 
         [Test]
@@ -108,7 +151,7 @@ namespace Rebellion.Tests.AI.Proposals
             proposal.Execute(context);
 
             Assert.AreEqual(FleetRoleType.Colonization, fleet.RoleType);
-            Assert.IsNull(fleet.Order);
+            Assert.AreEqual(FleetOrderType.Colonize, fleet.Order.OrderType);
         }
 
         [Test]

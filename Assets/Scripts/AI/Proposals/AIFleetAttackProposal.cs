@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using Rebellion.AI.Director;
+using Rebellion.AI.Demands;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
@@ -12,6 +12,11 @@ namespace Rebellion.AI.Proposals
     /// </summary>
     public sealed class AIFleetAttackProposal : AIProposal
     {
+        internal override AIProposalPriority Priority =>
+            Status == FleetOrderStatus.Returning
+                ? AIProposalPriority.Mandatory
+                : AIProposalPriority.Optional;
+
         public Fleet Fleet { get; }
 
         public FleetOrderType OrderType { get; }
@@ -38,45 +43,6 @@ namespace Rebellion.AI.Proposals
             OrderType = orderType;
             Status = status;
             TargetPlanet = targetPlanet;
-        }
-
-        /// <summary>
-        /// Returns claims that prevent incompatible fleet actions.
-        /// </summary>
-        /// <returns>Claim keys for this proposal.</returns>
-        public override IReadOnlyList<string> GetClaimKeys()
-        {
-            List<string> claimKeys = new List<string>();
-
-            if (Fleet == null)
-                return claimKeys;
-
-            claimKeys.Add(AIClaimKeys.FleetOrder(Fleet.InstanceID));
-
-            if (Status == FleetOrderStatus.Returning)
-            {
-                claimKeys.Add(AIClaimKeys.FleetMovement(Fleet.InstanceID));
-                return claimKeys;
-            }
-
-            if (OrderType == FleetOrderType.Attack)
-            {
-                claimKeys.Add(AIClaimKeys.FleetAttack(Fleet.InstanceID));
-
-                if (TargetPlanet != null)
-                    claimKeys.Add(AIClaimKeys.FleetAttackTarget(TargetPlanet.InstanceID));
-
-                if (Fleet.GetParentOfType<Planet>()?.InstanceID != TargetPlanet.InstanceID)
-                    claimKeys.Add(AIClaimKeys.FleetMovement(Fleet.InstanceID));
-
-                if (
-                    TargetPlanet != null
-                    && Fleet.GetParentOfType<Planet>()?.InstanceID == TargetPlanet.InstanceID
-                )
-                    claimKeys.Add(AIClaimKeys.PlanetAttack(TargetPlanet.InstanceID));
-            }
-
-            return claimKeys;
         }
 
         /// <summary>
@@ -322,6 +288,7 @@ namespace Rebellion.AI.Proposals
 
             Fleet.Order.Status = FleetOrderStatus.Readying;
             context.Movement.RequestMove(Fleet, liveTarget);
+            context.Movement.SynchronizeInTransitFleetJoiners(Fleet);
         }
 
         /// <summary>
@@ -338,16 +305,13 @@ namespace Rebellion.AI.Proposals
             )
                 return false;
 
-            if (context.Assessment.IsAssaultBlockedByShields(liveTarget))
+            if (context.GetAttackDemand(liveTarget)?.IsAssaultBlockedByShields != false)
                 return false;
 
-            int requiredRegimentCount = context.Assessment.GetRequiredAttackRegimentCount(
-                Fleet,
-                liveTarget
-            );
+            int requiredRegimentCount = GetRequiredRegimentCount(context, liveTarget);
             return context.Assessment.GetReadyFleetRegimentCount(Fleet) >= requiredRegimentCount
                 && context.Assessment.GetReadyFleetRegimentAttackStrength(Fleet)
-                    >= context.Assessment.GetRequiredAttackRegimentStrength(Fleet, liveTarget)
+                    >= GetRequiredRegimentStrength(context, liveTarget)
                 && context.Assessment.GetPlanetaryAssaultSuccessPercent(Fleet, liveTarget)
                     >= context.Game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultSuccessPercent
                 && context.PlanetaryAssaultQueries.CanExecute(new List<Fleet> { Fleet }, liveTarget)
@@ -362,7 +326,138 @@ namespace Rebellion.AI.Proposals
         private bool IsReadyToLaunch(AITurnContext context)
         {
             return context.StrategicPlan.CanFleetDepart(Fleet)
-                && context.Assessment.IsFleetReadyToAttack(Fleet, TargetPlanet);
+                && IsReadyToAttack(context, TargetPlanet)
+                && !HasInboundUnitThatWouldArriveAfterFleet(context);
+        }
+
+        /// <summary>
+        /// Returns whether the fleet satisfies every live attack capability.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="targetPlanet">The attack target.</param>
+        /// <returns>True when the fleet is ready to attack.</returns>
+        private bool IsReadyToAttack(AITurnContext context, Planet targetPlanet)
+        {
+            AIAttackDemand demand = context.GetAttackDemand(targetPlanet);
+            if (demand == null)
+                return false;
+            int availableCombat = context.Assessment.GetReadyFleetCombatValue(Fleet);
+            int requiredRegiments = GetRequiredRegimentCount(context, targetPlanet);
+            return Fleet?.HasOperationalCapitalShips() == true
+                && availableCombat > 0
+                && availableCombat >= demand.CombatStrength
+                && context.Assessment.GetReadyFleetRegimentCount(Fleet) >= requiredRegiments
+                && context.Assessment.GetReadyFleetRegimentCapacity(Fleet) >= requiredRegiments
+                && context.Assessment.GetReadyFleetRegimentAttackStrength(Fleet)
+                    >= GetRequiredRegimentStrength(context, targetPlanet)
+                && context.Assessment.GetFleetBombardmentStrength(Fleet)
+                    >= demand.BombardmentStrength
+                && (
+                    CanBombardMilitaryTargets(context, targetPlanet)
+                    || context.Assessment.GetPlanetaryAssaultSuccessPercent(Fleet, targetPlanet)
+                        >= context
+                            .Game
+                            .Config
+                            .AI
+                            .FleetDeployment
+                            .MinimumPlanetaryAssaultSuccessPercent
+                );
+        }
+
+        /// <summary>
+        /// Returns the regiment count required after current fleet bombardment.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="targetPlanet">The attack target.</param>
+        /// <returns>The current regiment count requirement.</returns>
+        private int GetRequiredRegimentCount(AITurnContext context, Planet targetPlanet)
+        {
+            AIAttackDemand demand = context.GetAttackDemand(targetPlanet);
+            if (demand == null)
+                return 0;
+            return CanBombardDefenders(context, targetPlanet)
+                ? demand.OccupationRegimentCount
+                : demand.RegimentCount;
+        }
+
+        /// <summary>
+        /// Returns the regiment strength required after current fleet bombardment.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="targetPlanet">The attack target.</param>
+        /// <returns>The current regiment strength requirement.</returns>
+        private int GetRequiredRegimentStrength(AITurnContext context, Planet targetPlanet)
+        {
+            return CanBombardDefenders(context, targetPlanet)
+                ? 0
+                : context.GetAttackDemand(targetPlanet)?.RegimentStrength ?? 0;
+        }
+
+        /// <summary>
+        /// Returns whether fleet bombardment can remove defending regiments.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="targetPlanet">The attack target.</param>
+        /// <returns>True when bombardment can penetrate target shields.</returns>
+        private bool CanBombardDefenders(AITurnContext context, Planet targetPlanet)
+        {
+            return Fleet != null
+                && targetPlanet != null
+                && context.Assessment.GetDefendingRegimentCount(targetPlanet) > 0
+                && context.Assessment.GetFleetBombardmentStrength(Fleet)
+                    > context.Assessment.GetBombardmentShieldResistance(targetPlanet);
+        }
+
+        /// <summary>
+        /// Returns whether the fleet can immediately bombard hostile military targets.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="targetPlanet">The attack target.</param>
+        /// <returns>True when hostile targets are exposed.</returns>
+        private bool CanBombardMilitaryTargets(AITurnContext context, Planet targetPlanet)
+        {
+            return Fleet != null
+                && targetPlanet != null
+                && context.Assessment.GetFleetBombardmentStrength(Fleet)
+                    > context.Assessment.GetBombardmentShieldResistance(targetPlanet)
+                && context.Assessment.HasBombardmentTargets(targetPlanet);
+        }
+
+        /// <summary>
+        /// Returns whether launching now would leave an inbound unit unable to reach the hostile
+        /// destination by the fleet's arrival tick.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <returns>True when an inbound unit would arrive after the fleet.</returns>
+        private bool HasInboundUnitThatWouldArriveAfterFleet(AITurnContext context)
+        {
+            if (
+                context.MovementQueries == null
+                || !context.MovementQueries.TryGetTransitTicks(
+                    new List<IMovable> { Fleet },
+                    TargetPlanet,
+                    out int fleetTransitTicks
+                )
+            )
+                return false;
+
+            foreach (IMovable inboundUnit in Fleet.GetChildren<IMovable>(recursive: true))
+            {
+                if (
+                    inboundUnit.Movement != null
+                    && context.MovementQueries.TryEstimateRetargetedTransitTicks(
+                        inboundUnit,
+                        TargetPlanet,
+                        out int inboundTransitTicks
+                    )
+                    && inboundTransitTicks > fleetTransitTicks
+                )
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         /// <summary>

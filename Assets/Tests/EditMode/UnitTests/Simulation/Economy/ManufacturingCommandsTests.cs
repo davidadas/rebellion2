@@ -31,6 +31,7 @@ namespace Rebellion.Tests.Simulation
             // Create game with galaxy
             GameConfig config = TestContent.Data.GameConfig;
             _game = new GameRoot(config);
+            _game.Summary.Difficulty = GameDifficulty.Medium;
             GalaxyMap galaxy = _game.Galaxy;
 
             // Create faction
@@ -699,6 +700,49 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(_shipyard.ProductionPointReady);
             Assert.IsFalse(fasterFacility.ProductionPointReady);
             Assert.AreEqual(3, mine.ManufacturingProgress);
+        }
+
+        /// <summary>
+        /// Verifies an AI manufacturing modifier below normal slows production-cycle progress.
+        /// </summary>
+        [Test]
+        public void ProcessTick_AIDifficultyBelowNormal_SlowsManufacturing()
+        {
+            ConfigureManufacturingSpeed(50);
+            Building mine = CreateManufacturingSpeedTestItem();
+            _manager.Enqueue(_coruscant, mine, _coruscant, ignoreCost: true);
+
+            new ManufacturingTickProcessor(_manager).ProcessTick(_game);
+
+            Assert.AreEqual(0, mine.ManufacturingProgress);
+            Assert.AreEqual(0.5, _shipyard.ProductionCycleProgress, 0.0001);
+
+            new ManufacturingTickProcessor(_manager).ProcessTick(_game);
+
+            Assert.AreEqual(1, mine.ManufacturingProgress);
+            Assert.AreEqual(0, _shipyard.ProductionCycleProgress, 0.0001);
+        }
+
+        /// <summary>
+        /// Verifies an AI manufacturing modifier above normal applies completed points and retains
+        /// fractional excess progress.
+        /// </summary>
+        [Test]
+        public void ProcessTick_AIDifficultyAboveNormal_AppliesExcessManufacturingProgress()
+        {
+            ConfigureManufacturingSpeed(150);
+            Building mine = CreateManufacturingSpeedTestItem();
+            _manager.Enqueue(_coruscant, mine, _coruscant, ignoreCost: true);
+
+            new ManufacturingTickProcessor(_manager).ProcessTick(_game);
+
+            Assert.AreEqual(1, mine.ManufacturingProgress);
+            Assert.AreEqual(0.5, _shipyard.ProductionCycleProgress, 0.0001);
+
+            new ManufacturingTickProcessor(_manager).ProcessTick(_game);
+
+            Assert.AreEqual(3, mine.ManufacturingProgress);
+            Assert.AreEqual(0, _shipyard.ProductionCycleProgress, 0.0001);
         }
 
         [Test]
@@ -4775,6 +4819,38 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(
                 producer.GetManufacturingQueue().ContainsKey(ManufacturingType.Building)
             );
+        }
+
+        /// <summary>
+        /// Configures the current game to apply an AI manufacturing-speed modifier.
+        /// </summary>
+        /// <param name="speedPercent">The manufacturing speed percentage.</param>
+        private void ConfigureManufacturingSpeed(int speedPercent)
+        {
+            GameConfig config = TestConfig.Create();
+            config.DifficultyModifiers[GameDifficulty.Hard] = new DifficultyModifiers
+            {
+                ManufacturingSpeedPercent = speedPercent,
+            };
+            _game.SetConfig(config);
+            _game.Summary.Difficulty = GameDifficulty.Hard;
+        }
+
+        /// <summary>
+        /// Creates a queued building suitable for manufacturing-speed tests.
+        /// </summary>
+        /// <returns>The building to manufacture.</returns>
+        private static Building CreateManufacturingSpeedTestItem()
+        {
+            return new Building
+            {
+                InstanceID = "MINE1",
+                OwnerInstanceID = "EMPIRE",
+                ConstructionCost = 10,
+                BaseBuildSpeed = 10,
+                ManufacturingStatus = ManufacturingStatus.Building,
+                BuildingType = BuildingType.Mine,
+            };
         }
 
         /// <summary>

@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.AI.Director;
 using Rebellion.AI.Planners;
 
 namespace Rebellion.AI.Phases
@@ -67,7 +66,7 @@ namespace Rebellion.AI.Phases
             foreach (IAIProposalPlanner planner in _planners)
             {
                 context.AddProposals(planner.Plan(context));
-                yield return null;
+                yield return planner;
             }
         }
     }

@@ -1321,6 +1321,31 @@ namespace Rebellion.Tests.Game.Factions
         }
 
         [Test]
+        public void GetTotalProjectedMaintenanceCost_AllCommittedStatuses_SumsEveryUnit()
+        {
+            foreach (
+                (ManufacturingStatus status, int maintenanceCost) in new[]
+                {
+                    (ManufacturingStatus.Building, 7),
+                    (ManufacturingStatus.Delivering, 11),
+                    (ManufacturingStatus.Complete, 13),
+                }
+            )
+            {
+                _faction.AddOwnedUnit(
+                    new Regiment
+                    {
+                        OwnerInstanceID = "FACTION1",
+                        MaintenanceCost = maintenanceCost,
+                        ManufacturingStatus = status,
+                    }
+                );
+            }
+
+            Assert.AreEqual(31, _faction.GetTotalProjectedMaintenanceCost());
+        }
+
+        [Test]
         public void GetTotalInProgressConstructionCost_MixedCompleteAndBuilding_SumsBuildingOnly()
         {
             Regiment completeUnit = new Regiment

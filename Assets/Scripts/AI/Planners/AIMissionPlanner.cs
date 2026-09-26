@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.AI.Director;
 using Rebellion.AI.Proposals;
-using Rebellion.AI.Scoring;
+using Rebellion.AI.Scorers;
+using Rebellion.Game;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
@@ -11,6 +11,7 @@ using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Random;
+using OfficerRating = Rebellion.Game.Units.SkillRating;
 
 namespace Rebellion.AI.Planners
 {
@@ -26,8 +27,7 @@ namespace Rebellion.AI.Planners
             | PlanetIntelligenceCategory.Officers;
 
         // Planning State.
-        private readonly AIMissionCandidateSelector _candidateSelector =
-            new AIMissionCandidateSelector();
+        private readonly AIMissionCandidatePool _candidateSelector = new AIMissionCandidatePool();
         private readonly Dictionary<string, List<IManufacturable>> _sabotageTargets =
             new Dictionary<string, List<IManufacturable>>(StringComparer.Ordinal);
         private readonly HashSet<string> _activeMissionTypes = new HashSet<string>(
@@ -67,6 +67,7 @@ namespace Rebellion.AI.Planners
             if (context?.Game == null || context.Faction == null || context.Missions == null)
                 return new List<AIProposal>();
 
+            AssignSpecialForcesIntent(context);
             _candidateSelector.Reset();
             _sabotageTargets.Clear();
             BuildActiveMissionIndexes(context.Assessment.ActiveMissions);
@@ -82,6 +83,91 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
+        /// Assigns turn-scoped primary and decoy roles to available special-forces units.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        internal static void AssignSpecialForcesIntent(AITurnContext context)
+        {
+            if (context?.Assessment == null)
+                return;
+
+            IReadOnlyList<IMissionParticipant> availableParticipants = context
+                .Assessment
+                .AvailableMissionParticipants;
+            List<SpecialForces> availableSpecialForces = availableParticipants
+                .OfType<SpecialForces>()
+                .ToList();
+            SetSpecialForcesIntent(
+                context,
+                availableSpecialForces,
+                SpecialForcesIntent.PrimaryAgent
+            );
+            List<Officer> availableOfficers = availableParticipants.OfType<Officer>().ToList();
+            if (availableOfficers.Count == 0)
+                return;
+
+            foreach (
+                IGrouping<string, SpecialForces> roleUnits in availableSpecialForces.GroupBy(
+                    GetMissionCapabilitySetKey,
+                    StringComparer.Ordinal
+                )
+            )
+            {
+                if (OfficersCoverEveryMissionCapability(availableOfficers, roleUnits.First()))
+                    SetSpecialForcesIntent(context, roleUnits.Skip(1), SpecialForcesIntent.Decoy);
+            }
+        }
+
+        /// <summary>
+        /// Assigns one turn-scoped intent to each supplied special-forces unit.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="units">Units receiving the intent.</param>
+        /// <param name="intent">Intent to assign.</param>
+        private static void SetSpecialForcesIntent(
+            AITurnContext context,
+            IEnumerable<SpecialForces> units,
+            SpecialForcesIntent intent
+        )
+        {
+            foreach (SpecialForces unit in units)
+                context.SetSpecialForcesIntent(unit, intent);
+        }
+
+        /// <summary>
+        /// Returns whether available officers can replace every capability in a special-forces role.
+        /// </summary>
+        /// <param name="officers">Officers available during this turn.</param>
+        /// <param name="specialForces">Representative unit for the special-forces role.</param>
+        /// <returns>True when every role mission can be performed by an officer.</returns>
+        private static bool OfficersCoverEveryMissionCapability(
+            IEnumerable<Officer> officers,
+            SpecialForces specialForces
+        )
+        {
+            return specialForces.AllowedMissionTypeIDs.Count > 0
+                && specialForces.AllowedMissionTypeIDs.All(missionTypeId =>
+                    officers.Any(officer => officer.CanPerformMission(missionTypeId))
+                );
+        }
+
+        /// <summary>
+        /// Returns a stable identifier for a special-forces mission role.
+        /// </summary>
+        /// <param name="unit">Special-forces unit to inspect.</param>
+        /// <returns>The ordered mission-capability identifier.</returns>
+        private static string GetMissionCapabilitySetKey(SpecialForces unit)
+        {
+            return string.Join(
+                "|",
+                unit.AllowedMissionTypeIDs.OrderBy(
+                    missionTypeId => missionTypeId,
+                    StringComparer.Ordinal
+                )
+            );
+        }
+
+        /// <summary>
         /// Creates mission proposals.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
@@ -92,7 +178,7 @@ namespace Rebellion.AI.Planners
             AddJediTrainingProposals(context, proposals);
             HashSet<IMissionParticipant> jediTrainers = proposals
                 .OfType<AIMissionProposal>()
-                .Where(proposal => proposal.MissionTypeID == JediTrainingMission.MissionTypeID)
+                .Where(proposal => proposal.MissionTypeID == MissionTypeIDs.JediTraining)
                 .Select(proposal => proposal.Participant)
                 .ToHashSet();
             List<IMissionParticipant> availableParticipants = context
@@ -142,7 +228,7 @@ namespace Rebellion.AI.Planners
             List<AIProposal> proposals
         )
         {
-            if (!participant.CanPerformMission(ReconnaissanceMission.MissionTypeID))
+            if (!participant.CanPerformMission(MissionTypeIDs.Reconnaissance))
                 return;
 
             foreach (Planet target in GetReconnaissanceCandidatePlanets(context, participant))
@@ -150,7 +236,7 @@ namespace Rebellion.AI.Planners
                     context,
                     proposals,
                     participant,
-                    ReconnaissanceMission.MissionTypeID,
+                    MissionTypeIDs.Reconnaissance,
                     target
                 );
         }
@@ -174,7 +260,7 @@ namespace Rebellion.AI.Planners
 
             if (
                 context.Game.GetUnrecruitedOfficers(context.Faction.InstanceID).Count == 0
-                || HasActiveMission(RecruitmentMission.MissionTypeID)
+                || HasActiveMission(MissionTypeIDs.Recruitment)
             )
                 return false;
 
@@ -183,7 +269,7 @@ namespace Rebellion.AI.Planners
                 TryAddProposal(
                     context,
                     proposals,
-                    CreateProposal(participant, RecruitmentMission.MissionTypeID, target)
+                    CreateProposal(participant, MissionTypeIDs.Recruitment, target)
                 );
 
             return proposals.Count > proposalCount;
@@ -201,11 +287,11 @@ namespace Rebellion.AI.Planners
                 .Assessment.AvailableMissionParticipants.OfType<Officer>()
                 .Where(officer => officer.IsMain)
                 .Where(officer =>
-                    officer.GetEffectiveRating(SkillRating.Leadership)
+                    officer.GetEffectiveRating(OfficerRating.Leadership)
                     >= context.Game.Config.AI.RecruitmentMinimumLeadership
                 )
-                .OrderBy(officer => officer.GetEffectiveRating(SkillRating.Diplomacy))
-                .ThenByDescending(officer => officer.GetEffectiveRating(SkillRating.Leadership))
+                .OrderBy(officer => officer.GetEffectiveRating(OfficerRating.Diplomacy))
+                .ThenByDescending(officer => officer.GetEffectiveRating(OfficerRating.Leadership))
                 .ThenBy(officer => officer.InstanceID)
                 .FirstOrDefault();
         }
@@ -222,22 +308,19 @@ namespace Rebellion.AI.Planners
             List<AIProposal> proposals
         )
         {
-            if (!participant.CanPerformMission(SubdueUprisingMission.MissionTypeID))
+            if (!participant.CanPerformMission(MissionTypeIDs.SubdueUprising))
                 return;
 
             foreach (
                 Planet planet in context.Assessment.OwnedPlanets.Where(planet =>
                     planet.IsInUprising
-                    && !HasActiveMissionAtPlanet(
-                        SubdueUprisingMission.MissionTypeID,
-                        planet.InstanceID
-                    )
+                    && !HasActiveMissionAtPlanet(MissionTypeIDs.SubdueUprising, planet.InstanceID)
                 )
             )
                 TryAddProposal(
                     context,
                     proposals,
-                    CreateProposal(participant, SubdueUprisingMission.MissionTypeID, planet)
+                    CreateProposal(participant, MissionTypeIDs.SubdueUprising, planet)
                 );
         }
 
@@ -256,7 +339,7 @@ namespace Rebellion.AI.Planners
         )
         {
             if (
-                participant.GetEffectiveRating(SkillRating.Diplomacy)
+                participant.GetEffectiveRating(OfficerRating.Diplomacy)
                 < context.Game.Config.AI.DiplomacyMinimumSkill
             )
                 return false;
@@ -266,7 +349,7 @@ namespace Rebellion.AI.Planners
                 TryAddProposal(
                     context,
                     proposals,
-                    CreateProposal(participant, DiplomacyMission.MissionTypeID, planet)
+                    CreateProposal(participant, MissionTypeIDs.Diplomacy, planet)
                 );
 
             return proposals.Count > proposalCount;
@@ -299,7 +382,7 @@ namespace Rebellion.AI.Planners
                         proposals,
                         new AIMissionProposal(
                             new[] { officer },
-                            ResearchMission.MissionTypeID,
+                            MissionTypeIDs.Research,
                             planet,
                             discipline: discipline
                         )
@@ -326,7 +409,7 @@ namespace Rebellion.AI.Planners
                 List<Officer> availableJedi = context
                     .Assessment.AvailableMissionParticipants.OfType<Officer>()
                     .Where(officer => officer.GetParentOfType<Planet>() == planet)
-                    .Where(officer => officer.CanPerformMission(JediTrainingMission.MissionTypeID))
+                    .Where(officer => officer.CanPerformMission(MissionTypeIDs.JediTraining))
                     .Where(officer => officer.IsForceSensitive && officer.IsForceEligible)
                     .ToList();
                 Officer trainer = availableJedi
@@ -353,7 +436,7 @@ namespace Rebellion.AI.Planners
                 TryAddProposal(
                     context,
                     proposals,
-                    new AIMissionProposal(participants, JediTrainingMission.MissionTypeID, planet)
+                    new AIMissionProposal(participants, MissionTypeIDs.JediTraining, planet)
                 );
             }
         }
@@ -372,7 +455,7 @@ namespace Rebellion.AI.Planners
         {
             if (
                 participant is not SpecialForces
-                || !participant.CanPerformMission(RescueMission.MissionTypeID)
+                || !participant.CanPerformMission(MissionTypeIDs.Rescue)
             )
                 return;
 
@@ -396,7 +479,7 @@ namespace Rebellion.AI.Planners
                     context,
                     proposals,
                     participant,
-                    RescueMission.MissionTypeID,
+                    MissionTypeIDs.Rescue,
                     planet,
                     selectedTarget: target,
                     targetOfficer: target
@@ -416,7 +499,7 @@ namespace Rebellion.AI.Planners
             List<AIProposal> proposals
         )
         {
-            if (!participant.CanPerformMission(EspionageMission.MissionTypeID))
+            if (!participant.CanPerformMission(MissionTypeIDs.Espionage))
                 return;
 
             foreach (Planet planet in GetEspionageCandidatePlanets(context))
@@ -424,7 +507,7 @@ namespace Rebellion.AI.Planners
                     context,
                     proposals,
                     participant,
-                    EspionageMission.MissionTypeID,
+                    MissionTypeIDs.Espionage,
                     planet
                 );
         }
@@ -441,7 +524,7 @@ namespace Rebellion.AI.Planners
             List<AIProposal> proposals
         )
         {
-            if (!participant.CanPerformMission(InciteUprisingMission.MissionTypeID))
+            if (!participant.CanPerformMission(MissionTypeIDs.InciteUprising))
                 return;
 
             foreach (
@@ -449,7 +532,7 @@ namespace Rebellion.AI.Planners
                     .Where(planet =>
                         !planet.IsInUprising
                         && !HasActiveMissionAtPlanet(
-                            InciteUprisingMission.MissionTypeID,
+                            MissionTypeIDs.InciteUprising,
                             planet.InstanceID
                         )
                     )
@@ -458,7 +541,7 @@ namespace Rebellion.AI.Planners
                     context,
                     proposals,
                     participant,
-                    InciteUprisingMission.MissionTypeID,
+                    MissionTypeIDs.InciteUprising,
                     planet
                 );
         }
@@ -475,7 +558,7 @@ namespace Rebellion.AI.Planners
             List<AIProposal> proposals
         )
         {
-            if (!participant.CanPerformMission(SabotageMission.MissionTypeID))
+            if (!participant.CanPerformMission(MissionTypeIDs.Sabotage))
                 return;
 
             foreach (Planet planet in GetSabotageCandidatePlanets(context))
@@ -486,7 +569,7 @@ namespace Rebellion.AI.Planners
                         context,
                         proposals,
                         participant,
-                        SabotageMission.MissionTypeID,
+                        MissionTypeIDs.Sabotage,
                         planet,
                         selectedTarget: target
                     );
@@ -508,23 +591,23 @@ namespace Rebellion.AI.Planners
         {
             foreach ((Planet planet, Officer targetOfficer) in GetOfficerTargetCandidates(context))
             {
-                if (participant.CanPerformMission(AbductionMission.MissionTypeID))
+                if (participant.CanPerformMission(MissionTypeIDs.Abduction))
                     TryAddMissionProposal(
                         context,
                         proposals,
                         participant,
-                        AbductionMission.MissionTypeID,
+                        MissionTypeIDs.Abduction,
                         planet,
                         selectedTarget: targetOfficer,
                         targetOfficer: targetOfficer
                     );
 
-                if (participant.CanPerformMission(AssassinationMission.MissionTypeID))
+                if (participant.CanPerformMission(MissionTypeIDs.Assassination))
                     TryAddMissionProposal(
                         context,
                         proposals,
                         participant,
-                        AssassinationMission.MissionTypeID,
+                        MissionTypeIDs.Assassination,
                         planet,
                         selectedTarget: targetOfficer,
                         targetOfficer: targetOfficer
@@ -611,8 +694,7 @@ namespace Rebellion.AI.Planners
                     (
                         context.Assessment.IsOwnedPlanet(planet)
                         || context.Assessment.IsNeutralPlanet(planet)
-                    )
-                    && !HasActiveMissionAtPlanet(DiplomacyMission.MissionTypeID, planet.InstanceID)
+                    ) && !HasActiveMissionAtPlanet(MissionTypeIDs.Diplomacy, planet.InstanceID)
                 )
                 .Shuffle(context.Random)
                 .OrderByDescending(planet => GetDiplomacyCandidatePriority(context, planet))
@@ -637,10 +719,7 @@ namespace Rebellion.AI.Planners
 
             return context
                 .Assessment.UnexploredPlanets.Where(planet =>
-                    !HasActiveMissionAtPlanet(
-                        ReconnaissanceMission.MissionTypeID,
-                        planet.InstanceID
-                    )
+                    !HasActiveMissionAtPlanet(MissionTypeIDs.Reconnaissance, planet.InstanceID)
                 )
                 .OrderBy(origin.GetRawDistanceTo)
                 .ThenBy(planet => planet.InstanceID);
@@ -688,8 +767,7 @@ namespace Rebellion.AI.Planners
                             planet,
                             _missionDefenseIntelligence
                         )
-                    )
-                    && !HasActiveMissionAtPlanet(EspionageMission.MissionTypeID, planet.InstanceID)
+                    ) && !HasActiveMissionAtPlanet(MissionTypeIDs.Espionage, planet.InstanceID)
                 )
                 .OrderByDescending(context.Assessment.GetPlanetIntelAge)
                 .ThenByDescending(context.Assessment.GetPlanetValue)
@@ -707,8 +785,9 @@ namespace Rebellion.AI.Planners
         {
             return _sabotageCandidates ??= GetFreshEnemyPlanets(context)
                 .Concat(
-                    context.Assessment.EnemyPlanets.Where(
-                        context.Assessment.IsAttackTargetBlockedByShields
+                    context.Assessment.EnemyPlanets.Where(planet =>
+                        context.GetAttackDemand(planet)?.IsAssaultBlockedByShields == true
+                        && context.Assessment.IsAttackPreparationTarget(planet)
                     )
                 )
                 .GroupBy(planet => planet.InstanceID, StringComparer.Ordinal)
@@ -719,11 +798,7 @@ namespace Rebellion.AI.Planners
                 .ThenByDescending(planet =>
                     GetSabotageTargets(context, planet)
                         .Max(target =>
-                            AIMissionProposalScorer.GetSabotagePriorityBonus(
-                                context,
-                                planet,
-                                target
-                            )
+                            AIMissionProposalScorer.GetSabotageTargetValue(context, planet, target)
                         )
                 )
                 .ThenByDescending(context.Assessment.GetPlanetBuildingCount)
@@ -747,7 +822,7 @@ namespace Rebellion.AI.Planners
 
             targets = GetEligibleSabotageTargets(context, planet)
                 .OrderByDescending(target =>
-                    AIMissionProposalScorer.GetSabotagePriorityBonus(context, planet, target)
+                    AIMissionProposalScorer.GetSabotageTargetValue(context, planet, target)
                 )
                 .ThenByDescending(target =>
                     target.GetConstructionCost() + target.GetMaintenanceCost()
@@ -756,13 +831,13 @@ namespace Rebellion.AI.Planners
                 .ToList();
             if (targets.Count > 0)
             {
-                int highestPriority = AIMissionProposalScorer.GetSabotagePriorityBonus(
+                double highestPriority = AIMissionProposalScorer.GetSabotageTargetValue(
                     context,
                     planet,
                     targets[0]
                 );
                 targets.RemoveAll(target =>
-                    AIMissionProposalScorer.GetSabotagePriorityBonus(context, planet, target)
+                    AIMissionProposalScorer.GetSabotageTargetValue(context, planet, target)
                     != highestPriority
                 );
             }
@@ -843,7 +918,7 @@ namespace Rebellion.AI.Planners
                 .Shuffle(context.Random)
                 .OrderByDescending(candidate => candidate.TargetOfficer.IsMain)
                 .ThenByDescending(candidate =>
-                    GetOfficerTargetCandidatePriority(candidate.TargetOfficer)
+                    GetOfficerTargetCandidatePriority(context, candidate.TargetOfficer)
                 )
                 .ToList();
         }
@@ -1047,38 +1122,80 @@ namespace Rebellion.AI.Planners
         /// <param name="context">The current AI turn context.</param>
         /// <param name="planet">The planet to evaluate.</param>
         /// <returns>The calculated value.</returns>
-        private int GetDiplomacyCandidatePriority(AITurnContext context, Planet planet)
+        private double GetDiplomacyCandidatePriority(AITurnContext context, Planet planet)
         {
-            int support = context.Assessment.GetFactionPopularSupport(planet);
-            int strategicValue = context.Assessment.GetDiplomacyTargetStrategicValue(planet);
-
-            if (context.Assessment.IsOwnedPlanet(planet))
-            {
-                int supportRisk = context.Assessment.GetDefensiveSupportRisk(planet);
-                return 100
-                    - support
-                    + strategicValue
-                    + supportRisk
-                        * context.Game.Config.AI.MissionPlanning.DiplomacySectorSupportRiskWeight;
-            }
-
-            return context.Assessment.IsNeutralPlanet(planet) ? support + strategicValue : 0;
+            return AIMissionProposalScorer.GetDiplomacyTargetValue(context, planet);
         }
 
         /// <summary>
         /// Returns officer target candidate priority.
         /// </summary>
+        /// <param name="context">The current AI turn context.</param>
         /// <param name="officer">The officer to evaluate.</param>
         /// <returns>The calculated value.</returns>
-        private int GetOfficerTargetCandidatePriority(Officer officer)
+        private static double GetOfficerTargetCandidatePriority(
+            AITurnContext context,
+            Officer officer
+        )
         {
-            return officer.GetEffectiveRating(SkillRating.Combat)
-                + officer.GetEffectiveRating(SkillRating.Espionage)
-                + officer.GetEffectiveRating(SkillRating.Diplomacy)
-                + officer.GetEffectiveRating(SkillRating.Leadership)
-                + officer.GetBaseRating(ResearchDiscipline.ShipDesign)
-                + officer.GetBaseRating(ResearchDiscipline.FacilityDesign)
-                + officer.GetBaseRating(ResearchDiscipline.TroopTraining);
+            GameConfig.AIOfficerTargetUtilityConfig utility = context
+                .Game
+                .Config
+                .AI
+                .MissionPlanning
+                .Utility
+                .OfficerTarget;
+            AIUtilityScore score = new AIUtilityScore();
+            score.Add(
+                AIUtility.Fulfillment(
+                    officer.GetEffectiveRating(OfficerRating.Combat),
+                    utility.Combat
+                ),
+                utility.Combat
+            );
+            score.Add(
+                AIUtility.Fulfillment(
+                    officer.GetEffectiveRating(OfficerRating.Espionage),
+                    utility.Espionage
+                ),
+                utility.Espionage
+            );
+            score.Add(
+                AIUtility.Fulfillment(
+                    officer.GetEffectiveRating(OfficerRating.Diplomacy),
+                    utility.Diplomacy
+                ),
+                utility.Diplomacy
+            );
+            score.Add(
+                AIUtility.Fulfillment(
+                    officer.GetEffectiveRating(OfficerRating.Leadership),
+                    utility.Leadership
+                ),
+                utility.Leadership
+            );
+            score.Add(
+                AIUtility.Fulfillment(
+                    officer.GetBaseRating(ResearchDiscipline.ShipDesign),
+                    utility.ShipResearch
+                ),
+                utility.ShipResearch
+            );
+            score.Add(
+                AIUtility.Fulfillment(
+                    officer.GetBaseRating(ResearchDiscipline.FacilityDesign),
+                    utility.FacilityResearch
+                ),
+                utility.FacilityResearch
+            );
+            score.Add(
+                AIUtility.Fulfillment(
+                    officer.GetBaseRating(ResearchDiscipline.TroopTraining),
+                    utility.TroopResearch
+                ),
+                utility.TroopResearch
+            );
+            return score.Value;
         }
     }
 }

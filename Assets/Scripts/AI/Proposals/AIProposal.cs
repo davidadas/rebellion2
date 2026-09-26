@@ -1,11 +1,10 @@
-using System.Collections.Generic;
-using Rebellion.AI.Director;
 using Rebellion.SceneGraph;
 
 namespace Rebellion.AI.Proposals
 {
     internal enum AIProposalPriority
     {
+        DeferredPlanetaryDefense,
         Optional,
         Mandatory,
     }
@@ -42,12 +41,6 @@ namespace Rebellion.AI.Proposals
                 && node != null
                 && node.GetOwnerInstanceID() == context.Faction.InstanceID;
         }
-
-        /// <summary>
-        /// Returns ownership keys that prevent incompatible proposals from both being selected.
-        /// </summary>
-        /// <returns>Claim keys for this proposal.</returns>
-        public abstract IReadOnlyList<string> GetClaimKeys();
 
         /// <summary>
         /// Returns a stable key used to sort otherwise equivalent proposals.

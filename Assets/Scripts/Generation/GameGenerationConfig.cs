@@ -61,13 +61,13 @@ namespace Rebellion.Generation
     #region GALAXY CLASSIFICATION
 
     /// <summary>
-    /// Defines faction setup and difficulty-specific ownership profiles.
+    /// Defines faction setup and starting ownership distribution.
     /// </summary>
     [PersistableObject]
     public class GalaxyClassificationSection
     {
         public List<FactionSetup> FactionSetups;
-        public List<DifficultyProfile> Profiles;
+        public List<FactionBucketConfig> FactionBuckets;
     }
 
     /// <summary>
@@ -92,21 +92,6 @@ namespace Rebellion.Generation
         public int Loyalty;
         public bool PickFromRim;
         public List<string> VisibleToFactionIDs;
-    }
-
-    /// <summary>
-    /// Defines ownership distribution for a difficulty profile.
-    /// </summary>
-    [PersistableObject]
-    public class DifficultyProfile
-    {
-        public string Name;
-
-        public string PlayerFactionID;
-
-        public int Difficulty = -1;
-
-        public List<FactionBucketConfig> FactionBuckets;
     }
 
     /// <summary>
@@ -242,20 +227,9 @@ namespace Rebellion.Generation
         public int UprisingPreventionThreshold;
 
         public int SupportDeficitPerGarrisonTroop = 10;
-        public List<BudgetDifficultyMapping> BudgetDifficultyMappings;
         public List<FixedGarrison> FixedGarrisons;
         public List<FixedFleet> FixedFleets;
         public List<FactionBudget> FactionBudgets;
-    }
-
-    /// <summary>
-    /// Maps a game difficulty to a unit deployment budget difficulty.
-    /// </summary>
-    [PersistableObject]
-    public class BudgetDifficultyMapping
-    {
-        public int Difficulty;
-        public int BudgetDifficulty;
     }
 
     /// <summary>
@@ -315,16 +289,12 @@ namespace Rebellion.Generation
     }
 
     /// <summary>
-    /// Defines the budget percentage used for one galaxy size, difficulty, and controller type.
+    /// Defines the budget percentage used for one galaxy size.
     /// </summary>
     [PersistableObject]
     public class BudgetLevel
     {
         public int GalaxySize;
-
-        public int Difficulty = -1;
-
-        public bool IsAI;
         public int Percentage;
     }
 

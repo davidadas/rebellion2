@@ -1,10 +1,12 @@
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
-using Rebellion.AI.Director;
+using Rebellion.AI;
+using Rebellion.AI.Demands;
 using Rebellion.AI.Planners;
-using Rebellion.AI.Planners.Demand;
 using Rebellion.AI.Proposals;
+using Rebellion.AI.Scorers;
+using Rebellion.AI.Selectors;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
@@ -12,6 +14,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.Tests.AI.Helpers;
+using OfficerRating = Rebellion.Game.Units.SkillRating;
 
 namespace Rebellion.Tests.AI.Proposals
 {
@@ -21,61 +24,17 @@ namespace Rebellion.Tests.AI.Proposals
         [Test]
         public void UsesDefensiveReserve_WithTrainingFacilityDemand_ReturnsTrue()
         {
-            AIDemand demand = new AIDemand(
+            AIProductionDemand demand = new AIProductionDemand(
                 "training-facility-demand",
-                AIDemandKind.TrainingFacility,
+                AIProductionDemandKind.TrainingFacility,
                 ManufacturingType.Building,
                 BuildingType.TrainingFacility,
                 null,
                 1,
-                100
+                baseDemandPercent: 100
             );
 
             Assert.IsTrue(demand.UsesDefensiveReserve);
-        }
-
-        [Test]
-        public void GetClaimKeys_WithBuildingDemand_ClaimsDemandAndDestination()
-        {
-            Planet producer = new Planet { InstanceID = "producer" };
-            Planet destination = new Planet { InstanceID = "destination" };
-            AIDemand demand = CreateBuildingDemand(destination);
-            AIManufactureProposal proposal = new AIManufactureProposal(
-                demand,
-                producer,
-                new Technology(AITestSceneBuilder.CreateBuildingTemplate("mine", BuildingType.Mine))
-            );
-
-            IReadOnlyList<string> claimKeys = proposal.GetClaimKeys();
-
-            CollectionAssert.Contains(claimKeys, "production:demand:mine-demand");
-            CollectionAssert.DoesNotContain(claimKeys, "production:building:producer");
-            CollectionAssert.Contains(claimKeys, "production:building-destination:destination");
-        }
-
-        [Test]
-        public void GetClaimKeys_WithFleetCapitalShipDemand_ClaimsCapitalReinforcement()
-        {
-            Planet producer = new Planet { InstanceID = "producer" };
-            Fleet destination = EntityFactory.CreateFleet("fleet", "empire");
-            AIDemand demand = new AIDemand(
-                "capital-demand",
-                AIDemandKind.FleetCapitalShip,
-                ManufacturingType.Ship,
-                BuildingType.None,
-                destination,
-                1,
-                100
-            );
-            AIManufactureProposal proposal = new AIManufactureProposal(
-                demand,
-                producer,
-                new Technology(AITestSceneBuilder.CreateCapitalShip("capital", "empire"))
-            );
-
-            IReadOnlyList<string> claimKeys = proposal.GetClaimKeys();
-
-            CollectionAssert.Contains(claimKeys, "fleet:capital-reinforcement:fleet");
         }
 
         [Test]
@@ -115,9 +74,47 @@ namespace Rebellion.Tests.AI.Proposals
         }
 
         [Test]
+        public void Execute_WithMaintenanceRecoveryAtZeroHeadroom_QueuesOrder()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector1");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "resource-world",
+                empire.InstanceID,
+                rawResourceNodes: 1
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "construction-yard",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+            Building mine = AITestSceneBuilder.CreateBuildingTemplate(
+                "mine-template",
+                BuildingType.Mine
+            );
+            mine.MaintenanceCost = 10;
+            AIManufactureProposal proposal = new AIManufactureProposal(
+                CreateBuildingDemand(planet),
+                planet,
+                new Technology(mine)
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            Assert.AreEqual(0, context.Faction.ProjectedMaintenanceHeadroom);
+
+            proposal.Execute(context);
+
+            Assert.AreEqual(1, planet.GetManufacturingQueue()[ManufacturingType.Building].Count);
+        }
+
+        [Test]
         public void Execute_WithFacilityBatch_QueuesExactlyCalculatedQuantity()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Selection.MaintenanceHeadroomReserve = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet planet = AITestSceneBuilder.AddPlanet(
                 game,
@@ -157,14 +154,14 @@ namespace Rebellion.Tests.AI.Proposals
                 ManufacturingType.Ship
             );
             shipyard.MaintenanceCost = 1;
-            AIDemand demand = new AIDemand(
+            AIProductionDemand demand = new AIProductionDemand(
                 "shipyard-demand",
-                AIDemandKind.Shipyard,
+                AIProductionDemandKind.Shipyard,
                 ManufacturingType.Building,
                 BuildingType.Shipyard,
                 planet,
                 3,
-                100
+                baseDemandPercent: 100
             );
             AIManufactureProposal proposal = new AIManufactureProposal(
                 demand,
@@ -293,14 +290,14 @@ namespace Rebellion.Tests.AI.Proposals
                 BuildingType.Defense
             );
             shield.MaintenanceCost = 0;
-            AIDemand demand = new AIDemand(
+            AIProductionDemand demand = new AIProductionDemand(
                 "planetary-shield-demand",
-                AIDemandKind.PlanetaryDefense,
+                AIProductionDemandKind.PlanetaryDefense,
                 ManufacturingType.Building,
                 BuildingType.Defense,
                 planet,
                 2,
-                100
+                baseDemandPercent: 100
             );
             AIManufactureProposal proposal = new AIManufactureProposal(
                 demand,
@@ -341,14 +338,14 @@ namespace Rebellion.Tests.AI.Proposals
                 empire.InstanceID
             );
             regiment.MaintenanceCost = 0;
-            AIDemand demand = new AIDemand(
+            AIProductionDemand demand = new AIProductionDemand(
                 "garrison-demand",
-                AIDemandKind.GarrisonRegimentReserve,
+                AIProductionDemandKind.GarrisonRegimentReserve,
                 ManufacturingType.Troop,
                 BuildingType.None,
                 planet,
                 6,
-                100
+                baseDemandPercent: 100
             );
             AIManufactureProposal proposal = new AIManufactureProposal(
                 demand,
@@ -403,14 +400,14 @@ namespace Rebellion.Tests.AI.Proposals
                 BuildingType.Defense
             );
             shield.MaintenanceCost = 0;
-            AIDemand demand = new AIDemand(
+            AIProductionDemand demand = new AIProductionDemand(
                 "headquarters-defense",
-                AIDemandKind.PlanetaryDefense,
+                AIProductionDemandKind.PlanetaryDefense,
                 ManufacturingType.Building,
                 BuildingType.Defense,
                 headquarters,
                 1,
-                100
+                baseDemandPercent: 100
             );
             AIManufactureProposal proposal = new AIManufactureProposal(
                 demand,
@@ -450,15 +447,14 @@ namespace Rebellion.Tests.AI.Proposals
                 "commandos",
                 empire.InstanceID
             );
-            template.SetBaseRating(SkillRating.Combat, 70);
-            AIDemand demand = new AIDemand(
+            template.SetBaseRating(OfficerRating.Combat, 70);
+            AIProductionDemand demand = new AIProductionDemand(
                 "special-forces-demand",
-                AIDemandKind.SpecialForces,
+                AIProductionDemandKind.SpecialForces,
                 ManufacturingType.Troop,
                 BuildingType.None,
                 planet,
                 1,
-                100,
                 template.GetTypeID()
             );
             AIManufactureProposal proposal = new AIManufactureProposal(
@@ -476,7 +472,7 @@ namespace Rebellion.Tests.AI.Proposals
                 .Single();
             Assert.AreEqual("commandos", queued.GetTypeID());
             Assert.AreSame(planet, queued.GetParent());
-            Assert.AreEqual(70, queued.GetBaseRating(SkillRating.Combat));
+            Assert.AreEqual(70, queued.GetBaseRating(OfficerRating.Combat));
         }
 
         [Test]
@@ -514,14 +510,14 @@ namespace Rebellion.Tests.AI.Proposals
                 ConstructionCost = 1,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
-            AIDemand demand = new AIDemand(
+            AIProductionDemand demand = new AIProductionDemand(
                 "starfighter-demand",
-                AIDemandKind.FleetStarfighter,
+                AIProductionDemandKind.FleetStarfighter,
                 ManufacturingType.Ship,
                 BuildingType.None,
                 fleet,
                 3,
-                100
+                baseDemandPercent: 100
             );
             AIManufactureProposal proposal = new AIManufactureProposal(
                 demand,
@@ -561,14 +557,14 @@ namespace Rebellion.Tests.AI.Proposals
                 "planetary-fighter",
                 empire.InstanceID
             );
-            AIDemand demand = new AIDemand(
+            AIProductionDemand demand = new AIProductionDemand(
                 "planetary-starfighter-demand",
-                AIDemandKind.PlanetaryStarfighterReserve,
+                AIProductionDemandKind.PlanetaryStarfighterReserve,
                 ManufacturingType.Ship,
                 BuildingType.None,
                 planet,
                 3,
-                100
+                baseDemandPercent: 100
             );
             AIManufactureProposal proposal = new AIManufactureProposal(
                 demand,
@@ -612,14 +608,14 @@ namespace Rebellion.Tests.AI.Proposals
                 "capital-template",
                 empire.InstanceID
             );
-            AIDemand demand = new AIDemand(
+            AIProductionDemand demand = new AIProductionDemand(
                 "capital-demand",
-                AIDemandKind.FleetCapitalShip,
+                AIProductionDemandKind.FleetCapitalShip,
                 ManufacturingType.Ship,
                 BuildingType.None,
                 fleet,
                 1,
-                100
+                baseDemandPercent: 100
             );
             AIManufactureProposal proposal = new AIManufactureProposal(
                 demand,
@@ -676,14 +672,14 @@ namespace Rebellion.Tests.AI.Proposals
                 );
             }
 
-            AIDemand demand = new AIDemand(
+            AIProductionDemand demand = new AIProductionDemand(
                 "fleet-seed-demand",
-                AIDemandKind.FleetSeedCapitalShip,
+                AIProductionDemandKind.FleetSeedCapitalShip,
                 ManufacturingType.Ship,
                 BuildingType.None,
                 planet,
                 1,
-                100
+                baseDemandPercent: 100
             );
             AIManufactureProposal proposal = new AIManufactureProposal(
                 demand,
@@ -741,14 +737,14 @@ namespace Rebellion.Tests.AI.Proposals
             );
             template.TypeID = "transport";
             template.ManufacturingFactionInstanceIDs.Add(empire.InstanceID);
-            AIDemand demand = new AIDemand(
+            AIProductionDemand demand = new AIProductionDemand(
                 "colonization-fleet-seed-demand",
-                AIDemandKind.ColonizationFleetSeedCapitalShip,
+                AIProductionDemandKind.ColonizationFleetSeedCapitalShip,
                 ManufacturingType.Ship,
                 BuildingType.None,
                 planet,
                 1,
-                100,
+                baseDemandPercent: 100,
                 capitalShipRole: AICapitalShipProductionRole.TroopTransport
             );
             AIManufactureProposal proposal = new AIManufactureProposal(
@@ -775,16 +771,16 @@ namespace Rebellion.Tests.AI.Proposals
         /// </summary>
         /// <param name="destination">The destination.</param>
         /// <returns>The created building demand.</returns>
-        private static AIDemand CreateBuildingDemand(Planet destination)
+        private static AIProductionDemand CreateBuildingDemand(Planet destination)
         {
-            return new AIDemand(
+            return new AIProductionDemand(
                 "mine-demand",
-                AIDemandKind.Mine,
+                AIProductionDemandKind.Mine,
                 ManufacturingType.Building,
                 BuildingType.Mine,
                 destination,
                 1,
-                100
+                baseDemandPercent: 100
             );
         }
 
@@ -854,16 +850,16 @@ namespace Rebellion.Tests.AI.Proposals
             advancedShipyard.ProcessRate = 2;
             advancedShipyard.ResearchOrder = 5;
             advancedShipyard.MaintenanceCost = upgradeMaintenance;
-            AIDemand demand = new AIDemand(
+            AIProductionDemand demand = new AIProductionDemand(
                 "facility-upgrade",
-                AIDemandKind.BuildingUpgrade,
+                AIProductionDemandKind.BuildingUpgrade,
                 ManufacturingType.Building,
                 BuildingType.Shipyard,
                 planet,
                 1,
-                100
+                baseDemandPercent: 100,
+                buildingToReplace: replacement
             );
-            demand.BuildingToReplace = replacement;
             AIManufactureProposal proposal = new AIManufactureProposal(
                 demand,
                 planet,

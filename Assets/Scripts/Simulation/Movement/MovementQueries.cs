@@ -251,6 +251,34 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
+        /// Estimates how long an in-transit unit would take if retargeted from its current position.
+        /// </summary>
+        /// <param name="unit">The in-transit unit to evaluate.</param>
+        /// <param name="destination">The proposed retarget destination.</param>
+        /// <param name="transitTicks">The estimated transit duration after retargeting.</param>
+        /// <returns>True when the live route can be estimated.</returns>
+        public bool TryEstimateRetargetedTransitTicks(
+            IMovable unit,
+            Planet destination,
+            out int transitTicks
+        )
+        {
+            transitTicks = 0;
+            IMovable liveUnit = ResolveLiveNode(unit) as IMovable;
+            Planet liveDestination = ResolveLiveNode(destination) as Planet;
+            if (liveUnit?.Movement == null || liveDestination == null)
+                return false;
+
+            transitTicks = CalculateTransitTicks(
+                liveUnit,
+                liveUnit.Movement.CurrentPosition,
+                liveDestination,
+                sameSector: false
+            );
+            return true;
+        }
+
+        /// <summary>
         /// Resolves the planet used for transit calculations for a requested destination.
         /// </summary>
         /// <param name="unit">The unit being evaluated.</param>

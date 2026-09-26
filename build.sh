@@ -11,6 +11,7 @@ ARCHITECTURE_TEST_PROJECT="${ARCHITECTURE_TEST_PROJECT:-Tools/Rebellion.Architec
 MEMBER_ORDER_LINT_PROJECT="${MEMBER_ORDER_LINT_PROJECT:-MemberOrder.Lint.csproj}"
 GAME_LINT_PROJECT="${GAME_LINT_PROJECT:-GameAssembly.Lint.csproj}"
 EDITOR_LINT_PROJECT="${EDITOR_LINT_PROJECT:-EditorAssembly.Lint.csproj}"
+UNITY_TEST_REFERENCES="${UNITY_TEST_REFERENCES:-$(cd "$PROJECT_PATH" && pwd)/Tools/UnityTestReferences.targets}"
 
 set_dotnet_root() {
     if [ -n "$DOTNET_ROOT" ] || ! command -v dotnet >/dev/null 2>&1; then
@@ -138,10 +139,37 @@ do_lint() {
     # In CI the Unity test runner already proves compilation, so this is skipped.
     if [ -f GameAssembly.csproj ]; then
         echo "=== GameAssembly ==="
-        dotnet build GameAssembly.csproj -verbosity:normal "${extra_args[@]}"
+        # Unity-generated projects share output/intermediate directories, so parallel MSBuild can
+        # race dependencies and report missing metadata from another project still being compiled.
+        dotnet build Rebellion.InputActions.csproj \
+            -maxcpucount:1 \
+            -verbosity:normal \
+            "${extra_args[@]}"
+        dotnet build GameAssembly.csproj \
+            --no-dependencies \
+            -maxcpucount:1 \
+            -verbosity:normal \
+            "${extra_args[@]}"
         echo ""
+        for test_project in UnitTests.csproj; do
+            if [ ! -f "$test_project" ]; then
+                continue
+            fi
+
+            echo "=== ${test_project%.csproj} ==="
+            dotnet build "$test_project" \
+                -maxcpucount:1 \
+                -verbosity:normal \
+                -p:CustomAfterMicrosoftCommonTargets="$UNITY_TEST_REFERENCES" \
+                "${extra_args[@]}"
+            echo ""
+        done
+
         echo "=== Architecture Tests ==="
-        dotnet test "$ARCHITECTURE_TEST_PROJECT" --configuration Debug --verbosity quiet
+        dotnet test "$ARCHITECTURE_TEST_PROJECT" \
+            --configuration Debug \
+            --verbosity quiet \
+            -p:BuildProjectReferences=false
         echo ""
     fi
 

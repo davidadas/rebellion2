@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.AI.Director;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
@@ -75,56 +74,6 @@ namespace Rebellion.AI.Proposals
         }
 
         /// <summary>
-        /// Returns claims used to avoid selecting incompatible mission proposals.
-        /// </summary>
-        /// <returns>Claim keys for this proposal.</returns>
-        public override IReadOnlyList<string> GetClaimKeys()
-        {
-            List<string> claimKeys = Participants
-                .Select(participant => AIClaimKeys.MissionActor(participant.InstanceID))
-                .ToList();
-
-            AddMissionSpecificClaims(claimKeys);
-
-            return claimKeys;
-        }
-
-        /// <summary>
-        /// Adds claims that are specific to this mission target.
-        /// </summary>
-        /// <param name="claimKeys">The claim list to update.</param>
-        private void AddMissionSpecificClaims(List<string> claimKeys)
-        {
-            if (MissionTypeID == RecruitmentMission.MissionTypeID)
-            {
-                claimKeys.Add(AIClaimKeys.MissionRecruitment(Participant.OwnerInstanceID));
-                return;
-            }
-
-            if (MissionTypeID == ResearchMission.MissionTypeID && Discipline.HasValue)
-            {
-                claimKeys.Add(
-                    AIClaimKeys.MissionResearch(Participant.OwnerInstanceID, Discipline.Value)
-                );
-                return;
-            }
-
-            if (TargetOfficer != null)
-            {
-                claimKeys.Add(AIClaimKeys.MissionOfficer(TargetOfficer.InstanceID));
-                return;
-            }
-
-            if (SelectedTarget != null)
-            {
-                claimKeys.Add(AIClaimKeys.MissionTarget(SelectedTarget.InstanceID));
-                return;
-            }
-
-            claimKeys.Add(AIClaimKeys.MissionAtPlanet(MissionTypeID, TargetPlanet.InstanceID));
-        }
-
-        /// <summary>
         /// Returns a stable sort key for mission selection.
         /// </summary>
         /// <returns>A stable sort key.</returns>
@@ -188,11 +137,11 @@ namespace Rebellion.AI.Proposals
         }
 
         /// <summary>
-        /// Creates an equivalent proposal with one decoy assigned.
+        /// Creates an equivalent proposal with an additional decoy assigned.
         /// </summary>
         /// <param name="decoy">The participant assigned as the decoy.</param>
-        /// <returns>A copy of this proposal containing the decoy assignment.</returns>
-        internal AIMissionProposal WithDecoy(IMissionParticipant decoy)
+        /// <returns>A copy of this proposal containing the additional decoy assignment.</returns>
+        internal AIMissionProposal WithAdditionalDecoy(IMissionParticipant decoy)
         {
             AIMissionProposal proposal = new AIMissionProposal(
                 MainParticipants,
@@ -201,7 +150,7 @@ namespace Rebellion.AI.Proposals
                 SelectedTarget,
                 TargetOfficer,
                 Discipline,
-                new[] { decoy }
+                DecoyParticipants.Concat(new[] { decoy })
             );
             if (HasScore)
                 proposal.SetScore(Score);
@@ -242,13 +191,13 @@ namespace Rebellion.AI.Proposals
                     return false;
             }
 
-            if (MissionTypeID == ResearchMission.MissionTypeID && !Discipline.HasValue)
+            if (MissionTypeID == MissionTypeIDs.Research && !Discipline.HasValue)
                 return false;
 
             if (RequiresTargetOfficer() && TargetOfficer == null)
                 return false;
 
-            if (MissionTypeID == SabotageMission.MissionTypeID && SelectedTarget == null)
+            if (MissionTypeID == MissionTypeIDs.Sabotage && SelectedTarget == null)
                 return false;
 
             return IsTargetOfficerAvailable();
@@ -260,9 +209,9 @@ namespace Rebellion.AI.Proposals
         /// <returns>True if this mission requires an officer target.</returns>
         private bool RequiresTargetOfficer()
         {
-            return MissionTypeID == AbductionMission.MissionTypeID
-                || MissionTypeID == AssassinationMission.MissionTypeID
-                || MissionTypeID == RescueMission.MissionTypeID;
+            return MissionTypeID == MissionTypeIDs.Abduction
+                || MissionTypeID == MissionTypeIDs.Assassination
+                || MissionTypeID == MissionTypeIDs.Rescue;
         }
 
         /// <summary>Creates the mission context represented by the proposal.</summary>
@@ -318,7 +267,7 @@ namespace Rebellion.AI.Proposals
             if (TargetOfficer.IsKilled)
                 return false;
 
-            return MissionTypeID == RescueMission.MissionTypeID
+            return MissionTypeID == MissionTypeIDs.Rescue
                 ? TargetOfficer.IsCaptured
                 : !TargetOfficer.IsCaptured;
         }
