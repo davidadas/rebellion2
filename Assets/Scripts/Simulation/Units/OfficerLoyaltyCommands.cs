@@ -151,7 +151,9 @@ namespace Rebellion.Simulation
                 return;
 
             foreach (
-                Officer officer in _game.GetSceneNodesByType<Officer>().Where(IsFreeLivingOfficer)
+                Officer officer in _game
+                    .GetSceneNodesByType<Officer>()
+                    .Where(IsEligibleForControlShift)
             )
             {
                 int signedShift =
@@ -166,10 +168,10 @@ namespace Rebellion.Simulation
         /// Returns whether an officer participates in galaxy-wide loyalty shifts.
         /// </summary>
         /// <param name="officer">The officer to inspect.</param>
-        /// <returns>True for living, uncaptured officers without command rank.</returns>
-        private static bool IsFreeLivingOfficer(Officer officer)
+        /// <returns>True for living, uncaptured officers who are capable of betrayal.</returns>
+        private static bool IsEligibleForControlShift(Officer officer)
         {
-            return officer is { CurrentRank: OfficerRank.None, IsCaptured: false, IsKilled: false };
+            return officer is { CanBetray: true, IsCaptured: false, IsKilled: false };
         }
     }
 }

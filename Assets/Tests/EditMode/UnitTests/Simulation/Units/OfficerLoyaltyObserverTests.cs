@@ -77,6 +77,7 @@ namespace Rebellion.Tests.Simulation
             };
             game.AttachNode(planet, sector);
             officer = EntityFactory.CreateOfficer("officer", "empire");
+            officer.CanBetray = true;
             game.AttachNode(officer, planet);
             return game;
         }
