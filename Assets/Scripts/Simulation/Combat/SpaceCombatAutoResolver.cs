@@ -10,7 +10,7 @@ using Rebellion.Util.Random;
 namespace Rebellion.Simulation
 {
     /// <summary>
-    /// Stores the original tactical command bonuses contributed by one side's ranking officers.
+    /// Stores the tactical command bonuses contributed by one side's ranking officers.
     /// </summary>
     public readonly struct SpaceCombatCommandModifiers
     {
@@ -666,7 +666,7 @@ namespace Rebellion.Simulation
             }
 
             /// <summary>
-            /// Scales an officer rating with its configured original-game divisor.
+            /// Scales an officer rating with its configured tactical divisor.
             /// </summary>
             /// <param name="rating">The selected officer's effective rating.</param>
             /// <param name="divisor">The configured tactical divisor.</param>
@@ -2034,8 +2034,8 @@ namespace Rebellion.Simulation
             }
 
             /// <summary>
-            /// Applies the Commander's original Combat-derived effectiveness bonus to a usable
-            /// fighter weapon lane without changing the weapon charge it consumes.
+            /// Applies the Commander's Combat-derived effectiveness bonus to a usable fighter
+            /// weapon lane without changing the weapon charge it consumes.
             /// </summary>
             /// <param name="weaponStrength">The usable raw weapon strength.</param>
             /// <returns>The command-adjusted weapon strength.</returns>

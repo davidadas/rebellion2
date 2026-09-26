@@ -2227,7 +2227,7 @@ public sealed class StrategyController
     }
 
     /// <summary>
-    /// Assigns one selected live officer to a classic local command post.
+    /// Assigns one selected live officer to a local command post.
     /// </summary>
     /// <param name="items">The selected fleet-window items or snapshots.</param>
     /// <param name="rank">The requested command rank.</param>

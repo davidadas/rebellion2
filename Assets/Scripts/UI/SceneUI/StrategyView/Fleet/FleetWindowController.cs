@@ -38,7 +38,7 @@ public interface IFleetWindowActions
     void RefreshFleetState();
 
     /// <summary>
-    /// Assigns the selected officer to a classic local command post.
+    /// Assigns the selected officer to a local command post.
     /// </summary>
     /// <param name="items">The selected fleet-window items.</param>
     /// <param name="rank">The requested command rank.</param>

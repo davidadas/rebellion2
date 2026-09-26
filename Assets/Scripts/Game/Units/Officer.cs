@@ -327,9 +327,9 @@ namespace Rebellion.Game.Units
         public bool CanImproveMissionRating => true;
 
         /// <summary>
-        /// Returns the officer's current command title and classic command name.
+        /// Returns the officer's current command title and display name.
         /// </summary>
-        /// <returns>The classic command-qualified name, or the authored name when unassigned.</returns>
+        /// <returns>The command-qualified name, or the authored name when unassigned.</returns>
         public override string GetDisplayName()
         {
             string name = base.GetDisplayName();
@@ -351,9 +351,8 @@ namespace Rebellion.Game.Units
         }
 
         /// <summary>
-        /// Converts an authored character name to the surname-style command name used by the
-        /// original game, such as Wedge Antilles becoming Antilles and Garm Bel Iblis becoming
-        /// Bel Iblis.
+        /// Converts an authored character name to the surname-style command name, such as Wedge
+        /// Antilles becoming Antilles and Garm Bel Iblis becoming Bel Iblis.
         /// </summary>
         /// <param name="name">The authored officer name.</param>
         /// <returns>The name portion displayed after a command title.</returns>

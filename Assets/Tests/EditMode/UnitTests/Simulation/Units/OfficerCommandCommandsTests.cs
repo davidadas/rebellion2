@@ -16,7 +16,7 @@ namespace Rebellion.Tests.Simulation
         private const string _ownerId = "alliance";
 
         [Test]
-        public void TrySetRank_EligibleOfficer_AssignsPostAndPublishesClassicCommandKind()
+        public void TrySetRank_EligibleOfficer_AssignsPostAndPublishesCommandKind()
         {
             GameRoot game = BuildScene(out Planet planet);
             Fleet fleet = new Fleet { InstanceID = "fleet", OwnerInstanceID = _ownerId };
@@ -68,7 +68,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void TrySetRank_ActiveRank_TogglesPostOffLikeOriginalCompoundSetter()
+        public void TrySetRank_ActiveRank_ResignsFromPost()
         {
             GameRoot game = BuildScene(out Planet planet);
             Officer officer = CreateOfficer(game, planet, "candidate", OfficerRank.Commander);
