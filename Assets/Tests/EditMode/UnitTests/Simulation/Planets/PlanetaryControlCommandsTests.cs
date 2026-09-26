@@ -32,7 +32,9 @@ namespace Rebellion.Tests.Simulation
         [SetUp]
         public void SetUp()
         {
-            _game = new GameRoot(TestConfig.Create());
+            GameConfig config = new GameConfig();
+            config.SupportShift.OwnershipTransferThreshold = 60;
+            _game = new GameRoot(config);
 
             _rebels = new Faction { InstanceID = "rebels", DisplayName = "Rebels" };
             _empire = new Faction { InstanceID = "empire", DisplayName = "Empire" };
@@ -145,6 +147,52 @@ namespace Rebellion.Tests.Simulation
             );
 
             Assert.AreEqual(_rebels.InstanceID, officer.OwnerInstanceID);
+        }
+
+        [Test]
+        public void ReconcilePlanet_UncolonizedPlanetWithOnlyInboundRegiment_ReroutesRegiment()
+        {
+            _targetPlanet.IsColonized = false;
+            _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
+            Regiment stationedRegiment = new Regiment
+            {
+                InstanceID = "stationed-regiment",
+                OwnerInstanceID = _empire.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(stationedRegiment, _targetPlanet);
+            Point currentPosition = new Point(50, 0);
+            Regiment inboundRegiment = new Regiment
+            {
+                InstanceID = "inbound-regiment",
+                OwnerInstanceID = _empire.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                Movement = new MovementState
+                {
+                    TransitTicks = 10,
+                    TicksElapsed = 5,
+                    OriginPosition = _empirePlanet.GetPosition(),
+                    CurrentPosition = currentPosition,
+                },
+            };
+            _game.AttachNode(inboundRegiment, _targetPlanet);
+            _game.DetachNode(stationedRegiment);
+
+            List<GameResult> results = _commands.ReconcilePlanet(_targetPlanet);
+
+            Assert.IsNull(_targetPlanet.GetOwnerInstanceID());
+            Assert.AreSame(_empirePlanet, inboundRegiment.GetParentOfType<Planet>());
+            Assert.IsNotNull(inboundRegiment.Movement);
+            Assert.AreEqual(currentPosition, inboundRegiment.Movement.OriginPosition);
+            Assert.IsTrue(
+                results
+                    .OfType<PlanetOwnershipChangedResult>()
+                    .Any(result =>
+                        result.Planet == _targetPlanet
+                        && result.PreviousOwner == _empire
+                        && result.NewOwner == null
+                    )
+            );
         }
 
         [Test]
@@ -438,7 +486,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void TransferPlanet_PlanetWithEnemyStarfighters_DestroysEnemyStarfighters()
+        public void TransferPlanet_StationedEnemyStarfighter_ReroutesStarfighter()
         {
             _game.ChangeOwnership(_targetPlanet, "empire");
             Starfighter fighter = new Starfighter
@@ -448,16 +496,53 @@ namespace Rebellion.Tests.Simulation
                 ManufacturingStatus = ManufacturingStatus.Complete,
                 MaxSquadronSize = 10,
                 CurrentSquadronSize = 10,
+                Hyperdrive = 0,
             };
             _game.AttachNode(fighter, _targetPlanet);
 
             _commands.TransferPlanet(_targetPlanet, _rebels);
 
-            Assert.IsNull(
+            Assert.AreSame(
+                _empirePlanet,
                 fighter.GetParentOfType<Planet>(),
-                "Stationed enemy starfighter should be destroyed, not evacuated"
+                "Stationed enemy starfighter should evacuate despite lacking its own hyperdrive"
             );
-            CollectionAssert.DoesNotContain(_targetPlanet.GetChildren<Starfighter>(), fighter);
+            Assert.IsNotNull(fighter.Movement);
+            Assert.AreSame(
+                fighter,
+                _game.GetSceneNodeByInstanceID<Starfighter>(fighter.InstanceID)
+            );
+        }
+
+        [Test]
+        public void TransferPlanet_InTransitStarfighterDestinedForPlanet_ReroutesStarfighter()
+        {
+            _game.ChangeOwnership(_targetPlanet, "empire");
+            Point currentPosition = new Point(50, 0);
+            Starfighter fighter = new Starfighter
+            {
+                InstanceID = "inbound-starfighter",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                Movement = new MovementState
+                {
+                    TransitTicks = 10,
+                    TicksElapsed = 5,
+                    OriginPosition = _empirePlanet.GetPosition(),
+                    CurrentPosition = currentPosition,
+                },
+            };
+            _game.AttachNode(fighter, _targetPlanet);
+
+            _commands.TransferPlanet(_targetPlanet, _rebels);
+
+            Assert.AreSame(_empirePlanet, fighter.GetParentOfType<Planet>());
+            Assert.IsNotNull(fighter.Movement);
+            Assert.AreEqual(currentPosition, fighter.Movement.OriginPosition);
+            Assert.AreSame(
+                fighter,
+                _game.GetSceneNodeByInstanceID<Starfighter>(fighter.InstanceID)
+            );
         }
 
         [Test]
