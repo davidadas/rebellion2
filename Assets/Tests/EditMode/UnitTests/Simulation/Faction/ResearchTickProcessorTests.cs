@@ -25,7 +25,7 @@ namespace Rebellion.Tests.Simulation
         public void SetUp()
         {
             GameConfig config = TestConfig.Create();
-            _game = new GameRoot(config);
+            _game = TestGame.Create(config);
 
             _faction = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
             _game.GetFactions().Add(_faction);

@@ -59,7 +59,7 @@ namespace Rebellion.Tests.Game
 
             // Initialize the _game.
             GameConfig config = new GameConfig();
-            _game = new GameRoot(_summary, config);
+            _game = TestGame.Create(_summary, config);
             _game.GetFactions().Add(_faction1);
             _game.GetFactions().Add(_faction2);
             _game.SetFactionController(_faction1.InstanceID, "PLAYER1", PlayerControllerType.Human);
@@ -100,7 +100,7 @@ namespace Rebellion.Tests.Game
         {
             GameConfig config = new GameConfig();
 
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
 
             Assert.AreSame(config, game.Config);
         }
@@ -660,7 +660,7 @@ namespace Rebellion.Tests.Game
         [Test]
         public void GetPlayerFaction_NoHumanPlayer_DoesNotUseSummaryFaction()
         {
-            GameRoot game = new GameRoot(
+            GameRoot game = TestGame.Create(
                 new GameSummary { PlayerFactionID = _faction1.InstanceID },
                 TestContent.Data.GameConfig
             );

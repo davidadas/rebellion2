@@ -44,18 +44,6 @@ namespace Rebellion.Game.Messages
         protected Message() { }
 
         /// <summary>
-        /// Constructor for creating a new message.
-        /// </summary>
-        /// <param name="type">The type of message.</param>
-        /// <param name="text">The text of the message.</param>
-        protected Message(MessageType type, string text)
-        {
-            Type = type;
-            Title = text;
-            Body = text;
-        }
-
-        /// <summary>
         /// Initializes a new instance of the Message class.
         /// </summary>
         /// <param name="type">The type.</param>
@@ -79,14 +67,6 @@ namespace Rebellion.Game.Messages
         /// Initializes a status message during deserialization.
         /// </summary>
         public StatusMessage() { }
-
-        /// <summary>
-        /// Creates a status message whose title and body use the same text.
-        /// </summary>
-        /// <param name="type">The message category.</param>
-        /// <param name="text">The message title and body.</param>
-        public StatusMessage(MessageType type, string text)
-            : base(type, text) { }
 
         /// <summary>
         /// Creates a status message with separate title and body text.

@@ -270,7 +270,7 @@ namespace Rebellion.Tests.Simulation
             MovementQueries movement
         ) BuildScene(GameConfig config = null)
         {
-            GameRoot game = new GameRoot(config ?? TestContent.Data.GameConfig);
+            GameRoot game = TestGame.Create(config ?? TestContent.Data.GameConfig);
 
             Faction empire = new Faction { InstanceID = "empire" };
             game.GetFactions().Add(empire);
@@ -326,7 +326,7 @@ namespace Rebellion.Tests.Simulation
             MovementQueries movement
         ) BuildWaypointScene()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
             PlanetSector sector = new PlanetSector { InstanceID = "sector" };

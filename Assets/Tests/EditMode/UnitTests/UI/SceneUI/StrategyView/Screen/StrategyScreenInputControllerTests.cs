@@ -645,7 +645,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             out DragPreview preview
         )
         {
-            preview = new DragPreview(_dragTexture, 20, 30, 2, 3);
+            preview = DragPreviewTestFactory.Create(_dragTexture, 20, 30, 2, 3);
             return _hasDragPreview;
         }
 

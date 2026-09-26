@@ -160,7 +160,7 @@ namespace Rebellion.Tests.Content
         /// <returns>The created assets.</returns>
         private ContentAssets CreateAssets()
         {
-            return new ContentAssets(_contentRoot, _packRoot);
+            return new ContentAssets(new ContentFileResolver(_contentRoot, _packRoot));
         }
     }
 }

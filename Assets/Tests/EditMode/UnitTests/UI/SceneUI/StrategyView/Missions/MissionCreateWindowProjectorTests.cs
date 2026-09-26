@@ -33,7 +33,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         [SetUp]
         public void SetUp()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             game.GetFactions()
                 .Add(new Faction { InstanceID = _playerFactionId, DisplayName = "Alliance" });
             game.Summary.PlayerFactionID = _playerFactionId;

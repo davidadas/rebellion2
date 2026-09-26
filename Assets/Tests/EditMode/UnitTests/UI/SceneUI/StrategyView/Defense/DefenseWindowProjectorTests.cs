@@ -30,7 +30,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         [SetUp]
         public void SetUp()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             game.GetFactions().Add(new Faction { InstanceID = _ownerId });
             game.Summary.PlayerFactionID = _ownerId;
             game.SetFactionController(_ownerId, "PLAYER1", PlayerControllerType.Human);

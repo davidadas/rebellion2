@@ -508,7 +508,7 @@ namespace Rebellion.Tests.Game.Factions
                 MessageType messageType in Enum.GetValues(typeof(MessageType)).Cast<MessageType>()
             )
             {
-                Message message = new StatusMessage(messageType, "Message text");
+                Message message = new StatusMessage(messageType, "Message text", "Message text");
 
                 _faction.AddMessage(message);
 
@@ -524,7 +524,11 @@ namespace Rebellion.Tests.Game.Factions
         public void AddMessage_MissingMessageBucket_CreatesBucketAndAddsMessage()
         {
             _faction.Messages.Remove(MessageType.Manufacturing);
-            Message message = new StatusMessage(MessageType.Manufacturing, "Manufacturing idle");
+            Message message = new StatusMessage(
+                MessageType.Manufacturing,
+                "Manufacturing idle",
+                "Manufacturing idle"
+            );
 
             _faction.AddMessage(message);
 
@@ -535,7 +539,11 @@ namespace Rebellion.Tests.Game.Factions
         public void AddMessage_NullMessageDictionary_CreatesDictionaryAndAddsMessage()
         {
             _faction.Messages = null;
-            Message message = new StatusMessage(MessageType.Manufacturing, "Manufacturing idle");
+            Message message = new StatusMessage(
+                MessageType.Manufacturing,
+                "Manufacturing idle",
+                "Manufacturing idle"
+            );
 
             _faction.AddMessage(message);
 
@@ -545,12 +553,24 @@ namespace Rebellion.Tests.Game.Factions
         [Test]
         public void MarkAllMessagesRead_MixedMessageState_MarksEveryMessageRead()
         {
-            Message unreadFleet = new StatusMessage(MessageType.Fleet, "Fleet arrived");
-            Message readMission = new StatusMessage(MessageType.Mission, "Mission completed")
+            Message unreadFleet = new StatusMessage(
+                MessageType.Fleet,
+                "Fleet arrived",
+                "Fleet arrived"
+            );
+            Message readMission = new StatusMessage(
+                MessageType.Mission,
+                "Mission completed",
+                "Mission completed"
+            )
             {
                 Read = true,
             };
-            Message unreadResource = new StatusMessage(MessageType.Resource, "Resource report");
+            Message unreadResource = new StatusMessage(
+                MessageType.Resource,
+                "Resource report",
+                "Resource report"
+            );
             _faction.AddMessage(unreadFleet);
             _faction.AddMessage(readMission);
             _faction.AddMessage(unreadResource);
@@ -565,7 +585,9 @@ namespace Rebellion.Tests.Game.Factions
         [Test]
         public void HasUnreadMessages_UnreadMessage_ReturnsTrue()
         {
-            _faction.AddMessage(new StatusMessage(MessageType.Fleet, "Fleet arrived"));
+            _faction.AddMessage(
+                new StatusMessage(MessageType.Fleet, "Fleet arrived", "Fleet arrived")
+            );
 
             Assert.IsTrue(_faction.HasUnreadMessages());
         }
@@ -574,7 +596,10 @@ namespace Rebellion.Tests.Game.Factions
         public void HasUnreadMessages_OnlyReadMessages_ReturnsFalse()
         {
             _faction.AddMessage(
-                new StatusMessage(MessageType.Mission, "Mission completed") { Read = true }
+                new StatusMessage(MessageType.Mission, "Mission completed", "Mission completed")
+                {
+                    Read = true,
+                }
             );
 
             Assert.IsFalse(_faction.HasUnreadMessages());
@@ -583,7 +608,11 @@ namespace Rebellion.Tests.Game.Factions
         [Test]
         public void RemoveMessage_ExistingMessage_RemovesFromList()
         {
-            Message message = new StatusMessage(MessageType.Mission, "Mission completed");
+            Message message = new StatusMessage(
+                MessageType.Mission,
+                "Mission completed",
+                "Mission completed"
+            );
             _faction.AddMessage(message);
 
             _faction.RemoveMessage(message);
@@ -598,7 +627,11 @@ namespace Rebellion.Tests.Game.Factions
         public void RemoveMessage_MissingMessageBucket_RemainsAbsent()
         {
             _faction.Messages.Remove(MessageType.Manufacturing);
-            Message message = new StatusMessage(MessageType.Manufacturing, "Manufacturing idle");
+            Message message = new StatusMessage(
+                MessageType.Manufacturing,
+                "Manufacturing idle",
+                "Manufacturing idle"
+            );
 
             _faction.RemoveMessage(message);
 
@@ -609,7 +642,11 @@ namespace Rebellion.Tests.Game.Factions
         public void RemoveMessage_NullMessageDictionary_RemainsNull()
         {
             _faction.Messages = null;
-            Message message = new StatusMessage(MessageType.Manufacturing, "Manufacturing idle");
+            Message message = new StatusMessage(
+                MessageType.Manufacturing,
+                "Manufacturing idle",
+                "Manufacturing idle"
+            );
 
             _faction.RemoveMessage(message);
 
@@ -746,7 +783,9 @@ namespace Rebellion.Tests.Game.Factions
         {
             _faction.SetHighestUnlockedOrder(ResearchDiscipline.ShipDesign, 3);
             _faction.AddOwnedUnit(_planet1);
-            _faction.AddMessage(new StatusMessage(MessageType.Resource, "Test message"));
+            _faction.AddMessage(
+                new StatusMessage(MessageType.Resource, "Test message", "Test message")
+            );
             _faction.ToggleAdvisorMessageNotification(MessageType.Fleet);
             _faction.TranslateCounterpart = false;
             _faction.AgentAdvice = false;
@@ -1472,7 +1511,7 @@ namespace Rebellion.Tests.Game.Factions
         /// <returns>The created game.</returns>
         private GameRoot CreateGame()
         {
-            return new GameRoot(TestConfig.Create());
+            return TestGame.Create(TestConfig.Create());
         }
 
         /// <summary>

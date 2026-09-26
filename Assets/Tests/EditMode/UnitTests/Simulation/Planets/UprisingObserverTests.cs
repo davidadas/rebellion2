@@ -85,7 +85,7 @@ namespace Rebellion.Tests.Simulation
             config.Uprising.IncidentPulseMaxTicks = 1;
             config.Uprising.ClearUprisingMinTicks = 1;
             config.Uprising.ClearUprisingMaxTicks = 1;
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 

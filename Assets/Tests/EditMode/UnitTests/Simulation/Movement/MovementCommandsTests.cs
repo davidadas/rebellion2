@@ -132,7 +132,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void RelocateUnits_NoCompatibleShip_MovesHyperdriveStarfighterToFriendlyPlanet()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             Faction faction = new Faction { InstanceID = "alliance" };
             game.GetFactions().Add(faction);
             PlanetSector sector = new PlanetSector { InstanceID = "sector" };
@@ -189,7 +189,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void RelocateUnits_NoCompatibleShipAndNoHyperdrive_LeavesStarfighterWithCurrentShip()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             Faction faction = new Faction { InstanceID = "alliance" };
             game.GetFactions().Add(faction);
             PlanetSector sector = new PlanetSector { InstanceID = "sector" };
@@ -238,7 +238,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void RelocateUnits_LimitedRecoveryCapacity_PrioritizesNonHyperdriveStarfighter()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             Faction faction = new Faction { InstanceID = "alliance" };
             game.GetFactions().Add(faction);
             PlanetSector sector = new PlanetSector { InstanceID = "sector" };
@@ -306,7 +306,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void RelocateUnits_HyperdriveFighterOccupiesRecoveryCapacity_EvacuatesHyperdriveFighterAndRecoversNonHyperdriveFighter()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             Faction faction = new Faction { InstanceID = "alliance" };
             game.GetFactions().Add(faction);
             PlanetSector sector = new PlanetSector { InstanceID = "sector" };
@@ -374,7 +374,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void Constructor_WithNullGame_ThrowsArgumentNullException()
         {
-            GameRoot dependencyGame = new GameRoot(TestConfig.Create());
+            GameRoot dependencyGame = TestGame.Create(TestConfig.Create());
 
             ArgumentNullException exception = Assert.Throws<ArgumentNullException>(() =>
                 new MovementCommands(
@@ -392,7 +392,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void Constructor_WithNullFogOfWar_ThrowsArgumentNullException()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
 
             ArgumentNullException exception = Assert.Throws<ArgumentNullException>(() =>
                 new MovementCommands(
@@ -410,7 +410,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void Constructor_WithNullFleetSystem_ThrowsArgumentNullException()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
 
             ArgumentNullException exception = Assert.Throws<ArgumentNullException>(() =>
                 new MovementCommands(
@@ -511,7 +511,7 @@ namespace Rebellion.Tests.Simulation
         public void RequestMove_SameSectorDestination_CanUseLocalTransitMinimum()
         {
             GameConfig config = TestContent.Data.GameConfig;
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
 
             PlanetSector sector = new PlanetSector { InstanceID = "sector1" };
@@ -561,7 +561,7 @@ namespace Rebellion.Tests.Simulation
         public void RequestMove_DifferentSystemDestination_UsesGlobalTransitMinimum()
         {
             GameConfig config = TestContent.Data.GameConfig;
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
 
             PlanetSector originSector = new PlanetSector { InstanceID = "sector1" };
@@ -1150,7 +1150,7 @@ namespace Rebellion.Tests.Simulation
         public void RequestMove_FleetWithInboundUnits_RetargetsInboundUnits()
         {
             GameConfig config = TestContent.Data.GameConfig;
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
 
             PlanetSector sector = new PlanetSector { InstanceID = "sector1" };
@@ -1330,7 +1330,7 @@ namespace Rebellion.Tests.Simulation
         public void RequestMove_StarfighterUnderConstruction_RetargetsDestination()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             Faction empire = new Faction { InstanceID = "empire" };
             game.GetFactions().Add(empire);
 
@@ -1408,7 +1408,7 @@ namespace Rebellion.Tests.Simulation
         public void RequestMove_CapitalShipToFleet_LandsAtFleet()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
 
             PlanetSector sector = new PlanetSector { InstanceID = "sector1" };
@@ -1478,7 +1478,7 @@ namespace Rebellion.Tests.Simulation
         public void RequestMove_CapitalShipInFriendlyFleetOverHostilePlanet_StartsTransit()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
@@ -1536,7 +1536,7 @@ namespace Rebellion.Tests.Simulation
         public void RequestMove_CapitalShipInFleetDestinationCaptured_ShipRemainsInFleet()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
@@ -1621,7 +1621,7 @@ namespace Rebellion.Tests.Simulation
         public void RequestMove_OfficerOnCapitalShipInFleet_CanMoveToMission()
         {
             GameConfig config = TestContent.Data.GameConfig;
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
 
             PlanetSector sector = new PlanetSector { InstanceID = "sector1" };
@@ -1682,7 +1682,7 @@ namespace Rebellion.Tests.Simulation
         public void RequestMove_CapitalShipFromFleetToFleetAtSamePlanet_ReparentsWithoutTransit()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
 
             PlanetSector sector = new PlanetSector { InstanceID = "sector1" };
@@ -1726,7 +1726,7 @@ namespace Rebellion.Tests.Simulation
         public void RequestMove_GroupFromDifferentShipsAtSamePlanet_MovesAllToDestinationFleet()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
 
             PlanetSector sector = new PlanetSector { InstanceID = "sector1" };
@@ -1791,7 +1791,7 @@ namespace Rebellion.Tests.Simulation
         public void RequestMove_SpecialForcesToFleetAtSamePlanet_BoardsFirstShip()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
 
             PlanetSector sector = new PlanetSector { InstanceID = "sector1" };
@@ -1943,7 +1943,7 @@ namespace Rebellion.Tests.Simulation
             // FixedRNG would cause loss, but planet isn't blockaded
             GameConfig config = TestConfig.Create();
             config.Blockade.EvacuationLossPercent = 100;
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
 
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
 
@@ -3142,7 +3142,7 @@ namespace Rebellion.Tests.Simulation
         public void ProcessTick_FleetMovesBeforeUnitArrives_UnitStillEnRoute()
         {
             GameConfig config = TestContent.Data.GameConfig;
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
 
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
 
@@ -3323,7 +3323,7 @@ namespace Rebellion.Tests.Simulation
         public void ProcessTick_BuildingInTransitDestinationChangedSides_BuildingDestroyed()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
@@ -3389,7 +3389,7 @@ namespace Rebellion.Tests.Simulation
         public void ProcessTick_NonBuildingInTransitDestinationChangedSides_UnitRerouted()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
@@ -3452,7 +3452,7 @@ namespace Rebellion.Tests.Simulation
         public void ProcessTick_FleetInTransitToHostilePlanet_FleetArrivesAtHostilePlanet()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
@@ -3515,7 +3515,7 @@ namespace Rebellion.Tests.Simulation
         public void ProcessTick_RegimentInTransitToFriendlyFleetAtHostilePlanet_ArrivesInFleet()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
@@ -4566,7 +4566,7 @@ namespace Rebellion.Tests.Simulation
             MovementCommands movement
         ) BuildScene(GameConfig config = null)
         {
-            GameRoot game = new GameRoot(config ?? TestContent.Data.GameConfig);
+            GameRoot game = TestGame.Create(config ?? TestContent.Data.GameConfig);
 
             Faction empire = new Faction { InstanceID = "empire" };
             game.GetFactions().Add(empire);
@@ -4628,7 +4628,7 @@ namespace Rebellion.Tests.Simulation
             MovementCommands movement
         ) BuildWaypointScene()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
             PlanetSector sector = new PlanetSector { InstanceID = "sector" };
@@ -4696,7 +4696,7 @@ namespace Rebellion.Tests.Simulation
         ) BuildFleetWithInTransitChildrenScene()
         {
             GameConfig config = TestContent.Data.GameConfig;
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
 
             PlanetSector sector = new PlanetSector { InstanceID = "sector1" };
@@ -4822,7 +4822,7 @@ namespace Rebellion.Tests.Simulation
         {
             GameConfig config = TestConfig.Create();
             config.Blockade.EvacuationLossPercent = 100;
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
@@ -4950,7 +4950,7 @@ namespace Rebellion.Tests.Simulation
         {
             GameConfig config = TestConfig.Create();
             config.Blockade.EvacuationLossPercent = 50;
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
 
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });

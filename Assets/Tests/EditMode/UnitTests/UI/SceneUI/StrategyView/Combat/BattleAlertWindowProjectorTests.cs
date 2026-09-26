@@ -819,7 +819,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             GameFleet OpponentFleet
         ) CreateScene(bool includeFleets = true)
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             game.GetFactions()
                 .Add(new Faction { InstanceID = _playerFactionId, DisplayName = "Alliance" });
             game.GetFactions()

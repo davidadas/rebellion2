@@ -1180,7 +1180,7 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Captive escape probability and loyalty effects.
+        /// Captive escape timing and probability.
         /// </summary>
         [PersistableObject]
         public class CaptiveConfig
@@ -1188,8 +1188,6 @@ namespace Rebellion.Game
             public TickRangeConfig EscapeAttemptInterval { get; set; } = new TickRangeConfig();
 
             public Dictionary<int, int> EscapeTable { get; set; } = new Dictionary<int, int>();
-
-            public int EscapeLoyaltyShift { get; set; }
         }
 
         /// <summary>
@@ -1209,18 +1207,7 @@ namespace Rebellion.Game
         [PersistableObject]
         public class OfficerLoyaltyConfig
         {
-            public RandomRangeConfig PlanetAcquisitionLoyaltyShift { get; set; } =
-                new RandomRangeConfig();
-        }
-
-        /// <summary>
-        /// An authored inclusive integer range.
-        /// </summary>
-        [PersistableObject]
-        public class RandomRangeConfig
-        {
-            public int Minimum { get; set; }
-            public int Maximum { get; set; }
+            public int PlanetAcquisitionSupportDivisor { get; set; }
         }
 
         /// <summary>

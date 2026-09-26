@@ -518,38 +518,6 @@ public sealed class StrategyOverlayRenderData
     /// Creates one complete drag-overlay presentation snapshot.
     /// </summary>
     /// <param name="dragFrameBounds">The optional window-move preview bounds.</param>
-    /// <param name="dragImageTexture">The optional item-drag texture.</param>
-    /// <param name="dragImageBounds">The optional item-drag bounds.</param>
-    public StrategyOverlayRenderData(
-        RectInt? dragFrameBounds,
-        Texture dragImageTexture,
-        RectInt? dragImageBounds
-    )
-    {
-        bool hasDragImageTexture = dragImageTexture != null;
-        bool hasDragImageBounds = dragImageBounds.HasValue;
-        if (hasDragImageTexture != hasDragImageBounds)
-            throw new System.ArgumentException(
-                "Drag image texture and bounds must either both be supplied or both be absent."
-            );
-
-        DragFrameBounds = dragFrameBounds;
-        DragPreview =
-            dragImageTexture == null
-                ? null
-                : new DragPreview(
-                    new[] { new DragPreviewImage(dragImageTexture, dragImageBounds.Value) },
-                    0,
-                    0
-                );
-        DragPointerX = 0;
-        DragPointerY = 0;
-    }
-
-    /// <summary>
-    /// Creates one complete drag-overlay presentation snapshot.
-    /// </summary>
-    /// <param name="dragFrameBounds">The optional window-move preview bounds.</param>
     /// <param name="dragPreview">The optional ordered item-drag preview.</param>
     /// <param name="dragPointerX">The current source-space horizontal pointer coordinate.</param>
     /// <param name="dragPointerY">The current source-space vertical pointer coordinate.</param>

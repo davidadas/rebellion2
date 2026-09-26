@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Xml;
 using System.Xml.Schema;
 using Rebellion.Game;
@@ -19,6 +20,7 @@ using Rebellion.SceneGraph;
 using Rebellion.Simulation;
 using Rebellion.Util.Random;
 using Rebellion.Util.Serialization;
+using UnityEngine;
 
 /// <summary>
 /// Provides scene construction helpers for tests that exercise consumers rather than placement rules.
@@ -427,6 +429,69 @@ public static class TestConfig
 }
 
 /// <summary>
+/// Creates game roots through the same configuration injection used by runtime composition.
+/// </summary>
+public static class TestGame
+{
+    /// <summary>
+    /// Creates a configured game root.
+    /// </summary>
+    /// <param name="config">The runtime configuration.</param>
+    /// <returns>The configured game root.</returns>
+    public static GameRoot Create(GameConfig config)
+    {
+        GameRoot game = new GameRoot();
+        game.SetConfig(config);
+        return game;
+    }
+
+    /// <summary>
+    /// Creates a configured game root with the supplied summary.
+    /// </summary>
+    /// <param name="summary">The game summary.</param>
+    /// <param name="config">The runtime configuration.</param>
+    /// <returns>The configured game root.</returns>
+    public static GameRoot Create(GameSummary summary, GameConfig config)
+    {
+        GameRoot game = Create(config);
+        game.Summary = summary;
+        return game;
+    }
+}
+
+/// <summary>
+/// Builds single-layer drag previews for tests that do not exercise preview composition.
+/// </summary>
+public static class DragPreviewTestFactory
+{
+    /// <summary>
+    /// Creates a single-layer preview from dimensions and a pointer offset.
+    /// </summary>
+    /// <param name="texture">The preview texture.</param>
+    /// <param name="width">The preview width.</param>
+    /// <param name="height">The preview height.</param>
+    /// <param name="offsetX">The horizontal pointer offset.</param>
+    /// <param name="offsetY">The vertical pointer offset.</param>
+    /// <returns>The drag preview.</returns>
+    public static DragPreview Create(
+        Texture texture,
+        int width,
+        int height,
+        int offsetX,
+        int offsetY
+    ) => Create(texture, new RectInt(-offsetX, -offsetY, width, height));
+
+    /// <summary>
+    /// Creates a single-layer preview at fixed source-space bounds.
+    /// </summary>
+    /// <param name="texture">The preview texture.</param>
+    /// <param name="bounds">The preview bounds.</param>
+    /// <returns>The drag preview.</returns>
+    public static DragPreview Create(Texture texture, RectInt bounds) =>
+        new DragPreview(new[] { new DragPreviewImage(texture, bounds) }, 0, 0);
+}
+
+/// <summary>
 /// Creates synthetic game-data catalogs for engine tests.
 /// </summary>
 public static class TestGameData
@@ -507,7 +572,7 @@ public static class MissionSceneBuilder
         FogOfWarCommands fog
     ) Build(GameConfig config = null)
     {
-        GameRoot game = new GameRoot(config ?? TestConfig.Create());
+        GameRoot game = TestGame.Create(config ?? TestConfig.Create());
 
         Faction empire = new Faction { InstanceID = "empire" };
         Faction rebels = new Faction { InstanceID = "rebels" };
@@ -680,15 +745,30 @@ public static class MissionTestFactory
 /// </summary>
 public static class EntityFactory
 {
+    private static readonly FieldInfo _officerCanBetrayField = GetPersistedOfficerField(
+        nameof(Officer.CanBetray)
+    );
+
+    private static readonly FieldInfo _officerLoyaltyField = GetPersistedOfficerField(
+        nameof(Officer.Loyalty)
+    );
+
     /// <summary>
     /// Creates officer.
     /// </summary>
     /// <param name="id">The id.</param>
     /// <param name="factionId">The faction id.</param>
+    /// <param name="canBetray">Whether the officer's loyalty can change and permit betrayal.</param>
+    /// <param name="loyalty">The officer's starting loyalty.</param>
     /// <returns>The created officer.</returns>
-    public static Officer CreateOfficer(string id, string factionId)
+    public static Officer CreateOfficer(
+        string id,
+        string factionId,
+        bool canBetray = false,
+        int loyalty = 100
+    )
     {
-        return new Officer
+        Officer officer = new Officer
         {
             InstanceID = id,
             DisplayName = id,
@@ -701,7 +781,22 @@ public static class EntityFactory
                 { SkillRating.Leadership, 50 },
             },
         };
+        _officerCanBetrayField.SetValue(officer, canBetray);
+        _officerLoyaltyField.SetValue(officer, Math.Clamp(loyalty, 0, 100));
+        return officer;
     }
+
+    /// <summary>
+    /// Finds a persisted officer field by its serialized member name.
+    /// </summary>
+    /// <param name="serializedName">The serialized member name.</param>
+    /// <returns>The matching field.</returns>
+    private static FieldInfo GetPersistedOfficerField(string serializedName) =>
+        typeof(Officer)
+            .GetFields(BindingFlags.Instance | BindingFlags.NonPublic)
+            .Single(field =>
+                field.GetCustomAttribute<PersistableMemberAttribute>()?.Name == serializedName
+            );
 
     /// <summary>
     /// Creates fleet.

@@ -208,7 +208,8 @@ namespace Rebellion.Tests.AI.Phases
             AIManufactureProposal proposal = new AIManufactureProposal(
                 demand,
                 planet,
-                new Technology(shipyard)
+                new Technology(shipyard),
+                false
             );
             proposal.SetScore(100);
             context.AddProposal(proposal);
@@ -261,7 +262,8 @@ namespace Rebellion.Tests.AI.Phases
                     baseDemandPercent: 100
                 ),
                 planet,
-                new Technology(economyBuilding)
+                new Technology(economyBuilding),
+                false
             );
             proposal.SetScore(100);
             context.AddProposal(proposal);
@@ -626,7 +628,8 @@ namespace Rebellion.Tests.AI.Phases
             AIManufactureProposal preferredProposal = new AIManufactureProposal(
                 preferredDemand,
                 preferredProducer,
-                new Technology(mine)
+                new Technology(mine),
+                false
             );
             AIManufactureProposal flexibleProposal = new AIManufactureProposal(
                 flexibleDemand,
@@ -856,7 +859,8 @@ namespace Rebellion.Tests.AI.Phases
                     baseDemandPercent: 100
                 ),
                 producer,
-                new Technology(building)
+                new Technology(building),
+                false
             );
             proposal.SetScore(score);
             return proposal;
@@ -956,7 +960,8 @@ namespace Rebellion.Tests.AI.Phases
             AIManufactureProposal proposal = new AIManufactureProposal(
                 demand,
                 producer,
-                new Technology(product)
+                new Technology(product),
+                false
             );
             proposal.SetScore(score);
             return proposal;
@@ -1059,7 +1064,8 @@ namespace Rebellion.Tests.AI.Phases
             AIManufactureProposal proposal = new AIManufactureProposal(
                 demand,
                 planet,
-                new Technology(shipyard)
+                new Technology(shipyard),
+                false
             );
             proposal.SetScore(score);
             return proposal;

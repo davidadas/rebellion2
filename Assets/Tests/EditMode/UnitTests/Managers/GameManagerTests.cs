@@ -24,7 +24,7 @@ namespace Rebellion.Tests.Managers
             config.GameSpeed.MediumTickIntervalSeconds = 12.5f;
             config.GameSpeed.SlowTickIntervalSeconds = 90.5f;
             config.GameSpeed.VerySlowTickIntervalSeconds = 120.5f;
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             using GameSession session = new GameSession(game, TestGameData.Create(config));
             GameManager manager = new GameManager(() => session.Game, session.Tick);
             manager.SetGameSpeed(speed);
@@ -37,7 +37,7 @@ namespace Rebellion.Tests.Managers
         public void TryAdvanceTickTimer_CompletedInterval_ProcessesTickAndRaisesTickCompleted()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "FACTION", DisplayName = "Faction" });
             GameSession session = TestContent.CreateGameSession(game);
             GameManager manager = new GameManager(() => session.Game, session.Tick);
@@ -56,7 +56,7 @@ namespace Rebellion.Tests.Managers
         public void TryAdvanceTickTimer_BelowCompletedInterval_DoesNotProcessTick()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             GameSession session = TestContent.CreateGameSession(game);
             GameManager manager = new GameManager(() => session.Game, session.Tick);
             manager.SetGameSpeed(TickSpeed.Fast);
@@ -73,7 +73,7 @@ namespace Rebellion.Tests.Managers
         [Test]
         public void TryAdvanceTickTimer_InsideTickCompleted_RejectsTickWhileStateIsSettled()
         {
-            GameRoot game = new(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             GameSession session = new(game, TestGameData.Create(game.Config));
             GameManager manager = new GameManager(() => session.Game, session.Tick);
             manager.SetGameSpeed(TickSpeed.Fast);
@@ -96,7 +96,7 @@ namespace Rebellion.Tests.Managers
         [Test]
         public void TryAdvanceTickTimer_UnstartedIterator_DoesNotBlockClock()
         {
-            GameRoot game = new(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             GameSession session = new(game, TestGameData.Create(game.Config));
             GameManager manager = new GameManager(() => session.Game, session.Tick);
             manager.SetGameSpeed(TickSpeed.Fast);
@@ -112,14 +112,14 @@ namespace Rebellion.Tests.Managers
         [Test]
         public void Reset_SuspendedTick_KeepsClockBlockedUntilIteratorDisposal()
         {
-            GameRoot game = new(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             game.GetFactions().Add(new Faction { InstanceID = "AI", DisplayName = "AI" });
             GameSession session = new(game, TestGameData.Create(game.Config));
             GameManager manager = new GameManager(() => session.Game, session.Tick);
             manager.SetGameSpeed(TickSpeed.Fast);
             IEnumerator tick = session.Tick.ProcessTickIncrementally();
             Assert.IsTrue(tick.MoveNext());
-            GameRoot replacement = new(game.Config);
+            GameRoot replacement = TestGame.Create(game.Config);
 
             session.ReplaceGame(replacement);
             manager.Reset();

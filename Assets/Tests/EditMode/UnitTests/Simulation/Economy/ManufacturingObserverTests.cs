@@ -32,7 +32,7 @@ namespace Rebellion.Tests.Simulation
         {
             // Create game with galaxy
             GameConfig config = TestContent.Data.GameConfig;
-            _game = new GameRoot(config);
+            _game = TestGame.Create(config);
             GalaxyMap galaxy = _game.Galaxy;
 
             // Create faction

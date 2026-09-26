@@ -31,7 +31,7 @@ namespace Rebellion.Tests.Simulation
         public void SetUp()
         {
             GameConfig config = TestContent.Data.GameConfig;
-            _game = new GameRoot(config);
+            _game = TestGame.Create(config);
             _system = new JediCommands(_game, new FixedRNG());
 
             _alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };

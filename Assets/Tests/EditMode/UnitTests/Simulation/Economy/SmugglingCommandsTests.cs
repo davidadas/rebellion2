@@ -25,7 +25,8 @@ namespace Rebellion.Tests.Simulation
         [SetUp]
         public void SetUp()
         {
-            _game = new GameRoot(TestContent.Data.GameConfig) { Random = new StubRNG() };
+            _game = TestGame.Create(TestContent.Data.GameConfig);
+            _game.Random = new StubRNG();
             _controller = new Faction { InstanceID = "FACTION1" };
             _game.GetFactions().Add(_controller);
             _game.GetFactions().Add(new Faction { InstanceID = "FACTION2" });

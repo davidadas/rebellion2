@@ -42,7 +42,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             _targetingController = new TargetingController();
             _commands = new RecordingWindowCommands();
             _contextItems = Array.Empty<ISceneNode>();
-            _preview = new DragPreview(_texture, 20, 30, 2, 3);
+            _preview = DragPreviewTestFactory.Create(_texture, 20, 30, 2, 3);
             _hasPreview = false;
             _dropTarget = null;
         }
@@ -274,7 +274,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
         public void TryStartMoveDragFromCandidate_InvalidPreviewWithItems_StartsTargeting()
         {
             _contextItems = new ISceneNode[] { CreateOfficer(_playerFactionId) };
-            _preview = new DragPreview(_texture, 0, 30, 2, 3);
+            _preview = DragPreviewTestFactory.Create(_texture, 0, 30, 2, 3);
             _hasPreview = true;
             StrategyWindowItemDragController controller = CreateController();
             controller.StartCandidate(_window, 10, 20);

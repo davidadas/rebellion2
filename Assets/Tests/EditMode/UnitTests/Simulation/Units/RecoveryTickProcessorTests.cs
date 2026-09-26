@@ -752,7 +752,7 @@ namespace Rebellion.Tests.Simulation
                 NormalReplacementAmount = 1,
                 FastReplacementAmount = 2,
             };
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
 
             PlanetSector planetSector = new PlanetSector

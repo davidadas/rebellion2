@@ -23,7 +23,7 @@ namespace Rebellion.Tests.Simulation
         [SetUp]
         public void SetUp()
         {
-            _game = new GameRoot(TestConfig.Create());
+            _game = TestGame.Create(TestConfig.Create());
             _game.SetGameSpeed(TickSpeed.Fast);
             _session = new GameSession(_game, TestGameData.Create(_game.Config));
             _processResults = (results, _) => _session.Results.Publish(results);

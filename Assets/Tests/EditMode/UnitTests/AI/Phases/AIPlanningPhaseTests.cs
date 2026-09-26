@@ -38,7 +38,9 @@ namespace Rebellion.Tests.AI.Phases
             game.AttachNode(officer, planet);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            new AIPlanningPhase().Execute(context);
+            new AIPlanningPhase(new IAIProposalPlanner[] { new AIMissionPlanner() }).Execute(
+                context
+            );
 
             Assert.IsTrue(
                 context

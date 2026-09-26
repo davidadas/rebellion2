@@ -29,7 +29,7 @@ namespace Rebellion.Tests.Simulation
         [SetUp]
         public void SetUp()
         {
-            _game = new GameRoot(TestConfig.Create());
+            _game = TestGame.Create(TestConfig.Create());
 
             _rebels = new Faction { InstanceID = "rebels", DisplayName = "Rebels" };
             _empire = new Faction { InstanceID = "empire", DisplayName = "Empire" };

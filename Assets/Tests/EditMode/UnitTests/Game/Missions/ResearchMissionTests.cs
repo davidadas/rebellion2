@@ -25,7 +25,7 @@ namespace Rebellion.Tests.Game.Missions
         public void SetUp()
         {
             GameConfig config = TestConfig.Create();
-            _game = new GameRoot(config);
+            _game = TestGame.Create(config);
 
             _faction = new Faction { InstanceID = "empire", DisplayName = "Empire" };
             _game.GetFactions().Add(_faction);

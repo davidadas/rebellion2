@@ -33,7 +33,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
                     && building.ManufacturingFactionInstanceIDs?.Count > 0
                 );
             string ownerId = template.ManufacturingFactionInstanceIDs[0];
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             Faction owner = new Faction { InstanceID = ownerId };
             owner.SetHighestUnlockedOrder(
                 ManufacturingType.Building,
@@ -101,7 +101,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
                 );
             string ownerId = ownerTemplates.Key;
             int unlockedOrder = ownerTemplates.Min(template => template.GetResearchOrder());
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             Faction owner = new Faction { InstanceID = ownerId };
             owner.SetHighestUnlockedOrder(ManufacturingType.Ship, unlockedOrder);
             owner.RebuildResearchCatalog(templates.ToArray());
@@ -160,7 +160,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             IManufacturable[] applicableTemplates = templates
                 .Where(template => template.ManufacturingFactionInstanceIDs.Contains(ownerId))
                 .ToArray();
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             Faction owner = new Faction { InstanceID = ownerId };
             owner.SetHighestUnlockedOrder(
                 ManufacturingType.Building,
@@ -208,7 +208,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
         public void GetBuildEstimates_StationaryTemplate_ReturnsCompletionWithoutDeployment()
         {
             const string ownerId = "owner";
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             game.GetFactions().Add(new Faction { InstanceID = ownerId });
             GalaxyPlanetSector sector = new GalaxyPlanetSector { InstanceID = "sector" };
             game.AttachNode(sector, game.GetGalaxyMap());

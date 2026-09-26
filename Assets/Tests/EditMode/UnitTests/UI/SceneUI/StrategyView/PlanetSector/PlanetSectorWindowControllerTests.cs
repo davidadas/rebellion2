@@ -699,7 +699,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         /// <returns>The created game.</returns>
         private GameRoot CreateGame()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             game.GetFactions().Add(new Faction { InstanceID = _playerFactionId });
             game.GetFactions().Add(new Faction { InstanceID = _opposingFactionId });
             game.Summary.PlayerFactionID = _playerFactionId;

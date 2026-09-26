@@ -25,7 +25,7 @@ namespace Rebellion.Tests.Simulation
         [SetUp]
         public void SetUp()
         {
-            _game = new GameRoot(TestConfig.Create());
+            _game = TestGame.Create(TestConfig.Create());
             _game.GetFactions().Add(new Faction { InstanceID = _ownerId });
             PlanetSector sector = new PlanetSector { InstanceID = "sector" };
             _game.AttachNode(sector, _game.Galaxy);

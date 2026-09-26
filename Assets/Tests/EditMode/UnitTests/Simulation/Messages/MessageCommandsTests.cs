@@ -17,7 +17,7 @@ namespace Rebellion.Tests.Simulation
         public void Deliver_NullBatch_ThrowsArgumentNullException()
         {
             MessageCommands commands = new(
-                new GameRoot(TestConfig.Create()),
+                TestGame.Create(TestConfig.Create()),
                 new MessageFactory(null)
             );
 
@@ -27,7 +27,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void Deliver_LaterTemplateFails_DoesNotDeliverEarlierMessage()
         {
-            GameRoot game = new(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             Faction faction = new() { InstanceID = "faction" };
             game.GetFactions().Add(faction);
             MessageFactory factory = new(null);
@@ -49,7 +49,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void Deliver_LaterTemplateFails_PreservesSuppliedReport()
         {
-            GameRoot game = new(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             Faction faction = new() { InstanceID = "faction" };
             game.GetFactions().Add(faction);
             CombatReport report = new() { Title = "Before", Body = "Original" };
@@ -73,7 +73,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void Deliver_FirstAttachmentFails_PreservesLaterReport()
         {
-            GameRoot game = new(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             Faction firstRecipient = new() { InstanceID = "first" };
             firstRecipient.Messages[MessageType.Conflict] = null;
             Faction secondRecipient = new() { InstanceID = "second" };
@@ -104,7 +104,8 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void DeliverAuthored_AuthoredMessage_PreservesProvenanceAndCurrentTick()
         {
-            GameRoot game = new(TestConfig.Create()) { CurrentTick = 42 };
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            game.CurrentTick = 42;
             Faction faction = new() { InstanceID = "faction" };
             game.GetFactions().Add(faction);
             MessageCommands commands = new(game, new MessageFactory(null));
@@ -130,7 +131,8 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void Deliver_WithCombatReport_DeliversReportAsMessage()
         {
-            GameRoot game = new(new GameConfig()) { CurrentTick = 42 };
+            GameRoot game = TestGame.Create(new GameConfig());
+            game.CurrentTick = 42;
             Faction faction = new() { InstanceID = "alliance" };
             game.GetFactions().Add(faction);
             CombatReport report = new()
@@ -158,14 +160,15 @@ namespace Rebellion.Tests.Simulation
         {
             GameConfig config = TestConfig.Create();
             config.Messages.RetentionTicks = 300;
-            GameRoot game = new GameRoot(config) { CurrentTick = 401 };
+            GameRoot game = TestGame.Create(config);
+            game.CurrentTick = 401;
             Faction faction = new Faction { InstanceID = "alliance" };
             game.GetFactions().Add(faction);
-            Message expired = new StatusMessage(MessageType.Conflict, "Expired")
+            Message expired = new StatusMessage(MessageType.Conflict, "Expired", "Expired")
             {
                 CreatedTick = 100,
             };
-            Message retained = new StatusMessage(MessageType.Conflict, "Retained")
+            Message retained = new StatusMessage(MessageType.Conflict, "Retained", "Retained")
             {
                 CreatedTick = 101,
             };

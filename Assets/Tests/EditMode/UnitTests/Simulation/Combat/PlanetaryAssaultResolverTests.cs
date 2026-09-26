@@ -26,7 +26,7 @@ namespace Rebellion.Tests.Simulation
                 AttackerWinsMinimum = 6,
                 CaptureGarrisonCount = 6,
             };
-            GameRoot game = new GameRoot(new GameConfig());
+            GameRoot game = TestGame.Create(new GameConfig());
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "alliance" });
             PlanetSector sector = new PlanetSector { InstanceID = "sector" };

@@ -106,7 +106,7 @@ namespace Rebellion.Simulation
             officer is { IsCaptured: false, IsKilled: false } && officer.ForceRank > 0;
 
         /// <summary>
-        /// Marks a discovered betrayer as a known traitor and records who exposed them and where.
+        /// Records who exposed a mission betrayal and where.
         /// </summary>
         /// <param name="mission">The mission.</param>
         /// <param name="defector">The defector.</param>
@@ -119,7 +119,6 @@ namespace Rebellion.Simulation
             ICollection<GameResult> results
         )
         {
-            defector.IsTraitor = true;
             results.Add(
                 new TraitorDiscoveredResult
                 {
@@ -132,44 +131,42 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Applies one deterministic loyalty shift after a faction gains control.
+        /// Applies the acquired planet's support-based loyalty shift after a faction gains control.
         /// </summary>
+        /// <param name="planet">The acquired planet.</param>
         /// <param name="incomingFaction">The faction gaining a planet.</param>
-        public void ApplyControlShift(Faction incomingFaction)
+        public void ApplyControlShift(Planet planet, Faction incomingFaction)
         {
-            if (incomingFaction == null)
+            if (planet == null || incomingFaction == null)
                 return;
 
-            GameConfig.RandomRangeConfig range = _game
-                .Config
-                .OfficerLoyalty
-                .PlanetAcquisitionLoyaltyShift;
-            int minimum = Math.Max(0, range.Minimum);
-            int maximum = Math.Max(minimum, range.Maximum);
-            int loyaltyShift = _provider.NextInt(minimum, maximum + 1);
+            Faction opposingFaction = _game
+                .GetFactions()
+                .FirstOrDefault(faction => faction.InstanceID != incomingFaction.InstanceID);
+            if (opposingFaction == null)
+                return;
+
+            int divisor = _game.Config.OfficerLoyalty.PlanetAcquisitionSupportDivisor;
+            if (divisor <= 0)
+                throw new InvalidOperationException(
+                    $"{nameof(GameConfig.OfficerLoyaltyConfig.PlanetAcquisitionSupportDivisor)} must be greater than zero."
+                );
+
+            int incomingSupport = planet.GetPopularSupport(incomingFaction.InstanceID);
+            int opposingSupport = planet.GetPopularSupport(opposingFaction.InstanceID);
+            int loyaltyShift =
+                (incomingSupport - opposingSupport) / divisor + incomingSupport / divisor;
             if (loyaltyShift == 0)
                 return;
 
-            foreach (
-                Officer officer in _game.GetSceneNodesByType<Officer>().Where(IsFreeLivingOfficer)
-            )
+            foreach (Officer officer in _game.GetSceneNodesByType<Officer>())
             {
                 int signedShift =
                     officer.GetOwnerInstanceID() == incomingFaction.InstanceID
                         ? loyaltyShift
                         : -loyaltyShift;
-                officer.Loyalty = Math.Max(0, Math.Min(100, officer.Loyalty + signedShift));
+                officer.TryAdjustLoyalty(signedShift);
             }
-        }
-
-        /// <summary>
-        /// Returns whether an officer participates in galaxy-wide loyalty shifts.
-        /// </summary>
-        /// <param name="officer">The officer to inspect.</param>
-        /// <returns>True for living, uncaptured officers without command rank.</returns>
-        private static bool IsFreeLivingOfficer(Officer officer)
-        {
-            return officer is { CurrentRank: OfficerRank.None, IsCaptured: false, IsKilled: false };
         }
     }
 }

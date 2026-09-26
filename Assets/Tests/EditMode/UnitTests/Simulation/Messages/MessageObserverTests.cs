@@ -18,7 +18,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void ProcessResults_LaterTemplateFails_DoesNotDeliverEarlierMessage()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             Faction faction = new Faction { InstanceID = "faction" };
             game.GetFactions().Add(faction);
             Planet planet = new Planet { InstanceID = "planet" };
@@ -64,7 +64,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void ProcessResults_MixedAuthoredAndAutomaticResults_DeliversOnlyAutomaticMessage()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             Faction faction = new Faction { InstanceID = "faction" };
             game.GetFactions().Add(faction);
             Planet planet = new Planet { InstanceID = "planet", DisplayName = "Destination" };
@@ -116,7 +116,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void ProcessResults_WithFleetArrival_AddsMessageToFaction()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             Faction faction = new Faction { InstanceID = "alliance" };
             game.GetFactions().Add(faction);
 
@@ -168,7 +168,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void ProcessResults_WithoutMatchingDefinition_DoesNotCreateMessageBucket()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             Faction faction = new Faction { InstanceID = "alliance" };
             game.GetFactions().Add(faction);
 
@@ -197,14 +197,15 @@ namespace Rebellion.Tests.Simulation
         {
             GameConfig config = TestConfig.Create();
             config.Messages.RetentionTicks = 300;
-            GameRoot game = new GameRoot(config) { CurrentTick = 401 };
+            GameRoot game = TestGame.Create(config);
+            game.CurrentTick = 401;
             Faction faction = new Faction { InstanceID = "alliance" };
             game.GetFactions().Add(faction);
-            Message expired = new StatusMessage(MessageType.Conflict, "Expired")
+            Message expired = new StatusMessage(MessageType.Conflict, "Expired", "Expired")
             {
                 CreatedTick = 100,
             };
-            Message retained = new StatusMessage(MessageType.Conflict, "Retained")
+            Message retained = new StatusMessage(MessageType.Conflict, "Retained", "Retained")
             {
                 CreatedTick = 101,
             };

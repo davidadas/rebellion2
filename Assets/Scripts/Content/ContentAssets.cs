@@ -47,14 +47,6 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
     public string PackRootPath { get; }
 
     /// <summary>
-    /// Creates an asset store for application content and one active pack.
-    /// </summary>
-    /// <param name="contentRootPath">The absolute external content root.</param>
-    /// <param name="packRootPath">The absolute active pack root.</param>
-    public ContentAssets(string contentRootPath, string packRootPath)
-        : this(new ContentFileResolver(contentRootPath, packRootPath)) { }
-
-    /// <summary>
     /// Creates an asset store backed by a layered content resolver.
     /// </summary>
     /// <param name="resolver">The resolver that supplies base and modded content files.</param>

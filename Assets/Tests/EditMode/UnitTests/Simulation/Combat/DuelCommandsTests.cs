@@ -204,7 +204,7 @@ namespace Rebellion.Tests.Simulation
                 CombatReward = 1,
             };
             config.Recovery.MaxInjuryPoints = 100;
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             PlanetSector planetSector = new PlanetSector { InstanceID = "sector" };

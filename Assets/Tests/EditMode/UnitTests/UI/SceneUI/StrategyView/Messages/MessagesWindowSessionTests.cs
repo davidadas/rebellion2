@@ -40,7 +40,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         [Test]
         public void SelectTab_WithSelectedDetail_ClearsSelectionAndDetail()
         {
-            Message message = new StatusMessage(MessageType.Fleet, "Fleet")
+            Message message = new StatusMessage(MessageType.Fleet, "Fleet", "Fleet")
             {
                 InstanceID = "message",
             };
@@ -75,11 +75,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         [Test]
         public void Reconcile_ReplacementWithSameID_PreservesSelectionIdentity()
         {
-            Message original = new StatusMessage(MessageType.Fleet, "Original")
+            Message original = new StatusMessage(MessageType.Fleet, "Original", "Original")
             {
                 InstanceID = "message",
             };
-            Message replacement = new StatusMessage(MessageType.Fleet, "Replacement")
+            Message replacement = new StatusMessage(MessageType.Fleet, "Replacement", "Replacement")
             {
                 InstanceID = original.InstanceID,
             };
@@ -95,7 +95,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         [Test]
         public void Reconcile_EmptyMessages_ClearsSelectionAndDetail()
         {
-            Message message = new StatusMessage(MessageType.Fleet, "Fleet")
+            Message message = new StatusMessage(MessageType.Fleet, "Fleet", "Fleet")
             {
                 InstanceID = "message",
             };
@@ -277,7 +277,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         /// <returns>The created message.</returns>
         private static Message CreateMessage(string instanceId, string title)
         {
-            return new StatusMessage(MessageType.Fleet, title) { InstanceID = instanceId };
+            return new StatusMessage(MessageType.Fleet, title, title) { InstanceID = instanceId };
         }
     }
 }

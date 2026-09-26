@@ -21,7 +21,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void TryCreateMission_NullContext_ReturnsFalseAndNoMission()
         {
-            MissionQueries queries = new MissionQueries(new GameRoot(TestConfig.Create()));
+            MissionQueries queries = new MissionQueries(TestGame.Create(TestConfig.Create()));
 
             bool created = queries.TryCreateMission(null, out Mission mission);
 
@@ -32,7 +32,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void GetObjectiveSuccessProbability_NullMission_ThrowsArgumentNullException()
         {
-            MissionQueries queries = new MissionQueries(new GameRoot(TestConfig.Create()));
+            MissionQueries queries = new MissionQueries(TestGame.Create(TestConfig.Create()));
 
             ArgumentNullException exception = Assert.Throws<ArgumentNullException>(() =>
                 queries.GetObjectiveSuccessProbability(null, Array.Empty<IMissionParticipant>())
@@ -243,22 +243,30 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void GetMissionOdds_Default_DoesNotExposeHiddenBetrayalState()
         {
-            (GameRoot game, Planet _, Planet target, Officer diplomat, MissionQueries missions) =
-                BuildMissionOddsScene("empire");
+            (
+                GameRoot game,
+                Planet origin,
+                Planet target,
+                Officer loyalDiplomat,
+                MissionQueries missions
+            ) = BuildMissionOddsScene("empire");
             game.Config.ProbabilityTables.Mission.Diplomacy = new Dictionary<int, int>
             {
                 { -100, 50 },
             };
-
-            diplomat.CanBetray = false;
-            diplomat.Loyalty = 100;
-            MissionOdds loyalOdds = missions.GetMissionOdds(
-                CreateContext(DiplomacyMission.MissionTypeID, diplomat, target)
+            Officer betrayalDiplomat = EntityFactory.CreateOfficer(
+                "betrayal-diplomat",
+                "empire",
+                canBetray: true,
+                loyalty: 0
             );
-            diplomat.CanBetray = true;
-            diplomat.Loyalty = 0;
+            game.AttachNode(betrayalDiplomat, origin);
+
+            MissionOdds loyalOdds = missions.GetMissionOdds(
+                CreateContext(DiplomacyMission.MissionTypeID, loyalDiplomat, target)
+            );
             MissionOdds betrayalOdds = missions.GetMissionOdds(
-                CreateContext(DiplomacyMission.MissionTypeID, diplomat, target)
+                CreateContext(DiplomacyMission.MissionTypeID, betrayalDiplomat, target)
             );
 
             Assert.IsNotNull(loyalOdds);
@@ -627,7 +635,7 @@ namespace Rebellion.Tests.Simulation
         public void GetAvailableMissionOptions_ReconnaissanceSpecialForces_ReturnsReconnaissanceOption()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
@@ -773,7 +781,7 @@ namespace Rebellion.Tests.Simulation
         private (GameRoot game, Planet planet, Officer officer) BuildScene(bool factionOwnsPlanet)
         {
             GameConfig config = TestConfig.Create();
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             Faction faction = new Faction { InstanceID = "empire" };
             game.GetFactions().Add(faction);
 
@@ -970,7 +978,7 @@ namespace Rebellion.Tests.Simulation
         private (GameRoot game, Planet planet, Officer spy, Officer defender) BuildDetectionScene()
         {
             GameConfig config = new GameConfig();
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
@@ -1037,7 +1045,7 @@ namespace Rebellion.Tests.Simulation
             MissionQueries missions
         ) BuildMissionOddsScene(string targetOwnerInstanceId)
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
             PlanetSector sector = new PlanetSector { InstanceID = "sector" };
@@ -1080,7 +1088,7 @@ namespace Rebellion.Tests.Simulation
         ) BuildOfficerTargetMissionScene(bool friendlyTarget, bool capturedTarget)
         {
             GameConfig config = TestConfig.Create();
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 

@@ -27,7 +27,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         [SetUp]
         public void SetUp()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             _playerFaction = new Faction { InstanceID = "player" };
             _opponentFaction = new Faction { InstanceID = "opponent" };
             game.GetFactions().Add(_playerFaction);

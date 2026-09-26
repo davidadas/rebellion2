@@ -519,7 +519,7 @@ namespace Rebellion.Tests.Simulation
         public void ProcessTick_NeutralPlanet_Skipped()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             game.AttachNode(planetSector, game.Galaxy);
             Planet planet = new Planet
@@ -565,7 +565,7 @@ namespace Rebellion.Tests.Simulation
             // In a core sector with GarrisonEfficiency=2, the base garrison requirement of 3
             // is halved to 1. One troop meets it, so no uprising.
             GameConfig config = TestConfig.Create();
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             Faction empire = new Faction
             {
                 InstanceID = "empire",
@@ -630,7 +630,7 @@ namespace Rebellion.Tests.Simulation
             // On an outer rim planet, GarrisonEfficiency does not apply. Garrison requirement
             // stays at 3 with one troop, so the deficit triggers an uprising.
             GameConfig config = TestConfig.Create();
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             Faction empire = new Faction
             {
                 InstanceID = "empire",
@@ -790,7 +790,7 @@ namespace Rebellion.Tests.Simulation
             config.Uprising.IncidentPulseMaxTicks = 1;
             config.Uprising.ClearUprisingMinTicks = 1;
             config.Uprising.ClearUprisingMaxTicks = 1;
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 

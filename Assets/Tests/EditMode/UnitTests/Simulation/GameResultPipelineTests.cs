@@ -18,7 +18,7 @@ namespace Rebellion.Tests.Simulation
         [SetUp]
         public void SetUp()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             _bus = new GameResultBus();
             MessageFactory factory = new MessageFactory(null);
             _messages = new MessageObserver(game, factory, new MessageCommands(game, factory));
