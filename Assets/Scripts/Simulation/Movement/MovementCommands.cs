@@ -1539,7 +1539,7 @@ namespace Rebellion.Simulation
                 }
             }
 
-            if (!MovementQueries.CanTravelBetweenPlanets(unit))
+            if (unit.GetTransitMovement() == null && !MovementQueries.CanTravelBetweenPlanets(unit))
             {
                 unit.Movement = null;
                 GameLogger.Warning(

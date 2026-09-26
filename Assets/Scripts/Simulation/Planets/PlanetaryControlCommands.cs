@@ -349,10 +349,12 @@ namespace Rebellion.Simulation
             if (planet == null)
                 return;
 
-            List<Regiment> regiments = planet.GetAllRegiments();
             string currentOwner = planet.GetOwnerInstanceID();
+            bool hasStationedRegiment = _queries
+                .GetActiveRegimentOwners(planet)
+                .Contains(currentOwner);
 
-            if (!planet.IsColonized && !string.IsNullOrEmpty(currentOwner) && regiments.Count == 0)
+            if (!planet.IsColonized && !string.IsNullOrEmpty(currentOwner) && !hasStationedRegiment)
             {
                 results.Add(ClearPlanetOwnership(planet));
             }
@@ -811,6 +813,12 @@ namespace Rebellion.Simulation
 
             foreach (IMovable unit in enemies)
             {
+                if (unit.GetTransitMovement() != null)
+                {
+                    _movementSystem.EvacuateToNearestFriendlyPlanet(unit);
+                    continue;
+                }
+
                 if (unit is Starfighter)
                     _movementSystem.DestroyEvictedUnit(unit, planet);
                 else
