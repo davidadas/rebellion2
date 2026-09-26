@@ -2066,6 +2066,89 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void RequestMove_OfficerToOwnedUncolonizedPlanetWithStationaryRegiment_StartsTransit()
+        {
+            (
+                GameRoot game,
+                Planet _,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene(new GameConfig());
+            destination.IsColonized = false;
+            Regiment stationedRegiment = new Regiment
+            {
+                InstanceID = "stationed-regiment",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(stationedRegiment, destination);
+
+            movement.RequestMove(officer, destination);
+
+            Assert.AreSame(destination, officer.GetParent());
+            Assert.IsNotNull(officer.Movement);
+        }
+
+        [Test]
+        public void RequestMove_RegimentToOwnedUncolonizedPlanetWithStationaryRegiment_StartsTransit()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer _,
+                MovementCommands movement
+            ) = BuildScene(new GameConfig());
+            destination.IsColonized = false;
+            Regiment stationedRegiment = new Regiment
+            {
+                InstanceID = "stationed-regiment",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(stationedRegiment, destination);
+            Regiment arrivingRegiment = new Regiment
+            {
+                InstanceID = "arriving-regiment",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(arrivingRegiment, origin);
+
+            movement.RequestMove(arrivingRegiment, destination);
+
+            Assert.AreSame(destination, arrivingRegiment.GetParent());
+            Assert.IsNotNull(arrivingRegiment.Movement);
+        }
+
+        [Test]
+        public void RequestMove_OfficerToOwnedUncolonizedPlanetWithOnlyInboundRegiment_IsRejected()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene(new GameConfig());
+            destination.IsColonized = false;
+            Regiment inboundRegiment = new Regiment
+            {
+                InstanceID = "inbound-regiment",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                Movement = new MovementState(),
+            };
+            game.AttachNode(inboundRegiment, destination);
+
+            movement.RequestMove(officer, destination);
+
+            Assert.AreSame(origin, officer.GetParent());
+            Assert.IsNull(officer.Movement);
+        }
+
+        [Test]
         public void RequestMove_RegimentFromFleetAtNeutralUncolonizedPlanet_HiddenObserverSnapshot_NotRefreshed()
         {
             (

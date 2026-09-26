@@ -349,10 +349,12 @@ namespace Rebellion.Simulation
             if (planet == null)
                 return;
 
-            List<Regiment> regiments = planet.GetAllRegiments();
             string currentOwner = planet.GetOwnerInstanceID();
+            bool hasStationedRegiment = _queries
+                .GetActiveRegimentOwners(planet)
+                .Contains(currentOwner);
 
-            if (!planet.IsColonized && !string.IsNullOrEmpty(currentOwner) && regiments.Count == 0)
+            if (!planet.IsColonized && !string.IsNullOrEmpty(currentOwner) && !hasStationedRegiment)
             {
                 results.Add(ClearPlanetOwnership(planet));
             }
@@ -793,10 +795,9 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Removes non-owner units from the planet: starfighters stationed on the surface are
-        /// destroyed with the change of control, while all other units evacuate to the nearest
-        /// friendly planet that accepts them. Regiments with no reachable destination are
-        /// destroyed; officers with no reachable destination are captured by the new owner.
+        /// Evacuates non-owner units to the nearest friendly planet that accepts them. Regiments
+        /// and starfighters with no reachable destination are destroyed; officers with no
+        /// reachable destination are captured by the new owner.
         /// </summary>
         /// <param name="planet">The planet to evict enemy units from.</param>
         /// <param name="newOwnerID">The instance ID of the new owning faction.</param>
@@ -811,13 +812,11 @@ namespace Rebellion.Simulation
 
             foreach (IMovable unit in enemies)
             {
-                if (unit is Starfighter)
-                    _movementSystem.DestroyEvictedUnit(unit, planet);
-                else
-                    _movementSystem.EvacuateToNearestFriendlyPlanet(
-                        unit,
-                        evictingOwnerInstanceID: newOwnerID
-                    );
+                _movementSystem.EvacuateToNearestFriendlyPlanet(
+                    unit,
+                    evictingOwnerInstanceID: newOwnerID,
+                    force: true
+                );
             }
         }
     }

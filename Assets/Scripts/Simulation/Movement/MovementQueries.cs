@@ -1118,6 +1118,13 @@ namespace Rebellion.Simulation
             if (unit is Fleet)
                 return true;
 
+            string movementOwnerId = GetMovementControlOwner(unit);
+            if (
+                destinationPlanet.GetOwnerInstanceID() == movementOwnerId
+                && destinationPlanet.HasStationedUnit(movementOwnerId)
+            )
+                return true;
+
             if (unit is not Regiment)
                 return false;
 

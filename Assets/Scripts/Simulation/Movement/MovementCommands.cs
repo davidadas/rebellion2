@@ -1505,9 +1505,11 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="unit">The unit to evacuate.</param>
         /// <param name="evictingOwnerInstanceID">The faction claiming the planet, when evicting.</param>
+        /// <param name="force">Whether a planet ownership change is forcing the relocation.</param>
         public void EvacuateToNearestFriendlyPlanet(
             IMovable unit,
-            string evictingOwnerInstanceID = null
+            string evictingOwnerInstanceID = null,
+            bool force = false
         )
         {
             if (unit == null)
@@ -1539,7 +1541,11 @@ namespace Rebellion.Simulation
                 }
             }
 
-            if (!MovementQueries.CanTravelBetweenPlanets(unit))
+            if (
+                !force
+                && unit.GetTransitMovement() == null
+                && !MovementQueries.CanTravelBetweenPlanets(unit)
+            )
             {
                 unit.Movement = null;
                 GameLogger.Warning(
