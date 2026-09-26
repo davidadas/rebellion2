@@ -36,7 +36,7 @@ namespace Rebellion.Tests.Simulation
         [SetUp]
         public void SetUp()
         {
-            _game = new GameRoot(TestConfig.Create());
+            _game = TestGame.Create(TestConfig.Create());
             _faction = new Faction { InstanceID = "owner" };
             _game.GetFactions().Add(_faction);
             PlanetSector sector = new PlanetSector
@@ -178,7 +178,7 @@ namespace Rebellion.Tests.Simulation
             IServiceLocator services = _session;
             MessageObserver previous = services.GetService<MessageObserver>();
 
-            _session.ReplaceGame(new GameRoot(_game.Config));
+            _session.ReplaceGame(TestGame.Create(_game.Config));
 
             Assert.AreNotSame(previous, services.GetService<MessageObserver>());
             Assert.AreSame(_session.MessageObserver, services.GetService<MessageObserver>());
@@ -190,7 +190,7 @@ namespace Rebellion.Tests.Simulation
             IServiceLocator services = _session;
             MovementCommands previous = services.GetService<MovementCommands>();
 
-            _session.ReplaceGame(new GameRoot(_game.Config));
+            _session.ReplaceGame(TestGame.Create(_game.Config));
 
             Assert.AreNotSame(previous, services.GetService<MovementCommands>());
             Assert.AreSame(
@@ -203,7 +203,7 @@ namespace Rebellion.Tests.Simulation
         public void ReplaceGame_ValidReplacement_DetachesPreviousBus()
         {
             GameResultBus previousBus = _session.Results;
-            _session.ReplaceGame(new GameRoot(_game.Config));
+            _session.ReplaceGame(TestGame.Create(_game.Config));
 
             previousBus.Publish(CreateSupportShift());
 
@@ -217,7 +217,7 @@ namespace Rebellion.Tests.Simulation
             MaintenanceCommands previousMaintenance = _session.GetService<MaintenanceCommands>();
             int batches = 0;
             _session.Pipeline.ResultsResolved += _ => batches++;
-            _session.ReplaceGame(new GameRoot(_game.Config));
+            _session.ReplaceGame(TestGame.Create(_game.Config));
 
             Assert.IsTrue(previousMaintenance.TryScrap(new[] { regiment }, _faction.InstanceID));
 
@@ -228,7 +228,7 @@ namespace Rebellion.Tests.Simulation
         public void ReplaceGame_InvalidEvent_PreservesPreviousBusConnections()
         {
             GameResultBus previousBus = _session.Results;
-            GameRoot replacement = new(_game.Config);
+            GameRoot replacement = TestGame.Create(_game.Config);
             replacement
                 .GetEventPool()
                 .Add(new GameEvent { InstanceID = "INVALID", MaximumActivations = 0 });
@@ -296,8 +296,8 @@ namespace Rebellion.Tests.Simulation
         public void ReplaceGame_InvalidEvent_LeavesReplacementGameAssigned()
         {
             GameConfig config = TestConfig.Create();
-            GameSession manager = new(new GameRoot(config), TestGameData.Create(config));
-            GameRoot replacement = new(config);
+            GameSession manager = new(TestGame.Create(config), TestGameData.Create(config));
+            GameRoot replacement = TestGame.Create(config);
             replacement
                 .GetEventPool()
                 .Add(
@@ -317,7 +317,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void ReplaceGame_NullGame_PreservesActiveRuntime()
         {
-            GameRoot game = new(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             GameSession manager = new(game, TestGameData.Create(game.Config));
             MovementCommands movement = manager.GetService<MovementCommands>();
 
@@ -331,9 +331,9 @@ namespace Rebellion.Tests.Simulation
         public void ReplaceGame_InvalidEvent_RetainsEarlierComponentReplacement()
         {
             GameConfig config = TestConfig.Create();
-            GameSession manager = new(new GameRoot(config), TestGameData.Create(config));
+            GameSession manager = new(TestGame.Create(config), TestGameData.Create(config));
             MovementCommands movement = manager.GetService<MovementCommands>();
-            GameRoot replacement = new(config);
+            GameRoot replacement = TestGame.Create(config);
             replacement
                 .GetEventPool()
                 .Add(new GameEvent { InstanceID = "INVALID", MaximumActivations = 0 });
@@ -346,7 +346,8 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void Tick_ContestedPlayerFleet_RestoresPendingCombat()
         {
-            GameRoot game = new GameRoot(TestConfig.Create()) { CurrentTick = 40 };
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            game.CurrentTick = 40;
             Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
             Faction empire = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
             game.GetFactions().Add(alliance);
@@ -396,7 +397,8 @@ namespace Rebellion.Tests.Simulation
         public void ResolveCombat_DestroyedDefenderAfterAttackerLeaves_DoesNotRestoreSnapshotGhost()
         {
             GameConfig config = CreateSpaceCombatConfig();
-            GameRoot game = new GameRoot(config) { Random = new FixedRNG() };
+            GameRoot game = TestGame.Create(config);
+            game.Random = new FixedRNG();
             Faction alliance = new Faction { InstanceID = "ALLIANCE" };
             Faction empire = new Faction { InstanceID = "EMPIRE" };
             game.GetFactions().Add(alliance);
@@ -507,7 +509,7 @@ namespace Rebellion.Tests.Simulation
             config.AI.Garrison.SupportThreshold = 50;
             config.AI.Garrison.GarrisonDivisor = 10;
             config.AI.Garrison.UprisingMultiplier = 2;
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             Faction faction = new Faction
             {
                 InstanceID = factionId,
@@ -677,7 +679,7 @@ namespace Rebellion.Tests.Simulation
         {
             GameConfig config = TestConfig.Create();
             config.Recovery.NormalHealAmount = 1;
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             Faction faction = new Faction { InstanceID = "FNALL1" };
             game.GetFactions().Add(faction);
             PlanetSector sector = new PlanetSector { InstanceID = "SECTOR" };
@@ -705,7 +707,7 @@ namespace Rebellion.Tests.Simulation
             GameConfig config = new GameConfig();
             config.Captive.EscapeTable = new Dictionary<int, int> { { 0, 100 } };
             config.Smuggling.LossPercentByMinimumSupport[0] = 0;
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             Faction owner = new Faction { InstanceID = "OWNER" };
             Faction captor = new Faction { InstanceID = "CAPTOR" };
             game.GetFactions().Add(owner);
@@ -734,7 +736,7 @@ namespace Rebellion.Tests.Simulation
         {
             GameConfig config = new GameConfig();
             config.Smuggling.LossPercentByMinimumSupport[0] = 0;
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             Faction owner = new Faction { InstanceID = "OWNER" };
             Faction captor = new Faction { InstanceID = "CAPTOR" };
             game.GetFactions().Add(owner);
@@ -815,10 +817,8 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void Tick_VictoryConditionMet_RaisesVictoryDeclaredOnce()
         {
-            GameRoot game = new GameRoot(TestConfig.Create())
-            {
-                Summary = new GameSummary { VictoryCondition = GameVictoryCondition.Headquarters },
-            };
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            game.Summary = new GameSummary { VictoryCondition = GameVictoryCondition.Headquarters };
             Faction empire = new Faction
             {
                 InstanceID = "empire",
@@ -852,7 +852,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void PlanetaryAssaultCommands_CompletedAssault_RaisesResolvedEvent()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             Faction attacker = new Faction { InstanceID = "ATTACKER" };
             Faction defender = new Faction { InstanceID = "DEFENDER" };
             game.GetFactions().Add(attacker);
@@ -979,10 +979,8 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void Tick_VictoryResult_RaisesResolvedEvent()
         {
-            GameRoot game = new GameRoot(TestConfig.Create())
-            {
-                Summary = new GameSummary { VictoryCondition = GameVictoryCondition.Headquarters },
-            };
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            game.Summary = new GameSummary { VictoryCondition = GameVictoryCondition.Headquarters };
             Faction defeated = new Faction
             {
                 InstanceID = "DEFEATED",
@@ -1010,11 +1008,12 @@ namespace Rebellion.Tests.Simulation
         {
             GameConfig config = TestConfig.Create();
             config.Messages.RetentionTicks = 300;
-            GameRoot game = new GameRoot(config) { CurrentTick = 400 };
+            GameRoot game = TestGame.Create(config);
+            game.CurrentTick = 400;
             Faction faction = new Faction { InstanceID = "FACTION" };
             game.GetFactions().Add(faction);
             faction.AddMessage(
-                new StatusMessage(MessageType.Conflict, "Expired") { CreatedTick = 100 }
+                new StatusMessage(MessageType.Conflict, "Expired", "Expired") { CreatedTick = 100 }
             );
             GameSession manager = TestContent.CreateGameSession(game);
 
@@ -1026,7 +1025,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void Tick_BlockadeStarts_ReroutesInboundStarfighter()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             Faction owner = new Faction { InstanceID = "OWNER" };
             Faction opposition = new Faction { InstanceID = "OPPOSITION" };
             game.GetFactions().Add(owner);
@@ -1094,7 +1093,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void Tick_SabotageResult_RemovesDestroyedObjectFromActorSnapshot()
         {
-            GameRoot game = new GameRoot(TestContent.Data.GameConfig);
+            GameRoot game = TestGame.Create(TestContent.Data.GameConfig);
             Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
             Faction empire = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
             game.GetFactions().Add(alliance);
@@ -1180,10 +1179,8 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void Tick_FleetDestroyedAfterArrival_AddsFleetArrivalAndBattleMessages()
         {
-            GameRoot game = new GameRoot(TestConfig.Create())
-            {
-                Random = new QueueRNG(0.5, 0.5, 0.5, 0.5),
-            };
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            game.Random = new QueueRNG(0.5, 0.5, 0.5, 0.5);
             Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
             Faction empire = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
             game.GetFactions().Add(alliance);
@@ -1273,7 +1270,7 @@ namespace Rebellion.Tests.Simulation
             try
             {
                 GameConfig config = TestConfig.Create();
-                GameRoot game = new GameRoot(config);
+                GameRoot game = TestGame.Create(config);
                 Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
                 Faction empire = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
                 game.GetFactions().Add(alliance);
@@ -1380,7 +1377,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void Tick_FleetArrivesAtPlanetaryStarfighters_CreatesPendingCombat()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
             Faction empire = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
             game.GetFactions().Add(alliance);
@@ -1464,7 +1461,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void Tick_FleetReachesWaypoint_StartsNextLegAfterCombatDetection()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
             game.GetFactions().Add(alliance);
             PlanetSector sector = new PlanetSector { InstanceID = "SECTOR" };
@@ -1506,7 +1503,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void Tick_PendingCombat_CompletesTickAfterResolution()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
             Faction empire = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
             game.GetFactions().Add(alliance);
@@ -1567,7 +1564,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void Tick_PausedGame_DoesNotAdvanceTick()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             GameSession manager = TestContent.CreateGameSession(game);
             manager.Game.SetGameSpeed(TickSpeed.Paused);
 
@@ -1579,7 +1576,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void Tick_UnrelatedFleetReachedWaypoint_StartsDeferredNextLeg()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
             Faction empire = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
             game.GetFactions().Add(alliance);
@@ -1648,7 +1645,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void Tick_DisposedBeforeCompletion_AllowsNextTick()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             game.GetFactions().Add(new Faction { InstanceID = "AI", DisplayName = "AI" });
             GameSession manager = TestContent.CreateGameSession(game);
             IEnumerator tick = manager.Tick.ProcessTickIncrementally();
@@ -1663,7 +1660,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void Tick_CompletionObserverThrows_AllowsSubsequentTick()
         {
-            GameRoot game = new(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             GameSession manager = new(game, TestGameData.Create(game.Config));
             manager.Game.SetGameSpeed(TickSpeed.Fast);
             InvalidOperationException expected = new("observer failure");
@@ -1683,7 +1680,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void MovementCommands_SurfaceRegimentCreatesGarrisonDeficit_StartsUprisingImmediately()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             Faction owner = new Faction { InstanceID = "OWNER", DisplayName = "Owner" };
             Faction opposition = new Faction
             {
@@ -1796,7 +1793,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void MovementCommands_LastSurfaceRegimentNeutralizesPlanet_ReportsImmediately()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             Faction owner = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
             Faction opposition = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
             game.GetFactions().Add(owner);
@@ -1861,7 +1858,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void MaintenanceCommands_LastSurfaceRegiment_ReconcilesPlanetImmediately()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             Faction owner = new Faction { InstanceID = "OWNER", DisplayName = "Owner" };
             Faction opposition = new Faction
             {
@@ -2039,10 +2036,8 @@ namespace Rebellion.Tests.Simulation
             Planet Target
         ) CreateHeadquartersAssaultGame()
         {
-            GameRoot game = new(TestConfig.Create())
-            {
-                Summary = new GameSummary { VictoryCondition = GameVictoryCondition.Headquarters },
-            };
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            game.Summary = new GameSummary { VictoryCondition = GameVictoryCondition.Headquarters };
             Faction attacker = new() { InstanceID = "ATTACKER", DisplayName = "Attacker" };
             Faction defender = new()
             {
@@ -2109,7 +2104,7 @@ namespace Rebellion.Tests.Simulation
             config.Recovery.FastRepairAmount = 1;
             config.Recovery.FastReplacementAmount = 1;
             config.Smuggling.LossPercentByMinimumSupport[0] = 0;
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             Faction faction = new Faction { InstanceID = "FACTION", DisplayName = "Faction" };
             game.GetFactions().Add(faction);
             game.SetFactionController(faction.InstanceID, "PLAYER", PlayerControllerType.Human);

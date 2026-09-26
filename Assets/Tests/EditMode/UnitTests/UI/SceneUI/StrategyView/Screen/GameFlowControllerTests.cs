@@ -166,7 +166,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         {
             GameConfig config = new GameConfig();
             config.Smuggling.LossPercentByMinimumSupport[0] = 0;
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             Faction player = new Faction { InstanceID = "missing-player-theme" };
             Faction opponent = new Faction { InstanceID = "opponent" };
             game.GetFactions().Add(player);

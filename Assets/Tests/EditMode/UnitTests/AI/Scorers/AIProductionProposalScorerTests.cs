@@ -118,11 +118,11 @@ namespace Rebellion.Tests.AI.Scorers
 
             double nearScore = scorer.Score(
                 context,
-                new AIManufactureProposal(demand, nearProducer, regiment)
+                new AIManufactureProposal(demand, nearProducer, regiment, false)
             );
             double farScore = scorer.Score(
                 context,
-                new AIManufactureProposal(demand, farProducer, regiment)
+                new AIManufactureProposal(demand, farProducer, regiment, false)
             );
 
             Assert.Greater(nearScore, farScore);
@@ -168,7 +168,8 @@ namespace Rebellion.Tests.AI.Scorers
                     baseDemandPercent: 100
                 ),
                 producer,
-                new Technology(template)
+                new Technology(template),
+                false
             );
 
             double score = new AIProductionProposalScorer().Score(context, proposal);
@@ -205,7 +206,8 @@ namespace Rebellion.Tests.AI.Scorers
                     baseDemandPercent: 100
                 ),
                 destination,
-                new Technology(template)
+                new Technology(template),
+                false
             );
 
             double score = new AIProductionProposalScorer().Score(
@@ -241,7 +243,8 @@ namespace Rebellion.Tests.AI.Scorers
                     targetCount: 1
                 ),
                 producer,
-                building
+                building,
+                false
             );
         }
     }

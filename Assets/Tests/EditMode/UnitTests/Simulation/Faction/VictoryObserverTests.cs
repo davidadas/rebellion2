@@ -155,7 +155,7 @@ namespace Rebellion.Tests.Simulation
         )
         {
             GameConfig config = TestConfig.Create();
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             game.Summary = new GameSummary { VictoryCondition = victoryCondition };
             game.CurrentTick = 200;
 

@@ -85,7 +85,7 @@ namespace Rebellion.Tests.Simulation
             MessageDelivery delivery = new()
             {
                 Recipient = recipient,
-                Message = new StatusMessage(MessageType.Mission, "Report"),
+                Message = new StatusMessage(MessageType.Mission, "Report", "Report"),
             };
 
             new MessageFactory(null).CreateMessage(delivery);
@@ -109,7 +109,7 @@ namespace Rebellion.Tests.Simulation
                 new MessageDelivery
                 {
                     ExistingMessage = report,
-                    Message = new StatusMessage(MessageType.Conflict, "Resolved"),
+                    Message = new StatusMessage(MessageType.Conflict, "Resolved", "Resolved"),
                 }
             );
 
@@ -1917,7 +1917,7 @@ namespace Rebellion.Tests.Simulation
             bool mainCharacterIsDecoy
         )
         {
-            GameRoot game = new GameRoot(new GameConfig());
+            GameRoot game = TestGame.Create(new GameConfig());
             Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
             Faction empire = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
             game.GetFactions().Add(alliance);
@@ -4993,7 +4993,7 @@ namespace Rebellion.Tests.Simulation
             Planet destination
         ) BuildMessageScene()
         {
-            GameRoot game = new GameRoot(TestContent.Data.GameConfig);
+            GameRoot game = TestGame.Create(TestContent.Data.GameConfig);
             Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
             game.GetFactions().Add(alliance);
             PlanetSector sector = new PlanetSector { InstanceID = "CORE", DisplayName = "Core" };
@@ -5032,7 +5032,7 @@ namespace Rebellion.Tests.Simulation
             Planet target
         ) BuildTwoFactionMessageScene()
         {
-            GameRoot game = new GameRoot(TestContent.Data.GameConfig);
+            GameRoot game = TestGame.Create(TestContent.Data.GameConfig);
             Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
             Faction empire = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
             game.GetFactions().Add(alliance);

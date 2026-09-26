@@ -26,7 +26,8 @@ namespace Rebellion.Tests.Simulation
         [SetUp]
         public void SetUp()
         {
-            _game = new GameRoot(TestConfig.Create()) { Random = new StubRNG() };
+            _game = TestGame.Create(TestConfig.Create());
+            _game.Random = new StubRNG();
             _faction = new Faction { InstanceID = "FACTION1" };
             _faction.Settings.ResourceProcessingPointsPerFacility = 50;
             _game.GetFactions().Add(_faction);

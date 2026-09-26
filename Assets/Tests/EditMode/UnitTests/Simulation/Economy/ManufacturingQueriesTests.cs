@@ -231,7 +231,7 @@ namespace Rebellion.Tests.Simulation
         /// <returns>The created order test game.</returns>
         private static GameRoot CreateOrderTestGame()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             return game;
         }

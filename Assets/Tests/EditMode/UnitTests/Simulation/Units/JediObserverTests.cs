@@ -19,7 +19,7 @@ namespace Rebellion.Tests.Simulation
         [SetUp]
         public void SetUp()
         {
-            _game = new GameRoot(TestConfig.Create());
+            _game = TestGame.Create(TestConfig.Create());
             _observer = new JediObserver(new JediCommands(_game, new FixedRNG()));
         }
 

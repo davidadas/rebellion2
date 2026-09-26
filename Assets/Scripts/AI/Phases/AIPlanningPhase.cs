@@ -12,22 +12,6 @@ namespace Rebellion.AI.Phases
         private readonly List<IAIProposalPlanner> _planners;
 
         /// <summary>
-        /// Creates a planning phase with the default proposal planners.
-        /// </summary>
-        public AIPlanningPhase()
-            : this(
-                new IAIProposalPlanner[]
-                {
-                    new AIAbortMissionPlanner(),
-                    new AIFacilityRemovalPlanner(),
-                    new AIMissionPlanner(),
-                    new AIOrbitalEngagementPlanner(),
-                    new AIFleetPlanner(),
-                    new AIProductionPlanner(),
-                }
-            ) { }
-
-        /// <summary>
         /// Creates a planning phase with the supplied proposal planners.
         /// </summary>
         /// <param name="planners">Proposal planners run by this phase.</param>

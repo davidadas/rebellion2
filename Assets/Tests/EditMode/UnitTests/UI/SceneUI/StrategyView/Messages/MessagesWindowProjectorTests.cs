@@ -25,7 +25,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         [SetUp]
         public void SetUp()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             game.GetFactions()
                 .Add(new Faction { InstanceID = _playerFactionId, DisplayName = "Alliance" });
             game.Summary.PlayerFactionID = _playerFactionId;
@@ -80,12 +80,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         [Test]
         public void CreateIndexRows_StoredMessages_ReturnsNewestFirstWithoutMutatingReadState()
         {
-            Message first = new StatusMessage(MessageType.Fleet, "First")
+            Message first = new StatusMessage(MessageType.Fleet, "First", "First")
             {
                 InstanceID = "first",
                 Read = true,
             };
-            Message second = new StatusMessage(MessageType.Fleet, "Second")
+            Message second = new StatusMessage(MessageType.Fleet, "Second", "Second")
             {
                 InstanceID = "second",
                 Read = false,
@@ -139,12 +139,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         [Test]
         public void Project_IndexPanel_ReturnsCompleteThemedPresentation()
         {
-            Message first = new StatusMessage(MessageType.Fleet, "First")
+            Message first = new StatusMessage(MessageType.Fleet, "First", "First")
             {
                 InstanceID = "first",
                 Read = true,
             };
-            Message second = new StatusMessage(MessageType.Fleet, "Second")
+            Message second = new StatusMessage(MessageType.Fleet, "Second", "Second")
             {
                 InstanceID = "second",
                 Read = false,
@@ -439,7 +439,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         /// <returns>The created message.</returns>
         private static Message CreateMessage(string instanceId, string title, MessageType type)
         {
-            return new StatusMessage(type, title) { InstanceID = instanceId };
+            return new StatusMessage(type, title, title) { InstanceID = instanceId };
         }
 
         /// <summary>

@@ -64,7 +64,8 @@ namespace Rebellion.Tests.AI.Proposals
             AIManufactureProposal proposal = new AIManufactureProposal(
                 CreateBuildingDemand(planet),
                 planet,
-                new Technology(mine)
+                new Technology(mine),
+                false
             );
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
@@ -100,7 +101,8 @@ namespace Rebellion.Tests.AI.Proposals
             AIManufactureProposal proposal = new AIManufactureProposal(
                 CreateBuildingDemand(planet),
                 planet,
-                new Technology(mine)
+                new Technology(mine),
+                false
             );
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
             Assert.AreEqual(0, context.Faction.ProjectedMaintenanceHeadroom);
@@ -166,7 +168,8 @@ namespace Rebellion.Tests.AI.Proposals
             AIManufactureProposal proposal = new AIManufactureProposal(
                 demand,
                 planet,
-                new Technology(shipyard)
+                new Technology(shipyard),
+                false
             );
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
@@ -302,7 +305,8 @@ namespace Rebellion.Tests.AI.Proposals
             AIManufactureProposal proposal = new AIManufactureProposal(
                 demand,
                 planet,
-                new Technology(shield)
+                new Technology(shield),
+                false
             );
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
@@ -350,7 +354,8 @@ namespace Rebellion.Tests.AI.Proposals
             AIManufactureProposal proposal = new AIManufactureProposal(
                 demand,
                 planet,
-                new Technology(regiment)
+                new Technology(regiment),
+                false
             );
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
@@ -412,7 +417,8 @@ namespace Rebellion.Tests.AI.Proposals
             AIManufactureProposal proposal = new AIManufactureProposal(
                 demand,
                 producer,
-                new Technology(shield)
+                new Technology(shield),
+                false
             );
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
@@ -460,7 +466,8 @@ namespace Rebellion.Tests.AI.Proposals
             AIManufactureProposal proposal = new AIManufactureProposal(
                 demand,
                 planet,
-                new Technology(template)
+                new Technology(template),
+                false
             );
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
@@ -684,7 +691,8 @@ namespace Rebellion.Tests.AI.Proposals
             AIManufactureProposal proposal = new AIManufactureProposal(
                 demand,
                 planet,
-                new Technology(template)
+                new Technology(template),
+                false
             );
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
@@ -750,7 +758,8 @@ namespace Rebellion.Tests.AI.Proposals
             AIManufactureProposal proposal = new AIManufactureProposal(
                 demand,
                 planet,
-                new Technology(template)
+                new Technology(template),
+                false
             );
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
@@ -863,7 +872,8 @@ namespace Rebellion.Tests.AI.Proposals
             AIManufactureProposal proposal = new AIManufactureProposal(
                 demand,
                 planet,
-                new Technology(advancedShipyard)
+                new Technology(advancedShipyard),
+                false
             );
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
             return (game, empire, planet, replacement, remaining, proposal, context);

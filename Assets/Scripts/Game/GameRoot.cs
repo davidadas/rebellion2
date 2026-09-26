@@ -113,30 +113,6 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Constructor that requires config at construction time.
-        /// Prevents partially initialized Game instances.
-        /// </summary>
-        /// <param name="config">The runtime configuration.</param>
-        public GameRoot(GameConfig config)
-        {
-            SetConfig(config);
-            Galaxy = new GalaxyMap();
-        }
-
-        /// <summary>
-        /// Constructor that initializes the game with a summary and config.
-        /// Used for loading saved games.
-        /// </summary>
-        /// <param name="summary">The game summary from save file.</param>
-        /// <param name="config">The runtime configuration.</param>
-        public GameRoot(GameSummary summary, GameConfig config)
-        {
-            Summary = summary;
-            SetConfig(config);
-            Galaxy = new GalaxyMap();
-        }
-
-        /// <summary>
         /// Injects runtime configuration.
         /// </summary>
         /// <param name="config">The configuration to inject.</param>

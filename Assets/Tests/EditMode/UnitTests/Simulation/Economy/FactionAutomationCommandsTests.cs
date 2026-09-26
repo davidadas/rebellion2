@@ -34,7 +34,7 @@ namespace Rebellion.Tests.Simulation
         {
             GameConfig config = CreateGameConfig();
             GameDataCatalog gameData = CreateGameData(config);
-            _game = new GameRoot(config);
+            _game = TestGame.Create(config);
             _faction = new Faction
             {
                 InstanceID = _factionId,

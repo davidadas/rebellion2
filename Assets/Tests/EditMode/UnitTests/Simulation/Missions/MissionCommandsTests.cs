@@ -46,7 +46,7 @@ namespace Rebellion.Tests.Simulation
         public void UpdateMission_CompletedWithoutReturnDestination_CapturesOfficerAndDetachesMission()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
 
             PlanetSector planetSector = new PlanetSector
@@ -118,7 +118,7 @@ namespace Rebellion.Tests.Simulation
         public void UpdateMission_MissingOwnerFaction_DetachesMission()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
 
             PlanetSector planetSector = new PlanetSector { InstanceID = "sector1" };
             game.AttachNode(planetSector, game.Galaxy);
@@ -184,7 +184,7 @@ namespace Rebellion.Tests.Simulation
         public void UpdateMission_CompletedParticipantOnNeutralPlanet_ReturnsToNearestFriendlyPlanet()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
 
             PlanetSector sector = new PlanetSector
@@ -354,7 +354,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void UpdateMission_DiplomacyCompletionFromFleet_ParticipantRemainsAtTargetPlanet()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             Faction faction = new Faction { InstanceID = "empire" };
             game.GetFactions().Add(faction);
             PlanetSector planetSector = new PlanetSector
@@ -2706,7 +2706,7 @@ namespace Rebellion.Tests.Simulation
         public void InitiateMission_ParticipantAssigned_SetsParticipantParentToMission()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
@@ -2781,7 +2781,7 @@ namespace Rebellion.Tests.Simulation
         public void InitiateMission_AssignedParticipant_IsOnMission()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
@@ -3430,7 +3430,7 @@ namespace Rebellion.Tests.Simulation
         ) BuildScene(bool factionOwnsPlanet, bool canBetray = false, int loyalty = 100)
         {
             GameConfig config = TestConfig.Create();
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             Faction faction = new Faction { InstanceID = "empire" };
             game.GetFactions().Add(faction);
 
@@ -3454,14 +3454,10 @@ namespace Rebellion.Tests.Simulation
             };
             game.AttachNode(planet, sector);
 
-            Officer officer = new Officer(canBetray, loyalty)
-            {
-                InstanceID = "o1",
-                OwnerInstanceID = "empire",
-                Movement = null,
-                MissionReturnParentInstanceID = planet.InstanceID,
-                MissionReturnLocationInstanceID = planet.InstanceID,
-            };
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire", canBetray, loyalty);
+            officer.Movement = null;
+            officer.MissionReturnParentInstanceID = planet.InstanceID;
+            officer.MissionReturnLocationInstanceID = planet.InstanceID;
             // Parent to planet so IsOnMission() = false and IsMovable() = true.
             game.AttachNode(officer, planet);
 
@@ -3668,7 +3664,7 @@ namespace Rebellion.Tests.Simulation
         ) BuildOrbitalDetectionScene(string planetOwnerId = "empire")
         {
             GameConfig config = new GameConfig();
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
@@ -3771,7 +3767,7 @@ namespace Rebellion.Tests.Simulation
         ) BuildDetectionScene()
         {
             GameConfig config = new GameConfig();
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
@@ -3848,7 +3844,7 @@ namespace Rebellion.Tests.Simulation
         ) BuildOfficerTargetMissionScene(bool friendlyTarget, bool capturedTarget)
         {
             GameConfig config = TestConfig.Create();
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 
@@ -3923,7 +3919,7 @@ namespace Rebellion.Tests.Simulation
         ) BuildConcurrentMissionsScene(int ownerSupport = 50, bool hasGarrison = true)
         {
             GameConfig config = TestConfig.Create();
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
 
             Faction rebels = new Faction { InstanceID = "rebels" };
             Faction empire = new Faction { InstanceID = "empire" };

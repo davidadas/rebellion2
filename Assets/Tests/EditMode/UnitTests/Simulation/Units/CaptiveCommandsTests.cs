@@ -496,7 +496,7 @@ namespace Rebellion.Tests.Simulation
                     { 50, 30 },
                 },
             };
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             game.CurrentTick = 1;
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });

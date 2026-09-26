@@ -713,7 +713,7 @@ namespace Rebellion.Tests.Simulation
         /// <returns>The created game.</returns>
         private GameRoot CreateGame()
         {
-            return new GameRoot(TestConfig.Create());
+            return TestGame.Create(TestConfig.Create());
         }
 
         /// <summary>

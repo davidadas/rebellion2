@@ -51,19 +51,6 @@ namespace Rebellion.AI.Proposals
             : AIProposalPriority.Optional;
 
         /// <summary>
-        /// Creates a manufacture proposal.
-        /// </summary>
-        /// <param name="demand">Production demand served by the proposal.</param>
-        /// <param name="producerPlanet">Planet that will produce the item.</param>
-        /// <param name="product">Technology to manufacture.</param>
-        public AIManufactureProposal(
-            AIProductionDemand demand,
-            Planet producerPlanet,
-            Technology product
-        )
-            : this(demand, producerPlanet, product, false) { }
-
-        /// <summary>
         /// Creates a manufacture proposal from one demand and producer.
         /// </summary>
         /// <param name="demand">Production demand served by the proposal.</param>

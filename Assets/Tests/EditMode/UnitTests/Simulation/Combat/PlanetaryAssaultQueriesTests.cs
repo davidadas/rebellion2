@@ -180,7 +180,7 @@ namespace Rebellion.Tests.Simulation
         /// <returns>The created game.</returns>
         private static GameRoot CreateGame()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             game.GetFactions()
                 .Add(
                     new Faction

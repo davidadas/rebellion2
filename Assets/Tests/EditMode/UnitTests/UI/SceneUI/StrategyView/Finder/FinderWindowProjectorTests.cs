@@ -27,7 +27,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
         [SetUp]
         public void SetUp()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             game.GetFactions()
                 .Add(new Faction { InstanceID = _playerFactionId, DisplayName = "Alliance" });
             game.GetFactions()

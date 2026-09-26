@@ -32,9 +32,9 @@ namespace Rebellion.Tests.Simulation
         [SetUp]
         public void SetUp()
         {
-            GameConfig config = new GameConfig();
+            GameConfig config = TestConfig.Create();
             config.SupportShift.OwnershipTransferThreshold = 60;
-            _game = new GameRoot(config);
+            _game = TestGame.Create(config);
 
             _rebels = new Faction { InstanceID = "rebels", DisplayName = "Rebels" };
             _empire = new Faction { InstanceID = "empire", DisplayName = "Empire" };
@@ -1309,7 +1309,7 @@ namespace Rebellion.Tests.Simulation
         {
             GameConfig config = new GameConfig();
             config.SupportShift.OwnershipTransferThreshold = 60;
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 

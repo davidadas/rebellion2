@@ -10,7 +10,9 @@ internal static class TestContent
     internal static ContentPack Pack => _pack ??= ContentPackLoader.OpenActive();
 
     internal static ContentAssets Assets =>
-        _assets ??= new ContentAssets(Pack.ContentRootPath, Pack.PackRootPath);
+        _assets ??= new ContentAssets(
+            new ContentFileResolver(Pack.ContentRootPath, Pack.PackRootPath)
+        );
 
     internal static GameDataCatalog Data => Pack.GameData;
 

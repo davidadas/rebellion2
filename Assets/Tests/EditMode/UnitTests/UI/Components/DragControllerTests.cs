@@ -109,7 +109,7 @@ namespace Rebellion.Tests.UI.Components
         public void BeginDrag_MissingCandidate_ThrowsInvalidOperationException()
         {
             DragController controller = new DragController(0);
-            DragPreview preview = new DragPreview(_texture, 10, 20, 3, 4);
+            DragPreview preview = DragPreviewTestFactory.Create(_texture, 10, 20, 3, 4);
 
             Assert.Throws<InvalidOperationException>(() => controller.BeginDrag(preview, 0, 0));
         }
@@ -129,7 +129,7 @@ namespace Rebellion.Tests.UI.Components
             object source = new object();
             DragController controller = new DragController(5);
             DragRequest request = new DragRequest(source);
-            DragPreview preview = new DragPreview(_texture, 10, 20, 3, 4);
+            DragPreview preview = DragPreviewTestFactory.Create(_texture, 10, 20, 3, 4);
             controller.StartCandidate(request, 1, 2);
 
             controller.BeginDrag(preview, 10, 20);
@@ -212,7 +212,7 @@ namespace Rebellion.Tests.UI.Components
         {
             DragController controller = new DragController(0);
             controller.StartCandidate(new DragRequest(new object()), 0, 0);
-            controller.BeginDrag(new DragPreview(null, 10, 20, 3, 4), 30, 40);
+            controller.BeginDrag(DragPreviewTestFactory.Create(null, 10, 20, 3, 4), 30, 40);
 
             bool hasPreview = controller.TryGetPreview(
                 out Texture texture,
@@ -262,7 +262,7 @@ namespace Rebellion.Tests.UI.Components
             object source = new object();
             DragController controller = new DragController(0);
             controller.StartCandidate(new DragRequest(source), 0, 0);
-            controller.BeginDrag(new DragPreview(_texture, 1, 1, 0, 0), 0, 0);
+            controller.BeginDrag(DragPreviewTestFactory.Create(_texture, 1, 1, 0, 0), 0, 0);
 
             controller.ClearSource(source);
 
@@ -288,7 +288,7 @@ namespace Rebellion.Tests.UI.Components
         {
             DragController controller = new DragController(0);
             controller.StartCandidate(new DragRequest(new object()), 0, 0);
-            controller.BeginDrag(new DragPreview(_texture, 1, 1, 0, 0), 0, 0);
+            controller.BeginDrag(DragPreviewTestFactory.Create(_texture, 1, 1, 0, 0), 0, 0);
             controller.StartCandidate(new DragRequest(new object()), 0, 0);
 
             controller.Clear();

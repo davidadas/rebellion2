@@ -33,7 +33,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
         [SetUp]
         public void SetUp()
         {
-            _game = new GameRoot(TestConfig.Create()) { CurrentTick = 100 };
+            _game = TestGame.Create(TestConfig.Create());
+            _game.CurrentTick = 100;
             _game.GetFactions().Add(new Faction { InstanceID = _ownerId });
             _game.GetFactions().Add(new Faction { InstanceID = _opponentId });
             _game.Summary.PlayerFactionID = _ownerId;

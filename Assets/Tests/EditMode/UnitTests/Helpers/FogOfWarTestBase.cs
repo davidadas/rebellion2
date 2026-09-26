@@ -28,7 +28,7 @@ namespace Rebellion.Tests.Helpers
         public void SetUpScene()
         {
             GameConfig config = new GameConfig();
-            _game = new GameRoot(config);
+            _game = TestGame.Create(config);
 
             _alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
             _empire = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };

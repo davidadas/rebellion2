@@ -32,7 +32,7 @@ namespace Rebellion.Tests.Simulation
         [SetUp]
         public void SetUp()
         {
-            _game = new GameRoot(TestConfig.Create());
+            _game = TestGame.Create(TestConfig.Create());
             _system = new GameEventExecutor(_game, new FixedRandomProvider(new[] { 0.5 }));
         }
 
@@ -2947,7 +2947,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void ProcessEvents_FutureActivation_EvaluatesBindingRoll()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             QueueRNG random = new QueueRNG(0.25, 0.75);
             GameEvent gameEvent = new GameEvent
             {
@@ -2973,7 +2973,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void ProcessEvents_BindingThrows_DoesNotExecuteFollowingEvent()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             GameEvent invalid = new GameEvent
             {
                 InstanceID = "invalid-binding",
@@ -3065,7 +3065,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void ExecuteActions_NestedActions_RecordsResultBeforeNextRoll()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             PlanetSector sector = new PlanetSector { InstanceID = "sector" };
             Planet planet = new Planet { InstanceID = "planet" };
             game.AttachNode(sector, game.Galaxy);
@@ -3103,7 +3103,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void Bind_DuplicateAlias_ConsumesRollBeforeRejectingAlias()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             GameEventEvaluationContext context = new GameEventEvaluationContext(
                 new GameEvent(),
                 null
@@ -3127,7 +3127,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void Bind_NumericRanges_StoresRolledValues()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             GameEvent gameEvent = new GameEvent();
             GameEventEvaluationContext context = new GameEventEvaluationContext(gameEvent, null);
             GameEventBinding integerBinding = new GameEventBinding
@@ -3151,7 +3151,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void Bind_TypedSources_StoresResolvedValues()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             Faction faction = new Faction { InstanceID = "faction" };
             game.GetFactions().Add(faction);
             PlanetSector sector = new PlanetSector { InstanceID = "sector" };
@@ -3251,7 +3251,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void Bind_TypedOfficerSourcesWithInactiveOfficer_StoresResolvedValues()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             Faction faction = new Faction { InstanceID = "faction" };
             game.GetFactions().Add(faction);
             PlanetSector sector = new PlanetSector { InstanceID = "sector" };
@@ -3313,7 +3313,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void Bind_PlanetStatWithInactivePlanet_StoresResolvedValue()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             PlanetSector sector = new PlanetSector { InstanceID = "sector" };
             Planet planet = new Planet { InstanceID = "planet", NumRawResourceNodes = 7 };
             game.AttachNode(sector, game.Galaxy);
@@ -4760,7 +4760,7 @@ namespace Rebellion.Tests.Simulation
         private GameRoot BuildGame(out Planet empirePlanet, out Planet rebelPlanet)
         {
             GameConfig config = TestConfig.Create();
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
             PlanetSector sector = new PlanetSector { InstanceID = "sector1" };
@@ -4790,7 +4790,7 @@ namespace Rebellion.Tests.Simulation
         /// <returns>The constructed game.</returns>
         private static GameRoot BuildConditionGame(out Planet empirePlanet, out Planet rebelPlanet)
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
             PlanetSector sector = new PlanetSector { InstanceID = "sector" };
@@ -4827,7 +4827,7 @@ namespace Rebellion.Tests.Simulation
         {
             GameConfig config = new GameConfig();
             config.Jedi.RankLabelByMinimumForceRank[100] = (int)ForceRankLabel.ForceKnight;
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "faction" });
             PlanetSector sector = new PlanetSector { InstanceID = "sector" };
             planet = new Planet
@@ -4870,7 +4870,7 @@ namespace Rebellion.Tests.Simulation
         /// <returns>The constructed game.</returns>
         private static GameRoot BuildSelectionGame(out Planet planet)
         {
-            GameRoot game = new GameRoot(new GameConfig());
+            GameRoot game = TestGame.Create(new GameConfig());
             game.GetFactions().Add(new Faction { InstanceID = "faction" });
             PlanetSector sector = new PlanetSector
             {

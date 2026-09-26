@@ -386,7 +386,7 @@ namespace Rebellion.Tests.Simulation
         {
             GameConfig config = TestConfig.Create();
             config.Blockade.EvacuationLossPercent = 100;
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 

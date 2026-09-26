@@ -30,7 +30,7 @@ namespace Rebellion.Tests.Simulation
         {
             // Create game with galaxy
             GameConfig config = TestContent.Data.GameConfig;
-            _game = new GameRoot(config);
+            _game = TestGame.Create(config);
             _game.Summary.Difficulty = GameDifficulty.Medium;
             GalaxyMap galaxy = _game.Galaxy;
 
@@ -134,7 +134,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void Constructor_WithNullGame_ThrowsArgumentNullException()
         {
-            GameRoot dependencyGame = new GameRoot(TestConfig.Create());
+            GameRoot dependencyGame = TestGame.Create(TestConfig.Create());
 
             ArgumentNullException exception = Assert.Throws<ArgumentNullException>(() =>
                 new ManufacturingCommands(null, new FleetCommands(dependencyGame), null)
@@ -167,7 +167,7 @@ namespace Rebellion.Tests.Simulation
         public void ProcessTick_EmptyGame_ReturnsNoResults()
         {
             GameConfig config = TestContent.Data.GameConfig;
-            GameRoot emptyGame = new GameRoot(config);
+            GameRoot emptyGame = TestGame.Create(config);
             ManufacturingCommands emptyManager = new ManufacturingCommands(
                 emptyGame,
                 new FleetCommands(emptyGame),
@@ -970,7 +970,7 @@ namespace Rebellion.Tests.Simulation
         public void ProcessTick_CapitalShipBuilding_RemainsInFleetWithProgress()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot _game = new GameRoot(config);
+            GameRoot _game = TestGame.Create(config);
             Faction empire = new Faction { InstanceID = "empire" };
             _game.GetFactions().Add(empire);
             Planet planet = BuildShipyardPlanet(_game, "p1", "empire");
@@ -1016,7 +1016,7 @@ namespace Rebellion.Tests.Simulation
         public void ProcessTick_CapitalShip_UsesEveryReadyFacilityWithoutConsumingMaterial()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             Faction faction = new Faction { InstanceID = "empire", RefinedMaterialStockpile = 2 };
             game.GetFactions().Add(faction);
             Planet planet = BuildShipyardPlanet(game, "p1", faction.InstanceID);
@@ -1073,7 +1073,7 @@ namespace Rebellion.Tests.Simulation
         public void ProcessTick_CapitalShipComplete_RemovedFromQueue()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot _game = new GameRoot(config);
+            GameRoot _game = TestGame.Create(config);
             Faction empire = new Faction { InstanceID = "empire" };
             _game.GetFactions().Add(empire);
             Planet planet = BuildShipyardPlanet(_game, "p1", "empire");
@@ -1116,7 +1116,7 @@ namespace Rebellion.Tests.Simulation
         public void ProcessTick_CapitalShipCompleteOnSamePlanet_NoMovement()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot _game = new GameRoot(config);
+            GameRoot _game = TestGame.Create(config);
             Faction empire = new Faction { InstanceID = "empire" };
             _game.GetFactions().Add(empire);
             Planet planet = BuildShipyardPlanet(_game, "p1", "empire");
@@ -1156,7 +1156,7 @@ namespace Rebellion.Tests.Simulation
         public void ProcessTick_CapitalShipCompleteOnDifferentPlanet_ShipsFleet()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot _game = new GameRoot(config);
+            GameRoot _game = TestGame.Create(config);
             Faction empire = new Faction { InstanceID = "empire" };
             _game.GetFactions().Add(empire);
             Planet originPlanet = BuildShipyardPlanet(_game, "p1", "empire");
@@ -1205,7 +1205,7 @@ namespace Rebellion.Tests.Simulation
             // Planet doesn't accept CapitalShips directly, so HandleArrivalRejection finds
             // no valid fallback — ship stays in fleet, no transit state.
             GameConfig config = TestConfig.Create();
-            GameRoot _game = new GameRoot(config);
+            GameRoot _game = TestGame.Create(config);
             Faction empire = new Faction { InstanceID = "empire" };
             Faction rebels = new Faction { InstanceID = "rebels" };
             _game.GetFactions().Add(empire);
@@ -1269,7 +1269,7 @@ namespace Rebellion.Tests.Simulation
         public void ProcessTick_StarfighterComplete_ShipsToDestination()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot _game = new GameRoot(config);
+            GameRoot _game = TestGame.Create(config);
             Faction empire = new Faction { InstanceID = "empire" };
             _game.GetFactions().Add(empire);
             Planet originPlanet = BuildShipyardPlanet(_game, "p1", "empire");
@@ -1316,7 +1316,7 @@ namespace Rebellion.Tests.Simulation
             // When a starfighter is enqueued into an existing fleet on a different planet,
             // completing manufacturing must ship it to the fleet's capital ship.
             GameConfig config = TestConfig.Create();
-            GameRoot _game = new GameRoot(config);
+            GameRoot _game = TestGame.Create(config);
             Faction empire = new Faction { InstanceID = "empire" };
             _game.GetFactions().Add(empire);
             Planet originPlanet = BuildShipyardPlanet(_game, "p1", "empire");
@@ -1363,7 +1363,7 @@ namespace Rebellion.Tests.Simulation
         public void ProcessTick_RegimentComplete_ShipsToDestination()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot _game = new GameRoot(config);
+            GameRoot _game = TestGame.Create(config);
             Faction empire = new Faction { InstanceID = "empire" };
             _game.GetFactions().Add(empire);
             Planet originPlanet = BuildShipyardPlanet(_game, "p1", "empire");
@@ -1405,7 +1405,7 @@ namespace Rebellion.Tests.Simulation
         public void ProcessTick_RegimentCompleteOnSamePlanet_AttachedImmediately()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot _game = new GameRoot(config);
+            GameRoot _game = TestGame.Create(config);
             Faction empire = new Faction { InstanceID = "empire" };
             _game.GetFactions().Add(empire);
             Planet planet = BuildShipyardPlanet(_game, "p1", "empire");
@@ -1444,7 +1444,7 @@ namespace Rebellion.Tests.Simulation
         public void ProcessTick_DestinationDestroyed_UnitIsAlsoDestroyed()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot _game = new GameRoot(config);
+            GameRoot _game = TestGame.Create(config);
             Faction empire = new Faction { InstanceID = "empire" };
             _game.GetFactions().Add(empire);
             Planet planet = BuildShipyardPlanet(_game, "p1", "empire");
@@ -1493,7 +1493,7 @@ namespace Rebellion.Tests.Simulation
         public void ProcessTick_BuildingCompleteOnDifferentPlanet_ShipsToDestination()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot _game = new GameRoot(config);
+            GameRoot _game = TestGame.Create(config);
             Faction empire = new Faction { InstanceID = "empire" };
             _game.GetFactions().Add(empire);
             Planet originPlanet = BuildShipyardPlanet(_game, "p1", "empire");
@@ -1585,7 +1585,7 @@ namespace Rebellion.Tests.Simulation
             // Mine queued from planetA to planetB. planetB captured before completion.
             // The order should be cancelled instead of redirecting to planetA.
             GameConfig config = TestConfig.Create();
-            GameRoot _game = new GameRoot(config);
+            GameRoot _game = TestGame.Create(config);
             Faction empire = new Faction { InstanceID = "empire", RefinedMaterialStockpile = 1 };
             _game.GetFactions().Add(empire);
             _game.GetFactions().Add(new Faction { InstanceID = "rebels" });
@@ -1669,7 +1669,7 @@ namespace Rebellion.Tests.Simulation
             // Mine queued from full planetA to planetB. planetB captured before completion.
             // Cancellation should not depend on planetA having fallback capacity.
             GameConfig config = TestConfig.Create();
-            GameRoot _game = new GameRoot(config);
+            GameRoot _game = TestGame.Create(config);
             Faction empire = new Faction { InstanceID = "empire", RefinedMaterialStockpile = 1 };
             _game.GetFactions().Add(empire);
             _game.GetFactions().Add(new Faction { InstanceID = "rebels" });
@@ -1760,7 +1760,7 @@ namespace Rebellion.Tests.Simulation
         public void ProcessTick_Blockade_AppliesGraduatedRateAndKdyRestoresFullRate()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             Faction empire = new Faction { InstanceID = "empire" };
             Faction rebels = new Faction { InstanceID = "rebels" };
             game.GetFactions().Add(empire);
@@ -1860,7 +1860,7 @@ namespace Rebellion.Tests.Simulation
         {
             GameConfig config = TestConfig.Create();
             config.Blockade.CapitalShipProductionPenaltyPercent = 100;
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             Faction empire = new Faction { InstanceID = "empire" };
             Faction rebels = new Faction { InstanceID = "rebels" };
             game.GetFactions().Add(empire);
@@ -1923,7 +1923,7 @@ namespace Rebellion.Tests.Simulation
         public void ProcessTick_Uprising_HaltsProductionWithoutReservingInput()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             Faction empire = new Faction { InstanceID = "empire", RefinedMaterialStockpile = 1 };
             game.GetFactions().Add(empire);
             Planet planet = BuildShipyardPlanet(game, "p1", empire.InstanceID);
@@ -1975,7 +1975,7 @@ namespace Rebellion.Tests.Simulation
         public void ProcessTick_ThreeManufacturingTypes_AllAdvance()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot _game = new GameRoot(config);
+            GameRoot _game = TestGame.Create(config);
             Faction empire = new Faction { InstanceID = "empire" };
             empire.Settings.RefinementMultiplier = 4;
             _game.GetFactions().Add(empire);
@@ -2071,7 +2071,7 @@ namespace Rebellion.Tests.Simulation
         public void ProcessTick_NoShipyard_ShipMakesNoProgress()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot _game = new GameRoot(config);
+            GameRoot _game = TestGame.Create(config);
             Faction empire = new Faction { InstanceID = "empire" };
             _game.GetFactions().Add(empire);
 
@@ -2127,7 +2127,7 @@ namespace Rebellion.Tests.Simulation
         public void ProcessTick_NoTrainingFacility_RegimentMakesNoProgress()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot _game = new GameRoot(config);
+            GameRoot _game = TestGame.Create(config);
             Faction empire = new Faction { InstanceID = "empire" };
             _game.GetFactions().Add(empire);
 
@@ -2192,7 +2192,7 @@ namespace Rebellion.Tests.Simulation
         public void ProcessTick_NoConstructionYard_BuildingMakesNoProgress()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot _game = new GameRoot(config);
+            GameRoot _game = TestGame.Create(config);
             Faction empire = new Faction { InstanceID = "empire" };
             _game.GetFactions().Add(empire);
 
@@ -2247,7 +2247,7 @@ namespace Rebellion.Tests.Simulation
         public void ProcessTick_CapitalShipCompleteDestinationFleetDestroyed_ShipIsLost()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot _game = new GameRoot(config);
+            GameRoot _game = TestGame.Create(config);
             Faction empire = new Faction { InstanceID = "empire" };
             _game.GetFactions().Add(empire);
             Planet productionPlanet = BuildShipyardPlanet(_game, "p1", "empire");
@@ -2309,7 +2309,7 @@ namespace Rebellion.Tests.Simulation
         public void ProcessTick_StarfighterCompleteFleetOverHostilePlanet_TravelsToCarrier()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot _game = new GameRoot(config);
+            GameRoot _game = TestGame.Create(config);
             Faction empire = new Faction { InstanceID = "empire" };
             _game.GetFactions().Add(empire);
             _game.GetFactions().Add(new Faction { InstanceID = "rebels" });
@@ -2370,7 +2370,7 @@ namespace Rebellion.Tests.Simulation
         public void ProcessTick_RegimentCompleteFleetOverHostilePlanet_TravelsToTransport()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot _game = new GameRoot(config);
+            GameRoot _game = TestGame.Create(config);
             Faction empire = new Faction { InstanceID = "empire" };
             _game.GetFactions().Add(empire);
             _game.GetFactions().Add(new Faction { InstanceID = "rebels" });
@@ -2561,7 +2561,7 @@ namespace Rebellion.Tests.Simulation
             // B changes sides. A has enough ground slots for all 3.
             // Every order assigned to B should be cancelled.
             GameConfig config = TestConfig.Create();
-            GameRoot _game = new GameRoot(config);
+            GameRoot _game = TestGame.Create(config);
             Faction empire = new Faction { InstanceID = "empire", RefinedMaterialStockpile = 3 };
             _game.GetFactions().Add(empire);
             _game.GetFactions().Add(new Faction { InstanceID = "rebels" });
@@ -2674,7 +2674,7 @@ namespace Rebellion.Tests.Simulation
             // 3 mines queued from production planet A to destination planet B.
             // B changes sides. Cancellation does not depend on fallback capacity at A.
             GameConfig config = TestConfig.Create();
-            GameRoot _game = new GameRoot(config);
+            GameRoot _game = TestGame.Create(config);
             Faction empire = new Faction { InstanceID = "empire", RefinedMaterialStockpile = 3 };
             _game.GetFactions().Add(empire);
             _game.GetFactions().Add(new Faction { InstanceID = "rebels" });
@@ -3425,7 +3425,7 @@ namespace Rebellion.Tests.Simulation
         public void Enqueue_FleetDestinationOwnedByDifferentFaction_ReturnsFalse()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
             Planet planet = BuildShipyardPlanet(game, "p1", "empire");
@@ -3464,7 +3464,7 @@ namespace Rebellion.Tests.Simulation
         public void Enqueue_CapitalShipDestinationAvailable_QueuesPassengerOnShip()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             Planet planet = BuildShipyardPlanet(game, "p1", "empire");
 
@@ -3503,7 +3503,7 @@ namespace Rebellion.Tests.Simulation
         public void Enqueue_CapitalShipDestinationInTransit_ReturnsFalse()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             Planet planet = BuildShipyardPlanet(game, "p1", "empire");
 
@@ -3542,7 +3542,7 @@ namespace Rebellion.Tests.Simulation
         public void Enqueue_CapitalShipDestinationUnderConstruction_ReturnsFalse()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             Planet planet = BuildShipyardPlanet(game, "p1", "empire");
 
@@ -3580,7 +3580,7 @@ namespace Rebellion.Tests.Simulation
         public void Enqueue_FleetDestinationWithOnlyUnfinishedCarrier_ReturnsFalse()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             Planet planet = BuildShipyardPlanet(game, "p1", "empire");
 
@@ -3876,7 +3876,7 @@ namespace Rebellion.Tests.Simulation
         public void RebuildQueues_EmptyGame_NoQueues()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot _game = new GameRoot(config);
+            GameRoot _game = TestGame.Create(config);
             _game.GetFactions().Add(new Faction { InstanceID = "empire" });
 
             Planet planet = new Planet
@@ -3937,7 +3937,7 @@ namespace Rebellion.Tests.Simulation
         public void RebuildQueues_MultiplePlanets_CorrectGrouping()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot _game = new GameRoot(config);
+            GameRoot _game = TestGame.Create(config);
             _game.GetFactions().Add(new Faction { InstanceID = "empire" });
 
             Planet planet1 = new Planet
@@ -4020,7 +4020,7 @@ namespace Rebellion.Tests.Simulation
         public void RebuildQueues_CalledTwice_NoDuplication()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot _game = new GameRoot(config);
+            GameRoot _game = TestGame.Create(config);
             _game.GetFactions().Add(new Faction { InstanceID = "empire" });
 
             Planet planet = new Planet
@@ -4065,7 +4065,7 @@ namespace Rebellion.Tests.Simulation
         public void RebuildQueues_OnlyBuilding_IgnoresComplete()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot _game = new GameRoot(config);
+            GameRoot _game = TestGame.Create(config);
             _game.GetFactions().Add(new Faction { InstanceID = "empire" });
 
             Planet planet = new Planet
@@ -4123,7 +4123,7 @@ namespace Rebellion.Tests.Simulation
         public void RebuildQueues_NoProducerPlanetID_SkipsItem()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot _game = new GameRoot(config);
+            GameRoot _game = TestGame.Create(config);
             _game.GetFactions().Add(new Faction { InstanceID = "empire" });
 
             Planet planet = new Planet
@@ -4167,7 +4167,7 @@ namespace Rebellion.Tests.Simulation
         public void RebuildQueues_InvalidProducerPlanetID_SkipsItem()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot _game = new GameRoot(config);
+            GameRoot _game = TestGame.Create(config);
             _game.GetFactions().Add(new Faction { InstanceID = "empire" });
 
             Planet planet = new Planet
@@ -4211,7 +4211,7 @@ namespace Rebellion.Tests.Simulation
         public void Enqueue_CapitalShipValidShip_AttachesToFleetAtPlanet()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot _game = new GameRoot(config);
+            GameRoot _game = TestGame.Create(config);
             Faction empire = new Faction { InstanceID = "empire" };
             _game.GetFactions().Add(empire);
             Planet planet = BuildShipyardPlanet(_game, "p1", "empire");
@@ -4254,7 +4254,7 @@ namespace Rebellion.Tests.Simulation
         public void Enqueue_CapitalShipPlanetDestination_ReturnsFalse()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot _game = new GameRoot(config);
+            GameRoot _game = TestGame.Create(config);
             Faction empire = new Faction { InstanceID = "empire" };
             _game.GetFactions().Add(empire);
             Planet planet = BuildShipyardPlanet(_game, "p1", "empire");
@@ -4285,7 +4285,7 @@ namespace Rebellion.Tests.Simulation
         public void Enqueue_CapitalShipWithFleetDestination_JoinsFleet()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot _game = new GameRoot(config);
+            GameRoot _game = TestGame.Create(config);
             Faction empire = new Faction { InstanceID = "empire" };
             _game.GetFactions().Add(empire);
             Planet planet = BuildShipyardPlanet(_game, "p1", "empire");
@@ -4326,7 +4326,7 @@ namespace Rebellion.Tests.Simulation
         public void Enqueue_CapitalShipPlanetDestinationWithFleetPresent_StillReturnsFalse()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot _game = new GameRoot(config);
+            GameRoot _game = TestGame.Create(config);
             Faction empire = new Faction { InstanceID = "empire" };
             _game.GetFactions().Add(empire);
             Planet planet = BuildShipyardPlanet(_game, "p1", "empire");
@@ -4372,7 +4372,7 @@ namespace Rebellion.Tests.Simulation
         public void Enqueue_CapitalShipNoOwner_ReturnsFalse()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot _game = new GameRoot(config);
+            GameRoot _game = TestGame.Create(config);
             Faction empire = new Faction { InstanceID = "empire" };
             _game.GetFactions().Add(empire);
             Planet planet = BuildShipyardPlanet(_game, "p1", "empire");
@@ -4410,7 +4410,7 @@ namespace Rebellion.Tests.Simulation
         public void Enqueue_TwoCapitalShipsSameFleet_BothJoin()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot _game = new GameRoot(config);
+            GameRoot _game = TestGame.Create(config);
             Faction empire = new Faction { InstanceID = "empire" };
             _game.GetFactions().Add(empire);
             Planet planet = BuildShipyardPlanet(_game, "p1", "empire");
@@ -4460,7 +4460,7 @@ namespace Rebellion.Tests.Simulation
         public void Enqueue_TwoCapitalShipsSameExplicitFleet_JoinSameFleet()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot _game = new GameRoot(config);
+            GameRoot _game = TestGame.Create(config);
             Faction empire = new Faction { InstanceID = "empire" };
             _game.GetFactions().Add(empire);
             Planet planet = BuildShipyardPlanet(_game, "p1", "empire");
@@ -4501,7 +4501,7 @@ namespace Rebellion.Tests.Simulation
         public void Enqueue_BuildingValidBuilding_ParentIsDestinationPlanet()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot _game = new GameRoot(config);
+            GameRoot _game = TestGame.Create(config);
             Faction empire = new Faction { InstanceID = "empire" };
             _game.GetFactions().Add(empire);
             Planet planet = BuildShipyardPlanet(_game, "p1", "empire");
@@ -4548,7 +4548,7 @@ namespace Rebellion.Tests.Simulation
         public void Enqueue_StarfighterValidFighter_ParentIsDestinationFleet()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot _game = new GameRoot(config);
+            GameRoot _game = TestGame.Create(config);
             Faction empire = new Faction { InstanceID = "empire" };
             _game.GetFactions().Add(empire);
             Planet planet = BuildShipyardPlanet(_game, "p1", "empire");
@@ -4593,7 +4593,7 @@ namespace Rebellion.Tests.Simulation
         public void Enqueue_RegimentValidRegiment_ParentIsDestinationPlanet()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot _game = new GameRoot(config);
+            GameRoot _game = TestGame.Create(config);
             Faction empire = new Faction { InstanceID = "empire" };
             _game.GetFactions().Add(empire);
             Planet planet = BuildShipyardPlanet(_game, "p1", "empire");
@@ -4973,7 +4973,7 @@ namespace Rebellion.Tests.Simulation
         /// <returns>The created order test game.</returns>
         private static GameRoot CreateOrderTestGame()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             return game;
         }

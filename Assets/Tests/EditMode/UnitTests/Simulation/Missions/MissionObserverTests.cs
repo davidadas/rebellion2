@@ -254,7 +254,7 @@ namespace Rebellion.Tests.Simulation
         ) BuildScene(bool factionOwnsPlanet)
         {
             GameConfig config = TestConfig.Create();
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             Faction faction = new Faction { InstanceID = "empire" };
             game.GetFactions().Add(faction);
 

@@ -216,24 +216,27 @@ namespace Rebellion.Tests.Game.Units
         [Test]
         public void SerializeDeserialize_Officer_PreservesAllData()
         {
-            Officer originalOfficer = new Officer(canBetray: false, loyalty: 75)
+            Officer originalOfficer = EntityFactory.CreateOfficer(
+                "officer",
+                "faction",
+                canBetray: false,
+                loyalty: 75
+            );
+            originalOfficer.IsMain = true;
+            originalOfficer.CurrentRank = OfficerRank.Admiral;
+            originalOfficer.Ratings = new Dictionary<SkillRating, int>
             {
-                IsMain = true,
-                CurrentRank = OfficerRank.Admiral,
-                Ratings = new Dictionary<SkillRating, int>
-                {
-                    { SkillRating.Espionage, 15 },
-                    { SkillRating.Leadership, 25 },
-                },
-                Movement = null,
-                IsForceSensitive = true,
-                IsForceEligible = true,
-                ForceValue = 75,
-                ForceTrainingAdjustment = 10,
-                NextEscapeAttemptTick = 725,
-                MissionReturnParentInstanceID = "return-parent",
-                MissionReturnLocationInstanceID = "return-location",
+                { SkillRating.Espionage, 15 },
+                { SkillRating.Leadership, 25 },
             };
+            originalOfficer.Movement = null;
+            originalOfficer.IsForceSensitive = true;
+            originalOfficer.IsForceEligible = true;
+            originalOfficer.ForceValue = 75;
+            originalOfficer.ForceTrainingAdjustment = 10;
+            originalOfficer.NextEscapeAttemptTick = 725;
+            originalOfficer.MissionReturnParentInstanceID = "return-parent";
+            originalOfficer.MissionReturnLocationInstanceID = "return-location";
 
             string xml = SerializationHelper.Serialize(originalOfficer);
             Officer deserializedOfficer = SerializationHelper.Deserialize<Officer>(xml);
@@ -366,7 +369,12 @@ namespace Rebellion.Tests.Game.Units
         [Test]
         public void TryAdjustLoyalty_BetrayableOfficer_ChangesAndClampsLoyalty()
         {
-            Officer officer = new Officer(canBetray: true, loyalty: 75);
+            Officer officer = EntityFactory.CreateOfficer(
+                "officer",
+                "faction",
+                canBetray: true,
+                loyalty: 75
+            );
 
             Assert.IsTrue(officer.TryAdjustLoyalty(10));
             Assert.AreEqual(85, officer.Loyalty);
@@ -381,7 +389,12 @@ namespace Rebellion.Tests.Game.Units
         [Test]
         public void TryAdjustLoyalty_NonBetrayableOfficer_DoesNotChangeLoyalty()
         {
-            Officer officer = new Officer(canBetray: false, loyalty: 75);
+            Officer officer = EntityFactory.CreateOfficer(
+                "officer",
+                "faction",
+                canBetray: false,
+                loyalty: 75
+            );
 
             Assert.IsFalse(officer.TryAdjustLoyalty(-10));
             Assert.AreEqual(75, officer.Loyalty);

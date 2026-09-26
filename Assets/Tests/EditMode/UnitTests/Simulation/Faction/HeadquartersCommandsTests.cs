@@ -130,7 +130,7 @@ namespace Rebellion.Tests.Simulation
         /// <returns>The game, faction, origin, destination and headquarters building.</returns>
         private static (GameRoot, Faction, Planet, Planet, Building) CreateGame(bool isMobile)
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             Faction faction = new Faction
             {
                 InstanceID = "alliance",

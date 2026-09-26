@@ -24,7 +24,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
         [SetUp]
         public void SetUp()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             game.GetFactions().Add(new Faction { InstanceID = _ownerId });
             game.Summary.PlayerFactionID = _ownerId;
             _textures = new Dictionary<string, Texture2D>

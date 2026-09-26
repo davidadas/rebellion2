@@ -265,7 +265,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         /// <returns>The created game.</returns>
         private GameRoot CreateGame(out Planet origin, out GalaxyMapPlanet targetPlanet)
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             game.GetFactions().Add(new Faction { InstanceID = _playerFactionId });
             game.GetFactions().Add(new Faction { InstanceID = _opponentFactionId });
             game.Summary.PlayerFactionID = _playerFactionId;

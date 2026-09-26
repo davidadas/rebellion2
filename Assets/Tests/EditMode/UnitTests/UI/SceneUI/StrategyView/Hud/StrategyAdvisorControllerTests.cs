@@ -111,7 +111,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         public void BuildNotificationMenu_UnreadMessages_EnablesMarkAllRead()
         {
             Faction faction = new Faction();
-            faction.AddMessage(new StatusMessage(MessageType.Fleet, "Fleet arrived"));
+            faction.AddMessage(
+                new StatusMessage(MessageType.Fleet, "Fleet arrived", "Fleet arrived")
+            );
 
             IReadOnlyList<StrategyMenuCommand> commands =
                 StrategyAdvisorController.BuildNotificationMenu(faction);
@@ -546,7 +548,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 controller.Notify(
                     new MessageDeliveredResult
                     {
-                        Message = new StatusMessage(MessageType.Fleet, "Fleet arrived"),
+                        Message = new StatusMessage(
+                            MessageType.Fleet,
+                            "Fleet arrived",
+                            "Fleet arrived"
+                        ),
                         NotificationType = AdvisorNotificationType.PositivePopularSupport,
                     },
                     0,
@@ -602,7 +608,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 controller.Notify(
                     new MessageDeliveredResult
                     {
-                        Message = new StatusMessage(MessageType.Advice, "Custom"),
+                        Message = new StatusMessage(MessageType.Advice, "Custom", "Custom"),
                         AdvisorNotification = new AdvisorNotification
                         {
                             LifetimeTicks = 20,

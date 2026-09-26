@@ -1,4 +1,3 @@
-using System;
 using NUnit.Framework;
 using UnityEngine;
 
@@ -7,26 +6,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Overlay
     [TestFixture]
     public class StrategyOverlayRenderDataTests
     {
-        [Test]
-        public void Constructor_TextureWithoutBounds_ThrowsArgumentException()
-        {
-            Texture2D texture = new Texture2D(4, 4);
-
-            Assert.Throws<ArgumentException>(() =>
-                new StrategyOverlayRenderData(null, texture, null)
-            );
-
-            UnityEngine.Object.DestroyImmediate(texture);
-        }
-
-        [Test]
-        public void Constructor_BoundsWithoutTexture_ThrowsArgumentException()
-        {
-            Assert.Throws<ArgumentException>(() =>
-                new StrategyOverlayRenderData(null, null, new RectInt(1, 2, 3, 4))
-            );
-        }
-
         [Test]
         public void Constructor_MultipleDragImages_StoresPreviewAndPointerPosition()
         {

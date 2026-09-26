@@ -179,7 +179,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void ProcessTick_NeverBlockaded_NoEndEvent()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
             PlanetSector sector = new PlanetSector { InstanceID = "s1" };
             Planet planet = new Planet { InstanceID = "p1", OwnerInstanceID = "empire" };
@@ -220,7 +220,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void ProcessTick_MultiplePlanets_HandledIndependently()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
             Faction alliance = new Faction { InstanceID = "alliance" };
             game.GetFactions().Add(empire);
@@ -256,7 +256,7 @@ namespace Rebellion.Tests.Simulation
         {
             GameConfig config = TestConfig.Create();
             config.Blockade.EvacuationLossPercent = 25;
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
 
             // FixedRNG returns 0 from NextInt -> 0 < 25 -> loss
             BlockadeCommands system = new BlockadeCommands(game, new FixedRNG());
@@ -269,7 +269,7 @@ namespace Rebellion.Tests.Simulation
         {
             GameConfig config = TestConfig.Create();
             config.Blockade.EvacuationLossPercent = 25;
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
 
             // MaximumRNG returns 99 from NextInt(0,100) -> 99 >= 25 -> survives
             BlockadeCommands system = new BlockadeCommands(game, new MaximumRNG());
@@ -282,7 +282,7 @@ namespace Rebellion.Tests.Simulation
         {
             GameConfig config = TestConfig.Create();
             config.Blockade.EvacuationLossPercent = 0;
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
 
             BlockadeCommands system = new BlockadeCommands(game, new FixedRNG());
 
@@ -294,7 +294,7 @@ namespace Rebellion.Tests.Simulation
         {
             GameConfig config = TestConfig.Create();
             config.Blockade.EvacuationLossPercent = 100;
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
 
             BlockadeCommands system = new BlockadeCommands(game, new MaximumRNG());
 
@@ -357,7 +357,7 @@ namespace Rebellion.Tests.Simulation
         /// <returns>The constructed scene.</returns>
         private (GameRoot game, Planet planet, Fleet hostileFleet) BuildScene()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire", DisplayName = "Empire" };
             Faction alliance = new Faction { InstanceID = "alliance", DisplayName = "Alliance" };
             PlanetSector sector = new PlanetSector

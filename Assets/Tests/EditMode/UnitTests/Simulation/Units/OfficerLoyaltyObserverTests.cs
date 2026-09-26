@@ -107,7 +107,7 @@ namespace Rebellion.Tests.Simulation
             GameConfig config = TestConfig.Create();
             config.OfficerLoyalty.PlanetAcquisitionLoyaltyShift.Minimum = 0;
             config.OfficerLoyalty.PlanetAcquisitionLoyaltyShift.Maximum = 5;
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             PlanetSector sector = new PlanetSector { InstanceID = "sector" };
             game.AttachNode(sector, game.Galaxy);

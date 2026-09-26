@@ -365,17 +365,6 @@ namespace Rebellion.Game.Units
         public Officer() { }
 
         /// <summary>
-        /// Creates an officer with authored loyalty settings.
-        /// </summary>
-        /// <param name="canBetray">Whether the officer's loyalty can change and permit betrayal.</param>
-        /// <param name="loyalty">The officer's starting loyalty.</param>
-        public Officer(bool canBetray, int loyalty)
-        {
-            _canBetray = canBetray;
-            _loyalty = Math.Clamp(loyalty, 0, 100);
-        }
-
-        /// <summary>
         /// Applies a signed loyalty adjustment when this officer's loyalty can change.
         /// </summary>
         /// <param name="adjustment">The signed amount to apply.</param>

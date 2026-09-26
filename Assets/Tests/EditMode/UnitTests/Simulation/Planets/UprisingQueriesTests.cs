@@ -25,7 +25,7 @@ namespace Rebellion.Tests.Simulation
         )
         {
             GameConfig config = TestConfig.Create();
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             Faction faction = new Faction { InstanceID = "empire" };
             game.GetFactions().Add(faction);
 
@@ -58,7 +58,7 @@ namespace Rebellion.Tests.Simulation
         public void CalculateGarrisonRequirement_CoreWorldEmpire_Halved()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             Faction empire = new Faction
             {
                 InstanceID = "empire",
@@ -96,7 +96,7 @@ namespace Rebellion.Tests.Simulation
         public void CalculateGarrisonRequirement_CoreWorldAlliance_NotHalved()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             Faction alliance = new Faction
             {
                 InstanceID = "alliance",
@@ -134,7 +134,7 @@ namespace Rebellion.Tests.Simulation
         public void CalculateGarrisonRequirement_EfficientCoreFactionBelowThreshold_RequiresOneTroop()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             Faction faction = new Faction
             {
                 InstanceID = "faction",
