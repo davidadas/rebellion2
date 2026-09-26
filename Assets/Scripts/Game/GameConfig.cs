@@ -62,31 +62,35 @@ namespace Rebellion.Game
         [PersistableObject]
         public class AIConfig
         {
-            public int TickInterval { get; set; }
+            public int TickInterval { get; set; } = 1;
 
-            public bool EnablePlanetaryAssaults { get; set; }
+            public bool EnablePlanetaryAssaults { get; set; } = true;
 
-            public int DiplomacyMinimumSkill { get; set; }
+            public int DiplomacyMinimumSkill { get; set; } = 50;
 
-            public int RecruitmentMinimumLeadership { get; set; }
+            public int RecruitmentMinimumLeadership { get; set; } = 80;
 
-            public AIMissionTablesConfig MissionTables { get; set; }
+            public AIMissionTablesConfig MissionTables { get; set; } = new AIMissionTablesConfig();
 
-            public AIMissionPlanningConfig MissionPlanning { get; set; }
+            public AIMissionPlanningConfig MissionPlanning { get; set; } =
+                new AIMissionPlanningConfig();
 
-            public GarrisonConfig Garrison { get; set; }
+            public GarrisonConfig Garrison { get; set; } = new GarrisonConfig();
 
             public int DeploymentGateLow { get; set; }
 
             public int DeploymentGateHigh { get; set; }
 
-            public AISelectionConfig Selection { get; set; }
+            public AISelectionConfig Selection { get; set; } = new AISelectionConfig();
 
-            public AINonCapitalSummaryConfig NonCapitalSummary { get; set; }
+            public AINonCapitalSummaryConfig NonCapitalSummary { get; set; } =
+                new AINonCapitalSummaryConfig();
 
-            public AIInfrastructureConfig Infrastructure { get; set; }
+            public AIInfrastructureConfig Infrastructure { get; set; } =
+                new AIInfrastructureConfig();
 
-            public AIFleetDeploymentConfig FleetDeployment { get; set; }
+            public AIFleetDeploymentConfig FleetDeployment { get; set; } =
+                new AIFleetDeploymentConfig();
         }
 
         /// <summary>
@@ -106,13 +110,13 @@ namespace Rebellion.Game
         [PersistableObject]
         public class AIResponseCurveConfig
         {
-            public AIResponseCurveShape Shape { get; set; }
+            public AIResponseCurveShape Shape { get; set; } = AIResponseCurveShape.Linear;
 
-            public double Exponent { get; set; }
+            public double Exponent { get; set; } = 1;
 
-            public double Midpoint { get; set; }
+            public double Midpoint { get; set; } = 0.5;
 
-            public double Steepness { get; set; }
+            public double Steepness { get; set; } = 10;
         }
 
         /// <summary>
@@ -123,10 +127,19 @@ namespace Rebellion.Game
         {
             public double Weight { get; set; }
 
-            public double SaturationValue { get; set; }
+            public double SaturationValue { get; set; } = 1;
 
-            public AIResponseCurveConfig Curve { get; set; }
+            public AIResponseCurveConfig Curve { get; set; } = new AIResponseCurveConfig();
         }
+
+        /// <summary>
+        /// Creates a linear AI consideration with the supplied relative weight.
+        /// </summary>
+        /// <param name="weight">The relative contribution weight from zero through one.</param>
+        /// <param name="saturationValue">The raw input value that maps to full fulfillment.</param>
+        /// <returns>The configured consideration.</returns>
+        private static AIConsiderationConfig Weighted(double weight, double saturationValue = 1) =>
+            new AIConsiderationConfig { Weight = weight, SaturationValue = saturationValue };
 
         /// <summary>
         /// Mission planning priorities and intelligence freshness settings.
@@ -134,25 +147,25 @@ namespace Rebellion.Game
         [PersistableObject]
         public class AIMissionPlanningConfig
         {
-            public int RetainedAlternativesPerMission { get; set; }
+            public int RetainedAlternativesPerMission { get; set; } = 3;
 
-            public int EspionageRefreshIntervalTicks { get; set; }
+            public int EspionageRefreshIntervalTicks { get; set; } = 20;
 
-            public int HostileMissionMaximumIntelAgeTicks { get; set; }
+            public int HostileMissionMaximumIntelAgeTicks { get; set; } = 40;
 
-            public int MaximumJediTrainingStudents { get; set; }
+            public int MaximumJediTrainingStudents { get; set; } = 3;
 
-            public double MinimumMissionScore { get; set; }
+            public double MinimumMissionScore { get; set; } = 0.0196078431372549;
 
-            public int MinimumUprisingMissionSuccessPercent { get; set; }
+            public int MinimumUprisingMissionSuccessPercent { get; set; } = 20;
 
-            public int MaximumOfficerMissionLossProbability { get; set; }
+            public int MaximumOfficerMissionLossProbability { get; set; } = 20;
 
-            public int HostileMissionIntelAgeFoilPenaltyPerRefreshInterval { get; set; }
+            public int HostileMissionIntelAgeFoilPenaltyPerRefreshInterval { get; set; } = 5;
 
-            public int MaximumUnprotectedOfficerMissionFoilProbability { get; set; }
+            public int MaximumUnprotectedOfficerMissionFoilProbability { get; set; } = 20;
 
-            public AIMissionUtilityConfig Utility { get; set; }
+            public AIMissionUtilityConfig Utility { get; set; } = new AIMissionUtilityConfig();
         }
 
         /// <summary>
@@ -161,15 +174,19 @@ namespace Rebellion.Game
         [PersistableObject]
         public class AIMissionUtilityConfig
         {
-            public AIMissionObjectiveUtilityConfig Objective { get; set; }
+            public AIMissionObjectiveUtilityConfig Objective { get; set; } =
+                new AIMissionObjectiveUtilityConfig();
 
-            public AIMissionPriorityUtilityConfig Priority { get; set; }
+            public AIMissionPriorityUtilityConfig Priority { get; set; } =
+                new AIMissionPriorityUtilityConfig();
 
-            public AISabotageUtilityConfig Sabotage { get; set; }
+            public AISabotageUtilityConfig Sabotage { get; set; } = new AISabotageUtilityConfig();
 
-            public AIDiplomacyUtilityConfig Diplomacy { get; set; }
+            public AIDiplomacyUtilityConfig Diplomacy { get; set; } =
+                new AIDiplomacyUtilityConfig();
 
-            public AIOfficerTargetUtilityConfig OfficerTarget { get; set; }
+            public AIOfficerTargetUtilityConfig OfficerTarget { get; set; } =
+                new AIOfficerTargetUtilityConfig();
         }
 
         /// <summary>
@@ -178,19 +195,19 @@ namespace Rebellion.Game
         [PersistableObject]
         public class AIMissionObjectiveUtilityConfig
         {
-            public AIConsiderationConfig Success { get; set; }
+            public AIConsiderationConfig Success { get; set; } = Weighted(0.1, 100);
 
-            public AIConsiderationConfig FoilRisk { get; set; }
+            public AIConsiderationConfig FoilRisk { get; set; } = Weighted(0.1, 100);
 
-            public AIConsiderationConfig TravelCost { get; set; }
+            public AIConsiderationConfig TravelCost { get; set; } = Weighted(0.1, 100);
 
-            public AIConsiderationConfig OfficerRisk { get; set; }
+            public AIConsiderationConfig OfficerRisk { get; set; } = Weighted(0.1);
 
-            public AIConsiderationConfig IntelAge { get; set; }
+            public AIConsiderationConfig IntelAge { get; set; } = Weighted(1, 1000);
 
-            public AIConsiderationConfig AttackPreparationIntel { get; set; }
+            public AIConsiderationConfig AttackPreparationIntel { get; set; } = Weighted(1);
 
-            public AIConsiderationConfig TrainingValue { get; set; }
+            public AIConsiderationConfig TrainingValue { get; set; } = Weighted(0.3, 300);
         }
 
         /// <summary>
@@ -199,21 +216,21 @@ namespace Rebellion.Game
         [PersistableObject]
         public class AIMissionPriorityUtilityConfig
         {
-            public AIConsiderationConfig Reconnaissance { get; set; }
+            public AIConsiderationConfig Reconnaissance { get; set; } = Weighted(0.05);
 
-            public AIConsiderationConfig Recruitment { get; set; }
+            public AIConsiderationConfig Recruitment { get; set; } = Weighted(0.08);
 
-            public AIConsiderationConfig Rescue { get; set; }
+            public AIConsiderationConfig Rescue { get; set; } = Weighted(0.12);
 
-            public AIConsiderationConfig SubdueUprising { get; set; }
+            public AIConsiderationConfig SubdueUprising { get; set; } = Weighted(0.12);
 
-            public AIConsiderationConfig Research { get; set; }
+            public AIConsiderationConfig Research { get; set; } = Weighted(0.05);
 
-            public AIConsiderationConfig JediTraining { get; set; }
+            public AIConsiderationConfig JediTraining { get; set; } = Weighted(0.08);
 
-            public AIConsiderationConfig Espionage { get; set; }
+            public AIConsiderationConfig Espionage { get; set; } = Weighted(0.05);
 
-            public AIConsiderationConfig Diplomacy { get; set; }
+            public AIConsiderationConfig Diplomacy { get; set; } = Weighted(0.03);
         }
 
         /// <summary>
@@ -222,23 +239,23 @@ namespace Rebellion.Game
         [PersistableObject]
         public class AISabotageUtilityConfig
         {
-            public AIConsiderationConfig Infrastructure { get; set; }
+            public AIConsiderationConfig Infrastructure { get; set; } = Weighted(0);
 
-            public AIConsiderationConfig Defense { get; set; }
+            public AIConsiderationConfig Defense { get; set; } = Weighted(0.125);
 
-            public AIConsiderationConfig Shield { get; set; }
+            public AIConsiderationConfig Shield { get; set; } = Weighted(0.15);
 
-            public AIConsiderationConfig AttackTarget { get; set; }
+            public AIConsiderationConfig AttackTarget { get; set; } = Weighted(0.15);
 
-            public AIConsiderationConfig AttackDefense { get; set; }
+            public AIConsiderationConfig AttackDefense { get; set; } = Weighted(0.2);
 
-            public AIConsiderationConfig FavoredSupportRegiment { get; set; }
+            public AIConsiderationConfig FavoredSupportRegiment { get; set; } = Weighted(0.05);
 
-            public AIConsiderationConfig GarrisonRegiment { get; set; }
+            public AIConsiderationConfig GarrisonRegiment { get; set; } = Weighted(0.1);
 
-            public AIConsiderationConfig GarrisonStarfighter { get; set; }
+            public AIConsiderationConfig GarrisonStarfighter { get; set; } = Weighted(0.075);
 
-            public AIConsiderationConfig OtherUnit { get; set; }
+            public AIConsiderationConfig OtherUnit { get; set; } = Weighted(0.025);
         }
 
         /// <summary>
@@ -247,19 +264,19 @@ namespace Rebellion.Game
         [PersistableObject]
         public class AIDiplomacyUtilityConfig
         {
-            public AIConsiderationConfig SupportDeficit { get; set; }
+            public AIConsiderationConfig SupportDeficit { get; set; } = Weighted(0.1, 100);
 
-            public AIConsiderationConfig CoreWorld { get; set; }
+            public AIConsiderationConfig CoreWorld { get; set; } = Weighted(1);
 
-            public AIConsiderationConfig ConstructionFacility { get; set; }
+            public AIConsiderationConfig ConstructionFacility { get; set; } = Weighted(0.25, 10);
 
-            public AIConsiderationConfig Shipyard { get; set; }
+            public AIConsiderationConfig Shipyard { get; set; } = Weighted(0.2, 10);
 
-            public AIConsiderationConfig TrainingFacility { get; set; }
+            public AIConsiderationConfig TrainingFacility { get; set; } = Weighted(0.05, 10);
 
-            public AIConsiderationConfig ResourceNode { get; set; }
+            public AIConsiderationConfig ResourceNode { get; set; } = Weighted(0.08, 15);
 
-            public AIConsiderationConfig SectorSupportRisk { get; set; }
+            public AIConsiderationConfig SectorSupportRisk { get; set; } = Weighted(0.25, 10);
         }
 
         /// <summary>
@@ -268,13 +285,13 @@ namespace Rebellion.Game
         [PersistableObject]
         public class AIOfficerTargetUtilityConfig
         {
-            public AIConsiderationConfig Combat { get; set; }
-            public AIConsiderationConfig Espionage { get; set; }
-            public AIConsiderationConfig Diplomacy { get; set; }
-            public AIConsiderationConfig Leadership { get; set; }
-            public AIConsiderationConfig ShipResearch { get; set; }
-            public AIConsiderationConfig FacilityResearch { get; set; }
-            public AIConsiderationConfig TroopResearch { get; set; }
+            public AIConsiderationConfig Combat { get; set; } = Weighted(1, 300);
+            public AIConsiderationConfig Espionage { get; set; } = Weighted(1, 300);
+            public AIConsiderationConfig Diplomacy { get; set; } = Weighted(1, 300);
+            public AIConsiderationConfig Leadership { get; set; } = Weighted(1, 300);
+            public AIConsiderationConfig ShipResearch { get; set; } = Weighted(1, 300);
+            public AIConsiderationConfig FacilityResearch { get; set; } = Weighted(1, 300);
+            public AIConsiderationConfig TroopResearch { get; set; } = Weighted(1, 300);
         }
 
         /// <summary>
@@ -283,9 +300,9 @@ namespace Rebellion.Game
         [PersistableObject]
         public class AIFleetDeploymentConfig
         {
-            public int MinimumBattleFleetCount { get; set; }
+            public int MinimumBattleFleetCount { get; set; } = 3;
 
-            public int PlanetsPerBattleFleet { get; set; }
+            public int PlanetsPerBattleFleet { get; set; } = 15;
 
             public int MinimumAttackStrength { get; set; }
 
@@ -293,41 +310,45 @@ namespace Rebellion.Game
 
             public int MobileCombatStrengthPerPlanet { get; set; }
 
-            public int MinimumDefenseStrength { get; set; }
+            public int MinimumDefenseStrength { get; set; } = 1000;
 
-            public int HeadquartersDefenseCombatPercent { get; set; }
+            public int HeadquartersDefenseCombatPercent { get; set; } = 35;
 
-            public int MinimumPlanetaryAssaultRegimentCount { get; set; }
+            public int MinimumPlanetaryAssaultRegimentCount { get; set; } = 1;
 
-            public int MinimumPlanetaryAssaultSuccessPercent { get; set; }
+            public int MinimumPlanetaryAssaultSuccessPercent { get; set; } = 55;
 
             public int AttackStrengthPercentOfDefense { get; set; }
 
             public int AttackStrengthPercentOfStrongestHostileFleet { get; set; }
 
-            public int StaleIntelMaximumAttackStrengthPercent { get; set; }
+            public int StaleIntelMaximumAttackStrengthPercent { get; set; } = 250;
 
-            public int StaleIntelReserveSaturationIntervals { get; set; }
+            public int StaleIntelReserveSaturationIntervals { get; set; } = 5;
 
-            public double AttackReadinessFloorWeight { get; set; }
+            public double AttackReadinessFloorWeight { get; set; } = 4;
 
-            public AIAttackUtilityConfig AttackUtility { get; set; }
+            public AIAttackUtilityConfig AttackUtility { get; set; } = new AIAttackUtilityConfig();
 
-            public int ExposedSectorMinimumOwnedPresencePercent { get; set; }
+            public int ExposedSectorMinimumOwnedPresencePercent { get; set; } = 50;
 
-            public AIDefenseUtilityConfig DefenseUtility { get; set; }
+            public AIDefenseUtilityConfig DefenseUtility { get; set; } =
+                new AIDefenseUtilityConfig();
 
-            public AIDefenseAllocationUtilityConfig DefenseAllocationUtility { get; set; }
+            public AIDefenseAllocationUtilityConfig DefenseAllocationUtility { get; set; } =
+                new AIDefenseAllocationUtilityConfig();
 
-            public AIColonizationUtilityConfig ColonizationUtility { get; set; }
+            public AIColonizationUtilityConfig ColonizationUtility { get; set; } =
+                new AIColonizationUtilityConfig();
 
-            public AIColonizationTargetUtilityConfig ColonizationTargetUtility { get; set; }
+            public AIColonizationTargetUtilityConfig ColonizationTargetUtility { get; set; } =
+                new AIColonizationTargetUtilityConfig();
 
-            public int ColonizationFleetTargetCount { get; set; }
+            public int ColonizationFleetTargetCount { get; set; } = 2;
 
-            public int ColonizationFleetMinimumRegimentCount { get; set; }
+            public int ColonizationFleetMinimumRegimentCount { get; set; } = 2;
 
-            public int ColonizationFleetMaximumRegimentCount { get; set; }
+            public int ColonizationFleetMaximumRegimentCount { get; set; } = 4;
         }
 
         /// <summary>
@@ -336,33 +357,33 @@ namespace Rebellion.Game
         [PersistableObject]
         public class AIAttackUtilityConfig
         {
-            public AIConsiderationConfig StrategicValue { get; set; }
+            public AIConsiderationConfig StrategicValue { get; set; } = Weighted(0.055);
 
-            public AIConsiderationConfig SectorSupport { get; set; }
+            public AIConsiderationConfig SectorSupport { get; set; } = Weighted(0.3, 10);
 
-            public AIConsiderationConfig SystemPresence { get; set; }
+            public AIConsiderationConfig SystemPresence { get; set; } = Weighted(0.03);
 
-            public AIConsiderationConfig Readiness { get; set; }
+            public AIConsiderationConfig Readiness { get; set; } = Weighted(0.035);
 
-            public AIConsiderationConfig Ready { get; set; }
+            public AIConsiderationConfig Ready { get; set; } = Weighted(0.35);
 
-            public AIConsiderationConfig CaptureViability { get; set; }
+            public AIConsiderationConfig CaptureViability { get; set; } = Weighted(0.045);
 
-            public AIConsiderationConfig TravelEfficiency { get; set; }
+            public AIConsiderationConfig TravelEfficiency { get; set; } = Weighted(0.02);
 
-            public AIConsiderationConfig ExpectedLossRisk { get; set; }
+            public AIConsiderationConfig ExpectedLossRisk { get; set; } = Weighted(0.05);
 
-            public AIConsiderationConfig OpportunityCost { get; set; }
+            public AIConsiderationConfig OpportunityCost { get; set; } = Weighted(0.03);
 
-            public AIConsiderationConfig IntelAgeRisk { get; set; }
+            public AIConsiderationConfig IntelAgeRisk { get; set; } = Weighted(0.002);
 
-            public AIConsiderationConfig ExistingOrder { get; set; }
+            public AIConsiderationConfig ExistingOrder { get; set; } = Weighted(0.3);
 
-            public AIConsiderationConfig Headquarters { get; set; }
+            public AIConsiderationConfig Headquarters { get; set; } = Weighted(0.045);
 
-            public AIConsiderationConfig OrbitalAdvantage { get; set; }
+            public AIConsiderationConfig OrbitalAdvantage { get; set; } = Weighted(0.25);
 
-            public AIConsiderationConfig ExposedBombardment { get; set; }
+            public AIConsiderationConfig ExposedBombardment { get; set; } = Weighted(0.1);
         }
 
         /// <summary>
@@ -371,19 +392,19 @@ namespace Rebellion.Game
         [PersistableObject]
         public class AIColonizationUtilityConfig
         {
-            public AIConsiderationConfig Base { get; set; }
+            public AIConsiderationConfig Base { get; set; } = Weighted(0.045);
 
-            public AIConsiderationConfig StrategicValue { get; set; }
+            public AIConsiderationConfig StrategicValue { get; set; } = Weighted(0.02);
 
-            public AIConsiderationConfig TravelEfficiency { get; set; }
+            public AIConsiderationConfig TravelEfficiency { get; set; } = Weighted(0.02);
 
-            public AIConsiderationConfig AnchorProximity { get; set; }
+            public AIConsiderationConfig AnchorProximity { get; set; } = Weighted(0.25);
 
-            public AIConsiderationConfig Ready { get; set; }
+            public AIConsiderationConfig Ready { get; set; } = Weighted(0.035);
 
-            public AIConsiderationConfig OpportunityCost { get; set; }
+            public AIConsiderationConfig OpportunityCost { get; set; } = Weighted(0.02);
 
-            public AIConsiderationConfig ExistingOrder { get; set; }
+            public AIConsiderationConfig ExistingOrder { get; set; } = Weighted(0.1);
         }
 
         /// <summary>
@@ -392,9 +413,9 @@ namespace Rebellion.Game
         [PersistableObject]
         public class AIColonizationTargetUtilityConfig
         {
-            public AIConsiderationConfig Energy { get; set; }
+            public AIConsiderationConfig Energy { get; set; } = Weighted(1, 20);
 
-            public AIConsiderationConfig Resources { get; set; }
+            public AIConsiderationConfig Resources { get; set; } = Weighted(0.35, 20);
         }
 
         /// <summary>
@@ -403,9 +424,9 @@ namespace Rebellion.Game
         [PersistableObject]
         public class AIDefenseUtilityConfig
         {
-            public AIConsiderationConfig Base { get; set; }
+            public AIConsiderationConfig Base { get; set; } = Weighted(1);
 
-            public AIConsiderationConfig SectorRisk { get; set; }
+            public AIConsiderationConfig SectorRisk { get; set; } = Weighted(0.3, 10);
         }
 
         /// <summary>
@@ -414,17 +435,17 @@ namespace Rebellion.Game
         [PersistableObject]
         public class AIDefenseAllocationUtilityConfig
         {
-            public AIConsiderationConfig SectorRisk { get; set; }
+            public AIConsiderationConfig SectorRisk { get; set; } = Weighted(1, 10);
 
-            public AIConsiderationConfig StrategicValue { get; set; }
+            public AIConsiderationConfig StrategicValue { get; set; } = Weighted(0.5, 1000);
 
-            public AIConsiderationConfig DefenseNeed { get; set; }
+            public AIConsiderationConfig DefenseNeed { get; set; } = Weighted(0.75, 10000);
 
-            public AIConsiderationConfig TravelEfficiency { get; set; }
+            public AIConsiderationConfig TravelEfficiency { get; set; } = Weighted(1);
 
-            public AIConsiderationConfig ForceEfficiency { get; set; }
+            public AIConsiderationConfig ForceEfficiency { get; set; } = Weighted(0.75);
 
-            public AIConsiderationConfig ReinforcementNeed { get; set; }
+            public AIConsiderationConfig ReinforcementNeed { get; set; } = Weighted(1, 10000);
         }
 
         /// <summary>
@@ -435,16 +456,18 @@ namespace Rebellion.Game
         {
             public float MinimumSelectableScore { get; set; }
 
-            public AIConsiderationConfig DemandUtility { get; set; }
+            public AIConsiderationConfig DemandUtility { get; set; } = Weighted(0.6, 600);
             public int PreferredStarfighterTypeCountPerFleet { get; set; }
             public int PreferredRegimentTypeCountPerDestination { get; set; }
-            public AITechnologySelectionUtilityConfig TechnologyUtility { get; set; }
-            public int RefinedMaterialReservePercent { get; set; }
-            public int RefinedMaterialEconomyWarningPercent { get; set; }
-            public int RefinedMaterialCommitmentHorizonTicks { get; set; }
-            public int MaintenanceHeadroomReserve { get; set; }
-            public int MaintenanceHeadroomTarget { get; set; }
-            public AIProductionUtilityConfig ProductionUtility { get; set; }
+            public AITechnologySelectionUtilityConfig TechnologyUtility { get; set; } =
+                new AITechnologySelectionUtilityConfig();
+            public int RefinedMaterialReservePercent { get; set; } = 20;
+            public int RefinedMaterialEconomyWarningPercent { get; set; } = 40;
+            public int RefinedMaterialCommitmentHorizonTicks { get; set; } = 25;
+            public int MaintenanceHeadroomReserve { get; set; } = 500;
+            public int MaintenanceHeadroomTarget { get; set; } = 1000;
+            public AIProductionUtilityConfig ProductionUtility { get; set; } =
+                new AIProductionUtilityConfig();
         }
 
         /// <summary>
@@ -453,15 +476,19 @@ namespace Rebellion.Game
         [PersistableObject]
         public class AITechnologySelectionUtilityConfig
         {
-            public AIBuildingSelectionUtilityConfig Building { get; set; }
+            public AIBuildingSelectionUtilityConfig Building { get; set; } =
+                new AIBuildingSelectionUtilityConfig();
 
-            public AIStarfighterSelectionUtilityConfig Starfighter { get; set; }
+            public AIStarfighterSelectionUtilityConfig Starfighter { get; set; } =
+                new AIStarfighterSelectionUtilityConfig();
 
-            public AIRegimentSelectionUtilityConfig Regiment { get; set; }
+            public AIRegimentSelectionUtilityConfig Regiment { get; set; } =
+                new AIRegimentSelectionUtilityConfig();
 
-            public AISpecialForcesSelectionUtilityConfig SpecialForces { get; set; }
+            public AISpecialForcesSelectionUtilityConfig SpecialForces { get; set; } =
+                new AISpecialForcesSelectionUtilityConfig();
 
-            public AIConsiderationConfig DuplicateCost { get; set; }
+            public AIConsiderationConfig DuplicateCost { get; set; } = Weighted(1, 10);
         }
 
         /// <summary>
@@ -470,7 +497,7 @@ namespace Rebellion.Game
         [PersistableObject]
         public class AIBuildingSelectionUtilityConfig
         {
-            public AIConsiderationConfig Capability { get; set; }
+            public AIConsiderationConfig Capability { get; set; } = Weighted(1, 1000);
         }
 
         /// <summary>
@@ -479,12 +506,13 @@ namespace Rebellion.Game
         [PersistableObject]
         public class AIStarfighterSelectionUtilityConfig
         {
-            public AIConsiderationConfig Laser { get; set; }
-            public AIConsiderationConfig Ion { get; set; }
-            public AIConsiderationConfig Torpedo { get; set; }
-            public AIConsiderationConfig MissingIon { get; set; }
-            public AIConsiderationConfig MissingTorpedo { get; set; }
-            public AIConsiderationConfig PlanetDefenseEfficiency { get; set; }
+            public AIConsiderationConfig Laser { get; set; } = Weighted(0.267, 20);
+            public AIConsiderationConfig Ion { get; set; } = Weighted(0.311, 20);
+            public AIConsiderationConfig Torpedo { get; set; } = Weighted(180d / 450, 20);
+            public AIConsiderationConfig MissingIon { get; set; } = Weighted(0.133);
+            public AIConsiderationConfig MissingTorpedo { get; set; } = Weighted(0.133);
+            public AIConsiderationConfig PlanetDefenseEfficiency { get; set; } =
+                Weighted(0.55, 100);
         }
 
         /// <summary>
@@ -493,11 +521,11 @@ namespace Rebellion.Game
         [PersistableObject]
         public class AIRegimentSelectionUtilityConfig
         {
-            public AIConsiderationConfig Attack { get; set; }
-            public AIConsiderationConfig Defense { get; set; }
-            public AIConsiderationConfig BombardmentDefense { get; set; }
-            public AIConsiderationConfig Base { get; set; }
-            public AIConsiderationConfig MaintenanceCost { get; set; }
+            public AIConsiderationConfig Attack { get; set; } = Weighted(0.178, 10);
+            public AIConsiderationConfig Defense { get; set; } = Weighted(0.178, 10);
+            public AIConsiderationConfig BombardmentDefense { get; set; } = Weighted(0.133, 10);
+            public AIConsiderationConfig Base { get; set; } = Weighted(0.111);
+            public AIConsiderationConfig MaintenanceCost { get; set; } = Weighted(0.222, 10);
         }
 
         /// <summary>
@@ -506,7 +534,7 @@ namespace Rebellion.Game
         [PersistableObject]
         public class AISpecialForcesSelectionUtilityConfig
         {
-            public AIConsiderationConfig BuildEfficiency { get; set; }
+            public AIConsiderationConfig BuildEfficiency { get; set; } = Weighted(1, 100);
         }
 
         /// <summary>
@@ -515,13 +543,13 @@ namespace Rebellion.Game
         [PersistableObject]
         public class AIProductionUtilityConfig
         {
-            public AIConsiderationConfig TravelCost { get; set; }
+            public AIConsiderationConfig TravelCost { get; set; } = Weighted(0.1, 100);
 
-            public AIConsiderationConfig ColonyFoundation { get; set; }
+            public AIConsiderationConfig ColonyFoundation { get; set; } = Weighted(1);
 
-            public AIConsiderationConfig HeadroomRisk { get; set; }
+            public AIConsiderationConfig HeadroomRisk { get; set; } = Weighted(0);
 
-            public AIConsiderationConfig Shortfall { get; set; }
+            public AIConsiderationConfig Shortfall { get; set; } = Weighted(0);
         }
 
         /// <summary>
@@ -531,65 +559,69 @@ namespace Rebellion.Game
         public class AIInfrastructureConfig
         {
             public int PlanetsPerConstructionFacility { get; set; }
-            public int MinimumConstructionFacilityLanes { get; set; }
-            public int ConstructionFacilityTargetClearTicks { get; set; }
-            public int ShipyardTargetClearTicks { get; set; }
-            public int FleetProductionMinimumShipyardCount { get; set; }
-            public int TrainingFacilityTargetClearTicks { get; set; }
+            public int MinimumConstructionFacilityLanes { get; set; } = 1;
+            public int ConstructionFacilityTargetClearTicks { get; set; } = 80;
+            public int ShipyardTargetClearTicks { get; set; } = 80;
+            public int FleetProductionMinimumShipyardCount { get; set; } = 2;
+            public int TrainingFacilityTargetClearTicks { get; set; } = 1;
             public int PlanetsPerShipyard { get; set; }
             public int PlanetsPerTrainingFacility { get; set; }
-            public int TrainingDemandsPerFacility { get; set; }
-            public int ConstructionFacilityPortfolioPercent { get; set; }
-            public int ShipyardPortfolioPercent { get; set; }
-            public int TrainingFacilityPortfolioPercent { get; set; }
-            public int StaticDefensePortfolioPercent { get; set; }
+            public int TrainingDemandsPerFacility { get; set; } = 4;
+            public int ConstructionFacilityPortfolioPercent { get; set; } = 25;
+            public int ShipyardPortfolioPercent { get; set; } = 40;
+            public int TrainingFacilityPortfolioPercent { get; set; } = 20;
+            public int StaticDefensePortfolioPercent { get; set; } = 15;
             public int ManufacturingFacilityBaseDemandPercent { get; set; }
             public int ConstructionFacilityDemandPercent { get; set; }
             public int ShipyardDemandPercent { get; set; }
-            public int TrainingFacilityDemandPercent { get; set; }
-            public int FacilitySectorHubTargetCount { get; set; }
-            public int ShipyardSectorHubTargetCount { get; set; }
-            public int FacilitySectorHubMaximumCount { get; set; }
-            public int FacilityPlanetsPerSector { get; set; }
-            public int FacilitySectorSecondaryTargetCount { get; set; }
-            public AIInfrastructurePlacementUtilityConfig PlacementUtility { get; set; }
-            public AIInfrastructureAllocationUtilityConfig AllocationUtility { get; set; }
-            public int ProductionFacilityMaintenanceAllocationPercent { get; set; }
-            public int ProductionFacilityInvestmentHorizonTicks { get; set; }
-            public int FacilityConstructionLaneReserve { get; set; }
-            public int ProductionQueueTargetPlanningIntervals { get; set; }
-            public int ProductionFacilityUpgradeMinimumRemainingCount { get; set; }
-            public int ProductionFacilityUpgradeDemandPercent { get; set; }
-            public int FleetCapitalShipDemandPercent { get; set; }
-            public int FleetStarfighterDemandPercent { get; set; }
-            public int FleetRegimentDemandPercent { get; set; }
-            public int FleetSeedCapitalShipDemandPercent { get; set; }
-            public int ColonizationFleetDemandPercent { get; set; }
-            public int SpecialForcesDemandPercent { get; set; }
+            public int TrainingFacilityDemandPercent { get; set; } = 100;
+            public int FacilitySectorHubTargetCount { get; set; } = 5;
+            public int ShipyardSectorHubTargetCount { get; set; } = 6;
+            public int FacilitySectorHubMaximumCount { get; set; } = 7;
+            public int FacilityPlanetsPerSector { get; set; } = 3;
+            public int FacilitySectorSecondaryTargetCount { get; set; } = 3;
+            public AIInfrastructurePlacementUtilityConfig PlacementUtility { get; set; } =
+                new AIInfrastructurePlacementUtilityConfig();
+            public AIInfrastructureAllocationUtilityConfig AllocationUtility { get; set; } =
+                new AIInfrastructureAllocationUtilityConfig();
+            public int ProductionFacilityMaintenanceAllocationPercent { get; set; } = 30;
+            public int ProductionFacilityInvestmentHorizonTicks { get; set; } = 70;
+            public int FacilityConstructionLaneReserve { get; set; } = 1;
+            public int ProductionQueueTargetPlanningIntervals { get; set; } = 1;
+            public int ProductionFacilityUpgradeMinimumRemainingCount { get; set; } = 1;
+            public int ProductionFacilityUpgradeDemandPercent { get; set; } = 65;
+            public int FleetCapitalShipDemandPercent { get; set; } = 80;
+            public int FleetStarfighterDemandPercent { get; set; } = 50;
+            public int FleetRegimentDemandPercent { get; set; } = 60;
+            public int FleetSeedCapitalShipDemandPercent { get; set; } = 95;
+            public int ColonizationFleetDemandPercent { get; set; } = 110;
+            public int SpecialForcesDemandPercent { get; set; } = 25;
 
-            public int SpecialForcesMissionCoveragePercent { get; set; }
+            public int SpecialForcesMissionCoveragePercent { get; set; } = 10;
 
-            public int StarfighterParentFillPercent { get; set; }
+            public int StarfighterParentFillPercent { get; set; } = 100;
             public int StarfighterLocalReservePercent { get; set; }
-            public int AssaultRegimentLoadPercent { get; set; }
+            public int AssaultRegimentLoadPercent { get; set; } = 100;
             public int GarrisonRegimentReservePercent { get; set; }
-            public int PlanetaryStarfighterDemandPercent { get; set; }
-            public int IdleShipyardFighterReserveCount { get; set; }
-            public int IdleShipyardFighterDemandPercent { get; set; }
-            public int PlanetaryWeaponTargetCount { get; set; }
-            public int PlanetaryDefenseSurplusBatchSize { get; set; }
-            public int PlanetaryShieldDemandPercent { get; set; }
-            public int PlanetaryWeaponDemandPercent { get; set; }
-            public int PlanetaryGarrisonDemandPercent { get; set; }
-            public int PlanetaryDefenseMaintenanceReservePercent { get; set; }
-            public int EconomyDefaultBatchSize { get; set; }
-            public int EconomyDemandPercent { get; set; }
-            public int EconomySevereDemandPercent { get; set; }
-            public int EconomySevereDeficitPercent { get; set; }
-            public int EconomyCompetingNeedSlotReserve { get; set; }
-            public int FleetFinalReadinessGateUnitCount { get; set; }
-            public AIProductionDemandUtilityConfig DemandUtility { get; set; }
-            public AIFleetProductionAllocationUtilityConfig FleetAllocationUtility { get; set; }
+            public int PlanetaryStarfighterDemandPercent { get; set; } = 40;
+            public int IdleShipyardFighterReserveCount { get; set; } = 1;
+            public int IdleShipyardFighterDemandPercent { get; set; } = 1;
+            public int PlanetaryWeaponTargetCount { get; set; } = 1;
+            public int PlanetaryDefenseSurplusBatchSize { get; set; } = 1;
+            public int PlanetaryShieldDemandPercent { get; set; } = 45;
+            public int PlanetaryWeaponDemandPercent { get; set; } = 35;
+            public int PlanetaryGarrisonDemandPercent { get; set; } = 30;
+            public int PlanetaryDefenseMaintenanceReservePercent { get; set; } = 10;
+            public int EconomyDefaultBatchSize { get; set; } = 1;
+            public int EconomyDemandPercent { get; set; } = 90;
+            public int EconomySevereDemandPercent { get; set; } = 100;
+            public int EconomySevereDeficitPercent { get; set; } = 25;
+            public int EconomyCompetingNeedSlotReserve { get; set; } = 1;
+            public int FleetFinalReadinessGateUnitCount { get; set; } = 2;
+            public AIProductionDemandUtilityConfig DemandUtility { get; set; } =
+                new AIProductionDemandUtilityConfig();
+            public AIFleetProductionAllocationUtilityConfig FleetAllocationUtility { get; set; } =
+                new AIFleetProductionAllocationUtilityConfig();
         }
 
         /// <summary>
@@ -598,15 +630,15 @@ namespace Rebellion.Game
         [PersistableObject]
         public class AIFleetProductionAllocationUtilityConfig
         {
-            public AIConsiderationConfig AttackReadiness { get; set; }
-            public AIConsiderationConfig AttackRequirements { get; set; }
-            public AIConsiderationConfig SystemPresence { get; set; }
-            public AIConsiderationConfig Headquarters { get; set; }
-            public AIConsiderationConfig TargetValue { get; set; }
-            public AIConsiderationConfig ColonyRegiments { get; set; }
-            public AIConsiderationConfig ColonyCapacity { get; set; }
-            public AIConsiderationConfig AssemblyWeakness { get; set; }
-            public AIConsiderationConfig AssemblyCapacityNeed { get; set; }
+            public AIConsiderationConfig AttackReadiness { get; set; } = Weighted(1);
+            public AIConsiderationConfig AttackRequirements { get; set; } = Weighted(0.5, 10);
+            public AIConsiderationConfig SystemPresence { get; set; } = Weighted(0.35);
+            public AIConsiderationConfig Headquarters { get; set; } = Weighted(0.25);
+            public AIConsiderationConfig TargetValue { get; set; } = Weighted(0.35, 1000);
+            public AIConsiderationConfig ColonyRegiments { get; set; } = Weighted(1, 100);
+            public AIConsiderationConfig ColonyCapacity { get; set; } = Weighted(0.35, 100);
+            public AIConsiderationConfig AssemblyWeakness { get; set; } = Weighted(1);
+            public AIConsiderationConfig AssemblyCapacityNeed { get; set; } = Weighted(0.25);
         }
 
         /// <summary>
@@ -615,30 +647,30 @@ namespace Rebellion.Game
         [PersistableObject]
         public class AIProductionDemandUtilityConfig
         {
-            public AIConsiderationConfig Deficit { get; set; }
-            public AIConsiderationConfig TrainingBacklog { get; set; }
-            public AIConsiderationConfig SectorCoverage { get; set; }
-            public AIConsiderationConfig PrimaryHub { get; set; }
-            public AIConsiderationConfig FacilityBalance { get; set; }
-            public AIConsiderationConfig FacilityInvestment { get; set; }
-            public AIConsiderationConfig ColonyFoundation { get; set; }
-            public AIConsiderationConfig FacilityPortfolio { get; set; }
-            public AIConsiderationConfig UpgradeValue { get; set; }
-            public AIConsiderationConfig UpgradeHeadquarters { get; set; }
-            public AIConsiderationConfig ResourceShortage { get; set; }
-            public AIConsiderationConfig MaintenanceShortfall { get; set; }
-            public AIConsiderationConfig MaintenanceReserve { get; set; }
-            public AIConsiderationConfig DefenseDeficit { get; set; }
-            public AIConsiderationConfig DefenseValue { get; set; }
-            public AIConsiderationConfig DefenseHeadquarters { get; set; }
-            public AIConsiderationConfig DefenseThreat { get; set; }
-            public AIConsiderationConfig ShieldSupport { get; set; }
-            public AIConsiderationConfig ShieldSectorRisk { get; set; }
-            public AIConsiderationConfig FleetTargetValue { get; set; }
-            public AIConsiderationConfig AttackReinforcement { get; set; }
-            public AIConsiderationConfig FleetReadiness { get; set; }
-            public AIConsiderationConfig FinalReadiness { get; set; }
-            public AIConsiderationConfig StarfighterFill { get; set; }
+            public AIConsiderationConfig Deficit { get; set; } = Weighted(1);
+            public AIConsiderationConfig TrainingBacklog { get; set; } = Weighted(0.05);
+            public AIConsiderationConfig SectorCoverage { get; set; } = Weighted(1);
+            public AIConsiderationConfig PrimaryHub { get; set; } = Weighted(0.5);
+            public AIConsiderationConfig FacilityBalance { get; set; } = Weighted(1);
+            public AIConsiderationConfig FacilityInvestment { get; set; } = Weighted(1);
+            public AIConsiderationConfig ColonyFoundation { get; set; } = Weighted(1);
+            public AIConsiderationConfig FacilityPortfolio { get; set; } = Weighted(1);
+            public AIConsiderationConfig UpgradeValue { get; set; } = Weighted(0.2);
+            public AIConsiderationConfig UpgradeHeadquarters { get; set; } = Weighted(0.1);
+            public AIConsiderationConfig ResourceShortage { get; set; } = Weighted(1);
+            public AIConsiderationConfig MaintenanceShortfall { get; set; } = Weighted(0.4);
+            public AIConsiderationConfig MaintenanceReserve { get; set; } = Weighted(0.2);
+            public AIConsiderationConfig DefenseDeficit { get; set; } = Weighted(0.2);
+            public AIConsiderationConfig DefenseValue { get; set; } = Weighted(0.25);
+            public AIConsiderationConfig DefenseHeadquarters { get; set; } = Weighted(0.2);
+            public AIConsiderationConfig DefenseThreat { get; set; } = Weighted(0.5);
+            public AIConsiderationConfig ShieldSupport { get; set; } = Weighted(0.5);
+            public AIConsiderationConfig ShieldSectorRisk { get; set; } = Weighted(1, 10);
+            public AIConsiderationConfig FleetTargetValue { get; set; } = Weighted(0.2);
+            public AIConsiderationConfig AttackReinforcement { get; set; } = Weighted(0.25);
+            public AIConsiderationConfig FleetReadiness { get; set; } = Weighted(0.5);
+            public AIConsiderationConfig FinalReadiness { get; set; } = Weighted(0.6);
+            public AIConsiderationConfig StarfighterFill { get; set; } = Weighted(0.2);
         }
 
         /// <summary>
@@ -647,23 +679,23 @@ namespace Rebellion.Game
         [PersistableObject]
         public class AIInfrastructurePlacementUtilityConfig
         {
-            public AIConsiderationConfig SystemCoverage { get; set; }
+            public AIConsiderationConfig SystemCoverage { get; set; } = Weighted(0.4);
 
-            public AIConsiderationConfig ExistingHub { get; set; }
+            public AIConsiderationConfig ExistingHub { get; set; } = Weighted(0.24);
 
-            public AIConsiderationConfig ConstructionHub { get; set; }
+            public AIConsiderationConfig ConstructionHub { get; set; } = Weighted(0.8);
 
-            public AIConsiderationConfig SecondTrainingFacility { get; set; }
+            public AIConsiderationConfig SecondTrainingFacility { get; set; } = Weighted(1);
 
-            public AIConsiderationConfig AvailableEnergy { get; set; }
+            public AIConsiderationConfig AvailableEnergy { get; set; } = Weighted(0.16);
 
-            public AIConsiderationConfig PlanetValue { get; set; }
+            public AIConsiderationConfig PlanetValue { get; set; } = Weighted(0.12);
 
-            public AIConsiderationConfig SystemSecurity { get; set; }
+            public AIConsiderationConfig SystemSecurity { get; set; } = Weighted(0.16);
 
-            public AIConsiderationConfig DemandProximity { get; set; }
+            public AIConsiderationConfig DemandProximity { get; set; } = Weighted(0.12);
 
-            public AIConsiderationConfig ResourceOpportunityCost { get; set; }
+            public AIConsiderationConfig ResourceOpportunityCost { get; set; } = Weighted(0.2);
         }
 
         /// <summary>
@@ -673,13 +705,13 @@ namespace Rebellion.Game
         [PersistableObject]
         public class AIInfrastructureAllocationUtilityConfig
         {
-            public AIConsiderationConfig ExistingFacilities { get; set; }
+            public AIConsiderationConfig ExistingFacilities { get; set; } = Weighted(1);
 
-            public AIConsiderationConfig UnassignedHub { get; set; }
+            public AIConsiderationConfig UnassignedHub { get; set; } = Weighted(0.65);
 
-            public AIConsiderationConfig FeasibleCapacity { get; set; }
+            public AIConsiderationConfig FeasibleCapacity { get; set; } = Weighted(0.5);
 
-            public AIConsiderationConfig StrategicValue { get; set; }
+            public AIConsiderationConfig StrategicValue { get; set; } = Weighted(0.35);
         }
 
         /// <summary>
@@ -716,13 +748,13 @@ namespace Rebellion.Game
 
             public int StarfighterRequirementDefault { get; set; }
 
-            public int StarfighterRequirementInfrastructure { get; set; }
+            public int StarfighterRequirementInfrastructure { get; set; } = 12;
 
             public int StarfighterRequirementHeadquarters { get; set; }
 
-            public int UnthreatenedInfrastructureStarfighterBaselinePercent { get; set; }
+            public int UnthreatenedInfrastructureStarfighterBaselinePercent { get; set; } = 50;
 
-            public int InteriorStarfighterBaselinePercent { get; set; }
+            public int InteriorStarfighterBaselinePercent { get; set; } = 100;
 
             public bool RequireStaticDefenseBeforeStarfighters { get; set; }
         }
@@ -741,7 +773,7 @@ namespace Rebellion.Game
 
             public int FleetLoadingDeficitThreshold { get; set; }
 
-            public int InteriorCaptureFloorPercent { get; set; }
+            public int InteriorCaptureFloorPercent { get; set; } = 100;
         }
 
         /// <summary>

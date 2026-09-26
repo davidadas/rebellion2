@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.AI.Proposals;
 using Rebellion.AI.Selectors;
+using Rebellion.Game;
 
 namespace Rebellion.AI.Phases
 {
@@ -119,7 +120,8 @@ namespace Rebellion.AI.Phases
         /// <returns>The minimum selectable score.</returns>
         private static float GetMinimumSelectableScore(AITurnContext context)
         {
-            return context.Game.Config.AI.Selection.MinimumSelectableScore;
+            return context.Game?.Config?.AI?.Selection?.MinimumSelectableScore
+                ?? new GameConfig.AISelectionConfig().MinimumSelectableScore;
         }
 
         /// <summary>

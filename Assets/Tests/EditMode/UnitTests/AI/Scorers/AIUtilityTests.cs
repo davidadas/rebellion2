@@ -21,13 +21,7 @@ namespace Rebellion.Tests.AI.Scorers
         )
         {
             Assert.That(
-                AIUtility.EvaluateCurve(
-                    input,
-                    new GameConfig.AIResponseCurveConfig
-                    {
-                        Shape = GameConfig.AIResponseCurveShape.Linear,
-                    }
-                ),
+                AIUtility.EvaluateCurve(input, new GameConfig.AIResponseCurveConfig()),
                 Is.EqualTo(expected).Within(0.000001)
             );
         }
@@ -40,13 +34,7 @@ namespace Rebellion.Tests.AI.Scorers
         )
         {
             Assert.Throws<ArgumentOutOfRangeException>(() =>
-                AIUtility.EvaluateCurve(
-                    input,
-                    new GameConfig.AIResponseCurveConfig
-                    {
-                        Shape = GameConfig.AIResponseCurveShape.Linear,
-                    }
-                )
+                AIUtility.EvaluateCurve(input, new GameConfig.AIResponseCurveConfig())
             );
         }
 
