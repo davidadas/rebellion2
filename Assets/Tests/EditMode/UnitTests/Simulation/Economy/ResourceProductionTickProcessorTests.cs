@@ -68,8 +68,11 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(mine.ResourceStartupCyclePending);
         }
 
+        /// <summary>
+        /// Verifies a below-normal mine modifier accumulates fractional progress.
+        /// </summary>
         [Test]
-        public void ProcessTick_MineOutputModifier_AdjustsProductionCycleDuration()
+        public void ProcessTick_MineOutputBelowNormal_AccumulatesFractionalProgress()
         {
             _game.Summary.Difficulty = GameDifficulty.Easy;
             _game.Summary.PlayerFactionID = "FACTION2";
@@ -84,11 +87,15 @@ namespace Rebellion.Tests.Simulation
             _system.ProcessTick(_game);
 
             Assert.AreEqual(0, _faction.RawMaterialStockpile);
-            Assert.Greater(mine.ProductionCycleDuration, 1);
+            Assert.AreEqual(0.5, mine.ProductionCycleProgress, 0.0001);
+            Assert.AreEqual(1, mine.ProductionCycleDuration);
         }
 
+        /// <summary>
+        /// Verifies a below-normal refinery modifier accumulates fractional progress.
+        /// </summary>
         [Test]
-        public void ProcessTick_RefineryOutputModifier_AdjustsProductionCycleDuration()
+        public void ProcessTick_RefineryOutputBelowNormal_AccumulatesFractionalProgress()
         {
             _game.Summary.Difficulty = GameDifficulty.Easy;
             _game.Summary.PlayerFactionID = "FACTION2";
@@ -103,7 +110,53 @@ namespace Rebellion.Tests.Simulation
             _system.ProcessTick(_game);
 
             Assert.AreEqual(0, _faction.RefinedMaterialStockpile);
-            Assert.Greater(refinery.ProductionCycleDuration, 1);
+            Assert.AreEqual(0.5, refinery.ProductionCycleProgress, 0.0001);
+            Assert.AreEqual(1, refinery.ProductionCycleDuration);
+        }
+
+        /// <summary>
+        /// Verifies an above-normal mine modifier retains and applies excess progress.
+        /// </summary>
+        [Test]
+        public void ProcessTick_MineOutputAboveNormal_PreservesExcessProduction()
+        {
+            _game.Summary.Difficulty = GameDifficulty.Easy;
+            _game.Summary.PlayerFactionID = "FACTION2";
+            _game.Config.DifficultyModifiers[GameDifficulty.Easy] = new DifficultyModifiers
+            {
+                MineOutputPercent = 150,
+            };
+            Building mine = AddCompleteBuilding(_planet, BuildingType.Mine, processRate: 1);
+            mine.ProductionInputReserved = true;
+            mine.ResourceStartupCyclePending = false;
+
+            ProcessTicks(2);
+
+            Assert.AreEqual(3, _faction.RawMaterialStockpile);
+            Assert.AreEqual(0, mine.ProductionCycleProgress, 0.0001);
+        }
+
+        /// <summary>
+        /// Verifies an above-normal refinery modifier retains and applies excess progress.
+        /// </summary>
+        [Test]
+        public void ProcessTick_RefineryOutputAboveNormal_PreservesExcessProduction()
+        {
+            _game.Summary.Difficulty = GameDifficulty.Easy;
+            _game.Summary.PlayerFactionID = "FACTION2";
+            _game.Config.DifficultyModifiers[GameDifficulty.Easy] = new DifficultyModifiers
+            {
+                RefineryOutputPercent = 150,
+            };
+            Building refinery = AddCompleteBuilding(_planet, BuildingType.Refinery, processRate: 1);
+            refinery.ProductionInputReserved = true;
+            refinery.ResourceStartupCyclePending = false;
+            _faction.RawMaterialStockpile = 2;
+
+            ProcessTicks(2);
+
+            Assert.AreEqual(3, _faction.RefinedMaterialStockpile);
+            Assert.AreEqual(0, refinery.ProductionCycleProgress, 0.0001);
         }
 
         [Test]

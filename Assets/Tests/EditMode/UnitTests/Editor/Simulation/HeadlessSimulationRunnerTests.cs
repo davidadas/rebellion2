@@ -44,6 +44,20 @@ namespace Rebellion.Tests.Editor.Simulation
             );
         }
 
+        /// <summary>
+        /// Verifies an explicitly invalid simulation difficulty is rejected.
+        /// </summary>
+        [Test]
+        public void SimulationOptions_ParseDifficulty_InvalidValueThrowsArgumentException()
+        {
+            TargetInvocationException exception = Assert.Throws<TargetInvocationException>(() =>
+                ParseSimulationOptions("-simDifficulty", "Impossible")
+            );
+
+            Assert.IsInstanceOf<ArgumentException>(exception.InnerException);
+            StringAssert.Contains("Impossible", exception.InnerException.Message);
+        }
+
         [Test]
         public void ManufacturedUnitTracker_RecordCompletion_CountsFacilityOnce()
         {

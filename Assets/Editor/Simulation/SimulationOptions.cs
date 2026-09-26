@@ -42,16 +42,18 @@ public static partial class HeadlessSimulationRunner
         private static GameDifficulty ParseDifficulty(string[] args)
         {
             string value = ParseString(args, _difficultyFlag, null);
+            if (value == null)
+                return GameDifficulty.Medium;
+
             if (
-                !string.IsNullOrWhiteSpace(value)
-                && Enum.TryParse(value, true, out GameDifficulty difficulty)
+                Enum.TryParse(value, true, out GameDifficulty difficulty)
                 && Enum.IsDefined(typeof(GameDifficulty), difficulty)
             )
-            {
                 return difficulty;
-            }
 
-            return GameDifficulty.Medium;
+            throw new ArgumentException(
+                $"Invalid value '{value}' for {_difficultyFlag}. Expected Easy, Medium, or Hard."
+            );
         }
 
         /// <summary>

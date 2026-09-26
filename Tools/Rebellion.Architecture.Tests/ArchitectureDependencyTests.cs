@@ -76,10 +76,6 @@ namespace Rebellion.Architecture.Tests
                         .DoNotHaveFullName(
                             "Rebellion.Util.Serialization.PersistableIgnoreAttribute"
                         )
-                        .And()
-                        .DoNotHaveFullName(
-                            "Rebellion.Util.Serialization.PersistableObjectAttribute"
-                        )
                 );
 
             rule.Check(_architecture);
