@@ -147,7 +147,7 @@ namespace Rebellion.Game
         [PersistableObject]
         public class AIMissionPlanningConfig
         {
-            public int RetainedAlternativesPerMission { get; set; } = 3;
+            public int RetainedAlternativesPerMission { get; set; } = 16;
 
             public int EspionageRefreshIntervalTicks { get; set; } = 20;
 
