@@ -574,7 +574,6 @@ namespace Rebellion.Tests.Simulation
                     { 40, 25 },
                     { 50, 30 },
                 },
-                EscapeLoyaltyShift = -10,
             };
             GameRoot game = new GameRoot(config);
             game.CurrentTick = 1;
@@ -609,12 +608,16 @@ namespace Rebellion.Tests.Simulation
             };
             game.AttachNode(rebelPlanet, planetSector);
 
-            Officer captive = EntityFactory.CreateOfficer("captive", "empire");
+            Officer captive = EntityFactory.CreateOfficer(
+                "captive",
+                "empire",
+                canBetray: false,
+                loyalty: 80
+            );
             captive.IsCaptured = true;
             captive.CaptorInstanceID = "rebels";
             captive.CanEscape = true;
             captive.NextEscapeAttemptTick = game.CurrentTick;
-            captive.Loyalty = 80;
             game.AttachNode(captive, rebelPlanet);
 
             MovementCommands movement = new MovementCommands(

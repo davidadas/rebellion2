@@ -218,7 +218,7 @@ namespace Rebellion.Generation
                 AddRatingVariance(officer, SkillRating.Combat, officer.CombatVariance, rng);
                 AddRatingVariance(officer, SkillRating.Leadership, officer.LeadershipVariance, rng);
 
-                officer.Loyalty += RollVariance(officer.LoyaltyVariance, rng);
+                officer.TryAdjustLoyalty(RollVariance(officer.LoyaltyVariance, rng));
                 officer.ShipResearch += RollVariance(officer.ShipResearchVariance, rng);
                 officer.TroopResearch += RollVariance(officer.TroopResearchVariance, rng);
                 officer.FacilityResearch += RollVariance(officer.FacilityResearchVariance, rng);

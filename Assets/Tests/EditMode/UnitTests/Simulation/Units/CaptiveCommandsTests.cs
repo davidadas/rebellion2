@@ -160,19 +160,6 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ProcessTick_EscapeSucceeds_ShiftsLoyalty()
-        {
-            (GameRoot game, Planet planet, Officer captive, MovementCommands movement) =
-                BuildScene();
-
-            CaptiveCommands system = CreateCommands(game, new FixedRNG(0.0), movement);
-
-            new CaptiveTickProcessor(system).ProcessTick(game);
-
-            Assert.AreEqual(70, captive.Loyalty, "Loyalty should decrease by EscapeLoyaltyShift");
-        }
-
-        [Test]
         public void ProcessTick_EscapeSucceeds_EmitsCaptureStateResult()
         {
             (GameRoot game, Planet planet, Officer captive, MovementCommands movement) =
@@ -353,20 +340,6 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ProcessTick_LoyaltyClampsToZero_DoesNotGoNegative()
-        {
-            (GameRoot game, Planet planet, Officer captive, MovementCommands movement) =
-                BuildScene();
-            captive.Loyalty = 5;
-
-            CaptiveCommands system = CreateCommands(game, new FixedRNG(0.0), movement);
-
-            new CaptiveTickProcessor(system).ProcessTick(game);
-
-            Assert.AreEqual(0, captive.Loyalty, "Loyalty should clamp to 0, not go negative");
-        }
-
-        [Test]
         public void ProcessTick_CaptiveAboardFleet_UsesCaptorFleetGuards()
         {
             (
@@ -522,7 +495,6 @@ namespace Rebellion.Tests.Simulation
                     { 40, 25 },
                     { 50, 30 },
                 },
-                EscapeLoyaltyShift = -10,
             };
             GameRoot game = new GameRoot(config);
             game.CurrentTick = 1;
@@ -557,12 +529,16 @@ namespace Rebellion.Tests.Simulation
             };
             game.AttachNode(rebelPlanet, planetSector);
 
-            Officer captive = EntityFactory.CreateOfficer("captive", "empire");
+            Officer captive = EntityFactory.CreateOfficer(
+                "captive",
+                "empire",
+                canBetray: false,
+                loyalty: 80
+            );
             captive.IsCaptured = true;
             captive.CaptorInstanceID = "rebels";
             captive.CanEscape = true;
             captive.NextEscapeAttemptTick = game.CurrentTick;
-            captive.Loyalty = 80;
             game.AttachNode(captive, rebelPlanet);
 
             MovementCommands movement = new MovementCommands(
