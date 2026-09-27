@@ -1,8 +1,11 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Xml.Schema;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Events;
 using UnityEngine;
 
 namespace Rebellion.Tests.Content
@@ -39,6 +42,90 @@ namespace Rebellion.Tests.Content
         private const string _fixtureCompleteDefaultsXml =
             "<GameConfig><Movement><DistanceScale>12</DistanceScale></Movement>"
             + "<Research><BaseResearchPoints>1</BaseResearchPoints></Research></GameConfig>";
+        private const string _jabbaRescueCompletionKey = "jabba.rescue.completed";
+
+        [Test]
+        public void OpenActive_JabbaRescueEvents_UseIndependentStartsAndSharedCompletionGate()
+        {
+            Dictionary<string, GameEvent> events = TestContent.Data.GameEvents.ToDictionary(
+                gameEvent => gameEvent.InstanceID
+            );
+            string[] startEventIDs =
+            {
+                "LUKE_RESCUES_HAN_FROM_JABBA",
+                "LEIA_RESCUES_HAN_FROM_JABBA",
+                "CHEWBACCA_RESCUES_HAN_FROM_JABBA",
+            };
+            string[] resolutionEventIDs =
+            {
+                "LUKE_RESCUE_OF_HAN_RESOLVES",
+                "LEIA_RESCUE_OF_HAN_RESOLVES",
+                "CHEWBACCA_RESCUE_OF_HAN_RESOLVES",
+            };
+            HashSet<string> attemptEventIDs = startEventIDs
+                .Concat(resolutionEventIDs)
+                .ToHashSet(StringComparer.Ordinal);
+
+            foreach (string startEventID in startEventIDs)
+            {
+                string[] attemptDependencies = EnumerateConditionals(
+                        events[startEventID].Conditionals
+                    )
+                    .OfType<HasEventActivatedConditional>()
+                    .Select(conditional => conditional.EventInstanceID)
+                    .Where(attemptEventIDs.Contains)
+                    .ToArray();
+
+                Assert.IsEmpty(
+                    attemptDependencies,
+                    $"Rescue start event '{startEventID}' must not wait for another rescue attempt."
+                );
+            }
+
+            foreach (string resolutionEventID in resolutionEventIDs)
+            {
+                IfAction completionGate =
+                    events[resolutionEventID].Actions.SingleOrDefault() as IfAction;
+                Assert.IsNotNull(
+                    completionGate,
+                    $"Rescue resolution '{resolutionEventID}' requires a completion gate."
+                );
+                EvaluateEventVariableConditional completionCondition = completionGate
+                    .Conditionals.OfType<EvaluateEventVariableConditional>()
+                    .SingleOrDefault();
+                Assert.IsNotNull(completionCondition);
+                Assert.AreEqual(_jabbaRescueCompletionKey, completionCondition.Key);
+                Assert.AreEqual(ComparisonOperator.Equal, completionCondition.Comparison);
+                Assert.AreEqual(0, completionCondition.CompareTo);
+
+                PerformSkillCheckAction skillCheck = completionGate
+                    .Actions.OfType<PerformSkillCheckAction>()
+                    .Single();
+                SetEventVariableAction completionAction =
+                    skillCheck.OnSuccess.FirstOrDefault() as SetEventVariableAction;
+                Assert.IsNotNull(completionAction);
+                Assert.AreEqual(_jabbaRescueCompletionKey, completionAction.Key);
+                Assert.AreEqual(EventVariableOperation.Set, completionAction.Operation);
+                Assert.AreEqual(1, completionAction.Operand);
+            }
+
+            GameEvent cleanup = events["JABBA_RESCUE_CLEANUP"];
+            Assert.AreEqual(1, cleanup.MaximumActivations);
+            EvaluateEventVariableConditional cleanupCondition = cleanup
+                .Conditionals.OfType<EvaluateEventVariableConditional>()
+                .Single();
+            Assert.AreEqual(_jabbaRescueCompletionKey, cleanupCondition.Key);
+            Assert.AreEqual(ComparisonOperator.Equal, cleanupCondition.Comparison);
+            Assert.AreEqual(1, cleanupCondition.CompareTo);
+
+            string[] cleanedAttempts = cleanup
+                .Actions.OfType<IfAction>()
+                .SelectMany(action => EnumerateConditionals(action.Conditionals))
+                .OfType<HasEventActivatedConditional>()
+                .Select(conditional => conditional.EventInstanceID)
+                .ToArray();
+            CollectionAssert.AreEquivalent(startEventIDs, cleanedAttempts);
+        }
 
         [TestCase(RuntimePlatform.OSXPlayer, "Game.app/Contents/Resources/Data")]
         [TestCase(RuntimePlatform.OSXPlayer, "Game.app/Contents")]
@@ -170,6 +257,31 @@ namespace Rebellion.Tests.Content
             {
                 if (Directory.Exists(contentRoot))
                     Directory.Delete(contentRoot, true);
+            }
+        }
+
+        /// <summary>
+        /// Enumerates authored conditions, including conditions nested in composite nodes.
+        /// </summary>
+        /// <param name="conditionals">The conditions to traverse.</param>
+        /// <returns>Every condition in the authored tree.</returns>
+        private static IEnumerable<GameConditional> EnumerateConditionals(
+            IEnumerable<GameConditional> conditionals
+        )
+        {
+            foreach (GameConditional conditional in conditionals)
+            {
+                yield return conditional;
+                IEnumerable<GameConditional> children = conditional switch
+                {
+                    AllConditional all => all.Conditionals,
+                    AnyConditional any => any.Conditionals,
+                    NotConditional not => not.Conditionals,
+                    XorConditional xor => xor.Conditionals,
+                    _ => Array.Empty<GameConditional>(),
+                };
+                foreach (GameConditional child in EnumerateConditionals(children))
+                    yield return child;
             }
         }
     }
