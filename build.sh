@@ -212,7 +212,7 @@ do_lint() {
         --analyzer-assemblies "$MEMBER_ORDER_ANALYZER" \
         --ignore-analyzer-references \
         --ignore-compiler-diagnostics \
-        --supported-diagnostics REB0001 REB0002 REB0003 REB0004 REB0005 REB0006 REB0007 REB0008 REB0009 \
+        --supported-diagnostics REB0001 REB0002 REB0003 REB0004 REB0005 REB0006 REB0007 REB0008 REB0009 REB0010 \
         --severity-level error
     echo ""
     echo "Lint complete."
