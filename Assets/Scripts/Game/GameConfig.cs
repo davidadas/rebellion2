@@ -1082,6 +1082,10 @@ namespace Rebellion.Game
 
             public int EncounterProbabilityOffset { get; set; }
 
+            public int MissionParticipantEncounterMinimum { get; set; }
+
+            public int MissionDefenderEncounterMinimum { get; set; }
+
             public Dictionary<int, int> RankLabelByMinimumForceRank { get; set; } =
                 new Dictionary<int, int>();
 
@@ -1385,25 +1389,25 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Selects the encounter checkpoints enabled for one mission type.
+        /// Selects the original encounter context used at each checkpoint for one mission type.
         /// </summary>
         [PersistableObject]
         public class MissionEncounterConfig
         {
-            public bool DepartureStart { get; set; }
+            public MissionEncounterMode DepartureStart { get; set; }
 
-            public bool DepartureComplete { get; set; }
+            public MissionEncounterMode DepartureComplete { get; set; }
 
-            public bool Arrival { get; set; }
+            public MissionEncounterMode Arrival { get; set; }
 
-            public bool PreObjective { get; set; }
+            public MissionEncounterMode PreObjective { get; set; }
 
             /// <summary>
-            /// Returns whether the supplied encounter checkpoint is enabled.
+            /// Returns the original encounter context for the supplied checkpoint.
             /// </summary>
             /// <param name="phase">The checkpoint to inspect.</param>
-            /// <returns>True when content enables the checkpoint.</returns>
-            internal bool IsEnabled(MissionEncounterPhase phase)
+            /// <returns>The configured encounter context.</returns>
+            internal MissionEncounterMode GetMode(MissionEncounterPhase phase)
             {
                 return phase switch
                 {
@@ -1411,7 +1415,24 @@ namespace Rebellion.Game
                     MissionEncounterPhase.DepartureComplete => DepartureComplete,
                     MissionEncounterPhase.Arrival => Arrival,
                     MissionEncounterPhase.PreObjective => PreObjective,
-                    _ => false,
+                    _ => MissionEncounterMode.Disabled,
+                };
+            }
+
+            /// <summary>
+            /// Returns the encounter mode initialized by the original mission runtime.
+            /// </summary>
+            /// <param name="phase">The checkpoint to inspect.</param>
+            /// <returns>The standard encounter mode for the checkpoint.</returns>
+            internal static MissionEncounterMode GetStandardMode(MissionEncounterPhase phase)
+            {
+                return phase switch
+                {
+                    MissionEncounterPhase.DepartureStart => MissionEncounterMode.LocalDeparture,
+                    MissionEncounterPhase.DepartureComplete => MissionEncounterMode.FleetApproach,
+                    MissionEncounterPhase.Arrival => MissionEncounterMode.FleetApproach,
+                    MissionEncounterPhase.PreObjective => MissionEncounterMode.PreObjective,
+                    _ => MissionEncounterMode.Disabled,
                 };
             }
         }

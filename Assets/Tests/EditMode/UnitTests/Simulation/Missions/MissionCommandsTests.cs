@@ -1032,7 +1032,7 @@ namespace Rebellion.Tests.Simulation
             Planet origin = new Planet
             {
                 InstanceID = "origin",
-                OwnerInstanceID = "empire",
+                OwnerInstanceID = "rebels",
                 IsColonized = true,
             };
             game.AttachNode(origin, target.GetParent());
@@ -1218,11 +1218,19 @@ namespace Rebellion.Tests.Simulation
             {
                 InstanceID = "ship",
                 OwnerInstanceID = "rebels",
+                StarfighterCapacity = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Starfighter starfighter = new Starfighter
+            {
+                InstanceID = "fighter",
+                OwnerInstanceID = "rebels",
                 DetectionRating = 100,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             game.AttachNode(fleet, planet);
             game.AttachNode(capitalShip, fleet);
+            game.AttachNode(starfighter, capitalShip);
             Officer decoy = EntityFactory.CreateOfficer("decoy", "empire");
             decoy.SetBaseRating(SkillRating.Espionage, 200);
 
@@ -1265,11 +1273,20 @@ namespace Rebellion.Tests.Simulation
             {
                 InstanceID = "ship",
                 OwnerInstanceID = "rebels",
+                StarfighterCapacity = 1,
+                DetectionRating = 100,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Starfighter starfighter = new Starfighter
+            {
+                InstanceID = "fighter",
+                OwnerInstanceID = "rebels",
                 DetectionRating = 100,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             game.AttachNode(fleet, planet);
             game.AttachNode(capitalShip, fleet);
+            game.AttachNode(starfighter, capitalShip);
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             mission.SetExecutionTick(5);
@@ -1308,11 +1325,20 @@ namespace Rebellion.Tests.Simulation
             {
                 InstanceID = "ship",
                 OwnerInstanceID = "rebels",
+                StarfighterCapacity = 1,
+                DetectionRating = 100,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Starfighter starfighter = new Starfighter
+            {
+                InstanceID = "fighter",
+                OwnerInstanceID = "rebels",
                 DetectionRating = 100,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             game.AttachNode(fleet, planet);
             game.AttachNode(capitalShip, fleet);
+            game.AttachNode(starfighter, capitalShip);
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             mission.SetExecutionTick(5);
@@ -1343,6 +1369,14 @@ namespace Rebellion.Tests.Simulation
             {
                 InstanceID = "ship",
                 OwnerInstanceID = "rebels",
+                StarfighterCapacity = 1,
+                DetectionRating = 100,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Starfighter starfighter = new Starfighter
+            {
+                InstanceID = "fighter",
+                OwnerInstanceID = "rebels",
                 DetectionRating = 100,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
@@ -1357,6 +1391,7 @@ namespace Rebellion.Tests.Simulation
             };
             game.AttachNode(fleet, planet);
             game.AttachNode(capitalShip, fleet);
+            game.AttachNode(starfighter, capitalShip);
             game.AttachNode(building, planet);
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
@@ -1378,7 +1413,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_FriendlyBuilding_DoesNotBlockPlanetaryDetection()
+        public void UpdateMission_FriendlyBuilding_BlocksApproachPlanetaryDetection()
         {
             (GameRoot game, Planet planet, Officer spy, Officer _, MovementCommands movement) =
                 BuildDetectionScene();
@@ -1407,11 +1442,8 @@ namespace Rebellion.Tests.Simulation
 
             List<GameResult> results = system.UpdateMission(mission);
 
-            Assert.IsTrue(
-                results
-                    .OfType<MissionCompletedResult>()
-                    .Any(result => result.Outcome == MissionOutcome.Foiled)
-            );
+            Assert.IsFalse(results.OfType<MissionCompletedResult>().Any());
+            Assert.AreEqual(1, mission.CurrentProgress);
         }
 
         [Test]
@@ -1508,13 +1540,13 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_CapturedByOrbitalFleetOverOwnPlanet_RecordsCapturingShip()
+        public void UpdateMission_CapturedByOrbitalFleetOverOwnPlanet_RecordsCapturingUnit()
         {
             (
                 GameRoot game,
                 Planet planet,
                 Officer spy,
-                CapitalShip captorShip,
+                Starfighter capturingUnit,
                 MovementCommands movement
             ) = BuildOrbitalDetectionScene(planetOwnerId: "empire");
 
@@ -1527,19 +1559,19 @@ namespace Rebellion.Tests.Simulation
                 "Captor should be the hostile detector's faction, not the planet owner"
             );
             Assert.AreSame(
-                captorShip,
+                capturingUnit,
                 results.OfType<OfficerCaptureStateResult>().Single().CapturingUnit
             );
         }
 
         [Test]
-        public void UpdateMission_CapturedByOrbitalFleetOverNeutralPlanet_RecordsCapturingShip()
+        public void UpdateMission_CapturedByOrbitalFleetOverNeutralPlanet_RecordsCapturingUnit()
         {
             (
                 GameRoot game,
                 Planet planet,
                 Officer spy,
-                CapitalShip captorShip,
+                Starfighter capturingUnit,
                 MovementCommands movement
             ) = BuildOrbitalDetectionScene(planetOwnerId: null);
 
@@ -1548,7 +1580,7 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(spy.IsCaptured);
             Assert.AreEqual("rebels", spy.CaptorInstanceID);
             Assert.AreSame(
-                captorShip,
+                capturingUnit,
                 results.OfType<OfficerCaptureStateResult>().Single().CapturingUnit
             );
         }
@@ -1916,6 +1948,14 @@ namespace Rebellion.Tests.Simulation
             defender.IsForceSensitive = true;
             defender.IsForceEligible = true;
             defender.ForceValue = 80;
+            game.MoveNode(
+                defender,
+                planet
+                    .GetChildren<Fleet>()
+                    .Single(fleet => fleet.InstanceID == "detection-fleet")
+                    .GetChildren<CapitalShip>()
+                    .Single()
+            );
             game.Config.Jedi.EncounterProbabilityOffset = -100;
             SetFoilTable(game, new Dictionary<int, int> { { -1000, 0 } });
             StubMission mission = new StubMission("empire", planet.InstanceID);
@@ -1957,6 +1997,14 @@ namespace Rebellion.Tests.Simulation
             defender.IsForceSensitive = true;
             defender.IsForceEligible = true;
             defender.ForceValue = 80;
+            game.MoveNode(
+                defender,
+                planet
+                    .GetChildren<Fleet>()
+                    .Single(fleet => fleet.InstanceID == "detection-fleet")
+                    .GetChildren<CapitalShip>()
+                    .Single()
+            );
             game.Config.Jedi.EncounterProbabilityOffset = 100;
             SetFoilTable(game, new Dictionary<int, int> { { -1000, 0 } });
             StubMission mission = new StubMission("empire", planet.InstanceID);
@@ -3082,7 +3130,30 @@ namespace Rebellion.Tests.Simulation
 
             Officer officer = EntityFactory.CreateOfficer("officer", "empire");
             game.AttachNode(officer, origin);
-            game.AttachNode(CreateCompletedRegiment("origin-detector", "rebels"), origin);
+            Fleet originFleet = new Fleet
+            {
+                InstanceID = "origin-fleet",
+                OwnerInstanceID = "rebels",
+            };
+            game.AttachNode(originFleet, origin);
+            CapitalShip originShip = new CapitalShip
+            {
+                InstanceID = "origin-ship",
+                OwnerInstanceID = "rebels",
+                StarfighterCapacity = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(originShip, originFleet);
+            game.AttachNode(
+                new Starfighter
+                {
+                    InstanceID = "origin-detector",
+                    OwnerInstanceID = "rebels",
+                    DetectionRating = 100,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                originShip
+            );
             Regiment sabotageTarget = CreateCompletedRegiment("target-regiment", "rebels");
             game.AttachNode(sabotageTarget, target);
             SetFoilTable(game, new Dictionary<int, int> { { -1000, 50 } });
@@ -3099,7 +3170,7 @@ namespace Rebellion.Tests.Simulation
             );
             MissionCommands system = TestSystems.CreateMissionCommands(
                 game,
-                new QueueRNG(0.99, 0.01, 0.01),
+                new FixedRNG(0.01),
                 movement
             );
 
@@ -3153,7 +3224,6 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(target, sector);
             Officer officer = EntityFactory.CreateOfficer("officer", "empire");
             game.AttachNode(officer, origin);
-            game.AttachNode(CreateCompletedRegiment("origin-detector", "rebels"), origin);
             Regiment sabotageTarget = CreateCompletedRegiment("target-regiment", "rebels");
             game.AttachNode(sabotageTarget, target);
             SetFoilTable(game, new Dictionary<int, int> { { -1000, 100 } });
@@ -4223,10 +4293,10 @@ namespace Rebellion.Tests.Simulation
                 new GameConfig.MissionEncounterConfigsConfig();
             GameConfig.MissionEncounterConfig config =
                 game.Config.ProbabilityTables.Mission.Encounters.GetEncounterConfig(missionTypeId);
-            config.DepartureStart = true;
-            config.DepartureComplete = true;
-            config.Arrival = true;
-            config.PreObjective = true;
+            config.DepartureStart = MissionEncounterMode.LocalDeparture;
+            config.DepartureComplete = MissionEncounterMode.FleetApproach;
+            config.Arrival = MissionEncounterMode.FleetApproach;
+            config.PreObjective = MissionEncounterMode.PreObjective;
         }
 
         /// <summary>
@@ -4359,7 +4429,7 @@ namespace Rebellion.Tests.Simulation
             GameRoot game,
             Planet planet,
             Officer spy,
-            CapitalShip captorShip,
+            Starfighter capturingUnit,
             MovementCommands movement
         ) BuildOrbitalDetectionScene(string planetOwnerId = "empire")
         {
@@ -4410,10 +4480,19 @@ namespace Rebellion.Tests.Simulation
             {
                 InstanceID = "cs1",
                 OwnerInstanceID = "rebels",
+                StarfighterCapacity = 1,
                 DetectionRating = 100,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             game.AttachNode(captorShip, fleet);
+            Starfighter capturingUnit = new Starfighter
+            {
+                InstanceID = "detector",
+                OwnerInstanceID = "rebels",
+                DetectionRating = 100,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(capturingUnit, captorShip);
 
             MovementCommands movement = new MovementCommands(
                 game,
@@ -4422,7 +4501,7 @@ namespace Rebellion.Tests.Simulation
                 new FogOfWarQueries(game),
                 new MovementQueries(game)
             );
-            return (game, planet, spy, captorShip, movement);
+            return (game, planet, spy, capturingUnit, movement);
         }
 
         /// <summary>
@@ -4469,6 +4548,8 @@ namespace Rebellion.Tests.Simulation
         {
             GameConfig config = new GameConfig();
             config.Movement.DistanceDivisor = 5;
+            config.Jedi.MissionParticipantEncounterMinimum = 1;
+            config.Jedi.MissionDefenderEncounterMinimum = 60;
             GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
@@ -4519,6 +4600,15 @@ namespace Rebellion.Tests.Simulation
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             game.AttachNode(regiment, planet);
+            Fleet fleet = new Fleet { InstanceID = "detection-fleet", OwnerInstanceID = "rebels" };
+            game.AttachNode(fleet, planet);
+            CapitalShip capitalShip = new CapitalShip
+            {
+                InstanceID = "detection-ship",
+                OwnerInstanceID = "rebels",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(capitalShip, fleet);
 
             MovementCommands movement = new MovementCommands(
                 game,

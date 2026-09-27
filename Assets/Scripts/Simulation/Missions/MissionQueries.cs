@@ -113,7 +113,8 @@ namespace Rebellion.Simulation
             IReadOnlyList<ISceneNode> detectors =
                 observedPlanet == null
                     ? Array.Empty<ISceneNode>()
-                    : observedDetectors ?? GetDetectors(mission, observedPlanet);
+                    : observedDetectors
+                        ?? GetDetectors(mission, observedPlanet, MissionEncounterMode.PreObjective);
             double foilProbability = EstimateFoilProbability(mission, detectors);
             double personnelLossProbability = EstimatePersonnelLossProbability(
                 mission,
@@ -501,35 +502,59 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Returns hostile detector units in the original traversal order.
+        /// Returns hostile detector units in the original traversal order for an encounter mode.
         /// </summary>
         /// <param name="mission">The mission being checked for detection.</param>
         /// <param name="planet">The planet where the mission is operating.</param>
+        /// <param name="mode">The original encounter context selected for this checkpoint.</param>
         /// <returns>The ordered detector units.</returns>
-        internal static List<ISceneNode> GetDetectors(Mission mission, Planet planet)
+        internal static List<ISceneNode> GetDetectors(
+            Mission mission,
+            Planet planet,
+            MissionEncounterMode mode
+        )
         {
             List<ISceneNode> detectors = new List<ISceneNode>();
-            AddEligibleDetectors(mission, planet.GetChildren<Starfighter>(), detectors);
-            AddEligibleDetectors(mission, planet.GetChildren<Regiment>(), detectors);
+            if (
+                mission == null
+                || planet == null
+                || mode is MissionEncounterMode.Disabled or MissionEncounterMode.LocalDeparture
+            )
+                return detectors;
 
-            bool blocksFleetDetection = planet
-                .GetChildren<Building>()
-                .Any(building =>
-                    building.IsDetectionBlocker
-                    && building.OwnerInstanceID == mission.OwnerInstanceID
-                    && building.ManufacturingStatus == ManufacturingStatus.Complete
-                    && building.Movement == null
-                );
+            List<Fleet> hostileFleets = planet
+                .GetChildren<Fleet>()
+                .Where(fleet =>
+                    fleet.GetOwnerInstanceID() != mission.GetOwnerInstanceID()
+                    && fleet.Movement == null
+                )
+                .ToList();
+            if (hostileFleets.Count == 0)
+                return detectors;
+
+            bool blocksFleetDetection =
+                mode != MissionEncounterMode.PreObjective
+                && planet
+                    .GetChildren<Building>()
+                    .Any(building =>
+                        building.IsDetectionBlocker
+                        && building.OwnerInstanceID == mission.OwnerInstanceID
+                        && building.ManufacturingStatus == ManufacturingStatus.Complete
+                        && building.Movement == null
+                    );
             if (blocksFleetDetection)
                 return detectors;
 
-            foreach (Fleet fleet in planet.GetChildren<Fleet>())
+            if (mode == MissionEncounterMode.PreObjective || mission.HasRemoteOrigin(planet))
+            {
+                AddEligibleDetectors(mission, planet.GetChildren<Starfighter>(), detectors);
+                AddEligibleDetectors(mission, planet.GetChildren<Regiment>(), detectors);
+            }
+
+            foreach (Fleet fleet in hostileFleets)
             {
                 foreach (CapitalShip capitalShip in fleet.GetChildren<CapitalShip>())
                 {
-                    if (mission.IsEligibleDetector(capitalShip))
-                        detectors.Add(capitalShip);
-
                     AddEligibleDetectors(
                         mission,
                         capitalShip.GetChildren<Starfighter>(),

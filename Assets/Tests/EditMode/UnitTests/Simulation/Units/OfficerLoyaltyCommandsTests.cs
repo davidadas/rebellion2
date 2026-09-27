@@ -234,7 +234,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void TryResolveMissionBetrayal_CommandOfficer_DoesNotBetray()
+        public void TryResolveMissionBetrayal_CommandOfficer_CanBetray()
         {
             GameRoot game = BuildScene(
                 out Planet planet,
@@ -250,7 +250,7 @@ namespace Rebellion.Tests.Simulation
                 new StubRNG()
             ).TryResolveMissionBetrayal(mission, out _);
 
-            Assert.IsFalse(betrayed);
+            Assert.IsTrue(betrayed);
         }
 
         /// <summary>

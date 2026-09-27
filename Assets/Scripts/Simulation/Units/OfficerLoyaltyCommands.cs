@@ -82,15 +82,7 @@ namespace Rebellion.Simulation
         /// <returns>True when the officer betrays the mission; otherwise false.</returns>
         private bool BetraysMission(Officer officer)
         {
-            if (
-                officer
-                is not {
-                    CanBetray: true,
-                    CurrentRank: OfficerRank.None,
-                    IsCaptured: false,
-                    IsKilled: false,
-                }
-            )
+            if (officer is not { IsCaptured: false, IsKilled: false, InjuryPoints: 0 })
                 return false;
 
             int probability = 100 - Math.Clamp(officer.Loyalty, 0, 100);

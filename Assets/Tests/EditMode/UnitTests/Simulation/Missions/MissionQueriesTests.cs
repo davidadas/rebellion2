@@ -170,16 +170,23 @@ namespace Rebellion.Tests.Simulation
         {
             (GameRoot game, Planet planet, Officer spy, Officer _) = BuildDetectionScene();
             game.DeleteNode(planet.GetChildren<Regiment>().Single());
-            Fleet fleet = new Fleet { InstanceID = "fleet", OwnerInstanceID = "rebels" };
+            Fleet fleet = planet.GetChildren<Fleet>().Single();
             CapitalShip capitalShip = new CapitalShip
             {
                 InstanceID = "ship",
                 OwnerInstanceID = "rebels",
+                StarfighterCapacity = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Starfighter starfighter = new Starfighter
+            {
+                InstanceID = "fighter",
+                OwnerInstanceID = "rebels",
                 DetectionRating = 100,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
-            game.AttachNode(fleet, planet);
             game.AttachNode(capitalShip, fleet);
+            game.AttachNode(starfighter, capitalShip);
             planet.AddVisitor("empire");
             SetFoilTable(game, new Dictionary<int, int> { { -1000, 100 } });
             MissionQueries system = new MissionQueries(game);
@@ -1019,6 +1026,9 @@ namespace Rebellion.Tests.Simulation
             Officer defender = EntityFactory.CreateOfficer("defender", "rebels");
             defender.CurrentRank = OfficerRank.General;
             game.AttachNode(defender, planet);
+
+            Fleet fleet = new Fleet { InstanceID = "fleet", OwnerInstanceID = "rebels" };
+            game.AttachNode(fleet, planet);
 
             Regiment regiment = new Regiment
             {

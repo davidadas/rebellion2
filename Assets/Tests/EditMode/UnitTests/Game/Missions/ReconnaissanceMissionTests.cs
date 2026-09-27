@@ -78,6 +78,8 @@ namespace Rebellion.Tests.Game.Missions
             detector.DetectionRating = 100;
             detector.ManufacturingStatus = ManufacturingStatus.Complete;
             game.AttachNode(detector, enemyPlanet);
+            Fleet fleet = new Fleet { InstanceID = "fleet", OwnerInstanceID = "rebels" };
+            game.AttachNode(fleet, enemyPlanet);
 
             game.Config.ProbabilityTables.Mission.Foil = new Dictionary<int, int>
             {

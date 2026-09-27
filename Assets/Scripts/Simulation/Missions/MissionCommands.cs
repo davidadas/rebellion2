@@ -420,10 +420,67 @@ namespace Rebellion.Simulation
                 _game.Config?.ProbabilityTables?.Mission?.Encounters?.GetEncounterConfig(
                     mission?.ConfigKey
                 );
-            if (encounterConfig?.IsEnabled(phase) == false)
+            MissionEncounterMode encounterMode =
+                encounterConfig?.GetMode(phase)
+                ?? GameConfig.MissionEncounterConfig.GetStandardMode(phase);
+            if (encounterMode == MissionEncounterMode.Disabled)
                 return false;
 
-            if (ResolveForceEncounter(mission, planet, mainParticipants))
+            if (encounterMode == MissionEncounterMode.FleetAndLocal)
+            {
+                return ResolveEncounterMode(
+                        mission,
+                        phase,
+                        planet,
+                        mainParticipants,
+                        decoys,
+                        MissionEncounterMode.FleetApproach,
+                        results
+                    )
+                    || ResolveEncounterMode(
+                        mission,
+                        phase,
+                        planet,
+                        mainParticipants,
+                        decoys,
+                        MissionEncounterMode.LocalDeparture,
+                        results
+                    );
+            }
+
+            return ResolveEncounterMode(
+                mission,
+                phase,
+                planet,
+                mainParticipants,
+                decoys,
+                encounterMode,
+                results
+            );
+        }
+
+        /// <summary>
+        /// Resolves one source encounter pass for the supplied context mode.
+        /// </summary>
+        /// <param name="mission">The mission reaching an encounter checkpoint.</param>
+        /// <param name="phase">The checkpoint being resolved.</param>
+        /// <param name="planet">The planet where the encounter occurs.</param>
+        /// <param name="mainParticipants">The primary team present at the encounter.</param>
+        /// <param name="decoys">The decoy team present at the encounter.</param>
+        /// <param name="encounterMode">The source context selected for this pass.</param>
+        /// <param name="results">The result collection receiving consequences.</param>
+        /// <returns>True when the encounter foils the mission.</returns>
+        private bool ResolveEncounterMode(
+            Mission mission,
+            MissionEncounterPhase phase,
+            Planet planet,
+            IReadOnlyList<IMissionParticipant> mainParticipants,
+            IReadOnlyList<IMissionParticipant> decoys,
+            MissionEncounterMode encounterMode,
+            List<GameResult> results
+        )
+        {
+            if (ResolveForceEncounter(mission, planet, mainParticipants, encounterMode))
                 return true;
 
             if (
@@ -443,6 +500,7 @@ namespace Rebellion.Simulation
                 planet,
                 mainParticipants,
                 decoys,
+                encounterMode,
                 phase
                     is MissionEncounterPhase.DepartureStart
                         or MissionEncounterPhase.DepartureComplete,
@@ -458,11 +516,13 @@ namespace Rebellion.Simulation
         /// <param name="mission">The mission reaching an encounter checkpoint.</param>
         /// <param name="planet">The planet where the encounter occurs.</param>
         /// <param name="mainParticipants">The primary team present at the encounter.</param>
+        /// <param name="mode">The original encounter context selected for this checkpoint.</param>
         /// <returns>True when a hostile Force user detects a primary participant.</returns>
         private bool ResolveForceEncounter(
             Mission mission,
             Planet planet,
-            IReadOnlyList<IMissionParticipant> mainParticipants
+            IReadOnlyList<IMissionParticipant> mainParticipants,
+            MissionEncounterMode mode
         )
         {
             if (mission == null || planet == null || mainParticipants == null)
@@ -471,26 +531,12 @@ namespace Rebellion.Simulation
             GameConfig.JediConfig config = _game.Config.Jedi;
             List<Officer> participants = mainParticipants
                 .OfType<Officer>()
-                .Where(officer =>
-                    officer.IsForceSensitive && officer.IsForceEligible && officer.ForceRank != 0
-                )
+                .Where(officer => officer.ForceRank >= config.MissionParticipantEncounterMinimum)
                 .ToList();
             if (participants.Count == 0)
                 return false;
 
-            List<Officer> defenders = planet
-                .GetChildren<Officer>(recursive: true)
-                .Where(officer =>
-                    officer.GetOwnerInstanceID() != mission.GetOwnerInstanceID()
-                    && officer.Movement == null
-                    && !officer.IsCaptured
-                    && !officer.IsKilled
-                    && officer.InjuryPoints == 0
-                    && officer.IsForceSensitive
-                    && officer.IsForceEligible
-                    && officer.ForceRank != 0
-                )
-                .ToList();
+            List<Officer> defenders = GetForceDefenders(mission, planet, mode);
 
             foreach (Officer participant in participants)
             {
@@ -509,6 +555,79 @@ namespace Rebellion.Simulation
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// Returns hostile Force users from the context selected by the original encounter mode.
+        /// </summary>
+        /// <param name="mission">The mission reaching an encounter checkpoint.</param>
+        /// <param name="planet">The planet where the encounter occurs.</param>
+        /// <param name="mode">The original encounter context selected for this checkpoint.</param>
+        /// <returns>The eligible hostile Force users in traversal order.</returns>
+        private List<Officer> GetForceDefenders(
+            Mission mission,
+            Planet planet,
+            MissionEncounterMode mode
+        )
+        {
+            IEnumerable<Officer> candidates = mode switch
+            {
+                MissionEncounterMode.LocalDeparture => planet.GetChildren<Officer>(),
+                MissionEncounterMode.FleetApproach when mission.HasRemoteOrigin(planet) => planet
+                    .GetChildren<Officer>()
+                    .Concat(GetFleetOfficers(mission, planet)),
+                MissionEncounterMode.FleetApproach => GetFleetOfficers(mission, planet),
+                MissionEncounterMode.FleetAndLocal => planet
+                    .GetChildren<Officer>()
+                    .Concat(GetFleetOfficers(mission, planet)),
+                MissionEncounterMode.PreObjective => planet
+                    .GetChildren<Officer>()
+                    .Concat(GetFleetOfficers(mission, planet)),
+                _ => Enumerable.Empty<Officer>(),
+            };
+
+            return candidates
+                .Where(officer =>
+                    officer.GetOwnerInstanceID() != mission.GetOwnerInstanceID()
+                    && officer.Movement == null
+                    && !officer.IsCaptured
+                    && !officer.IsKilled
+                    && officer.InjuryPoints == 0
+                    && officer.ForceRank >= _game.Config.Jedi.MissionDefenderEncounterMinimum
+                )
+                .ToList();
+        }
+
+        /// <summary>
+        /// Enumerates officers contained by hostile capital ships at a planet.
+        /// </summary>
+        /// <param name="mission">The mission selecting the hostile side.</param>
+        /// <param name="planet">The planet containing candidate fleets.</param>
+        /// <returns>The contained hostile officers in scene traversal order.</returns>
+        private static IEnumerable<Officer> GetFleetOfficers(Mission mission, Planet planet)
+        {
+            foreach (
+                Fleet fleet in planet
+                    .GetChildren<Fleet>()
+                    .Where(fleet =>
+                        fleet.GetOwnerInstanceID() != mission.GetOwnerInstanceID()
+                        && fleet.Movement == null
+                    )
+            )
+            {
+                foreach (
+                    CapitalShip ship in fleet
+                        .GetChildren<CapitalShip>()
+                        .Where(ship =>
+                            ship.ManufacturingStatus == ManufacturingStatus.Complete
+                            && ship.Movement == null
+                        )
+                )
+                {
+                    foreach (Officer officer in ship.GetChildren<Officer>(recursive: true))
+                        yield return officer;
+                }
+            }
         }
 
         /// <summary>
@@ -743,6 +862,7 @@ namespace Rebellion.Simulation
         /// <param name="planet">The planet where detection occurs.</param>
         /// <param name="mainParticipants">The primary team present at the encounter.</param>
         /// <param name="decoys">The decoy team present at the encounter.</param>
+        /// <param name="mode">The original encounter context selected for this checkpoint.</param>
         /// <param name="isDeparture">Whether the encounter occurs before travel begins.</param>
         /// <param name="results">Collection to append generated results to.</param>
         /// <returns>True if the mission was foiled.</returns>
@@ -751,6 +871,7 @@ namespace Rebellion.Simulation
             Planet planet,
             IReadOnlyList<IMissionParticipant> mainParticipants,
             IReadOnlyList<IMissionParticipant> decoys,
+            MissionEncounterMode mode,
             bool isDeparture,
             List<GameResult> results
         )
@@ -758,7 +879,7 @@ namespace Rebellion.Simulation
             if (mission == null || planet == null || mainParticipants == null || decoys == null)
                 return false;
 
-            List<ISceneNode> activeDetectors = MissionQueries.GetDetectors(mission, planet);
+            List<ISceneNode> activeDetectors = MissionQueries.GetDetectors(mission, planet, mode);
             if (activeDetectors.Count == 0)
                 return false;
 

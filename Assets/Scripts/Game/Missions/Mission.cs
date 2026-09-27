@@ -60,6 +60,18 @@ namespace Rebellion.Game.Missions
     }
 
     /// <summary>
+    /// Identifies the original mission encounter context selected at a lifecycle checkpoint.
+    /// </summary>
+    public enum MissionEncounterMode
+    {
+        Disabled,
+        FleetApproach,
+        LocalDeparture,
+        FleetAndLocal,
+        PreObjective,
+    }
+
+    /// <summary>
     /// Base scene node for missions and their assigned participants.
     /// </summary>
     public abstract class Mission : ContainerNode
@@ -366,6 +378,21 @@ namespace Rebellion.Game.Missions
             GetMainParticipants(includeDisabled)
                 .Concat(GetDecoyParticipants(includeDisabled))
                 .ToList();
+
+        /// <summary>
+        /// Returns whether the mission originated outside its target location.
+        /// </summary>
+        /// <param name="encounterPlanet">The planet hosting the current encounter.</param>
+        /// <returns>True when an assigned participant or the encounter came from another planet.</returns>
+        internal bool HasRemoteOrigin(Planet encounterPlanet)
+        {
+            return encounterPlanet?.InstanceID != LocationInstanceID
+                || GetAllParticipants(includeDisabled: true)
+                    .Any(participant =>
+                        !string.IsNullOrEmpty(participant.MissionReturnLocationInstanceID)
+                        && participant.MissionReturnLocationInstanceID != LocationInstanceID
+                    );
+        }
 
         /// <summary>
         /// Gets the mission's primary participants.
@@ -897,7 +924,7 @@ namespace Rebellion.Game.Missions
             )
                 return false;
 
-            return candidate is Regiment or Starfighter or CapitalShip;
+            return candidate is Regiment or Starfighter;
         }
 
         /// <summary>
