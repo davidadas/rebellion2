@@ -237,8 +237,6 @@ namespace Rebellion.Simulation
                 .GroupBy(decoy => new
                 {
                     Espionage = decoy.GetEffectiveRating(SkillRating.Espionage),
-                    Combat = decoy.GetEffectiveRating(SkillRating.Combat),
-                    CanBeRemoved = decoy is Officer or SpecialForces,
                 })
                 .Select(group => new { Decoy = group.First(), Count = group.Count() })
                 .ToList();
@@ -301,33 +299,19 @@ namespace Rebellion.Simulation
                             0,
                             1
                         );
-                        double evasionProbability = GetParticipantEvasionProbability(
-                            mission,
-                            decoy,
-                            detector
-                        );
-
-                        // A diversion or successful evasion leaves this decoy available.
+                        // A successful diversion leaves the decoy available for later detectors.
                         AddProbability(
                             next,
                             availableDecoys,
-                            selectionProbability
-                                * (
-                                    diversionProbability
-                                    + (1d - diversionProbability)
-                                        * evasionProbability
-                                        * noFoilProbability
-                                )
+                            selectionProbability * diversionProbability
                         );
 
-                        // A failed evasion removes this specific decoy from later checks.
+                        // A failed diversion sends the selected decoy away whether it escapes or
+                        // is captured, and this detector then receives its normal foil attempt.
                         AddProbability(
                             next,
                             availableDecoys - groupPlaceValues[index],
-                            selectionProbability
-                                * (1d - diversionProbability)
-                                * (1d - evasionProbability)
-                                * noFoilProbability
+                            selectionProbability * (1d - diversionProbability) * noFoilProbability
                         );
                     }
                 }
@@ -441,17 +425,26 @@ namespace Rebellion.Simulation
         /// <param name="mission">The mission attempting to remain undetected.</param>
         /// <param name="detector">The hostile detector.</param>
         /// <param name="foilChanceModifier">The signed percentage-point adjustment.</param>
+        /// <param name="participants">The primary team present at this encounter.</param>
+        /// <param name="encounterPlanet">The planet where the encounter occurs.</param>
         /// <returns>The adjusted foiling percentage.</returns>
         internal int GetFoilProbability(
             Mission mission,
             ISceneNode detector,
-            int foilChanceModifier
+            int foilChanceModifier,
+            IReadOnlyList<IMissionParticipant> participants = null,
+            Planet encounterPlanet = null
         )
         {
             if (mission == null || detector == null)
                 return 0;
 
-            int score = CalculateFoilScore(mission, detector);
+            int score = CalculateFoilScore(
+                mission,
+                detector,
+                participants ?? mission.GetMainParticipants(),
+                encounterPlanet
+            );
             int probability = LookupProbability(GetMissionTables().Foil, score);
             return Math.Clamp(probability + foilChanceModifier, 0, 100);
         }
@@ -461,12 +454,18 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="mission">The mission attempting to remain undetected.</param>
         /// <param name="detector">The hostile unit making the detection attempt.</param>
+        /// <param name="participants">The primary team present at this encounter.</param>
+        /// <param name="encounterPlanet">The planet where the encounter occurs.</param>
         /// <returns>The score used to look up the foiling probability.</returns>
-        private int CalculateFoilScore(Mission mission, ISceneNode detector)
+        private int CalculateFoilScore(
+            Mission mission,
+            ISceneNode detector,
+            IReadOnlyList<IMissionParticipant> participants,
+            Planet encounterPlanet
+        )
         {
             GameConfig.MissionProbabilityTablesConfig missionTables = GetMissionTables();
-            IReadOnlyList<IMissionParticipant> participants = mission.GetMainParticipants();
-            Officer commander = mission.FindDetectorCommander(detector);
+            Officer commander = mission.FindDetectorCommander(detector, encounterPlanet);
             return GetAverageEspionage(participants)
                 - GetScaledCommanderEspionage(commander, missionTables.FoilDefenderScalingPercent)
                 - GetDetectorRating(detector)

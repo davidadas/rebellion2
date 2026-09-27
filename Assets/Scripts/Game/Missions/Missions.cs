@@ -224,7 +224,7 @@ namespace Rebellion.Game.Missions
 
             List<GameResult> results = new List<GameResult>();
             if (
-                ApplyCaptureEvasionInjury(
+                ApplyEvasionInjury(
                     target,
                     successfulParticipant,
                     GetParent() as Planet,
