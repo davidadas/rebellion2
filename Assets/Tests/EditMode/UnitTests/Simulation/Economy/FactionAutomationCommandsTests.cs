@@ -38,7 +38,6 @@ namespace Rebellion.Tests.Simulation
             _faction = new Faction
             {
                 InstanceID = _factionId,
-                GarrisonTroopTypeID = _garrisonTypeId,
                 ManageGarrisons = true,
                 ManageProduction = true,
             };
@@ -106,7 +105,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ProcessTick_ManageGarrisons_QueuesTroopForUnguardedPlanet()
+        public void ProcessTick_ManageGarrisonsConfiguredInFactionContent_QueuesConfiguredRegiment()
         {
             _faction.ManageProduction = false;
             _destination.SetFullPopularSupport(_faction.InstanceID);
@@ -311,7 +310,10 @@ namespace Rebellion.Tests.Simulation
             return new GameDataCatalog(
                 config,
                 generationConfig,
-                Array.Empty<Faction>(),
+                new[]
+                {
+                    new Faction { InstanceID = _factionId, GarrisonTroopTypeID = _garrisonTypeId },
+                },
                 Array.Empty<PlanetSector>(),
                 new[] { mine, refinery },
                 Array.Empty<CapitalShip>(),

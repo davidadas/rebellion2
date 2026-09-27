@@ -365,22 +365,22 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Selects the scenario's configured standard garrison regiment.
+        /// Selects the faction content's configured standard garrison regiment.
         /// </summary>
         /// <param name="faction">The faction placing the order.</param>
         /// <returns>The selected regiment template, or null.</returns>
         private Regiment GetAvailableRegiment(Faction faction)
         {
-            if (string.IsNullOrEmpty(faction.GarrisonTroopTypeID))
+            Faction factionTemplate = _gameData.Factions.FirstOrDefault(template =>
+                string.Equals(template.InstanceID, faction.InstanceID, StringComparison.Ordinal)
+            );
+            string garrisonTroopTypeId = factionTemplate?.GarrisonTroopTypeID;
+            if (string.IsNullOrEmpty(garrisonTroopTypeId))
                 return null;
 
             int unlockedOrder = faction.GetHighestUnlockedOrder(ManufacturingType.Troop);
             return _gameData.Regiments.FirstOrDefault(template =>
-                string.Equals(
-                    template.TypeID,
-                    faction.GarrisonTroopTypeID,
-                    StringComparison.Ordinal
-                )
+                string.Equals(template.TypeID, garrisonTroopTypeId, StringComparison.Ordinal)
                 && IManufacturable.CanBeManufacturedBy(template, faction.InstanceID)
                 && template.ResearchOrder <= unlockedOrder
             );

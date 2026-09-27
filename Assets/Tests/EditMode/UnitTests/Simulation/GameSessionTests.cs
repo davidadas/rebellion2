@@ -513,7 +513,6 @@ namespace Rebellion.Tests.Simulation
             Faction faction = new Faction
             {
                 InstanceID = factionId,
-                GarrisonTroopTypeID = regimentTypeId,
                 ManageGarrisons = true,
                 ManageProduction = false,
             };
@@ -2216,7 +2215,10 @@ namespace Rebellion.Tests.Simulation
             return new GameDataCatalog(
                 config,
                 generationConfig,
-                Array.Empty<Faction>(),
+                new[]
+                {
+                    new Faction { InstanceID = factionId, GarrisonTroopTypeID = regimentTypeId },
+                },
                 Array.Empty<PlanetSector>(),
                 Array.Empty<Building>(),
                 Array.Empty<CapitalShip>(),
