@@ -144,7 +144,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void TryResolveMissionBetrayal_ForceCapableCompanion_DiscoversTraitor()
+        public void TryResolveMissionBetrayal_ForceCapableCompanion_DoesNotRevealTraitor()
         {
             GameRoot game = BuildScene(
                 out Planet planet,
@@ -167,46 +167,8 @@ namespace Rebellion.Tests.Simulation
                 new StubRNG()
             ).TryResolveMissionBetrayal(mission, out List<GameResult> results);
 
-            TraitorDiscoveredResult result = results.OfType<TraitorDiscoveredResult>().Single();
             Assert.IsTrue(betrayed);
-            Assert.AreSame(traitor, result.Officer);
-            Assert.AreSame(discoverer, result.DiscoveredBy);
-            Assert.AreSame(planet, result.Context);
-        }
-
-        [Test]
-        public void TryResolveMissionBetrayal_PreviouslyReportedOfficer_RepeatsDiscovery()
-        {
-            GameRoot game = BuildScene(
-                out Planet planet,
-                out Officer traitor,
-                canBetray: true,
-                loyalty: 0
-            );
-            Officer discoverer = new Officer
-            {
-                InstanceID = "discoverer",
-                OwnerInstanceID = traitor.OwnerInstanceID,
-                ForceValue = 100,
-            };
-            game.AttachNode(discoverer, planet);
-            StubMission mission = CreateMission(game, planet, traitor);
-            mission.AddChild(discoverer);
-            OfficerLoyaltyCommands commands = new OfficerLoyaltyCommands(game, new StubRNG());
-
-            bool firstBetrayal = commands.TryResolveMissionBetrayal(
-                mission,
-                out List<GameResult> firstResults
-            );
-            bool repeatedBetrayal = commands.TryResolveMissionBetrayal(
-                mission,
-                out List<GameResult> repeatedResults
-            );
-
-            Assert.IsTrue(firstBetrayal);
-            Assert.AreEqual(1, firstResults.OfType<TraitorDiscoveredResult>().Count());
-            Assert.IsTrue(repeatedBetrayal);
-            Assert.AreEqual(1, repeatedResults.OfType<TraitorDiscoveredResult>().Count());
+            Assert.IsEmpty(results);
         }
 
         [TestCase(80, 19, true)]

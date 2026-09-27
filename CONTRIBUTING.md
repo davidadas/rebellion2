@@ -1,7 +1,7 @@
 # Contributing
 
-Contributions are welcome. Preserve behavior from the original game when source parity is the goal,
-include tests where practical, and describe how the change was validated.
+Contributions are welcome. Preserve established behavior, include tests where practical, and
+describe how the change was validated.
 
 ## Development
 
@@ -9,8 +9,8 @@ Follow the [development guide](Docs/Development.md) for project setup, UI genera
 other local checks.
 
 Do not commit generated UI prefabs, generated scenes, or copyrighted game assets. Contributors
-must own a copy of the original game and **must never share, upload, or redistribute copyrighted
-game assets**.
+must own a licensed copy of a supported source title and **must never share, upload, or redistribute
+copyrighted game assets**.
 
 ## AI assistance
 

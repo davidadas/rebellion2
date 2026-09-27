@@ -301,7 +301,9 @@ namespace Rebellion.Simulation
             string missionName = GetMissionName(result);
             Officer jediTrainer = (result.Mission as JediTrainingMission)?.Trainer;
             OfficerVoiceLineType voiceLineType = GetMissionVoiceLineType(result);
-            Officer reporter = jediTrainer ?? GetMissionReporter(result, voiceLineType);
+            Officer reporter = IsAvailableReporter(jediTrainer, killedOfficerIDs)
+                ? jediTrainer
+                : GetMissionReporter(result, voiceLineType, killedOfficerIDs);
             string participantName =
                 reporter?.GetDisplayName() ?? GetMissionParticipantName(result);
             string officerName = GetMissionOfficerName(result, game, killedResults);
@@ -316,6 +318,14 @@ namespace Rebellion.Simulation
             string missionDetails = BuildMissionDetailList(
                 definition,
                 planetIntelligence?.AdditionalPlanets
+            );
+            string personnelStatus = GetMissionPersonnelStatus(definition, result);
+            string targetOwnerName =
+                GetFaction(game, target?.GetOwnerInstanceID())?.GetDisplayName() ?? string.Empty;
+            string targetChange = GetMissionTargetChange(
+                definition,
+                target?.GetOwnerInstanceID(),
+                targetOwnerName
             );
 
             MessageDelivery message = WithEventLocation(
@@ -334,11 +344,16 @@ namespace Rebellion.Simulation
                         { "target", string.IsNullOrEmpty(targetName) ? "target" : targetName },
                         { "assassination_result", assassinationResult },
                         { "details", missionDetails },
+                        { "personnel_status", personnelStatus },
+                        { "target_owner", targetOwnerName },
+                        { "target_change", targetChange },
                     },
                     overlayImagePath: reporter == null
                         ? GetMissionParticipantOverlayImagePath(result)
                         : GetMessageImagePath(reporter),
-                    officerVoicePath: reporter?.GetVoicePath(voiceLineType, game?.Random)
+                    officerVoicePath: reporter?.GetVoicePath(voiceLineType, game?.Random),
+                    subjectTemplate: reporter == null ? definition?.UnattributedSubject : null,
+                    bodyTemplate: reporter == null ? definition?.UnattributedBody : null
                 ),
                 target,
                 GetMissionNavigationTarget(result),
@@ -351,6 +366,62 @@ namespace Rebellion.Simulation
             return reporter == null
                 ? WithAdvisorNotification(message, AdvisorNotificationType.FieldPersonnel)
                 : WithAdvisorSubject(message, AdvisorSubjectNotification.Report, reporter);
+        }
+
+        /// <summary>
+        /// Builds the configured explanation for a diplomacy target's ownership change.
+        /// </summary>
+        /// <param name="definition">The selected mission message definition.</param>
+        /// <param name="targetOwnerInstanceId">The target's current owner instance ID.</param>
+        /// <param name="targetOwnerName">The target owner's display name.</param>
+        /// <returns>The configured ownership-change explanation.</returns>
+        private static string GetMissionTargetChange(
+            MessageDefinition definition,
+            string targetOwnerInstanceId,
+            string targetOwnerName
+        )
+        {
+            if (definition == null)
+                return string.Empty;
+
+            string template = string.IsNullOrEmpty(targetOwnerInstanceId)
+                ? definition.TargetNeutralTemplate
+                : definition.TargetJoinedTemplate;
+            return MessageTemplateBuilder.Interpolate(
+                template,
+                new Dictionary<string, string> { { "target_owner", targetOwnerName } }
+            );
+        }
+
+        /// <summary>
+        /// Builds the configured post-mission personnel status.
+        /// </summary>
+        /// <param name="definition">The selected mission message definition.</param>
+        /// <param name="result">The completed mission result.</param>
+        /// <returns>The personnel status text, or an empty string when no travel status applies.</returns>
+        private static string GetMissionPersonnelStatus(
+            MessageDefinition definition,
+            MissionCompletedResult result
+        )
+        {
+            if (definition == null || result?.CanContinue != false)
+                return string.Empty;
+
+            if (result.ReturnDestination != null)
+            {
+                return MessageTemplateBuilder.Interpolate(
+                    definition.PersonnelReturningTemplate,
+                    new Dictionary<string, string>
+                    {
+                        {
+                            "destination",
+                            result.ReturnDestination.GetDisplayName() ?? string.Empty
+                        },
+                    }
+                );
+            }
+
+            return definition.PersonnelLostTemplate ?? string.Empty;
         }
 
         /// <summary>
@@ -676,17 +747,28 @@ namespace Rebellion.Simulation
                     )
                 );
 
-                Faction targetFaction = GetFaction(game, target?.OwnerInstanceID);
-                if (targetFaction?.InstanceID == actorFaction?.InstanceID)
-                    continue;
+                Faction opposingFaction = GetOpposingFaction(game, actorFaction);
 
                 AddDelivery(
                     deliveries,
-                    targetFaction,
-                    CreateEnemyMissionFoiled(targetFaction, result, target)
+                    opposingFaction,
+                    CreateEnemyMissionFoiled(opposingFaction, result, target)
                 );
             }
         }
+
+        /// <summary>
+        /// Returns the playable faction opposing the mission owner.
+        /// </summary>
+        /// <param name="game">The game containing the playable factions.</param>
+        /// <param name="actorFaction">The faction that launched the mission.</param>
+        /// <returns>The opposing faction, or null when no opposing faction exists.</returns>
+        private static Faction GetOpposingFaction(GameRoot game, Faction actorFaction) =>
+            actorFaction == null
+                ? null
+                : game
+                    ?.GetFactions()
+                    .FirstOrDefault(faction => faction.InstanceID != actorFaction.InstanceID);
 
         /// <summary>
         /// Adds messages for side-level recruitment exhaustion results.
@@ -984,6 +1066,8 @@ namespace Rebellion.Simulation
         /// <param name="imageOverride">The explicit image path to use before definition image lookup.</param>
         /// <param name="overlayImagePath">The subject image candidate used when the definition enables it.</param>
         /// <param name="officerVoicePath">The optional officer voice line to play for this message.</param>
+        /// <param name="subjectTemplate">The optional subject template override.</param>
+        /// <param name="bodyTemplate">The optional body template override.</param>
         /// <returns>The created message, or null when the definition is missing.</returns>
         private MessageDelivery CreateMessage(
             MessageDefinition definition,
@@ -992,7 +1076,9 @@ namespace Rebellion.Simulation
             Faction imageFaction = null,
             string imageOverride = null,
             string overlayImagePath = null,
-            string officerVoicePath = null
+            string officerVoicePath = null,
+            string subjectTemplate = null,
+            string bodyTemplate = null
         )
         {
             return WithAdvisorNotification(
@@ -1003,7 +1089,9 @@ namespace Rebellion.Simulation
                     imageFaction,
                     imageOverride,
                     definition?.ShowSubjectImage == true ? overlayImagePath : null,
-                    officerVoicePath
+                    officerVoicePath,
+                    subjectTemplate,
+                    bodyTemplate
                 ),
                 AdvisorNotificationPolicy.GetDefault(definition?.ResultType)
             );
@@ -1241,16 +1329,23 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="result">The completed mission result.</param>
         /// <param name="voiceLineType">The requested voice line when no main character is present.</param>
+        /// <param name="killedOfficerIDs">Officers killed while resolving the result batch.</param>
         /// <returns>The preferred reporting officer, or null when none is available.</returns>
         private static Officer GetMissionReporter(
             MissionCompletedResult result,
-            OfficerVoiceLineType voiceLineType
+            OfficerVoiceLineType voiceLineType,
+            ISet<string> killedOfficerIDs
         )
         {
-            return GetPreferredParticipantOfficer(result?.Participants, voiceLineType)
+            return GetPreferredParticipantOfficer(
+                    result?.Participants,
+                    voiceLineType,
+                    killedOfficerIDs
+                )
                 ?? GetPreferredParticipantOfficer(
                     result?.Mission?.GetAllParticipants(),
-                    voiceLineType
+                    voiceLineType,
+                    killedOfficerIDs
                 );
         }
 
@@ -1330,18 +1425,31 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="participants">The mission participants to inspect.</param>
         /// <param name="voiceLineType">The voice line type to require.</param>
+        /// <param name="killedOfficerIDs">Officers killed while resolving the result batch.</param>
         /// <returns>The preferred reporting officer, or null when none is available.</returns>
         private static Officer GetPreferredParticipantOfficer(
             IEnumerable<IMissionParticipant> participants,
-            OfficerVoiceLineType voiceLineType
+            OfficerVoiceLineType voiceLineType,
+            ISet<string> killedOfficerIDs
         )
         {
             Officer[] officers = (participants ?? Enumerable.Empty<IMissionParticipant>())
                 .OfType<Officer>()
+                .Where(officer => IsAvailableReporter(officer, killedOfficerIDs))
                 .ToArray();
             return officers.FirstOrDefault(officer => officer.IsMain)
                 ?? officers.FirstOrDefault(officer => officer.HasVoicePath(voiceLineType));
         }
+
+        /// <summary>
+        /// Returns whether an officer can personally deliver a mission report.
+        /// </summary>
+        /// <param name="officer">The candidate reporting officer.</param>
+        /// <param name="killedOfficerIDs">Officers killed while resolving the result batch.</param>
+        /// <returns>True when the officer remains free and alive.</returns>
+        private static bool IsAvailableReporter(Officer officer, ISet<string> killedOfficerIDs) =>
+            officer is { IsCaptured: false, IsKilled: false }
+            && !(killedOfficerIDs?.Contains(officer.InstanceID) ?? false);
 
         /// <summary>
         /// Gets the mission type identifier from a completed mission result.

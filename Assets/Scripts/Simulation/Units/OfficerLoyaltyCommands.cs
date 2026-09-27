@@ -46,10 +46,6 @@ namespace Rebellion.Simulation
             if (defector == null)
                 return false;
 
-            Officer discoverer = FindOfficerWhoDiscoversBetrayal(mission, defector);
-            if (discoverer != null)
-                RevealTraitor(mission, defector, discoverer, results);
-
             return true;
         }
 
@@ -62,19 +58,6 @@ namespace Rebellion.Simulation
             mission.GetAllParticipants().OfType<Officer>().FirstOrDefault(BetraysMission);
 
         /// <summary>
-        /// Rolls an eligible companion's Force rank to determine who discovers the betrayal.
-        /// </summary>
-        /// <param name="mission">The mission.</param>
-        /// <param name="defector">The defector.</param>
-        /// <returns>The matching officer who discovers betrayal.</returns>
-        private Officer FindOfficerWhoDiscoversBetrayal(Mission mission, Officer defector) =>
-            mission
-                .GetAllParticipants()
-                .OfType<Officer>()
-                .Where(officer => officer != defector && CanDiscoverMissionBetrayal(officer))
-                .FirstOrDefault(officer => _provider.NextInt(0, 100) < officer.ForceRank);
-
-        /// <summary>
         /// Determines whether an eligible officer betrays a mission using inverse loyalty as
         /// the percentage chance.
         /// </summary>
@@ -82,44 +65,11 @@ namespace Rebellion.Simulation
         /// <returns>True when the officer betrays the mission; otherwise false.</returns>
         private bool BetraysMission(Officer officer)
         {
-            if (officer is not { IsCaptured: false, IsKilled: false, InjuryPoints: 0 })
+            if (officer is not { IsCaptured: false, IsKilled: false })
                 return false;
 
             int probability = 100 - Math.Clamp(officer.Loyalty, 0, 100);
             return _provider.NextInt(0, 100) < probability;
-        }
-
-        /// <summary>
-        /// Returns whether an active Force-ranked officer can discover another participant's betrayal.
-        /// </summary>
-        /// <param name="officer">The officer.</param>
-        /// <returns>True when the discover mission betrayal condition is met; otherwise false.</returns>
-        private static bool CanDiscoverMissionBetrayal(Officer officer) =>
-            officer is { IsCaptured: false, IsKilled: false } && officer.ForceRank > 0;
-
-        /// <summary>
-        /// Records who exposed a mission betrayal and where.
-        /// </summary>
-        /// <param name="mission">The mission.</param>
-        /// <param name="defector">The defector.</param>
-        /// <param name="discoverer">The discoverer.</param>
-        /// <param name="results">The results.</param>
-        private void RevealTraitor(
-            Mission mission,
-            Officer defector,
-            Officer discoverer,
-            ICollection<GameResult> results
-        )
-        {
-            results.Add(
-                new TraitorDiscoveredResult
-                {
-                    Officer = defector,
-                    DiscoveredBy = discoverer,
-                    Context = mission.GetParent() as Planet,
-                    Tick = _game.CurrentTick,
-                }
-            );
         }
 
         /// <summary>

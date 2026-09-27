@@ -684,7 +684,7 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Resolves main participants using the original character-first attempt order.
+        /// Resolves main participants with officers before special-forces units.
         /// Officer probabilities are calculated before any attempts and ordered from lowest to
         /// highest. Special forces then attempt the mission in their selected order. Resolution
         /// can stop after the first success for missions whose objective permits only one winner.
@@ -741,7 +741,7 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Rolls the original post-injury death check, which applies only to minor personnel.
+        /// Rolls the post-injury death check, which applies only to minor personnel.
         /// Main characters survive mission injuries regardless of the configured probability.
         /// </summary>
         /// <param name="officer">The injured officer.</param>

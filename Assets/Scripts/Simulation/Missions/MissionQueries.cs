@@ -529,19 +529,11 @@ namespace Rebellion.Simulation
                     && fleet.Movement == null
                 )
                 .ToList();
-            if (hostileFleets.Count == 0)
+            if (hostileFleets.Count == 0 && phase != MissionEncounterPhase.PreObjective)
                 return detectors;
 
             bool blocksFleetDetection =
-                phase != MissionEncounterPhase.PreObjective
-                && planet
-                    .GetChildren<Building>()
-                    .Any(building =>
-                        building.IsDetectionBlocker
-                        && building.OwnerInstanceID == mission.OwnerInstanceID
-                        && building.ManufacturingStatus == ManufacturingStatus.Complete
-                        && building.Movement == null
-                    );
+                phase != MissionEncounterPhase.PreObjective && HasDetectionBlocker(mission, planet);
             if (blocksFleetDetection)
                 return detectors;
 
@@ -565,6 +557,25 @@ namespace Rebellion.Simulation
             }
 
             return detectors;
+        }
+
+        /// <summary>
+        /// Returns whether a completed friendly building suppresses approach encounters.
+        /// </summary>
+        /// <param name="mission">The mission whose owner receives protection.</param>
+        /// <param name="planet">The planet containing candidate buildings.</param>
+        /// <returns>True when an eligible building is present.</returns>
+        internal static bool HasDetectionBlocker(Mission mission, Planet planet)
+        {
+            return mission != null
+                && planet
+                    ?.GetChildren<Building>()
+                    .Any(building =>
+                        building.IsDetectionBlocker
+                        && building.OwnerInstanceID == mission.OwnerInstanceID
+                        && building.ManufacturingStatus == ManufacturingStatus.Complete
+                        && building.Movement == null
+                    ) == true;
         }
 
         /// <summary>
