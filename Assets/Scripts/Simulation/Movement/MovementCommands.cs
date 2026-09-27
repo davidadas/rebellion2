@@ -1025,6 +1025,7 @@ namespace Rebellion.Simulation
                 CompleteArrival(movable, destination, destinationPlanet, results);
                 if (completesManufacturingDelivery)
                     CompleteManufacturingDelivery(movable);
+                CaptureArrivalSnapshot(movable, destinationPlanet);
                 AddArrivalResults(
                     movable,
                     destinationPlanet,
@@ -1202,7 +1203,6 @@ namespace Rebellion.Simulation
                         }
                     );
                 }
-                CaptureFleetArrivalSnapshot(fleet, destinationPlanet);
             }
         }
 
@@ -1308,12 +1308,16 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Captures fog-of-war state for an arriving fleet if visible.
+        /// Captures fog-of-war state when a fleet or one of its capital ships arrives visibly.
         /// </summary>
-        /// <param name="fleet">The arriving fleet.</param>
+        /// <param name="movable">The arriving fleet or capital ship.</param>
         /// <param name="destinationPlanet">The destination planet.</param>
-        private void CaptureFleetArrivalSnapshot(Fleet fleet, Planet destinationPlanet)
+        private void CaptureArrivalSnapshot(IMovable movable, Planet destinationPlanet)
         {
+            Fleet fleet = movable as Fleet ?? (movable as CapitalShip)?.GetParentOfType<Fleet>();
+            if (fleet == null)
+                return;
+
             Faction faction = _game
                 .GetFactions()
                 .FirstOrDefault(f => f.InstanceID == fleet.OwnerInstanceID);
