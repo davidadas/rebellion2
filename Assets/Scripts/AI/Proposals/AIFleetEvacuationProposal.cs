@@ -97,7 +97,8 @@ namespace Rebellion.AI.Proposals
             {
                 int required = context.GetAttackDemand(HostilePlanet)?.OrbitalStrength ?? 0;
                 return required > 0
-                    && context.Assessment.GetProjectedFleetCombatValue(Fleet) >= required;
+                    && context.Assessment.GetProjectedFleetCombatValueAgainstCapitalShips(Fleet)
+                        >= required;
             }
 
             if (

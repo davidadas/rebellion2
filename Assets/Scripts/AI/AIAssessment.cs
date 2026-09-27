@@ -1323,6 +1323,28 @@ namespace Rebellion.AI
         }
 
         /// <summary>
+        /// Returns the strongest hostile fleet's ready strength against capital ships.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <returns>The strongest hostile fleet's capital-target strength.</returns>
+        public int GetStrongestHostileFleetCombatValueAgainstCapitalShips(Planet planet)
+        {
+            if (planet == null)
+                return 0;
+
+            return planet
+                .GetChildren<Fleet>()
+                .Where(fleet =>
+                    fleet.Movement == null
+                    && !string.IsNullOrEmpty(fleet.GetOwnerInstanceID())
+                    && fleet.GetOwnerInstanceID() != _faction?.InstanceID
+                )
+                .Select(GetReadyFleetCombatValueAgainstCapitalShips)
+                .DefaultIfEmpty()
+                .Max();
+        }
+
+        /// <summary>
         /// Returns the known hostile planetary starfighter strength.
         /// </summary>
         /// <param name="planet">Planet to inspect.</param>
@@ -2201,6 +2223,19 @@ namespace Rebellion.AI
                 .Sum(GetProjectedStarfighterCombatValue);
 
             return capitalShip.GetProjectedCombatValue() + starfighterCombat;
+        }
+
+        /// <summary>
+        /// Returns projected capital-target combat value for a capital ship.
+        /// </summary>
+        /// <param name="capitalShip">Capital ship to inspect.</param>
+        /// <returns>The projected capital-target combat value.</returns>
+        public int GetProjectedCapitalShipCombatValueAgainstCapitalShips(CapitalShip capitalShip)
+        {
+            return SpaceCombatStrengthCalculator.GetProjectedCapitalShipCombatValueAgainstCapitalShips(
+                capitalShip,
+                _game.Config.Combat.SpaceCombat
+            );
         }
 
         /// <summary>

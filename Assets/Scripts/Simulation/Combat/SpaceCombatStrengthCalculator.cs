@@ -79,7 +79,7 @@ namespace Rebellion.Simulation
         /// <param name="ship">The capital ship to inspect.</param>
         /// <param name="config">The space-combat rules.</param>
         /// <returns>The ship group's projected capital-target combat value.</returns>
-        private static int GetProjectedCapitalShipCombatValueAgainstCapitalShips(
+        internal static int GetProjectedCapitalShipCombatValueAgainstCapitalShips(
             CapitalShip ship,
             GameConfig.SpaceCombatConfig config
         )

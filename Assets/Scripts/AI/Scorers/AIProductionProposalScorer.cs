@@ -619,7 +619,7 @@ namespace Rebellion.AI.Scorers
             int requiredCombat = attackDemand?.CombatStrength ?? 0;
             int requiredRegiments = GetProjectedRegimentCount(context, fleet, targetPlanet);
             double combatReadiness = GetFulfillmentRatio(
-                context.Assessment.GetProjectedFleetCombatValue(fleet),
+                context.Assessment.GetProjectedFleetCombatValueAgainstCapitalShips(fleet),
                 requiredCombat
             );
             double regimentReadiness = GetFulfillmentRatio(
@@ -667,7 +667,7 @@ namespace Rebellion.AI.Scorers
             if (deficit > config.FleetFinalReadinessGateUnitCount)
                 return 0;
             bool combatReady =
-                context.Assessment.GetProjectedFleetCombatValue(fleet)
+                context.Assessment.GetProjectedFleetCombatValueAgainstCapitalShips(fleet)
                 >= (context.GetAttackDemand(targetPlanet)?.CombatStrength ?? 0);
             int requiredRegiments = GetProjectedRegimentCount(context, fleet, targetPlanet);
             bool capacityReady =

@@ -251,7 +251,9 @@ namespace Rebellion.AI.Proposals
                 ? demand.OccupationRegimentCount
                 : demand.RegimentCount;
             int requiredRegimentStrength = canBombardDefenders ? 0 : demand.RegimentStrength;
-            int availableCombat = context.Assessment.GetReadyFleetCombatValue(Fleet);
+            int availableCombat = context.Assessment.GetReadyFleetCombatValueAgainstCapitalShips(
+                Fleet
+            );
             return Fleet?.HasOperationalCapitalShips() == true
                 && availableCombat > 0
                 && availableCombat >= demand.CombatStrength

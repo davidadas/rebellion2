@@ -1150,7 +1150,7 @@ namespace Rebellion.AI.Planners
                     < GetProjectedRegimentStrength(context, fleet, targetPlanet);
             return needsRegiments
                 && context.Assessment.GetFleetRegimentCapacity(fleet) > currentCount
-                && context.Assessment.GetProjectedFleetCombatValue(fleet)
+                && context.Assessment.GetProjectedFleetCombatValueAgainstCapitalShips(fleet)
                     >= (context.GetAttackDemand(targetPlanet)?.CombatStrength ?? 0)
                 && context.Assessment.GetProjectedFleetBombardmentStrength(fleet)
                     >= (context.GetAttackDemand(targetPlanet)?.BombardmentStrength ?? 0);
@@ -1643,8 +1643,10 @@ namespace Rebellion.AI.Planners
             }
 
             return GetFulfillmentGain(
-                context.Assessment.GetProjectedFleetCombatValue(targetFleet),
-                context.Assessment.GetProjectedCapitalShipCombatValue(capitalShip),
+                context.Assessment.GetProjectedFleetCombatValueAgainstCapitalShips(targetFleet),
+                context.Assessment.GetProjectedCapitalShipCombatValueAgainstCapitalShips(
+                    capitalShip
+                ),
                 requiredCombat
             );
         }
@@ -1744,7 +1746,7 @@ namespace Rebellion.AI.Planners
             int count = 0;
             if (fleet?.HasOperationalCapitalShips() == true)
                 count++;
-            int combat = context.Assessment.GetReadyFleetCombatValue(fleet);
+            int combat = context.Assessment.GetReadyFleetCombatValueAgainstCapitalShips(fleet);
             if (combat > 0 && combat >= demand.CombatStrength)
                 count++;
             if (context.Assessment.GetReadyFleetRegimentCount(fleet) >= demand.RegimentCount)
@@ -1777,8 +1779,9 @@ namespace Rebellion.AI.Planners
             AIAttackDemand demand = context.GetAttackDemand(targetPlanet);
             return demand != null
                 && fleet?.GetChildren<CapitalShip>().Any(capitalShip => capitalShip != null) == true
-                && context.Assessment.GetProjectedFleetCombatValue(fleet) > 0
-                && context.Assessment.GetProjectedFleetCombatValue(fleet) >= demand.CombatStrength
+                && context.Assessment.GetProjectedFleetCombatValueAgainstCapitalShips(fleet) > 0
+                && context.Assessment.GetProjectedFleetCombatValueAgainstCapitalShips(fleet)
+                    >= demand.CombatStrength
                 && context.Assessment.GetFleetLoadedRegimentCount(fleet) >= demand.RegimentCount
                 && context.Assessment.GetFleetRegimentCapacity(fleet) >= demand.RegimentCount
                 && context.Assessment.GetProjectedFleetRegimentAttackStrength(fleet)
@@ -1802,7 +1805,8 @@ namespace Rebellion.AI.Planners
         {
             int required = context.GetAttackDemand(targetPlanet)?.OrbitalStrength ?? 0;
             return required > 0
-                && context.Assessment.GetProjectedFleetCombatValue(fleet) >= required;
+                && context.Assessment.GetProjectedFleetCombatValueAgainstCapitalShips(fleet)
+                    >= required;
         }
 
         /// <summary>

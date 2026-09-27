@@ -4,7 +4,6 @@ using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
-using Rebellion.Game.Units;
 using Rebellion.Simulation;
 using Rebellion.Util.Mathematics;
 
@@ -107,18 +106,7 @@ namespace Rebellion.AI.Demands
         private static int GetOrbitalStrength(AITurnContext context, Planet planet)
         {
             int hostileStrength =
-                planet
-                    .GetChildren<Fleet>()
-                    .Where(fleet =>
-                        fleet.Movement == null
-                        && !string.IsNullOrEmpty(fleet.GetOwnerInstanceID())
-                        && fleet.GetOwnerInstanceID() != context.Faction.InstanceID
-                    )
-                    .Select(fleet =>
-                        context.Assessment.GetReadyFleetCombatValueAgainstCapitalShips(fleet)
-                    )
-                    .DefaultIfEmpty()
-                    .Max()
+                context.Assessment.GetStrongestHostileFleetCombatValueAgainstCapitalShips(planet)
                 + planet
                     .GetAllStarfighters()
                     .Where(starfighter =>

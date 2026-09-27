@@ -678,7 +678,7 @@ namespace Rebellion.AI.Scorers
                 false
             );
             double combatReadiness = GetFulfillmentRatio(
-                assessment.GetReadyFleetCombatValue(fleet),
+                assessment.GetReadyFleetCombatValueAgainstCapitalShips(fleet),
                 demand?.CombatStrength ?? 0
             );
             double regimentReadiness = GetFulfillmentRatio(
@@ -773,8 +773,10 @@ namespace Rebellion.AI.Scorers
             AIAttackDemand demand = context.GetAttackDemand(targetPlanet);
             int requiredRegimentCount = demand?.RegimentCount ?? 0;
             double combatReadiness = GetFulfillmentRatio(
-                assessment.GetProjectedFleetCombatValue(targetFleet)
-                    + assessment.GetProjectedCapitalShipCombatValue(capitalShip),
+                assessment.GetProjectedFleetCombatValueAgainstCapitalShips(targetFleet)
+                    + assessment.GetProjectedCapitalShipCombatValueAgainstCapitalShips(
+                        capitalShip
+                    ),
                 demand?.CombatStrength ?? 0
             );
             double regimentReadiness = GetFulfillmentRatio(
@@ -955,11 +957,16 @@ namespace Rebellion.AI.Scorers
         {
             AIAssessment assessment = context.Assessment;
             List<double> risks = new List<double>();
-            int orbitalDefense = assessment.GetStrongestHostileFleetStrength(targetPlanet);
+            int orbitalDefense = assessment.GetStrongestHostileFleetCombatValueAgainstCapitalShips(
+                targetPlanet
+            );
             if (orbitalDefense > 0)
             {
                 risks.Add(
-                    GetPressureRatio(orbitalDefense, assessment.GetReadyFleetCombatValue(fleet))
+                    GetPressureRatio(
+                        orbitalDefense,
+                        assessment.GetReadyFleetCombatValueAgainstCapitalShips(fleet)
+                    )
                 );
             }
 
@@ -1175,7 +1182,7 @@ namespace Rebellion.AI.Scorers
             int count = 0;
             if (fleet?.HasOperationalCapitalShips() == true)
                 count++;
-            int combat = context.Assessment.GetReadyFleetCombatValue(fleet);
+            int combat = context.Assessment.GetReadyFleetCombatValueAgainstCapitalShips(fleet);
             if (combat > 0 && combat >= demand.CombatStrength)
                 count++;
             if (context.Assessment.GetReadyFleetRegimentCount(fleet) >= requiredRegiments)
@@ -1208,7 +1215,7 @@ namespace Rebellion.AI.Scorers
             int required = context?.GetAttackDemand(targetPlanet)?.OrbitalStrength ?? 0;
             return required > 0
                 && fleet?.HasOperationalCapitalShips() == true
-                && context.Assessment.GetReadyFleetCombatValue(fleet) >= required;
+                && context.Assessment.GetReadyFleetCombatValueAgainstCapitalShips(fleet) >= required;
         }
 
         /// <summary>
