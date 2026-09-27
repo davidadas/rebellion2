@@ -372,6 +372,7 @@ namespace Rebellion.Tests.Simulation
                 Officer _,
                 MovementQueries movement
             ) = BuildScene(config);
+            origin.EnergyCapacity = 2;
             destination.EnergyCapacity = 1;
             Building firstBuilding = new Building
             {
