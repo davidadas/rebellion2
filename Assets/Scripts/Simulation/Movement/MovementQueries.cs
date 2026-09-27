@@ -16,6 +16,8 @@ namespace Rebellion.Simulation
     /// </summary>
     public class MovementQueries
     {
+        private const int _standardHyperdriveRating = 100;
+
         private readonly GameRoot _game;
         private Func<Building, bool> _completedBuildingMovementPolicy;
 
@@ -1268,11 +1270,15 @@ namespace Rebellion.Simulation
         {
             double distance = destination.GetRawDistanceTo(originPos);
 
-            int slowestHyperdrive = Math.Max(GetMovementHyperdrive(unit), 1);
+            int slowestHyperdriveRating = Math.Max(GetMovementHyperdrive(unit), 1);
 
             int baseTicks = (int)
                 Math.Ceiling(
-                    distance * _game.GetConfig().Movement.DistanceScale / slowestHyperdrive
+                    distance
+                        * _game.GetConfig().Movement.DistanceScale
+                        / _standardHyperdriveRating
+                        * slowestHyperdriveRating
+                        / _standardHyperdriveRating
                 );
 
             int minimumTransitTicks = sameSector
@@ -1304,7 +1310,7 @@ namespace Rebellion.Simulation
                         .Select(ship => ship.Hyperdrive)
                         .Where(hyperdrive => hyperdrive > 0)
                         .DefaultIfEmpty(1)
-                        .Min();
+                        .Max();
                 }
             }
 

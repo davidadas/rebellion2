@@ -2964,9 +2964,16 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void RequestMove_FleetWithDifferentHyperdrives_UsesSlowestCompletedShip()
         {
-            GameConfig config = TestConfig.Create();
-            config.Movement.DistanceScale = 10;
-            config.Movement.SameSectorMinTransitTicks = 1;
+            GameConfig config = new GameConfig
+            {
+                Movement = new GameConfig.MovementConfig
+                {
+                    DistanceScale = 10,
+                    MinTransitTicks = 1,
+                    SameSectorMinTransitTicks = 1,
+                    DefaultFighterHyperdrive = 60,
+                },
+            };
             (
                 GameRoot game,
                 Planet origin,
@@ -2977,7 +2984,7 @@ namespace Rebellion.Tests.Simulation
             Fleet fleet = EntityFactory.CreateFleet("mixed-speed-fleet", "empire");
             game.AttachNode(fleet, origin);
             CapitalShip fastShip = CreateMovableCapitalShip("fast-ship");
-            fastShip.Hyperdrive = 100;
+            fastShip.Hyperdrive = 80;
             game.AttachNode(fastShip, fleet);
             Assert.IsTrue(
                 new MovementQueries(game).TryGetTransitTicks(
@@ -2987,14 +2994,14 @@ namespace Rebellion.Tests.Simulation
                 )
             );
             CapitalShip slowShip = CreateMovableCapitalShip("slow-ship");
-            slowShip.Hyperdrive = 1;
+            slowShip.Hyperdrive = 100;
             game.AttachNode(slowShip, fleet);
 
             movement.RequestMove(fleet, destination);
 
             int expectedTransitTicks = (int)
                 System.Math.Ceiling(
-                    destination.GetRawDistanceTo(origin) * config.Movement.DistanceScale
+                    destination.GetRawDistanceTo(origin) * config.Movement.DistanceScale / 100
                 );
             Assert.Greater(fleet.Movement.TransitTicks, fastTransitTicks);
             Assert.AreEqual(expectedTransitTicks, fleet.Movement.TransitTicks);
