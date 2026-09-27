@@ -152,20 +152,38 @@ public sealed class StrategyWindowCommandController
     )
     {
         List<ISceneNode> sourceItems = CopyItems(items);
+        if (ContainsInTransitUnit(sourceItems))
+        {
+            playInTransitOrderRejected();
+            return;
+        }
+
+        if (TargetsCapitalShipUnderConstruction(target))
+        {
+            playUnitUnderConstructionOrderRejected();
+            return;
+        }
+
         ContainerNode destination = target?.GetMoveDestination() as ContainerNode;
-        MovementCommands movementSystem = services.GetService<MovementCommands>();
-        int transitTimeInDays =
-            movementSystem != null
-            && services
-                .GetService<MovementQueries>()
-                .TryGetSelectionTransitTicks(
-                    sourceItems,
-                    destination,
-                    GetPlayerFactionID(),
-                    out int transitTicks
-                )
-                ? transitTicks
-                : -1;
+        if (!ChangesDestination(sourceItems, destination))
+            return;
+
+        MovementQueries movementQueries = services.GetService<MovementQueries>();
+        if (
+            services.GetService<MovementCommands>() == null
+            || movementQueries == null
+            || !movementQueries.TryGetSelectionTransitTicks(
+                sourceItems,
+                destination,
+                GetPlayerFactionID(),
+                out int transitTimeInDays
+            )
+        )
+        {
+            playInvalidOrderRejected();
+            return;
+        }
+
         confirmDialogWindowController.OpenMove(
             sourceItems,
             transitTimeInDays,
