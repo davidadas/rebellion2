@@ -525,7 +525,7 @@ namespace Rebellion.Tests.Simulation
             Planet producer = CreatePlanet("PRODUCER", factionId, 0);
             producer.EnergyCapacity = 10;
             producer.NumRawResourceNodes = 2;
-            Planet destination = CreatePlanet("DESTINATION", factionId, 10);
+            Planet destination = CreatePlanet("DESTINATION", factionId, 100);
             game.AttachNode(sector, game.Galaxy);
             game.AttachNode(producer, sector);
             game.AttachNode(destination, sector);
@@ -705,6 +705,7 @@ namespace Rebellion.Tests.Simulation
         public void Tick_CapturedOfficerWithDueEscapeAttempt_FreesOfficer()
         {
             GameConfig config = new GameConfig();
+            config.Movement.DistanceDivisor = 5;
             config.Captive.EscapeTable = new Dictionary<int, int> { { 0, 100 } };
             config.Smuggling.LossPercentByMinimumSupport[0] = 0;
             GameRoot game = TestGame.Create(config);

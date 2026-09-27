@@ -1200,7 +1200,16 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void RequestMove_FleetWithInboundUnits_RetargetsInboundUnits()
         {
-            GameConfig config = TestContent.Data.GameConfig;
+            GameConfig config = new GameConfig
+            {
+                Movement = new GameConfig.MovementConfig
+                {
+                    DistanceDivisor = 5,
+                    MinTransitTicks = 1,
+                    SameSectorMinTransitTicks = 1,
+                    DefaultFighterHyperdrive = 60,
+                },
+            };
             GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
 
@@ -1244,7 +1253,7 @@ namespace Rebellion.Tests.Simulation
             {
                 InstanceID = "carrier",
                 OwnerInstanceID = "empire",
-                Hyperdrive = 1,
+                Hyperdrive = 100,
                 ManufacturingStatus = ManufacturingStatus.Complete,
                 StarfighterCapacity = 2,
                 RegimentCapacity = 2,
@@ -1258,7 +1267,7 @@ namespace Rebellion.Tests.Simulation
             {
                 InstanceID = "ship",
                 OwnerInstanceID = "empire",
-                Hyperdrive = 1,
+                Hyperdrive = 100,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             game.AttachNode(capitalShip, sourceFleet);
@@ -2119,13 +2128,15 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void RequestMove_OfficerToOwnedUncolonizedPlanetWithStationaryRegiment_StartsTransit()
         {
+            GameConfig config = new GameConfig();
+            config.Movement.DistanceDivisor = 5;
             (
                 GameRoot game,
                 Planet _,
                 Planet destination,
                 Officer officer,
                 MovementCommands movement
-            ) = BuildScene(new GameConfig());
+            ) = BuildScene(config);
             destination.IsColonized = false;
             Regiment stationedRegiment = new Regiment
             {
@@ -2144,13 +2155,15 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void RequestMove_RegimentToOwnedUncolonizedPlanetWithStationaryRegiment_StartsTransit()
         {
+            GameConfig config = new GameConfig();
+            config.Movement.DistanceDivisor = 5;
             (
                 GameRoot game,
                 Planet origin,
                 Planet destination,
                 Officer _,
                 MovementCommands movement
-            ) = BuildScene(new GameConfig());
+            ) = BuildScene(config);
             destination.IsColonized = false;
             Regiment stationedRegiment = new Regiment
             {
@@ -2860,13 +2873,15 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void ReturnFromMission_CapturedPassenger_ReturnsWithEscortGroup()
         {
+            GameConfig config = new GameConfig();
+            config.Movement.DistanceDivisor = 5;
             (
                 GameRoot game,
                 Planet origin,
                 Planet destination,
                 Officer escort,
                 MovementCommands movement
-            ) = BuildScene(new GameConfig());
+            ) = BuildScene(config);
             StubMission mission = new StubMission("empire", destination.InstanceID);
             game.AttachNode(mission, destination);
             movement.SendToMission(escort, mission);
@@ -2964,9 +2979,16 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void RequestMove_FleetWithDifferentHyperdrives_UsesSlowestCompletedShip()
         {
-            GameConfig config = TestConfig.Create();
-            config.Movement.DistanceScale = 10;
-            config.Movement.SameSectorMinTransitTicks = 1;
+            GameConfig config = new GameConfig
+            {
+                Movement = new GameConfig.MovementConfig
+                {
+                    DistanceDivisor = 5,
+                    MinTransitTicks = 1,
+                    SameSectorMinTransitTicks = 1,
+                    DefaultFighterHyperdrive = 60,
+                },
+            };
             (
                 GameRoot game,
                 Planet origin,
@@ -2977,7 +2999,7 @@ namespace Rebellion.Tests.Simulation
             Fleet fleet = EntityFactory.CreateFleet("mixed-speed-fleet", "empire");
             game.AttachNode(fleet, origin);
             CapitalShip fastShip = CreateMovableCapitalShip("fast-ship");
-            fastShip.Hyperdrive = 100;
+            fastShip.Hyperdrive = 80;
             game.AttachNode(fastShip, fleet);
             Assert.IsTrue(
                 new MovementQueries(game).TryGetTransitTicks(
@@ -2987,15 +3009,13 @@ namespace Rebellion.Tests.Simulation
                 )
             );
             CapitalShip slowShip = CreateMovableCapitalShip("slow-ship");
-            slowShip.Hyperdrive = 1;
+            slowShip.Hyperdrive = 100;
             game.AttachNode(slowShip, fleet);
 
             movement.RequestMove(fleet, destination);
 
-            int expectedTransitTicks = (int)
-                System.Math.Ceiling(
-                    destination.GetRawDistanceTo(origin) * config.Movement.DistanceScale
-                );
+            int expectedTransitTicks =
+                (int)destination.GetRawDistanceTo(origin) / config.Movement.DistanceDivisor;
             Assert.Greater(fleet.Movement.TransitTicks, fastTransitTicks);
             Assert.AreEqual(expectedTransitTicks, fleet.Movement.TransitTicks);
 
@@ -4807,7 +4827,16 @@ namespace Rebellion.Tests.Simulation
             int capitalShip2Transit
         ) BuildFleetWithInTransitChildrenScene()
         {
-            GameConfig config = TestContent.Data.GameConfig;
+            GameConfig config = new GameConfig
+            {
+                Movement = new GameConfig.MovementConfig
+                {
+                    DistanceDivisor = 5,
+                    MinTransitTicks = 1,
+                    SameSectorMinTransitTicks = 1,
+                    DefaultFighterHyperdrive = 60,
+                },
+            };
             GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
 
@@ -4839,7 +4868,7 @@ namespace Rebellion.Tests.Simulation
                 InstanceID = "pC",
                 OwnerInstanceID = "empire",
                 IsColonized = true,
-                PositionX = 10,
+                PositionX = 100,
                 PositionY = 0,
             };
             game.AttachNode(planetC, sector);
@@ -4852,7 +4881,7 @@ namespace Rebellion.Tests.Simulation
             {
                 InstanceID = "cs1",
                 OwnerInstanceID = "empire",
-                Hyperdrive = 1,
+                Hyperdrive = 100,
                 ManufacturingStatus = ManufacturingStatus.Complete,
                 StarfighterCapacity = 2,
                 RegimentCapacity = 2,
@@ -4879,7 +4908,7 @@ namespace Rebellion.Tests.Simulation
             {
                 InstanceID = "cs2",
                 OwnerInstanceID = "empire",
-                Hyperdrive = 1,
+                Hyperdrive = 100,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             game.AttachNode(capitalShip2, sourceFleet);

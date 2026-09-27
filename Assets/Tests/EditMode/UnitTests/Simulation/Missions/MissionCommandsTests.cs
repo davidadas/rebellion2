@@ -3664,6 +3664,7 @@ namespace Rebellion.Tests.Simulation
         ) BuildOrbitalDetectionScene(string planetOwnerId = "empire")
         {
             GameConfig config = new GameConfig();
+            config.Movement.DistanceDivisor = 5;
             GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
@@ -3767,6 +3768,7 @@ namespace Rebellion.Tests.Simulation
         ) BuildDetectionScene()
         {
             GameConfig config = new GameConfig();
+            config.Movement.DistanceDivisor = 5;
             GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });

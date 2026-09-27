@@ -832,11 +832,11 @@ namespace Rebellion.AI.Scorers
             if (producerPlanet == null || destinationPlanet == null)
                 return 0;
 
-            double distanceScale = context.Game.Config.Movement.DistanceScale;
-            if (distanceScale <= 0)
+            int distanceDivisor = context.Game.Config.Movement.DistanceDivisor;
+            if (distanceDivisor <= 0)
                 return 0;
 
-            return producerPlanet.GetRawDistanceTo(destinationPlanet) / distanceScale;
+            return producerPlanet.GetRawDistanceTo(destinationPlanet) / distanceDivisor;
         }
     }
 }

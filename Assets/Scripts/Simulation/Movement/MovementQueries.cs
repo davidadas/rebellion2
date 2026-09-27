@@ -8,6 +8,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Logging;
+using Rebellion.Util.Mathematics;
 
 namespace Rebellion.Simulation
 {
@@ -1266,14 +1267,22 @@ namespace Rebellion.Simulation
             bool sameSector
         )
         {
-            double distance = destination.GetRawDistanceTo(originPos);
-
-            int slowestHyperdrive = Math.Max(GetMovementHyperdrive(unit), 1);
-
-            int baseTicks = (int)
-                Math.Ceiling(
-                    distance * _game.GetConfig().Movement.DistanceScale / slowestHyperdrive
+            int distance = (int)destination.GetRawDistanceTo(originPos);
+            int distanceDivisor = _game.GetConfig().Movement.DistanceDivisor;
+            if (distanceDivisor <= 0)
+            {
+                throw new InvalidOperationException(
+                    "Movement distance divisor must be greater than zero."
                 );
+            }
+
+            int slowestHyperdriveRating = Math.Max(GetMovementHyperdrive(unit), 1);
+            int baseTicks = IntegerMath.ScaleByPercent(
+                distance / distanceDivisor,
+                slowestHyperdriveRating
+            );
+            if (distance > 0)
+                baseTicks = Math.Max(baseTicks, 1);
 
             int minimumTransitTicks = sameSector
                 ? _game.GetConfig().Movement.SameSectorMinTransitTicks
@@ -1304,7 +1313,7 @@ namespace Rebellion.Simulation
                         .Select(ship => ship.Hyperdrive)
                         .Where(hyperdrive => hyperdrive > 0)
                         .DefaultIfEmpty(1)
-                        .Min();
+                        .Max();
                 }
             }
 

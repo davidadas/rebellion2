@@ -45,17 +45,27 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void TryGetTransitTicks_FleetWithUnfinishedSlowerShip_IgnoresUnfinishedShip()
         {
+            GameConfig config = new GameConfig
+            {
+                Movement = new GameConfig.MovementConfig
+                {
+                    DistanceDivisor = 5,
+                    MinTransitTicks = 1,
+                    SameSectorMinTransitTicks = 1,
+                    DefaultFighterHyperdrive = 60,
+                },
+            };
             (
                 GameRoot game,
                 Planet origin,
                 Planet destination,
                 Officer _,
                 MovementQueries movement
-            ) = BuildScene();
+            ) = BuildScene(config);
             Fleet fleet = EntityFactory.CreateFleet("mixed-fleet", "empire");
             game.AttachNode(fleet, origin);
             CapitalShip completedShip = CreateMovableCapitalShip("completed-ship");
-            completedShip.Hyperdrive = 10;
+            completedShip.Hyperdrive = 80;
             game.AttachNode(completedShip, fleet);
             Assert.IsTrue(
                 movement.TryGetTransitTicks(
@@ -68,7 +78,7 @@ namespace Rebellion.Tests.Simulation
             {
                 InstanceID = "unfinished-ship",
                 OwnerInstanceID = "empire",
-                Hyperdrive = 1,
+                Hyperdrive = 100,
                 ManufacturingStatus = ManufacturingStatus.Building,
             };
             game.AttachNode(unfinishedShip, fleet);
@@ -82,6 +92,73 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(estimated);
             Assert.AreEqual(completedOnlyTicks, mixedFleetTicks);
             Assert.IsNull(fleet.Movement);
+        }
+
+        [Test]
+        public void CalculateTransitTicks_HigherHyperdriveRating_ReturnsLongerDuration()
+        {
+            GameConfig config = new GameConfig
+            {
+                Movement = new GameConfig.MovementConfig
+                {
+                    DistanceDivisor = 5,
+                    MinTransitTicks = 1,
+                    SameSectorMinTransitTicks = 1,
+                    DefaultFighterHyperdrive = 60,
+                },
+            };
+            (_, Planet origin, Planet destination, _, MovementQueries movement) = BuildScene(
+                config
+            );
+            destination.PositionX = 100;
+            destination.PositionY = 0;
+            CapitalShip fasterShip = CreateMovableCapitalShip("faster-ship");
+            fasterShip.Hyperdrive = 80;
+            CapitalShip slowerShip = CreateMovableCapitalShip("slower-ship");
+            slowerShip.Hyperdrive = 100;
+
+            int fasterTransitTicks = movement.CalculateTransitTicks(
+                fasterShip,
+                origin,
+                destination
+            );
+            int slowerTransitTicks = movement.CalculateTransitTicks(
+                slowerShip,
+                origin,
+                destination
+            );
+
+            Assert.AreEqual(16, fasterTransitTicks);
+            Assert.AreEqual(20, slowerTransitTicks);
+        }
+
+        [Test]
+        public void CalculateTransitTicks_ZeroDistanceDivisor_ThrowsInvalidOperationException()
+        {
+            GameConfig config = new GameConfig
+            {
+                Movement = new GameConfig.MovementConfig
+                {
+                    DistanceDivisor = 0,
+                    MinTransitTicks = 1,
+                    SameSectorMinTransitTicks = 1,
+                    DefaultFighterHyperdrive = 60,
+                },
+            };
+            (_, Planet origin, Planet destination, _, MovementQueries movement) = BuildScene(
+                config
+            );
+            CapitalShip ship = CreateMovableCapitalShip("ship");
+            ship.Hyperdrive = 80;
+
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+                movement.CalculateTransitTicks(ship, origin, destination)
+            );
+
+            Assert.AreEqual(
+                "Movement distance divisor must be greater than zero.",
+                exception.Message
+            );
         }
 
         [Test]

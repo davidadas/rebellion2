@@ -19,7 +19,7 @@ namespace Rebellion.Tests.Content
         <xs:element name=""Movement"">
           <xs:complexType>
             <xs:all>
-              <xs:element name=""DistanceScale"" type=""xs:decimal""/>
+              <xs:element name=""DistanceDivisor"" type=""xs:positiveInteger""/>
             </xs:all>
           </xs:complexType>
         </xs:element>
@@ -35,9 +35,9 @@ namespace Rebellion.Tests.Content
   </xs:element>
 </xs:schema>";
         private const string _fixtureDefaultsXml =
-            "<GameConfig><Movement><DistanceScale>12</DistanceScale></Movement></GameConfig>";
+            "<GameConfig><Movement><DistanceDivisor>5</DistanceDivisor></Movement></GameConfig>";
         private const string _fixtureCompleteDefaultsXml =
-            "<GameConfig><Movement><DistanceScale>12</DistanceScale></Movement>"
+            "<GameConfig><Movement><DistanceDivisor>5</DistanceDivisor></Movement>"
             + "<Research><BaseResearchPoints>1</BaseResearchPoints></Research></GameConfig>";
 
         [TestCase(RuntimePlatform.OSXPlayer, "Game.app/Contents/Resources/Data")]
@@ -85,7 +85,7 @@ namespace Rebellion.Tests.Content
                 packOverrideXml: null
             );
 
-            Assert.AreEqual(12, config.Movement.DistanceScale);
+            Assert.AreEqual(5, config.Movement.DistanceDivisor);
             Assert.AreEqual(1, config.Research.BaseResearchPoints);
         }
 
@@ -94,10 +94,10 @@ namespace Rebellion.Tests.Content
         {
             GameConfig config = LoadGameConfigFromFixture(
                 _fixtureCompleteDefaultsXml,
-                "<GameConfig><Movement><DistanceScale>7</DistanceScale></Movement></GameConfig>"
+                "<GameConfig><Movement><DistanceDivisor>7</DistanceDivisor></Movement></GameConfig>"
             );
 
-            Assert.AreEqual(7, config.Movement.DistanceScale);
+            Assert.AreEqual(7, config.Movement.DistanceDivisor);
             Assert.AreEqual(1, config.Research.BaseResearchPoints);
         }
 
@@ -109,7 +109,7 @@ namespace Rebellion.Tests.Content
                 "<GameConfig><Research><BaseResearchPoints>3</BaseResearchPoints></Research></GameConfig>"
             );
 
-            Assert.AreEqual(12, config.Movement.DistanceScale);
+            Assert.AreEqual(5, config.Movement.DistanceDivisor);
             Assert.AreEqual(3, config.Research.BaseResearchPoints);
         }
 
