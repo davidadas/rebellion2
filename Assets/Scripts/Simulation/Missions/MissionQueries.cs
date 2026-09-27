@@ -114,7 +114,11 @@ namespace Rebellion.Simulation
                 observedPlanet == null
                     ? Array.Empty<ISceneNode>()
                     : observedDetectors
-                        ?? GetDetectors(mission, observedPlanet, MissionEncounterMode.PreObjective);
+                        ?? GetDetectors(
+                            mission,
+                            observedPlanet,
+                            MissionEncounterPhase.PreObjective
+                        );
             double foilProbability = EstimateFoilProbability(mission, detectors);
             double personnelLossProbability = EstimatePersonnelLossProbability(
                 mission,
@@ -502,24 +506,20 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Returns hostile detector units in the original traversal order for an encounter mode.
+        /// Returns hostile detector units for a mission lifecycle checkpoint.
         /// </summary>
         /// <param name="mission">The mission being checked for detection.</param>
         /// <param name="planet">The planet where the mission is operating.</param>
-        /// <param name="mode">The original encounter context selected for this checkpoint.</param>
+        /// <param name="phase">The mission lifecycle checkpoint being evaluated.</param>
         /// <returns>The ordered detector units.</returns>
         internal static List<ISceneNode> GetDetectors(
             Mission mission,
             Planet planet,
-            MissionEncounterMode mode
+            MissionEncounterPhase phase
         )
         {
             List<ISceneNode> detectors = new List<ISceneNode>();
-            if (
-                mission == null
-                || planet == null
-                || mode is MissionEncounterMode.Disabled or MissionEncounterMode.LocalDeparture
-            )
+            if (mission == null || planet == null || phase == MissionEncounterPhase.DepartureStart)
                 return detectors;
 
             List<Fleet> hostileFleets = planet
@@ -533,7 +533,7 @@ namespace Rebellion.Simulation
                 return detectors;
 
             bool blocksFleetDetection =
-                mode != MissionEncounterMode.PreObjective
+                phase != MissionEncounterPhase.PreObjective
                 && planet
                     .GetChildren<Building>()
                     .Any(building =>
@@ -545,7 +545,7 @@ namespace Rebellion.Simulation
             if (blocksFleetDetection)
                 return detectors;
 
-            if (mode == MissionEncounterMode.PreObjective || mission.HasRemoteOrigin(planet))
+            if (phase == MissionEncounterPhase.PreObjective || mission.HasRemoteOrigin(planet))
             {
                 AddEligibleDetectors(mission, planet.GetChildren<Starfighter>(), detectors);
                 AddEligibleDetectors(mission, planet.GetChildren<Regiment>(), detectors);

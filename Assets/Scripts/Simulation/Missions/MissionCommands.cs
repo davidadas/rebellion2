@@ -416,71 +416,7 @@ namespace Rebellion.Simulation
             List<GameResult> results
         )
         {
-            GameConfig.MissionEncounterConfig encounterConfig =
-                _game.Config?.ProbabilityTables?.Mission?.Encounters?.GetEncounterConfig(
-                    mission?.ConfigKey
-                );
-            MissionEncounterMode encounterMode =
-                encounterConfig?.GetMode(phase)
-                ?? GameConfig.MissionEncounterConfig.GetStandardMode(phase);
-            if (encounterMode == MissionEncounterMode.Disabled)
-                return false;
-
-            if (encounterMode == MissionEncounterMode.FleetAndLocal)
-            {
-                return ResolveEncounterMode(
-                        mission,
-                        phase,
-                        planet,
-                        mainParticipants,
-                        decoys,
-                        MissionEncounterMode.FleetApproach,
-                        results
-                    )
-                    || ResolveEncounterMode(
-                        mission,
-                        phase,
-                        planet,
-                        mainParticipants,
-                        decoys,
-                        MissionEncounterMode.LocalDeparture,
-                        results
-                    );
-            }
-
-            return ResolveEncounterMode(
-                mission,
-                phase,
-                planet,
-                mainParticipants,
-                decoys,
-                encounterMode,
-                results
-            );
-        }
-
-        /// <summary>
-        /// Resolves one source encounter pass for the supplied context mode.
-        /// </summary>
-        /// <param name="mission">The mission reaching an encounter checkpoint.</param>
-        /// <param name="phase">The checkpoint being resolved.</param>
-        /// <param name="planet">The planet where the encounter occurs.</param>
-        /// <param name="mainParticipants">The primary team present at the encounter.</param>
-        /// <param name="decoys">The decoy team present at the encounter.</param>
-        /// <param name="encounterMode">The source context selected for this pass.</param>
-        /// <param name="results">The result collection receiving consequences.</param>
-        /// <returns>True when the encounter foils the mission.</returns>
-        private bool ResolveEncounterMode(
-            Mission mission,
-            MissionEncounterPhase phase,
-            Planet planet,
-            IReadOnlyList<IMissionParticipant> mainParticipants,
-            IReadOnlyList<IMissionParticipant> decoys,
-            MissionEncounterMode encounterMode,
-            List<GameResult> results
-        )
-        {
-            if (ResolveForceEncounter(mission, planet, mainParticipants, encounterMode))
+            if (ResolveForceEncounter(mission, planet, mainParticipants, phase))
                 return true;
 
             if (
@@ -500,7 +436,7 @@ namespace Rebellion.Simulation
                 planet,
                 mainParticipants,
                 decoys,
-                encounterMode,
+                phase,
                 phase
                     is MissionEncounterPhase.DepartureStart
                         or MissionEncounterPhase.DepartureComplete,
@@ -516,13 +452,13 @@ namespace Rebellion.Simulation
         /// <param name="mission">The mission reaching an encounter checkpoint.</param>
         /// <param name="planet">The planet where the encounter occurs.</param>
         /// <param name="mainParticipants">The primary team present at the encounter.</param>
-        /// <param name="mode">The original encounter context selected for this checkpoint.</param>
+        /// <param name="phase">The mission lifecycle checkpoint being resolved.</param>
         /// <returns>True when a hostile Force user detects a primary participant.</returns>
         private bool ResolveForceEncounter(
             Mission mission,
             Planet planet,
             IReadOnlyList<IMissionParticipant> mainParticipants,
-            MissionEncounterMode mode
+            MissionEncounterPhase phase
         )
         {
             if (mission == null || planet == null || mainParticipants == null)
@@ -536,7 +472,7 @@ namespace Rebellion.Simulation
             if (participants.Count == 0)
                 return false;
 
-            List<Officer> defenders = GetForceDefenders(mission, planet, mode);
+            List<Officer> defenders = GetForceDefenders(mission, planet, phase);
 
             foreach (Officer participant in participants)
             {
@@ -558,29 +494,28 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Returns hostile Force users from the context selected by the original encounter mode.
+        /// Returns hostile Force users relevant to a mission lifecycle checkpoint.
         /// </summary>
         /// <param name="mission">The mission reaching an encounter checkpoint.</param>
         /// <param name="planet">The planet where the encounter occurs.</param>
-        /// <param name="mode">The original encounter context selected for this checkpoint.</param>
+        /// <param name="phase">The mission lifecycle checkpoint being resolved.</param>
         /// <returns>The eligible hostile Force users in traversal order.</returns>
         private List<Officer> GetForceDefenders(
             Mission mission,
             Planet planet,
-            MissionEncounterMode mode
+            MissionEncounterPhase phase
         )
         {
-            IEnumerable<Officer> candidates = mode switch
+            IEnumerable<Officer> candidates = phase switch
             {
-                MissionEncounterMode.LocalDeparture => planet.GetChildren<Officer>(),
-                MissionEncounterMode.FleetApproach when mission.HasRemoteOrigin(planet) => planet
+                MissionEncounterPhase.DepartureStart => planet.GetChildren<Officer>(),
+                MissionEncounterPhase.DepartureComplete
+                or MissionEncounterPhase.Arrival when mission.HasRemoteOrigin(planet) => planet
                     .GetChildren<Officer>()
                     .Concat(GetFleetOfficers(mission, planet)),
-                MissionEncounterMode.FleetApproach => GetFleetOfficers(mission, planet),
-                MissionEncounterMode.FleetAndLocal => planet
-                    .GetChildren<Officer>()
-                    .Concat(GetFleetOfficers(mission, planet)),
-                MissionEncounterMode.PreObjective => planet
+                MissionEncounterPhase.DepartureComplete or MissionEncounterPhase.Arrival =>
+                    GetFleetOfficers(mission, planet),
+                MissionEncounterPhase.PreObjective => planet
                     .GetChildren<Officer>()
                     .Concat(GetFleetOfficers(mission, planet)),
                 _ => Enumerable.Empty<Officer>(),
@@ -862,7 +797,7 @@ namespace Rebellion.Simulation
         /// <param name="planet">The planet where detection occurs.</param>
         /// <param name="mainParticipants">The primary team present at the encounter.</param>
         /// <param name="decoys">The decoy team present at the encounter.</param>
-        /// <param name="mode">The original encounter context selected for this checkpoint.</param>
+        /// <param name="phase">The mission lifecycle checkpoint being resolved.</param>
         /// <param name="isDeparture">Whether the encounter occurs before travel begins.</param>
         /// <param name="results">Collection to append generated results to.</param>
         /// <returns>True if the mission was foiled.</returns>
@@ -871,7 +806,7 @@ namespace Rebellion.Simulation
             Planet planet,
             IReadOnlyList<IMissionParticipant> mainParticipants,
             IReadOnlyList<IMissionParticipant> decoys,
-            MissionEncounterMode mode,
+            MissionEncounterPhase phase,
             bool isDeparture,
             List<GameResult> results
         )
@@ -879,7 +814,7 @@ namespace Rebellion.Simulation
             if (mission == null || planet == null || mainParticipants == null || decoys == null)
                 return false;
 
-            List<ISceneNode> activeDetectors = MissionQueries.GetDetectors(mission, planet, mode);
+            List<ISceneNode> activeDetectors = MissionQueries.GetDetectors(mission, planet, phase);
             if (activeDetectors.Count == 0)
                 return false;
 

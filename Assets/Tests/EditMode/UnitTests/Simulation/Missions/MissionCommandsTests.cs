@@ -3159,8 +3159,6 @@ namespace Rebellion.Tests.Simulation
             SetFoilTable(game, new Dictionary<int, int> { { -1000, 50 } });
             SetEvasionTable(game, new Dictionary<int, int> { { -1000, 100 } });
             DisableCaptureEvasionInjury(game);
-            EnableAllEncounters(game, SabotageMission.MissionTypeID);
-
             MovementCommands movement = new MovementCommands(
                 game,
                 new FogOfWarCommands(game),
@@ -3193,65 +3191,6 @@ namespace Rebellion.Tests.Simulation
                     .OfType<MissionCompletedResult>()
                     .Any(result => result.Outcome == MissionOutcome.Foiled)
             );
-        }
-
-        /// <summary>
-        /// Verifies disabled departure checkpoints allow the mission to begin traveling.
-        /// </summary>
-        [Test]
-        public void InitiateMission_DisabledDepartureEncounters_StartsTravel()
-        {
-            GameRoot game = TestGame.Create(TestConfig.Create());
-            game.Config.ProbabilityTables.Mission.Encounters =
-                new GameConfig.MissionEncounterConfigsConfig();
-            game.GetFactions().Add(new Faction { InstanceID = "empire" });
-            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
-            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
-            game.AttachNode(sector, game.Galaxy);
-            Planet origin = new Planet
-            {
-                InstanceID = "origin",
-                OwnerInstanceID = "empire",
-                IsColonized = true,
-            };
-            Planet target = new Planet
-            {
-                InstanceID = "target",
-                OwnerInstanceID = "rebels",
-                IsColonized = true,
-            };
-            game.AttachNode(origin, sector);
-            game.AttachNode(target, sector);
-            Officer officer = EntityFactory.CreateOfficer("officer", "empire");
-            game.AttachNode(officer, origin);
-            Regiment sabotageTarget = CreateCompletedRegiment("target-regiment", "rebels");
-            game.AttachNode(sabotageTarget, target);
-            SetFoilTable(game, new Dictionary<int, int> { { -1000, 100 } });
-            MovementCommands movement = new MovementCommands(
-                game,
-                new FogOfWarCommands(game),
-                new FleetCommands(game),
-                new FogOfWarQueries(game),
-                new MovementQueries(game)
-            );
-            MissionCommands system = TestSystems.CreateMissionCommands(
-                game,
-                new FixedRNG(0.01),
-                movement
-            );
-
-            bool initiated = system.InitiateMission(
-                CreateContext(
-                    SabotageMission.MissionTypeID,
-                    officer,
-                    target,
-                    selectedTarget: sabotageTarget
-                )
-            );
-
-            Assert.IsTrue(initiated);
-            Assert.IsNotNull(officer.Movement);
-            Assert.IsTrue(game.GetSceneNodesByType<Mission>().Any());
         }
 
         [Test]
@@ -4280,23 +4219,6 @@ namespace Rebellion.Tests.Simulation
         {
             game.Config.DuelResolution.CaptureEvasionInjuryBaseChance = 0;
             game.Config.DuelResolution.MinimumInjuryChance = 0;
-        }
-
-        /// <summary>
-        /// Enables every encounter checkpoint for a configured mission type.
-        /// </summary>
-        /// <param name="game">The game whose configuration is updated.</param>
-        /// <param name="missionTypeId">The mission type to configure.</param>
-        private static void EnableAllEncounters(GameRoot game, string missionTypeId)
-        {
-            game.Config.ProbabilityTables.Mission.Encounters ??=
-                new GameConfig.MissionEncounterConfigsConfig();
-            GameConfig.MissionEncounterConfig config =
-                game.Config.ProbabilityTables.Mission.Encounters.GetEncounterConfig(missionTypeId);
-            config.DepartureStart = MissionEncounterMode.LocalDeparture;
-            config.DepartureComplete = MissionEncounterMode.FleetApproach;
-            config.Arrival = MissionEncounterMode.FleetApproach;
-            config.PreObjective = MissionEncounterMode.PreObjective;
         }
 
         /// <summary>

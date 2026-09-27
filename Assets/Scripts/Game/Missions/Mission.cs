@@ -60,18 +60,6 @@ namespace Rebellion.Game.Missions
     }
 
     /// <summary>
-    /// Identifies the original mission encounter context selected at a lifecycle checkpoint.
-    /// </summary>
-    public enum MissionEncounterMode
-    {
-        Disabled,
-        FleetApproach,
-        LocalDeparture,
-        FleetAndLocal,
-        PreObjective,
-    }
-
-    /// <summary>
     /// Base scene node for missions and their assigned participants.
     /// </summary>
     public abstract class Mission : ContainerNode

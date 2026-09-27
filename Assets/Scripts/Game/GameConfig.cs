@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.Util.Random;
 using Rebellion.Util.Serialization;
@@ -1348,8 +1347,6 @@ namespace Rebellion.Game
 
             public MissionTickRangesConfig TickRanges { get; set; } = new MissionTickRangesConfig();
 
-            public MissionEncounterConfigsConfig Encounters { get; set; }
-
             /// <summary>
             /// Returns the success probability table for the given mission config key, or null.
             /// </summary>
@@ -1385,115 +1382,6 @@ namespace Rebellion.Game
                     return DefaultSuccessProbability;
 
                 return new ProbabilityTable(table).Lookup(score);
-            }
-        }
-
-        /// <summary>
-        /// Selects the original encounter context used at each checkpoint for one mission type.
-        /// </summary>
-        [PersistableObject]
-        public class MissionEncounterConfig
-        {
-            public MissionEncounterMode DepartureStart { get; set; }
-
-            public MissionEncounterMode DepartureComplete { get; set; }
-
-            public MissionEncounterMode Arrival { get; set; }
-
-            public MissionEncounterMode PreObjective { get; set; }
-
-            /// <summary>
-            /// Returns the original encounter context for the supplied checkpoint.
-            /// </summary>
-            /// <param name="phase">The checkpoint to inspect.</param>
-            /// <returns>The configured encounter context.</returns>
-            internal MissionEncounterMode GetMode(MissionEncounterPhase phase)
-            {
-                return phase switch
-                {
-                    MissionEncounterPhase.DepartureStart => DepartureStart,
-                    MissionEncounterPhase.DepartureComplete => DepartureComplete,
-                    MissionEncounterPhase.Arrival => Arrival,
-                    MissionEncounterPhase.PreObjective => PreObjective,
-                    _ => MissionEncounterMode.Disabled,
-                };
-            }
-
-            /// <summary>
-            /// Returns the encounter mode initialized by the original mission runtime.
-            /// </summary>
-            /// <param name="phase">The checkpoint to inspect.</param>
-            /// <returns>The standard encounter mode for the checkpoint.</returns>
-            internal static MissionEncounterMode GetStandardMode(MissionEncounterPhase phase)
-            {
-                return phase switch
-                {
-                    MissionEncounterPhase.DepartureStart => MissionEncounterMode.LocalDeparture,
-                    MissionEncounterPhase.DepartureComplete => MissionEncounterMode.FleetApproach,
-                    MissionEncounterPhase.Arrival => MissionEncounterMode.FleetApproach,
-                    MissionEncounterPhase.PreObjective => MissionEncounterMode.PreObjective,
-                    _ => MissionEncounterMode.Disabled,
-                };
-            }
-        }
-
-        /// <summary>
-        /// Encounter checkpoint configuration grouped by mission type.
-        /// </summary>
-        [PersistableObject]
-        public class MissionEncounterConfigsConfig
-        {
-            public MissionEncounterConfig Abduction { get; set; } = new MissionEncounterConfig();
-
-            public MissionEncounterConfig Assassination { get; set; } =
-                new MissionEncounterConfig();
-
-            public MissionEncounterConfig Diplomacy { get; set; } = new MissionEncounterConfig();
-
-            public MissionEncounterConfig Espionage { get; set; } = new MissionEncounterConfig();
-
-            public MissionEncounterConfig InciteUprising { get; set; } =
-                new MissionEncounterConfig();
-
-            public MissionEncounterConfig JediTraining { get; set; } = new MissionEncounterConfig();
-
-            public MissionEncounterConfig Reconnaissance { get; set; } =
-                new MissionEncounterConfig();
-
-            public MissionEncounterConfig Recruitment { get; set; } = new MissionEncounterConfig();
-
-            public MissionEncounterConfig Rescue { get; set; } = new MissionEncounterConfig();
-
-            public MissionEncounterConfig Research { get; set; } = new MissionEncounterConfig();
-
-            public MissionEncounterConfig Sabotage { get; set; } = new MissionEncounterConfig();
-
-            public MissionEncounterConfig SubdueUprising { get; set; } =
-                new MissionEncounterConfig();
-
-            /// <summary>
-            /// Returns the encounter configuration for a mission type.
-            /// </summary>
-            /// <param name="key">The mission configuration key.</param>
-            /// <returns>The matching encounter configuration, or null.</returns>
-            public MissionEncounterConfig GetEncounterConfig(string key)
-            {
-                return key switch
-                {
-                    "Abduction" => Abduction,
-                    "Assassination" => Assassination,
-                    "Diplomacy" => Diplomacy,
-                    "Espionage" => Espionage,
-                    "InciteUprising" => InciteUprising,
-                    "JediTraining" => JediTraining,
-                    "Reconnaissance" => Reconnaissance,
-                    "Recruitment" => Recruitment,
-                    "Rescue" => Rescue,
-                    "Research" => Research,
-                    "Sabotage" => Sabotage,
-                    "SubdueUprising" => SubdueUprising,
-                    _ => null,
-                };
             }
         }
 
