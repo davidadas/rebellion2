@@ -133,10 +133,62 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 .Cast<RectTransform>()
                 .OrderByDescending(transform => transform.anchoredPosition.y)
                 .ToArray();
+            RectTransform[] tabs = GetField<Button[]>("_tabButtons")
+                .Select(button => button.GetComponent<RectTransform>())
+                .OrderByDescending(transform => transform.anchoredPosition.y)
+                .ToArray();
+            float tabGap = GetVerticalGap(tabs[0], tabs[1]);
 
             Assert.AreEqual(3, actions.Length);
-            Assert.AreEqual(8f, GetVerticalGap(actions[0], actions[1]));
-            Assert.AreEqual(8f, GetVerticalGap(actions[1], actions[2]));
+            Assert.AreEqual(tabGap, GetVerticalGap(actions[0], actions[1]));
+            Assert.AreEqual(tabGap, GetVerticalGap(actions[1], actions[2]));
+        }
+
+        [Test]
+        public void FooterNavigation_GeneratedPrefab_MatchesTabRowConstruction()
+        {
+            Button tab = GetField<Button[]>("_tabButtons")[0];
+            Button[] footerActions =
+            {
+                GetField<Button>("_backToGameButton"),
+                GetField<Button>("_mainMenuButton"),
+                GetField<Button>("_quitButton"),
+            };
+            Type[] tabComponentTypes = tab.GetComponents<Component>()
+                .Select(component => component.GetType())
+                .ToArray();
+
+            foreach (Button action in footerActions)
+            {
+                CollectionAssert.AreEqual(
+                    tabComponentTypes,
+                    action
+                        .GetComponents<Component>()
+                        .Where(component => !(component is LayoutElement))
+                        .Select(component => component.GetType())
+                        .ToArray()
+                );
+                Assert.AreEqual(
+                    "Application/OptionsMenu/UI/ui_settingsmenu_row_background",
+                    action.GetComponent<ContentSpriteBinding>().Address
+                );
+                Assert.AreEqual(tab.targetGraphic.name, action.targetGraphic.name);
+            }
+        }
+
+        [Test]
+        public void FooterNavigation_LongMainMenuLabel_FitsSharedNavigationRow()
+        {
+            TextMeshProUGUI label = GetField<Button>("_mainMenuButton")
+                .GetComponentInChildren<TextMeshProUGUI>();
+
+            Canvas.ForceUpdateCanvases();
+            label.ForceMeshUpdate();
+
+            Assert.IsTrue(label.enableAutoSizing);
+            Assert.AreEqual(11f, label.fontSizeMin);
+            Assert.AreEqual(13f, label.fontSizeMax);
+            Assert.LessOrEqual(label.textBounds.size.x, label.rectTransform.rect.width);
         }
 
         [Test]
