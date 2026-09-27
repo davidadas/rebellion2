@@ -14,11 +14,8 @@ public static class OptionsMenuPrefabBuilder
     private const int _navigationRowHeight = 28;
     private const int _navigationRowSpacing = 4;
     private const int _navigationRowStride = _navigationRowHeight + _navigationRowSpacing;
-    private const int _footerNavigationRowSpacing = 8;
-    private const int _footerNavigationRowStride =
-        _navigationRowHeight + _footerNavigationRowSpacing;
     private const int _footerNavigationHeight =
-        3 * _navigationRowHeight + 2 * _footerNavigationRowSpacing;
+        3 * _navigationRowHeight + 2 * _navigationRowSpacing;
     private const int _tabNavigationStartY = 82;
     private const int _footerNavigationStartY = 318;
     private const string _optionsMenuWindowPrefabPath =
@@ -242,31 +239,19 @@ public static class OptionsMenuPrefabBuilder
         Image[] tabSurfaces = new Image[tabNames.Length];
         for (int i = 0; i < tabNames.Length; i++)
         {
-            Button tabButton = CreateSlicedButton(
+            Button tabButton = CreateOptionsNavigationRow(
                 tabObjectNames[i],
                 contentRoot,
-                _optionsRowAddress,
-                _panelBorder,
+                tabNames[i],
                 38,
                 _tabNavigationStartY + i * _navigationRowStride,
-                163,
-                _navigationRowHeight,
-                Color.white
+                textColor,
+                out TextMeshProUGUI tabLabel,
+                out Image tabSurface
             );
             tabButtons[i] = tabButton;
-            AddOptionsButtonBorder(tabButton.targetGraphic);
-            tabSurfaces[i] = CreateOptionsButtonSurface(tabButton);
-            ApplyOptionsSurfaceButtonFeedback(tabButton, tabSurfaces[i]);
-            TextMeshProUGUI tabLabel = CreateTextLabel(
-                $"{tabObjectNames[i]}Label",
-                tabButton.transform
-            );
-            tabLabel.text = tabNames[i];
-            tabLabel.color = textColor;
-            tabLabel.fontSize = 13;
-            tabLabel.alignment = TextAlignmentOptions.MidlineLeft;
-            SetSourceRect(tabLabel.rectTransform, 14, 0, 140, _navigationRowHeight);
             tabLabels[i] = tabLabel;
+            tabSurfaces[i] = tabSurface;
         }
 
         AssignReferenceArray(view, "_tabButtons", tabButtons);
@@ -908,26 +893,35 @@ public static class OptionsMenuPrefabBuilder
     {
         RectTransform footerNavigation = CreateChildLayer("FooterNavigation", contentRoot);
         SetSourceRect(footerNavigation, 38, _footerNavigationStartY, 163, _footerNavigationHeight);
-        Button backToGameButton = CreateOptionsNavRow(
-            footerNavigation,
+        Button backToGameButton = CreateOptionsNavigationRow(
             "BackToGame",
+            footerNavigation,
             "RETURN TO GAME",
             0,
-            textDim
+            0,
+            textDim,
+            out _,
+            out _
         );
-        Button mainMenuButton = CreateOptionsNavRow(
-            footerNavigation,
+        Button mainMenuButton = CreateOptionsNavigationRow(
             "MainMenu",
-            "RETURN TO MAIN MENU",
-            _footerNavigationRowStride,
-            textDim
-        );
-        Button quitButton = CreateOptionsNavRow(
             footerNavigation,
+            "RETURN TO MAIN MENU",
+            0,
+            _navigationRowStride,
+            textDim,
+            out _,
+            out _
+        );
+        Button quitButton = CreateOptionsNavigationRow(
             "Quit",
+            footerNavigation,
             "QUIT",
-            2 * _footerNavigationRowStride,
-            textDim
+            0,
+            2 * _navigationRowStride,
+            textDim,
+            out _,
+            out _
         );
         RectTransform settingsActions = CreateChildLayer("SettingsActions", contentRoot);
         Button defaultsButton = CreateOptionsActionButton(
@@ -1092,39 +1086,48 @@ public static class OptionsMenuPrefabBuilder
     /// <summary>
     /// Creates an Options menu navigation row.
     /// </summary>
-    /// <param name="parent">The content-root transform.</param>
     /// <param name="name">The button object name.</param>
+    /// <param name="parent">The content-root transform.</param>
     /// <param name="label">The caps row caption.</param>
+    /// <param name="x">The source-space row left position.</param>
     /// <param name="y">The source-space row top.</param>
     /// <param name="color">The label color.</param>
+    /// <param name="labelField">Receives the row label.</param>
+    /// <param name="surface">Receives the row's tinted surface.</param>
     /// <returns>The configured button.</returns>
-    private static Button CreateOptionsNavRow(
-        Transform parent,
+    private static Button CreateOptionsNavigationRow(
         string name,
+        Transform parent,
         string label,
+        int x,
         int y,
-        Color color
+        Color color,
+        out TextMeshProUGUI labelField,
+        out Image surface
     )
     {
         Button button = CreateSlicedButton(
             name,
             parent,
-            _optionsBadgeAddress,
-            _badgeBorder,
-            0,
+            _optionsRowAddress,
+            _panelBorder,
+            x,
             y,
             163,
             _navigationRowHeight,
             Color.white
         );
         Graphic buttonFrame = button.targetGraphic;
-        Image surface = CreateOptionsButtonSurface(button);
-        TextMeshProUGUI text = CreateTextLabel("Label", button.transform);
-        text.text = label;
-        text.color = color;
-        text.fontSize = 12;
-        text.alignment = TextAlignmentOptions.MidlineLeft;
-        SetSourceRect(text.rectTransform, 10, 5, 148, 20);
+        surface = CreateOptionsButtonSurface(button);
+        labelField = CreateTextLabel($"{name}Label", button.transform);
+        labelField.text = label;
+        labelField.color = color;
+        labelField.fontSize = 13;
+        labelField.enableAutoSizing = true;
+        labelField.fontSizeMin = 11;
+        labelField.fontSizeMax = 13;
+        labelField.alignment = TextAlignmentOptions.MidlineLeft;
+        SetSourceRect(labelField.rectTransform, 14, 0, 140, _navigationRowHeight);
         ApplyOptionsSurfaceButtonFeedback(button, surface);
         AddOptionsButtonBorder(buttonFrame);
         return button;
@@ -1146,7 +1149,7 @@ public static class OptionsMenuPrefabBuilder
     {
         VerticalLayoutGroup layout = navigationRoot.gameObject.AddComponent<VerticalLayoutGroup>();
         layout.padding = new RectOffset(0, 0, 0, 0);
-        layout.spacing = _footerNavigationRowSpacing;
+        layout.spacing = _navigationRowSpacing;
         layout.childAlignment = TextAnchor.LowerLeft;
         layout.childControlWidth = false;
         layout.childControlHeight = false;
