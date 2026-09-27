@@ -55,6 +55,7 @@ dotnet_diagnostic.REB0003.severity = error    # method parameters must have XML 
 dotnet_diagnostic.REB0004.severity = error    # method type parameters must have XML documentation
 dotnet_diagnostic.REB0005.severity = error    # value-returning methods must document their return value
 dotnet_diagnostic.REB0006.severity = error    # fields and enum members must not have XML documentation
+dotnet_diagnostic.REB0009.severity = error    # test methods must not have leading comments
 
 [Assets/Scripts/Managers/AudioManager.cs]
 dotnet_diagnostic.RCS1163.severity = none

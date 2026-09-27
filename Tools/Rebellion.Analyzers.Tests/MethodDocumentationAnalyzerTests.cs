@@ -152,6 +152,76 @@ class Example
         }
 
         [Test]
+        public async Task Method_DocumentedNUnitTest_ReportsTestCommentAsync()
+        {
+            const string source =
+                @"
+class Example
+{
+    /// <summary>Redundantly explains the test.</summary>
+    [NUnit.Framework.Test]
+    public void I_Am_ATest() { }
+}";
+
+            ImmutableArray<Diagnostic> diagnostics = await AnalyzeAsync(source);
+
+            AssertDiagnostic(diagnostics, MethodDocumentationAnalyzer.TestCommentDiagnosticId);
+        }
+
+        [Test]
+        public async Task Method_CommentBetweenAttributeAndName_ReportsTestCommentAsync()
+        {
+            const string source =
+                @"
+class Example
+{
+    [NUnit.Framework.Test]
+    // Redundantly explains the test.
+    public void Works() { }
+}";
+
+            ImmutableArray<Diagnostic> diagnostics = await AnalyzeAsync(source);
+
+            AssertDiagnostic(diagnostics, MethodDocumentationAnalyzer.TestCommentDiagnosticId);
+        }
+
+        [Test]
+        public async Task Method_CommentAfterAttribute_ReportsTestCommentAsync()
+        {
+            const string source =
+                @"
+class Example
+{
+    [NUnit.Framework.Test] // Redundantly explains the test.
+    public void Works() { }
+}";
+
+            ImmutableArray<Diagnostic> diagnostics = await AnalyzeAsync(source);
+
+            AssertDiagnostic(diagnostics, MethodDocumentationAnalyzer.TestCommentDiagnosticId);
+        }
+
+        [Test]
+        public async Task Method_SeparatedCommentBeforeNUnitTest_DoesNotReportDiagnosticAsync()
+        {
+            const string source =
+                @"
+class Example
+{
+    // TODO: Restore this disabled test later.
+    // [Test]
+    // public void Disabled() { }
+
+    [NUnit.Framework.Test]
+    public void Active() { }
+}";
+
+            ImmutableArray<Diagnostic> diagnostics = await AnalyzeAsync(source);
+
+            Assert.IsEmpty(diagnostics);
+        }
+
+        [Test]
         public async Task Method_UndocumentedParameterizedNUnitTest_DoesNotReportDiagnosticAsync()
         {
             const string source =

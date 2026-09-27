@@ -14,10 +14,6 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.IsFalse(TypeHelper.IsScalar(typeof(UntaggedClass)));
         }
 
-        /// <summary>
-        /// Checks whether the scalar supported type returns true condition is met.
-        /// </summary>
-        /// <param name="type">The type.</param>
         [TestCaseSource(nameof(ScalarTypes))]
         public void IsScalar_SupportedType_ReturnsTrue(Type type)
         {
@@ -152,12 +148,6 @@ namespace Rebellion.Tests.Util.Serialization
             );
         }
 
-        /// <summary>
-        /// Converts to scalar supported type returns parsed value.
-        /// </summary>
-        /// <param name="content">The content.</param>
-        /// <param name="targetType">The target type.</param>
-        /// <param name="expected">The expected.</param>
         [TestCaseSource(nameof(ScalarParseCases))]
         public void ConvertToScalar_SupportedType_ReturnsParsedValue(
             string content,
@@ -176,11 +166,6 @@ namespace Rebellion.Tests.Util.Serialization
             );
         }
 
-        /// <summary>
-        /// Converts scalar to string supported value returns serialized value.
-        /// </summary>
-        /// <param name="value">The value.</param>
-        /// <param name="expected">The expected.</param>
         [TestCaseSource(nameof(ScalarStringCases))]
         public void ConvertScalarToString_SupportedValue_ReturnsSerializedValue(
             object value,

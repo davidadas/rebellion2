@@ -20,9 +20,6 @@ namespace Rebellion.Tests.AI.Scorers
     [TestFixture]
     public class AIMissionProposalScorerTests
     {
-        /// <summary>
-        /// Verifies mandatory mission cleanup receives the neutral domain score.
-        /// </summary>
         [Test]
         public void Score_AbortMissionProposal_ReturnsZero()
         {
