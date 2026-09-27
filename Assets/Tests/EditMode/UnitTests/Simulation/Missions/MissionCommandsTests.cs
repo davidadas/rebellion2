@@ -1015,6 +1015,46 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
+        /// <summary>
+        /// Verifies departure decoy odds use the commander at the departure planet.
+        /// </summary>
+        [Test]
+        public void GetDecoyProbability_DeparturePlanet_UsesOriginCommander()
+        {
+            (
+                GameRoot game,
+                Planet target,
+                Officer spy,
+                Officer targetGeneral,
+                MovementCommands movement
+            ) = BuildDetectionScene();
+            targetGeneral.SetBaseRating(SkillRating.Espionage, 100);
+            Planet origin = new Planet
+            {
+                InstanceID = "origin",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+            };
+            game.AttachNode(origin, target.GetParent());
+            Officer originGeneral = EntityFactory.CreateOfficer("origin-general", "rebels");
+            originGeneral.CurrentRank = OfficerRank.General;
+            originGeneral.SetBaseRating(SkillRating.Espionage, 0);
+            game.AttachNode(originGeneral, origin);
+            Regiment detector = CreateCompletedRegiment("origin-detector", "rebels");
+            detector.DetectionRating = 0;
+            game.AttachNode(detector, origin);
+            Officer decoy = EntityFactory.CreateOfficer("decoy", "empire");
+            decoy.SetBaseRating(SkillRating.Espionage, 100);
+            StubMission mission = new StubMission("empire", target.InstanceID);
+            game.AttachNode(mission, target);
+            game.Config.ProbabilityTables.Mission.DecoyDefenderScalingPercent = 100;
+            SetDecoyTable(game, new Dictionary<int, int> { { 0, 10 }, { 100, 99 } });
+
+            double probability = mission.GetDecoyProbability(decoy, detector, game, origin);
+
+            Assert.AreEqual(99, probability);
+        }
+
         [Test]
         public void UpdateMission_TwoDetectors_FoilsWhenOnlySecondSucceeds()
         {
@@ -1896,6 +1936,43 @@ namespace Rebellion.Tests.Simulation
                     .Any(result => result.Outcome == MissionOutcome.Foiled)
             );
             Assert.IsFalse(spy.IsCaptured);
+        }
+
+        /// <summary>
+        /// Verifies a participant without a Force rank cannot trigger a Force encounter.
+        /// </summary>
+        [Test]
+        public void UpdateMission_ZeroForceRankParticipant_DoesNotTriggerForceEncounter()
+        {
+            (
+                GameRoot game,
+                Planet planet,
+                Officer spy,
+                Officer defender,
+                MovementCommands movement
+            ) = BuildDetectionScene();
+            spy.IsForceSensitive = true;
+            spy.IsForceEligible = true;
+            spy.ForceValue = 0;
+            defender.IsForceSensitive = true;
+            defender.IsForceEligible = true;
+            defender.ForceValue = 80;
+            game.Config.Jedi.EncounterProbabilityOffset = 100;
+            SetFoilTable(game, new Dictionary<int, int> { { -1000, 0 } });
+            StubMission mission = new StubMission("empire", planet.InstanceID);
+            mission.SetExecutionTick(5);
+            game.AttachNode(mission, planet);
+            game.MoveNode(spy, mission);
+            MissionCommands system = TestSystems.CreateMissionCommands(
+                game,
+                new FixedRNG(0.01),
+                movement
+            );
+
+            List<GameResult> results = system.UpdateMission(mission);
+
+            Assert.IsFalse(results.OfType<MissionCompletedResult>().Any());
+            Assert.AreEqual(1, mission.CurrentProgress);
         }
 
         [Test]
@@ -3011,6 +3088,7 @@ namespace Rebellion.Tests.Simulation
             SetFoilTable(game, new Dictionary<int, int> { { -1000, 50 } });
             SetEvasionTable(game, new Dictionary<int, int> { { -1000, 100 } });
             DisableCaptureEvasionInjury(game);
+            EnableAllEncounters(game, SabotageMission.MissionTypeID);
 
             MovementCommands movement = new MovementCommands(
                 game,
@@ -3044,6 +3122,66 @@ namespace Rebellion.Tests.Simulation
                     .OfType<MissionCompletedResult>()
                     .Any(result => result.Outcome == MissionOutcome.Foiled)
             );
+        }
+
+        /// <summary>
+        /// Verifies disabled departure checkpoints allow the mission to begin traveling.
+        /// </summary>
+        [Test]
+        public void InitiateMission_DisabledDepartureEncounters_StartsTravel()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            game.Config.ProbabilityTables.Mission.Encounters =
+                new GameConfig.MissionEncounterConfigsConfig();
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            game.AttachNode(sector, game.Galaxy);
+            Planet origin = new Planet
+            {
+                InstanceID = "origin",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+            };
+            Planet target = new Planet
+            {
+                InstanceID = "target",
+                OwnerInstanceID = "rebels",
+                IsColonized = true,
+            };
+            game.AttachNode(origin, sector);
+            game.AttachNode(target, sector);
+            Officer officer = EntityFactory.CreateOfficer("officer", "empire");
+            game.AttachNode(officer, origin);
+            game.AttachNode(CreateCompletedRegiment("origin-detector", "rebels"), origin);
+            Regiment sabotageTarget = CreateCompletedRegiment("target-regiment", "rebels");
+            game.AttachNode(sabotageTarget, target);
+            SetFoilTable(game, new Dictionary<int, int> { { -1000, 100 } });
+            MovementCommands movement = new MovementCommands(
+                game,
+                new FogOfWarCommands(game),
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
+            MissionCommands system = TestSystems.CreateMissionCommands(
+                game,
+                new FixedRNG(0.01),
+                movement
+            );
+
+            bool initiated = system.InitiateMission(
+                CreateContext(
+                    SabotageMission.MissionTypeID,
+                    officer,
+                    target,
+                    selectedTarget: sabotageTarget
+                )
+            );
+
+            Assert.IsTrue(initiated);
+            Assert.IsNotNull(officer.Movement);
+            Assert.IsTrue(game.GetSceneNodesByType<Mission>().Any());
         }
 
         [Test]
@@ -4072,6 +4210,23 @@ namespace Rebellion.Tests.Simulation
         {
             game.Config.DuelResolution.CaptureEvasionInjuryBaseChance = 0;
             game.Config.DuelResolution.MinimumInjuryChance = 0;
+        }
+
+        /// <summary>
+        /// Enables every encounter checkpoint for a configured mission type.
+        /// </summary>
+        /// <param name="game">The game whose configuration is updated.</param>
+        /// <param name="missionTypeId">The mission type to configure.</param>
+        private static void EnableAllEncounters(GameRoot game, string missionTypeId)
+        {
+            game.Config.ProbabilityTables.Mission.Encounters ??=
+                new GameConfig.MissionEncounterConfigsConfig();
+            GameConfig.MissionEncounterConfig config =
+                game.Config.ProbabilityTables.Mission.Encounters.GetEncounterConfig(missionTypeId);
+            config.DepartureStart = true;
+            config.DepartureComplete = true;
+            config.Arrival = true;
+            config.PreObjective = true;
         }
 
         /// <summary>

@@ -416,6 +416,13 @@ namespace Rebellion.Simulation
             List<GameResult> results
         )
         {
+            GameConfig.MissionEncounterConfig encounterConfig =
+                _game.Config?.ProbabilityTables?.Mission?.Encounters?.GetEncounterConfig(
+                    mission?.ConfigKey
+                );
+            if (encounterConfig?.IsEnabled(phase) == false)
+                return false;
+
             if (ResolveForceEncounter(mission, planet, mainParticipants))
                 return true;
 
@@ -464,7 +471,9 @@ namespace Rebellion.Simulation
             GameConfig.JediConfig config = _game.Config.Jedi;
             List<Officer> participants = mainParticipants
                 .OfType<Officer>()
-                .Where(officer => officer.IsForceSensitive && officer.IsForceEligible)
+                .Where(officer =>
+                    officer.IsForceSensitive && officer.IsForceEligible && officer.ForceRank != 0
+                )
                 .ToList();
             if (participants.Count == 0)
                 return false;
@@ -479,6 +488,7 @@ namespace Rebellion.Simulation
                     && officer.InjuryPoints == 0
                     && officer.IsForceSensitive
                     && officer.IsForceEligible
+                    && officer.ForceRank != 0
                 )
                 .ToList();
 
@@ -848,7 +858,7 @@ namespace Rebellion.Simulation
                 IMissionParticipant decoy = availableDecoys[
                     _provider.NextInt(0, availableDecoys.Count)
                 ];
-                if (mission.RollDecoyCheck(_provider, _game, decoy, detector))
+                if (mission.RollDecoyCheck(_provider, _game, decoy, detector, planet))
                 {
                     activeDetectors.Remove(detector);
                     continue;
