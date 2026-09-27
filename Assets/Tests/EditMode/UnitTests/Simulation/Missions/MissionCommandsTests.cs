@@ -64,9 +64,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies post-foil confrontation consequences include the decoy team.
-        /// </summary>
         [Test]
         public void UpdateMission_BetrayingDecoy_ResolvesDecoyConfrontation()
         {
@@ -1092,9 +1089,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies a directly stationed detector can foil a mission without an orbiting fleet.
-        /// </summary>
         [Test]
         public void UpdateMission_DirectDetectorWithoutFleet_CanFoilMission()
         {
@@ -1131,9 +1125,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies departure decoy odds use the commander at the departure planet.
-        /// </summary>
         [Test]
         public void GetDecoyProbability_DeparturePlanet_UsesOriginCommander()
         {
@@ -2099,10 +2090,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies Force detection without an ordinary detector foils the mission without an
-        /// invented capture confrontation.
-        /// </summary>
         [Test]
         public void UpdateMission_ForceDetectionWithoutDetector_FoilsWithoutCapture()
         {
@@ -2145,9 +2132,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(results.OfType<OfficerCaptureStateResult>().Any());
         }
 
-        /// <summary>
-        /// Verifies the arrival checkpoint excludes officers stationed directly on the planet.
-        /// </summary>
         [Test]
         public void UpdateMission_ArrivalWithPlanetaryForceUser_DoesNotTriggerForceEncounter()
         {
@@ -2182,9 +2166,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, mission.CurrentProgress);
         }
 
-        /// <summary>
-        /// Verifies a friendly detection blocker suppresses fleet-contained Force users on arrival.
-        /// </summary>
         [Test]
         public void UpdateMission_ArrivalWithDetectionBlocker_DoesNotTriggerFleetForceEncounter()
         {
@@ -2239,9 +2220,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, mission.CurrentProgress);
         }
 
-        /// <summary>
-        /// Verifies a participant without a Force rank cannot trigger a Force encounter.
-        /// </summary>
         [Test]
         public void UpdateMission_ZeroForceRankParticipant_DoesNotTriggerForceEncounter()
         {
@@ -2284,9 +2262,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, mission.CurrentProgress);
         }
 
-        /// <summary>
-        /// Verifies a defending Force rank below the configured minimum cannot trigger an encounter.
-        /// </summary>
         [Test]
         public void UpdateMission_ForceRankDefenderBelowMinimum_DoesNotTriggerForceEncounter()
         {
@@ -2522,9 +2497,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, mission.CurrentProgress);
         }
 
-        /// <summary>
-        /// Verifies a successful decoy still faces confrontation when another detector foils the mission.
-        /// </summary>
         [Test]
         public void UpdateMission_DetectorFoilsAfterSuccessfulDecoy_ResolvesDecoyConfrontation()
         {
@@ -2727,10 +2699,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies the post-injury destruction roll applies to minor personnel after a successful
-        /// evasion.
-        /// </summary>
         [Test]
         public void UpdateMission_MinorOfficerEvadesDetector_PostInjuryRollKillsOfficer()
         {
@@ -2763,9 +2731,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(spy, results.OfType<OfficerKilledResult>().Single().TargetOfficer);
         }
 
-        /// <summary>
-        /// Verifies failed evasion captures an officer without applying escape injury.
-        /// </summary>
         [Test]
         public void UpdateMission_OfficerFailsToEvadeDetector_CapturesWithoutInjury()
         {
@@ -2798,9 +2763,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(results.OfType<OfficerInjuredResult>());
         }
 
-        /// <summary>
-        /// Verifies a captured failed decoy is unavailable to distract another detector.
-        /// </summary>
         [Test]
         public void UpdateMission_FailedDecoyCapture_DoesNotReuseDecoy()
         {
@@ -3599,9 +3561,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(completed.MissionInstanceID, capture.MissionInstanceID);
         }
 
-        /// <summary>
-        /// Verifies a hostile Force user assigned to another local mission can foil departure.
-        /// </summary>
         [Test]
         public void InitiateMission_HostileForceUserOnMission_FoilsBeforeTravel()
         {
@@ -4084,9 +4043,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(planet, mission.GetParent());
         }
 
-        /// <summary>
-        /// Verifies active research fails when its required facility is removed.
-        /// </summary>
         [Test]
         public void UpdateMission_ResearchFacilityRemoved_FailsWithNoResearchFacilities()
         {

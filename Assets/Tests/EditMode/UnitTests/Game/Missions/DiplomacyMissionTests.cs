@@ -242,9 +242,6 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
-        /// <summary>
-        /// Verifies a diplomacy mission aborts when its initially owned target becomes neutral.
-        /// </summary>
         [Test]
         public void GetAbortReason_WhenOwnedPlanetDeclaresNeutrality_ReturnsTargetChangedSides()
         {
@@ -428,9 +425,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(3, deserialized.CurrentProgress);
         }
 
-        /// <summary>
-        /// Verifies the ownership snapshot survives serialization for neutrality detection.
-        /// </summary>
         [Test]
         public void Serialize_RoundTrip_PreservesStartingTargetOwner()
         {
@@ -463,10 +457,6 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
-        /// <summary>
-        /// Verifies a loaded mission without an ownership snapshot initializes it before evaluating
-        /// a later ownership change.
-        /// </summary>
         [Test]
         public void GetAbortReason_LegacyMissionWithoutOwnershipSnapshot_DetectsLaterNeutrality()
         {

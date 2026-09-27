@@ -2192,9 +2192,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("missing-body:Sabotage:Yavin", message.Body);
         }
 
-        /// <summary>
-        /// Verifies an ordinary report identifies the destination of returning personnel.
-        /// </summary>
         [Test]
         public void CreateMessages_MissionReportWithReturningPersonnel_AppendsDestinationStatus()
         {
@@ -2235,9 +2232,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("complete Personnel are returning to Coruscant.", message.Body);
         }
 
-        /// <summary>
-        /// Verifies a mission report states when no personnel return.
-        /// </summary>
         [Test]
         public void CreateMessages_MissionReportWithNoReturningPersonnel_AppendsLossStatus()
         {
@@ -2279,9 +2273,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies a report without an officer uses its unattributed text variants.
-        /// </summary>
         [Test]
         public void CreateMessages_MissionReportWithoutOfficer_UsesUnattributedTemplates()
         {
@@ -2321,9 +2312,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("unit body", message.Body);
         }
 
-        /// <summary>
-        /// Verifies a captured participant cannot present an attributed mission report.
-        /// </summary>
         [Test]
         public void CreateMessages_MissionReportWithCapturedOfficer_UsesUnattributedTemplates()
         {
@@ -2396,13 +2384,6 @@ namespace Rebellion.Tests.Simulation
             MissionOutcome.Failed,
             "has joined the Empire"
         )]
-        /// <summary>
-        /// Verifies each authored exceptional completion state produces its dedicated report.
-        /// </summary>
-        /// <param name="missionTypeId">The mission type selecting the report.</param>
-        /// <param name="completionReason">The completion reason selecting the report.</param>
-        /// <param name="outcome">The mission outcome selecting the report.</param>
-        /// <param name="expectedBodyText">Text expected in the resolved report body.</param>
         public void CreateMessages_AuthoredCompletionReason_ReturnsExpectedReport(
             string missionTypeId,
             MissionCompletionReason completionReason,
@@ -2440,9 +2421,6 @@ namespace Rebellion.Tests.Simulation
             StringAssert.Contains(expectedBodyText, message.Body);
         }
 
-        /// <summary>
-        /// Verifies a diplomacy report identifies a target that declared neutrality.
-        /// </summary>
         [Test]
         public void CreateMessages_DiplomacyTargetDeclaredNeutrality_ReturnsNeutralityReport()
         {
@@ -3005,9 +2983,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies the opposing playable faction learns that it foiled a mission at a neutral target.
-        /// </summary>
         [Test]
         public void CreateMessages_FoiledMissionAtNeutralTarget_NotifiesOpposingFaction()
         {
