@@ -555,6 +555,7 @@ namespace Rebellion.Tests.Simulation
         ) BuildScene()
         {
             GameConfig config = new GameConfig();
+            config.Movement.DistanceDivisor = 5;
             config.Captive = new GameConfig.CaptiveConfig
             {
                 EscapeAttemptInterval = new GameConfig.TickRangeConfig

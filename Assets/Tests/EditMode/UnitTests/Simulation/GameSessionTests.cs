@@ -705,6 +705,7 @@ namespace Rebellion.Tests.Simulation
         public void Tick_CapturedOfficerWithDueEscapeAttempt_FreesOfficer()
         {
             GameConfig config = new GameConfig();
+            config.Movement.DistanceDivisor = 5;
             config.Captive.EscapeTable = new Dictionary<int, int> { { 0, 100 } };
             config.Smuggling.LossPercentByMinimumSupport[0] = 0;
             GameRoot game = TestGame.Create(config);

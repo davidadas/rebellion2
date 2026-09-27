@@ -2128,13 +2128,15 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void RequestMove_OfficerToOwnedUncolonizedPlanetWithStationaryRegiment_StartsTransit()
         {
+            GameConfig config = new GameConfig();
+            config.Movement.DistanceDivisor = 5;
             (
                 GameRoot game,
                 Planet _,
                 Planet destination,
                 Officer officer,
                 MovementCommands movement
-            ) = BuildScene(new GameConfig());
+            ) = BuildScene(config);
             destination.IsColonized = false;
             Regiment stationedRegiment = new Regiment
             {
@@ -2153,13 +2155,15 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void RequestMove_RegimentToOwnedUncolonizedPlanetWithStationaryRegiment_StartsTransit()
         {
+            GameConfig config = new GameConfig();
+            config.Movement.DistanceDivisor = 5;
             (
                 GameRoot game,
                 Planet origin,
                 Planet destination,
                 Officer _,
                 MovementCommands movement
-            ) = BuildScene(new GameConfig());
+            ) = BuildScene(config);
             destination.IsColonized = false;
             Regiment stationedRegiment = new Regiment
             {
@@ -2869,13 +2873,15 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void ReturnFromMission_CapturedPassenger_ReturnsWithEscortGroup()
         {
+            GameConfig config = new GameConfig();
+            config.Movement.DistanceDivisor = 5;
             (
                 GameRoot game,
                 Planet origin,
                 Planet destination,
                 Officer escort,
                 MovementCommands movement
-            ) = BuildScene(new GameConfig());
+            ) = BuildScene(config);
             StubMission mission = new StubMission("empire", destination.InstanceID);
             game.AttachNode(mission, destination);
             movement.SendToMission(escort, mission);

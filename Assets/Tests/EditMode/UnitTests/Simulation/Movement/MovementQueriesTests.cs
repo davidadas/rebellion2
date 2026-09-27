@@ -133,6 +133,35 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void CalculateTransitTicks_ZeroDistanceDivisor_ThrowsInvalidOperationException()
+        {
+            GameConfig config = new GameConfig
+            {
+                Movement = new GameConfig.MovementConfig
+                {
+                    DistanceDivisor = 0,
+                    MinTransitTicks = 1,
+                    SameSectorMinTransitTicks = 1,
+                    DefaultFighterHyperdrive = 60,
+                },
+            };
+            (_, Planet origin, Planet destination, _, MovementQueries movement) = BuildScene(
+                config
+            );
+            CapitalShip ship = CreateMovableCapitalShip("ship");
+            ship.Hyperdrive = 80;
+
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+                movement.CalculateTransitTicks(ship, origin, destination)
+            );
+
+            Assert.AreEqual(
+                "Movement distance divisor must be greater than zero.",
+                exception.Message
+            );
+        }
+
+        [Test]
         public void TryEstimateManufacturedTransitTicks_ValidDestination_DoesNotAssignMovement()
         {
             (
