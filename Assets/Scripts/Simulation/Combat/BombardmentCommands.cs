@@ -328,8 +328,9 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Records embarked starfighters and regiments that are destroyed with a carrier by
-        /// planetary defense fire. Officers remain eligible for post-destruction relocation.
+        /// Records embarked starfighters, regiments, and special-forces units that are destroyed
+        /// with a carrier by planetary defense fire. Officers remain eligible for
+        /// post-destruction relocation.
         /// </summary>
         /// <param name="ship">The carrier about to be destroyed.</param>
         /// <param name="planet">The planet where the destruction occurred.</param>
@@ -344,7 +345,8 @@ namespace Rebellion.Simulation
                     includeDisabled: true
                 )
                 .Cast<IGameEntity>()
-                .Concat(ship.GetChildren<Regiment>(includeDisabled: true));
+                .Concat(ship.GetChildren<Regiment>(includeDisabled: true))
+                .Concat(ship.GetChildren<SpecialForces>(includeDisabled: true));
             foreach (IGameEntity unit in destroyedUnits)
             {
                 events.Add(

@@ -112,11 +112,11 @@ namespace Rebellion.Tests.Simulation
         }
 
         /// <summary>
-        /// Verifies that manually scrapping a capital ship relocates its officer to the nearest
+        /// Verifies that manually scrapping a capital ship restores its officer at the local
         /// friendly planet through the published scrap result.
         /// </summary>
         [Test]
-        public void TryScrap_CapitalShipWithOfficer_RelocatesOfficerToNearestFriendlyPlanet()
+        public void TryScrap_CapitalShipWithOfficer_RestoresOfficerAtLocalPlanet()
         {
             var scene = BuildCarrierScrapScene();
 
@@ -133,10 +133,10 @@ namespace Rebellion.Tests.Simulation
                 scene.officer,
                 scene.game.GetSceneNodeByInstanceID<Officer>(scene.officer.InstanceID, true)
             );
-            Assert.AreSame(scene.nearestDestination, scene.officer.GetParent());
+            Assert.AreSame(scene.origin, scene.officer.GetParent());
+            Assert.AreNotSame(scene.nearestDestination, scene.officer.GetParent());
             Assert.AreNotSame(scene.fartherDestination, scene.officer.GetParent());
-            Assert.IsNotNull(scene.officer.Movement);
-            Assert.AreEqual(scene.origin.GetPosition(), scene.officer.Movement.OriginPosition);
+            Assert.IsNull(scene.officer.Movement);
         }
 
         /// <summary>
@@ -162,9 +162,35 @@ namespace Rebellion.Tests.Simulation
                     includeDisabled: true
                 )
             );
-            Assert.AreSame(scene.nearestDestination, scene.officer.GetParent());
-            Assert.IsNotNull(scene.officer.Movement);
+            Assert.AreSame(scene.origin, scene.officer.GetParent());
+            Assert.IsNull(scene.officer.Movement);
             Assert.IsFalse(scene.officer.IsEnabled);
+        }
+
+        /// <summary>
+        /// Verifies that manually scrapping a capital ship destroys its completed fighter cargo.
+        /// </summary>
+        [Test]
+        public void TryScrap_CapitalShipWithCompletedFighter_DestroysFighter()
+        {
+            var scene = BuildCarrierScrapScene();
+            scene.carrier.StarfighterCapacity = 1;
+            Starfighter fighter = EntityFactory.CreateStarfighter("scrap-fighter", "empire");
+            fighter.ManufacturingStatus = ManufacturingStatus.Complete;
+            scene.game.AttachNode(fighter, scene.carrier);
+
+            bool scrapped = scene.maintenance.TryScrap(
+                new IManufacturable[] { scene.carrier },
+                scene.owner.InstanceID
+            );
+
+            Assert.IsTrue(scrapped);
+            Assert.IsNull(
+                scene.game.GetSceneNodeByInstanceID<Starfighter>(
+                    fighter.InstanceID,
+                    includeDisabled: true
+                )
+            );
         }
 
         [Test]
@@ -295,11 +321,11 @@ namespace Rebellion.Tests.Simulation
         }
 
         /// <summary>
-        /// Verifies that maintenance autoscrapping a capital ship relocates its officer to the
-        /// nearest friendly planet through the published destruction result.
+        /// Verifies that maintenance autoscrapping a capital ship restores its officer at the
+        /// local friendly planet through the published destruction result.
         /// </summary>
         [Test]
-        public void ProcessTick_AutoscrappedCapitalShipWithOfficer_RelocatesOfficerToNearestFriendlyPlanet()
+        public void ProcessTick_AutoscrappedCapitalShipWithOfficer_RestoresOfficerAtLocalPlanet()
         {
             var scene = BuildCarrierScrapScene();
             IReadOnlyList<GameResult> initialResults = new MaintenanceTickProcessor(
@@ -328,10 +354,10 @@ namespace Rebellion.Tests.Simulation
                 scene.officer,
                 scene.game.GetSceneNodeByInstanceID<Officer>(scene.officer.InstanceID, true)
             );
-            Assert.AreSame(scene.nearestDestination, scene.officer.GetParent());
+            Assert.AreSame(scene.origin, scene.officer.GetParent());
+            Assert.AreNotSame(scene.nearestDestination, scene.officer.GetParent());
             Assert.AreNotSame(scene.fartherDestination, scene.officer.GetParent());
-            Assert.IsNotNull(scene.officer.Movement);
-            Assert.AreEqual(scene.origin.GetPosition(), scene.officer.Movement.OriginPosition);
+            Assert.IsNull(scene.officer.Movement);
         }
 
         /// <summary>
@@ -369,9 +395,50 @@ namespace Rebellion.Tests.Simulation
                     includeDisabled: true
                 )
             );
-            Assert.AreSame(scene.nearestDestination, scene.officer.GetParent());
-            Assert.IsNotNull(scene.officer.Movement);
+            Assert.AreSame(scene.origin, scene.officer.GetParent());
+            Assert.IsNull(scene.officer.Movement);
             Assert.IsFalse(scene.officer.IsEnabled);
+        }
+
+        /// <summary>
+        /// Verifies that maintenance autoscrapping a capital ship destroys its completed fighter
+        /// cargo.
+        /// </summary>
+        [Test]
+        public void ProcessTick_AutoscrappedCapitalShipWithCompletedFighter_DestroysFighter()
+        {
+            var scene = BuildCarrierScrapScene();
+            scene.carrier.StarfighterCapacity = 1;
+            Starfighter fighter = EntityFactory.CreateStarfighter("autoscrap-fighter", "empire");
+            fighter.ManufacturingStatus = ManufacturingStatus.Complete;
+            fighter.ConstructionCost = 0;
+            fighter.MaintenanceCost = 0;
+            scene.game.AttachNode(fighter, scene.carrier);
+            IReadOnlyList<GameResult> initialResults = new MaintenanceTickProcessor(
+                scene.maintenance
+            ).ProcessTick(scene.game);
+            scene.resultBus.Publish(initialResults);
+            scene.game.CurrentTick = scene
+                .game
+                .Config
+                .Production
+                .MaintenanceShortfallAutoscrapInterval;
+
+            IReadOnlyList<GameResult> autoscrapResults = new MaintenanceTickProcessor(
+                scene.maintenance
+            ).ProcessTick(scene.game);
+            scene.resultBus.Publish(autoscrapResults);
+
+            Assert.AreSame(
+                scene.carrier,
+                autoscrapResults.OfType<GameObjectAutoscrappedResult>().Single().DestroyedObject
+            );
+            Assert.IsNull(
+                scene.game.GetSceneNodeByInstanceID<Starfighter>(
+                    fighter.InstanceID,
+                    includeDisabled: true
+                )
+            );
         }
 
         [Test]

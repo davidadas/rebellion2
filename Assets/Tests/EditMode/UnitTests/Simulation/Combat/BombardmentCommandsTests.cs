@@ -387,11 +387,11 @@ namespace Rebellion.Tests.Simulation
         }
 
         /// <summary>
-        /// Verifies that starfighters and regiments embarked on a capital ship are destroyed with
-        /// the ship when planetary ground-cannon fire destroys it during bombardment.
+        /// Verifies that non-officer combat units embarked on a capital ship are destroyed with the
+        /// ship when planetary ground-cannon fire destroys it during bombardment.
         /// </summary>
         [Test]
-        public void TryExecute_GroundCannonDestroysCarrier_DestroysEmbarkedStarfightersAndRegiments()
+        public void TryExecute_GroundCannonDestroysCarrier_DestroysEmbarkedCombatUnits()
         {
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "empire", energy: 1);
@@ -416,8 +416,15 @@ namespace Rebellion.Tests.Simulation
             starfighter.Hyperdrive = 1;
             Regiment regiment = EntityFactory.CreateRegiment("embarked-regiment", "alliance");
             regiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            SpecialForces specialForces = new SpecialForces
+            {
+                InstanceID = "embarked-special-forces",
+                OwnerInstanceID = "alliance",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
             game.AttachNode(starfighter, carrier);
             game.AttachNode(regiment, carrier);
+            game.AttachNode(specialForces, carrier);
 
             MovementCommands movement = new MovementCommands(
                 game,
@@ -450,8 +457,25 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(
                 game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID, includeDisabled: true)
             );
+            Assert.IsNull(
+                game.GetSceneNodeByInstanceID<SpecialForces>(
+                    specialForces.InstanceID,
+                    includeDisabled: true
+                )
+            );
+            CollectionAssert.Contains(
+                result
+                    .Events.OfType<GameObjectDestroyedResult>()
+                    .Select(destruction => destruction.DestroyedObject)
+                    .ToList(),
+                specialForces
+            );
         }
 
+        /// <summary>
+        /// Verifies that defense fire destroying a carrier relocates its inactive officer without
+        /// activating that officer.
+        /// </summary>
         [Test]
         public void TryExecute_DefenseFireDestroysCarrier_RelocatesInactiveOfficer()
         {

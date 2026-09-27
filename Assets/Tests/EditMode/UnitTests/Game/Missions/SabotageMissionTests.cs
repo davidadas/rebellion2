@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
@@ -207,7 +208,7 @@ namespace Rebellion.Tests.Game.Missions
         /// published sabotage result.
         /// </summary>
         [Test]
-        public void ResolveObjective_CapitalShipWithOfficer_RelocatesOfficerToFriendlyPlanet()
+        public void ResolveObjective_CapitalShipWithOfficer_RestoresOfficerAtLocalPlanet()
         {
             (
                 GameRoot game,
@@ -272,8 +273,9 @@ namespace Rebellion.Tests.Game.Missions
                     includeDisabled: true
                 )
             );
-            Assert.AreSame(fallback, carriedOfficer.GetParent());
-            Assert.IsNotNull(carriedOfficer.Movement);
+            Assert.AreSame(enemyPlanet, carriedOfficer.GetParent());
+            Assert.AreNotSame(fallback, carriedOfficer.GetParent());
+            Assert.IsNull(carriedOfficer.Movement);
         }
 
         /// <summary>
@@ -347,9 +349,110 @@ namespace Rebellion.Tests.Game.Missions
                     includeDisabled: true
                 )
             );
-            Assert.AreSame(fallback, carriedOfficer.GetParent());
-            Assert.IsNotNull(carriedOfficer.Movement);
+            Assert.AreSame(enemyPlanet, carriedOfficer.GetParent());
+            Assert.AreNotSame(fallback, carriedOfficer.GetParent());
+            Assert.IsNull(carriedOfficer.Movement);
             Assert.IsFalse(carriedOfficer.IsEnabled);
+        }
+
+        /// <summary>
+        /// Verifies that sabotaging a capital ship destroys its embarked starfighters and
+        /// regiments with the ship.
+        /// </summary>
+        [Test]
+        public void ResolveObjective_CapitalShipWithNonOfficerCargo_DestroysCargo()
+        {
+            (
+                GameRoot game,
+                Planet empirePlanet,
+                Planet enemyPlanet,
+                Officer saboteur,
+                FogOfWarCommands fog
+            ) = MissionSceneBuilder.Build();
+            Fleet fleet = EntityFactory.CreateFleet("target-fleet", "rebels");
+            CapitalShip target = new CapitalShip
+            {
+                InstanceID = "target-ship",
+                OwnerInstanceID = "rebels",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                CurrentHullStrength = 100,
+                StarfighterCapacity = 1,
+                RegimentCapacity = 1,
+            };
+            Starfighter fighter = EntityFactory.CreateStarfighter("carried-fighter", "rebels");
+            fighter.ManufacturingStatus = ManufacturingStatus.Complete;
+            Regiment regiment = EntityFactory.CreateRegiment("carried-regiment", "rebels");
+            regiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(fleet, enemyPlanet);
+            game.AttachNode(target, fleet);
+            game.AttachNode(fighter, target);
+            game.AttachNode(regiment, target);
+            Mission mission = CreateSabotageMission(
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { saboteur },
+                new List<IMissionParticipant>(),
+                target
+            );
+            game.AttachNode(mission, enemyPlanet);
+            mission.Initiate(0);
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+
+            mission.ResolveObjective(game, new FixedRNG(0.0));
+
+            Assert.IsNull(
+                game.GetSceneNodeByInstanceID<Starfighter>(
+                    fighter.InstanceID,
+                    includeDisabled: true
+                )
+            );
+            Assert.IsNull(
+                game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID, includeDisabled: true)
+            );
+        }
+
+        /// <summary>
+        /// Verifies that sabotage destruction does not award the target faction a scrap refund.
+        /// </summary>
+        [Test]
+        public void ResolveObjective_CapitalShipTarget_DoesNotRefundMaterials()
+        {
+            (
+                GameRoot game,
+                Planet empirePlanet,
+                Planet enemyPlanet,
+                Officer saboteur,
+                FogOfWarCommands fog
+            ) = MissionSceneBuilder.Build();
+            Faction targetOwner = game.GetFactionByOwnerInstanceID("rebels");
+            targetOwner.RefinedMaterialStockpile = 11;
+            Fleet fleet = EntityFactory.CreateFleet("target-fleet", "rebels");
+            CapitalShip target = new CapitalShip
+            {
+                InstanceID = "target-ship",
+                OwnerInstanceID = "rebels",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                CurrentHullStrength = 100,
+                ConstructionCost = 50,
+            };
+            game.AttachNode(fleet, enemyPlanet);
+            game.AttachNode(target, fleet);
+            Mission mission = CreateSabotageMission(
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { saboteur },
+                new List<IMissionParticipant>(),
+                target
+            );
+            game.AttachNode(mission, enemyPlanet);
+            mission.Initiate(0);
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+
+            mission.ResolveObjective(game, new FixedRNG(0.0));
+
+            Assert.AreEqual(11, targetOwner.RefinedMaterialStockpile);
         }
 
         [Test]

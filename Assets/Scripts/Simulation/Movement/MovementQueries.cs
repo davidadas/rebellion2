@@ -929,19 +929,23 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Finds all safe carriers and colonized planets controlled by the unit's movement owner,
-        /// ordered nearest first.
+        /// Finds all safe carriers and planets controlled by the unit's movement owner, ordered
+        /// nearest first.
         /// </summary>
         /// <param name="unit">The unit requiring a destination.</param>
         /// <param name="originPlanet">The planet from which distance and reachability are measured.</param>
         /// <param name="forceInterplanetaryTravel">
         /// Whether the calling mechanic supplies transportation regardless of the unit's mobility.
         /// </param>
+        /// <param name="allowOriginPlanet">
+        /// Whether the origin planet itself may receive the unit without interplanetary travel.
+        /// </param>
         /// <returns>The valid relocation destinations, nearest first.</returns>
         internal IReadOnlyList<ContainerNode> FindSafeRelocationDestinations(
             IMovable unit,
             Planet originPlanet,
-            bool forceInterplanetaryTravel = false
+            bool forceInterplanetaryTravel = false,
+            bool allowOriginPlanet = false
         )
         {
             if (unit == null)
@@ -968,7 +972,8 @@ namespace Rebellion.Simulation
                         unit,
                         destination,
                         originPlanet,
-                        canTravelRemotely
+                        canTravelRemotely,
+                        allowOriginPlanet
                     )
                 )
                 .Select(destination => new
@@ -1029,8 +1034,8 @@ namespace Rebellion.Simulation
 
             bool isFriendlyDestination = liveDestination switch
             {
-                Planet planet => planet.IsColonized
-                    && planet.GetOwnerInstanceID() == ownerInstanceId,
+                Planet planet => planet.GetOwnerInstanceID() == ownerInstanceId
+                    && (planet.IsColonized || unit is Officer { IsCaptured: false }),
                 CapitalShip ship => ship.GetOwnerInstanceID() == ownerInstanceId
                     && ship.ManufacturingStatus == ManufacturingStatus.Complete
                     && ((IMovable)ship).GetTransitMovement() == null,
@@ -1143,6 +1148,12 @@ namespace Rebellion.Simulation
                 return true;
 
             string movementOwnerId = GetMovementControlOwner(unit);
+            if (
+                unit is Officer { IsCaptured: false }
+                && destinationPlanet.GetOwnerInstanceID() == movementOwnerId
+            )
+                return true;
+
             if (
                 destinationPlanet.GetOwnerInstanceID() == movementOwnerId
                 && destinationPlanet.HasStationedUnit(movementOwnerId)

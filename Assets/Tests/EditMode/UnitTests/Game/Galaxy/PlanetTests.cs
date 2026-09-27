@@ -149,13 +149,18 @@ namespace Rebellion.Tests.Game.Galaxy
             );
         }
 
+        /// <summary>
+        /// Verifies that an active officer can land directly on an owned uncolonized planet.
+        /// </summary>
         [Test]
-        public void AddOfficer_UncolonizedPlanet_ThrowsException()
+        public void AddOfficer_OwnedUncolonizedPlanet_AddsToPlanet()
         {
             _planet.IsColonized = false;
             Officer officer = new Officer { OwnerInstanceID = "FNALL1" };
 
-            Assert.Throws<SceneAccessException>(() => _planet.AddChild(officer));
+            _planet.AddChild(officer);
+
+            Assert.Contains(officer, _planet.GetChildren<Officer>().ToList());
         }
 
         [Test]
@@ -175,8 +180,12 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.Contains(officer, _planet.GetChildren<Officer>().ToList());
         }
 
+        /// <summary>
+        /// Verifies that an active officer can land on an owned uncolonized planet without relying
+        /// on an inbound regiment to make the destination valid.
+        /// </summary>
         [Test]
-        public void AddOfficer_UncolonizedPlanetWithInTransitRegiment_ThrowsException()
+        public void AddOfficer_OwnedUncolonizedPlanetWithInTransitRegiment_AddsToPlanet()
         {
             _planet.IsColonized = false;
             Regiment inboundRegiment = new Regiment
@@ -188,7 +197,9 @@ namespace Rebellion.Tests.Game.Galaxy
             _planet.AddChild(inboundRegiment);
             Officer officer = new Officer { OwnerInstanceID = "FNALL1" };
 
-            Assert.Throws<SceneAccessException>(() => _planet.AddChild(officer));
+            _planet.AddChild(officer);
+
+            Assert.Contains(officer, _planet.GetChildren<Officer>().ToList());
         }
 
         [Test]

@@ -180,6 +180,10 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(game.GetSceneNodesByType<StubMission>().Contains(mission));
         }
 
+        /// <summary>
+        /// Verifies that a completed participant without a recorded origin autoroutes to the
+        /// nearest friendly planet.
+        /// </summary>
         [Test]
         public void UpdateMission_CompletedParticipantOnNeutralPlanet_ReturnsToNearestFriendlyPlanet()
         {
@@ -275,7 +279,6 @@ namespace Rebellion.Tests.Simulation
                 "empire"
             );
             AddMissionReturnPlanet(game, sector, "far-planet", "empire", positionX: 100);
-
             List<GameResult> results = system.UpdateMission(mission);
 
             Assert.AreEqual(
@@ -310,7 +313,6 @@ namespace Rebellion.Tests.Simulation
                 "empire",
                 positionX: 25
             );
-
             List<GameResult> results = system.UpdateMission(mission);
 
             Assert.AreEqual(
@@ -2730,8 +2732,12 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
+        /// <summary>
+        /// Verifies that an officer completing a mission on an owned uncolonized planet remains at
+        /// that safe local destination.
+        /// </summary>
         [Test]
-        public void UpdateMission_FriendlyUncolonizedLocation_ReturnsOfficerToOrigin()
+        public void UpdateMission_FriendlyUncolonizedLocation_RetainsOfficerLocally()
         {
             (GameRoot game, Planet origin, Officer officer, MovementCommands movement) = BuildScene(
                 factionOwnsPlanet: true
@@ -2758,8 +2764,8 @@ namespace Rebellion.Tests.Simulation
 
             List<GameResult> results = system.UpdateMission(mission);
 
-            Assert.AreSame(origin, officer.GetParent());
-            Assert.IsNotNull(officer.Movement);
+            Assert.AreSame(missionPlanet, officer.GetParent());
+            Assert.IsNull(officer.Movement);
             Assert.IsFalse(officer.IsCaptured);
             Assert.IsFalse(results.OfType<OfficerCaptureStateResult>().Any());
             Assert.IsNull(mission.GetParent());
@@ -2834,6 +2840,10 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
+        /// <summary>
+        /// Verifies that a diplomacy participant whose recorded origin was captured autoroutes to
+        /// the nearest friendly planet.
+        /// </summary>
         [Test]
         public void UpdateMission_DiplomacyTargetCaptured_ReturnsOfficerToNearestFriendlyPlanet()
         {

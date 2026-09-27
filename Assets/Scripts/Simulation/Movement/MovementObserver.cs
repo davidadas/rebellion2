@@ -101,7 +101,8 @@ namespace Rebellion.Simulation
                     (CapitalShip)result.DestroyedObject,
                     result.Context,
                     destroyedInstanceIds,
-                    reactions
+                    recoverStarfighters: result.Reason == UnitDestructionReason.Combat,
+                    results: reactions
                 );
             }
 
@@ -133,7 +134,8 @@ namespace Rebellion.Simulation
                     (CapitalShip)result.ScrappedObject,
                     result.Context,
                     scrappedInstanceIds,
-                    reactions
+                    recoverStarfighters: false,
+                    results: reactions
                 );
             }
 

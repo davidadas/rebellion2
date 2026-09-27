@@ -1617,10 +1617,28 @@ namespace Rebellion.Simulation
         /// <param name="captorInstanceID">The instance ID of the capturing faction.</param>
         private void CaptureStrandedOfficer(Officer officer, Planet planet, string captorInstanceID)
         {
+            CaptureStrandedOfficer(officer, planet, captorInstanceID, _pendingResults);
+        }
+
+        /// <summary>
+        /// Captures an officer stranded on a planet claimed by an enemy faction and appends the
+        /// capture fact to the supplied result batch.
+        /// </summary>
+        /// <param name="officer">The stranded officer.</param>
+        /// <param name="planet">The planet the officer is stranded on.</param>
+        /// <param name="captorInstanceID">The instance ID of the capturing faction.</param>
+        /// <param name="results">The result batch receiving the capture fact.</param>
+        private void CaptureStrandedOfficer(
+            Officer officer,
+            Planet planet,
+            string captorInstanceID,
+            ICollection<GameResult> results
+        )
+        {
             if (!officer.TryCapture(captorInstanceID))
                 return;
 
-            _pendingResults.Add(
+            results.Add(
                 new OfficerCaptureStateResult
                 {
                     TargetOfficer = officer,
@@ -1709,11 +1727,13 @@ namespace Rebellion.Simulation
         /// <param name="removedShip">The removed capital ship retaining its former children.</param>
         /// <param name="context">The location associated with the removal result.</param>
         /// <param name="removedInstanceIds">Units explicitly removed by the same result batch.</param>
+        /// <param name="recoverStarfighters">Whether surviving completed starfighters may be recovered.</param>
         /// <param name="results">The collection receiving movement facts.</param>
         internal void RelocateRemovedCapitalShipOccupants(
             CapitalShip removedShip,
             IGameEntity context,
             ISet<string> removedInstanceIds,
+            bool recoverStarfighters,
             ICollection<GameResult> results
         )
         {
@@ -1734,16 +1754,21 @@ namespace Rebellion.Simulation
                 context as Planet
                 ?? liveFleet?.GetParentOfType<Planet>()
                 ?? previousFleet?.GetLastParent() as Planet;
-            List<IMovable> occupants = removedShip
+            IEnumerable<IMovable> occupants = removedShip
                 .GetChildren<Officer>(includeDisabled: true)
-                .Cast<IMovable>()
-                .Concat(
+                .Cast<IMovable>();
+            if (recoverStarfighters)
+            {
+                occupants = occupants.Concat(
                     removedShip
                         .GetChildren<Starfighter>(includeDisabled: true)
                         .Where(fighter =>
                             fighter.ManufacturingStatus == ManufacturingStatus.Complete
                         )
-                )
+                );
+            }
+
+            List<IMovable> recoverableOccupants = occupants
                 .Where(occupant =>
                     occupant != null
                     && !(removedInstanceIds?.Contains(occupant.InstanceID) ?? false)
@@ -1753,7 +1778,7 @@ namespace Rebellion.Simulation
                 )
                 .ToList();
 
-            foreach (IMovable occupant in occupants)
+            foreach (IMovable occupant in recoverableOccupants)
                 RelocateRemovedCapitalShipOccupant(occupant, liveFleet, originPlanet, results);
         }
 
@@ -1781,10 +1806,13 @@ namespace Rebellion.Simulation
                 destination = FindFleetRecoveryCarrier(occupant, fleet);
             }
             destination ??= _queries
-                .FindSafeRelocationDestinations(occupant, originPlanet)
+                .FindSafeRelocationDestinations(occupant, originPlanet, allowOriginPlanet: true)
                 .FirstOrDefault();
             if (destination == null)
+            {
+                ResolveRemovedOccupantWithoutDestination(occupant, originPlanet, results);
                 return;
+            }
 
             RestoreRemovedOccupant((ISceneNode)occupant, destination);
             Planet destinationPlanet = MovementQueries.RequireDestinationPlanet(destination);
@@ -1792,6 +1820,41 @@ namespace Rebellion.Simulation
                 destination is CapitalShip && destination.GetParentOfType<Fleet>() == fleet;
             if (!recoveredByFormerFleet && destinationPlanet != originPlanet)
                 StartRemovedUnitTransit(occupant, originPlanet, destination, results);
+        }
+
+        /// <summary>
+        /// Applies the established stranded-unit fallback when no friendly container can receive
+        /// a survivor. Officers are captured locally; other occupants remain destroyed.
+        /// </summary>
+        /// <param name="occupant">The removed carrier occupant.</param>
+        /// <param name="originPlanet">The location where the carrier was removed.</param>
+        /// <param name="results">The collection receiving capture facts.</param>
+        private void ResolveRemovedOccupantWithoutDestination(
+            IMovable occupant,
+            Planet originPlanet,
+            ICollection<GameResult> results
+        )
+        {
+            if (occupant is not Officer officer)
+                return;
+
+            string captorInstanceId = originPlanet.GetOwnerInstanceID();
+            if (
+                string.Equals(
+                    captorInstanceId,
+                    officer.GetOwnerInstanceID(),
+                    StringComparison.Ordinal
+                )
+            )
+            {
+                throw new InvalidOperationException(
+                    $"Officer '{officer.InstanceID}' has no valid destination or captor after carrier removal."
+                );
+            }
+
+            officer.Movement = null;
+            CaptureStrandedOfficer(officer, originPlanet, captorInstanceId, results);
+            RestoreRemovedOccupant(officer, originPlanet);
         }
 
         /// <summary>

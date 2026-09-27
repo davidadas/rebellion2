@@ -369,6 +369,10 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNotNull(starfighter.Movement);
         }
 
+        /// <summary>
+        /// Verifies that carrier destruction relocates an inactive officer without activating the
+        /// officer.
+        /// </summary>
         [Test]
         public void HandleResults_DestroyedCarrierWithInactiveOfficer_RelocatesWithoutActivating()
         {
@@ -405,6 +409,44 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
+        /// <summary>
+        /// Verifies that a surviving occupant uses the nearest safe compatible location when
+        /// multiple relocation destinations are available.
+        /// </summary>
+        [Test]
+        public void HandleResults_DestroyedCarrierWithMultipleSafeDestinations_UsesNearestLocation()
+        {
+            var scene = BuildRemovedCarrierScene();
+            Planet fartherDestination = new Planet
+            {
+                InstanceID = "farther-destination",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 175,
+            };
+            scene.game.AttachNode(fartherDestination, scene.origin.GetParentOfType<PlanetSector>());
+            Officer officer = EntityFactory.CreateOfficer("officer", "empire");
+            scene.game.AttachNode(officer, scene.carrier);
+            scene.game.DeleteNode(scene.carrier);
+
+            scene.resultBus.Publish(
+                new GameObjectDestroyedResult
+                {
+                    DestroyedObject = scene.carrier,
+                    Context = scene.origin,
+                    Reason = UnitDestructionReason.Combat,
+                }
+            );
+
+            Assert.AreSame(scene.fallback, officer.GetParent());
+            Assert.AreNotSame(fartherDestination, officer.GetParent());
+            Assert.IsNotNull(officer.Movement);
+        }
+
+        /// <summary>
+        /// Verifies that an officer uses a compatible surviving carrier in the same fleet before
+        /// relocating elsewhere.
+        /// </summary>
         [Test]
         public void HandleResults_DestroyedCarrierWithSurvivingCarrier_MovesOfficerWithinFleet()
         {
@@ -433,6 +475,144 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(officer.Movement);
         }
 
+        /// <summary>
+        /// Verifies that an officer whose carrier is removed over a friendly planet remains in
+        /// the local system when no surviving ship can receive the officer.
+        /// </summary>
+        [Test]
+        public void HandleResults_DestroyedCarrierOverFriendlyPlanet_RestoresOfficerLocally()
+        {
+            var scene = BuildRemovedCarrierScene();
+            scene.origin.OwnerInstanceID = "empire";
+            Officer officer = EntityFactory.CreateOfficer("officer", "empire");
+            scene.game.AttachNode(officer, scene.carrier);
+            scene.game.DeleteNode(scene.carrier);
+
+            scene.resultBus.Publish(
+                new GameObjectDestroyedResult
+                {
+                    DestroyedObject = scene.carrier,
+                    Context = scene.origin,
+                    Reason = UnitDestructionReason.Combat,
+                }
+            );
+
+            Assert.AreSame(scene.origin, officer.GetParent());
+            Assert.IsNull(officer.Movement);
+        }
+
+        /// <summary>
+        /// Verifies that the local hostile faction captures an officer whose destroyed carrier
+        /// leaves no friendly destination.
+        /// </summary>
+        [Test]
+        public void HandleResults_DestroyedCarrierWithoutFriendlyDestination_CapturesOfficerLocally()
+        {
+            var scene = BuildRemovedCarrierScene();
+            scene.fallback.OwnerInstanceID = "rebels";
+            Officer officer = EntityFactory.CreateOfficer("officer", "empire");
+            scene.game.AttachNode(officer, scene.carrier);
+            scene.game.DeleteNode(scene.carrier);
+
+            List<GameResult> results = scene.resultBus.Publish(
+                new GameObjectDestroyedResult
+                {
+                    DestroyedObject = scene.carrier,
+                    Context = scene.origin,
+                    Reason = UnitDestructionReason.Combat,
+                }
+            );
+
+            Assert.AreSame(scene.origin, officer.GetParent());
+            Assert.IsTrue(officer.IsCaptured);
+            Assert.AreEqual("rebels", officer.CaptorInstanceID);
+            Assert.IsNull(officer.Movement);
+            Assert.IsTrue(
+                results
+                    .OfType<OfficerCaptureStateResult>()
+                    .Any(result => ReferenceEquals(result.TargetOfficer, officer))
+            );
+        }
+
+        /// <summary>
+        /// Verifies that an officer stranded over a neutral planet remains registered locally
+        /// when no friendly destination or planetary captor exists.
+        /// </summary>
+        [Test]
+        public void HandleResults_DestroyedCarrierOverNeutralPlanetWithoutDestination_RetainsOfficerLocally()
+        {
+            var scene = BuildRemovedCarrierScene();
+            scene.origin.OwnerInstanceID = null;
+            scene.fallback.OwnerInstanceID = "rebels";
+            Officer officer = EntityFactory.CreateOfficer("officer", "empire");
+            scene.game.AttachNode(officer, scene.carrier);
+            scene.game.DeleteNode(scene.carrier);
+
+            List<GameResult> results = scene.resultBus.Publish(
+                new GameObjectDestroyedResult
+                {
+                    DestroyedObject = scene.carrier,
+                    Context = scene.origin,
+                    Reason = UnitDestructionReason.Combat,
+                }
+            );
+
+            Assert.AreSame(
+                officer,
+                scene.game.GetSceneNodeByInstanceID<Officer>(
+                    officer.InstanceID,
+                    includeDisabled: true
+                )
+            );
+            Assert.AreSame(scene.origin, officer.GetParent());
+            Assert.IsTrue(officer.IsCaptured);
+            Assert.IsNull(officer.CaptorInstanceID);
+            Assert.IsNull(officer.Movement);
+            Assert.IsTrue(
+                results
+                    .OfType<OfficerCaptureStateResult>()
+                    .Any(result => ReferenceEquals(result.TargetOfficer, officer))
+            );
+        }
+
+        /// <summary>
+        /// Verifies that a completed fighter surviving active combat is destroyed when no friendly
+        /// destination can receive it.
+        /// </summary>
+        [Test]
+        public void HandleResults_CombatDestroyedCarrierWithoutFriendlyDestination_LeavesFighterDestroyed()
+        {
+            var scene = BuildRemovedCarrierScene();
+            scene.fallback.OwnerInstanceID = "rebels";
+            scene.carrier.StarfighterCapacity = 1;
+            Starfighter fighter = EntityFactory.CreateStarfighter("fighter", "empire");
+            fighter.ManufacturingStatus = ManufacturingStatus.Complete;
+            fighter.Hyperdrive = 1;
+            scene.game.AttachNode(fighter, scene.carrier);
+            scene.game.DeleteNode(scene.carrier);
+
+            scene.resultBus.Publish(
+                new GameObjectDestroyedResult
+                {
+                    DestroyedObject = scene.carrier,
+                    Context = scene.origin,
+                    Reason = UnitDestructionReason.Combat,
+                }
+            );
+
+            Assert.IsNull(
+                scene.game.GetSceneNodeByInstanceID<Starfighter>(
+                    fighter.InstanceID,
+                    includeDisabled: true
+                )
+            );
+            Assert.AreSame(scene.carrier, fighter.GetParent());
+        }
+
+        /// <summary>
+        /// Verifies that an officer explicitly included in the destruction batch remains
+        /// destroyed with the carrier.
+        /// </summary>
         [Test]
         public void HandleResults_DestroyedCarrierAndOfficer_LeavesOfficerDestroyed()
         {
@@ -466,6 +646,9 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(scene.carrier, officer.GetParent());
         }
 
+        /// <summary>
+        /// Verifies that an officer relocates when the officer's carrier is manually scrapped.
+        /// </summary>
         [Test]
         public void HandleResults_ScrappedCarrierWithOfficer_RelocatesOfficer()
         {
@@ -486,6 +669,10 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNotNull(officer.Movement);
         }
 
+        /// <summary>
+        /// Verifies that an officer relocates when maintenance automatically scraps the officer's
+        /// carrier.
+        /// </summary>
         [Test]
         public void HandleResults_AutoscrappedCarrierWithOfficer_RelocatesOfficer()
         {
@@ -506,6 +693,139 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNotNull(officer.Movement);
         }
 
+        /// <summary>
+        /// Verifies that a completed fighter surviving active space combat is recovered after its
+        /// carrier is destroyed.
+        /// </summary>
+        [Test]
+        public void HandleResults_CombatDestroyedCarrierWithCompletedFighter_RelocatesFighter()
+        {
+            var scene = BuildRemovedCarrierScene();
+            scene.carrier.StarfighterCapacity = 1;
+            Starfighter fighter = EntityFactory.CreateStarfighter("fighter", "empire");
+            fighter.ManufacturingStatus = ManufacturingStatus.Complete;
+            fighter.Hyperdrive = 1;
+            scene.game.AttachNode(fighter, scene.carrier);
+            scene.game.DeleteNode(scene.carrier);
+
+            scene.resultBus.Publish(
+                new GameObjectDestroyedResult
+                {
+                    DestroyedObject = scene.carrier,
+                    Context = scene.origin,
+                    Reason = UnitDestructionReason.Combat,
+                }
+            );
+
+            Assert.AreSame(
+                fighter,
+                scene.game.GetSceneNodeByInstanceID<Starfighter>(
+                    fighter.InstanceID,
+                    includeDisabled: true
+                )
+            );
+            Assert.AreSame(scene.fallback, fighter.GetParent());
+            Assert.IsNotNull(fighter.Movement);
+        }
+
+        /// <summary>
+        /// Verifies that sabotage does not recover a completed fighter from the destroyed carrier.
+        /// </summary>
+        [Test]
+        public void HandleResults_SabotagedCarrierWithCompletedFighter_LeavesFighterDestroyed()
+        {
+            var scene = BuildRemovedCarrierScene();
+            scene.carrier.StarfighterCapacity = 1;
+            Starfighter fighter = EntityFactory.CreateStarfighter("fighter", "empire");
+            fighter.ManufacturingStatus = ManufacturingStatus.Complete;
+            fighter.Hyperdrive = 1;
+            scene.game.AttachNode(fighter, scene.carrier);
+            scene.game.DeleteNode(scene.carrier);
+
+            scene.resultBus.Publish(
+                new GameObjectSabotagedResult
+                {
+                    DestroyedObject = scene.carrier,
+                    Context = scene.origin,
+                }
+            );
+
+            Assert.IsNull(
+                scene.game.GetSceneNodeByInstanceID<Starfighter>(
+                    fighter.InstanceID,
+                    includeDisabled: true
+                )
+            );
+            Assert.AreSame(scene.carrier, fighter.GetParent());
+        }
+
+        /// <summary>
+        /// Verifies that intentional scrapping does not recover a completed fighter from the
+        /// scrapped carrier.
+        /// </summary>
+        [Test]
+        public void HandleResults_ScrappedCarrierWithCompletedFighter_LeavesFighterDestroyed()
+        {
+            var scene = BuildRemovedCarrierScene();
+            scene.carrier.StarfighterCapacity = 1;
+            Starfighter fighter = EntityFactory.CreateStarfighter("fighter", "empire");
+            fighter.ManufacturingStatus = ManufacturingStatus.Complete;
+            fighter.Hyperdrive = 1;
+            scene.game.AttachNode(fighter, scene.carrier);
+            scene.game.DeleteNode(scene.carrier);
+
+            scene.resultBus.Publish(
+                new GameObjectScrappedResult
+                {
+                    ScrappedObject = scene.carrier,
+                    Context = scene.origin,
+                }
+            );
+
+            Assert.IsNull(
+                scene.game.GetSceneNodeByInstanceID<Starfighter>(
+                    fighter.InstanceID,
+                    includeDisabled: true
+                )
+            );
+            Assert.AreSame(scene.carrier, fighter.GetParent());
+        }
+
+        /// <summary>
+        /// Verifies that maintenance autoscrapping does not recover a completed fighter from the
+        /// scrapped carrier.
+        /// </summary>
+        [Test]
+        public void HandleResults_AutoscrappedCarrierWithCompletedFighter_LeavesFighterDestroyed()
+        {
+            var scene = BuildRemovedCarrierScene();
+            scene.carrier.StarfighterCapacity = 1;
+            Starfighter fighter = EntityFactory.CreateStarfighter("fighter", "empire");
+            fighter.ManufacturingStatus = ManufacturingStatus.Complete;
+            fighter.Hyperdrive = 1;
+            scene.game.AttachNode(fighter, scene.carrier);
+            scene.game.DeleteNode(scene.carrier);
+
+            scene.resultBus.Publish(
+                new GameObjectAutoscrappedResult
+                {
+                    DestroyedObject = scene.carrier,
+                    Context = scene.origin,
+                }
+            );
+
+            Assert.IsNull(
+                scene.game.GetSceneNodeByInstanceID<Starfighter>(
+                    fighter.InstanceID,
+                    includeDisabled: true
+                )
+            );
+            Assert.AreSame(scene.carrier, fighter.GetParent());
+        }
+
+        /// <summary>
+        /// Verifies that an unfinished fighter is not recovered when its carrier is destroyed.
+        /// </summary>
         [Test]
         public void HandleResults_DestroyedCarrierWithUnfinishedFighter_LeavesFighterDestroyed()
         {

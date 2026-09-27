@@ -2236,6 +2236,10 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(defenderShip, defenderFighter.GetParent());
         }
 
+        /// <summary>
+        /// Verifies that a fighter from a destroyed carrier uses another carrier's recovery
+        /// capacity before the surviving fleet withdraws.
+        /// </summary>
         [Test]
         public void ResolvePending_CarrierDestroyedWithRecoveryCapacity_ReparentsFighterAndWithdrawsFleet()
         {
@@ -2792,6 +2796,10 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(HasHostileFleets(combatPlanet));
         }
 
+        /// <summary>
+        /// Verifies that an officer aboard a destroyed ship transfers to a surviving ship in the
+        /// same fleet.
+        /// </summary>
         [Test]
         public void Resolve_ShipDestroyedWithSurvivingShip_OfficerMovedToSurvivingShip()
         {
@@ -2862,6 +2870,10 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
+        /// <summary>
+        /// Verifies that an officer aboard the fleet's final destroyed ship evacuates to the
+        /// nearest friendly planet.
+        /// </summary>
         [Test]
         public void Resolve_LastShipDestroyed_OfficerEvacuatedToNearestFriendlyPlanet()
         {

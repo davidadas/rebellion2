@@ -2173,8 +2173,12 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNotNull(arrivingRegiment.Movement);
         }
 
+        /// <summary>
+        /// Verifies that an officer can travel to an owned uncolonized planet without requiring a
+        /// stationary regiment there.
+        /// </summary>
         [Test]
-        public void RequestMove_OfficerToOwnedUncolonizedPlanetWithOnlyInboundRegiment_IsRejected()
+        public void RequestMove_OfficerToOwnedUncolonizedPlanetWithOnlyInboundRegiment_StartsTransit()
         {
             (
                 GameRoot game,
@@ -2195,8 +2199,8 @@ namespace Rebellion.Tests.Simulation
 
             movement.RequestMove(officer, destination);
 
-            Assert.AreSame(origin, officer.GetParent());
-            Assert.IsNull(officer.Movement);
+            Assert.AreSame(destination, officer.GetParent());
+            Assert.IsNotNull(officer.Movement);
         }
 
         [Test]
@@ -2710,6 +2714,10 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(ship, officer.GetParent());
         }
 
+        /// <summary>
+        /// Verifies that a participant without a recorded return destination autoroutes to the
+        /// nearest friendly planet.
+        /// </summary>
         [Test]
         public void ReturnFromMission_MissingRecordedLocation_ReturnsToNearestFriendlyPlanet()
         {
@@ -2758,6 +2766,10 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(mission, officer.GetParent());
         }
 
+        /// <summary>
+        /// Verifies that a participant whose recorded return planet changed hands autoroutes to
+        /// the nearest friendly planet.
+        /// </summary>
         [Test]
         public void ReturnFromMission_RecordedPlanetCaptured_ReturnsToNearestFriendlyPlanet()
         {
