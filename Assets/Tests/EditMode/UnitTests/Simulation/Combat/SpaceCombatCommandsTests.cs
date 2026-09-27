@@ -2532,8 +2532,11 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Fleet>("alliance-fleet"));
         }
 
-        [Test]
-        public void ResolvePendingRetreat_PlayerFleet_MovesToFriendlyPlanet()
+        [TestCase(FleetOrderType.Attack)]
+        [TestCase(FleetOrderType.Engage)]
+        public void ResolvePendingRetreat_PlayerFleetWithTargetingOrder_MovesToFriendlyPlanetAndClearsOrder(
+            FleetOrderType orderType
+        )
         {
             GameRoot game = CreateGame();
             game.SetFactionController("empire", "player1", PlayerControllerType.Human);
@@ -2546,7 +2549,7 @@ namespace Rebellion.Tests.Simulation
             Fleet allianceFleet = CreateFleet(game, "af1", "alliance", combatPlanet, 1, 1000, 100);
             empireFleet.Order = new FleetOrder
             {
-                OrderType = FleetOrderType.Attack,
+                OrderType = orderType,
                 Status = FleetOrderStatus.Ready,
                 TargetPlanetId = combatPlanet.InstanceID,
             };

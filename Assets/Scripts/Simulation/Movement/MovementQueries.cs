@@ -138,10 +138,45 @@ namespace Rebellion.Simulation
                     out List<IMovable> movables,
                     out _
                 )
+                || !CanResolveSelectionMoveDestinations(movables, liveDestination)
             )
                 return false;
 
             return TryGetTransitTicks(movables, liveDestination, out transitTicks);
+        }
+
+        /// <summary>
+        /// Validates every destination that selection movement would use without changing the
+        /// scene graph.
+        /// </summary>
+        /// <param name="movables">The resolved units in the movement group.</param>
+        /// <param name="destination">The requested live destination.</param>
+        /// <returns>True when movement execution can resolve the complete group.</returns>
+        private bool CanResolveSelectionMoveDestinations(
+            List<IMovable> movables,
+            ContainerNode destination
+        )
+        {
+            if (destination is not Planet || !movables.Any(unit => unit is CapitalShip))
+                return TryResolveMoveGroupDestinations(movables, destination, out _);
+
+            if (movables.Any(unit => unit is not CapitalShip))
+                return false;
+
+            Planet sharedOrigin = null;
+            foreach (IMovable movable in movables)
+            {
+                Planet origin = movable.GetParentOfType<Planet>();
+                if (origin == null)
+                    return false;
+
+                if (sharedOrigin == null)
+                    sharedOrigin = origin;
+                else if (!ReferenceEquals(sharedOrigin, origin))
+                    return false;
+            }
+
+            return true;
         }
 
         /// <summary>

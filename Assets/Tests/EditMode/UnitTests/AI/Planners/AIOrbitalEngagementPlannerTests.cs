@@ -52,6 +52,49 @@ namespace Rebellion.Tests.AI.Fleets
         }
 
         [Test]
+        public void Plan_LaserHeavyFleetCannotDefeatCapitalTarget_DoesNotAddEngagementProposal()
+        {
+            EngagementScenario scenario = CreateScenario(
+                friendlyStrength: 1000,
+                hostileStrength: 500
+            );
+            scenario
+                .Context
+                .Game
+                .Config
+                .AI
+                .FleetDeployment
+                .AttackStrengthPercentOfStrongestHostileFleet = 175;
+            scenario.Context.Game.Config.Combat.SpaceCombat.LaserCannonCapitalDamageMultiplier =
+                1d / 6d;
+            CapitalShip attackingShip = scenario.FriendlyFleet.GetChildren<CapitalShip>()[0];
+            ConfigureCombatShip(attackingShip, hullStrength: 1200);
+            attackingShip.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = new[]
+            {
+                60,
+                60,
+                90,
+                90,
+                0,
+            };
+            CapitalShip defendingShip = scenario
+                .Target.GetChildren<Fleet>()[0]
+                .GetChildren<CapitalShip>()[0];
+            ConfigureCombatShip(defendingShip, hullStrength: 1400);
+            defendingShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 15, 0, 30, 30, 0 };
+            scenario = scenario.WithContext(
+                AITestSceneBuilder.CreateContext(scenario.Context.Game, scenario.Context.Faction)
+            );
+
+            bool hasEngagement = new AIOrbitalEngagementPlanner()
+                .Plan(scenario.Context)
+                .OfType<AIOrbitalEngagementProposal>()
+                .Any();
+
+            Assert.IsFalse(hasEngagement);
+        }
+
+        [Test]
         public void Plan_WithUnobservedEnemyFleet_DoesNotAddEngagementProposal()
         {
             EngagementScenario scenario = CreateScenario(
@@ -193,6 +236,20 @@ namespace Rebellion.Tests.AI.Fleets
                 fleet
             );
             return fleet;
+        }
+
+        /// <summary>
+        /// Resets a synthetic ship to the supplied durability with no primary weapons.
+        /// </summary>
+        /// <param name="ship">The ship to configure.</param>
+        /// <param name="hullStrength">The ship's current and maximum hull strength.</param>
+        private static void ConfigureCombatShip(CapitalShip ship, int hullStrength)
+        {
+            ship.MaxHullStrength = hullStrength;
+            ship.CurrentHullStrength = hullStrength;
+            ship.MaxShieldStrength = 0;
+            foreach (PrimaryWeaponType weaponType in ship.PrimaryWeapons.Keys.ToList())
+                ship.PrimaryWeapons[weaponType] = new int[5];
         }
 
         private sealed class EngagementScenario

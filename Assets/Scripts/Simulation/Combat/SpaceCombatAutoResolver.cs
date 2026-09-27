@@ -1721,11 +1721,11 @@ namespace Rebellion.Simulation
             /// <returns>The target-specific damage multiplier.</returns>
             private double GetTargetTypeMultiplier(PrimaryWeaponType type, bool targetsFighters)
             {
-                if (type == PrimaryWeaponType.IonCannon && targetsFighters)
-                    return 0;
-                if (type == PrimaryWeaponType.LaserCannon && !targetsFighters)
-                    return _laserCannonCapitalDamageMultiplier;
-                return 1;
+                return SpaceCombatStrengthCalculator.GetPrimaryWeaponTargetMultiplier(
+                    type,
+                    targetsFighters,
+                    _laserCannonCapitalDamageMultiplier
+                );
             }
 
             /// <summary>

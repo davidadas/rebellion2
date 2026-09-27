@@ -3991,6 +3991,45 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void TrySetFleetWaypointRoute_CapitalShipArrivesAtIntermediateWaypoint_CapturesIntelligence()
+        {
+            (
+                GameRoot game,
+                _,
+                Planet firstDestination,
+                Planet secondDestination,
+                Fleet sourceFleet,
+                MovementCommands movement
+            ) = BuildWaypointScene();
+            game.ChangeOwnership(firstDestination, "rebels");
+            Regiment defendingRegiment = EntityFactory.CreateRegiment("defender", "rebels");
+            defendingRegiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(defendingRegiment, firstDestination);
+            CapitalShip ship = sourceFleet.GetChildren<CapitalShip>().Single();
+
+            bool routeSet = movement.TrySetFleetWaypointRoute(
+                new ISceneNode[] { ship },
+                new[] { firstDestination.InstanceID, secondDestination.InstanceID },
+                "empire"
+            );
+            Assert.IsTrue(routeSet);
+            ship.Movement.TicksElapsed = ship.Movement.TransitTicks - 1;
+
+            new MovementTickProcessor(movement).ProcessTick(game);
+
+            Faction empire = game.GetFactionByOwnerInstanceID("empire");
+            PlanetSnapshot snapshot = empire.Fog.Snapshots["sector"].Planets[
+                firstDestination.InstanceID
+            ];
+            Assert.AreEqual(game.CurrentTick, snapshot.TickCaptured);
+            Assert.IsTrue(
+                snapshot.Regiments.Any(regiment =>
+                    regiment.InstanceID == defendingRegiment.InstanceID
+                )
+            );
+        }
+
+        [Test]
         public void TrySetFleetWaypointRoute_CapitalShipUnderConstruction_PreservesRouteUntilComplete()
         {
             (
@@ -4760,7 +4799,17 @@ namespace Rebellion.Tests.Simulation
             MovementCommands movement
         ) BuildWaypointScene()
         {
-            GameRoot game = TestGame.Create(TestConfig.Create());
+            GameConfig config = new GameConfig
+            {
+                Movement = new GameConfig.MovementConfig
+                {
+                    DistanceDivisor = 5,
+                    MinTransitTicks = 1,
+                    SameSectorMinTransitTicks = 1,
+                    DefaultFighterHyperdrive = 60,
+                },
+            };
+            GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
             PlanetSector sector = new PlanetSector { InstanceID = "sector" };

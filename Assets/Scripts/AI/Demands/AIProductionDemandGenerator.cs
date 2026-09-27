@@ -1505,7 +1505,7 @@ namespace Rebellion.AI.Demands
             AIAttackDemand attackDemand = context.GetAttackDemand(target);
             int requiredRegiments = GetProjectedRegimentCount(context, fleet, target);
             double readiness = GetFulfillmentRatio(
-                assessment.GetProjectedFleetCombatValue(fleet),
+                assessment.GetProjectedFleetCombatValueAgainstCapitalShips(fleet),
                 attackDemand?.CombatStrength ?? 0
             );
             readiness = Math.Min(
@@ -1599,7 +1599,10 @@ namespace Rebellion.AI.Demands
             )
                 return;
 
-            int projectedCombat = context.Assessment.GetProjectedFleetCombatValue(fleet);
+            int projectedCombat =
+                targetPlanet != null
+                    ? context.Assessment.GetProjectedFleetCombatValueAgainstCapitalShips(fleet)
+                    : context.Assessment.GetProjectedFleetCombatValue(fleet);
             int targetCombat =
                 targetPlanet != null ? context.GetAttackDemand(targetPlanet)?.CombatStrength ?? 0
                 : defenseTarget != null ? context.StrategicPlan.GetDefenseStrength(defenseTarget)
