@@ -66,7 +66,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void GetCommandModifiers_MultipleEligibleOfficers_SelectsBestFleetAdmiralAndSystemOrFleetCommander()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             PlanetSector sector = new PlanetSector { InstanceID = "sector" };
             Planet planet = new Planet
@@ -125,7 +125,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void GetCommandModifiers_UnavailableAndNonparticipatingOfficers_IgnoresThem()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             PlanetSector sector = new PlanetSector { InstanceID = "sector" };
             Planet planet = new Planet

@@ -202,7 +202,7 @@ namespace Rebellion.Tests.Simulation
         /// <returns>The game graph.</returns>
         private static GameRoot BuildScene(out Planet planet)
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             game.GetFactions().Add(new Faction { InstanceID = _ownerId });
             PlanetSector sector = new PlanetSector { InstanceID = "sector" };
             planet = new Planet
