@@ -49,7 +49,7 @@ namespace Rebellion.Tests.Simulation
             {
                 Movement = new GameConfig.MovementConfig
                 {
-                    DistanceScale = 100,
+                    DistanceDivisor = 5,
                     MinTransitTicks = 1,
                     SameSectorMinTransitTicks = 1,
                     DefaultFighterHyperdrive = 60,
@@ -101,7 +101,7 @@ namespace Rebellion.Tests.Simulation
             {
                 Movement = new GameConfig.MovementConfig
                 {
-                    DistanceScale = 100,
+                    DistanceDivisor = 5,
                     MinTransitTicks = 1,
                     SameSectorMinTransitTicks = 1,
                     DefaultFighterHyperdrive = 60,
@@ -128,8 +128,8 @@ namespace Rebellion.Tests.Simulation
                 destination
             );
 
-            Assert.AreEqual(80, fasterTransitTicks);
-            Assert.AreEqual(100, slowerTransitTicks);
+            Assert.AreEqual(16, fasterTransitTicks);
+            Assert.AreEqual(20, slowerTransitTicks);
         }
 
         [Test]

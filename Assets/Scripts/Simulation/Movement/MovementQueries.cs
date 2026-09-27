@@ -8,6 +8,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Logging;
+using Rebellion.Util.Mathematics;
 
 namespace Rebellion.Simulation
 {
@@ -16,8 +17,6 @@ namespace Rebellion.Simulation
     /// </summary>
     public class MovementQueries
     {
-        private const int _standardHyperdriveRating = 100;
-
         private readonly GameRoot _game;
         private Func<Building, bool> _completedBuildingMovementPolicy;
 
@@ -1268,18 +1267,14 @@ namespace Rebellion.Simulation
             bool sameSector
         )
         {
-            double distance = destination.GetRawDistanceTo(originPos);
-
+            int distance = (int)destination.GetRawDistanceTo(originPos);
             int slowestHyperdriveRating = Math.Max(GetMovementHyperdrive(unit), 1);
-
-            int baseTicks = (int)
-                Math.Ceiling(
-                    distance
-                        * _game.GetConfig().Movement.DistanceScale
-                        / _standardHyperdriveRating
-                        * slowestHyperdriveRating
-                        / _standardHyperdriveRating
-                );
+            int baseTicks = IntegerMath.ScaleByPercent(
+                distance / _game.GetConfig().Movement.DistanceDivisor,
+                slowestHyperdriveRating
+            );
+            if (distance > 0)
+                baseTicks = Math.Max(baseTicks, 1);
 
             int minimumTransitTicks = sameSector
                 ? _game.GetConfig().Movement.SameSectorMinTransitTicks

@@ -525,7 +525,7 @@ namespace Rebellion.Tests.Simulation
             Planet producer = CreatePlanet("PRODUCER", factionId, 0);
             producer.EnergyCapacity = 10;
             producer.NumRawResourceNodes = 2;
-            Planet destination = CreatePlanet("DESTINATION", factionId, 10);
+            Planet destination = CreatePlanet("DESTINATION", factionId, 100);
             game.AttachNode(sector, game.Galaxy);
             game.AttachNode(producer, sector);
             game.AttachNode(destination, sector);

@@ -3267,7 +3267,7 @@ namespace Rebellion.Tests.Simulation
             {
                 Movement = new GameConfig.MovementConfig
                 {
-                    DistanceScale = 1,
+                    DistanceDivisor = 5,
                     MinTransitTicks = 1,
                     SameSectorMinTransitTicks = 1,
                     DefaultFighterHyperdrive = 60,

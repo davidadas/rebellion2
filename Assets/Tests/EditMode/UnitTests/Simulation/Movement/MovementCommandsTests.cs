@@ -1200,7 +1200,16 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void RequestMove_FleetWithInboundUnits_RetargetsInboundUnits()
         {
-            GameConfig config = TestContent.Data.GameConfig;
+            GameConfig config = new GameConfig
+            {
+                Movement = new GameConfig.MovementConfig
+                {
+                    DistanceDivisor = 5,
+                    MinTransitTicks = 1,
+                    SameSectorMinTransitTicks = 1,
+                    DefaultFighterHyperdrive = 60,
+                },
+            };
             GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
 
@@ -1244,7 +1253,7 @@ namespace Rebellion.Tests.Simulation
             {
                 InstanceID = "carrier",
                 OwnerInstanceID = "empire",
-                Hyperdrive = 1,
+                Hyperdrive = 100,
                 ManufacturingStatus = ManufacturingStatus.Complete,
                 StarfighterCapacity = 2,
                 RegimentCapacity = 2,
@@ -1258,7 +1267,7 @@ namespace Rebellion.Tests.Simulation
             {
                 InstanceID = "ship",
                 OwnerInstanceID = "empire",
-                Hyperdrive = 1,
+                Hyperdrive = 100,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             game.AttachNode(capitalShip, sourceFleet);
@@ -2968,7 +2977,7 @@ namespace Rebellion.Tests.Simulation
             {
                 Movement = new GameConfig.MovementConfig
                 {
-                    DistanceScale = 10,
+                    DistanceDivisor = 5,
                     MinTransitTicks = 1,
                     SameSectorMinTransitTicks = 1,
                     DefaultFighterHyperdrive = 60,
@@ -2999,10 +3008,8 @@ namespace Rebellion.Tests.Simulation
 
             movement.RequestMove(fleet, destination);
 
-            int expectedTransitTicks = (int)
-                System.Math.Ceiling(
-                    destination.GetRawDistanceTo(origin) * config.Movement.DistanceScale / 100
-                );
+            int expectedTransitTicks =
+                (int)destination.GetRawDistanceTo(origin) / config.Movement.DistanceDivisor;
             Assert.Greater(fleet.Movement.TransitTicks, fastTransitTicks);
             Assert.AreEqual(expectedTransitTicks, fleet.Movement.TransitTicks);
 
@@ -4814,7 +4821,16 @@ namespace Rebellion.Tests.Simulation
             int capitalShip2Transit
         ) BuildFleetWithInTransitChildrenScene()
         {
-            GameConfig config = TestContent.Data.GameConfig;
+            GameConfig config = new GameConfig
+            {
+                Movement = new GameConfig.MovementConfig
+                {
+                    DistanceDivisor = 5,
+                    MinTransitTicks = 1,
+                    SameSectorMinTransitTicks = 1,
+                    DefaultFighterHyperdrive = 60,
+                },
+            };
             GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
 
@@ -4846,7 +4862,7 @@ namespace Rebellion.Tests.Simulation
                 InstanceID = "pC",
                 OwnerInstanceID = "empire",
                 IsColonized = true,
-                PositionX = 10,
+                PositionX = 100,
                 PositionY = 0,
             };
             game.AttachNode(planetC, sector);
@@ -4859,7 +4875,7 @@ namespace Rebellion.Tests.Simulation
             {
                 InstanceID = "cs1",
                 OwnerInstanceID = "empire",
-                Hyperdrive = 1,
+                Hyperdrive = 100,
                 ManufacturingStatus = ManufacturingStatus.Complete,
                 StarfighterCapacity = 2,
                 RegimentCapacity = 2,
@@ -4886,7 +4902,7 @@ namespace Rebellion.Tests.Simulation
             {
                 InstanceID = "cs2",
                 OwnerInstanceID = "empire",
-                Hyperdrive = 1,
+                Hyperdrive = 100,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             game.AttachNode(capitalShip2, sourceFleet);
