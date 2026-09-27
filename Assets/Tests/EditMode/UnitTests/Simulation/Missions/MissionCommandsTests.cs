@@ -1870,10 +1870,12 @@ namespace Rebellion.Tests.Simulation
                 Officer defender,
                 MovementCommands movement
             ) = BuildDetectionScene();
+            spy.IsForceSensitive = true;
+            spy.IsForceEligible = true;
             spy.ForceValue = 50;
+            defender.IsForceSensitive = true;
+            defender.IsForceEligible = true;
             defender.ForceValue = 80;
-            game.Config.Jedi.MissionParticipantEncounterMinimum = 1;
-            game.Config.Jedi.MissionDefenderEncounterMinimum = 60;
             game.Config.Jedi.EncounterProbabilityOffset = -100;
             SetFoilTable(game, new Dictionary<int, int> { { -1000, 0 } });
             StubMission mission = new StubMission("empire", planet.InstanceID);

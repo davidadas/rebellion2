@@ -1081,10 +1081,6 @@ namespace Rebellion.Game
 
             public int EncounterProbabilityOffset { get; set; }
 
-            public int MissionParticipantEncounterMinimum { get; set; } = 1;
-
-            public int MissionDefenderEncounterMinimum { get; set; } = 60;
-
             public Dictionary<int, int> RankLabelByMinimumForceRank { get; set; } =
                 new Dictionary<int, int>();
 

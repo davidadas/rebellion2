@@ -464,7 +464,7 @@ namespace Rebellion.Simulation
             GameConfig.JediConfig config = _game.Config.Jedi;
             List<Officer> participants = mainParticipants
                 .OfType<Officer>()
-                .Where(officer => officer.ForceRank >= config.MissionParticipantEncounterMinimum)
+                .Where(officer => officer.IsForceSensitive && officer.IsForceEligible)
                 .ToList();
             if (participants.Count == 0)
                 return false;
@@ -477,7 +477,8 @@ namespace Rebellion.Simulation
                     && !officer.IsCaptured
                     && !officer.IsKilled
                     && officer.InjuryPoints == 0
-                    && officer.ForceRank >= config.MissionDefenderEncounterMinimum
+                    && officer.IsForceSensitive
+                    && officer.IsForceEligible
                 )
                 .ToList();
 
