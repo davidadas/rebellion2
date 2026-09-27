@@ -369,6 +369,228 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNotNull(starfighter.Movement);
         }
 
+        [Test]
+        public void HandleResults_DestroyedCarrierWithInactiveOfficer_RelocatesWithoutActivating()
+        {
+            var scene = BuildRemovedCarrierScene();
+            Officer officer = EntityFactory.CreateOfficer("officer", "empire");
+            officer.IsEnabled = false;
+            scene.game.AttachNode(officer, scene.carrier);
+            scene.game.DeleteNode(scene.carrier);
+
+            List<GameResult> settled = scene.resultBus.Publish(
+                new GameObjectDestroyedResult
+                {
+                    DestroyedObject = scene.carrier,
+                    Context = scene.origin,
+                    Reason = UnitDestructionReason.Combat,
+                }
+            );
+
+            Assert.AreSame(
+                officer,
+                scene.game.GetSceneNodeByInstanceID<Officer>(
+                    officer.InstanceID,
+                    includeDisabled: true
+                )
+            );
+            Assert.AreSame(scene.fallback, officer.GetParent());
+            Assert.IsNotNull(officer.Movement);
+            Assert.AreEqual(scene.origin.GetPosition(), officer.Movement.OriginPosition);
+            Assert.IsFalse(officer.IsEnabled);
+            Assert.IsTrue(
+                settled
+                    .OfType<GameObjectEnrouteResult>()
+                    .Any(result => ReferenceEquals(result.GameObject, officer))
+            );
+        }
+
+        [Test]
+        public void HandleResults_DestroyedCarrierWithSurvivingCarrier_MovesOfficerWithinFleet()
+        {
+            var scene = BuildRemovedCarrierScene();
+            CapitalShip survivor = new CapitalShip
+            {
+                InstanceID = "survivor",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                CurrentHullStrength = 100,
+            };
+            Officer officer = EntityFactory.CreateOfficer("officer", "empire");
+            scene.game.AttachNode(survivor, scene.fleet);
+            scene.game.AttachNode(officer, scene.carrier);
+            scene.game.DeleteNode(scene.carrier);
+
+            scene.resultBus.Publish(
+                new GameObjectDestroyedResult
+                {
+                    DestroyedObject = scene.carrier,
+                    Context = scene.origin,
+                }
+            );
+
+            Assert.AreSame(survivor, officer.GetParent());
+            Assert.IsNull(officer.Movement);
+        }
+
+        [Test]
+        public void HandleResults_DestroyedCarrierAndOfficer_LeavesOfficerDestroyed()
+        {
+            var scene = BuildRemovedCarrierScene();
+            Officer officer = EntityFactory.CreateOfficer("officer", "empire");
+            scene.game.AttachNode(officer, scene.carrier);
+            scene.game.DeleteNode(scene.carrier);
+
+            scene.resultBus.Publish(
+                new GameResult[]
+                {
+                    new GameObjectDestroyedResult
+                    {
+                        DestroyedObject = scene.carrier,
+                        Context = scene.origin,
+                    },
+                    new GameObjectDestroyedResult
+                    {
+                        DestroyedObject = officer,
+                        Context = scene.origin,
+                    },
+                }
+            );
+
+            Assert.IsNull(
+                scene.game.GetSceneNodeByInstanceID<Officer>(
+                    officer.InstanceID,
+                    includeDisabled: true
+                )
+            );
+            Assert.AreSame(scene.carrier, officer.GetParent());
+        }
+
+        [Test]
+        public void HandleResults_ScrappedCarrierWithOfficer_RelocatesOfficer()
+        {
+            var scene = BuildRemovedCarrierScene();
+            Officer officer = EntityFactory.CreateOfficer("officer", "empire");
+            scene.game.AttachNode(officer, scene.carrier);
+            scene.game.DeleteNode(scene.carrier);
+
+            scene.resultBus.Publish(
+                new GameObjectScrappedResult
+                {
+                    ScrappedObject = scene.carrier,
+                    Context = scene.origin,
+                }
+            );
+
+            Assert.AreSame(scene.fallback, officer.GetParent());
+            Assert.IsNotNull(officer.Movement);
+        }
+
+        [Test]
+        public void HandleResults_AutoscrappedCarrierWithOfficer_RelocatesOfficer()
+        {
+            var scene = BuildRemovedCarrierScene();
+            Officer officer = EntityFactory.CreateOfficer("officer", "empire");
+            scene.game.AttachNode(officer, scene.carrier);
+            scene.game.DeleteNode(scene.carrier);
+
+            scene.resultBus.Publish(
+                new GameObjectAutoscrappedResult
+                {
+                    DestroyedObject = scene.carrier,
+                    Context = scene.origin,
+                }
+            );
+
+            Assert.AreSame(scene.fallback, officer.GetParent());
+            Assert.IsNotNull(officer.Movement);
+        }
+
+        [Test]
+        public void HandleResults_DestroyedCarrierWithUnfinishedFighter_LeavesFighterDestroyed()
+        {
+            var scene = BuildRemovedCarrierScene();
+            Starfighter fighter = EntityFactory.CreateStarfighter("fighter", "empire");
+            fighter.ManufacturingStatus = ManufacturingStatus.Building;
+            scene.carrier.StarfighterCapacity = 1;
+            scene.game.AttachNode(fighter, scene.carrier);
+            scene.game.DeleteNode(scene.carrier);
+
+            scene.resultBus.Publish(
+                new GameObjectDestroyedResult
+                {
+                    DestroyedObject = scene.carrier,
+                    Context = scene.origin,
+                }
+            );
+
+            Assert.IsNull(
+                scene.game.GetSceneNodeByInstanceID<Starfighter>(
+                    fighter.InstanceID,
+                    includeDisabled: true
+                )
+            );
+            Assert.AreSame(scene.carrier, fighter.GetParent());
+        }
+
+        /// <summary>
+        /// Builds a carrier-removal scene with one owned evacuation planet.
+        /// </summary>
+        /// <returns>The constructed carrier-removal scene.</returns>
+        private static (
+            GameRoot game,
+            Planet origin,
+            Planet fallback,
+            Fleet fleet,
+            CapitalShip carrier,
+            MovementCommands movement,
+            GameResultBus resultBus
+        ) BuildRemovedCarrierScene()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            Planet origin = new Planet
+            {
+                InstanceID = "origin",
+                OwnerInstanceID = "rebels",
+                IsColonized = true,
+                PositionX = 100,
+            };
+            Planet fallback = new Planet
+            {
+                InstanceID = "fallback",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 125,
+            };
+            Fleet fleet = EntityFactory.CreateFleet("fleet", "empire");
+            CapitalShip carrier = new CapitalShip
+            {
+                InstanceID = "carrier",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                CurrentHullStrength = 100,
+            };
+            game.AttachNode(sector, game.GetGalaxyMap());
+            game.AttachNode(origin, sector);
+            game.AttachNode(fallback, sector);
+            game.AttachNode(fleet, origin);
+            game.AttachNode(carrier, fleet);
+            MovementCommands movement = new MovementCommands(
+                game,
+                new FogOfWarCommands(game),
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
+            GameResultBus resultBus = new GameResultBus();
+            new MovementObserver(movement).Connect(resultBus);
+
+            return (game, origin, fallback, fleet, carrier, movement, resultBus);
+        }
+
         /// <summary>
         /// Builds blockade retargeting scene.
         /// </summary>

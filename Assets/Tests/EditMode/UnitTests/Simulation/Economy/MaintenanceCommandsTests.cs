@@ -111,6 +111,62 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(game.GetSceneNodeByInstanceID<Building>(building.InstanceID));
         }
 
+        /// <summary>
+        /// Verifies that manually scrapping a capital ship relocates its officer to the nearest
+        /// friendly planet through the published scrap result.
+        /// </summary>
+        [Test]
+        public void TryScrap_CapitalShipWithOfficer_RelocatesOfficerToNearestFriendlyPlanet()
+        {
+            var scene = BuildCarrierScrapScene();
+
+            bool scrapped = scene.maintenance.TryScrap(
+                new IManufacturable[] { scene.carrier },
+                scene.owner.InstanceID
+            );
+
+            Assert.IsTrue(scrapped);
+            Assert.IsNull(
+                scene.game.GetSceneNodeByInstanceID<CapitalShip>(scene.carrier.InstanceID, true)
+            );
+            Assert.AreSame(
+                scene.officer,
+                scene.game.GetSceneNodeByInstanceID<Officer>(scene.officer.InstanceID, true)
+            );
+            Assert.AreSame(scene.nearestDestination, scene.officer.GetParent());
+            Assert.AreNotSame(scene.fartherDestination, scene.officer.GetParent());
+            Assert.IsNotNull(scene.officer.Movement);
+            Assert.AreEqual(scene.origin.GetPosition(), scene.officer.Movement.OriginPosition);
+        }
+
+        /// <summary>
+        /// Verifies that manually scrapping a capital ship relocates its hidden officer without
+        /// making that officer visible.
+        /// </summary>
+        [Test]
+        public void TryScrap_CapitalShipWithInactiveOfficer_RelocatesOfficerWithoutActivating()
+        {
+            var scene = BuildCarrierScrapScene();
+            scene.officer.IsEnabled = false;
+
+            bool scrapped = scene.maintenance.TryScrap(
+                new IManufacturable[] { scene.carrier },
+                scene.owner.InstanceID
+            );
+
+            Assert.IsTrue(scrapped);
+            Assert.AreSame(
+                scene.officer,
+                scene.game.GetSceneNodeByInstanceID<Officer>(
+                    scene.officer.InstanceID,
+                    includeDisabled: true
+                )
+            );
+            Assert.AreSame(scene.nearestDestination, scene.officer.GetParent());
+            Assert.IsNotNull(scene.officer.Movement);
+            Assert.IsFalse(scene.officer.IsEnabled);
+        }
+
         [Test]
         public void Constructor_WithNullGame_ThrowsArgumentNullException()
         {
@@ -236,6 +292,86 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNotNull(shortfall);
             Assert.AreEqual(empire, shortfall.Faction);
             Assert.Greater(shortfall.Amount, 0);
+        }
+
+        /// <summary>
+        /// Verifies that maintenance autoscrapping a capital ship relocates its officer to the
+        /// nearest friendly planet through the published destruction result.
+        /// </summary>
+        [Test]
+        public void ProcessTick_AutoscrappedCapitalShipWithOfficer_RelocatesOfficerToNearestFriendlyPlanet()
+        {
+            var scene = BuildCarrierScrapScene();
+            IReadOnlyList<GameResult> initialResults = new MaintenanceTickProcessor(
+                scene.maintenance
+            ).ProcessTick(scene.game);
+            scene.resultBus.Publish(initialResults);
+            scene.game.CurrentTick = scene
+                .game
+                .Config
+                .Production
+                .MaintenanceShortfallAutoscrapInterval;
+
+            IReadOnlyList<GameResult> autoscrapResults = new MaintenanceTickProcessor(
+                scene.maintenance
+            ).ProcessTick(scene.game);
+            scene.resultBus.Publish(autoscrapResults);
+
+            Assert.AreSame(
+                scene.carrier,
+                autoscrapResults.OfType<GameObjectAutoscrappedResult>().Single().DestroyedObject
+            );
+            Assert.IsNull(
+                scene.game.GetSceneNodeByInstanceID<CapitalShip>(scene.carrier.InstanceID, true)
+            );
+            Assert.AreSame(
+                scene.officer,
+                scene.game.GetSceneNodeByInstanceID<Officer>(scene.officer.InstanceID, true)
+            );
+            Assert.AreSame(scene.nearestDestination, scene.officer.GetParent());
+            Assert.AreNotSame(scene.fartherDestination, scene.officer.GetParent());
+            Assert.IsNotNull(scene.officer.Movement);
+            Assert.AreEqual(scene.origin.GetPosition(), scene.officer.Movement.OriginPosition);
+        }
+
+        /// <summary>
+        /// Verifies that maintenance autoscrapping a capital ship relocates its hidden officer
+        /// without making that officer visible.
+        /// </summary>
+        [Test]
+        public void ProcessTick_AutoscrappedCapitalShipWithInactiveOfficer_RelocatesOfficerWithoutActivating()
+        {
+            var scene = BuildCarrierScrapScene();
+            scene.officer.IsEnabled = false;
+            IReadOnlyList<GameResult> initialResults = new MaintenanceTickProcessor(
+                scene.maintenance
+            ).ProcessTick(scene.game);
+            scene.resultBus.Publish(initialResults);
+            scene.game.CurrentTick = scene
+                .game
+                .Config
+                .Production
+                .MaintenanceShortfallAutoscrapInterval;
+
+            IReadOnlyList<GameResult> autoscrapResults = new MaintenanceTickProcessor(
+                scene.maintenance
+            ).ProcessTick(scene.game);
+            scene.resultBus.Publish(autoscrapResults);
+
+            Assert.AreSame(
+                scene.carrier,
+                autoscrapResults.OfType<GameObjectAutoscrappedResult>().Single().DestroyedObject
+            );
+            Assert.AreSame(
+                scene.officer,
+                scene.game.GetSceneNodeByInstanceID<Officer>(
+                    scene.officer.InstanceID,
+                    includeDisabled: true
+                )
+            );
+            Assert.AreSame(scene.nearestDestination, scene.officer.GetParent());
+            Assert.IsNotNull(scene.officer.Movement);
+            Assert.IsFalse(scene.officer.IsEnabled);
         }
 
         [Test]
@@ -705,6 +841,98 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(regiment, game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
             Assert.AreSame(planet, regiment.GetParent());
             Assert.IsNull(results);
+        }
+
+        /// <summary>
+        /// Builds a maintenance scene containing a carrier with an officer and two eligible
+        /// friendly fallback planets at different distances.
+        /// </summary>
+        /// <returns>The carrier-scrap scene and its connected result pipeline.</returns>
+        private (
+            GameRoot game,
+            Faction owner,
+            Planet origin,
+            Planet nearestDestination,
+            Planet fartherDestination,
+            CapitalShip carrier,
+            Officer officer,
+            MaintenanceCommands maintenance,
+            GameResultBus resultBus
+        ) BuildCarrierScrapScene()
+        {
+            GameRoot game = CreateGame();
+            Faction owner = CreateFaction("empire", "Empire");
+            game.GetFactions().Add(owner);
+            PlanetSector sector = new PlanetSector { InstanceID = "scrap-sector" };
+            Planet origin = CreatePlanet("scrap-origin", "Scrap Origin", owner.InstanceID);
+            origin.NumRawResourceNodes = 0;
+            origin.PositionX = 0;
+            origin.PositionY = 0;
+            Planet nearestDestination = CreatePlanet(
+                "scrap-nearest",
+                "Scrap Nearest",
+                owner.InstanceID
+            );
+            nearestDestination.PositionX = 25;
+            nearestDestination.PositionY = 0;
+            Planet fartherDestination = CreatePlanet(
+                "scrap-farther",
+                "Scrap Farther",
+                owner.InstanceID
+            );
+            fartherDestination.PositionX = 100;
+            fartherDestination.PositionY = 0;
+            game.AttachNode(sector, game.Galaxy);
+            game.AttachNode(origin, sector);
+            game.AttachNode(nearestDestination, sector);
+            game.AttachNode(fartherDestination, sector);
+
+            Fleet fleet = EntityFactory.CreateFleet("scrap-fleet", owner.InstanceID);
+            CapitalShip carrier = new CapitalShip
+            {
+                InstanceID = "scrap-carrier",
+                OwnerInstanceID = owner.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                ConstructionCost = 1,
+                MaintenanceCost = 1,
+                MaxHullStrength = 100,
+                CurrentHullStrength = 100,
+            };
+            Officer officer = EntityFactory.CreateOfficer("scrap-officer", owner.InstanceID);
+            game.AttachNode(fleet, origin);
+            game.AttachNode(carrier, fleet);
+            game.AttachNode(officer, carrier);
+
+            MovementCommands movement = new MovementCommands(
+                game,
+                new FogOfWarCommands(game),
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
+            GameResultBus resultBus = new GameResultBus();
+            new MovementObserver(movement).Connect(resultBus);
+            MaintenanceCommands maintenance = new MaintenanceCommands(
+                game,
+                new FixedRNG(),
+                new FleetCommands(game)
+            );
+            maintenance.ResultsProduced += results =>
+            {
+                resultBus.Publish(results);
+            };
+
+            return (
+                game,
+                owner,
+                origin,
+                nearestDestination,
+                fartherDestination,
+                carrier,
+                officer,
+                maintenance,
+                resultBus
+            );
         }
 
         /// <summary>

@@ -2792,12 +2792,16 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(fallback, officer.GetParent());
         }
 
+        /// <summary>
+        /// Verifies that a participant with no recorded return location uses the nearest
+        /// compatible friendly fleet before a farther friendly planet.
+        /// </summary>
         [Test]
-        public void ReturnFromMission_MissingRecordedLocation_UsesFriendlyPlanetInsteadOfUnrelatedFleet()
+        public void ReturnFromMission_MissingRecordedLocation_UsesNearestCompatibleFleet()
         {
             (
                 GameRoot game,
-                Planet origin,
+                Planet _,
                 Planet destination,
                 Officer officer,
                 MovementCommands movement
@@ -2825,7 +2829,7 @@ namespace Rebellion.Tests.Simulation
             );
 
             Assert.IsEmpty(stranded);
-            Assert.AreSame(origin, officer.GetParent());
+            Assert.AreSame(ship, officer.GetParent());
         }
 
         [Test]

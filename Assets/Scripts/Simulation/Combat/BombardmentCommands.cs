@@ -20,7 +20,6 @@ namespace Rebellion.Simulation
         private readonly GameRoot _game;
         private readonly BombardmentQueries _queries;
         private readonly IRandomNumberProvider _provider;
-        private readonly MovementCommands _movement;
         private readonly PlanetaryControlCommands _ownership;
         private readonly PersonnelCommands _personnelCommands;
 
@@ -34,14 +33,12 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="game">Active game state.</param>
         /// <param name="provider">Random-number provider used by bombardment resolution.</param>
-        /// <param name="movement">Movement operations used for surviving passenger evacuation.</param>
         /// <param name="ownership">Planetary control commands used for support and ownership changes.</param>
         /// <param name="queries">Bombardment eligibility and strength rules.</param>
         /// <param name="personnelCommands">Personnel lifecycle commands.</param>
         public BombardmentCommands(
             GameRoot game,
             IRandomNumberProvider provider,
-            MovementCommands movement,
             PlanetaryControlCommands ownership,
             BombardmentQueries queries,
             PersonnelCommands personnelCommands = null
@@ -49,7 +46,6 @@ namespace Rebellion.Simulation
         {
             _game = game;
             _provider = provider;
-            _movement = movement ?? throw new ArgumentNullException(nameof(movement));
             _ownership = ownership ?? throw new ArgumentNullException(nameof(ownership));
             _personnelCommands =
                 personnelCommands ?? new PersonnelCommands(new PersonnelQueries(game));
@@ -316,18 +312,50 @@ namespace Rebellion.Simulation
                     continue;
 
                 result.DestroyedCapitalShips.Add(ship);
-                List<IMovable> units = ship.GetChildren<Officer>()
-                    .Cast<IMovable>()
-                    .Concat(
-                        ship.GetChildren<Starfighter>()
-                            .Where(starfighter =>
-                                starfighter.ManufacturingStatus == ManufacturingStatus.Complete
-                            )
-                    )
-                    .ToList();
-                _movement.RelocateUnits(units);
+                RecordDestroyedEmbarkedCombatUnits(ship, planet, result.Events);
                 _game.DeleteNode(ship);
+                result.Events.Add(
+                    new GameObjectDestroyedResult
+                    {
+                        DestroyedObject = ship,
+                        Context = planet,
+                        Reason = UnitDestructionReason.Combat,
+                        Tick = _game.CurrentTick,
+                    }
+                );
                 GameLogger.Log($"Ship destroyed: {ship.GetDisplayName()}");
+            }
+        }
+
+        /// <summary>
+        /// Records embarked starfighters and regiments that are destroyed with a carrier by
+        /// planetary defense fire. Officers remain eligible for post-destruction relocation.
+        /// </summary>
+        /// <param name="ship">The carrier about to be destroyed.</param>
+        /// <param name="planet">The planet where the destruction occurred.</param>
+        /// <param name="events">The event collection receiving destruction facts.</param>
+        private void RecordDestroyedEmbarkedCombatUnits(
+            CapitalShip ship,
+            Planet planet,
+            ICollection<GameResult> events
+        )
+        {
+            IEnumerable<IGameEntity> destroyedUnits = ship.GetChildren<Starfighter>(
+                    includeDisabled: true
+                )
+                .Cast<IGameEntity>()
+                .Concat(ship.GetChildren<Regiment>(includeDisabled: true));
+            foreach (IGameEntity unit in destroyedUnits)
+            {
+                events.Add(
+                    new GameObjectDestroyedResult
+                    {
+                        DestroyedObject = unit,
+                        Context = planet,
+                        Reason = UnitDestructionReason.Combat,
+                        Tick = _game.CurrentTick,
+                    }
+                );
             }
         }
 

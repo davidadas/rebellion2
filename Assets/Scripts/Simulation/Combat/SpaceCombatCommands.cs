@@ -371,7 +371,10 @@ namespace Rebellion.Simulation
             UpdateCombatEncounterResultOutcomes(combatResult, decision);
 
             if (combatResult != null)
+            {
                 results.Add(combatResult);
+                results.AddRange(combatResult.Events.OfType<GameObjectDestroyedResult>());
+            }
 
             return results;
         }
@@ -935,7 +938,8 @@ namespace Rebellion.Simulation
                 result.ShipDamage,
                 result.FighterLosses,
                 attackerFleets,
-                defenderFleets
+                defenderFleets,
+                result.Planet
             );
         }
 
@@ -946,16 +950,18 @@ namespace Rebellion.Simulation
         /// <param name="fighterLosses">Fighter losses to apply.</param>
         /// <param name="attackerFleets">The attacking fleets to clean up.</param>
         /// <param name="defenderFleets">The defending fleets to clean up.</param>
+        /// <param name="planet">The planet where combat occurred.</param>
         /// <returns>Events generated from ship damage and destruction.</returns>
         private List<GameResult> ApplyCombatLosses(
             List<ShipDamageResult> shipDamage,
             List<FighterLossResult> fighterLosses,
             IReadOnlyList<Fleet> attackerFleets,
-            IReadOnlyList<Fleet> defenderFleets
+            IReadOnlyList<Fleet> defenderFleets,
+            Planet planet
         )
         {
-            ApplyFighterSquadronLosses(fighterLosses);
-            List<GameResult> events = ApplyShipDamage(shipDamage);
+            List<GameResult> events = ApplyFighterSquadronLosses(fighterLosses, planet);
+            events.AddRange(ApplyShipDamage(shipDamage, planet));
 
             foreach (
                 Fleet fleet in attackerFleets
@@ -971,12 +977,16 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Writes hull damage back to each ship, detaches destroyed ships, and evacuates their
-        /// officers (to a surviving ship or to the nearest friendly planet).
+        /// Writes hull damage back to each ship and records destroyed ships for post-combat
+        /// relocation reactions.
         /// </summary>
         /// <param name="damageResults">Ship damage entries produced by the battle.</param>
+        /// <param name="planet">The planet where combat occurred.</param>
         /// <returns>A GameObjectDamagedResult per damaged ship.</returns>
-        private List<GameResult> ApplyShipDamage(List<ShipDamageResult> damageResults)
+        private List<GameResult> ApplyShipDamage(
+            List<ShipDamageResult> damageResults,
+            Planet planet
+        )
         {
             List<GameResult> events = new List<GameResult>();
 
@@ -999,17 +1009,16 @@ namespace Rebellion.Simulation
 
                 if (damage.HullAfter <= 0)
                 {
-                    List<IMovable> units = ship.GetChildren<Officer>()
-                        .Cast<IMovable>()
-                        .Concat(
-                            ship.GetChildren<Starfighter>()
-                                .Where(starfighter =>
-                                    starfighter.ManufacturingStatus == ManufacturingStatus.Complete
-                                )
-                        )
-                        .ToList();
-                    _movement.RelocateUnits(units);
                     _game.DeleteNode(ship);
+                    events.Add(
+                        new GameObjectDestroyedResult
+                        {
+                            DestroyedObject = ship,
+                            Context = planet,
+                            Reason = UnitDestructionReason.Combat,
+                            Tick = _game.CurrentTick,
+                        }
+                    );
                     GameLogger.Log($"Ship destroyed: {ship.GetDisplayName()}");
                 }
             }
@@ -1021,8 +1030,14 @@ namespace Rebellion.Simulation
         /// Writes squadron-size losses back to each squadron and detaches any that are wiped out.
         /// </summary>
         /// <param name="lossResults">Fighter loss entries produced by the battle.</param>
-        private void ApplyFighterSquadronLosses(List<FighterLossResult> lossResults)
+        /// <param name="planet">The planet where combat occurred.</param>
+        /// <returns>Destruction results for eliminated squadrons.</returns>
+        private List<GameResult> ApplyFighterSquadronLosses(
+            List<FighterLossResult> lossResults,
+            Planet planet
+        )
         {
+            List<GameResult> events = new List<GameResult>();
             foreach (FighterLossResult loss in lossResults)
             {
                 Starfighter fighter = loss.Fighter;
@@ -1034,9 +1049,20 @@ namespace Rebellion.Simulation
                 if (loss.SquadsAfter <= 0)
                 {
                     _game.DeleteNode(fighter);
+                    events.Add(
+                        new GameObjectDestroyedResult
+                        {
+                            DestroyedObject = fighter,
+                            Context = planet,
+                            Reason = UnitDestructionReason.Combat,
+                            Tick = _game.CurrentTick,
+                        }
+                    );
                     GameLogger.Log($"Fighter squadron destroyed: {fighter.GetDisplayName()}");
                 }
             }
+
+            return events;
         }
 
         /// <summary>

@@ -343,7 +343,6 @@ namespace Rebellion.Tests.AI.Helpers
                 ?? new BombardmentCommands(
                     game,
                     provider,
-                    movementSystem,
                     planetaryControl,
                     new BombardmentQueries(game)
                 );

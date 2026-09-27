@@ -202,6 +202,156 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Verifies that sabotaging a capital ship relocates its carried officer through the
+        /// published sabotage result.
+        /// </summary>
+        [Test]
+        public void ResolveObjective_CapitalShipWithOfficer_RelocatesOfficerToFriendlyPlanet()
+        {
+            (
+                GameRoot game,
+                Planet empirePlanet,
+                Planet enemyPlanet,
+                Officer saboteur,
+                FogOfWarCommands fog
+            ) = MissionSceneBuilder.Build();
+            PlanetSector sector = enemyPlanet.GetParentOfType<PlanetSector>();
+            Planet fallback = new Planet
+            {
+                InstanceID = "rebel-fallback",
+                OwnerInstanceID = "rebels",
+                IsColonized = true,
+                PositionX = 125,
+                PositionY = 0,
+            };
+            Fleet fleet = EntityFactory.CreateFleet("target-fleet", "rebels");
+            CapitalShip target = new CapitalShip
+            {
+                InstanceID = "target-ship",
+                OwnerInstanceID = "rebels",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                CurrentHullStrength = 100,
+            };
+            Officer carriedOfficer = EntityFactory.CreateOfficer("carried-officer", "rebels");
+            game.AttachNode(fallback, sector);
+            game.AttachNode(fleet, enemyPlanet);
+            game.AttachNode(target, fleet);
+            game.AttachNode(carriedOfficer, target);
+            MovementCommands movement = new MovementCommands(
+                game,
+                fog,
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
+            GameResultBus resultBus = new GameResultBus();
+            new MovementObserver(movement).Connect(resultBus);
+            Mission mission = CreateSabotageMission(
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { saboteur },
+                new List<IMissionParticipant>(),
+                target
+            );
+            game.AttachNode(mission, enemyPlanet);
+            mission.Initiate(0);
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+
+            List<GameResult> results = mission.ResolveObjective(game, new FixedRNG(0.0));
+            resultBus.Publish(results);
+
+            Assert.IsNull(
+                game.GetSceneNodeByInstanceID<CapitalShip>(target.InstanceID, includeDisabled: true)
+            );
+            Assert.AreSame(
+                carriedOfficer,
+                game.GetSceneNodeByInstanceID<Officer>(
+                    carriedOfficer.InstanceID,
+                    includeDisabled: true
+                )
+            );
+            Assert.AreSame(fallback, carriedOfficer.GetParent());
+            Assert.IsNotNull(carriedOfficer.Movement);
+        }
+
+        /// <summary>
+        /// Verifies that sabotaging a capital ship relocates its inactive carried officer without
+        /// activating that officer.
+        /// </summary>
+        [Test]
+        public void ResolveObjective_CapitalShipWithInactiveOfficer_RelocatesWithoutActivating()
+        {
+            (
+                GameRoot game,
+                Planet empirePlanet,
+                Planet enemyPlanet,
+                Officer saboteur,
+                FogOfWarCommands fog
+            ) = MissionSceneBuilder.Build();
+            PlanetSector sector = enemyPlanet.GetParentOfType<PlanetSector>();
+            Planet fallback = new Planet
+            {
+                InstanceID = "rebel-fallback",
+                OwnerInstanceID = "rebels",
+                IsColonized = true,
+                PositionX = 125,
+                PositionY = 0,
+            };
+            Fleet fleet = EntityFactory.CreateFleet("target-fleet", "rebels");
+            CapitalShip target = new CapitalShip
+            {
+                InstanceID = "target-ship",
+                OwnerInstanceID = "rebels",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                CurrentHullStrength = 100,
+            };
+            Officer carriedOfficer = EntityFactory.CreateOfficer("carried-officer", "rebels");
+            carriedOfficer.IsEnabled = false;
+            game.AttachNode(fallback, sector);
+            game.AttachNode(fleet, enemyPlanet);
+            game.AttachNode(target, fleet);
+            game.AttachNode(carriedOfficer, target);
+            MovementCommands movement = new MovementCommands(
+                game,
+                fog,
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
+            GameResultBus resultBus = new GameResultBus();
+            new MovementObserver(movement).Connect(resultBus);
+            Mission mission = CreateSabotageMission(
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { saboteur },
+                new List<IMissionParticipant>(),
+                target
+            );
+            game.AttachNode(mission, enemyPlanet);
+            mission.Initiate(0);
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+
+            List<GameResult> results = mission.ResolveObjective(game, new FixedRNG(0.0));
+            resultBus.Publish(results);
+
+            Assert.IsNull(
+                game.GetSceneNodeByInstanceID<CapitalShip>(target.InstanceID, includeDisabled: true)
+            );
+            Assert.AreSame(
+                carriedOfficer,
+                game.GetSceneNodeByInstanceID<Officer>(
+                    carriedOfficer.InstanceID,
+                    includeDisabled: true
+                )
+            );
+            Assert.AreSame(fallback, carriedOfficer.GetParent());
+            Assert.IsNotNull(carriedOfficer.Movement);
+            Assert.IsFalse(carriedOfficer.IsEnabled);
+        }
+
         [Test]
         public void ResolveObjective_BuildingOnEnemyPlanet_SetsSaboteurOnResult()
         {
