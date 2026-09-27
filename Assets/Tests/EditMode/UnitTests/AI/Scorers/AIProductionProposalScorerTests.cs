@@ -17,9 +17,6 @@ namespace Rebellion.Tests.AI.Scorers
     [TestFixture]
     public class AIProductionProposalScorerTests
     {
-        /// <summary>
-        /// Verifies mandatory facility cleanup receives the neutral domain score.
-        /// </summary>
         [Test]
         public void Score_FacilityRemovalProposal_ReturnsZero()
         {
