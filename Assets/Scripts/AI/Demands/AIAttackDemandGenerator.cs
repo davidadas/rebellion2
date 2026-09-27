@@ -114,7 +114,9 @@ namespace Rebellion.AI.Demands
                         && !string.IsNullOrEmpty(fleet.GetOwnerInstanceID())
                         && fleet.GetOwnerInstanceID() != context.Faction.InstanceID
                     )
-                    .Select(fleet => fleet.GetCombatValue())
+                    .Select(fleet =>
+                        context.Assessment.GetReadyFleetCombatValueAgainstCapitalShips(fleet)
+                    )
                     .DefaultIfEmpty()
                     .Max()
                 + planet

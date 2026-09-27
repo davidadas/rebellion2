@@ -559,7 +559,10 @@ namespace Rebellion.Simulation
                 fleet.Movement != null || fleet.GetParentOfType<Planet>() != originalPlanet;
             if (
                 retreated
-                && fleet.Order?.OrderType == FleetOrderType.Attack
+                && (
+                    fleet.Order?.OrderType == FleetOrderType.Attack
+                    || fleet.Order?.OrderType == FleetOrderType.Engage
+                )
                 && fleet.Order.TargetPlanetId == originalPlanet?.InstanceID
             )
                 fleet.Order = null;
