@@ -503,15 +503,15 @@ namespace Rebellion.Simulation
             if (missionPlanet == null)
                 return;
 
-            foreach (
-                IMissionParticipant participant in mission
-                    .GetAllParticipants(includeDisabled: true)
-                    .Where(participant => !IsFreeParticipant(participant))
-            )
-            {
-                if (participant.GetParent() == mission && missionPlanet.CanAcceptChild(participant))
-                    _game.MoveNode(participant, missionPlanet);
-            }
+            List<IMissionParticipant> participants = mission
+                .GetAllParticipants(includeDisabled: true)
+                .Where(participant => !IsFreeParticipant(participant))
+                .Where(participant =>
+                    participant.GetParent() == mission && missionPlanet.CanAcceptChild(participant)
+                )
+                .ToList();
+
+            _movementManager.CompleteMissionAtLocation(participants, missionPlanet);
         }
 
         /// <summary>

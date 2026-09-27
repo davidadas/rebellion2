@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 
@@ -57,7 +58,13 @@ internal static class FleetWindowContextMenuBuilder
             .Where(item => item is Officer || item is SpecialForces)
             .ToList();
         return personnel.Count > 0
-            ? BuildPersonnelCommands(personnel, canMove, canCreateMission, canRetire)
+            ? BuildPersonnelCommands(
+                personnel,
+                playerControlsItems,
+                canMove,
+                canCreateMission,
+                canRetire
+            )
             : BuildUnavailableInformationCommands();
     }
 
@@ -180,12 +187,14 @@ internal static class FleetWindowContextMenuBuilder
     /// Builds commands for officer and special-forces selections.
     /// </summary>
     /// <param name="personnel">The selected personnel.</param>
+    /// <param name="playerControlsItems">Whether the player controls the selection.</param>
     /// <param name="canMove">Whether all selected personnel can move.</param>
     /// <param name="canCreateMission">Whether the selection can start a mission.</param>
     /// <param name="canRetire">Whether all selected personnel can retire.</param>
     /// <returns>The ordered commands.</returns>
     private static List<StrategyMenuCommand> BuildPersonnelCommands(
         IReadOnlyList<ISceneNode> personnel,
+        bool playerControlsItems,
         bool canMove,
         bool canCreateMission,
         bool canRetire
@@ -197,6 +206,9 @@ internal static class FleetWindowContextMenuBuilder
             new StrategyMenuCommand(StrategyMenuAction.MoveConfirm, "Confirmed Move", canMove),
             new StrategyMenuCommand(StrategyMenuAction.CreateMission, "Mission", canCreateMission),
         };
+        if (personnel.Count == 1 && personnel[0] is Officer officer)
+            commands.Add(BuildOfficerCommandMenu(officer, playerControlsItems));
+
         commands.Add(
             new StrategyMenuCommand(
                 StrategyMenuAction.Encyclopedia,
@@ -209,6 +221,102 @@ internal static class FleetWindowContextMenuBuilder
         );
         commands.Add(new StrategyMenuCommand(StrategyMenuAction.Retire, "Retire ", canRetire));
         return commands;
+    }
+
+    /// <summary>
+    /// Builds the Command submenu for one officer.
+    /// </summary>
+    /// <param name="officer">The selected officer.</param>
+    /// <param name="playerControlsOfficer">Whether the player controls the officer.</param>
+    /// <returns>The complete command submenu.</returns>
+    private static StrategyMenuCommand BuildOfficerCommandMenu(
+        Officer officer,
+        bool playerControlsOfficer
+    )
+    {
+        bool canChangeCommand =
+            playerControlsOfficer
+            && !officer.IsCaptured
+            && !officer.IsKilled
+            && !officer.IsRetired
+            && officer.InjuryPoints <= 0
+            && !officer.IsOnMission()
+            && ((IMovable)officer).GetTransitMovement() == null
+            && (
+                officer.GetParentOfType<Fleet>() != null
+                || officer.GetParentOfType<Planet>() != null
+            );
+        bool hasCommandChoice =
+            officer.CurrentRank != OfficerRank.None
+            || officer.AllowedRanks?.Any(rank => rank != OfficerRank.None) == true;
+        bool commandMenuEnabled = canChangeCommand && hasCommandChoice;
+
+        return new StrategyMenuCommand(
+            StrategyMenuAction.Command,
+            "Command",
+            commandMenuEnabled,
+            submenuCommands: new List<StrategyMenuCommand>
+            {
+                BuildOfficerRankCommand(
+                    StrategyMenuAction.CommandNone,
+                    "None",
+                    OfficerRank.None,
+                    officer,
+                    commandMenuEnabled
+                ),
+                BuildOfficerRankCommand(
+                    StrategyMenuAction.CommandCommander,
+                    "Commander",
+                    OfficerRank.Commander,
+                    officer,
+                    commandMenuEnabled
+                ),
+                BuildOfficerRankCommand(
+                    StrategyMenuAction.CommandAdmiral,
+                    "Admiral",
+                    OfficerRank.Admiral,
+                    officer,
+                    commandMenuEnabled
+                ),
+                BuildOfficerRankCommand(
+                    StrategyMenuAction.CommandGeneral,
+                    "General",
+                    OfficerRank.General,
+                    officer,
+                    commandMenuEnabled
+                ),
+            }
+        );
+    }
+
+    /// <summary>
+    /// Builds one radio-style command choice.
+    /// </summary>
+    /// <param name="action">The semantic appointment action.</param>
+    /// <param name="text">The menu label.</param>
+    /// <param name="rank">The represented command post.</param>
+    /// <param name="officer">The selected officer.</param>
+    /// <param name="canChangeCommand">Whether command changes are currently allowed.</param>
+    /// <returns>The command choice.</returns>
+    private static StrategyMenuCommand BuildOfficerRankCommand(
+        StrategyMenuAction action,
+        string text,
+        OfficerRank rank,
+        Officer officer,
+        bool canChangeCommand
+    )
+    {
+        bool rankAllowed = rank == OfficerRank.None || officer.AllowedRanks?.Contains(rank) == true;
+        bool rankSupportedByLocation =
+            rank != OfficerRank.Admiral || officer.GetParentOfType<Fleet>() != null;
+        return new StrategyMenuCommand(
+            action,
+            text,
+            canChangeCommand && rankAllowed && rankSupportedByLocation,
+            officer.CurrentRank == rank
+                ? StrategyContextMenuIconKeys.CheckMark
+                : StrategyContextMenuIconKeys.None
+        );
     }
 
     /// <summary>

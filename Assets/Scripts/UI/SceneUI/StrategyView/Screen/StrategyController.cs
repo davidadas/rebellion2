@@ -2227,6 +2227,23 @@ public sealed class StrategyController
     }
 
     /// <summary>
+    /// Assigns one selected live officer to a local command post.
+    /// </summary>
+    /// <param name="items">The selected fleet-window items or snapshots.</param>
+    /// <param name="rank">The requested command rank.</param>
+    /// <returns>True when an appointment changed.</returns>
+    bool IFleetWindowActions.TrySetOfficerCommand(IReadOnlyList<ISceneNode> items, OfficerRank rank)
+    {
+        Officer selectedOfficer = items?.Count == 1 ? items[0] as Officer : null;
+        if (selectedOfficer == null)
+            return false;
+
+        return session
+                ?.GetService<OfficerCommandCommands>()
+                ?.TrySetRank(selectedOfficer.InstanceID, rank, PlayerFactionId) == true;
+    }
+
+    /// <summary>
     /// Opens Encyclopedia information for one Defense-window target.
     /// </summary>
     /// <param name="target">The selected information target.</param>

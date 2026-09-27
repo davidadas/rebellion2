@@ -471,7 +471,7 @@ public sealed class FinderWindowRowBuilder
     }
 
     /// <summary>
-    /// Formats a personnel result with its location, status, and rank.
+    /// Formats a personnel result with its location and status.
     /// </summary>
     /// <param name="personnel">The represented personnel node.</param>
     /// <param name="planet">The represented strategy planet.</param>
@@ -486,13 +486,10 @@ public sealed class FinderWindowRowBuilder
         string name = personnel?.GetDisplayName() ?? string.Empty;
         string location = GetPersonnelLocationName(personnel, planet, fleet);
         string status = GetPersonnelStatusText(personnel);
-        string rank = GetPersonnelRankText(personnel);
         string display = $"{name} - {location}";
 
         if (!string.IsNullOrEmpty(status))
             display += $" ({status})";
-        if (!string.IsNullOrEmpty(rank))
-            display += $" ({rank})";
 
         return display;
     }
@@ -661,18 +658,6 @@ public sealed class FinderWindowRowBuilder
                     StringComparison.Ordinal
                 )
             );
-    }
-
-    /// <summary>
-    /// Resolves an officer's current rank label.
-    /// </summary>
-    /// <param name="personnel">The represented personnel node.</param>
-    /// <returns>The displayed rank or an empty string.</returns>
-    private static string GetPersonnelRankText(ISceneNode personnel)
-    {
-        return personnel is Officer { CurrentRank: not OfficerRank.None } officer
-            ? officer.CurrentRank.ToString()
-            : string.Empty;
     }
 
     /// <summary>
