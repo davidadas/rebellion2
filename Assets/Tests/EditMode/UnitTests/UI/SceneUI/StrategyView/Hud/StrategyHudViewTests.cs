@@ -117,12 +117,46 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.IsTrue(notificationButtons[0].interactable);
             Assert.AreEqual(Selectable.Transition.None, notificationButtons[0].transition);
             Assert.AreSame(notifications[0], notificationButtons[0].targetGraphic);
+            Assert.AreEqual(
+                new RectInt(459, 20, 274, 11),
+                GetSourceRect(GetField<UIRaycastArea>("resourceBreakdownHoverView"))
+            );
+            RectTransform resourcePanel = GetField<RectTransform>("resourceBreakdownPanel");
+            Assert.AreEqual(new RectInt(459, 34, 274, 48), UILayout.GetSourceRect(resourcePanel));
+            Assert.IsFalse(resourcePanel.gameObject.activeSelf);
+            Assert.AreEqual(
+                "<color=#A8A8A8><b>ACTIVE</b></color>\n1\n4",
+                GetField<TextMeshProUGUI>("resourceBreakdownActiveTextField").text
+            );
+            Assert.AreEqual(
+                "<color=#A8A8A8><b>BUILDING</b></color>\n2\n5",
+                GetField<TextMeshProUGUI>("resourceBreakdownBuildingTextField").text
+            );
+            Assert.AreEqual(
+                "<color=#A8A8A8><b>EN ROUTE</b></color>\n3\n6",
+                GetField<TextMeshProUGUI>("resourceBreakdownEnRouteTextField").text
+            );
+        }
+
+        [Test]
+        public void ResourceBreakdownHover_PointerExits_HidesPanel()
+        {
+            _view.Render(CreateViewData(CreateButtons(0), CreateNotifications(0), null));
+            UIRaycastArea hoverArea = GetField<UIRaycastArea>("resourceBreakdownHoverView");
+            RectTransform panel = GetField<RectTransform>("resourceBreakdownPanel");
+            PointerEventData eventData = CreatePointerEvent(PointerEventData.InputButton.Left);
+            panel.gameObject.SetActive(true);
+
+            hoverArea.OnPointerExit(eventData);
+
+            Assert.IsFalse(panel.gameObject.activeSelf);
         }
 
         [Test]
         public void Render_MissingOptionalImages_HidesImagesAndDisablesNotification()
         {
             StrategyHudViewData data = new StrategyHudViewData(
+                null,
                 null,
                 null,
                 null,
@@ -155,6 +189,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.IsFalse(GetField<RawImage[]>("mainButtonImages")[0].gameObject.activeSelf);
             Assert.IsFalse(GetField<UIRaycastArea[]>("buttonViews")[0].gameObject.activeSelf);
             Assert.IsFalse(GetField<UIRaycastArea>("speedContextView").gameObject.activeSelf);
+            Assert.IsFalse(
+                GetField<UIRaycastArea>("resourceBreakdownHoverView").gameObject.activeSelf
+            );
+            Assert.IsFalse(GetField<RectTransform>("resourceBreakdownPanel").gameObject.activeSelf);
             Assert.IsFalse(
                 GetField<RawImage[]>("messageNotificationImages")[0].gameObject.activeSelf
             );
@@ -340,6 +378,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 new StrategyHudCounterViewData("456", Color.green, null),
                 new StrategyHudCounterViewData("789", Color.blue, null),
                 new StrategyHudCounterViewData("12", Color.yellow, null),
+                new StrategyHudResourceBreakdownViewData(
+                    new StrategyHudResourceBreakdown(1, 2, 3, 4, 5, 6),
+                    Color.red,
+                    new RectInt(459, 20, 274, 11),
+                    new RectInt(459, 34, 274, 48)
+                ),
                 _speedTexture,
                 new RectInt(100, 20, 50, 16),
                 _displayTexture,

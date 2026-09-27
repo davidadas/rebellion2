@@ -21,6 +21,8 @@ public sealed class StrategyHudRenderData
 
     public TickSpeed Speed { get; }
 
+    public StrategyHudResourceBreakdown ResourceBreakdown { get; }
+
     /// <summary>
     /// Creates an immutable strategy HUD state snapshot.
     /// </summary>
@@ -30,13 +32,15 @@ public sealed class StrategyHudRenderData
     /// <param name="maintenanceText">The displayed maintenance headroom.</param>
     /// <param name="speed">The current strategy speed.</param>
     /// <param name="unreadMessageTypes">The message categories containing unread messages.</param>
+    /// <param name="resourceBreakdown">The current resource-facility totals.</param>
     public StrategyHudRenderData(
         string tickText,
         string rawMaterialsText,
         string refinedMaterialsText,
         string maintenanceText,
         TickSpeed speed,
-        IEnumerable<MessageType> unreadMessageTypes
+        IEnumerable<MessageType> unreadMessageTypes,
+        StrategyHudResourceBreakdown resourceBreakdown = null
     )
     {
         TickText = tickText ?? string.Empty;
@@ -44,6 +48,7 @@ public sealed class StrategyHudRenderData
         RefinedMaterialsText = refinedMaterialsText ?? string.Empty;
         MaintenanceText = maintenanceText ?? string.Empty;
         Speed = speed;
+        ResourceBreakdown = resourceBreakdown ?? StrategyHudResourceBreakdown.Empty;
         this.unreadMessageTypes =
             unreadMessageTypes == null
                 ? new HashSet<MessageType>()
@@ -58,6 +63,87 @@ public sealed class StrategyHudRenderData
     public bool HasUnreadMessageType(MessageType messageType)
     {
         return unreadMessageTypes.Contains(messageType);
+    }
+}
+
+/// <summary>
+/// Contains the player's current mine and refinery totals by lifecycle state.
+/// </summary>
+public sealed class StrategyHudResourceBreakdown
+{
+    public static StrategyHudResourceBreakdown Empty { get; } =
+        new StrategyHudResourceBreakdown(0, 0, 0, 0, 0, 0);
+
+    public int ActiveMines { get; }
+
+    public int BuildingMines { get; }
+
+    public int EnRouteMines { get; }
+
+    public int ActiveRefineries { get; }
+
+    public int BuildingRefineries { get; }
+
+    public int EnRouteRefineries { get; }
+
+    /// <summary>
+    /// Creates immutable resource-facility totals.
+    /// </summary>
+    /// <param name="activeMines">The completed stationary mines.</param>
+    /// <param name="buildingMines">The mines under construction.</param>
+    /// <param name="enRouteMines">The mines traveling to a destination.</param>
+    /// <param name="activeRefineries">The completed stationary refineries.</param>
+    /// <param name="buildingRefineries">The refineries under construction.</param>
+    /// <param name="enRouteRefineries">The refineries traveling to a destination.</param>
+    public StrategyHudResourceBreakdown(
+        int activeMines,
+        int buildingMines,
+        int enRouteMines,
+        int activeRefineries,
+        int buildingRefineries,
+        int enRouteRefineries
+    )
+    {
+        ActiveMines = activeMines;
+        BuildingMines = buildingMines;
+        EnRouteMines = enRouteMines;
+        ActiveRefineries = activeRefineries;
+        BuildingRefineries = buildingRefineries;
+        EnRouteRefineries = enRouteRefineries;
+    }
+}
+
+/// <summary>
+/// Defines resource-facility totals and placement for the HUD hover panel.
+/// </summary>
+public sealed class StrategyHudResourceBreakdownViewData
+{
+    public StrategyHudResourceBreakdown Totals { get; }
+
+    public Color AccentColor { get; }
+
+    public RectInt? HitArea { get; }
+
+    public RectInt? PanelBounds { get; }
+
+    /// <summary>
+    /// Creates immutable resource-breakdown presentation data.
+    /// </summary>
+    /// <param name="totals">The displayed facility totals.</param>
+    /// <param name="accentColor">The active faction accent color.</param>
+    /// <param name="hitArea">The resource-counter hover area.</param>
+    /// <param name="panelBounds">The panel bounds below the counters.</param>
+    public StrategyHudResourceBreakdownViewData(
+        StrategyHudResourceBreakdown totals,
+        Color accentColor,
+        RectInt? hitArea,
+        RectInt? panelBounds
+    )
+    {
+        Totals = totals ?? StrategyHudResourceBreakdown.Empty;
+        AccentColor = accentColor;
+        HitArea = hitArea;
+        PanelBounds = panelBounds;
     }
 }
 
@@ -172,6 +258,8 @@ public sealed class StrategyHudViewData
 
     public StrategyHudCounterViewData MaintenanceCounter { get; }
 
+    public StrategyHudResourceBreakdownViewData ResourceBreakdown { get; }
+
     public Texture2D SpeedIndicatorTexture { get; }
 
     public RectInt? SpeedIndicatorBounds { get; }
@@ -195,6 +283,7 @@ public sealed class StrategyHudViewData
     /// <param name="rawMaterialsCounter">The raw-material counter.</param>
     /// <param name="refinedMaterialsCounter">The refined-material counter.</param>
     /// <param name="maintenanceCounter">The maintenance counter.</param>
+    /// <param name="resourceBreakdown">The resource-facility hover panel.</param>
     /// <param name="speedIndicatorTexture">The current speed-indicator texture.</param>
     /// <param name="speedIndicatorBounds">The speed-indicator source-space bounds.</param>
     /// <param name="galacticInformationDisplayTexture">The galactic display control texture.</param>
@@ -208,6 +297,7 @@ public sealed class StrategyHudViewData
         StrategyHudCounterViewData rawMaterialsCounter,
         StrategyHudCounterViewData refinedMaterialsCounter,
         StrategyHudCounterViewData maintenanceCounter,
+        StrategyHudResourceBreakdownViewData resourceBreakdown,
         Texture2D speedIndicatorTexture,
         RectInt? speedIndicatorBounds,
         Texture2D galacticInformationDisplayTexture,
@@ -222,6 +312,7 @@ public sealed class StrategyHudViewData
         RawMaterialsCounter = rawMaterialsCounter;
         RefinedMaterialsCounter = refinedMaterialsCounter;
         MaintenanceCounter = maintenanceCounter;
+        ResourceBreakdown = resourceBreakdown;
         SpeedIndicatorTexture = speedIndicatorTexture;
         SpeedIndicatorBounds = speedIndicatorBounds;
         GalacticInformationDisplayTexture = galacticInformationDisplayTexture;

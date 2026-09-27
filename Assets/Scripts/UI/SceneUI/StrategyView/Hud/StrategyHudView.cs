@@ -11,6 +11,8 @@ using UnityEngine.UI;
 /// </summary>
 public sealed class StrategyHudView : MonoBehaviour
 {
+    private const float _resourceBreakdownHoverDelay = 0.75f;
+
     [SerializeField]
     private RawImage backgroundImage;
 
@@ -43,6 +45,27 @@ public sealed class StrategyHudView : MonoBehaviour
 
     [SerializeField]
     private UIRaycastArea speedContextView;
+
+    [SerializeField]
+    private UIRaycastArea resourceBreakdownHoverView;
+
+    [SerializeField]
+    private RectTransform resourceBreakdownPanel;
+
+    [SerializeField]
+    private TextMeshProUGUI resourceBreakdownTitleTextField;
+
+    [SerializeField]
+    private TextMeshProUGUI resourceBreakdownLabelsTextField;
+
+    [SerializeField]
+    private TextMeshProUGUI resourceBreakdownActiveTextField;
+
+    [SerializeField]
+    private TextMeshProUGUI resourceBreakdownBuildingTextField;
+
+    [SerializeField]
+    private TextMeshProUGUI resourceBreakdownEnRouteTextField;
 
     [SerializeField]
     private StrategyAdvisorView advisorView;
@@ -92,6 +115,8 @@ public sealed class StrategyHudView : MonoBehaviour
     private UnityAction[] messageNotificationClickHandlers = Array.Empty<UnityAction>();
     private StrategyHudAction pressedButtonAction;
     private bool eventsBound;
+    private bool resourceBreakdownHovered;
+    private float resourceBreakdownShowTime;
 
     /// <summary>
     /// Validates authored references and subscribes child controls when Unity creates the view.
@@ -100,6 +125,19 @@ public sealed class StrategyHudView : MonoBehaviour
     {
         VerifyReferences();
         BindEvents();
+    }
+
+    /// <summary>
+    /// Reveals the resource breakdown after the pointer has rested over the resource counters.
+    /// </summary>
+    private void Update()
+    {
+        if (
+            resourceBreakdownHovered
+            && !resourceBreakdownPanel.gameObject.activeSelf
+            && Time.unscaledTime >= resourceBreakdownShowTime
+        )
+            resourceBreakdownPanel.gameObject.SetActive(true);
     }
 
     /// <summary>
@@ -126,6 +164,7 @@ public sealed class StrategyHudView : MonoBehaviour
         SetCounter(rawMaterialsTextField, data.RawMaterialsCounter);
         SetCounter(refinedMaterialsTextField, data.RefinedMaterialsCounter);
         SetCounter(maintenanceTextField, data.MaintenanceCounter);
+        RenderResourceBreakdown(data.ResourceBreakdown);
         SetImageAtSourceRect(
             speedIndicatorImage,
             data.SpeedIndicatorTexture,
@@ -158,6 +197,8 @@ public sealed class StrategyHudView : MonoBehaviour
         }
 
         speedContextView.ContextRequested += HandleSpeedContextRequested;
+        resourceBreakdownHoverView.Entered += HandleResourceBreakdownEntered;
+        resourceBreakdownHoverView.Exited += HandleResourceBreakdownExited;
         BindMessageNotificationButtons();
         eventsBound = true;
     }
@@ -198,6 +239,8 @@ public sealed class StrategyHudView : MonoBehaviour
         }
 
         speedContextView.ContextRequested -= HandleSpeedContextRequested;
+        resourceBreakdownHoverView.Entered -= HandleResourceBreakdownEntered;
+        resourceBreakdownHoverView.Exited -= HandleResourceBreakdownExited;
         for (int i = 0; i < messageNotificationButtons.Length; i++)
         {
             if (i < messageNotificationClickHandlers.Length)
@@ -207,6 +250,82 @@ public sealed class StrategyHudView : MonoBehaviour
 
         messageNotificationClickHandlers = Array.Empty<UnityAction>();
         eventsBound = false;
+    }
+
+    /// <summary>
+    /// Applies resource-facility totals and faction-specific placement to the hover panel.
+    /// </summary>
+    /// <param name="data">The resource-breakdown presentation data.</param>
+    private void RenderResourceBreakdown(StrategyHudResourceBreakdownViewData data)
+    {
+        resourceBreakdownHoverView.Render(data?.HitArea);
+        if (data?.PanelBounds == null)
+        {
+            resourceBreakdownHovered = false;
+            resourceBreakdownPanel.gameObject.SetActive(false);
+            return;
+        }
+
+        RectInt bounds = data.PanelBounds.Value;
+        UILayout.SetSourceRect(
+            resourceBreakdownPanel,
+            bounds.x,
+            bounds.y,
+            bounds.width,
+            bounds.height
+        );
+        resourceBreakdownTitleTextField.color = data.AccentColor;
+        resourceBreakdownLabelsTextField.text =
+            "<color=#A8A8A8><b>FACILITY</b></color>\nMINES\nREFINERIES";
+        resourceBreakdownActiveTextField.text = FormatResourceColumn(
+            "ACTIVE",
+            data.Totals.ActiveMines,
+            data.Totals.ActiveRefineries
+        );
+        resourceBreakdownBuildingTextField.text = FormatResourceColumn(
+            "BUILDING",
+            data.Totals.BuildingMines,
+            data.Totals.BuildingRefineries
+        );
+        resourceBreakdownEnRouteTextField.text = FormatResourceColumn(
+            "EN ROUTE",
+            data.Totals.EnRouteMines,
+            data.Totals.EnRouteRefineries
+        );
+    }
+
+    /// <summary>
+    /// Formats one resource-breakdown table column.
+    /// </summary>
+    /// <param name="heading">The column heading.</param>
+    /// <param name="mineCount">The mine total.</param>
+    /// <param name="refineryCount">The refinery total.</param>
+    /// <returns>The formatted column text.</returns>
+    private static string FormatResourceColumn(string heading, int mineCount, int refineryCount)
+    {
+        return $"<color=#A8A8A8><b>{heading}</b></color>\n{mineCount}\n{refineryCount}";
+    }
+
+    /// <summary>
+    /// Starts the delayed resource-breakdown reveal.
+    /// </summary>
+    /// <param name="area">The resource-counter hit area.</param>
+    /// <param name="eventData">The pointer event.</param>
+    private void HandleResourceBreakdownEntered(UIRaycastArea area, PointerEventData eventData)
+    {
+        resourceBreakdownHovered = true;
+        resourceBreakdownShowTime = Time.unscaledTime + _resourceBreakdownHoverDelay;
+    }
+
+    /// <summary>
+    /// Hides the resource breakdown when the pointer leaves the resource counters.
+    /// </summary>
+    /// <param name="area">The resource-counter hit area.</param>
+    /// <param name="eventData">The pointer event.</param>
+    private void HandleResourceBreakdownExited(UIRaycastArea area, PointerEventData eventData)
+    {
+        resourceBreakdownHovered = false;
+        resourceBreakdownPanel.gameObject.SetActive(false);
     }
 
     /// <summary>
@@ -530,6 +649,30 @@ public sealed class StrategyHudView : MonoBehaviour
 
         if (speedContextView == null)
             throw new MissingReferenceException($"{name}/SpeedContextView is missing.");
+        if (resourceBreakdownHoverView == null)
+            throw new MissingReferenceException($"{name}/ResourceBreakdownHoverView is missing.");
+        if (resourceBreakdownPanel == null)
+            throw new MissingReferenceException($"{name}/ResourceBreakdownPanel is missing.");
+        if (resourceBreakdownTitleTextField == null)
+            throw new MissingReferenceException(
+                $"{name}/ResourceBreakdownTitleTextField is missing."
+            );
+        if (resourceBreakdownLabelsTextField == null)
+            throw new MissingReferenceException(
+                $"{name}/ResourceBreakdownLabelsTextField is missing."
+            );
+        if (resourceBreakdownActiveTextField == null)
+            throw new MissingReferenceException(
+                $"{name}/ResourceBreakdownActiveTextField is missing."
+            );
+        if (resourceBreakdownBuildingTextField == null)
+            throw new MissingReferenceException(
+                $"{name}/ResourceBreakdownBuildingTextField is missing."
+            );
+        if (resourceBreakdownEnRouteTextField == null)
+            throw new MissingReferenceException(
+                $"{name}/ResourceBreakdownEnRouteTextField is missing."
+            );
         if (advisorView == null)
             throw new MissingReferenceException($"{name}/AdvisorView is missing.");
     }

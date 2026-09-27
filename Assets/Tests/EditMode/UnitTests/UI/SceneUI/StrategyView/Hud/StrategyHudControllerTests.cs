@@ -230,6 +230,113 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         }
 
         [Test]
+        public void CreateResourceBreakdown_MixedFacilityStates_ClassifiesFacilityTotals()
+        {
+            Faction faction = new Faction();
+            faction.AddOwnedUnit(
+                new Building
+                {
+                    BuildingType = BuildingType.Mine,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                }
+            );
+            faction.AddOwnedUnit(
+                new Building
+                {
+                    BuildingType = BuildingType.Mine,
+                    ManufacturingStatus = ManufacturingStatus.Building,
+                }
+            );
+            faction.AddOwnedUnit(
+                new Building
+                {
+                    BuildingType = BuildingType.Mine,
+                    ManufacturingStatus = ManufacturingStatus.Delivering,
+                }
+            );
+            faction.AddOwnedUnit(
+                new Building
+                {
+                    BuildingType = BuildingType.Refinery,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                }
+            );
+            faction.AddOwnedUnit(
+                new Building
+                {
+                    BuildingType = BuildingType.Refinery,
+                    ManufacturingStatus = ManufacturingStatus.Building,
+                }
+            );
+            faction.AddOwnedUnit(
+                new Building
+                {
+                    BuildingType = BuildingType.Refinery,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                    Movement = new MovementState(),
+                }
+            );
+            faction.AddOwnedUnit(
+                new Building
+                {
+                    BuildingType = BuildingType.Shipyard,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                }
+            );
+
+            StrategyHudResourceBreakdown breakdown = StrategyHudController.CreateResourceBreakdown(
+                faction
+            );
+
+            Assert.AreEqual(1, breakdown.ActiveMines);
+            Assert.AreEqual(1, breakdown.BuildingMines);
+            Assert.AreEqual(1, breakdown.EnRouteMines);
+            Assert.AreEqual(1, breakdown.ActiveRefineries);
+            Assert.AreEqual(1, breakdown.BuildingRefineries);
+            Assert.AreEqual(1, breakdown.EnRouteRefineries);
+        }
+
+        [Test]
+        public void CreateViewData_ResourceCounterLayouts_PositionsBreakdownBelowCounters()
+        {
+            FactionTheme theme = new FactionTheme
+            {
+                TacticalHUDLayout = new TacticalHUDLayout
+                {
+                    RawMaterialsSourceLayout = new SourceRectLayout
+                    {
+                        X = 459,
+                        Y = 20,
+                        Width = 80,
+                        Height = 11,
+                    },
+                    RefinedMaterialsSourceLayout = new SourceRectLayout
+                    {
+                        X = 553,
+                        Y = 20,
+                        Width = 80,
+                        Height = 11,
+                    },
+                    MaintenanceSourceLayout = new SourceRectLayout
+                    {
+                        X = 653,
+                        Y = 20,
+                        Width = 80,
+                        Height = 11,
+                    },
+                },
+            };
+
+            StrategyHudViewData data = _controller.CreateViewData(
+                new StrategyHudRenderData("", "", "", "", TickSpeed.Paused, null),
+                theme
+            );
+
+            Assert.AreEqual(new RectInt(459, 20, 274, 11), data.ResourceBreakdown.HitArea);
+            Assert.AreEqual(new RectInt(459, 34, 274, 48), data.ResourceBreakdown.PanelBounds);
+        }
+
+        [Test]
         public void OnContextMenuCommandSelected_OwnedEnabledSpeedCommand_SetsGameSpeed()
         {
             StrategyMenuCommand command = new StrategyMenuCommand(

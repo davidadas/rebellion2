@@ -1465,7 +1465,8 @@ public sealed class StrategyController
                 faction?.RefinedMaterials.ToString() ?? "0",
                 faction?.MaintenanceHeadroom.ToString() ?? "0",
                 gameManager.GetGameSpeed(),
-                StrategyHudController.GetUnreadMessageTypes(faction)
+                StrategyHudController.GetUnreadMessageTypes(faction),
+                StrategyHudController.CreateResourceBreakdown(faction)
             )
         );
     }

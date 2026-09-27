@@ -4,6 +4,7 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
+using Rebellion.Game.Units;
 using UnityEngine;
 
 /// <summary>
@@ -257,6 +258,13 @@ public sealed class StrategyHudController : IContextMenuReceiver
                 textColor,
                 hudTheme?.MaintenanceSourceLayout
             ),
+            resourceBreakdown: CreateResourceBreakdownViewData(
+                data.ResourceBreakdown,
+                textColor,
+                hudTheme?.RawMaterialsSourceLayout,
+                hudTheme?.RefinedMaterialsSourceLayout,
+                hudTheme?.MaintenanceSourceLayout
+            ),
             speedIndicatorTexture: ResolveTexture(
                 GetSpeedIndicatorPath(hudTheme?.SpeedIndicators, data.Speed)
             ),
@@ -328,6 +336,124 @@ public sealed class StrategyHudController : IContextMenuReceiver
         }
 
         return types;
+    }
+
+    /// <summary>
+    /// Counts the player's mines and refineries by their current lifecycle state.
+    /// </summary>
+    /// <param name="faction">The faction whose facilities are counted.</param>
+    /// <returns>The resource-facility totals.</returns>
+    internal static StrategyHudResourceBreakdown CreateResourceBreakdown(Faction faction)
+    {
+        if (faction == null)
+            return StrategyHudResourceBreakdown.Empty;
+
+        int activeMines = 0;
+        int buildingMines = 0;
+        int enRouteMines = 0;
+        int activeRefineries = 0;
+        int buildingRefineries = 0;
+        int enRouteRefineries = 0;
+
+        foreach (Building building in faction.GetOwnedUnitsByType<Building>())
+        {
+            if (building.BuildingType is not (BuildingType.Mine or BuildingType.Refinery))
+                continue;
+
+            bool isMine = building.BuildingType == BuildingType.Mine;
+            if (building.ManufacturingStatus == ManufacturingStatus.Building)
+            {
+                if (isMine)
+                    buildingMines++;
+                else
+                    buildingRefineries++;
+            }
+            else if (
+                building.ManufacturingStatus == ManufacturingStatus.Delivering
+                || building.Movement != null
+            )
+            {
+                if (isMine)
+                    enRouteMines++;
+                else
+                    enRouteRefineries++;
+            }
+            else
+            {
+                if (isMine)
+                    activeMines++;
+                else
+                    activeRefineries++;
+            }
+        }
+
+        return new StrategyHudResourceBreakdown(
+            activeMines,
+            buildingMines,
+            enRouteMines,
+            activeRefineries,
+            buildingRefineries,
+            enRouteRefineries
+        );
+    }
+
+    /// <summary>
+    /// Projects the resource hover panel beneath the active faction's resource counters.
+    /// </summary>
+    /// <param name="totals">The current facility totals.</param>
+    /// <param name="accentColor">The active faction accent color.</param>
+    /// <param name="rawMaterialsLayout">The raw-material counter layout.</param>
+    /// <param name="refinedMaterialsLayout">The refined-material counter layout.</param>
+    /// <param name="maintenanceLayout">The maintenance counter layout.</param>
+    /// <returns>The resource-breakdown presentation data.</returns>
+    private static StrategyHudResourceBreakdownViewData CreateResourceBreakdownViewData(
+        StrategyHudResourceBreakdown totals,
+        Color accentColor,
+        SourceRectLayout rawMaterialsLayout,
+        SourceRectLayout refinedMaterialsLayout,
+        SourceRectLayout maintenanceLayout
+    )
+    {
+        RectInt? hitArea = UnionLayouts(
+            rawMaterialsLayout,
+            refinedMaterialsLayout,
+            maintenanceLayout
+        );
+        RectInt? panelBounds = hitArea.HasValue
+            ? new RectInt(hitArea.Value.x, hitArea.Value.yMax + 3, hitArea.Value.width, 48)
+            : null;
+        return new StrategyHudResourceBreakdownViewData(totals, accentColor, hitArea, panelBounds);
+    }
+
+    /// <summary>
+    /// Finds the smallest source-space rectangle containing all supplied layouts.
+    /// </summary>
+    /// <param name="layouts">The optional layouts to combine.</param>
+    /// <returns>The combined bounds, or null when no layout is supplied.</returns>
+    private static RectInt? UnionLayouts(params SourceRectLayout[] layouts)
+    {
+        RectInt? result = null;
+        foreach (SourceRectLayout layout in layouts)
+        {
+            if (layout == null)
+                continue;
+
+            RectInt next = ToRequiredRect(layout);
+            if (!result.HasValue)
+            {
+                result = next;
+                continue;
+            }
+
+            RectInt current = result.Value;
+            int left = Math.Min(current.xMin, next.xMin);
+            int top = Math.Min(current.yMin, next.yMin);
+            int right = Math.Max(current.xMax, next.xMax);
+            int bottom = Math.Max(current.yMax, next.yMax);
+            result = new RectInt(left, top, right - left, bottom - top);
+        }
+
+        return result;
     }
 
     /// <summary>

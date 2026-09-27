@@ -824,6 +824,19 @@ public static class StrategyViewPrefabBuilder
             hud.transform,
             PreviewTheme?.TacticalHUDLayout?.SpeedContextSourceLayout
         );
+        RectTransform resourceBreakdownPanel = CreateResourceBreakdownPanel(
+            hud.transform,
+            out TextMeshProUGUI resourceBreakdownTitle,
+            out TextMeshProUGUI resourceBreakdownLabels,
+            out TextMeshProUGUI resourceBreakdownActive,
+            out TextMeshProUGUI resourceBreakdownBuilding,
+            out TextMeshProUGUI resourceBreakdownEnRoute
+        );
+        UIRaycastArea resourceBreakdownHoverView = CreateHudButtonView(
+            "ResourceBreakdownHoverArea",
+            hud.transform,
+            (SourceRectLayout)null
+        );
         RawImage pressedMainButtonImage = CreateRawImage(
             "PressedMainButtonImage",
             hud.transform,
@@ -936,6 +949,13 @@ public static class StrategyViewPrefabBuilder
         AssignReferenceArray(hudView, "messageNotificationButtons", messageNotificationButtons);
         AssignReferenceArray(hudView, "buttonViews", hudButtonViews);
         AssignReference(hudView, "speedContextView", speedContextView);
+        AssignReference(hudView, "resourceBreakdownHoverView", resourceBreakdownHoverView);
+        AssignReference(hudView, "resourceBreakdownPanel", resourceBreakdownPanel);
+        AssignReference(hudView, "resourceBreakdownTitleTextField", resourceBreakdownTitle);
+        AssignReference(hudView, "resourceBreakdownLabelsTextField", resourceBreakdownLabels);
+        AssignReference(hudView, "resourceBreakdownActiveTextField", resourceBreakdownActive);
+        AssignReference(hudView, "resourceBreakdownBuildingTextField", resourceBreakdownBuilding);
+        AssignReference(hudView, "resourceBreakdownEnRouteTextField", resourceBreakdownEnRoute);
         AssignReference(hudView, "advisorView", advisorView);
         AssignReference(galaxyMapView, "background", background);
         AssignReference(galaxyMapView, "backgroundImage", backgroundImage);
@@ -947,6 +967,130 @@ public static class StrategyViewPrefabBuilder
         Object.DestroyImmediate(sceneRoot);
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
+    }
+
+    /// <summary>
+    /// Authors the compact resource-facility breakdown displayed beneath the HUD counters.
+    /// </summary>
+    /// <param name="parent">The owning HUD transform.</param>
+    /// <param name="title">The authored panel title.</param>
+    /// <param name="labels">The authored facility labels.</param>
+    /// <param name="active">The authored active-count column.</param>
+    /// <param name="building">The authored construction-count column.</param>
+    /// <param name="enRoute">The authored transit-count column.</param>
+    /// <returns>The authored panel root.</returns>
+    private static RectTransform CreateResourceBreakdownPanel(
+        Transform parent,
+        out TextMeshProUGUI title,
+        out TextMeshProUGUI labels,
+        out TextMeshProUGUI active,
+        out TextMeshProUGUI building,
+        out TextMeshProUGUI enRoute
+    )
+    {
+        RawImage background = CreatePanelImage(
+            "ResourceBreakdownPanel",
+            parent,
+            new Color(0.025f, 0.03f, 0.04f, 0.97f)
+        );
+        background.raycastTarget = false;
+        SetSourceRect(background.rectTransform, 0, 0, 274, 48);
+        Outline outline = background.gameObject.AddComponent<Outline>();
+        outline.effectColor = new Color(0.42f, 0.45f, 0.5f, 0.85f);
+        outline.effectDistance = new Vector2(1f, -1f);
+        outline.useGraphicAlpha = true;
+
+        title = CreateResourceBreakdownText(
+            "TitleTextField",
+            "RESOURCE FACILITIES",
+            background.transform,
+            6,
+            3,
+            262,
+            9,
+            TextAlignmentOptions.Left,
+            FontStyles.Bold
+        );
+        labels = CreateResourceBreakdownText(
+            "LabelsTextField",
+            "FACILITY\nMINES\nREFINERIES",
+            background.transform,
+            6,
+            15,
+            68,
+            29,
+            TextAlignmentOptions.TopLeft
+        );
+        active = CreateResourceBreakdownText(
+            "ActiveTextField",
+            "ACTIVE\n0\n0",
+            background.transform,
+            75,
+            15,
+            50,
+            29,
+            TextAlignmentOptions.Top
+        );
+        building = CreateResourceBreakdownText(
+            "BuildingTextField",
+            "BUILDING\n0\n0",
+            background.transform,
+            128,
+            15,
+            70,
+            29,
+            TextAlignmentOptions.Top
+        );
+        enRoute = CreateResourceBreakdownText(
+            "EnRouteTextField",
+            "EN ROUTE\n0\n0",
+            background.transform,
+            201,
+            15,
+            67,
+            29,
+            TextAlignmentOptions.Top
+        );
+        background.gameObject.SetActive(false);
+        return background.rectTransform;
+    }
+
+    /// <summary>
+    /// Authors one text field inside the resource-facility breakdown.
+    /// </summary>
+    /// <param name="name">The text object name.</param>
+    /// <param name="text">The preview text.</param>
+    /// <param name="parent">The panel transform.</param>
+    /// <param name="x">The source-space horizontal position.</param>
+    /// <param name="y">The source-space vertical position.</param>
+    /// <param name="width">The source-space width.</param>
+    /// <param name="height">The source-space height.</param>
+    /// <param name="alignment">The text alignment.</param>
+    /// <param name="fontStyle">The optional font style.</param>
+    /// <returns>The authored text field.</returns>
+    private static TextMeshProUGUI CreateResourceBreakdownText(
+        string name,
+        string text,
+        Transform parent,
+        int x,
+        int y,
+        int width,
+        int height,
+        TextAlignmentOptions alignment,
+        FontStyles fontStyle = FontStyles.Normal
+    )
+    {
+        TextMeshProUGUI textField = CreateTextLabel(name, parent);
+        textField.text = text;
+        textField.color = Color.white;
+        textField.fontSize = 7;
+        textField.fontStyle = fontStyle;
+        textField.alignment = alignment;
+        textField.textWrappingMode = TextWrappingModes.NoWrap;
+        textField.overflowMode = TextOverflowModes.Overflow;
+        textField.raycastTarget = false;
+        SetSourceRect(textField.rectTransform, x, y, width, height);
+        return textField;
     }
 
     /// <summary>

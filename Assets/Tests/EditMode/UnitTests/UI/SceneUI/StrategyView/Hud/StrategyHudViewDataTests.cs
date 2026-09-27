@@ -25,6 +25,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.AreEqual(string.Empty, data.RefinedMaterialsText);
             Assert.AreEqual(string.Empty, data.MaintenanceText);
             Assert.AreEqual(TickSpeed.Paused, data.Speed);
+            Assert.AreSame(StrategyHudResourceBreakdown.Empty, data.ResourceBreakdown);
             Assert.IsFalse(data.HasUnreadMessageType(MessageType.Fleet));
         }
 
@@ -56,6 +57,31 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.IsTrue(data.HasUnreadMessageType(MessageType.Fleet));
             Assert.IsTrue(data.HasUnreadMessageType(MessageType.Mission));
             Assert.IsFalse(data.HasUnreadMessageType(MessageType.Resource));
+        }
+
+        [Test]
+        public void RenderData_ResourceBreakdown_PreservesFacilityTotals()
+        {
+            StrategyHudResourceBreakdown breakdown = new StrategyHudResourceBreakdown(
+                1,
+                2,
+                3,
+                4,
+                5,
+                6
+            );
+
+            StrategyHudRenderData data = new StrategyHudRenderData(
+                "",
+                "",
+                "",
+                "",
+                TickSpeed.Paused,
+                null,
+                breakdown
+            );
+
+            Assert.AreSame(breakdown, data.ResourceBreakdown);
         }
     }
 }
