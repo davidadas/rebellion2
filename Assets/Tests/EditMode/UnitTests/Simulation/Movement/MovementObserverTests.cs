@@ -19,10 +19,6 @@ namespace Rebellion.Tests.Simulation
     [TestFixture]
     public class MovementObserverTests
     {
-        /// <summary>
-        /// Verifies that independently moving units reroute from their live positions when their
-        /// destination becomes blockaded.
-        /// </summary>
         [Test]
         public void HandleResults_IndependentInboundUnits_RerouteFromCurrentPosition()
         {
@@ -306,10 +302,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies that a compatible friendly carrier nearest the unit's live position is
-        /// preferred over an owned planet.
-        /// </summary>
         [Test]
         public void HandleResults_NearerFriendlyCarrier_IsPreferredOverOwnedPlanet()
         {
@@ -355,10 +347,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNotNull(starfighter.Movement);
         }
 
-        /// <summary>
-        /// Verifies that a blockaded candidate is skipped in favor of the next safe destination
-        /// nearest the unit's live position.
-        /// </summary>
         [Test]
         public void HandleResults_BlockadedFallback_IsSkipped()
         {
@@ -386,10 +374,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNotNull(starfighter.Movement);
         }
 
-        /// <summary>
-        /// Verifies that carrier destruction relocates an inactive officer without activating the
-        /// officer.
-        /// </summary>
         [Test]
         public void HandleResults_DestroyedCarrierWithInactiveOfficer_RelocatesWithoutActivating()
         {
@@ -426,10 +410,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies that a surviving occupant uses the nearest safe compatible location when
-        /// multiple relocation destinations are available.
-        /// </summary>
         [Test]
         public void HandleResults_DestroyedCarrierWithMultipleSafeDestinations_UsesNearestLocation()
         {
@@ -460,10 +440,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNotNull(officer.Movement);
         }
 
-        /// <summary>
-        /// Verifies that an officer uses a compatible surviving carrier in the same fleet before
-        /// relocating elsewhere.
-        /// </summary>
         [Test]
         public void HandleResults_DestroyedCarrierWithSurvivingCarrier_MovesOfficerWithinFleet()
         {
@@ -492,10 +468,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(officer.Movement);
         }
 
-        /// <summary>
-        /// Verifies that an officer whose carrier is removed over a friendly planet remains in
-        /// the local system when no surviving ship can receive the officer.
-        /// </summary>
         [Test]
         public void HandleResults_DestroyedCarrierOverFriendlyPlanet_RestoresOfficerLocally()
         {
@@ -518,10 +490,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(officer.Movement);
         }
 
-        /// <summary>
-        /// Verifies that the local hostile faction captures an officer whose destroyed carrier
-        /// leaves no friendly destination.
-        /// </summary>
         [Test]
         public void HandleResults_DestroyedCarrierWithoutFriendlyDestination_CapturesOfficerLocally()
         {
@@ -551,10 +519,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies that an officer stranded over a neutral planet remains registered locally
-        /// when no friendly destination or planetary captor exists.
-        /// </summary>
         [Test]
         public void HandleResults_DestroyedCarrierOverNeutralPlanetWithoutDestination_RetainsOfficerLocally()
         {
@@ -592,10 +556,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies that a completed fighter surviving active combat is destroyed when no friendly
-        /// destination can receive it.
-        /// </summary>
         [Test]
         public void HandleResults_CombatDestroyedCarrierWithoutFriendlyDestination_LeavesFighterDestroyed()
         {
@@ -626,10 +586,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(scene.carrier, fighter.GetParent());
         }
 
-        /// <summary>
-        /// Verifies that an officer explicitly included in the destruction batch remains
-        /// destroyed with the carrier.
-        /// </summary>
         [Test]
         public void HandleResults_DestroyedCarrierAndOfficer_LeavesOfficerDestroyed()
         {
@@ -663,9 +619,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(scene.carrier, officer.GetParent());
         }
 
-        /// <summary>
-        /// Verifies that an officer relocates when the officer's carrier is manually scrapped.
-        /// </summary>
         [Test]
         public void HandleResults_ScrappedCarrierWithOfficer_RelocatesOfficer()
         {
@@ -686,10 +639,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNotNull(officer.Movement);
         }
 
-        /// <summary>
-        /// Verifies that an officer relocates when maintenance automatically scraps the officer's
-        /// carrier.
-        /// </summary>
         [Test]
         public void HandleResults_AutoscrappedCarrierWithOfficer_RelocatesOfficer()
         {
@@ -710,10 +659,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNotNull(officer.Movement);
         }
 
-        /// <summary>
-        /// Verifies that a completed fighter surviving active space combat is recovered after its
-        /// carrier is destroyed.
-        /// </summary>
         [Test]
         public void HandleResults_CombatDestroyedCarrierWithCompletedFighter_RelocatesFighter()
         {
@@ -745,9 +690,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNotNull(fighter.Movement);
         }
 
-        /// <summary>
-        /// Verifies that sabotage does not recover a completed fighter from the destroyed carrier.
-        /// </summary>
         [Test]
         public void HandleResults_SabotagedCarrierWithCompletedFighter_LeavesFighterDestroyed()
         {
@@ -776,10 +718,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(scene.carrier, fighter.GetParent());
         }
 
-        /// <summary>
-        /// Verifies that intentional scrapping does not recover a completed fighter from the
-        /// scrapped carrier.
-        /// </summary>
         [Test]
         public void HandleResults_ScrappedCarrierWithCompletedFighter_LeavesFighterDestroyed()
         {
@@ -808,10 +746,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(scene.carrier, fighter.GetParent());
         }
 
-        /// <summary>
-        /// Verifies that maintenance autoscrapping does not recover a completed fighter from the
-        /// scrapped carrier.
-        /// </summary>
         [Test]
         public void HandleResults_AutoscrappedCarrierWithCompletedFighter_LeavesFighterDestroyed()
         {
@@ -840,9 +774,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(scene.carrier, fighter.GetParent());
         }
 
-        /// <summary>
-        /// Verifies that an unfinished fighter is not recovered when its carrier is destroyed.
-        /// </summary>
         [Test]
         public void HandleResults_DestroyedCarrierWithUnfinishedFighter_LeavesFighterDestroyed()
         {

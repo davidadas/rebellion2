@@ -111,10 +111,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(game.GetSceneNodeByInstanceID<Building>(building.InstanceID));
         }
 
-        /// <summary>
-        /// Verifies that manually scrapping a capital ship restores its officer at the local
-        /// friendly planet through the published scrap result.
-        /// </summary>
         [Test]
         public void TryScrap_CapitalShipWithOfficer_RestoresOfficerAtLocalPlanet()
         {
@@ -139,10 +135,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(scene.officer.Movement);
         }
 
-        /// <summary>
-        /// Verifies that manually scrapping a capital ship relocates its hidden officer without
-        /// making that officer visible.
-        /// </summary>
         [Test]
         public void TryScrap_CapitalShipWithInactiveOfficer_RelocatesOfficerWithoutActivating()
         {
@@ -167,9 +159,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(scene.officer.IsEnabled);
         }
 
-        /// <summary>
-        /// Verifies that manually scrapping a capital ship destroys its completed fighter cargo.
-        /// </summary>
         [Test]
         public void TryScrap_CapitalShipWithCompletedFighter_DestroysFighter()
         {
@@ -320,10 +309,6 @@ namespace Rebellion.Tests.Simulation
             Assert.Greater(shortfall.Amount, 0);
         }
 
-        /// <summary>
-        /// Verifies that maintenance autoscrapping a capital ship restores its officer at the
-        /// local friendly planet through the published destruction result.
-        /// </summary>
         [Test]
         public void ProcessTick_AutoscrappedCapitalShipWithOfficer_RestoresOfficerAtLocalPlanet()
         {
@@ -360,10 +345,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(scene.officer.Movement);
         }
 
-        /// <summary>
-        /// Verifies that maintenance autoscrapping a capital ship relocates its hidden officer
-        /// without making that officer visible.
-        /// </summary>
         [Test]
         public void ProcessTick_AutoscrappedCapitalShipWithInactiveOfficer_RelocatesOfficerWithoutActivating()
         {
@@ -400,10 +381,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(scene.officer.IsEnabled);
         }
 
-        /// <summary>
-        /// Verifies that maintenance autoscrapping a capital ship destroys its completed fighter
-        /// cargo.
-        /// </summary>
         [Test]
         public void ProcessTick_AutoscrappedCapitalShipWithCompletedFighter_DestroysFighter()
         {

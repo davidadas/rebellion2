@@ -386,10 +386,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, result.EnergyCapacityDamage);
         }
 
-        /// <summary>
-        /// Verifies that non-officer combat units embarked on a capital ship are destroyed with the
-        /// ship when planetary ground-cannon fire destroys it during bombardment.
-        /// </summary>
         [Test]
         public void TryExecute_GroundCannonDestroysCarrier_DestroysEmbarkedCombatUnits()
         {
@@ -472,10 +468,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies that defense fire destroying a carrier relocates its inactive officer without
-        /// activating that officer.
-        /// </summary>
         [Test]
         public void TryExecute_DefenseFireDestroysCarrier_RelocatesInactiveOfficer()
         {
@@ -515,10 +507,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(officer.IsEnabled);
         }
 
-        /// <summary>
-        /// Verifies that defense fire destroying a carrier relocates its active officer through
-        /// the published destruction result.
-        /// </summary>
         [Test]
         public void TryExecute_DefenseFireDestroysCarrier_RelocatesActiveOfficer()
         {

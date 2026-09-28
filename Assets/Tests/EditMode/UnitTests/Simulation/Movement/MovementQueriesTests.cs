@@ -183,10 +183,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(estimated);
         }
 
-        /// <summary>
-        /// Verifies that safe relocation destinations for an in-transit unit are ranked from the
-        /// unit's live position instead of its already-assigned parent planet.
-        /// </summary>
         [Test]
         public void FindSafeRelocationDestinations_InTransitUnit_RanksFromCurrentPosition()
         {
@@ -231,10 +227,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(livePositionNearest, destinations.First());
         }
 
-        /// <summary>
-        /// Verifies that destination validation accepts an owned origin planet when the caller
-        /// explicitly permits the unit to remain there.
-        /// </summary>
         [Test]
         public void CanUseSafeRelocationDestination_AlreadyAtAllowedOrigin_ReturnsTrue()
         {

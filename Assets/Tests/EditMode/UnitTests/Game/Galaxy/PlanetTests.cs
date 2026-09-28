@@ -149,9 +149,6 @@ namespace Rebellion.Tests.Game.Galaxy
             );
         }
 
-        /// <summary>
-        /// Verifies that an active officer can land directly on an owned uncolonized planet.
-        /// </summary>
         [Test]
         public void AddOfficer_OwnedUncolonizedPlanet_AddsToPlanet()
         {
@@ -180,10 +177,6 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.Contains(officer, _planet.GetChildren<Officer>().ToList());
         }
 
-        /// <summary>
-        /// Verifies that an active officer can land on an owned uncolonized planet without relying
-        /// on an inbound regiment to make the destination valid.
-        /// </summary>
         [Test]
         public void AddOfficer_OwnedUncolonizedPlanetWithInTransitRegiment_AddsToPlanet()
         {

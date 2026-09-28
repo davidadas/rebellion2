@@ -262,10 +262,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies that every inbound unit is redirected into the nearest friendly fleet when
-        /// that fleet has enough capacity after the last outer-rim garrison is removed.
-        /// </summary>
         [Test]
         public void HandleResults_LastOuterRimGarrisonRemoved_ReroutesAllInboundUnitsToNearestFleet()
         {
@@ -286,10 +282,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(inboundUnits.All(unit => unit.GetParent() == carrier));
         }
 
-        /// <summary>
-        /// Verifies that a nearest fleet takes every inbound unit it can accept and sends only
-        /// its capacity overflow to the next nearest friendly planet.
-        /// </summary>
         [Test]
         public void HandleResults_NearestFleetHasPartialCapacity_ReroutesOverflowToNextPlanet()
         {
@@ -327,10 +319,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies that inbound units fill two nearby fleets in distance order before remaining
-        /// capacity overflow is redirected to the farther friendly planet.
-        /// </summary>
         [Test]
         public void HandleResults_TwoNearbyFleetsHavePartialCapacity_DistributesOverflowByProximity()
         {
@@ -382,10 +370,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies that inbound units skip a nearer blockaded friendly planet after the last
-        /// outer-rim garrison is removed and return to the nearest safe destination.
-        /// </summary>
         [Test]
         public void HandleResults_LastOuterRimGarrisonRemoved_SkipsBlockadedDestination()
         {
@@ -401,10 +385,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(inboundUnits.All(unit => unit.GetParent() == _empirePlanet));
         }
 
-        /// <summary>
-        /// Verifies that losing the last outer-rim garrison captures an inbound officer and
-        /// destroys inbound combat units when every friendly destination is blockaded.
-        /// </summary>
         [Test]
         public void HandleResults_LastOuterRimGarrisonRemovedWithNoSafeDestination_CapturesOfficerAndDestroysCombatUnits()
         {

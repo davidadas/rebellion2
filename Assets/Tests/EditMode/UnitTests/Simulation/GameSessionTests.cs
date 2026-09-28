@@ -145,10 +145,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, batches);
         }
 
-        /// <summary>
-        /// Verifies that the connected session pipeline relocates an officer after the officer's
-        /// carrier is scrapped by an immediate command.
-        /// </summary>
         [Test]
         public void Constructor_ImmediateCarrierScrap_RelocatesOfficerThroughConnectedObservers()
         {
@@ -177,10 +173,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(officer.Movement);
         }
 
-        /// <summary>
-        /// Verifies that scrapping the last carrier over an owned uncolonized planet relocates its
-        /// officer directly to that planet through the normal connected result pipeline.
-        /// </summary>
         [Test]
         public void Constructor_CarrierScrappedOverOwnedUncolonizedPlanet_RelocatesOfficerLocally()
         {
@@ -207,10 +199,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(officer.IsCaptured);
         }
 
-        /// <summary>
-        /// Verifies that destroying a carrier through an authored event relocates implicit active
-        /// and inactive officer occupants through the connected result pipeline.
-        /// </summary>
         [Test]
         public void Constructor_DestroyUnitsCarrier_RelocatesImplicitOfficerOccupants()
         {
@@ -272,10 +260,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies that destroying an officer's former carrier does not affect the officer after
-        /// the officer has already departed into a mission.
-        /// </summary>
         [Test]
         public void Constructor_DestroyUnitsFormerCarrier_LeavesMissionOfficerUnaffected()
         {
@@ -320,10 +304,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies that an officer explicitly selected by an authored destruction action remains
-        /// destroyed even when the officer's carrier is selected in the same action.
-        /// </summary>
         [Test]
         public void Constructor_DestroyUnitsCarrierAndOfficer_DestroysExplicitOfficerSelection()
         {
@@ -1240,10 +1220,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(faction.Messages[MessageType.Conflict]);
         }
 
-        /// <summary>
-        /// Verifies that the full tick pipeline reroutes an inbound starfighter from its live
-        /// position when its destination becomes blockaded.
-        /// </summary>
         [Test]
         public void Tick_BlockadeStarts_ReroutesInboundStarfighter()
         {

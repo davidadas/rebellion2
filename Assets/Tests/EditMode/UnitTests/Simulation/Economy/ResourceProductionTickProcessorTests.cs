@@ -69,9 +69,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(mine.ResourceStartupCyclePending);
         }
 
-        /// <summary>
-        /// Verifies a below-normal mine modifier accumulates fractional progress.
-        /// </summary>
         [Test]
         public void ProcessTick_MineOutputBelowNormal_AccumulatesFractionalProgress()
         {
@@ -92,9 +89,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, mine.ProductionCycleDuration);
         }
 
-        /// <summary>
-        /// Verifies a below-normal refinery modifier accumulates fractional progress.
-        /// </summary>
         [Test]
         public void ProcessTick_RefineryOutputBelowNormal_AccumulatesFractionalProgress()
         {
@@ -115,9 +109,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, refinery.ProductionCycleDuration);
         }
 
-        /// <summary>
-        /// Verifies an above-normal mine modifier retains and applies excess progress.
-        /// </summary>
         [Test]
         public void ProcessTick_MineOutputAboveNormal_PreservesExcessProduction()
         {
@@ -137,9 +128,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0, mine.ProductionCycleProgress, 0.0001);
         }
 
-        /// <summary>
-        /// Verifies an above-normal refinery modifier retains and applies excess progress.
-        /// </summary>
         [Test]
         public void ProcessTick_RefineryOutputAboveNormal_PreservesExcessProduction()
         {

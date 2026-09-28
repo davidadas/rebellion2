@@ -180,10 +180,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(game.GetSceneNodesByType<StubMission>().Contains(mission));
         }
 
-        /// <summary>
-        /// Verifies that a completed participant without a recorded origin autoroutes to the
-        /// nearest friendly planet.
-        /// </summary>
         [Test]
         public void UpdateMission_CompletedParticipantOnNeutralPlanet_ReturnsToNearestFriendlyPlanet()
         {
@@ -249,10 +245,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(officer.IsCaptured);
         }
 
-        /// <summary>
-        /// Verifies that a failed mission returns its officer and special-forces participants to
-        /// the nearest friendly fleet when its capital ship can accept them.
-        /// </summary>
         [Test]
         public void UpdateMission_FailedWithNearestFriendlyFleet_ReturnsParticipantsToFleet()
         {
@@ -290,10 +282,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(officer.IsCaptured);
         }
 
-        /// <summary>
-        /// Verifies that a failed mission returns its officer and special-forces participants to
-        /// the nearest friendly planet when no friendly fleet is available.
-        /// </summary>
         [Test]
         public void UpdateMission_FailedWithNearestFriendlyPlanet_ReturnsParticipantsToPlanet()
         {
@@ -324,10 +312,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(officer.IsCaptured);
         }
 
-        /// <summary>
-        /// Verifies that a failed mission skips a nearer blockaded friendly planet and returns
-        /// its officer and special-forces participants to the nearest safe planet.
-        /// </summary>
         [Test]
         public void UpdateMission_FailedWithBlockadedNearestPlanet_ReturnsParticipantsToSafePlanet()
         {
@@ -368,10 +352,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(officer.IsCaptured);
         }
 
-        /// <summary>
-        /// Verifies that a failed mission does not return participants to their recorded planet
-        /// when an enemy fleet is blockading it and a safe friendly planet is available.
-        /// </summary>
         [Test]
         public void UpdateMission_FailedWithBlockadedRecordedPlanet_ReturnsParticipantsToSafePlanet()
         {
@@ -416,10 +396,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(officer.IsCaptured);
         }
 
-        /// <summary>
-        /// Verifies that a failed mission captures its officer and destroys its special-forces
-        /// participant when every otherwise valid friendly destination is blockaded.
-        /// </summary>
         [Test]
         public void UpdateMission_FailedWithNoSafeDestination_CapturesOfficerAndDestroysSpecialForces()
         {
@@ -2732,10 +2708,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies that an officer completing a mission on an owned uncolonized planet remains at
-        /// that safe local destination.
-        /// </summary>
         [Test]
         public void UpdateMission_FriendlyUncolonizedLocation_RetainsOfficerLocally()
         {
@@ -2840,10 +2812,6 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies that a diplomacy participant whose recorded origin was captured autoroutes to
-        /// the nearest friendly planet.
-        /// </summary>
         [Test]
         public void UpdateMission_DiplomacyTargetCaptured_ReturnsOfficerToNearestFriendlyPlanet()
         {

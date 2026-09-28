@@ -203,10 +203,6 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
-        /// <summary>
-        /// Verifies that sabotaging a capital ship relocates its carried officer through the
-        /// published sabotage result.
-        /// </summary>
         [Test]
         public void ResolveObjective_CapitalShipWithOfficer_RestoresOfficerAtLocalPlanet()
         {
@@ -278,10 +274,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsNull(carriedOfficer.Movement);
         }
 
-        /// <summary>
-        /// Verifies that sabotaging a capital ship relocates its inactive carried officer without
-        /// activating that officer.
-        /// </summary>
         [Test]
         public void ResolveObjective_CapitalShipWithInactiveOfficer_RelocatesWithoutActivating()
         {
@@ -355,10 +347,6 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsFalse(carriedOfficer.IsEnabled);
         }
 
-        /// <summary>
-        /// Verifies that sabotaging a capital ship destroys its embarked starfighters and
-        /// regiments with the ship.
-        /// </summary>
         [Test]
         public void ResolveObjective_CapitalShipWithNonOfficerCargo_DestroysCargo()
         {
@@ -412,9 +400,6 @@ namespace Rebellion.Tests.Game.Missions
             );
         }
 
-        /// <summary>
-        /// Verifies that sabotage destruction does not award the target faction a scrap refund.
-        /// </summary>
         [Test]
         public void ResolveObjective_CapitalShipTarget_DoesNotRefundMaterials()
         {
