@@ -1341,6 +1341,36 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void ProcessTick_WeakerAIFleetDefendingHeadquarters_DoesNotRetreat()
+        {
+            GameRoot game = CreateGame();
+            game.Random = new SequenceRNG();
+            (Planet combatPlanet, _) = CreatePlanet(game, "combat", owner: "empire");
+            CreatePlanet(game, "empireHome", owner: "empire");
+            CreatePlanet(game, "allianceHome", owner: "alliance");
+            game.GetFactionByOwnerInstanceID("empire").HQInstanceID = combatPlanet.InstanceID;
+            combatPlanet.IsHeadquarters = true;
+
+            Fleet empireFleet = CreateFleet(game, "ef1", "empire", combatPlanet, 1, 100, 1);
+            Fleet allianceFleet = CreateFleet(game, "af1", "alliance", combatPlanet, 1, 1000, 10);
+            empireFleet.GetChildren<CapitalShip>().Single().SublightSpeed = 10;
+            SpaceCombatCommands manager = MakeSpaceCombat(game);
+
+            IReadOnlyList<GameResult> results = new SpaceCombatTickProcessor(manager).ProcessTick(
+                game
+            );
+
+            SpaceCombatResult combatResult = results.OfType<SpaceCombatResult>().Single();
+            SpaceCombatSideOutcome empireOutcome =
+                combatResult.AttackerOwnerInstanceID == "empire"
+                    ? combatResult.AttackerOutcome
+                    : combatResult.DefenderOutcome;
+            Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, empireOutcome);
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>(empireFleet.InstanceID));
+            Assert.AreSame(combatPlanet, allianceFleet.GetParentOfType<Planet>());
+        }
+
+        [Test]
         public void ProcessTick_FleetWithdrawalInterruptedByVictory_KeepsEntireFleetAtCombatPlanet()
         {
             GameRoot game = CreateAutomaticCombatGame();

@@ -176,6 +176,9 @@ namespace Rebellion.Simulation
             string ownerInstanceId
         )
         {
+            if (IsOwnedHeadquarters(planet, ownerInstanceId))
+                return false;
+
             IReadOnlyList<Fleet> retreatingFleets = fleets ?? Array.Empty<Fleet>();
             List<Starfighter> retreatingFighters = GetActivePlanetStarfighters(
                     planet,
@@ -210,7 +213,10 @@ namespace Rebellion.Simulation
         {
             List<IReadOnlyCollection<ISceneNode>> groups =
                 new List<IReadOnlyCollection<ISceneNode>>();
-            if (IsRetreatBlockedByGravityWell(planet, opponents))
+            if (
+                IsOwnedHeadquarters(planet, ownerInstanceId)
+                || IsRetreatBlockedByGravityWell(planet, opponents)
+            )
                 return groups;
 
             foreach (
@@ -238,6 +244,23 @@ namespace Rebellion.Simulation
             }
 
             return groups;
+        }
+
+        /// <summary>
+        /// Returns whether the specified faction is defending its active headquarters.
+        /// </summary>
+        /// <param name="planet">The combat planet.</param>
+        /// <param name="ownerInstanceId">The faction identifier.</param>
+        /// <returns>True when the faction owns its headquarters at the combat planet.</returns>
+        private bool IsOwnedHeadquarters(Planet planet, string ownerInstanceId)
+        {
+            if (planet == null || string.IsNullOrEmpty(ownerInstanceId))
+                return false;
+
+            Faction faction = _game?.GetFactionByOwnerInstanceID(ownerInstanceId);
+            return faction != null
+                && planet.GetOwnerInstanceID() == faction.InstanceID
+                && planet.GetInstanceID() == faction.HQInstanceID;
         }
 
         /// <summary>

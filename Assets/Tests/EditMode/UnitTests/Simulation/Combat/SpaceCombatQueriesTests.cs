@@ -3,6 +3,7 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 using Rebellion.Simulation;
 
 namespace Rebellion.Tests.Simulation
@@ -95,6 +96,64 @@ namespace Rebellion.Tests.Simulation
             );
 
             Assert.IsFalse(canRetreat);
+        }
+
+        [Test]
+        public void CanRetreatForces_OwnedHeadquarters_ReturnsFalse()
+        {
+            (GameRoot game, Planet planet, Fleet fleet, SpaceCombatQueries queries) =
+                CreateScenario();
+            CreatePlanet(game, "home", owner: "alliance");
+            game.GetFactionByOwnerInstanceID("alliance").HQInstanceID = planet.InstanceID;
+            planet.IsHeadquarters = true;
+
+            bool canRetreat = queries.CanRetreatForces(
+                new[] { fleet },
+                new List<Fleet>(),
+                planet,
+                "alliance"
+            );
+
+            Assert.IsFalse(canRetreat);
+        }
+
+        [Test]
+        public void CanRetreatForces_OpposingHeadquarters_ReturnsTrue()
+        {
+            (GameRoot game, Planet planet, Fleet fleet, SpaceCombatQueries queries) =
+                CreateScenario();
+            CreatePlanet(game, "home", owner: "alliance");
+            planet.OwnerInstanceID = "empire";
+            game.GetFactionByOwnerInstanceID("empire").HQInstanceID = planet.InstanceID;
+            planet.IsHeadquarters = true;
+
+            bool canRetreat = queries.CanRetreatForces(
+                new[] { fleet },
+                new List<Fleet>(),
+                planet,
+                "alliance"
+            );
+
+            Assert.IsTrue(canRetreat);
+        }
+
+        [Test]
+        public void GetAutomaticWithdrawalGroups_OwnedHeadquarters_ReturnsEmpty()
+        {
+            (GameRoot game, Planet planet, Fleet fleet, SpaceCombatQueries queries) =
+                CreateScenario();
+            CreatePlanet(game, "home", owner: "alliance");
+            game.GetFactionByOwnerInstanceID("alliance").HQInstanceID = planet.InstanceID;
+            planet.IsHeadquarters = true;
+
+            List<IReadOnlyCollection<ISceneNode>> groups = queries.GetAutomaticWithdrawalGroups(
+                new[] { fleet },
+                new List<Fleet>(),
+                planet,
+                "alliance"
+            );
+
+            Assert.IsEmpty(groups);
         }
 
         /// <summary>
