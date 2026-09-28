@@ -99,11 +99,12 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void CanRetreatForces_OwnedHeadquarters_ReturnsFalse()
+        public void CanRetreatForces_HumanControlledOwnedHeadquarters_ReturnsTrue()
         {
             (GameRoot game, Planet planet, Fleet fleet, SpaceCombatQueries queries) =
                 CreateScenario();
             CreatePlanet(game, "home", owner: "alliance");
+            game.SetFactionController("alliance", "player", PlayerControllerType.Human);
             game.GetFactionByOwnerInstanceID("alliance").HQInstanceID = planet.InstanceID;
             planet.IsHeadquarters = true;
 
@@ -114,7 +115,7 @@ namespace Rebellion.Tests.Simulation
                 "alliance"
             );
 
-            Assert.IsFalse(canRetreat);
+            Assert.IsTrue(canRetreat);
         }
 
         [Test]
@@ -138,11 +139,12 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void GetAutomaticWithdrawalGroups_OwnedHeadquarters_ReturnsEmpty()
+        public void GetAutomaticWithdrawalGroups_AIControlledOwnedHeadquarters_ReturnsEmpty()
         {
             (GameRoot game, Planet planet, Fleet fleet, SpaceCombatQueries queries) =
                 CreateScenario();
             CreatePlanet(game, "home", owner: "alliance");
+            game.SetFactionController("alliance", "ai", PlayerControllerType.AI);
             game.GetFactionByOwnerInstanceID("alliance").HQInstanceID = planet.InstanceID;
             planet.IsHeadquarters = true;
 
@@ -154,6 +156,26 @@ namespace Rebellion.Tests.Simulation
             );
 
             Assert.IsEmpty(groups);
+        }
+
+        [Test]
+        public void GetAutomaticWithdrawalGroups_HumanControlledOwnedHeadquarters_ReturnsFleet()
+        {
+            (GameRoot game, Planet planet, Fleet fleet, SpaceCombatQueries queries) =
+                CreateScenario();
+            CreatePlanet(game, "home", owner: "alliance");
+            game.SetFactionController("alliance", "player", PlayerControllerType.Human);
+            game.GetFactionByOwnerInstanceID("alliance").HQInstanceID = planet.InstanceID;
+            planet.IsHeadquarters = true;
+
+            List<IReadOnlyCollection<ISceneNode>> groups = queries.GetAutomaticWithdrawalGroups(
+                new[] { fleet },
+                new List<Fleet>(),
+                planet,
+                "alliance"
+            );
+
+            Assert.AreEqual(1, groups.Count);
         }
 
         /// <summary>

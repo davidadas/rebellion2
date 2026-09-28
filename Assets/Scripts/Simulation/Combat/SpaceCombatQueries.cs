@@ -176,9 +176,6 @@ namespace Rebellion.Simulation
             string ownerInstanceId
         )
         {
-            if (IsOwnedHeadquarters(planet, ownerInstanceId))
-                return false;
-
             IReadOnlyList<Fleet> retreatingFleets = fleets ?? Array.Empty<Fleet>();
             List<Starfighter> retreatingFighters = GetActivePlanetStarfighters(
                     planet,
@@ -214,7 +211,7 @@ namespace Rebellion.Simulation
             List<IReadOnlyCollection<ISceneNode>> groups =
                 new List<IReadOnlyCollection<ISceneNode>>();
             if (
-                IsOwnedHeadquarters(planet, ownerInstanceId)
+                IsAIControlledHeadquartersDefense(planet, ownerInstanceId)
                 || IsRetreatBlockedByGravityWell(planet, opponents)
             )
                 return groups;
@@ -247,18 +244,19 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Returns whether the specified faction is defending its active headquarters.
+        /// Returns whether an AI-controlled faction is defending its active headquarters.
         /// </summary>
         /// <param name="planet">The combat planet.</param>
         /// <param name="ownerInstanceId">The faction identifier.</param>
-        /// <returns>True when the faction owns its headquarters at the combat planet.</returns>
-        private bool IsOwnedHeadquarters(Planet planet, string ownerInstanceId)
+        /// <returns>True when the AI faction owns its headquarters at the combat planet.</returns>
+        private bool IsAIControlledHeadquartersDefense(Planet planet, string ownerInstanceId)
         {
             if (planet == null || string.IsNullOrEmpty(ownerInstanceId))
                 return false;
 
             Faction faction = _game?.GetFactionByOwnerInstanceID(ownerInstanceId);
             return faction != null
+                && _game.IsFactionAIControlled(faction)
                 && planet.GetOwnerInstanceID() == faction.InstanceID
                 && planet.GetInstanceID() == faction.HQInstanceID;
         }

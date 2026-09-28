@@ -1345,6 +1345,7 @@ namespace Rebellion.Tests.Simulation
         {
             GameRoot game = CreateGame();
             game.Random = new SequenceRNG();
+            game.SetFactionController("empire", "empire-ai", PlayerControllerType.AI);
             (Planet combatPlanet, _) = CreatePlanet(game, "combat", owner: "empire");
             CreatePlanet(game, "empireHome", owner: "empire");
             CreatePlanet(game, "allianceHome", owner: "alliance");
