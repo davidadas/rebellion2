@@ -538,7 +538,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
                 ResolveDragPreview,
                 ResolvePosition,
                 _ => null,
-                () => "player",
                 new WindowCommandActions(),
                 5
             );
@@ -749,6 +748,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             public void ExecuteTargetedCommand(
                 StrategyWindowTargetingSource source,
                 StrategyMissionTarget target
+            ) { }
+
+            /// <summary>
+            /// Executes an item drop.
+            /// </summary>
+            /// <param name="sourceWindow">The source window.</param>
+            /// <param name="target">The exact drop target.</param>
+            /// <param name="items">The dragged items.</param>
+            public void ExecuteItemDrop(
+                UIWindow sourceWindow,
+                StrategyMissionTarget target,
+                IReadOnlyList<ISceneNode> items
             ) { }
 
             /// <summary>

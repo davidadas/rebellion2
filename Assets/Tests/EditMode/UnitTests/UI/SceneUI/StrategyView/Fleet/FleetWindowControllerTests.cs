@@ -281,7 +281,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         [Test]
-        public void DetailItemDrop_ActiveTargeting_SelectsCurrentFleet()
+        public void DetailItemDrop_ActiveTargeting_SelectsDroppedItem()
         {
             FleetWindowView view = OpenWindow(out UIWindow window);
             UIComponentTestHelper.InvokeLifecycle(view, "Awake");
@@ -297,9 +297,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsFalse(_targetingController.IsTargeting);
             Assert.IsInstanceOf<StrategyMissionTarget>(receiver.Target);
             StrategyMissionTarget target = (StrategyMissionTarget)receiver.Target;
+            CapitalShip ship = _fleet.GetChildren<CapitalShip>().Single();
             Assert.AreSame(_planet, target.Planet);
-            Assert.AreSame(_fleet, target.Item);
-            Assert.AreSame(_fleet, target.GetMoveDestination());
+            Assert.AreSame(ship, target.Item);
+            Assert.AreSame(ship, target.GetMoveDestination());
         }
 
         [Test]
@@ -813,6 +814,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             public void ExecuteTargetedCommand(
                 StrategyWindowTargetingSource source,
                 StrategyMissionTarget target
+            ) { }
+
+            /// <summary>
+            /// Executes an item drop.
+            /// </summary>
+            /// <param name="sourceWindow">The source window.</param>
+            /// <param name="target">The exact drop target.</param>
+            /// <param name="items">The dragged items.</param>
+            public void ExecuteItemDrop(
+                UIWindow sourceWindow,
+                StrategyMissionTarget target,
+                IReadOnlyList<ISceneNode> items
             ) { }
 
             /// <summary>
