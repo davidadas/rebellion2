@@ -402,6 +402,7 @@ public sealed class ConstructionWindowView
     /// </summary>
     internal void RequestIncrement()
     {
+        SubmitFocusedBuildCount();
         IncrementRequested?.Invoke(this);
     }
 
@@ -410,6 +411,7 @@ public sealed class ConstructionWindowView
     /// </summary>
     internal void RequestDecrement()
     {
+        SubmitFocusedBuildCount();
         DecrementRequested?.Invoke(this);
     }
 
@@ -420,6 +422,15 @@ public sealed class ConstructionWindowView
     internal void RequestBuildCount(string value)
     {
         BuildCountSubmitted?.Invoke(this, value);
+    }
+
+    /// <summary>
+    /// Commits a focused build-count edit before an adjacent step button changes the value.
+    /// </summary>
+    private void SubmitFocusedBuildCount()
+    {
+        if (buildCountInputField.isFocused)
+            buildCountInputField.DeactivateInputField(true);
     }
 
     /// <summary>

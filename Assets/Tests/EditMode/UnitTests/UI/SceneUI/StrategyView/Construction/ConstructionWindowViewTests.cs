@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using TMPro;
@@ -237,6 +238,38 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Assert.AreEqual(TextAlignmentOptions.Left, input.textComponent.alignment);
             Assert.AreEqual(0f, input.textComponent.rectTransform.anchoredPosition.y);
             Assert.AreEqual(15f, input.textComponent.rectTransform.sizeDelta.y);
+        }
+
+        [Test]
+        public void RequestIncrement_FocusedBuildCountInput_SubmitsValueBeforeIncrement()
+        {
+            TMP_InputField input = FindComponent<TMP_InputField>("BuildCountInputField");
+            GameObject eventSystemObject = new GameObject("EventSystem", typeof(EventSystem));
+            EventSystem eventSystem = eventSystemObject.GetComponent<EventSystem>();
+            List<string> requests = new List<string>();
+            input.onEndEdit.AddListener(_view.RequestBuildCount);
+            _view.BuildCountSubmitted += (_, value) => requests.Add(value);
+            _view.IncrementRequested += _ => requests.Add("increment");
+
+            try
+            {
+                UIComponentTestHelper.InvokeLifecycle(eventSystem, "OnEnable");
+                EventSystem.current = eventSystem;
+                EventSystem.current.SetSelectedGameObject(input.gameObject);
+                input.ActivateInputField();
+                UIComponentTestHelper.InvokeLifecycle(input, "LateUpdate");
+                input.SetTextWithoutNotify("12");
+
+                _view.RequestIncrement();
+
+                Assert.IsFalse(input.isFocused);
+                CollectionAssert.AreEqual(new[] { "12", "increment" }, requests);
+            }
+            finally
+            {
+                UIComponentTestHelper.InvokeLifecycle(eventSystem, "OnDisable");
+                UnityEngine.Object.DestroyImmediate(eventSystemObject);
+            }
         }
 
         [Test]

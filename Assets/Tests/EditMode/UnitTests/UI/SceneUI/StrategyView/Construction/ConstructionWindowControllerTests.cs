@@ -249,6 +249,20 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Assert.AreEqual(2, _dirtyCount);
         }
 
+        [Test]
+        public void IncrementRequested_SubmittedBuildCount_UpdatesRenderedQuantity()
+        {
+            ConstructionWindowView view = OpenAdvisorWindow(out UIWindow window);
+            TMP_InputField input = view.GetComponentInChildren<TMP_InputField>(true);
+
+            view.RequestBuildCount("12");
+            view.RequestIncrement();
+            _controller.RenderWindow(view, window, true);
+
+            Assert.AreEqual("13", input.text);
+            Assert.AreEqual(3, _dirtyCount);
+        }
+
         /// <summary>
         /// Creates controller.
         /// </summary>
