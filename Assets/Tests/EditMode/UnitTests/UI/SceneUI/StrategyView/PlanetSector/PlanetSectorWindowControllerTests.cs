@@ -1050,6 +1050,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             }
 
             /// <summary>
+            /// Executes an item drop.
+            /// </summary>
+            /// <param name="sourceWindow">The source window.</param>
+            /// <param name="target">The exact drop target.</param>
+            /// <param name="items">The dragged items.</param>
+            public void ExecuteItemDrop(
+                UIWindow sourceWindow,
+                StrategyMissionTarget target,
+                IReadOnlyList<ISceneNode> items
+            ) { }
+
+            /// <summary>
             /// Opens planet sector battle result.
             /// </summary>
             /// <param name="result">The result.</param>
