@@ -446,18 +446,17 @@ namespace Rebellion.Simulation
         /// <param name="participant">The participant whose destination is being resolved.</param>
         /// <param name="missionPlanet">The planet where the mission ended.</param>
         /// <returns>True when the mission planet is intact, friendly, and can accept the participant.</returns>
-        private static bool CanRemainAtMissionLocation(
+        private bool CanRemainAtMissionLocation(
             IMissionParticipant participant,
             Planet missionPlanet
         )
         {
-            if (participant == null || missionPlanet?.IsDestroyed != false)
-                return false;
-
-            string participantOwnerId = participant.GetOwnerInstanceID();
-            return !string.IsNullOrEmpty(participantOwnerId)
-                && participantOwnerId == missionPlanet.GetOwnerInstanceID()
-                && missionPlanet.CanAcceptChild(participant);
+            return _movementQueries.CanUseSafeRelocationDestination(
+                participant,
+                missionPlanet,
+                missionPlanet,
+                allowOriginPlanet: true
+            );
         }
 
         /// <summary>

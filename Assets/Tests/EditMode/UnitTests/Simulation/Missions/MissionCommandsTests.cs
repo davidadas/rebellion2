@@ -246,6 +246,194 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void UpdateMission_FailedWithNearestFriendlyFleet_ReturnsParticipantsToFleet()
+        {
+            (
+                GameRoot game,
+                PlanetSector sector,
+                Planet missionPlanet,
+                StubMission mission,
+                Officer officer,
+                SpecialForces specialForces,
+                MissionCommands system
+            ) = BuildFailedMissionReturnScene();
+            Planet fleetLocation = AddMissionReturnPlanet(
+                game,
+                sector,
+                "fleet-location",
+                ownerInstanceId: null,
+                positionX: 25
+            );
+            (_, CapitalShip carrier) = AddMissionReturnFleet(
+                game,
+                fleetLocation,
+                "return",
+                "empire"
+            );
+            AddMissionReturnPlanet(game, sector, "far-planet", "empire", positionX: 100);
+            List<GameResult> results = system.UpdateMission(mission);
+
+            Assert.AreEqual(
+                MissionOutcome.Failed,
+                results.OfType<MissionCompletedResult>().Single().Outcome
+            );
+            Assert.AreSame(carrier, officer.GetParent());
+            Assert.AreSame(carrier, specialForces.GetParent());
+            Assert.IsFalse(officer.IsCaptured);
+        }
+
+        [Test]
+        public void UpdateMission_FailedWithNearestFriendlyPlanet_ReturnsParticipantsToPlanet()
+        {
+            (
+                GameRoot game,
+                PlanetSector sector,
+                Planet _,
+                StubMission mission,
+                Officer officer,
+                SpecialForces specialForces,
+                MissionCommands system
+            ) = BuildFailedMissionReturnScene();
+            Planet destination = AddMissionReturnPlanet(
+                game,
+                sector,
+                "nearest-planet",
+                "empire",
+                positionX: 25
+            );
+            List<GameResult> results = system.UpdateMission(mission);
+
+            Assert.AreEqual(
+                MissionOutcome.Failed,
+                results.OfType<MissionCompletedResult>().Single().Outcome
+            );
+            Assert.AreSame(destination, officer.GetParent());
+            Assert.AreSame(destination, specialForces.GetParent());
+            Assert.IsFalse(officer.IsCaptured);
+        }
+
+        [Test]
+        public void UpdateMission_FailedWithBlockadedNearestPlanet_ReturnsParticipantsToSafePlanet()
+        {
+            (
+                GameRoot game,
+                PlanetSector sector,
+                Planet _,
+                StubMission mission,
+                Officer officer,
+                SpecialForces specialForces,
+                MissionCommands system
+            ) = BuildFailedMissionReturnScene();
+            Planet blockadedPlanet = AddMissionReturnPlanet(
+                game,
+                sector,
+                "blockaded-planet",
+                "empire",
+                positionX: 25
+            );
+            AddMissionReturnFleet(game, blockadedPlanet, "blockading", "rebels");
+            Planet safePlanet = AddMissionReturnPlanet(
+                game,
+                sector,
+                "safe-planet",
+                "empire",
+                positionX: 100
+            );
+
+            List<GameResult> results = system.UpdateMission(mission);
+
+            Assert.IsTrue(blockadedPlanet.IsBlockaded());
+            Assert.AreEqual(
+                MissionOutcome.Failed,
+                results.OfType<MissionCompletedResult>().Single().Outcome
+            );
+            Assert.AreSame(safePlanet, officer.GetParent());
+            Assert.AreSame(safePlanet, specialForces.GetParent());
+            Assert.IsFalse(officer.IsCaptured);
+        }
+
+        [Test]
+        public void UpdateMission_FailedWithBlockadedRecordedPlanet_ReturnsParticipantsToSafePlanet()
+        {
+            (
+                GameRoot game,
+                PlanetSector sector,
+                Planet _,
+                StubMission mission,
+                Officer officer,
+                SpecialForces specialForces,
+                MissionCommands system
+            ) = BuildFailedMissionReturnScene();
+            Planet blockadedPlanet = AddMissionReturnPlanet(
+                game,
+                sector,
+                "recorded-planet",
+                "empire",
+                positionX: 25
+            );
+            AddMissionReturnFleet(game, blockadedPlanet, "blockading-recorded", "rebels");
+            Planet safePlanet = AddMissionReturnPlanet(
+                game,
+                sector,
+                "safe-planet",
+                "empire",
+                positionX: 100
+            );
+            officer.MissionReturnParentInstanceID = blockadedPlanet.InstanceID;
+            officer.MissionReturnLocationInstanceID = blockadedPlanet.InstanceID;
+            specialForces.MissionReturnParentInstanceID = blockadedPlanet.InstanceID;
+            specialForces.MissionReturnLocationInstanceID = blockadedPlanet.InstanceID;
+
+            List<GameResult> results = system.UpdateMission(mission);
+
+            Assert.IsTrue(blockadedPlanet.IsBlockaded());
+            Assert.AreEqual(
+                MissionOutcome.Failed,
+                results.OfType<MissionCompletedResult>().Single().Outcome
+            );
+            Assert.AreSame(safePlanet, officer.GetParent());
+            Assert.AreSame(safePlanet, specialForces.GetParent());
+            Assert.IsFalse(officer.IsCaptured);
+        }
+
+        [Test]
+        public void UpdateMission_FailedWithNoSafeDestination_CapturesOfficerAndDestroysSpecialForces()
+        {
+            (
+                GameRoot game,
+                PlanetSector sector,
+                Planet missionPlanet,
+                StubMission mission,
+                Officer officer,
+                SpecialForces specialForces,
+                MissionCommands system
+            ) = BuildFailedMissionReturnScene();
+            Planet blockadedPlanet = AddMissionReturnPlanet(
+                game,
+                sector,
+                "blockaded-planet",
+                "empire",
+                positionX: 25
+            );
+            AddMissionReturnFleet(game, blockadedPlanet, "blockading", "rebels");
+
+            List<GameResult> results = system.UpdateMission(mission);
+
+            Assert.IsTrue(blockadedPlanet.IsBlockaded());
+            Assert.IsTrue(officer.IsCaptured);
+            Assert.AreEqual("rebels", officer.CaptorInstanceID);
+            Assert.AreSame(missionPlanet, officer.GetParent());
+            Assert.IsNull(
+                game.GetSceneNodeByInstanceID<SpecialForces>(specialForces.InstanceID, true)
+            );
+            Assert.IsTrue(
+                results
+                    .OfType<GameObjectDestroyedResult>()
+                    .Any(result => result.DestroyedObject == specialForces)
+            );
+        }
+
+        [Test]
         public void UpdateMission_OnCompletion_DetachesMission()
         {
             (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
@@ -2521,7 +2709,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_FriendlyUncolonizedLocation_ReturnsOfficerToOrigin()
+        public void UpdateMission_FriendlyUncolonizedLocation_RetainsOfficerLocally()
         {
             (GameRoot game, Planet origin, Officer officer, MovementCommands movement) = BuildScene(
                 factionOwnsPlanet: true
@@ -2548,8 +2736,8 @@ namespace Rebellion.Tests.Simulation
 
             List<GameResult> results = system.UpdateMission(mission);
 
-            Assert.AreSame(origin, officer.GetParent());
-            Assert.IsNotNull(officer.Movement);
+            Assert.AreSame(missionPlanet, officer.GetParent());
+            Assert.IsNull(officer.Movement);
             Assert.IsFalse(officer.IsCaptured);
             Assert.IsFalse(results.OfType<OfficerCaptureStateResult>().Any());
             Assert.IsNull(mission.GetParent());
@@ -3536,6 +3724,140 @@ namespace Rebellion.Tests.Simulation
                 new MovementQueries(game)
             );
             return (game, planet, officer, movement);
+        }
+
+        /// <summary>
+        /// Builds a hostile one-tick mission whose officer and special-forces participants have
+        /// no recorded return destination and are guaranteed to fail.
+        /// </summary>
+        /// <returns>The failed-mission return scene and its mission command system.</returns>
+        private (
+            GameRoot game,
+            PlanetSector sector,
+            Planet missionPlanet,
+            StubMission mission,
+            Officer officer,
+            SpecialForces specialForces,
+            MissionCommands system
+        ) BuildFailedMissionReturnScene()
+        {
+            GameConfig config = TestConfig.Create();
+            config.ProbabilityTables.Mission.DefaultSuccessProbability = 0;
+            GameRoot game = TestGame.Create(config);
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
+
+            PlanetSector sector = new PlanetSector
+            {
+                InstanceID = "return-sector",
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(sector, game.Galaxy);
+
+            Planet missionPlanet = AddMissionReturnPlanet(
+                game,
+                sector,
+                "mission-planet",
+                "rebels",
+                positionX: 0
+            );
+            Officer officer = EntityFactory.CreateOfficer("return-officer", "empire");
+            officer.MissionReturnParentInstanceID = "missing-parent";
+            officer.MissionReturnLocationInstanceID = "missing-location";
+            SpecialForces specialForces = new SpecialForces
+            {
+                InstanceID = "return-special-forces",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MissionReturnParentInstanceID = "missing-parent",
+                MissionReturnLocationInstanceID = "missing-location",
+            };
+            StubMission mission = new StubMission("empire", missionPlanet.InstanceID)
+            {
+                InstanceID = "failed-return-mission",
+            };
+            game.AttachNode(mission, missionPlanet);
+            game.AttachNode(officer, mission);
+            game.AttachNode(specialForces, mission);
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+
+            MovementCommands movement = new MovementCommands(
+                game,
+                new FogOfWarCommands(game),
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
+            MissionCommands system = TestSystems.CreateMissionCommands(
+                game,
+                new FixedRNG(0.99),
+                movement
+            );
+
+            return (game, sector, missionPlanet, mission, officer, specialForces, system);
+        }
+
+        /// <summary>
+        /// Adds a colonized planet used by failed-mission return tests.
+        /// </summary>
+        /// <param name="game">The game receiving the planet.</param>
+        /// <param name="sector">The sector receiving the planet.</param>
+        /// <param name="instanceId">The planet instance identifier.</param>
+        /// <param name="ownerInstanceId">The owning faction identifier, or null for neutral.</param>
+        /// <param name="positionX">The planet's horizontal position.</param>
+        /// <returns>The added planet.</returns>
+        private static Planet AddMissionReturnPlanet(
+            GameRoot game,
+            PlanetSector sector,
+            string instanceId,
+            string ownerInstanceId,
+            int positionX
+        )
+        {
+            Planet planet = new Planet
+            {
+                InstanceID = instanceId,
+                TypeID = instanceId,
+                OwnerInstanceID = ownerInstanceId,
+                IsColonized = true,
+                PositionX = positionX,
+                PositionY = 0,
+                PopularSupport = new Dictionary<string, int>(),
+            };
+            game.AttachNode(planet, sector);
+            return planet;
+        }
+
+        /// <summary>
+        /// Adds a stationary fleet with one operational capital ship for mission-return tests.
+        /// </summary>
+        /// <param name="game">The game receiving the fleet.</param>
+        /// <param name="planet">The planet hosting the fleet.</param>
+        /// <param name="instanceIdPrefix">The instance identifier prefix.</param>
+        /// <param name="ownerInstanceId">The fleet owner's faction identifier.</param>
+        /// <returns>The added fleet and its capital ship.</returns>
+        private static (Fleet fleet, CapitalShip capitalShip) AddMissionReturnFleet(
+            GameRoot game,
+            Planet planet,
+            string instanceIdPrefix,
+            string ownerInstanceId
+        )
+        {
+            Fleet fleet = EntityFactory.CreateFleet($"{instanceIdPrefix}-fleet", ownerInstanceId);
+            CapitalShip capitalShip = new CapitalShip
+            {
+                InstanceID = $"{instanceIdPrefix}-capital-ship",
+                OwnerInstanceID = ownerInstanceId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaxHullStrength = 100,
+                CurrentHullStrength = 100,
+                Hyperdrive = 1,
+            };
+            game.AttachNode(fleet, planet);
+            game.AttachNode(capitalShip, fleet);
+            return (fleet, capitalShip);
         }
 
         // Creates a mission with the officer in MainParticipants (but officer stays parented to

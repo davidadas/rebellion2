@@ -146,6 +146,204 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void Constructor_ImmediateCarrierScrap_RelocatesOfficerThroughConnectedObservers()
+        {
+            Fleet fleet = EntityFactory.CreateFleet("fleet", _faction.InstanceID);
+            CapitalShip carrier = new CapitalShip
+            {
+                InstanceID = "carrier",
+                OwnerInstanceID = _faction.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Officer officer = EntityFactory.CreateOfficer("officer", _faction.InstanceID);
+            _game.AttachNode(fleet, _planet);
+            _game.AttachNode(carrier, fleet);
+            _game.AttachNode(officer, carrier);
+
+            bool scrapped = _session
+                .GetService<MaintenanceCommands>()
+                .TryScrap(new IManufacturable[] { carrier }, _faction.InstanceID);
+
+            Assert.IsTrue(scrapped);
+            Assert.AreSame(
+                officer,
+                _game.GetSceneNodeByInstanceID<Officer>(officer.InstanceID, includeDisabled: true)
+            );
+            Assert.AreSame(_planet, officer.GetParent());
+            Assert.IsNull(officer.Movement);
+        }
+
+        [Test]
+        public void Constructor_CarrierScrappedOverOwnedUncolonizedPlanet_RelocatesOfficerLocally()
+        {
+            _planet.IsColonized = false;
+            Fleet fleet = EntityFactory.CreateFleet("fleet", _faction.InstanceID);
+            CapitalShip carrier = new CapitalShip
+            {
+                InstanceID = "carrier",
+                OwnerInstanceID = _faction.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Officer officer = EntityFactory.CreateOfficer("officer", _faction.InstanceID);
+            _game.AttachNode(fleet, _planet);
+            _game.AttachNode(carrier, fleet);
+            _game.AttachNode(officer, carrier);
+
+            bool scrapped = _session
+                .GetService<MaintenanceCommands>()
+                .TryScrap(new IManufacturable[] { carrier }, _faction.InstanceID);
+
+            Assert.IsTrue(scrapped);
+            Assert.AreSame(_planet, officer.GetParent());
+            Assert.IsNull(officer.Movement);
+            Assert.IsFalse(officer.IsCaptured);
+        }
+
+        [Test]
+        public void Constructor_DestroyUnitsCarrier_RelocatesImplicitOfficerOccupants()
+        {
+            Fleet fleet = EntityFactory.CreateFleet("fleet", _faction.InstanceID);
+            CapitalShip carrier = new CapitalShip
+            {
+                InstanceID = "carrier",
+                OwnerInstanceID = _faction.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Officer activeOfficer = EntityFactory.CreateOfficer(
+                "active-officer",
+                _faction.InstanceID
+            );
+            Officer inactiveOfficer = EntityFactory.CreateOfficer(
+                "inactive-officer",
+                _faction.InstanceID
+            );
+            inactiveOfficer.IsEnabled = false;
+            _game.AttachNode(fleet, _planet);
+            _game.AttachNode(carrier, fleet);
+            _game.AttachNode(activeOfficer, carrier);
+            _game.AttachNode(inactiveOfficer, carrier);
+            DestroyUnitsAction action = new DestroyUnitsAction
+            {
+                PlanetInstanceID = _planet.InstanceID,
+                Selectors = new List<GameEventSelector>
+                {
+                    new SelectCapitalShips { InstanceID = carrier.InstanceID },
+                },
+            };
+
+            List<GameResult> results = action.Execute(_game);
+            _session.Results.Publish(results);
+
+            Assert.IsNull(
+                _game.GetSceneNodeByInstanceID<CapitalShip>(
+                    carrier.InstanceID,
+                    includeDisabled: true
+                )
+            );
+            Assert.AreSame(_planet, activeOfficer.GetParent());
+            Assert.AreSame(_planet, inactiveOfficer.GetParent());
+            Assert.IsTrue(activeOfficer.IsEnabled);
+            Assert.IsFalse(inactiveOfficer.IsEnabled);
+            CollectionAssert.DoesNotContain(
+                results
+                    .OfType<GameObjectDestroyedResult>()
+                    .Select(result => result.DestroyedObject)
+                    .ToList(),
+                activeOfficer
+            );
+            CollectionAssert.DoesNotContain(
+                results
+                    .OfType<GameObjectDestroyedResult>()
+                    .Select(result => result.DestroyedObject)
+                    .ToList(),
+                inactiveOfficer
+            );
+        }
+
+        [Test]
+        public void Constructor_DestroyUnitsFormerCarrier_LeavesMissionOfficerUnaffected()
+        {
+            Fleet fleet = EntityFactory.CreateFleet("fleet", _faction.InstanceID);
+            CapitalShip carrier = new CapitalShip
+            {
+                InstanceID = "carrier",
+                OwnerInstanceID = _faction.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Officer officer = EntityFactory.CreateOfficer("officer", _faction.InstanceID);
+            StubMission mission = new StubMission(_faction.InstanceID, _planet.InstanceID)
+            {
+                InstanceID = "mission",
+            };
+            _game.AttachNode(fleet, _planet);
+            _game.AttachNode(carrier, fleet);
+            _game.AttachNode(officer, carrier);
+            _game.AttachNode(mission, _planet);
+            _session.GetService<MovementCommands>().SendToMission(officer, mission);
+            DestroyUnitsAction action = new DestroyUnitsAction
+            {
+                PlanetInstanceID = _planet.InstanceID,
+                Selectors = new List<GameEventSelector>
+                {
+                    new SelectCapitalShips { InstanceID = carrier.InstanceID },
+                },
+            };
+
+            List<GameResult> results = action.Execute(_game);
+            _session.Results.Publish(results);
+
+            Assert.AreSame(mission, officer.GetParent());
+            Assert.AreSame(
+                officer,
+                _game.GetSceneNodeByInstanceID<Officer>(officer.InstanceID, includeDisabled: true)
+            );
+            Assert.IsFalse(
+                results
+                    .OfType<GameObjectDestroyedResult>()
+                    .Any(result => ReferenceEquals(result.DestroyedObject, officer))
+            );
+        }
+
+        [Test]
+        public void Constructor_DestroyUnitsCarrierAndOfficer_DestroysExplicitOfficerSelection()
+        {
+            Fleet fleet = EntityFactory.CreateFleet("fleet", _faction.InstanceID);
+            CapitalShip carrier = new CapitalShip
+            {
+                InstanceID = "carrier",
+                OwnerInstanceID = _faction.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Officer officer = EntityFactory.CreateOfficer("officer", _faction.InstanceID);
+            _game.AttachNode(fleet, _planet);
+            _game.AttachNode(carrier, fleet);
+            _game.AttachNode(officer, carrier);
+            DestroyUnitsAction action = new DestroyUnitsAction
+            {
+                PlanetInstanceID = _planet.InstanceID,
+                Selectors = new List<GameEventSelector>
+                {
+                    new SelectCapitalShips { InstanceID = carrier.InstanceID },
+                    new SelectOfficers { InstanceID = officer.InstanceID },
+                },
+            };
+
+            List<GameResult> results = action.Execute(_game);
+            _session.Results.Publish(results);
+
+            Assert.IsNull(
+                _game.GetSceneNodeByInstanceID<Officer>(officer.InstanceID, includeDisabled: true)
+            );
+            CollectionAssert.Contains(
+                results
+                    .OfType<GameObjectDestroyedResult>()
+                    .Select(result => result.DestroyedObject)
+                    .ToList(),
+                officer
+            );
+        }
+
+        [Test]
         public void GetService_RegisteredCommand_ReturnsActiveSessionInstance()
         {
             IServiceLocator services = _session;
@@ -1086,7 +1284,7 @@ namespace Rebellion.Tests.Simulation
 
             manager.Tick.ProcessTick();
 
-            Assert.AreSame(fallback, starfighter.GetParent());
+            Assert.AreSame(origin, starfighter.GetParent());
             Assert.IsNotNull(starfighter.Movement);
         }
 

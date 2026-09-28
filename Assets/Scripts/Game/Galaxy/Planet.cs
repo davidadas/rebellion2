@@ -1197,8 +1197,10 @@ namespace Rebellion.Game.Galaxy
             if (!officer.IsActive())
                 return true;
 
-            return CanHostOwnedUnits()
-                && (officer.IsCaptured || officer.GetOwnerInstanceID() == OwnerInstanceID);
+            if (officer.IsCaptured)
+                return CanHostOwnedUnits();
+
+            return officer.GetOwnerInstanceID() == OwnerInstanceID;
         }
 
         /// <summary>

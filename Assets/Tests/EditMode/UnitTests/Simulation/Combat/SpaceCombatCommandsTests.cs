@@ -2799,6 +2799,7 @@ namespace Rebellion.Tests.Simulation
         public void Resolve_ShipDestroyedWithSurvivingShip_OfficerMovedToSurvivingShip()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
+            game.Random = new SequenceRNG();
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "alliance" });
 
@@ -2822,11 +2823,13 @@ namespace Rebellion.Tests.Simulation
             {
                 InstanceID = "strong",
                 OwnerInstanceID = "alliance",
-                MaxHullStrength = 1000,
-                CurrentHullStrength = 1000,
+                MaxHullStrength = 1000000,
+                CurrentHullStrength = 1000000,
                 ShieldRechargeRate = 0,
                 ManufacturingStatus = ManufacturingStatus.Complete,
+                WeaponRecharge = 1,
             };
+            strongShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 1000, 0, 0, 0, 100 };
             allianceFleet.AddChild(weakShip);
             weakShip.SetParent(allianceFleet);
             allianceFleet.AddChild(strongShip);
@@ -2847,11 +2850,17 @@ namespace Rebellion.Tests.Simulation
                 100,
                 shieldRechargeRate: 0
             );
-            TryResolveCombat(MakeSpaceCombat(game), empireFleet, allianceFleet, out _);
+            TryResolveCombat(
+                MakeSpaceCombat(game),
+                empireFleet,
+                allianceFleet,
+                out List<GameResult> results
+            );
+            PublishMovementReactions(game, results);
 
-            Assert.Contains(
-                officer,
-                strongShip.GetChildren<Officer>().ToList(),
+            Assert.AreSame(
+                strongShip,
+                officer.GetParent(),
                 "Officer should be evacuated to the surviving ship"
             );
         }
@@ -2906,13 +2915,93 @@ namespace Rebellion.Tests.Simulation
                 100,
                 shieldRechargeRate: 0
             );
-            TryResolveCombat(MakeSpaceCombat(game), empireFleet, allianceFleet, out _);
+            TryResolveCombat(
+                MakeSpaceCombat(game),
+                empireFleet,
+                allianceFleet,
+                out List<GameResult> results
+            );
+            PublishMovementReactions(game, results);
 
             Assert.Contains(
                 officer,
                 alliancePlanet.GetChildren<Officer>().ToList(),
                 "Officer should be evacuated to the nearest friendly planet"
             );
+        }
+
+        [Test]
+        public void Resolve_LastShipDestroyedWithInactiveOfficer_EvacuatesWithoutActivating()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "alliance" });
+
+            PlanetSector combatSector = new PlanetSector { InstanceID = "combat-sector" };
+            Planet combatPlanet = new Planet { InstanceID = "combat-planet" };
+            game.AttachNode(combatSector, game.Galaxy);
+            game.AttachNode(combatPlanet, combatSector);
+
+            PlanetSector fallbackSector = new PlanetSector { InstanceID = "fallback-sector" };
+            Planet fallback = new Planet
+            {
+                InstanceID = "fallback",
+                OwnerInstanceID = "alliance",
+                IsColonized = true,
+            };
+            game.AttachNode(fallbackSector, game.Galaxy);
+            game.AttachNode(fallback, fallbackSector);
+
+            Fleet allianceFleet = new Fleet
+            {
+                InstanceID = "alliance-fleet",
+                OwnerInstanceID = "alliance",
+            };
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "alliance-ship",
+                OwnerInstanceID = "alliance",
+                MaxHullStrength = 1,
+                CurrentHullStrength = 1,
+                ShieldRechargeRate = 0,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            allianceFleet.AddChild(ship);
+            ship.SetParent(allianceFleet);
+            game.AttachNode(allianceFleet, combatPlanet);
+            Officer officer = new Officer
+            {
+                InstanceID = "inactive-officer",
+                OwnerInstanceID = "alliance",
+                IsEnabled = false,
+            };
+            game.AttachNode(officer, ship);
+
+            Fleet empireFleet = CreateFleet(
+                game,
+                "empire-fleet",
+                "empire",
+                combatPlanet,
+                1,
+                1000,
+                100,
+                shieldRechargeRate: 0
+            );
+            TryResolveCombat(
+                MakeSpaceCombat(game),
+                empireFleet,
+                allianceFleet,
+                out List<GameResult> results
+            );
+            PublishMovementReactions(game, results);
+
+            Assert.AreSame(
+                officer,
+                game.GetSceneNodeByInstanceID<Officer>(officer.InstanceID, includeDisabled: true)
+            );
+            Assert.AreSame(fallback, officer.GetParent());
+            Assert.IsNotNull(officer.Movement);
+            Assert.IsFalse(officer.IsEnabled);
         }
 
         [Test]
@@ -3100,6 +3189,29 @@ namespace Rebellion.Tests.Simulation
         }
 
         /// <summary>
+        /// Publishes combat results through the movement observer used by the runtime.
+        /// </summary>
+        /// <param name="game">The game whose movement state receives reactions.</param>
+        /// <param name="results">The combat results to publish.</param>
+        /// <returns>The settled combat and movement results.</returns>
+        private static List<GameResult> PublishMovementReactions(
+            GameRoot game,
+            IEnumerable<GameResult> results
+        )
+        {
+            MovementCommands movement = new MovementCommands(
+                game,
+                new FogOfWarCommands(game),
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
+            GameResultBus resultBus = new GameResultBus();
+            new MovementObserver(movement).Connect(resultBus);
+            return resultBus.Publish(results);
+        }
+
+        /// <summary>
         /// Checks whether the damage for condition is met.
         /// </summary>
         /// <param name="results">The results.</param>
@@ -3243,10 +3355,9 @@ namespace Rebellion.Tests.Simulation
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
             new SpaceCombatTickProcessor(manager).ProcessTick(game);
-            SpaceCombatResult result = manager
-                .ResolvePending(autoResolve: true)
-                .OfType<SpaceCombatResult>()
-                .Single();
+            List<GameResult> results = manager.ResolvePending(autoResolve: true);
+            PublishMovementReactions(game, results);
+            SpaceCombatResult result = results.OfType<SpaceCombatResult>().Single();
 
             return (
                 game,

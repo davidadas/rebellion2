@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using Rebellion.Game;
-using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -41,12 +40,13 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Resolves a participant's recorded container, recorded planet, or nearest friendly planet.
+        /// Resolves a participant's recorded container, recorded planet, or nearest safe container.
         /// </summary>
         /// <param name="participant">The participant whose return destination is required.</param>
         /// <returns>The first valid return container, or null when none can receive the participant.</returns>
         internal ContainerNode ResolveMissionReturnDestination(IMissionParticipant participant)
         {
+            Planet missionPlanet = participant.GetParentOfType<Planet>();
             Planet returnLocation = _game.GetSceneNodeByInstanceID<Planet>(
                 participant.MissionReturnLocationInstanceID
             );
@@ -54,27 +54,13 @@ namespace Rebellion.Simulation
                 participant.MissionReturnParentInstanceID
             );
 
-            Planet returnParentPlanet =
-                returnParent as Planet ?? returnParent?.GetParentOfType<Planet>();
-            if (
-                returnParentPlanet?.IsDestroyed == false
-                && returnParent.CanAcceptChild(participant)
-            )
+            if (CanUseSafeRelocationDestination(participant, returnParent, missionPlanet))
                 return returnParent;
 
-            if (returnLocation?.IsDestroyed == false)
-            {
-                if (returnLocation.CanAcceptChild(participant))
-                    return returnLocation;
-            }
+            if (CanUseSafeRelocationDestination(participant, returnLocation, missionPlanet))
+                return returnLocation;
 
-            string ownerInstanceID = GetMovementControlOwner(participant);
-            if (string.IsNullOrEmpty(ownerInstanceID))
-                return null;
-
-            Faction owner = _game.GetFactionByOwnerInstanceID(ownerInstanceID);
-            Planet missionPlanet = participant.GetParentOfType<Planet>();
-            return FindEvacuationDestinations(owner, participant, missionPlanet).FirstOrDefault();
+            return FindSafeRelocationDestinations(participant, missionPlanet).FirstOrDefault();
         }
 
         /// <summary>
@@ -935,56 +921,14 @@ namespace Rebellion.Simulation
             Planet blockadedPlanet
         )
         {
-            string ownerInstanceID = GetMovementControlOwner(unit);
-            if (string.IsNullOrEmpty(ownerInstanceID))
-                return null;
-
-            List<(ContainerNode Destination, Planet Planet)> candidates = _game
-                .GetSceneNodesByType<Planet>()
-                .Where(planet =>
-                    planet != blockadedPlanet
-                    && planet.GetOwnerInstanceID() == ownerInstanceID
-                    && planet.IsColonized
-                    && !planet.IsDestroyed
-                    && !planet.IsBlockaded()
-                    && planet.CanAcceptChild(unit)
-                )
-                .Select(planet => (Destination: (ContainerNode)planet, Planet: planet))
-                .ToList();
-
-            candidates.AddRange(
-                _game
-                    .GetSceneNodesByType<CapitalShip>()
-                    .Where(ship =>
-                        ship.GetOwnerInstanceID() == ownerInstanceID
-                        && ship.ManufacturingStatus == ManufacturingStatus.Complete
-                        && ((IMovable)ship).GetTransitMovement() == null
-                        && ship.CanAcceptChild(unit)
-                    )
-                    .Select(ship => new
-                    {
-                        Destination = (ContainerNode)ship,
-                        Planet = ship.GetParentOfType<Planet>(),
-                    })
-                    .Where(candidate => candidate.Planet?.IsDestroyed == false)
-                    .Select(candidate =>
-                        (Destination: candidate.Destination, Planet: candidate.Planet)
-                    )
-            );
-
-            return candidates
-                .OrderBy(candidate => candidate.Planet.GetRawDistanceTo(blockadedPlanet))
-                .ThenBy(candidate => candidate.Destination is Planet ? 0 : 1)
-                .ThenBy(candidate => candidate.Destination.InstanceID, StringComparer.Ordinal)
-                .Select(candidate => candidate.Destination)
-                .FirstOrDefault();
+            return FindSafeRelocationDestinations(unit, blockadedPlanet).FirstOrDefault();
         }
 
         /// <summary>
         /// Determines whether a unit has a valid friendly evacuation destination.
         /// </summary>
         /// <param name="unit">The unit that would evacuate.</param>
-        /// <returns>True when at least one owned colonized planet can receive the unit.</returns>
+        /// <returns>True when at least one safe container can receive the unit.</returns>
         internal bool CanEvacuateToNearestFriendlyPlanet(IMovable unit)
         {
             if (unit == null)
@@ -992,13 +936,8 @@ namespace Rebellion.Simulation
             if (!CanTravelBetweenPlanets(unit))
                 return false;
 
-            string ownerId = GetMovementControlOwner(unit);
-            if (string.IsNullOrEmpty(ownerId))
-                return false;
-
-            Faction owner = _game.GetFactionByOwnerInstanceID(ownerId);
             Planet currentPlanet = unit.GetParentOfType<Planet>();
-            return FindEvacuationDestinations(owner, unit, currentPlanet).Any();
+            return FindSafeRelocationDestinations(unit, currentPlanet).Any();
         }
 
         /// <summary>
@@ -1026,30 +965,131 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Finds all valid colonized planets controlled by the unit's movement owner, ordered
+        /// Finds all safe carriers and planets controlled by the unit's movement owner, ordered
         /// nearest first.
         /// </summary>
-        /// <param name="owner">The faction controlling the unit's movement.</param>
-        /// <param name="unit">The unit that must be accepted at the destination.</param>
-        /// <param name="excludedPlanet">The current or rejected planet to exclude.</param>
-        /// <returns>The valid evacuation destinations, nearest first.</returns>
-        internal static IEnumerable<Planet> FindEvacuationDestinations(
-            Faction owner,
+        /// <param name="unit">The unit requiring a destination.</param>
+        /// <param name="originPlanet">
+        /// The relocation's origin planet, used for reachability when no live transit position is
+        /// available.
+        /// </param>
+        /// <param name="forceInterplanetaryTravel">
+        /// Whether the calling mechanic supplies transportation regardless of the unit's mobility.
+        /// </param>
+        /// <param name="allowOriginPlanet">
+        /// Whether the origin planet itself may receive the unit without interplanetary travel.
+        /// </param>
+        /// <returns>The valid relocation destinations, nearest first.</returns>
+        internal IReadOnlyList<ContainerNode> FindSafeRelocationDestinations(
             IMovable unit,
-            Planet excludedPlanet
+            Planet originPlanet,
+            bool forceInterplanetaryTravel = false,
+            bool allowOriginPlanet = false
         )
         {
-            return owner
-                    ?.GetOwnedColonizedPlanets()
-                    .Where(planet =>
-                        planet != excludedPlanet
-                        && !planet.IsDestroyed
-                        && planet.GetOwnerInstanceID() == owner.InstanceID
-                        && planet.CanAcceptChild(unit)
+            if (unit == null)
+                return Array.Empty<ContainerNode>();
+
+            string ownerInstanceId = GetMovementControlOwner(unit);
+            if (string.IsNullOrEmpty(ownerInstanceId))
+                return Array.Empty<ContainerNode>();
+
+            Point originPosition =
+                unit.GetTransitMovement()?.CurrentPosition
+                ?? originPlanet?.GetPosition()
+                ?? unit.GetPosition();
+            bool canTravelRemotely =
+                forceInterplanetaryTravel
+                || unit.GetTransitMovement() != null
+                || CanTravelBetweenPlanets(unit);
+
+            IEnumerable<ContainerNode> destinations = _game
+                .GetSceneNodesByType<Planet>()
+                .Cast<ContainerNode>()
+                .Concat(_game.GetSceneNodesByType<CapitalShip>());
+
+            return destinations
+                .Where(destination =>
+                    CanUseSafeRelocationDestination(
+                        unit,
+                        destination,
+                        originPlanet,
+                        canTravelRemotely,
+                        allowOriginPlanet
                     )
-                    .OrderBy(planet => planet.GetRawDistanceTo(unit.GetPosition()))
-                    .ThenBy(planet => planet.InstanceID)
-                ?? Enumerable.Empty<Planet>();
+                )
+                .Select(destination => new
+                {
+                    Destination = destination,
+                    Planet = RequireDestinationPlanet(destination),
+                })
+                .OrderBy(candidate => candidate.Planet.GetRawDistanceTo(originPosition))
+                .ThenBy(candidate => candidate.Destination is CapitalShip ? 0 : 1)
+                .ThenBy(candidate => candidate.Destination.InstanceID, StringComparer.Ordinal)
+                .Select(candidate => candidate.Destination)
+                .ToList();
+        }
+
+        /// <summary>
+        /// Returns whether a live destination is safe, friendly, reachable, and able to receive a
+        /// relocated unit.
+        /// </summary>
+        /// <param name="unit">The unit requiring a destination.</param>
+        /// <param name="destination">The proposed destination.</param>
+        /// <param name="originPlanet">The planet from which the unit would relocate or remain.</param>
+        /// <param name="canTravelRemotely">
+        /// Whether the unit or its calling mechanic can cross between planets.
+        /// </param>
+        /// <param name="allowOriginPlanet">
+        /// Whether the origin planet itself may receive the unit without relocation.
+        /// </param>
+        /// <returns>True when the destination can safely receive the unit.</returns>
+        internal bool CanUseSafeRelocationDestination(
+            IMovable unit,
+            ContainerNode destination,
+            Planet originPlanet,
+            bool canTravelRemotely = true,
+            bool allowOriginPlanet = false
+        )
+        {
+            if (unit == null || destination == null)
+                return false;
+
+            ContainerNode liveDestination = ResolveRegisteredContainer(destination);
+            if (liveDestination == null)
+                return false;
+
+            bool isAllowedOrigin =
+                allowOriginPlanet && ReferenceEquals(liveDestination, originPlanet);
+            if (ReferenceEquals(unit.GetParent(), liveDestination) && !isAllowedOrigin)
+                return false;
+
+            string ownerInstanceId = GetMovementControlOwner(unit);
+            if (string.IsNullOrEmpty(ownerInstanceId))
+                return false;
+
+            Planet destinationPlanet =
+                liveDestination as Planet ?? liveDestination.GetParentOfType<Planet>();
+            if (
+                destinationPlanet?.IsDestroyed != false
+                || destinationPlanet.IsBlockadedFor(ownerInstanceId)
+                    && (destinationPlanet != originPlanet || liveDestination is Planet)
+                || liveDestination == originPlanet && !allowOriginPlanet
+                || destinationPlanet != originPlanet && !canTravelRemotely
+            )
+                return false;
+
+            bool isFriendlyDestination = liveDestination switch
+            {
+                Planet planet => planet.GetOwnerInstanceID() == ownerInstanceId
+                    && (planet.IsColonized || unit is Officer { IsCaptured: false }),
+                CapitalShip ship => ship.GetOwnerInstanceID() == ownerInstanceId
+                    && ship.ManufacturingStatus == ManufacturingStatus.Complete
+                    && ((IMovable)ship).GetTransitMovement() == null,
+                _ => false,
+            };
+
+            return isFriendlyDestination && liveDestination.CanAcceptChild(unit);
         }
 
         /// <summary>
@@ -1155,6 +1195,12 @@ namespace Rebellion.Simulation
                 return true;
 
             string movementOwnerId = GetMovementControlOwner(unit);
+            if (
+                unit is Officer { IsCaptured: false }
+                && destinationPlanet.GetOwnerInstanceID() == movementOwnerId
+            )
+                return true;
+
             if (
                 destinationPlanet.GetOwnerInstanceID() == movementOwnerId
                 && destinationPlanet.HasStationedUnit(movementOwnerId)
