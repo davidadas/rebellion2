@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
@@ -262,6 +263,152 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void HandleResults_LastOuterRimGarrisonRemoved_ReroutesAllInboundUnitsToNearestFleet()
+        {
+            (Regiment garrison, List<IMovable> inboundUnits) = BuildOuterRimGarrisonRemovalScene(
+                unitsPerType: 2
+            );
+            (_, Fleet fleet, CapitalShip carrier) = AddNearbyCarrier(
+                "nearest",
+                positionX: 35,
+                starfighterCapacity: 2,
+                regimentCapacity: 2
+            );
+
+            RemoveGarrisonAndReconcile(garrison);
+
+            Assert.AreEqual(_rebels.InstanceID, _targetPlanet.GetOwnerInstanceID());
+            Assert.IsTrue(inboundUnits.All(unit => unit.GetParentOfType<Fleet>() == fleet));
+            Assert.IsTrue(inboundUnits.All(unit => unit.GetParent() == carrier));
+        }
+
+        [Test]
+        public void HandleResults_NearestFleetHasPartialCapacity_ReroutesOverflowToNextPlanet()
+        {
+            (Regiment garrison, List<IMovable> inboundUnits) = BuildOuterRimGarrisonRemovalScene(
+                unitsPerType: 2
+            );
+            (_, _, CapitalShip carrier) = AddNearbyCarrier(
+                "nearest",
+                positionX: 35,
+                starfighterCapacity: 1,
+                regimentCapacity: 1
+            );
+
+            RemoveGarrisonAndReconcile(garrison);
+
+            Assert.AreEqual(
+                1,
+                inboundUnits.OfType<Starfighter>().Count(unit => unit.GetParent() == carrier)
+            );
+            Assert.AreEqual(
+                1,
+                inboundUnits.OfType<Regiment>().Count(unit => unit.GetParent() == carrier)
+            );
+            Assert.AreEqual(
+                2,
+                inboundUnits.OfType<Officer>().Count(unit => unit.GetParent() == carrier)
+            );
+            Assert.AreEqual(
+                1,
+                inboundUnits.OfType<Starfighter>().Count(unit => unit.GetParent() == _empirePlanet)
+            );
+            Assert.AreEqual(
+                1,
+                inboundUnits.OfType<Regiment>().Count(unit => unit.GetParent() == _empirePlanet)
+            );
+        }
+
+        [Test]
+        public void HandleResults_TwoNearbyFleetsHavePartialCapacity_DistributesOverflowByProximity()
+        {
+            (Regiment garrison, List<IMovable> inboundUnits) = BuildOuterRimGarrisonRemovalScene(
+                unitsPerType: 3
+            );
+            (_, _, CapitalShip nearestCarrier) = AddNearbyCarrier(
+                "nearest",
+                positionX: 35,
+                starfighterCapacity: 1,
+                regimentCapacity: 1
+            );
+            (_, _, CapitalShip secondCarrier) = AddNearbyCarrier(
+                "second",
+                positionX: 45,
+                starfighterCapacity: 1,
+                regimentCapacity: 1
+            );
+
+            RemoveGarrisonAndReconcile(garrison);
+
+            Assert.AreEqual(
+                1,
+                inboundUnits.OfType<Starfighter>().Count(unit => unit.GetParent() == nearestCarrier)
+            );
+            Assert.AreEqual(
+                1,
+                inboundUnits.OfType<Regiment>().Count(unit => unit.GetParent() == nearestCarrier)
+            );
+            Assert.AreEqual(
+                3,
+                inboundUnits.OfType<Officer>().Count(unit => unit.GetParent() == nearestCarrier)
+            );
+            Assert.AreEqual(
+                1,
+                inboundUnits.OfType<Starfighter>().Count(unit => unit.GetParent() == secondCarrier)
+            );
+            Assert.AreEqual(
+                1,
+                inboundUnits.OfType<Regiment>().Count(unit => unit.GetParent() == secondCarrier)
+            );
+            Assert.AreEqual(
+                1,
+                inboundUnits.OfType<Starfighter>().Count(unit => unit.GetParent() == _empirePlanet)
+            );
+            Assert.AreEqual(
+                1,
+                inboundUnits.OfType<Regiment>().Count(unit => unit.GetParent() == _empirePlanet)
+            );
+        }
+
+        [Test]
+        public void HandleResults_LastOuterRimGarrisonRemoved_SkipsBlockadedDestination()
+        {
+            (Regiment garrison, List<IMovable> inboundUnits) = BuildOuterRimGarrisonRemovalScene(
+                unitsPerType: 1
+            );
+            Planet blockadedPlanet = AddEmpirePlanet("blockaded", positionX: 35);
+            AddBlockadingFleet(blockadedPlanet, "blockading");
+
+            RemoveGarrisonAndReconcile(garrison);
+
+            Assert.IsTrue(blockadedPlanet.IsBlockaded());
+            Assert.IsTrue(inboundUnits.All(unit => unit.GetParent() == _empirePlanet));
+        }
+
+        [Test]
+        public void HandleResults_LastOuterRimGarrisonRemovedWithNoSafeDestination_CapturesOfficerAndDestroysCombatUnits()
+        {
+            (Regiment garrison, List<IMovable> inboundUnits) = BuildOuterRimGarrisonRemovalScene(
+                unitsPerType: 1
+            );
+            AddBlockadingFleet(_empirePlanet, "blockading");
+            Officer officer = inboundUnits.OfType<Officer>().Single();
+            Starfighter starfighter = inboundUnits.OfType<Starfighter>().Single();
+            Regiment regiment = inboundUnits.OfType<Regiment>().Single();
+
+            RemoveGarrisonAndReconcile(garrison);
+
+            Assert.IsTrue(_empirePlanet.IsBlockaded());
+            Assert.IsTrue(officer.IsCaptured);
+            Assert.AreEqual(_rebels.InstanceID, officer.CaptorInstanceID);
+            Assert.AreSame(_targetPlanet, officer.GetParent());
+            Assert.IsNull(
+                _game.GetSceneNodeByInstanceID<Starfighter>(starfighter.InstanceID, true)
+            );
+            Assert.IsNull(_game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID, true));
+        }
+
+        [Test]
         public void HandleResults_LastStationedRegiment_PreservesMissionForLifecycleValidation()
         {
             _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
@@ -373,6 +520,168 @@ namespace Rebellion.Tests.Simulation
                 .Single();
             Assert.AreEqual(PlanetOwnershipChangeReason.PopularSupport, change.Reason);
             Assert.AreEqual(18, change.Tick);
+        }
+
+        /// <summary>
+        /// Builds an outer-rim planet with one stationed regiment and equal groups of inbound
+        /// starfighters, officers, and regiments owned by the planet's current faction.
+        /// </summary>
+        /// <param name="unitsPerType">The number of inbound units to create for each unit type.</param>
+        /// <returns>The stationed garrison and all inbound units.</returns>
+        private (Regiment garrison, List<IMovable> inboundUnits) BuildOuterRimGarrisonRemovalScene(
+            int unitsPerType
+        )
+        {
+            _targetPlanet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.OuterRim;
+            _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
+            _targetPlanet.PopularSupport = new Dictionary<string, int>
+            {
+                { _empire.InstanceID, 40 },
+                { _rebels.InstanceID, 60 },
+            };
+            _empirePlanet.PositionX = 100;
+
+            Regiment garrison = EntityFactory.CreateRegiment("garrison", _empire.InstanceID);
+            garrison.ManufacturingStatus = ManufacturingStatus.Complete;
+            _game.AttachNode(garrison, _targetPlanet);
+
+            List<IMovable> inboundUnits = new List<IMovable>();
+            for (int index = 0; index < unitsPerType; index++)
+            {
+                Starfighter starfighter = EntityFactory.CreateStarfighter(
+                    $"inbound-fighter-{index}",
+                    _empire.InstanceID
+                );
+                starfighter.ManufacturingStatus = ManufacturingStatus.Complete;
+                starfighter.Hyperdrive = 1;
+                Officer officer = EntityFactory.CreateOfficer(
+                    $"inbound-officer-{index}",
+                    _empire.InstanceID
+                );
+                Regiment regiment = EntityFactory.CreateRegiment(
+                    $"inbound-regiment-{index}",
+                    _empire.InstanceID
+                );
+                regiment.ManufacturingStatus = ManufacturingStatus.Complete;
+
+                inboundUnits.Add(starfighter);
+                inboundUnits.Add(officer);
+                inboundUnits.Add(regiment);
+            }
+
+            foreach (IMovable unit in inboundUnits)
+            {
+                _game.AttachNode(unit, _empirePlanet);
+                _movementSystem.RequestMove(unit, _targetPlanet);
+                unit.Movement.CurrentPosition = new Point(30, 0);
+            }
+
+            return (garrison, inboundUnits);
+        }
+
+        /// <summary>
+        /// Adds a stationary friendly carrier at a neutral nearby planet so the fleet, rather
+        /// than its host planet, is the valid receiving destination.
+        /// </summary>
+        /// <param name="id">The identifier prefix for the new scene nodes.</param>
+        /// <param name="positionX">The carrier planet's horizontal position.</param>
+        /// <param name="starfighterCapacity">The carrier's starfighter capacity.</param>
+        /// <param name="regimentCapacity">The carrier's regiment capacity.</param>
+        /// <returns>The carrier location, fleet, and capital ship.</returns>
+        private (Planet planet, Fleet fleet, CapitalShip carrier) AddNearbyCarrier(
+            string id,
+            int positionX,
+            int starfighterCapacity,
+            int regimentCapacity
+        )
+        {
+            Planet planet = new Planet
+            {
+                InstanceID = $"{id}-carrier-location",
+                DisplayName = $"{id} carrier location",
+                IsColonized = true,
+                PositionX = positionX,
+                PositionY = 0,
+            };
+            Fleet fleet = EntityFactory.CreateFleet($"{id}-fleet", _empire.InstanceID);
+            CapitalShip carrier = new CapitalShip
+            {
+                InstanceID = $"{id}-carrier",
+                OwnerInstanceID = _empire.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                Hyperdrive = 1,
+                MaxHullStrength = 100,
+                CurrentHullStrength = 100,
+                StarfighterCapacity = starfighterCapacity,
+                RegimentCapacity = regimentCapacity,
+            };
+
+            _game.AttachNode(planet, _targetPlanet.GetParentOfType<PlanetSector>());
+            _game.AttachNode(fleet, planet);
+            _game.AttachNode(carrier, fleet);
+            return (planet, fleet, carrier);
+        }
+
+        /// <summary>
+        /// Adds a colonized Empire planet used as a relocation destination.
+        /// </summary>
+        /// <param name="id">The planet identifier prefix.</param>
+        /// <param name="positionX">The planet's horizontal position.</param>
+        /// <returns>The added Empire planet.</returns>
+        private Planet AddEmpirePlanet(string id, int positionX)
+        {
+            Planet planet = new Planet
+            {
+                InstanceID = $"{id}-planet",
+                DisplayName = $"{id} planet",
+                OwnerInstanceID = _empire.InstanceID,
+                IsColonized = true,
+                PositionX = positionX,
+                PositionY = 0,
+            };
+            _game.AttachNode(planet, _targetPlanet.GetParentOfType<PlanetSector>());
+            return planet;
+        }
+
+        /// <summary>
+        /// Adds a stationary Rebels fleet with an operational capital ship above a planet.
+        /// </summary>
+        /// <param name="planet">The planet to blockade.</param>
+        /// <param name="id">The fleet identifier prefix.</param>
+        private void AddBlockadingFleet(Planet planet, string id)
+        {
+            Fleet fleet = EntityFactory.CreateFleet($"{id}-fleet", _rebels.InstanceID);
+            CapitalShip capitalShip = new CapitalShip
+            {
+                InstanceID = $"{id}-capital-ship",
+                OwnerInstanceID = _rebels.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaxHullStrength = 100,
+                CurrentHullStrength = 100,
+                Hyperdrive = 1,
+            };
+            _game.AttachNode(fleet, planet);
+            _game.AttachNode(capitalShip, fleet);
+        }
+
+        /// <summary>
+        /// Removes the planet's last stationed regiment and delivers the resulting garrison
+        /// change to planetary control reconciliation.
+        /// </summary>
+        /// <param name="garrison">The last stationed regiment to remove.</param>
+        private void RemoveGarrisonAndReconcile(Regiment garrison)
+        {
+            _game.DeleteNode(garrison);
+            _observer.HandleResults(
+                new[]
+                {
+                    new PlanetGarrisonChangedResult
+                    {
+                        Planet = _targetPlanet,
+                        Tick = _game.CurrentTick,
+                    },
+                }
+            );
         }
     }
 }

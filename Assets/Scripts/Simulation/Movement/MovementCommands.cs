@@ -1516,8 +1516,41 @@ namespace Rebellion.Simulation
             bool force = false
         )
         {
+            EvacuateToNearestFriendlyPlanet(unit, evictingOwnerInstanceID, _pendingResults, force);
+        }
+
+        /// <summary>
+        /// Moves a unit to the nearest friendly planet and appends movement facts to the supplied
+        /// reaction batch.
+        /// </summary>
+        /// <param name="unit">The unit to evacuate.</param>
+        /// <param name="results">The reaction batch receiving movement facts.</param>
+        internal void EvacuateToNearestFriendlyPlanet(
+            IMovable unit,
+            ICollection<GameResult> results
+        )
+        {
+            EvacuateToNearestFriendlyPlanet(unit, null, results, force: false);
+        }
+
+        /// <summary>
+        /// Moves a unit to the nearest friendly planet using the supplied result collection.
+        /// </summary>
+        /// <param name="unit">The unit to evacuate.</param>
+        /// <param name="evictingOwnerInstanceID">The faction claiming the planet, when evicting.</param>
+        /// <param name="results">The collection receiving movement facts.</param>
+        /// <param name="force">Whether a planet ownership change is forcing the relocation.</param>
+        private void EvacuateToNearestFriendlyPlanet(
+            IMovable unit,
+            string evictingOwnerInstanceID,
+            ICollection<GameResult> results,
+            bool force
+        )
+        {
             if (unit == null)
                 throw new ArgumentNullException(nameof(unit));
+            if (results == null)
+                throw new ArgumentNullException(nameof(results));
 
             string ownerID = MovementQueries.GetMovementControlOwner(unit);
             if (string.IsNullOrEmpty(ownerID))
@@ -1527,12 +1560,16 @@ namespace Rebellion.Simulation
                 return;
             }
 
-            Faction owner = _game.GetFactionByOwnerInstanceID(ownerID);
             Planet currentPlanet = unit.GetParentOfType<Planet>();
             if (unit is Fleet inactiveFleet && !inactiveFleet.HasOperationalCapitalShips())
             {
-                Planet rebasePlanet = MovementQueries
-                    .FindEvacuationDestinations(owner, unit, currentPlanet)
+                Planet rebasePlanet = _queries
+                    .FindSafeRelocationDestinations(
+                        unit,
+                        currentPlanet,
+                        forceInterplanetaryTravel: true
+                    )
+                    .OfType<Planet>()
                     .FirstOrDefault();
                 if (rebasePlanet != null)
                 {
@@ -1545,28 +1582,15 @@ namespace Rebellion.Simulation
                 }
             }
 
-            if (
-                !force
-                && unit.GetTransitMovement() == null
-                && !MovementQueries.CanTravelBetweenPlanets(unit)
-            )
-            {
-                unit.Movement = null;
-                GameLogger.Warning(
-                    $"{unit.GetDisplayName()} has no hyperdrive or carrier and cannot evacuate."
-                );
-                return;
-            }
-
             foreach (
-                Planet fallback in MovementQueries.FindEvacuationDestinations(
-                    owner,
+                ContainerNode fallback in _queries.FindSafeRelocationDestinations(
                     unit,
-                    currentPlanet
+                    currentPlanet,
+                    forceInterplanetaryTravel: force
                 )
             )
             {
-                if (ExecuteMove(unit, fallback, _pendingResults))
+                if (ExecuteMove(unit, fallback, results))
                     return;
             }
 
@@ -1597,10 +1621,28 @@ namespace Rebellion.Simulation
         /// <param name="captorInstanceID">The instance ID of the capturing faction.</param>
         private void CaptureStrandedOfficer(Officer officer, Planet planet, string captorInstanceID)
         {
+            CaptureStrandedOfficer(officer, planet, captorInstanceID, _pendingResults);
+        }
+
+        /// <summary>
+        /// Captures an officer stranded on a planet claimed by an enemy faction and appends the
+        /// capture fact to the supplied result batch.
+        /// </summary>
+        /// <param name="officer">The stranded officer.</param>
+        /// <param name="planet">The planet the officer is stranded on.</param>
+        /// <param name="captorInstanceID">The instance ID of the capturing faction.</param>
+        /// <param name="results">The result batch receiving the capture fact.</param>
+        private void CaptureStrandedOfficer(
+            Officer officer,
+            Planet planet,
+            string captorInstanceID,
+            ICollection<GameResult> results
+        )
+        {
             if (!officer.TryCapture(captorInstanceID))
                 return;
 
-            _pendingResults.Add(
+            results.Add(
                 new OfficerCaptureStateResult
                 {
                     TargetOfficer = officer,
@@ -1684,6 +1726,285 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
+        /// Restores officers retained by a removed capital ship to the nearest safe container.
+        /// </summary>
+        /// <param name="removedShip">The removed capital ship retaining its former children.</param>
+        /// <param name="context">The location associated with the removal result.</param>
+        /// <param name="removedInstanceIds">Units explicitly removed by the same result batch.</param>
+        /// <param name="recoverStarfighters">Whether surviving completed starfighters may be recovered.</param>
+        /// <param name="results">The collection receiving movement facts.</param>
+        internal void RelocateRemovedCapitalShipOccupants(
+            CapitalShip removedShip,
+            IGameEntity context,
+            ISet<string> removedInstanceIds,
+            bool recoverStarfighters,
+            ICollection<GameResult> results
+        )
+        {
+            if (removedShip == null)
+                throw new ArgumentNullException(nameof(removedShip));
+            if (results == null)
+                throw new ArgumentNullException(nameof(results));
+
+            Fleet previousFleet =
+                removedShip.GetParent() as Fleet ?? removedShip.GetLastParent() as Fleet;
+            Fleet liveFleet = string.IsNullOrEmpty(previousFleet?.InstanceID)
+                ? null
+                : _game.GetSceneNodeByInstanceID<Fleet>(
+                    previousFleet.InstanceID,
+                    includeDisabled: true
+                );
+            Planet originPlanet =
+                context as Planet
+                ?? liveFleet?.GetParentOfType<Planet>()
+                ?? previousFleet?.GetLastParent() as Planet;
+            IEnumerable<IMovable> occupants = removedShip
+                .GetChildren<Officer>(includeDisabled: true)
+                .Cast<IMovable>();
+            if (recoverStarfighters)
+            {
+                occupants = occupants.Concat(
+                    removedShip
+                        .GetChildren<Starfighter>(includeDisabled: true)
+                        .Where(fighter =>
+                            fighter.ManufacturingStatus == ManufacturingStatus.Complete
+                        )
+                );
+            }
+
+            List<IMovable> recoverableOccupants = occupants
+                .Where(occupant =>
+                    occupant != null
+                    && !(removedInstanceIds?.Contains(occupant.InstanceID) ?? false)
+                )
+                .OrderBy(occupant =>
+                    occupant is Starfighter fighter && fighter.Hyperdrive <= 0 ? 0 : 1
+                )
+                .ToList();
+
+            foreach (IMovable occupant in recoverableOccupants)
+                RelocateRemovedCapitalShipOccupant(occupant, liveFleet, originPlanet, results);
+        }
+
+        /// <summary>
+        /// Restores one removed-ship occupant to its nearest safe container.
+        /// </summary>
+        /// <param name="occupant">The retained occupant to restore.</param>
+        /// <param name="fleet">The removed carrier's former fleet when it remains live.</param>
+        /// <param name="originPlanet">The planet where removal occurred.</param>
+        /// <param name="results">The collection receiving movement facts.</param>
+        private void RelocateRemovedCapitalShipOccupant(
+            IMovable occupant,
+            Fleet fleet,
+            Planet originPlanet,
+            ICollection<GameResult> results
+        )
+        {
+            if (originPlanet == null)
+                return;
+
+            ContainerNode destination = FindFleetRecoveryCarrier(occupant, fleet);
+            if (destination == null && occupant is Starfighter { Hyperdrive: <= 0 })
+            {
+                FreeFleetRecoveryCapacity(fleet, originPlanet, results);
+                destination = FindFleetRecoveryCarrier(occupant, fleet);
+            }
+            destination ??= _queries
+                .FindSafeRelocationDestinations(occupant, originPlanet, allowOriginPlanet: true)
+                .FirstOrDefault();
+            if (destination == null)
+            {
+                ResolveRemovedOccupantWithoutDestination(occupant, originPlanet, results);
+                return;
+            }
+
+            RestoreRemovedOccupant((ISceneNode)occupant, destination);
+            Planet destinationPlanet = MovementQueries.RequireDestinationPlanet(destination);
+            bool recoveredByFormerFleet =
+                destination is CapitalShip && destination.GetParentOfType<Fleet>() == fleet;
+            if (!recoveredByFormerFleet && destinationPlanet != originPlanet)
+                StartRemovedUnitTransit(occupant, originPlanet, destination, results);
+        }
+
+        /// <summary>
+        /// Applies the established stranded-unit fallback when no friendly container can receive
+        /// a survivor. Officers are captured locally; other occupants remain destroyed.
+        /// </summary>
+        /// <param name="occupant">The removed carrier occupant.</param>
+        /// <param name="originPlanet">The location where the carrier was removed.</param>
+        /// <param name="results">The collection receiving capture facts.</param>
+        private void ResolveRemovedOccupantWithoutDestination(
+            IMovable occupant,
+            Planet originPlanet,
+            ICollection<GameResult> results
+        )
+        {
+            if (occupant is not Officer officer)
+                return;
+
+            string captorInstanceId = originPlanet.GetOwnerInstanceID();
+            if (
+                string.Equals(
+                    captorInstanceId,
+                    officer.GetOwnerInstanceID(),
+                    StringComparison.Ordinal
+                )
+            )
+            {
+                throw new InvalidOperationException(
+                    $"Officer '{officer.InstanceID}' has no valid destination or captor after carrier removal."
+                );
+            }
+
+            officer.Movement = null;
+            CaptureStrandedOfficer(officer, originPlanet, captorInstanceId, results);
+            RestoreRemovedOccupant(officer, originPlanet);
+        }
+
+        /// <summary>
+        /// Finds a completed carrier in the removed ship's surviving fleet that can receive an
+        /// occupant before the fleet's already-scheduled withdrawal is considered.
+        /// </summary>
+        /// <param name="occupant">The occupant requiring recovery.</param>
+        /// <param name="fleet">The removed ship's surviving fleet.</param>
+        /// <returns>The first compatible carrier, or null when the fleet has no capacity.</returns>
+        private static CapitalShip FindFleetRecoveryCarrier(IMovable occupant, Fleet fleet)
+        {
+            return fleet
+                ?.GetChildren<CapitalShip>()
+                .Where(ship =>
+                    ship.ManufacturingStatus == ManufacturingStatus.Complete
+                    && ship.Movement == null
+                )
+                .OrderBy(ship => ship.InstanceID, StringComparer.Ordinal)
+                .FirstOrDefault(ship => ship.CanAcceptChild(occupant));
+        }
+
+        /// <summary>
+        /// Evacuates one independently mobile completed fighter from a surviving carrier so that
+        /// a stranded non-hyperdrive fighter can take its place.
+        /// </summary>
+        /// <param name="fleet">The removed ship's surviving fleet.</param>
+        /// <param name="originPlanet">The planet where carrier destruction occurred.</param>
+        /// <param name="results">The collection receiving movement facts.</param>
+        private void FreeFleetRecoveryCapacity(
+            Fleet fleet,
+            Planet originPlanet,
+            ICollection<GameResult> results
+        )
+        {
+            if (fleet == null || originPlanet == null)
+                return;
+
+            Starfighter mobileFighter = fleet
+                .GetChildren<CapitalShip>()
+                .Where(ship =>
+                    ship.ManufacturingStatus == ManufacturingStatus.Complete
+                    && ship.Movement == null
+                )
+                .OrderBy(ship => ship.InstanceID, StringComparer.Ordinal)
+                .SelectMany(ship => ship.GetChildren<Starfighter>())
+                .FirstOrDefault(fighter =>
+                    fighter.ManufacturingStatus == ManufacturingStatus.Complete
+                    && fighter.Movement == null
+                    && fighter.Hyperdrive > 0
+                    && CanVacateRecoveryCarrier(fighter, originPlanet)
+                );
+            if (mobileFighter == null)
+                return;
+
+            Planet fleetDestination = mobileFighter.GetParentOfType<Planet>();
+            if (
+                fleetDestination != originPlanet
+                && _queries.CanUseSafeRelocationDestination(
+                    mobileFighter,
+                    fleetDestination,
+                    originPlanet
+                )
+            )
+            {
+                _game.MoveNode(mobileFighter, fleetDestination);
+                StartRemovedUnitTransit(mobileFighter, originPlanet, fleetDestination, results);
+                return;
+            }
+
+            EvacuateToNearestFriendlyPlanet(mobileFighter, results);
+        }
+
+        /// <summary>
+        /// Returns whether a completed hyperdrive fighter can leave a recovery carrier for the
+        /// fleet's destination or another safe container.
+        /// </summary>
+        /// <param name="fighter">The fighter currently occupying recovery capacity.</param>
+        /// <param name="originPlanet">The planet where carrier destruction occurred.</param>
+        /// <returns>True when moving the fighter can safely free its carrier bay.</returns>
+        private bool CanVacateRecoveryCarrier(Starfighter fighter, Planet originPlanet)
+        {
+            Planet fleetDestination = fighter.GetParentOfType<Planet>();
+            return fleetDestination != originPlanet
+                    && _queries.CanUseSafeRelocationDestination(
+                        fighter,
+                        fleetDestination,
+                        originPlanet
+                    )
+                || _queries.CanEvacuateToNearestFriendlyPlanet(fighter);
+        }
+
+        /// <summary>
+        /// Records transit from a removed container's location after the unit has been restored at
+        /// its live destination.
+        /// </summary>
+        /// <param name="occupant">The restored unit.</param>
+        /// <param name="originPlanet">The planet where its container was removed.</param>
+        /// <param name="destination">The live destination receiving the unit.</param>
+        /// <param name="results">The collection receiving movement facts.</param>
+        private void StartRemovedUnitTransit(
+            IMovable occupant,
+            Planet originPlanet,
+            ContainerNode destination,
+            ICollection<GameResult> results
+        )
+        {
+            Planet destinationPlanet = MovementQueries.RequireDestinationPlanet(destination);
+            occupant.Movement = new MovementState
+            {
+                TransitTicks = _queries.CalculateTransitTicks(
+                    occupant,
+                    originPlanet,
+                    destinationPlanet
+                ),
+                TicksElapsed = 0,
+                MovementGroupID = Guid.NewGuid().ToString("N"),
+                OriginPosition = originPlanet.GetPosition(),
+                CurrentPosition = originPlanet.GetPosition(),
+            };
+
+            results.Add(
+                new GameObjectEnrouteResult { GameObject = occupant, Tick = _game.CurrentTick }
+            );
+            results.Add(
+                new GameObjectEnrouteActiveResult
+                {
+                    GameObject = occupant,
+                    IsActive = true,
+                    Tick = _game.CurrentTick,
+                }
+            );
+        }
+
+        /// <summary>
+        /// Detaches a retained child from its removed container and registers it at a live
+        /// destination.
+        /// </summary>
+        /// <param name="occupant">The retained scene node.</param>
+        /// <param name="destination">The live destination that accepts it.</param>
+        private void RestoreRemovedOccupant(ISceneNode occupant, ContainerNode destination)
+        {
+            _game.DetachNode(occupant);
+            _game.AttachNode(occupant, destination);
+        }
+
+        /// <summary>
         /// Redirects a unit when its destination is unavailable.
         /// </summary>
         /// <param name="movable">The unit whose arrival was rejected.</param>
@@ -1700,9 +2021,8 @@ namespace Rebellion.Simulation
                 return;
             }
 
-            Faction owner = _game.GetFactionByOwnerInstanceID(ownerID);
-            Planet fallback = MovementQueries
-                .FindEvacuationDestinations(owner, movable, rejectedDestination)
+            ContainerNode fallback = _queries
+                .FindSafeRelocationDestinations(movable, rejectedDestination)
                 .FirstOrDefault();
 
             if (fallback != null)

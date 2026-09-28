@@ -387,6 +387,165 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void TryExecute_GroundCannonDestroysCarrier_DestroysEmbarkedCombatUnits()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "empire", energy: 1);
+            CreatePlanet(game, "fallback", "alliance", energy: 1);
+            Building groundCannon = AddBuilding(
+                game,
+                planet,
+                "ground-cannon",
+                "empire",
+                BuildingType.Weapon
+            );
+            groundCannon.WeaponPower = 100;
+            Fleet fleet = AddBombardmentFleet(game, planet, "alliance", bombardment: 1);
+            CapitalShip carrier = fleet.GetChildren<CapitalShip>().Single();
+            carrier.StarfighterCapacity = 1;
+            carrier.RegimentCapacity = 1;
+            Starfighter starfighter = EntityFactory.CreateStarfighter(
+                "embarked-starfighter",
+                "alliance"
+            );
+            starfighter.ManufacturingStatus = ManufacturingStatus.Complete;
+            starfighter.Hyperdrive = 1;
+            Regiment regiment = EntityFactory.CreateRegiment("embarked-regiment", "alliance");
+            regiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            SpecialForces specialForces = new SpecialForces
+            {
+                InstanceID = "embarked-special-forces",
+                OwnerInstanceID = "alliance",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(starfighter, carrier);
+            game.AttachNode(regiment, carrier);
+            game.AttachNode(specialForces, carrier);
+
+            MovementCommands movement = new MovementCommands(
+                game,
+                new FogOfWarCommands(game),
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
+            GameResultBus resultBus = new GameResultBus();
+            new MovementObserver(movement).Connect(resultBus);
+            BombardmentCommands system = MakeBombardment(
+                game,
+                new SequenceRNG(intValues: new[] { 0 })
+            );
+            system.ResultsProduced += results => resultBus.Publish(results);
+
+            BombardmentResult result = system.TryExecute(
+                new List<Fleet> { fleet },
+                planet,
+                BombardmentType.General
+            );
+
+            CollectionAssert.Contains(result.DestroyedCapitalShips, carrier);
+            Assert.IsNull(
+                game.GetSceneNodeByInstanceID<Starfighter>(
+                    starfighter.InstanceID,
+                    includeDisabled: true
+                )
+            );
+            Assert.IsNull(
+                game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID, includeDisabled: true)
+            );
+            Assert.IsNull(
+                game.GetSceneNodeByInstanceID<SpecialForces>(
+                    specialForces.InstanceID,
+                    includeDisabled: true
+                )
+            );
+            CollectionAssert.Contains(
+                result
+                    .Events.OfType<GameObjectDestroyedResult>()
+                    .Select(destruction => destruction.DestroyedObject)
+                    .ToList(),
+                specialForces
+            );
+        }
+
+        [Test]
+        public void TryExecute_DefenseFireDestroysCarrier_RelocatesInactiveOfficer()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "empire", energy: 1);
+            (Planet fallback, _) = CreatePlanet(game, "fallback", "alliance", energy: 1);
+            Building lnr = AddBuilding(game, planet, "lnr", "empire", BuildingType.Weapon);
+            lnr.WeaponPower = 100;
+            Fleet fleet = AddBombardmentFleet(game, planet, "alliance", bombardment: 1);
+            CapitalShip carrier = fleet.GetChildren<CapitalShip>().Single();
+            Officer officer = new Officer
+            {
+                InstanceID = "officer",
+                OwnerInstanceID = "alliance",
+                IsEnabled = false,
+            };
+            game.AttachNode(officer, carrier);
+            MovementCommands movement = new MovementCommands(
+                game,
+                new FogOfWarCommands(game),
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
+            GameResultBus resultBus = new GameResultBus();
+            new MovementObserver(movement).Connect(resultBus);
+            BombardmentCommands system = MakeBombardment(
+                game,
+                new SequenceRNG(intValues: new[] { 0 })
+            );
+            system.ResultsProduced += results => resultBus.Publish(results);
+
+            system.TryExecute(new List<Fleet> { fleet }, planet, BombardmentType.General);
+
+            Assert.AreSame(fallback, officer.GetParent());
+            Assert.IsNotNull(officer.Movement);
+            Assert.IsFalse(officer.IsEnabled);
+        }
+
+        [Test]
+        public void TryExecute_DefenseFireDestroysCarrier_RelocatesActiveOfficer()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "empire", energy: 1);
+            (Planet fallback, _) = CreatePlanet(game, "fallback", "alliance", energy: 1);
+            Building lnr = AddBuilding(game, planet, "lnr", "empire", BuildingType.Weapon);
+            lnr.WeaponPower = 100;
+            Fleet fleet = AddBombardmentFleet(game, planet, "alliance", bombardment: 1);
+            CapitalShip carrier = fleet.GetChildren<CapitalShip>().Single();
+            Officer officer = new Officer { InstanceID = "officer", OwnerInstanceID = "alliance" };
+            game.AttachNode(officer, carrier);
+            MovementCommands movement = new MovementCommands(
+                game,
+                new FogOfWarCommands(game),
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
+            GameResultBus resultBus = new GameResultBus();
+            new MovementObserver(movement).Connect(resultBus);
+            BombardmentCommands system = MakeBombardment(
+                game,
+                new SequenceRNG(intValues: new[] { 0 })
+            );
+            system.ResultsProduced += results => resultBus.Publish(results);
+
+            system.TryExecute(new List<Fleet> { fleet }, planet, BombardmentType.General);
+
+            Assert.AreSame(
+                officer,
+                game.GetSceneNodeByInstanceID<Officer>(officer.InstanceID, includeDisabled: true)
+            );
+            Assert.AreSame(fallback, officer.GetParent());
+            Assert.IsNotNull(officer.Movement);
+            Assert.IsTrue(officer.IsEnabled);
+        }
+
+        [Test]
         public void Execute_StrikeResistance_MustBeLowerThanRoll()
         {
             GameRoot game = CreateGame();

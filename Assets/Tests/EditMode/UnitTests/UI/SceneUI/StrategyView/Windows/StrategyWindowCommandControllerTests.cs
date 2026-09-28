@@ -375,6 +375,108 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         }
 
         [Test]
+        public void ExecuteItemDrop_EnemyCapitalShipOverFriendlyPlanet_OpensMissionCreateWindow()
+        {
+            CapitalShip target = new CapitalShip
+            {
+                InstanceID = "target-capital-ship",
+                OwnerInstanceID = _opponentFactionId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+
+            AssertEnemyFleetUnitDropOpensMission(target);
+        }
+
+        [Test]
+        public void ExecuteItemDrop_EnemyStarfighterOverFriendlyPlanet_OpensMissionCreateWindow()
+        {
+            Starfighter target = new Starfighter
+            {
+                InstanceID = "target-starfighter",
+                OwnerInstanceID = _opponentFactionId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+
+            AssertEnemyFleetUnitDropOpensMission(target);
+        }
+
+        [Test]
+        public void ExecuteItemDrop_EnemyRegimentOverFriendlyPlanet_OpensMissionCreateWindow()
+        {
+            Regiment target = new Regiment
+            {
+                InstanceID = "target-regiment",
+                OwnerInstanceID = _opponentFactionId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+
+            AssertEnemyFleetUnitDropOpensMission(target);
+        }
+
+        [Test]
+        public void ExecuteItemDrop_EnemyOfficerOverFriendlyPlanet_OpensMissionCreateWindow()
+        {
+            Officer target = new Officer
+            {
+                InstanceID = "target-officer",
+                OwnerInstanceID = _opponentFactionId,
+            };
+
+            AssertEnemyFleetUnitDropOpensMission(target);
+        }
+
+        [Test]
+        public void ExecuteItemDrop_EnemyFleet_DoesNotOpenMissionCreateWindow()
+        {
+            Rebellion.Game.Units.Fleet fleet = new Rebellion.Game.Units.Fleet(
+                _opponentFactionId,
+                "target-fleet"
+            )
+            {
+                InstanceID = "target-fleet",
+            };
+            _game.AttachNode(fleet, _destination.Planet);
+
+            _controller.ExecuteItemDrop(
+                _sourceWindow,
+                new StrategyMissionTarget(_destination, fleet),
+                new ISceneNode[] { _officer }
+            );
+
+            Assert.IsEmpty(_windowManager.Windows);
+        }
+
+        [Test]
+        public void ExecuteItemDrop_FriendlyCapitalShipOverEnemyPlanet_ExecutesMove()
+        {
+            Rebellion.Game.Units.Fleet fleet = new Rebellion.Game.Units.Fleet(
+                _playerFactionId,
+                "friendly-fleet"
+            )
+            {
+                InstanceID = "friendly-fleet",
+            };
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "friendly-ship",
+                OwnerInstanceID = _playerFactionId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(fleet, _missionTarget.Planet);
+            _game.AttachNode(ship, fleet);
+
+            _controller.ExecuteItemDrop(
+                _sourceWindow,
+                new StrategyMissionTarget(_missionTarget, ship),
+                new ISceneNode[] { _officer }
+            );
+
+            Assert.IsEmpty(_windowManager.Windows);
+            Assert.IsNotNull(_officer.Movement);
+            Assert.AreSame(_sourceWindow, _clearedWindow);
+        }
+
+        [Test]
         public void ExecuteTargetedCommand_CreateMissionWithoutItem_PlaysAdvisorRejection()
         {
             _controller.ExecuteTargetedCommand(
@@ -612,6 +714,47 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             _game.AttachNode(fleet, origin);
             _game.AttachNode(ship, fleet);
             return fleet;
+        }
+
+        /// <summary>
+        /// Verifies an enemy fleet unit above a friendly planet opens mission creation when dropped.
+        /// </summary>
+        /// <param name="target">The exact fleet unit receiving the drop.</param>
+        private void AssertEnemyFleetUnitDropOpensMission(ISceneNode target)
+        {
+            Rebellion.Game.Units.Fleet fleet = new Rebellion.Game.Units.Fleet(
+                _opponentFactionId,
+                "target-fleet"
+            )
+            {
+                InstanceID = "target-fleet",
+            };
+            _game.AttachNode(fleet, _destination.Planet);
+            if (target is CapitalShip)
+                _game.AttachNode(target, fleet);
+            else
+            {
+                CapitalShip carrier = new CapitalShip
+                {
+                    InstanceID = "target-carrier",
+                    OwnerInstanceID = _opponentFactionId,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                    StarfighterCapacity = 1,
+                    RegimentCapacity = 1,
+                };
+                _game.AttachNode(carrier, fleet);
+                _game.AttachNode(target, carrier);
+            }
+
+            _controller.ExecuteItemDrop(
+                _sourceWindow,
+                new StrategyMissionTarget(_destination, target),
+                new ISceneNode[] { _officer }
+            );
+
+            UIWindow window = _windowManager.Windows.Single();
+            Assert.IsTrue(window.Modal);
+            Assert.IsTrue(_windowManager.TryGetWindowView(window, out MissionCreateWindowView _));
         }
 
         /// <summary>

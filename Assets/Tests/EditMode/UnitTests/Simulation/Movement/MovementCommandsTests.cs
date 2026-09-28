@@ -2187,7 +2187,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void RequestMove_OfficerToOwnedUncolonizedPlanetWithOnlyInboundRegiment_IsRejected()
+        public void RequestMove_OfficerToOwnedUncolonizedPlanetWithOnlyInboundRegiment_StartsTransit()
         {
             (
                 GameRoot game,
@@ -2195,7 +2195,7 @@ namespace Rebellion.Tests.Simulation
                 Planet destination,
                 Officer officer,
                 MovementCommands movement
-            ) = BuildScene(new GameConfig());
+            ) = BuildScene();
             destination.IsColonized = false;
             Regiment inboundRegiment = new Regiment
             {
@@ -2208,8 +2208,8 @@ namespace Rebellion.Tests.Simulation
 
             movement.RequestMove(officer, destination);
 
-            Assert.AreSame(origin, officer.GetParent());
-            Assert.IsNull(officer.Movement);
+            Assert.AreSame(destination, officer.GetParent());
+            Assert.IsNotNull(officer.Movement);
         }
 
         [Test]
@@ -2806,11 +2806,11 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ReturnFromMission_MissingRecordedLocation_UsesFriendlyPlanetInsteadOfUnrelatedFleet()
+        public void ReturnFromMission_MissingRecordedLocation_UsesNearestCompatibleFleet()
         {
             (
                 GameRoot game,
-                Planet origin,
+                Planet _,
                 Planet destination,
                 Officer officer,
                 MovementCommands movement
@@ -2838,7 +2838,7 @@ namespace Rebellion.Tests.Simulation
             );
 
             Assert.IsEmpty(stranded);
-            Assert.AreSame(origin, officer.GetParent());
+            Assert.AreSame(ship, officer.GetParent());
         }
 
         [Test]

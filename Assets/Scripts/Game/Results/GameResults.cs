@@ -48,6 +48,7 @@ namespace Rebellion.Game.Results
         Arrival,
         Maintenance,
         Sabotage,
+        Combat,
     }
 
     public enum CombatSide

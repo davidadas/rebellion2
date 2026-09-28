@@ -18,6 +18,8 @@ namespace Rebellion.Simulation
     /// </summary>
     public class MissionCommands : IMissionExecutionRuntime
     {
+        private const double _percentScale = 100.0;
+
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
         private readonly MovementCommands _movementManager;
@@ -444,18 +446,17 @@ namespace Rebellion.Simulation
         /// <param name="participant">The participant whose destination is being resolved.</param>
         /// <param name="missionPlanet">The planet where the mission ended.</param>
         /// <returns>True when the mission planet is intact, friendly, and can accept the participant.</returns>
-        private static bool CanRemainAtMissionLocation(
+        private bool CanRemainAtMissionLocation(
             IMissionParticipant participant,
             Planet missionPlanet
         )
         {
-            if (participant == null || missionPlanet?.IsDestroyed != false)
-                return false;
-
-            string participantOwnerId = participant.GetOwnerInstanceID();
-            return !string.IsNullOrEmpty(participantOwnerId)
-                && participantOwnerId == missionPlanet.GetOwnerInstanceID()
-                && missionPlanet.CanAcceptChild(participant);
+            return _movementQueries.CanUseSafeRelocationDestination(
+                participant,
+                missionPlanet,
+                missionPlanet,
+                allowOriginPlanet: true
+            );
         }
 
         /// <summary>
@@ -811,7 +812,15 @@ namespace Rebellion.Simulation
                 );
             int baseTicks = tickConfig?.Base ?? 0;
             int spreadTicks = tickConfig?.Spread ?? 0;
-            return baseTicks + _provider.NextInt(0, spreadTicks + 1);
+            int rolledTicks = baseTicks + _provider.NextInt(0, spreadTicks + 1);
+            int increasePercent = _game
+                .GetDifficultyModifier(mission.GetOwnerInstanceID())
+                .MissionExecutionSpeedIncreasePercent;
+            if (increasePercent <= 0 || rolledTicks <= 0)
+                return rolledTicks;
+
+            return (int)
+                Math.Ceiling(rolledTicks * _percentScale / (_percentScale + increasePercent));
         }
     }
 }

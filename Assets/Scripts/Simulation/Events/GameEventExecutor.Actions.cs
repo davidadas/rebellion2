@@ -1234,7 +1234,11 @@ namespace Rebellion.Simulation
 
             foreach (ISceneNode root in destroyedRoots)
             {
-                root.Traverse(unit => destroyed.Add(unit));
+                ((BaseSceneNode)root).TraverseIncludingDisabled(unit =>
+                {
+                    if (unit is not Officer || selected.Contains(unit))
+                        destroyed.Add(unit);
+                });
                 game.DeleteNode(root);
             }
 

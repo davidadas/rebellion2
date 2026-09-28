@@ -106,7 +106,6 @@ public sealed class StrategyDragController
     /// <param name="tryGetDragPreview">Builds the drag preview for a source window.</param>
     /// <param name="resolvePointerPosition">Maps pointer positions into strategy coordinates.</param>
     /// <param name="getGalaxyMapDropTarget">Resolves a galaxy-map mission target under a pointer.</param>
-    /// <param name="getPlayerFactionId">Returns the player faction identifier.</param>
     /// <param name="commands">Executes semantic move and mission commands.</param>
     /// <param name="itemDragStartDistance">The authored source-space activation distance.</param>
     public StrategyDragController(
@@ -115,7 +114,6 @@ public sealed class StrategyDragController
         StrategyWindowDragPreviewResolver tryGetDragPreview,
         StrategyPointerPositionResolver resolvePointerPosition,
         Func<PointerEventData, StrategyMissionTarget> getGalaxyMapDropTarget,
-        Func<string> getPlayerFactionId,
         IStrategyWindowCommandActions commands,
         int itemDragStartDistance
     )
@@ -129,7 +127,6 @@ public sealed class StrategyDragController
             getContextItems,
             tryGetDragPreview,
             getGalaxyMapDropTarget,
-            getPlayerFactionId,
             commands
         );
     }

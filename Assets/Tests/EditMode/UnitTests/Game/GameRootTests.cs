@@ -131,6 +131,7 @@ namespace Rebellion.Tests.Game
             DifficultyModifiers actual = _game.GetDifficultyModifier(_faction1);
 
             Assert.AreEqual(0, actual.MissionSuccessChancePoints);
+            Assert.AreEqual(0, actual.MissionExecutionSpeedIncreasePercent);
             Assert.AreEqual(100, actual.ManufacturingSpeedPercent);
         }
 
@@ -155,6 +156,7 @@ namespace Rebellion.Tests.Game
             DifficultyModifiers actual = _game.GetDifficultyModifier(_faction2);
 
             Assert.AreEqual(0, actual.MissionSuccessChancePoints);
+            Assert.AreEqual(0, actual.MissionExecutionSpeedIncreasePercent);
             Assert.AreEqual(100, actual.ManufacturingSpeedPercent);
         }
 

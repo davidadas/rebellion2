@@ -67,7 +67,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             Func<UIWindow, IReadOnlyList<ISceneNode>> getItems = _ => _contextItems;
             StrategyWindowDragPreviewResolver getPreview = ResolvePreview;
             Func<PointerEventData, StrategyMissionTarget> getTarget = _ => _dropTarget;
-            Func<string> getFaction = () => _playerFactionId;
 
             Assert.Throws<ArgumentNullException>(() =>
                 new StrategyWindowItemDragController(
@@ -76,7 +75,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
                     getItems,
                     getPreview,
                     getTarget,
-                    getFaction,
                     _commands
                 )
             );
@@ -87,7 +85,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
                     getItems,
                     getPreview,
                     getTarget,
-                    getFaction,
                     _commands
                 )
             );
@@ -98,7 +95,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
                     null,
                     getPreview,
                     getTarget,
-                    getFaction,
                     _commands
                 )
             );
@@ -109,7 +105,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
                     getItems,
                     null,
                     getTarget,
-                    getFaction,
                     _commands
                 )
             );
@@ -119,18 +114,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
                     dragController,
                     getItems,
                     getPreview,
-                    null,
-                    getFaction,
-                    _commands
-                )
-            );
-            Assert.Throws<ArgumentNullException>(() =>
-                new StrategyWindowItemDragController(
-                    targetingController,
-                    dragController,
-                    getItems,
-                    getPreview,
-                    getTarget,
                     null,
                     _commands
                 )
@@ -142,7 +125,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
                     getItems,
                     getPreview,
                     getTarget,
-                    getFaction,
                     null
                 )
             );
@@ -201,6 +183,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             Assert.AreEqual(new RectInt(11, 21, 20, 30), bounds);
             Assert.IsNotNull(source);
             Assert.AreSame(_window, source.Window);
+            Assert.AreEqual(StrategyMenuAction.Move, source.Action);
             Assert.AreEqual(10, source.SourceX);
             Assert.AreEqual(20, source.SourceY);
             Assert.AreEqual(1, source.Items.Count);
@@ -208,7 +191,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
         }
 
         [Test]
-        public void DirectCandidate_ValidPreview_MovesWithoutSourceWindow()
+        public void DirectCandidate_ValidPreview_ForwardsItemDropWithoutSourceWindow()
         {
             Officer officer = CreateOfficer(_playerFactionId);
             _dropTarget = CreateMissionTarget("destination", _playerFactionId);
@@ -223,27 +206,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
 
             Assert.AreEqual(StrategyWindowItemDragStartResult.SourceDragStarted, result);
             Assert.IsTrue(handled);
-            Assert.AreEqual(1, _commands.MoveCount);
+            Assert.AreEqual(1, _commands.ItemDropCount);
             Assert.IsNull(_commands.LastWindow);
             Assert.AreSame(officer, _commands.LastItems[0]);
-        }
-
-        [Test]
-        public void DirectCandidate_EnemyPlanet_OpensMissionCreation()
-        {
-            Officer officer = CreateOfficer(_playerFactionId);
-            _dropTarget = CreateMissionTarget("destination", "opponent");
-            StrategyWindowItemDragController controller = CreateController();
-            controller.StartCandidate(officer, _preview, 10, 20);
-            controller.TryStartMoveDragFromCandidate(13, 24);
-
-            bool handled = controller.TryHandleSourceDragPointerUp(null, 50, 60);
-
-            Assert.IsTrue(handled);
-            Assert.AreEqual(1, _commands.MissionCount);
-            Assert.IsNull(_commands.LastWindow);
-            Assert.AreSame(officer, _commands.LastItems[0]);
-            Assert.AreEqual(0, _commands.MoveCount);
         }
 
         [Test]
@@ -331,12 +296,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
         }
 
         [Test]
-        public void TryHandleSourceDragPointerUp_FriendlyPlanet_ExecutesMove()
+        public void TryHandleSourceDragPointerUp_Target_ForwardsItemDrop()
         {
             Officer officer = CreateOfficer(_playerFactionId);
+            CapitalShip targetItem = new CapitalShip { OwnerInstanceID = "opponent" };
             _contextItems = new ISceneNode[] { officer };
             _hasPreview = true;
-            _dropTarget = CreateMissionTarget("destination", _playerFactionId);
+            _dropTarget = CreateMissionTarget("destination", _playerFactionId, targetItem);
             StrategyWindowItemDragController controller = CreateController();
             StartSourceDrag(controller);
 
@@ -345,31 +311,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             Assert.IsTrue(handled);
             Assert.IsFalse(controller.SourceDragActive);
             Assert.IsFalse(_targetingController.IsTargeting);
-            Assert.AreEqual(1, _commands.MoveCount);
+            Assert.AreEqual(1, _commands.ItemDropCount);
             Assert.AreSame(_window, _commands.LastWindow);
             Assert.AreSame(_dropTarget, _commands.LastTarget);
             Assert.AreEqual(1, _commands.LastItems.Count);
             Assert.AreSame(officer, _commands.LastItems[0]);
-            Assert.AreEqual(0, _commands.MissionCount);
-        }
-
-        [Test]
-        public void TryHandleSourceDragPointerUp_EnemyPlanetAndOfficer_OpensMissionCreation()
-        {
-            Officer officer = CreateOfficer(_playerFactionId);
-            _contextItems = new ISceneNode[] { officer };
-            _hasPreview = true;
-            _dropTarget = CreateMissionTarget("destination", "opponent");
-            StrategyWindowItemDragController controller = CreateController();
-            StartSourceDrag(controller);
-
-            bool handled = controller.TryHandleSourceDragPointerUp(null, 50, 60);
-
-            Assert.IsTrue(handled);
-            Assert.AreEqual(1, _commands.MissionCount);
-            Assert.AreSame(_dropTarget, _commands.LastTarget);
-            Assert.AreSame(officer, _commands.LastItems[0]);
-            Assert.AreEqual(0, _commands.MoveCount);
         }
 
         [Test]
@@ -384,8 +330,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
 
             Assert.IsTrue(handled);
             Assert.IsFalse(_targetingController.IsTargeting);
-            Assert.AreEqual(0, _commands.MoveCount);
-            Assert.AreEqual(0, _commands.MissionCount);
+            Assert.AreEqual(0, _commands.ItemDropCount);
         }
 
         [Test]
@@ -461,8 +406,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             controller.OnTargetSelected(invalidSource, target);
             controller.OnTargetSelected(invalidAction, target);
 
-            Assert.AreEqual(0, _commands.MoveCount);
-            Assert.AreEqual(0, _commands.MissionCount);
+            Assert.AreEqual(0, _commands.ItemDropCount);
         }
 
         /// <summary>
@@ -477,7 +421,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
                 _ => _contextItems,
                 ResolvePreview,
                 _ => _dropTarget,
-                () => _playerFactionId,
                 _commands
             );
         }
@@ -516,8 +459,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
         /// </summary>
         /// <param name="instanceId">The instance id.</param>
         /// <param name="ownerId">The owner id.</param>
+        /// <param name="item">The exact selected target.</param>
         /// <returns>The created mission target.</returns>
-        private static StrategyMissionTarget CreateMissionTarget(string instanceId, string ownerId)
+        private static StrategyMissionTarget CreateMissionTarget(
+            string instanceId,
+            string ownerId,
+            ISceneNode item = null
+        )
         {
             Planet planet = new Planet { InstanceID = instanceId, OwnerInstanceID = ownerId };
             GalaxyMapPlanet mapPlanet = new GalaxyMapPlanet(
@@ -525,7 +473,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
                 planet,
                 string.Empty
             );
-            return new StrategyMissionTarget(mapPlanet, null);
+            return new StrategyMissionTarget(mapPlanet, item);
         }
 
         /// <summary>
@@ -543,8 +491,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             public IReadOnlyList<ISceneNode> LastItems { get; private set; }
             public StrategyMissionTarget LastTarget { get; private set; }
             public UIWindow LastWindow { get; private set; }
-            public int MissionCount { get; private set; }
-            public int MoveCount { get; private set; }
+            public int ItemDropCount { get; private set; }
 
             /// <summary>
             /// Executes targeted command.
@@ -557,6 +504,24 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             ) { }
 
             /// <summary>
+            /// Executes an item drop.
+            /// </summary>
+            /// <param name="sourceWindow">The source window.</param>
+            /// <param name="target">The exact drop target.</param>
+            /// <param name="items">The dragged items.</param>
+            public void ExecuteItemDrop(
+                UIWindow sourceWindow,
+                StrategyMissionTarget target,
+                IReadOnlyList<ISceneNode> items
+            )
+            {
+                ItemDropCount++;
+                LastWindow = sourceWindow;
+                LastTarget = target;
+                LastItems = items;
+            }
+
+            /// <summary>
             /// Opens mission create window.
             /// </summary>
             /// <param name="target">The target.</param>
@@ -564,12 +529,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             public void OpenMissionCreateWindow(
                 StrategyMissionTarget target,
                 IReadOnlyList<ISceneNode> items
-            )
-            {
-                MissionCount++;
-                LastTarget = target;
-                LastItems = items;
-            }
+            ) { }
 
             /// <summary>
             /// Attempts execute move.
@@ -584,10 +544,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
                 IReadOnlyList<ISceneNode> items
             )
             {
-                MoveCount++;
-                LastWindow = sourceWindow;
-                LastTarget = target;
-                LastItems = items;
                 return true;
             }
 
