@@ -3,7 +3,7 @@ using Rebellion.Util.Serialization;
 namespace Rebellion.Game
 {
     /// <summary>
-    /// Configures runtime adjustments for one game difficulty.
+    /// Configures faction-wide AI bonuses for one game difficulty.
     /// </summary>
     [PersistableObject]
     public sealed class DifficultyModifiers
@@ -12,7 +12,7 @@ namespace Rebellion.Game
 
         public int MissionFoilChancePoints { get; set; }
 
-        public int MissionExecutionTimeIncreasePercent { get; set; }
+        public int MissionExecutionSpeedIncreasePercent { get; set; }
 
         public int MineOutputPercent { get; set; } = 100;
 
