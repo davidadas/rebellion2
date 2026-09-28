@@ -263,7 +263,7 @@ namespace Rebellion.AI.Selectors
                 {
                     MissionOdds odds = context.MissionQueries.GetMissionOdds(
                         mission.CreateContext(),
-                        context.Assessment.GetMissionDetectorCandidates(mission.TargetPlanet)
+                        context.Assessment.GetMissionDetectors
                     );
                     personnelLossProbability = odds?.PersonnelLossProbability;
                 }
