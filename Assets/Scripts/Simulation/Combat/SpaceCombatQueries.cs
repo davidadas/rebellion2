@@ -210,8 +210,17 @@ namespace Rebellion.Simulation
         {
             List<IReadOnlyCollection<ISceneNode>> groups =
                 new List<IReadOnlyCollection<ISceneNode>>();
+            Faction faction =
+                planet == null || string.IsNullOrEmpty(ownerInstanceId)
+                    ? null
+                    : _game?.GetFactionByOwnerInstanceID(ownerInstanceId);
             if (
-                IsAIControlledHeadquartersDefense(planet, ownerInstanceId)
+                (
+                    faction != null
+                    && _game.IsFactionAIControlled(faction)
+                    && planet.GetOwnerInstanceID() == faction.InstanceID
+                    && planet.GetInstanceID() == faction.HQInstanceID
+                )
                 || IsRetreatBlockedByGravityWell(planet, opponents)
             )
                 return groups;
@@ -241,24 +250,6 @@ namespace Rebellion.Simulation
             }
 
             return groups;
-        }
-
-        /// <summary>
-        /// Returns whether an AI-controlled faction is defending its active headquarters.
-        /// </summary>
-        /// <param name="planet">The combat planet.</param>
-        /// <param name="ownerInstanceId">The faction identifier.</param>
-        /// <returns>True when the AI faction owns its headquarters at the combat planet.</returns>
-        private bool IsAIControlledHeadquartersDefense(Planet planet, string ownerInstanceId)
-        {
-            if (planet == null || string.IsNullOrEmpty(ownerInstanceId))
-                return false;
-
-            Faction faction = _game?.GetFactionByOwnerInstanceID(ownerInstanceId);
-            return faction != null
-                && _game.IsFactionAIControlled(faction)
-                && planet.GetOwnerInstanceID() == faction.InstanceID
-                && planet.GetInstanceID() == faction.HQInstanceID;
         }
 
         /// <summary>
