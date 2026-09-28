@@ -933,7 +933,10 @@ namespace Rebellion.Simulation
         /// nearest first.
         /// </summary>
         /// <param name="unit">The unit requiring a destination.</param>
-        /// <param name="originPlanet">The planet from which distance and reachability are measured.</param>
+        /// <param name="originPlanet">
+        /// The relocation's origin planet, used for reachability when no live transit position is
+        /// available.
+        /// </param>
         /// <param name="forceInterplanetaryTravel">
         /// Whether the calling mechanic supplies transportation regardless of the unit's mobility.
         /// </param>
@@ -955,7 +958,10 @@ namespace Rebellion.Simulation
             if (string.IsNullOrEmpty(ownerInstanceId))
                 return Array.Empty<ContainerNode>();
 
-            Point originPosition = originPlanet?.GetPosition() ?? unit.GetPosition();
+            Point originPosition =
+                unit.GetTransitMovement()?.CurrentPosition
+                ?? originPlanet?.GetPosition()
+                ?? unit.GetPosition();
             bool canTravelRemotely =
                 forceInterplanetaryTravel
                 || unit.GetTransitMovement() != null
@@ -994,7 +1000,7 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="unit">The unit requiring a destination.</param>
         /// <param name="destination">The proposed destination.</param>
-        /// <param name="originPlanet">The planet from which the unit would relocate.</param>
+        /// <param name="originPlanet">The planet from which the unit would relocate or remain.</param>
         /// <param name="canTravelRemotely">
         /// Whether the unit or its calling mechanic can cross between planets.
         /// </param>
@@ -1014,7 +1020,12 @@ namespace Rebellion.Simulation
                 return false;
 
             ContainerNode liveDestination = ResolveRegisteredContainer(destination);
-            if (liveDestination == null || ReferenceEquals(unit.GetParent(), liveDestination))
+            if (liveDestination == null)
+                return false;
+
+            bool isAllowedOrigin =
+                allowOriginPlanet && ReferenceEquals(liveDestination, originPlanet);
+            if (ReferenceEquals(unit.GetParent(), liveDestination) && !isAllowedOrigin)
                 return false;
 
             string ownerInstanceId = GetMovementControlOwner(unit);

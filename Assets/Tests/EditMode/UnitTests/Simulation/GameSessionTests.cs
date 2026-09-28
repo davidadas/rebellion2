@@ -1240,6 +1240,10 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(faction.Messages[MessageType.Conflict]);
         }
 
+        /// <summary>
+        /// Verifies that the full tick pipeline reroutes an inbound starfighter from its live
+        /// position when its destination becomes blockaded.
+        /// </summary>
         [Test]
         public void Tick_BlockadeStarts_ReroutesInboundStarfighter()
         {
@@ -1304,7 +1308,7 @@ namespace Rebellion.Tests.Simulation
 
             manager.Tick.ProcessTick();
 
-            Assert.AreSame(fallback, starfighter.GetParent());
+            Assert.AreSame(origin, starfighter.GetParent());
             Assert.IsNotNull(starfighter.Movement);
         }
 

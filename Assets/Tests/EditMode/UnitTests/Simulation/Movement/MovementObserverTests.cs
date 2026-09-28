@@ -19,6 +19,10 @@ namespace Rebellion.Tests.Simulation
     [TestFixture]
     public class MovementObserverTests
     {
+        /// <summary>
+        /// Verifies that independently moving units reroute from their live positions when their
+        /// destination becomes blockaded.
+        /// </summary>
         [Test]
         public void HandleResults_IndependentInboundUnits_RerouteFromCurrentPosition()
         {
@@ -52,6 +56,9 @@ namespace Rebellion.Tests.Simulation
             new MovementTickProcessor(scene.movement).ProcessTick(scene.game);
 
             IMovable[] units = { starfighter, regiment, specialForces };
+            foreach (IMovable unit in units)
+                unit.Movement.CurrentPosition = new Point(10, 0);
+
             Dictionary<IMovable, Point> currentPositions = units.ToDictionary(
                 unit => unit,
                 unit => unit.Movement.CurrentPosition
@@ -70,7 +77,7 @@ namespace Rebellion.Tests.Simulation
 
             foreach (IMovable unit in units)
             {
-                Assert.AreSame(scene.nearestSafeDestination, unit.GetParent());
+                Assert.AreSame(scene.origin, unit.GetParent());
                 Assert.AreEqual(currentPositions[unit], unit.Movement.OriginPosition);
                 Assert.AreEqual(currentPositions[unit], unit.Movement.CurrentPosition);
                 Assert.AreEqual(movementGroupIDs[unit], unit.Movement.MovementGroupID);
@@ -299,6 +306,10 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
+        /// <summary>
+        /// Verifies that a compatible friendly carrier nearest the unit's live position is
+        /// preferred over an owned planet.
+        /// </summary>
         [Test]
         public void HandleResults_NearerFriendlyCarrier_IsPreferredOverOwnedPlanet()
         {
@@ -335,6 +346,7 @@ namespace Rebellion.Tests.Simulation
             starfighter.ManufacturingStatus = ManufacturingStatus.Complete;
             scene.game.AttachNode(starfighter, scene.origin);
             scene.movement.RequestMove(starfighter, scene.blockadedDestination);
+            starfighter.Movement.CurrentPosition = new Point(100, 0);
 
             AddBlockadingFleet(scene.game, scene.blockadedDestination);
             ProcessBlockadeStart(scene.game, scene.blockade, scene.resultBus);
@@ -343,6 +355,10 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNotNull(starfighter.Movement);
         }
 
+        /// <summary>
+        /// Verifies that a blockaded candidate is skipped in favor of the next safe destination
+        /// nearest the unit's live position.
+        /// </summary>
         [Test]
         public void HandleResults_BlockadedFallback_IsSkipped()
         {
@@ -360,6 +376,7 @@ namespace Rebellion.Tests.Simulation
             starfighter.ManufacturingStatus = ManufacturingStatus.Complete;
             scene.game.AttachNode(starfighter, scene.origin);
             scene.movement.RequestMove(starfighter, scene.blockadedDestination);
+            starfighter.Movement.CurrentPosition = new Point(140, 0);
             AddBlockadingFleet(scene.game, scene.nearestSafeDestination);
             AddBlockadingFleet(scene.game, scene.blockadedDestination);
 

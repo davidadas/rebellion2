@@ -183,6 +183,73 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(estimated);
         }
 
+        /// <summary>
+        /// Verifies that safe relocation destinations for an in-transit unit are ranked from the
+        /// unit's live position instead of its already-assigned parent planet.
+        /// </summary>
+        [Test]
+        public void FindSafeRelocationDestinations_InTransitUnit_RanksFromCurrentPosition()
+        {
+            (
+                GameRoot game,
+                Planet excludedOrigin,
+                Planet assignedDestination,
+                Officer officer,
+                MovementQueries movement
+            ) = BuildScene();
+            excludedOrigin.OwnerInstanceID = "rebels";
+            Planet livePositionNearest = new Planet
+            {
+                InstanceID = "live-position-nearest",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 20,
+                PositionY = 0,
+            };
+            Planet assignedDestinationNearest = new Planet
+            {
+                InstanceID = "assigned-destination-nearest",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 90,
+                PositionY = 100,
+            };
+            game.AttachNode(livePositionNearest, assignedDestination.GetParent());
+            game.AttachNode(assignedDestinationNearest, assignedDestination.GetParent());
+            game.MoveNode(officer, assignedDestination);
+            officer.Movement = new MovementState
+            {
+                OriginPosition = excludedOrigin.GetPosition(),
+                CurrentPosition = new Point(10, 0),
+            };
+
+            IReadOnlyList<ContainerNode> destinations = movement.FindSafeRelocationDestinations(
+                officer,
+                assignedDestination
+            );
+
+            Assert.AreSame(livePositionNearest, destinations.First());
+        }
+
+        /// <summary>
+        /// Verifies that destination validation accepts an owned origin planet when the caller
+        /// explicitly permits the unit to remain there.
+        /// </summary>
+        [Test]
+        public void CanUseSafeRelocationDestination_AlreadyAtAllowedOrigin_ReturnsTrue()
+        {
+            (_, Planet origin, _, Officer officer, MovementQueries movement) = BuildScene();
+
+            bool accepted = movement.CanUseSafeRelocationDestination(
+                officer,
+                origin,
+                origin,
+                allowOriginPlanet: true
+            );
+
+            Assert.IsTrue(accepted);
+        }
+
         [Test]
         public void CanSetFleetWaypointRoute_ValidRoute_DoesNotMutateFleet()
         {
