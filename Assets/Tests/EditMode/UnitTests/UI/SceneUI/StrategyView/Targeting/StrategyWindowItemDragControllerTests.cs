@@ -591,6 +591,5 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             /// <returns>True when the operation succeeds; otherwise false.</returns>
             public bool ClearFleetWaypoints(IReadOnlyList<ISceneNode> items) => false;
         }
-
     }
 }

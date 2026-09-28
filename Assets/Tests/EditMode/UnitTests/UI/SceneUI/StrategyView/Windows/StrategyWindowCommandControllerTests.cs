@@ -782,6 +782,5 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             /// </summary>
             public void OpenMissionCreateInfo() { }
         }
-
     }
 }
