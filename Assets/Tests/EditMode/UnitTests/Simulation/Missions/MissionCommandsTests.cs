@@ -3178,8 +3178,8 @@ namespace Rebellion.Tests.Simulation
 
         [TestCase(GameDifficulty.Easy, 0, 5)]
         [TestCase(GameDifficulty.Medium, 0, 5)]
-        [TestCase(GameDifficulty.Hard, 30, 7)]
-        public void InitiateMission_HumanFaction_AppliesExecutionTimeIncrease(
+        [TestCase(GameDifficulty.Hard, 50, 4)]
+        public void InitiateMission_AIFaction_AppliesExecutionSpeedIncrease(
             GameDifficulty difficulty,
             int increasePercent,
             int expectedTicks
@@ -3189,11 +3189,11 @@ namespace Rebellion.Tests.Simulation
                 factionOwnsPlanet: true
             );
             game.Summary = new GameSummary { Difficulty = difficulty, PlayerFactionID = "empire" };
-            game.SetFactionController("empire", "player", PlayerControllerType.Human);
+            game.SetFactionController("empire", "player", PlayerControllerType.AI);
             planet.AddVisitor("empire");
             game.Config.DifficultyModifiers[difficulty] = new DifficultyModifiers
             {
-                MissionExecutionTimeIncreasePercent = increasePercent,
+                MissionExecutionSpeedIncreasePercent = increasePercent,
             };
             MissionCommands system = TestSystems.CreateMissionCommands(
                 game,
@@ -3213,7 +3213,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void InitiateMission_AIFaction_DoesNotApplyExecutionTimeIncrease()
+        public void InitiateMission_HumanFaction_DoesNotApplyExecutionSpeedIncrease()
         {
             (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
                 factionOwnsPlanet: true
@@ -3223,11 +3223,11 @@ namespace Rebellion.Tests.Simulation
                 Difficulty = GameDifficulty.Hard,
                 PlayerFactionID = "empire",
             };
-            game.SetFactionController("empire", "player", PlayerControllerType.AI);
+            game.SetFactionController("empire", "player", PlayerControllerType.Human);
             planet.AddVisitor("empire");
             game.Config.DifficultyModifiers[GameDifficulty.Hard] = new DifficultyModifiers
             {
-                MissionExecutionTimeIncreasePercent = 30,
+                MissionExecutionSpeedIncreasePercent = 50,
             };
             MissionCommands system = TestSystems.CreateMissionCommands(
                 game,

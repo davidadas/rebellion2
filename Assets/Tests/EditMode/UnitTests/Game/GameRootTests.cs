@@ -131,31 +131,8 @@ namespace Rebellion.Tests.Game
             DifficultyModifiers actual = _game.GetDifficultyModifier(_faction1);
 
             Assert.AreEqual(0, actual.MissionSuccessChancePoints);
-            Assert.AreEqual(0, actual.MissionExecutionTimeIncreasePercent);
+            Assert.AreEqual(0, actual.MissionExecutionSpeedIncreasePercent);
             Assert.AreEqual(100, actual.ManufacturingSpeedPercent);
-        }
-
-        [Test]
-        public void GetSelectedDifficultyModifier_ConfiguredDifficulty_ReturnsSelectedModifier()
-        {
-            DifficultyModifiers expected = new DifficultyModifiers
-            {
-                MissionExecutionTimeIncreasePercent = 30,
-            };
-            _game.Summary.Difficulty = GameDifficulty.Hard;
-            _game.Config.DifficultyModifiers[GameDifficulty.Hard] = expected;
-
-            DifficultyModifiers actual = _game.GetSelectedDifficultyModifier();
-
-            Assert.AreSame(expected, actual);
-        }
-
-        [Test]
-        public void GetSelectedDifficultyModifier_MissingDifficulty_ReturnsNeutralModifier()
-        {
-            DifficultyModifiers actual = _game.GetSelectedDifficultyModifier();
-
-            Assert.AreEqual(0, actual.MissionExecutionTimeIncreasePercent);
         }
 
         [Test]
@@ -179,6 +156,7 @@ namespace Rebellion.Tests.Game
             DifficultyModifiers actual = _game.GetDifficultyModifier(_faction2);
 
             Assert.AreEqual(0, actual.MissionSuccessChancePoints);
+            Assert.AreEqual(0, actual.MissionExecutionSpeedIncreasePercent);
             Assert.AreEqual(100, actual.ManufacturingSpeedPercent);
         }
 

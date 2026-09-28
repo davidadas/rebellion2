@@ -133,7 +133,7 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
-        public void LoadGameConfig_DefaultMissionExecutionTimeIncrease_MatchesDifficulty()
+        public void LoadGameConfig_DefaultMissionExecutionSpeedIncrease_MatchesDifficulty()
         {
             GameConfig config = ContentPackLoader.LoadGameConfig(
                 TestContent.Pack.ContentRootPath,
@@ -143,17 +143,17 @@ namespace Rebellion.Tests.Content
 
             Assert.AreEqual(
                 0,
-                config.DifficultyModifiers[GameDifficulty.Easy].MissionExecutionTimeIncreasePercent
+                config.DifficultyModifiers[GameDifficulty.Easy].MissionExecutionSpeedIncreasePercent
             );
             Assert.AreEqual(
                 0,
                 config
                     .DifficultyModifiers[GameDifficulty.Medium]
-                    .MissionExecutionTimeIncreasePercent
+                    .MissionExecutionSpeedIncreasePercent
             );
             Assert.AreEqual(
-                30,
-                config.DifficultyModifiers[GameDifficulty.Hard].MissionExecutionTimeIncreasePercent
+                50,
+                config.DifficultyModifiers[GameDifficulty.Hard].MissionExecutionSpeedIncreasePercent
             );
         }
 
