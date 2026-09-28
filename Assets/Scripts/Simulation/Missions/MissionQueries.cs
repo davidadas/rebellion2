@@ -114,8 +114,22 @@ namespace Rebellion.Simulation
                                 mainParticipants,
                                 observedDetectors
                             )
-                            : Array.Empty<ISceneNode>()
+                            : Array.Empty<ISceneNode>(),
+                true
             );
+        }
+
+        /// <summary>
+        /// Estimates the objective and foiling chances used to compare mission alternatives.
+        /// </summary>
+        /// <param name="context">The mission configuration to evaluate.</param>
+        /// <returns>
+        /// The operational mission odds with personnel loss left at zero, or null when the request
+        /// cannot create a mission.
+        /// </returns>
+        internal MissionOdds GetOperationalMissionOdds(MissionContext context)
+        {
+            return GetMissionOddsCore(context, null, false);
         }
 
         /// <summary>
@@ -140,7 +154,30 @@ namespace Rebellion.Simulation
             if (observedDetectorSource == null)
                 throw new ArgumentNullException(nameof(observedDetectorSource));
 
-            return GetMissionOddsCore(context, observedDetectorSource);
+            return GetMissionOddsCore(context, observedDetectorSource, true);
+        }
+
+        /// <summary>
+        /// Estimates objective and foiling chances from detector snapshots for every encounter planet.
+        /// </summary>
+        /// <param name="context">The mission configuration to evaluate.</param>
+        /// <param name="observedDetectorSource">Supplies observed detector candidates by planet.</param>
+        /// <returns>The operational mission odds, or null when the request cannot create a mission.</returns>
+        internal MissionOdds GetOperationalMissionOdds(
+            MissionContext context,
+            Func<
+                Mission,
+                Planet,
+                MissionEncounterPhase,
+                IReadOnlyList<IMissionParticipant>,
+                IReadOnlyList<ISceneNode>
+            > observedDetectorSource
+        )
+        {
+            if (observedDetectorSource == null)
+                throw new ArgumentNullException(nameof(observedDetectorSource));
+
+            return GetMissionOddsCore(context, observedDetectorSource, false);
         }
 
         /// <summary>
@@ -149,6 +186,9 @@ namespace Rebellion.Simulation
         /// <param name="context">The mission configuration to evaluate.</param>
         /// <param name="observedDetectorSource">
         /// Optional source of detector candidates from the caller's observed state.
+        /// </param>
+        /// <param name="includePersonnelLoss">
+        /// Whether to retain the additional encounter history required for personnel-loss odds.
         /// </param>
         /// <returns>The complete mission odds, or null when the request cannot create a mission.</returns>
         private MissionOdds GetMissionOddsCore(
@@ -159,7 +199,8 @@ namespace Rebellion.Simulation
                 MissionEncounterPhase,
                 IReadOnlyList<IMissionParticipant>,
                 IReadOnlyList<ISceneNode>
-            > observedDetectorSource
+            > observedDetectorSource,
+            bool includePersonnelLoss
         )
         {
             if (!TryCreateMission(context, out Mission mission))
@@ -171,16 +212,234 @@ namespace Rebellion.Simulation
                 context.Location as Planet,
                 context.SelectedTarget
             );
-            (double foilProbability, double personnelLossProbability) = EstimateEncounterOdds(
-                mission,
-                context.Location as Planet,
-                observedDetectorSource
-            );
+            double foilProbability;
+            double personnelLossProbability;
+            if (includePersonnelLoss)
+            {
+                (foilProbability, personnelLossProbability) = EstimateEncounterOdds(
+                    mission,
+                    context.Location as Planet,
+                    observedDetectorSource
+                );
+            }
+            else
+            {
+                foilProbability = EstimateFoilProbability(
+                    mission,
+                    context.Location as Planet,
+                    observedDetectorSource
+                );
+                personnelLossProbability = 0;
+            }
             return new MissionOdds(
                 objectiveSuccessProbability,
                 foilProbability,
                 personnelLossProbability
             );
+        }
+
+        /// <summary>
+        /// Estimates cumulative foil probability without retaining defender-history states.
+        /// </summary>
+        /// <param name="mission">The unstarted mission to evaluate.</param>
+        /// <param name="target">The mission destination.</param>
+        /// <param name="observedDetectorSource">Optional observed detector candidates by planet.</param>
+        /// <returns>The cumulative foil percentage.</returns>
+        private double EstimateFoilProbability(
+            Mission mission,
+            Planet target,
+            Func<
+                Mission,
+                Planet,
+                MissionEncounterPhase,
+                IReadOnlyList<IMissionParticipant>,
+                IReadOnlyList<ISceneNode>
+            > observedDetectorSource
+        )
+        {
+            if (mission == null || target == null)
+                return 0;
+
+            IReadOnlyList<IMissionParticipant> allDecoys = mission.GetDecoyParticipants();
+            BigInteger availableDecoys =
+                allDecoys.Count == 0
+                    ? BigInteger.Zero
+                    : (BigInteger.One << allDecoys.Count) - BigInteger.One;
+            Dictionary<BigInteger, double> survivingByDecoyPool = new Dictionary<BigInteger, double>
+            {
+                { availableDecoys, 1d },
+            };
+
+            List<Planet> origins = mission
+                .GetAllParticipants()
+                .Select(participant => participant.GetParentOfType<Planet>())
+                .Where(planet => planet != null)
+                .Distinct()
+                .ToList();
+            foreach (Planet origin in origins)
+            {
+                IReadOnlyList<IMissionParticipant> mainParticipants = mission
+                    .GetMainParticipants()
+                    .Where(participant => participant.GetParentOfType<Planet>() == origin)
+                    .ToList();
+                ApplyFoilEncounterOdds(
+                    mission,
+                    origin,
+                    MissionEncounterPhase.DepartureComplete,
+                    mainParticipants,
+                    allDecoys,
+                    GetDecoyIndexesAtPlanet(allDecoys, origin),
+                    observedDetectorSource,
+                    ref survivingByDecoyPool
+                );
+            }
+
+            IReadOnlyList<int> allDecoyIndexes = Enumerable.Range(0, allDecoys.Count).ToList();
+            ApplyFoilEncounterOdds(
+                mission,
+                target,
+                MissionEncounterPhase.Arrival,
+                mission.GetMainParticipants(),
+                allDecoys,
+                allDecoyIndexes,
+                observedDetectorSource,
+                ref survivingByDecoyPool
+            );
+            ApplyFoilEncounterOdds(
+                mission,
+                target,
+                MissionEncounterPhase.PreObjective,
+                mission.GetMainParticipants(),
+                allDecoys,
+                allDecoyIndexes,
+                observedDetectorSource,
+                ref survivingByDecoyPool
+            );
+
+            double survivalProbability = survivingByDecoyPool.Values.Sum();
+            return Math.Clamp((1d - survivalProbability) * 100d, 0, 100);
+        }
+
+        /// <summary>
+        /// Advances exact no-foil probability through one encounter checkpoint.
+        /// </summary>
+        /// <param name="mission">The mission being estimated.</param>
+        /// <param name="planet">The encounter planet.</param>
+        /// <param name="phase">The encounter checkpoint.</param>
+        /// <param name="mainParticipants">The primary participants present.</param>
+        /// <param name="allDecoys">Every decoy assigned to the mission.</param>
+        /// <param name="encounterDecoyIndexes">Indexes of decoys present at this encounter.</param>
+        /// <param name="observedDetectorSource">Optional observed detector candidates by planet.</param>
+        /// <param name="survivingByDecoyPool">No-foil probability by available decoy pool.</param>
+        private void ApplyFoilEncounterOdds(
+            Mission mission,
+            Planet planet,
+            MissionEncounterPhase phase,
+            IReadOnlyList<IMissionParticipant> mainParticipants,
+            IReadOnlyList<IMissionParticipant> allDecoys,
+            IReadOnlyList<int> encounterDecoyIndexes,
+            Func<
+                Mission,
+                Planet,
+                MissionEncounterPhase,
+                IReadOnlyList<IMissionParticipant>,
+                IReadOnlyList<ISceneNode>
+            > observedDetectorSource,
+            ref Dictionary<BigInteger, double> survivingByDecoyPool
+        )
+        {
+            if (survivingByDecoyPool.Count == 0 || mainParticipants.Count == 0)
+                return;
+
+            IReadOnlyList<ISceneNode> detectors = GetEncounterDetectors(
+                mission,
+                planet,
+                phase,
+                mainParticipants,
+                observedDetectorSource
+            );
+            if (detectors.Count == 0)
+                return;
+
+            int foilChanceModifier = GetFoilChanceModifier(mission);
+            double[] foilSurvivalProbabilities = new double[detectors.Count];
+            double[,] diversionProbabilities = new double[allDecoys.Count, detectors.Count];
+            for (int detectorIndex = 0; detectorIndex < detectors.Count; detectorIndex++)
+            {
+                ISceneNode detector = detectors[detectorIndex];
+                foilSurvivalProbabilities[detectorIndex] =
+                    1d
+                    - Math.Clamp(
+                        GetFoilProbability(
+                            mission,
+                            detector,
+                            foilChanceModifier,
+                            mainParticipants,
+                            planet
+                        ) / 100d,
+                        0,
+                        1
+                    );
+                foreach (int decoyIndex in encounterDecoyIndexes)
+                {
+                    diversionProbabilities[decoyIndex, detectorIndex] = Math.Clamp(
+                        mission.GetDecoyProbability(allDecoys[decoyIndex], detector, _game, planet)
+                            / 100d,
+                        0,
+                        1
+                    );
+                }
+            }
+
+            for (int detectorIndex = 0; detectorIndex < detectors.Count; detectorIndex++)
+            {
+                Dictionary<BigInteger, double> nextStates = new Dictionary<BigInteger, double>();
+                foreach ((BigInteger decoyPool, double probability) in survivingByDecoyPool)
+                {
+                    int selectableDecoyCount = 0;
+                    foreach (int decoyIndex in encounterDecoyIndexes)
+                    {
+                        if (IsBitSet(decoyPool, decoyIndex))
+                            selectableDecoyCount++;
+                    }
+
+                    if (selectableDecoyCount == 0)
+                    {
+                        AddProbability(
+                            nextStates,
+                            decoyPool,
+                            probability * foilSurvivalProbabilities[detectorIndex]
+                        );
+                        continue;
+                    }
+
+                    double selectedProbability = probability / selectableDecoyCount;
+                    foreach (int decoyIndex in encounterDecoyIndexes)
+                    {
+                        if (!IsBitSet(decoyPool, decoyIndex))
+                            continue;
+
+                        double diversionProbability = diversionProbabilities[
+                            decoyIndex,
+                            detectorIndex
+                        ];
+                        AddProbability(
+                            nextStates,
+                            decoyPool,
+                            selectedProbability * diversionProbability
+                        );
+                        AddProbability(
+                            nextStates,
+                            ClearBit(decoyPool, decoyIndex),
+                            selectedProbability
+                                * (1d - diversionProbability)
+                                * foilSurvivalProbabilities[detectorIndex]
+                        );
+                    }
+                }
+
+                survivingByDecoyPool = nextStates;
+            }
         }
 
         /// <summary>

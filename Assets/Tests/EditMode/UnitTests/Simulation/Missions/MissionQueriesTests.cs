@@ -184,6 +184,45 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void GetOperationalMissionOdds_MultipleDecoysAndDetectors_MatchesCompleteOdds()
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer _) = BuildDetectionScene();
+            Regiment secondDetector = CreateCompletedRegiment("r2", "rebels");
+            secondDetector.DetectionRating = 100;
+            game.AttachNode(secondDetector, planet);
+            Officer weakDecoy = EntityFactory.CreateOfficer("weak-decoy", "empire");
+            Officer strongDecoy = EntityFactory.CreateOfficer("strong-decoy", "empire");
+            weakDecoy.SetBaseRating(SkillRating.Espionage, 0);
+            strongDecoy.SetBaseRating(SkillRating.Espionage, 200);
+            game.AttachNode(weakDecoy, spy.GetParent());
+            game.AttachNode(strongDecoy, spy.GetParent());
+            planet.AddVisitor("empire");
+            SetFoilTable(game, new Dictionary<int, int> { { -1000, 50 } });
+            SetDecoyTable(game, new Dictionary<int, int> { { -50, 0 }, { 0, 100 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -1000, 50 } });
+            MissionQueries system = new MissionQueries(game);
+            MissionContext context = CreateContext(
+                EspionageMission.MissionTypeID,
+                new List<IMissionParticipant> { spy },
+                new List<IMissionParticipant> { weakDecoy, strongDecoy },
+                planet
+            );
+
+            MissionOdds complete = system.GetMissionOdds(context);
+            MissionOdds operational = system.GetOperationalMissionOdds(context);
+
+            Assert.IsNotNull(complete);
+            Assert.IsNotNull(operational);
+            Assert.AreEqual(
+                complete.ObjectiveSuccessProbability,
+                operational.ObjectiveSuccessProbability,
+                0.001
+            );
+            Assert.AreEqual(complete.FoilProbability, operational.FoilProbability, 0.001);
+            Assert.AreEqual(0, operational.PersonnelLossProbability);
+        }
+
+        [Test]
         public void GetMissionOdds_Default_IncludesStationaryFleetDetectors()
         {
             (GameRoot game, Planet planet, Officer spy, Officer _) = BuildDetectionScene();
