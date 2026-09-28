@@ -220,8 +220,7 @@ namespace Rebellion.Simulation
                     && _game.IsFactionAIControlled(faction)
                     && planet.GetOwnerInstanceID() == faction.InstanceID
                     && planet.GetInstanceID() == faction.HQInstanceID
-                )
-                || IsRetreatBlockedByGravityWell(planet, opponents)
+                ) || IsRetreatBlockedByGravityWell(planet, opponents)
             )
                 return groups;
 
