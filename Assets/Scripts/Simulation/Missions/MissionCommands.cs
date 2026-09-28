@@ -18,6 +18,8 @@ namespace Rebellion.Simulation
     /// </summary>
     public class MissionCommands : IMissionExecutionRuntime
     {
+        private const double _percentScale = 100.0;
+
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
         private readonly MovementCommands _movementManager;
@@ -811,7 +813,19 @@ namespace Rebellion.Simulation
                 );
             int baseTicks = tickConfig?.Base ?? 0;
             int spreadTicks = tickConfig?.Spread ?? 0;
-            return baseTicks + _provider.NextInt(0, spreadTicks + 1);
+            int rolledTicks = baseTicks + _provider.NextInt(0, spreadTicks + 1);
+            Player owner = _game.GetFactionPlayer(mission.GetOwnerInstanceID());
+            if (owner?.ControllerType != PlayerControllerType.Human)
+                return rolledTicks;
+
+            int increasePercent = _game
+                .GetSelectedDifficultyModifier()
+                .MissionExecutionTimeIncreasePercent;
+            if (increasePercent <= 0 || rolledTicks <= 0)
+                return rolledTicks;
+
+            return (int)
+                Math.Ceiling(rolledTicks * (_percentScale + increasePercent) / _percentScale);
         }
     }
 }

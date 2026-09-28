@@ -3176,6 +3176,73 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(game.GetSceneNodesByType<Mission>());
         }
 
+        [TestCase(GameDifficulty.Easy, 0, 5)]
+        [TestCase(GameDifficulty.Medium, 0, 5)]
+        [TestCase(GameDifficulty.Hard, 30, 7)]
+        public void InitiateMission_HumanFaction_AppliesExecutionTimeIncrease(
+            GameDifficulty difficulty,
+            int increasePercent,
+            int expectedTicks
+        )
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            game.Summary = new GameSummary { Difficulty = difficulty, PlayerFactionID = "empire" };
+            game.SetFactionController("empire", "player", PlayerControllerType.Human);
+            planet.AddVisitor("empire");
+            game.Config.DifficultyModifiers[difficulty] = new DifficultyModifiers
+            {
+                MissionExecutionTimeIncreasePercent = increasePercent,
+            };
+            MissionCommands system = TestSystems.CreateMissionCommands(
+                game,
+                new StubRNG(),
+                movement
+            );
+
+            bool created = system.InitiateMission(
+                CreateContext(DiplomacyMission.MissionTypeID, officer, planet)
+            );
+
+            Assert.IsTrue(created);
+            Assert.AreEqual(
+                expectedTicks,
+                game.GetSceneNodesByType<DiplomacyMission>().Single().MaxProgress
+            );
+        }
+
+        [Test]
+        public void InitiateMission_AIFaction_DoesNotApplyExecutionTimeIncrease()
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            game.Summary = new GameSummary
+            {
+                Difficulty = GameDifficulty.Hard,
+                PlayerFactionID = "empire",
+            };
+            game.SetFactionController("empire", "player", PlayerControllerType.AI);
+            planet.AddVisitor("empire");
+            game.Config.DifficultyModifiers[GameDifficulty.Hard] = new DifficultyModifiers
+            {
+                MissionExecutionTimeIncreasePercent = 30,
+            };
+            MissionCommands system = TestSystems.CreateMissionCommands(
+                game,
+                new StubRNG(),
+                movement
+            );
+
+            bool created = system.InitiateMission(
+                CreateContext(DiplomacyMission.MissionTypeID, officer, planet)
+            );
+
+            Assert.IsTrue(created);
+            Assert.AreEqual(5, game.GetSceneNodesByType<DiplomacyMission>().Single().MaxProgress);
+        }
+
         [TestCase(0, 60)]
         [TestCase(30, 90)]
         public void InitiateMission_JediTraining_UsesConfiguredExecutionRange(

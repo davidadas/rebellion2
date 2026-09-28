@@ -148,10 +148,20 @@ namespace Rebellion.Game
         /// <returns>The configured AI modifier, or a neutral modifier.</returns>
         public DifficultyModifiers GetDifficultyModifier(Faction faction)
         {
+            if (faction != null && IsFactionAIControlled(faction))
+                return GetSelectedDifficultyModifier();
+
+            return new DifficultyModifiers();
+        }
+
+        /// <summary>
+        /// Returns the configured modifier for the selected game difficulty.
+        /// </summary>
+        /// <returns>The selected modifier, or a neutral modifier when none is configured.</returns>
+        public DifficultyModifiers GetSelectedDifficultyModifier()
+        {
             if (
-                faction != null
-                && IsFactionAIControlled(faction)
-                && Summary != null
+                Summary != null
                 && Config?.DifficultyModifiers != null
                 && Config.DifficultyModifiers.TryGetValue(
                     Summary.Difficulty,
