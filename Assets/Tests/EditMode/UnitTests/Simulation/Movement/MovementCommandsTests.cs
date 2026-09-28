@@ -2182,7 +2182,7 @@ namespace Rebellion.Tests.Simulation
                 Planet destination,
                 Officer officer,
                 MovementCommands movement
-            ) = BuildScene(new GameConfig());
+            ) = BuildScene();
             destination.IsColonized = false;
             Regiment inboundRegiment = new Regiment
             {
