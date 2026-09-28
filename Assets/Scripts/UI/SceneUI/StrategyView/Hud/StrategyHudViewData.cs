@@ -72,9 +72,24 @@ public sealed class StrategyHudRenderData
 public sealed class StrategyHudResourceBreakdown
 {
     public static StrategyHudResourceBreakdown Empty { get; } =
-        new StrategyHudResourceBreakdown(0, 0, 0, 0, 0, 0);
+        new StrategyHudResourceBreakdown(
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            StrategyHudMaintenanceBreakdown.Empty
+        );
 
     public int ActiveMines { get; }
+
+    public int OfflineMines { get; }
 
     public int BuildingMines { get; }
 
@@ -82,34 +97,118 @@ public sealed class StrategyHudResourceBreakdown
 
     public int ActiveRefineries { get; }
 
+    public int OfflineRefineries { get; }
+
     public int BuildingRefineries { get; }
 
     public int EnRouteRefineries { get; }
 
+    public double RawOutputPerTick { get; }
+
+    public double RefinedOutputPerTick { get; }
+
+    public int MaintenanceCapacity { get; }
+
+    public StrategyHudMaintenanceBreakdown Maintenance { get; }
+
+    public double RawNetPerTick => RawOutputPerTick - RefinedOutputPerTick;
+
+    public int MaintenanceCommitted => Maintenance.Committed;
+
+    public int MaintenanceHeadroom => MaintenanceCapacity - MaintenanceCommitted;
+
     /// <summary>
     /// Creates immutable resource-facility totals.
     /// </summary>
-    /// <param name="activeMines">The completed stationary mines.</param>
+    /// <param name="activeMines">The mines currently producing.</param>
+    /// <param name="offlineMines">The completed mines currently unable to produce.</param>
     /// <param name="buildingMines">The mines under construction.</param>
     /// <param name="enRouteMines">The mines traveling to a destination.</param>
-    /// <param name="activeRefineries">The completed stationary refineries.</param>
+    /// <param name="activeRefineries">The refineries currently producing.</param>
+    /// <param name="offlineRefineries">The completed refineries currently unable to produce.</param>
     /// <param name="buildingRefineries">The refineries under construction.</param>
     /// <param name="enRouteRefineries">The refineries traveling to a destination.</param>
+    /// <param name="rawOutputPerTick">The gross raw-material output per tick.</param>
+    /// <param name="refinedOutputPerTick">The gross refined-material output per tick.</param>
+    /// <param name="maintenanceCapacity">The available maintenance capacity.</param>
+    /// <param name="maintenance">The maintenance committed by asset category.</param>
     public StrategyHudResourceBreakdown(
         int activeMines,
+        int offlineMines,
         int buildingMines,
         int enRouteMines,
         int activeRefineries,
+        int offlineRefineries,
         int buildingRefineries,
-        int enRouteRefineries
+        int enRouteRefineries,
+        double rawOutputPerTick,
+        double refinedOutputPerTick,
+        int maintenanceCapacity,
+        StrategyHudMaintenanceBreakdown maintenance
     )
     {
         ActiveMines = activeMines;
+        OfflineMines = offlineMines;
         BuildingMines = buildingMines;
         EnRouteMines = enRouteMines;
         ActiveRefineries = activeRefineries;
+        OfflineRefineries = offlineRefineries;
         BuildingRefineries = buildingRefineries;
         EnRouteRefineries = enRouteRefineries;
+        RawOutputPerTick = rawOutputPerTick;
+        RefinedOutputPerTick = refinedOutputPerTick;
+        MaintenanceCapacity = maintenanceCapacity;
+        Maintenance = maintenance ?? StrategyHudMaintenanceBreakdown.Empty;
+    }
+}
+
+/// <summary>
+/// Contains maintenance costs presented in the strategy HUD.
+/// </summary>
+public sealed class StrategyHudMaintenanceBreakdown
+{
+    public static StrategyHudMaintenanceBreakdown Empty { get; } =
+        new StrategyHudMaintenanceBreakdown(0, 0, 0, 0, 0, 0);
+
+    public int CapitalShips { get; }
+
+    public int Starfighters { get; }
+
+    public int Regiments { get; }
+
+    public int SpecialForces { get; }
+
+    public int Facilities { get; }
+
+    public int Orders { get; }
+
+    public int Committed =>
+        CapitalShips + Starfighters + Regiments + SpecialForces + Facilities + Orders;
+
+    /// <summary>
+    /// Creates immutable maintenance presentation totals.
+    /// </summary>
+    /// <param name="capitalShips">Maintenance committed to capital ships.</param>
+    /// <param name="starfighters">Maintenance committed to starfighters.</param>
+    /// <param name="regiments">Maintenance committed to regiments.</param>
+    /// <param name="specialForces">Maintenance committed to special forces.</param>
+    /// <param name="facilities">Maintenance committed to facilities.</param>
+    /// <param name="orders">Maintenance reserved by unfinished orders.</param>
+    public StrategyHudMaintenanceBreakdown(
+        int capitalShips,
+        int starfighters,
+        int regiments,
+        int specialForces,
+        int facilities,
+        int orders
+    )
+    {
+        CapitalShips = capitalShips;
+        Starfighters = starfighters;
+        Regiments = regiments;
+        SpecialForces = specialForces;
+        Facilities = facilities;
+        Orders = orders;
     }
 }
 
@@ -122,26 +221,54 @@ public sealed class StrategyHudResourceBreakdownViewData
 
     public Color AccentColor { get; }
 
-    public RectInt? HitArea { get; }
+    public StrategyHudResourcePopoverViewData RawMaterials { get; }
 
-    public RectInt? PanelBounds { get; }
+    public StrategyHudResourcePopoverViewData RefinedMaterials { get; }
+
+    public StrategyHudResourcePopoverViewData Maintenance { get; }
 
     /// <summary>
     /// Creates immutable resource-breakdown presentation data.
     /// </summary>
     /// <param name="totals">The displayed facility totals.</param>
     /// <param name="accentColor">The active faction accent color.</param>
-    /// <param name="hitArea">The resource-counter hover area.</param>
-    /// <param name="panelBounds">The panel bounds below the counters.</param>
+    /// <param name="rawMaterials">The raw-material popover placement.</param>
+    /// <param name="refinedMaterials">The refined-material popover placement.</param>
+    /// <param name="maintenance">The maintenance popover placement.</param>
     public StrategyHudResourceBreakdownViewData(
         StrategyHudResourceBreakdown totals,
         Color accentColor,
-        RectInt? hitArea,
-        RectInt? panelBounds
+        StrategyHudResourcePopoverViewData rawMaterials,
+        StrategyHudResourcePopoverViewData refinedMaterials,
+        StrategyHudResourcePopoverViewData maintenance
     )
     {
         Totals = totals ?? StrategyHudResourceBreakdown.Empty;
         AccentColor = accentColor;
+        RawMaterials = rawMaterials ?? StrategyHudResourcePopoverViewData.Empty;
+        RefinedMaterials = refinedMaterials ?? StrategyHudResourcePopoverViewData.Empty;
+        Maintenance = maintenance ?? StrategyHudResourcePopoverViewData.Empty;
+    }
+}
+
+/// <summary>
+/// Defines the placement of one resource-counter popover.
+/// </summary>
+public sealed class StrategyHudResourcePopoverViewData
+{
+    public static StrategyHudResourcePopoverViewData Empty { get; } = new(null, null);
+
+    public RectInt? HitArea { get; }
+
+    public RectInt? PanelBounds { get; }
+
+    /// <summary>
+    /// Creates immutable resource-popover placement data.
+    /// </summary>
+    /// <param name="hitArea">The counter hover area.</param>
+    /// <param name="panelBounds">The popover bounds below the counter.</param>
+    public StrategyHudResourcePopoverViewData(RectInt? hitArea, RectInt? panelBounds)
+    {
         HitArea = hitArea;
         PanelBounds = panelBounds;
     }

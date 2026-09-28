@@ -6,6 +6,7 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Units;
+using Rebellion.Simulation;
 using UnityEngine;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
@@ -230,70 +231,41 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         }
 
         [Test]
-        public void CreateResourceBreakdown_MixedFacilityStates_ClassifiesFacilityTotals()
+        public void CreateResourceBreakdown_EconomySummary_MapsAllValues()
         {
-            Faction faction = new Faction();
-            faction.AddOwnedUnit(
-                new Building
-                {
-                    BuildingType = BuildingType.Mine,
-                    ManufacturingStatus = ManufacturingStatus.Complete,
-                }
-            );
-            faction.AddOwnedUnit(
-                new Building
-                {
-                    BuildingType = BuildingType.Mine,
-                    ManufacturingStatus = ManufacturingStatus.Building,
-                }
-            );
-            faction.AddOwnedUnit(
-                new Building
-                {
-                    BuildingType = BuildingType.Mine,
-                    ManufacturingStatus = ManufacturingStatus.Delivering,
-                }
-            );
-            faction.AddOwnedUnit(
-                new Building
-                {
-                    BuildingType = BuildingType.Refinery,
-                    ManufacturingStatus = ManufacturingStatus.Complete,
-                }
-            );
-            faction.AddOwnedUnit(
-                new Building
-                {
-                    BuildingType = BuildingType.Refinery,
-                    ManufacturingStatus = ManufacturingStatus.Building,
-                }
-            );
-            faction.AddOwnedUnit(
-                new Building
-                {
-                    BuildingType = BuildingType.Refinery,
-                    ManufacturingStatus = ManufacturingStatus.Complete,
-                    Movement = new MovementState(),
-                }
-            );
-            faction.AddOwnedUnit(
-                new Building
-                {
-                    BuildingType = BuildingType.Shipyard,
-                    ManufacturingStatus = ManufacturingStatus.Complete,
-                }
+            ResourceEconomySummary summary = new ResourceEconomySummary(
+                new ResourceFacilityCounts(1, 2, 3, 4),
+                new ResourceFacilityCounts(5, 6, 7, 8),
+                0.25,
+                0.125,
+                100,
+                new MaintenanceCostBreakdown(5, 10, 15, 20, 25, 0)
             );
 
             StrategyHudResourceBreakdown breakdown = StrategyHudController.CreateResourceBreakdown(
-                faction
+                summary
             );
 
             Assert.AreEqual(1, breakdown.ActiveMines);
-            Assert.AreEqual(1, breakdown.BuildingMines);
-            Assert.AreEqual(1, breakdown.EnRouteMines);
-            Assert.AreEqual(1, breakdown.ActiveRefineries);
-            Assert.AreEqual(1, breakdown.BuildingRefineries);
-            Assert.AreEqual(1, breakdown.EnRouteRefineries);
+            Assert.AreEqual(2, breakdown.OfflineMines);
+            Assert.AreEqual(3, breakdown.BuildingMines);
+            Assert.AreEqual(4, breakdown.EnRouteMines);
+            Assert.AreEqual(5, breakdown.ActiveRefineries);
+            Assert.AreEqual(6, breakdown.OfflineRefineries);
+            Assert.AreEqual(7, breakdown.BuildingRefineries);
+            Assert.AreEqual(8, breakdown.EnRouteRefineries);
+            Assert.AreEqual(0.25, breakdown.RawOutputPerTick);
+            Assert.AreEqual(0.125, breakdown.RefinedOutputPerTick);
+            Assert.AreEqual(0.125, breakdown.RawNetPerTick);
+            Assert.AreEqual(100, breakdown.MaintenanceCapacity);
+            Assert.AreEqual(75, breakdown.MaintenanceCommitted);
+            Assert.AreEqual(5, breakdown.Maintenance.CapitalShips);
+            Assert.AreEqual(10, breakdown.Maintenance.Starfighters);
+            Assert.AreEqual(15, breakdown.Maintenance.Regiments);
+            Assert.AreEqual(20, breakdown.Maintenance.SpecialForces);
+            Assert.AreEqual(25, breakdown.Maintenance.Facilities);
+            Assert.AreEqual(0, breakdown.Maintenance.Orders);
+            Assert.AreEqual(25, breakdown.MaintenanceHeadroom);
         }
 
         [Test]
@@ -332,8 +304,30 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 theme
             );
 
-            Assert.AreEqual(new RectInt(459, 20, 274, 11), data.ResourceBreakdown.HitArea);
-            Assert.AreEqual(new RectInt(459, 34, 274, 48), data.ResourceBreakdown.PanelBounds);
+            Assert.AreEqual(
+                new RectInt(459, 20, 80, 11),
+                data.ResourceBreakdown.RawMaterials.HitArea
+            );
+            Assert.AreEqual(
+                new RectInt(369, 34, 170, 58),
+                data.ResourceBreakdown.RawMaterials.PanelBounds
+            );
+            Assert.AreEqual(
+                new RectInt(553, 20, 80, 11),
+                data.ResourceBreakdown.RefinedMaterials.HitArea
+            );
+            Assert.AreEqual(
+                new RectInt(463, 34, 170, 58),
+                data.ResourceBreakdown.RefinedMaterials.PanelBounds
+            );
+            Assert.AreEqual(
+                new RectInt(653, 20, 80, 11),
+                data.ResourceBreakdown.Maintenance.HitArea
+            );
+            Assert.AreEqual(
+                new RectInt(543, 34, 190, 59),
+                data.ResourceBreakdown.Maintenance.PanelBounds
+            );
         }
 
         [Test]

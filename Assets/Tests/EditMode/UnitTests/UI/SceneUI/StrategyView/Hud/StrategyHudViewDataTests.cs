@@ -68,7 +68,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 3,
                 4,
                 5,
-                6
+                6,
+                7,
+                8,
+                0.25,
+                0.125,
+                100,
+                new StrategyHudMaintenanceBreakdown(5, 10, 15, 20, 25, 0)
             );
 
             StrategyHudRenderData data = new StrategyHudRenderData(

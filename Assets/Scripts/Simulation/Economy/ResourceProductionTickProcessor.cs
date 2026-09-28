@@ -59,8 +59,14 @@ namespace Rebellion.Simulation
             ServicePendingRawMaterialRequests(game, faction);
             ServicePendingRefinedMaterialRequests(game, faction);
 
-            List<Building> mines = GetActiveResourceFacilities(faction, BuildingType.Mine);
-            List<Building> refineries = GetActiveResourceFacilities(faction, BuildingType.Refinery);
+            List<Building> mines = ResourceProductionQueries.GetActiveFacilities(
+                faction,
+                BuildingType.Mine
+            );
+            List<Building> refineries = ResourceProductionQueries.GetActiveFacilities(
+                faction,
+                BuildingType.Refinery
+            );
 
             int maintenanceDemand = faction.GetTotalProjectedMaintenanceCost();
             RebalanceResourceAllocations(mines, maintenanceDemand, faction);
@@ -221,40 +227,6 @@ namespace Rebellion.Simulation
                 && !facility.ProductionInputReserved
                 && !facility.ProductionPointReady
                 && facility.GetParent() is Planet;
-        }
-
-        /// <summary>
-        /// Gets active mine or refinery facilities in stable planet and building order.
-        /// </summary>
-        /// <param name="faction">The owning faction.</param>
-        /// <param name="buildingType">The resource facility type.</param>
-        /// <returns>The active facilities.</returns>
-        private static List<Building> GetActiveResourceFacilities(
-            Faction faction,
-            BuildingType buildingType
-        )
-        {
-            List<Building> facilities = new List<Building>();
-            foreach (Planet planet in faction.GetOwnedColonizedPlanets())
-            {
-                if (planet.IsResourceProductionSuspended())
-                    continue;
-
-                IEnumerable<Building> planetFacilities = planet
-                    .GetChildren<Building>()
-                    .Where(building =>
-                        building.BuildingType == buildingType
-                        && building.ManufacturingStatus == ManufacturingStatus.Complete
-                        && building.Movement == null
-                        && building.ProcessRate > 0
-                    );
-                if (buildingType == BuildingType.Mine)
-                    planetFacilities = planetFacilities.Take(planet.NumRawResourceNodes);
-
-                facilities.AddRange(planetFacilities);
-            }
-
-            return facilities;
         }
 
         /// <summary>
@@ -511,20 +483,11 @@ namespace Rebellion.Simulation
         )
         {
             GameConfig.ProductionConfig config = game.Config.Production;
-            int facilityCapacity = faction.Settings.ResourceProcessingPointsPerFacility;
-            int scaledCapacity = Math.Max(
-                1,
-                facilityCapacity * config.ResourceMaintenanceLoadPercent / _percentScale
+            int duration = ResourceProductionQueries.CalculateSteadyCycleDuration(
+                game,
+                faction,
+                facility
             );
-            int maintenancePenalty = DivideRoundingUp(
-                facility.ResourceMaintenanceAllocation,
-                scaledCapacity
-            );
-            int baseDuration = Math.Max(1, facility.ProcessRate + maintenancePenalty);
-            Planet planet = facility.GetParentOfType<Planet>();
-            int support = Math.Max(1, planet?.GetPopularSupport(faction.InstanceID) ?? 0);
-            int supportModifier = config.ResourceCollectionBasePercent * _percentScale / support;
-            int duration = Math.Max(1, baseDuration * supportModifier / _percentScale);
             if (!facility.ResourceStartupCyclePending)
                 return duration;
 
@@ -532,17 +495,6 @@ namespace Rebellion.Simulation
             int startupRandomMaximum =
                 duration * config.ResourceStartupRandomPercent / _percentScale;
             return Math.Max(1, startupBase + game.Random.NextInt(0, startupRandomMaximum + 1));
-        }
-
-        /// <summary>
-        /// Divides non-negative integers while rounding any remainder upward.
-        /// </summary>
-        /// <param name="dividend">The value to divide.</param>
-        /// <param name="divisor">The positive divisor.</param>
-        /// <returns>The rounded-up quotient.</returns>
-        private static int DivideRoundingUp(int dividend, int divisor)
-        {
-            return (dividend + divisor - 1) / divisor;
         }
     }
 }

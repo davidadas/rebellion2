@@ -4,7 +4,7 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
-using Rebellion.Game.Units;
+using Rebellion.Simulation;
 using UnityEngine;
 
 /// <summary>
@@ -12,6 +12,13 @@ using UnityEngine;
 /// </summary>
 public sealed class StrategyHudController : IContextMenuReceiver
 {
+    private const int _rawMaterialsPanelHeight = 58;
+    private const int _rawMaterialsPanelWidth = 170;
+    private const int _refinedMaterialsPanelHeight = 58;
+    private const int _refinedMaterialsPanelWidth = 170;
+    private const int _maintenancePanelHeight = 59;
+    private const int _maintenancePanelWidth = 190;
+
     private readonly Func<FactionTheme> getPlayerTheme;
     private readonly Func<string, Texture2D> getTexture;
     private readonly Action<string> playSfx;
@@ -339,61 +346,37 @@ public sealed class StrategyHudController : IContextMenuReceiver
     }
 
     /// <summary>
-    /// Counts the player's mines and refineries by their current lifecycle state.
+    /// Maps the current resource economy into HUD presentation data.
     /// </summary>
-    /// <param name="faction">The faction whose facilities are counted.</param>
-    /// <returns>The resource-facility totals.</returns>
-    internal static StrategyHudResourceBreakdown CreateResourceBreakdown(Faction faction)
+    /// <param name="summary">The authoritative resource economy summary.</param>
+    /// <returns>The resource-economy presentation.</returns>
+    internal static StrategyHudResourceBreakdown CreateResourceBreakdown(
+        ResourceEconomySummary summary
+    )
     {
-        if (faction == null)
+        if (summary == null)
             return StrategyHudResourceBreakdown.Empty;
 
-        int activeMines = 0;
-        int buildingMines = 0;
-        int enRouteMines = 0;
-        int activeRefineries = 0;
-        int buildingRefineries = 0;
-        int enRouteRefineries = 0;
-
-        foreach (Building building in faction.GetOwnedUnitsByType<Building>())
-        {
-            if (building.BuildingType is not (BuildingType.Mine or BuildingType.Refinery))
-                continue;
-
-            bool isMine = building.BuildingType == BuildingType.Mine;
-            if (building.ManufacturingStatus == ManufacturingStatus.Building)
-            {
-                if (isMine)
-                    buildingMines++;
-                else
-                    buildingRefineries++;
-            }
-            else if (
-                building.ManufacturingStatus == ManufacturingStatus.Delivering
-                || building.Movement != null
-            )
-            {
-                if (isMine)
-                    enRouteMines++;
-                else
-                    enRouteRefineries++;
-            }
-            else
-            {
-                if (isMine)
-                    activeMines++;
-                else
-                    activeRefineries++;
-            }
-        }
-
         return new StrategyHudResourceBreakdown(
-            activeMines,
-            buildingMines,
-            enRouteMines,
-            activeRefineries,
-            buildingRefineries,
-            enRouteRefineries
+            summary.Mines.Active,
+            summary.Mines.Offline,
+            summary.Mines.Building,
+            summary.Mines.EnRoute,
+            summary.Refineries.Active,
+            summary.Refineries.Offline,
+            summary.Refineries.Building,
+            summary.Refineries.EnRoute,
+            summary.RawOutputPerTick,
+            summary.RefinedOutputPerTick,
+            summary.MaintenanceCapacity,
+            new StrategyHudMaintenanceBreakdown(
+                summary.Maintenance.CapitalShips,
+                summary.Maintenance.Starfighters,
+                summary.Maintenance.Regiments,
+                summary.Maintenance.SpecialForces,
+                summary.Maintenance.Facilities,
+                summary.Maintenance.Orders
+            )
         );
     }
 
@@ -414,46 +397,51 @@ public sealed class StrategyHudController : IContextMenuReceiver
         SourceRectLayout maintenanceLayout
     )
     {
-        RectInt? hitArea = UnionLayouts(
-            rawMaterialsLayout,
-            refinedMaterialsLayout,
-            maintenanceLayout
+        return new StrategyHudResourceBreakdownViewData(
+            totals,
+            accentColor,
+            CreateResourcePopover(
+                rawMaterialsLayout,
+                _rawMaterialsPanelWidth,
+                _rawMaterialsPanelHeight
+            ),
+            CreateResourcePopover(
+                refinedMaterialsLayout,
+                _refinedMaterialsPanelWidth,
+                _refinedMaterialsPanelHeight
+            ),
+            CreateResourcePopover(
+                maintenanceLayout,
+                _maintenancePanelWidth,
+                _maintenancePanelHeight
+            )
         );
-        RectInt? panelBounds = hitArea.HasValue
-            ? new RectInt(hitArea.Value.x, hitArea.Value.yMax + 3, hitArea.Value.width, 48)
-            : null;
-        return new StrategyHudResourceBreakdownViewData(totals, accentColor, hitArea, panelBounds);
     }
 
     /// <summary>
-    /// Finds the smallest source-space rectangle containing all supplied layouts.
+    /// Projects one resource counter into its own compact popover.
     /// </summary>
-    /// <param name="layouts">The optional layouts to combine.</param>
-    /// <returns>The combined bounds, or null when no layout is supplied.</returns>
-    private static RectInt? UnionLayouts(params SourceRectLayout[] layouts)
+    /// <param name="layout">The resource-counter layout.</param>
+    /// <param name="panelWidth">The popover width.</param>
+    /// <param name="panelHeight">The popover height.</param>
+    /// <returns>The resource popover placement.</returns>
+    private static StrategyHudResourcePopoverViewData CreateResourcePopover(
+        SourceRectLayout layout,
+        int panelWidth,
+        int panelHeight
+    )
     {
-        RectInt? result = null;
-        foreach (SourceRectLayout layout in layouts)
-        {
-            if (layout == null)
-                continue;
+        if (layout == null)
+            return StrategyHudResourcePopoverViewData.Empty;
 
-            RectInt next = ToRequiredRect(layout);
-            if (!result.HasValue)
-            {
-                result = next;
-                continue;
-            }
-
-            RectInt current = result.Value;
-            int left = Math.Min(current.xMin, next.xMin);
-            int top = Math.Min(current.yMin, next.yMin);
-            int right = Math.Max(current.xMax, next.xMax);
-            int bottom = Math.Max(current.yMax, next.yMax);
-            result = new RectInt(left, top, right - left, bottom - top);
-        }
-
-        return result;
+        RectInt hitArea = ToRequiredRect(layout);
+        RectInt panelBounds = new RectInt(
+            Math.Max(0, hitArea.xMax - panelWidth),
+            hitArea.yMax + 3,
+            panelWidth,
+            panelHeight
+        );
+        return new StrategyHudResourcePopoverViewData(hitArea, panelBounds);
     }
 
     /// <summary>

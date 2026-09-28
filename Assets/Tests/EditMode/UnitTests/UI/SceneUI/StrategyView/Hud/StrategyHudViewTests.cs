@@ -117,24 +117,43 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.IsTrue(notificationButtons[0].interactable);
             Assert.AreEqual(Selectable.Transition.None, notificationButtons[0].transition);
             Assert.AreSame(notifications[0], notificationButtons[0].targetGraphic);
-            Assert.AreEqual(
-                new RectInt(459, 20, 274, 11),
-                GetSourceRect(GetField<UIRaycastArea>("resourceBreakdownHoverView"))
+            UIRaycastArea[] resourceHoverViews = GetField<UIRaycastArea[]>(
+                "resourceBreakdownHoverViews"
             );
-            RectTransform resourcePanel = GetField<RectTransform>("resourceBreakdownPanel");
-            Assert.AreEqual(new RectInt(459, 34, 274, 48), UILayout.GetSourceRect(resourcePanel));
-            Assert.IsFalse(resourcePanel.gameObject.activeSelf);
+            RectTransform[] resourcePanels = GetField<RectTransform[]>("resourceBreakdownPanels");
+            TextMeshProUGUI[] resourceBodies = GetField<TextMeshProUGUI[]>(
+                "resourceBreakdownBodyTextFields"
+            );
+            Assert.AreEqual(new RectInt(459, 20, 80, 11), GetSourceRect(resourceHoverViews[0]));
+            Assert.AreEqual(new RectInt(553, 20, 80, 11), GetSourceRect(resourceHoverViews[1]));
+            Assert.AreEqual(new RectInt(653, 20, 80, 11), GetSourceRect(resourceHoverViews[2]));
             Assert.AreEqual(
-                "<color=#A8A8A8><b>ACTIVE</b></color>\n1\n4",
-                GetField<TextMeshProUGUI>("resourceBreakdownActiveTextField").text
+                new RectInt(369, 34, 170, 58),
+                UILayout.GetSourceRect(resourcePanels[0])
             );
             Assert.AreEqual(
-                "<color=#A8A8A8><b>BUILDING</b></color>\n2\n5",
-                GetField<TextMeshProUGUI>("resourceBreakdownBuildingTextField").text
+                new RectInt(463, 34, 170, 58),
+                UILayout.GetSourceRect(resourcePanels[1])
             );
             Assert.AreEqual(
-                "<color=#A8A8A8><b>EN ROUTE</b></color>\n3\n6",
-                GetField<TextMeshProUGUI>("resourceBreakdownEnRouteTextField").text
+                new RectInt(543, 34, 190, 59),
+                UILayout.GetSourceRect(resourcePanels[2])
+            );
+            Assert.IsTrue(resourcePanels.All(panel => !panel.gameObject.activeSelf));
+            Assert.AreEqual(
+                "ACTIVE<pos=60%><b>1</b>\nBUILDING<pos=60%><b>3</b>\nIN TRANSIT<pos=60%><b>4</b>\nPRODUCING<pos=60%><b>+0.25/TICK</b>",
+                resourceBodies[0].text
+            );
+            Assert.AreEqual(
+                "ACTIVE<pos=60%><b>5</b>\nBUILDING<pos=60%><b>7</b>\nIN TRANSIT<pos=60%><b>8</b>\nPRODUCING<pos=60%><b>+0.13/TICK</b>",
+                resourceBodies[1].text
+            );
+            Assert.AreEqual(
+                "CAP SHIPS<pos=34%><b>105</b><pos=48%>SPEC FORCES<pos=83%><b>120</b>\nFIGHTERS<pos=34%><b>110</b><pos=48%>FACILITIES<pos=83%><b>125</b>\nREGIMENTS<pos=34%><b>115</b><pos=48%>ORDERS<pos=83%><b>130</b>\n<color=#A8A8A8>USED</color><pos=16%><b>705/1000</b><pos=48%><color=#A8A8A8>AVAILABLE</color><pos=83%><b>+295</b>",
+                resourceBodies[2].text
+            );
+            Assert.IsTrue(
+                resourceBodies.All(body => body.preferredWidth <= body.rectTransform.rect.width)
             );
         }
 
@@ -142,14 +161,29 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         public void ResourceBreakdownHover_PointerExits_HidesPanel()
         {
             _view.Render(CreateViewData(CreateButtons(0), CreateNotifications(0), null));
-            UIRaycastArea hoverArea = GetField<UIRaycastArea>("resourceBreakdownHoverView");
-            RectTransform panel = GetField<RectTransform>("resourceBreakdownPanel");
+            UIRaycastArea hoverArea = GetField<UIRaycastArea[]>("resourceBreakdownHoverViews")[0];
+            RectTransform panel = GetField<RectTransform[]>("resourceBreakdownPanels")[0];
             PointerEventData eventData = CreatePointerEvent(PointerEventData.InputButton.Left);
             panel.gameObject.SetActive(true);
 
             hoverArea.OnPointerExit(eventData);
 
             Assert.IsFalse(panel.gameObject.activeSelf);
+        }
+
+        [Test]
+        public void PrefabProperties_ResourceBreakdownPanel_PlacesLayerAboveModelessWindows()
+        {
+            RectTransform[] panels = GetField<RectTransform[]>("resourceBreakdownPanels");
+            Transform popoverLayer = panels[0].parent;
+            Transform windows = popoverLayer.parent;
+            Transform modelessWindows = windows.Find("ModelessWindows");
+            Transform modalWindows = windows.Find("ModalWindows");
+
+            Assert.AreEqual("HudPopovers", popoverLayer.name);
+            Assert.IsTrue(panels.All(panel => panel.parent == popoverLayer));
+            Assert.Greater(popoverLayer.GetSiblingIndex(), modelessWindows.GetSiblingIndex());
+            Assert.Less(popoverLayer.GetSiblingIndex(), modalWindows.GetSiblingIndex());
         }
 
         [Test]
@@ -189,10 +223,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.IsFalse(GetField<RawImage[]>("mainButtonImages")[0].gameObject.activeSelf);
             Assert.IsFalse(GetField<UIRaycastArea[]>("buttonViews")[0].gameObject.activeSelf);
             Assert.IsFalse(GetField<UIRaycastArea>("speedContextView").gameObject.activeSelf);
-            Assert.IsFalse(
-                GetField<UIRaycastArea>("resourceBreakdownHoverView").gameObject.activeSelf
+            Assert.IsTrue(
+                GetField<UIRaycastArea[]>("resourceBreakdownHoverViews")
+                    .All(hoverView => !hoverView.gameObject.activeSelf)
             );
-            Assert.IsFalse(GetField<RectTransform>("resourceBreakdownPanel").gameObject.activeSelf);
+            Assert.IsTrue(
+                GetField<RectTransform[]>("resourceBreakdownPanels")
+                    .All(panel => !panel.gameObject.activeSelf)
+            );
             Assert.IsFalse(
                 GetField<RawImage[]>("messageNotificationImages")[0].gameObject.activeSelf
             );
@@ -379,10 +417,33 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 new StrategyHudCounterViewData("789", Color.blue, null),
                 new StrategyHudCounterViewData("12", Color.yellow, null),
                 new StrategyHudResourceBreakdownViewData(
-                    new StrategyHudResourceBreakdown(1, 2, 3, 4, 5, 6),
+                    new StrategyHudResourceBreakdown(
+                        1,
+                        2,
+                        3,
+                        4,
+                        5,
+                        6,
+                        7,
+                        8,
+                        0.25,
+                        0.125,
+                        1000,
+                        new StrategyHudMaintenanceBreakdown(105, 110, 115, 120, 125, 130)
+                    ),
                     Color.red,
-                    new RectInt(459, 20, 274, 11),
-                    new RectInt(459, 34, 274, 48)
+                    new StrategyHudResourcePopoverViewData(
+                        new RectInt(459, 20, 80, 11),
+                        new RectInt(369, 34, 170, 58)
+                    ),
+                    new StrategyHudResourcePopoverViewData(
+                        new RectInt(553, 20, 80, 11),
+                        new RectInt(463, 34, 170, 58)
+                    ),
+                    new StrategyHudResourcePopoverViewData(
+                        new RectInt(653, 20, 80, 11),
+                        new RectInt(543, 34, 190, 59)
+                    )
                 ),
                 _speedTexture,
                 new RectInt(100, 20, 50, 16),

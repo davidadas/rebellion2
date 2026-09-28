@@ -1458,6 +1458,9 @@ public sealed class StrategyController
             return;
 
         Faction faction = session.Game.GetPlayerFaction();
+        ResourceEconomySummary resourceEconomy = session
+            .GetService<ResourceProductionQueries>()
+            .GetSummary(faction);
         strategyHudController.Render(
             new StrategyHudRenderData(
                 session.Game.CurrentTick.ToString(),
@@ -1466,7 +1469,7 @@ public sealed class StrategyController
                 faction?.MaintenanceHeadroom.ToString() ?? "0",
                 gameManager.GetGameSpeed(),
                 StrategyHudController.GetUnreadMessageTypes(faction),
-                StrategyHudController.CreateResourceBreakdown(faction)
+                StrategyHudController.CreateResourceBreakdown(resourceEconomy)
             )
         );
     }
