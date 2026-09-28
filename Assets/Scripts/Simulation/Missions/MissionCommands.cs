@@ -569,13 +569,7 @@ namespace Rebellion.Simulation
         /// <returns>The local officers in scene traversal order.</returns>
         private static IEnumerable<Officer> GetLocalOfficers(Planet planet)
         {
-            return planet
-                .GetChildren<Officer>()
-                .Concat(
-                    planet
-                        .GetChildren<Mission>()
-                        .SelectMany(candidate => candidate.GetChildren<Officer>(recursive: true))
-                );
+            return planet.GetChildren<Officer>();
         }
 
         /// <summary>
@@ -604,7 +598,7 @@ namespace Rebellion.Simulation
                         )
                 )
                 {
-                    foreach (Officer officer in ship.GetChildren<Officer>(recursive: true))
+                    foreach (Officer officer in ship.GetChildren<Officer>())
                         yield return officer;
                 }
             }

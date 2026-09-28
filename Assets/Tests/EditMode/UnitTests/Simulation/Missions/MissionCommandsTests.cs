@@ -2305,6 +2305,41 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void UpdateMission_ForceDefenderAssignedToAnotherMission_DoesNotTriggerForceEncounter()
+        {
+            (
+                GameRoot game,
+                Planet planet,
+                Officer spy,
+                Officer defender,
+                MovementCommands movement
+            ) = BuildDetectionScene();
+            spy.ForceValue = 100;
+            defender.ForceValue = 100;
+            game.Config.Jedi.EncounterProbabilityOffset = 100;
+            SetFoilTable(game, new Dictionary<int, int> { { -1000, 0 } });
+
+            StubMission defendingMission = new StubMission("rebels", planet.InstanceID);
+            game.AttachNode(defendingMission, planet);
+            game.MoveNode(defender, defendingMission);
+
+            StubMission mission = new StubMission("empire", planet.InstanceID);
+            mission.SetExecutionTick(5);
+            game.AttachNode(mission, planet);
+            game.MoveNode(spy, mission);
+            MissionCommands system = TestSystems.CreateMissionCommands(
+                game,
+                new FixedRNG(0.01),
+                movement
+            );
+
+            List<GameResult> results = system.UpdateMission(mission);
+
+            Assert.IsFalse(results.OfType<MissionCompletedResult>().Any());
+            Assert.AreEqual(1, mission.CurrentProgress);
+        }
+
+        [Test]
         public void UpdateMission_DecoyCheck_AlwaysUsesEspionage()
         {
             (
@@ -3562,7 +3597,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void InitiateMission_HostileForceUserOnMission_FoilsBeforeTravel()
+        public void InitiateMission_HostileForceUserOnMission_DoesNotFoilBeforeTravel()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
@@ -3624,12 +3659,13 @@ namespace Rebellion.Tests.Simulation
             List<GameResult> results = system.TakePendingResults();
 
             Assert.IsTrue(initiated);
-            Assert.AreSame(origin, participant.GetParent());
-            Assert.IsNull(participant.Movement);
-            MissionCompletedResult completed = results
-                .OfType<MissionCompletedResult>()
-                .Single(result => result.Outcome == MissionOutcome.Foiled);
-            Assert.AreSame(origin, completed.ReturnDestination);
+            Assert.IsInstanceOf<SabotageMission>(participant.GetParent());
+            Assert.IsNotNull(participant.Movement);
+            Assert.IsFalse(
+                results
+                    .OfType<MissionCompletedResult>()
+                    .Any(result => result.Outcome == MissionOutcome.Foiled)
+            );
         }
 
         [Test]
