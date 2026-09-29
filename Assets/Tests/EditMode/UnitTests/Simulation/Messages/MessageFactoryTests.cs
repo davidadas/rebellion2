@@ -4251,14 +4251,11 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("neutral:Yavin:Empire", message.Body);
             Assert.AreEqual("support-image", message.DisplayImagePath);
             Assert.AreEqual("neutral-audio", message.BackgroundAudioPath);
-            Assert.AreEqual(
-                AdvisorNotificationType.NegativePopularSupport,
-                DeliveryFor(message).NotificationType
-            );
+            Assert.AreEqual(AdvisorNotificationType.None, DeliveryFor(message).NotificationType);
         }
 
         [Test]
-        public void CreateMessages_PlanetNeutralityObservedByOpponent_UsesPositivePopularSupportNotification()
+        public void CreateMessages_PlanetNeutralityObservedByOpponent_UsesNoAdvisorNotification()
         {
             (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
                 BuildTwoFactionMessageScene();
@@ -4286,10 +4283,7 @@ namespace Rebellion.Tests.Simulation
 
             MessageDelivery delivery = FirstDeliveryFor(deliveries, alliance);
 
-            Assert.AreEqual(
-                AdvisorNotificationType.PositivePopularSupport,
-                delivery.NotificationType
-            );
+            Assert.AreEqual(AdvisorNotificationType.None, delivery.NotificationType);
         }
 
         [Test]
