@@ -7,6 +7,7 @@ public enum UserInterfaceOption
 {
     ShowIdleBar,
     KeepIdleBarOpen,
+    ShowUnitCardStats,
 }
 
 /// <summary>
@@ -17,6 +18,7 @@ public sealed class UserInterfaceSettings
 {
     public bool ShowIdleBar = true;
     public bool KeepIdleBarOpen;
+    public bool ShowUnitCardStats;
 
     /// <summary>
     /// Gets whether a user-interface presentation option is enabled.
@@ -29,6 +31,7 @@ public sealed class UserInterfaceSettings
         {
             UserInterfaceOption.ShowIdleBar => ShowIdleBar,
             UserInterfaceOption.KeepIdleBarOpen => KeepIdleBarOpen,
+            UserInterfaceOption.ShowUnitCardStats => ShowUnitCardStats,
             _ => throw new ArgumentOutOfRangeException(nameof(option), option, null),
         };
     }
@@ -48,6 +51,9 @@ public sealed class UserInterfaceSettings
             case UserInterfaceOption.KeepIdleBarOpen:
                 KeepIdleBarOpen = enabled;
                 break;
+            case UserInterfaceOption.ShowUnitCardStats:
+                ShowUnitCardStats = enabled;
+                break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(option), option, null);
         }
@@ -60,5 +66,6 @@ public sealed class UserInterfaceSettings
     {
         ShowIdleBar = true;
         KeepIdleBarOpen = false;
+        ShowUnitCardStats = false;
     }
 }

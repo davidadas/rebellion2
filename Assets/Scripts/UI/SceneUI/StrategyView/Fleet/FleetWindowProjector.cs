@@ -11,14 +11,20 @@ using UnityEngine;
 internal sealed class FleetWindowProjector
 {
     private readonly Func<UIContext> getUIContext;
+    private readonly Func<bool> getStatsOverlayEnabled;
 
     /// <summary>
     /// Creates a fleet-window projector with access to the current presentation context.
     /// </summary>
     /// <param name="getUIContext">Returns the current strategy presentation context.</param>
-    public FleetWindowProjector(Func<UIContext> getUIContext)
+    /// <param name="getStatsOverlayEnabled">Returns whether unit-card stat overlays are enabled.</param>
+    public FleetWindowProjector(
+        Func<UIContext> getUIContext,
+        Func<bool> getStatsOverlayEnabled = null
+    )
     {
         this.getUIContext = getUIContext ?? throw new ArgumentNullException(nameof(getUIContext));
+        this.getStatsOverlayEnabled = getStatsOverlayEnabled ?? (() => false);
     }
 
     /// <summary>
@@ -62,7 +68,12 @@ internal sealed class FleetWindowProjector
         if (hasSelection && selectedFleet != null)
         {
             tabs = BuildTabs(uiContext, selectedOwnerFactionId, session);
-            detailItems = BuildDetailItems(uiContext, session, selectedFleet);
+            detailItems = BuildDetailItems(
+                uiContext,
+                session,
+                selectedFleet,
+                getStatsOverlayEnabled()
+            );
             if (session.ActiveTab == FleetWindowTab.Starfighters)
             {
                 showCapacity = true;
@@ -315,11 +326,13 @@ internal sealed class FleetWindowProjector
     /// <param name="uiContext">The current presentation context.</param>
     /// <param name="session">The controller-owned fleet session.</param>
     /// <param name="fleet">The selected fleet.</param>
+    /// <param name="showStatsOverlay">Whether to project unit-card stat overlays.</param>
     /// <returns>The ordered detail-card snapshots.</returns>
     private static List<StrategyUnitCardRenderData> BuildDetailItems(
         UIContext uiContext,
         FleetWindowSession session,
-        Fleet fleet
+        Fleet fleet,
+        bool showStatsOverlay
     )
     {
         IReadOnlyList<ISceneNode> items = session.DetailItems;
@@ -385,7 +398,10 @@ internal sealed class FleetWindowProjector
                         capitalShip?.GetChildren<Officer>().Any() == true,
                         badgeIcons => badgeIcons.FleetPersonnelBadgeImagePath
                     ),
-                    canDrag: true
+                    canDrag: true,
+                    statsOverlay: showStatsOverlay
+                        ? StrategyUnitCardStatsOverlayBuilder.Build(item, uiContext.Game)
+                        : null
                 )
             );
         }

@@ -458,8 +458,9 @@ public static class OptionsMenuPrefabBuilder
         {
             UserInterfaceOption.ShowIdleBar,
             UserInterfaceOption.KeepIdleBarOpen,
+            UserInterfaceOption.ShowUnitCardStats,
         };
-        string[] labels = { "Show Idle Bar", "Keep Idle Bar Open" };
+        string[] labels = { "Show Idle Bar", "Keep Idle Bar Open", "Show Unit Card Stats" };
         OptionsToggleRowView[] rows = new OptionsToggleRowView[options.Length];
         for (int i = 0; i < options.Length; i++)
         {

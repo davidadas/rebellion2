@@ -27,6 +27,9 @@ public sealed class StrategyUnitCardView : MonoBehaviour, IStrategyStatusDoubleC
     private RawImage entityImage;
 
     [SerializeField]
+    private RawImage statsOverlayImage;
+
+    [SerializeField]
     private RawImage capturedOverlayImage;
 
     [SerializeField]
@@ -51,6 +54,8 @@ public sealed class StrategyUnitCardView : MonoBehaviour, IStrategyStatusDoubleC
     private RectInt entityFrameRect;
     private bool layoutCaptured;
     private UIPointerGestureRelay pointerGestures;
+    private Color32[] statsOverlayPixels;
+    private Texture2D statsOverlayTexture;
 
     /// <summary>
     /// Raised when the card receives a primary-button double click.
@@ -94,13 +99,15 @@ public sealed class StrategyUnitCardView : MonoBehaviour, IStrategyStatusDoubleC
     /// </summary>
     private void OnDestroy()
     {
-        if (pointerGestures == null)
-            return;
+        if (pointerGestures != null)
+        {
+            pointerGestures.DoubleClicked -= HandleDoubleClicked;
+            pointerGestures.Dropped -= HandleDropped;
+            pointerGestures.Pressed -= HandlePressed;
+            pointerGestures.Released -= HandleReleased;
+        }
 
-        pointerGestures.DoubleClicked -= HandleDoubleClicked;
-        pointerGestures.Dropped -= HandleDropped;
-        pointerGestures.Pressed -= HandlePressed;
-        pointerGestures.Released -= HandleReleased;
+        ReleaseStatsOverlayTexture();
     }
 
     /// <summary>
@@ -138,6 +145,7 @@ public sealed class StrategyUnitCardView : MonoBehaviour, IStrategyStatusDoubleC
             entityRenderFrameRect
         );
         SetOptionalCenteredImage(entityImage, data.EntityTexture, entityRenderFrameRect);
+        RenderStatsOverlay(data.StatsOverlay, entityRenderFrameRect);
         SetOptionalCenteredImage(
             capturedOverlayImage,
             data.CapturedOverlayTexture,
@@ -200,6 +208,7 @@ public sealed class StrategyUnitCardView : MonoBehaviour, IStrategyStatusDoubleC
 
         AppendDragImage(images, backgroundImage);
         AppendDragImage(images, entityImage);
+        AppendDragImage(images, statsOverlayImage);
         AppendDragImage(images, enrouteOverlayImage);
         AppendDragImage(images, damagedOverlayImage);
         AppendDragImage(images, capturedOverlayImage);
@@ -307,6 +316,106 @@ public sealed class StrategyUnitCardView : MonoBehaviour, IStrategyStatusDoubleC
     }
 
     /// <summary>
+    /// Renders an optional source-resolution stat overlay into the authored entity slot.
+    /// </summary>
+    /// <param name="overlay">The projected stat pixels, or null when disabled.</param>
+    /// <param name="frameRect">The available source-space entity slot.</param>
+    private void RenderStatsOverlay(StrategyUnitCardStatsOverlayData overlay, RectInt frameRect)
+    {
+        if (overlay == null)
+        {
+            SetOptionalImageTexture(statsOverlayImage, null);
+            return;
+        }
+
+        EnsureStatsOverlayTexture(overlay.Width, overlay.Height);
+        overlay.CopyToTexturePixels(statsOverlayPixels);
+        statsOverlayTexture.SetPixels32(statsOverlayPixels);
+        statsOverlayTexture.Apply(false, false);
+        SetOptionalImageTexture(statsOverlayImage, statsOverlayTexture);
+        RectInt renderRect = GetStatsOverlayRenderRect(overlay, frameRect);
+        UILayout.SetSourceRect(
+            statsOverlayImage.rectTransform,
+            renderRect.x,
+            renderRect.y,
+            renderRect.width,
+            renderRect.height
+        );
+    }
+
+    /// <summary>
+    /// Fits source-resolution overlay pixels into the same source-space slot as the unit artwork.
+    /// </summary>
+    /// <param name="overlay">The source-resolution overlay.</param>
+    /// <param name="frameRect">The available source-space entity slot.</param>
+    /// <returns>The centered source-space overlay bounds.</returns>
+    internal static RectInt GetStatsOverlayRenderRect(
+        StrategyUnitCardStatsOverlayData overlay,
+        RectInt frameRect
+    )
+    {
+        if (overlay == null)
+            throw new ArgumentNullException(nameof(overlay));
+
+        float scale = Mathf.Min(
+            1f,
+            frameRect.width / (float)overlay.Width,
+            frameRect.height / (float)overlay.Height
+        );
+        int width = Mathf.Max(1, Mathf.RoundToInt(overlay.Width * scale));
+        int height = Mathf.Max(1, Mathf.RoundToInt(overlay.Height * scale));
+        return new RectInt(
+            frameRect.x + (frameRect.width - width) / 2,
+            frameRect.y + (frameRect.height - height) / 2,
+            width,
+            height
+        );
+    }
+
+    /// <summary>
+    /// Ensures the reusable runtime texture matches the projected overlay dimensions.
+    /// </summary>
+    /// <param name="width">The required source width.</param>
+    /// <param name="height">The required source height.</param>
+    private void EnsureStatsOverlayTexture(int width, int height)
+    {
+        if (
+            statsOverlayTexture != null
+            && statsOverlayTexture.width == width
+            && statsOverlayTexture.height == height
+        )
+        {
+            return;
+        }
+
+        ReleaseStatsOverlayTexture();
+        statsOverlayTexture = new Texture2D(width, height, TextureFormat.RGBA32, false)
+        {
+            name = $"{name} Stats Overlay",
+            filterMode = FilterMode.Point,
+            wrapMode = TextureWrapMode.Clamp,
+        };
+        statsOverlayPixels = new Color32[width * height];
+    }
+
+    /// <summary>
+    /// Releases the runtime texture owned by this card view.
+    /// </summary>
+    private void ReleaseStatsOverlayTexture()
+    {
+        if (statsOverlayTexture == null)
+            return;
+
+        if (Application.isPlaying)
+            Destroy(statsOverlayTexture);
+        else
+            DestroyImmediate(statsOverlayTexture);
+
+        statsOverlayTexture = null;
+        statsOverlayPixels = null;
+    }
+
+    /// <summary>
     /// Applies an optional image while preserving its authored component ownership.
     /// </summary>
     /// <param name="image">The optional authored image.</param>
@@ -372,6 +481,8 @@ public sealed class StrategyUnitCardView : MonoBehaviour, IStrategyStatusDoubleC
             throw new MissingReferenceException($"{name}/DamagedOverlayImage is missing.");
         if (entityImage == null)
             throw new MissingReferenceException($"{name}/EntityImage is missing.");
+        if (statsOverlayImage == null)
+            throw new MissingReferenceException($"{name}/StatsOverlayImage is missing.");
         if (capturedOverlayImage == null)
             throw new MissingReferenceException($"{name}/CapturedOverlayImage is missing.");
         if (selectionImage == null)
@@ -408,6 +519,8 @@ public sealed class StrategyUnitCardRenderData
 
     public Texture EntityTexture { get; }
 
+    public StrategyUnitCardStatsOverlayData StatsOverlay { get; }
+
     public Texture CapturedOverlayTexture { get; }
 
     public Texture SelectionTexture { get; }
@@ -440,6 +553,7 @@ public sealed class StrategyUnitCardRenderData
     /// <param name="troopBadgeTexture">The optional troop badge.</param>
     /// <param name="personnelBadgeTexture">The optional personnel badge.</param>
     /// <param name="canDrag">Whether the card can initiate a move drag.</param>
+    /// <param name="statsOverlay">The optional source-resolution stat overlay.</param>
     public StrategyUnitCardRenderData(
         string name,
         Color32 nameColor,
@@ -455,7 +569,8 @@ public sealed class StrategyUnitCardRenderData
         Texture starfighterBadgeTexture,
         Texture troopBadgeTexture,
         Texture personnelBadgeTexture,
-        bool canDrag
+        bool canDrag,
+        StrategyUnitCardStatsOverlayData statsOverlay = null
     )
     {
         Name = name ?? string.Empty;
@@ -466,6 +581,7 @@ public sealed class StrategyUnitCardRenderData
         EnrouteOverlayTexture = enrouteOverlayTexture;
         DamagedOverlayTexture = damagedOverlayTexture;
         EntityTexture = entityTexture;
+        StatsOverlay = statsOverlay;
         CapturedOverlayTexture = capturedOverlayTexture;
         SelectionTexture = selectionTexture;
         EntityFrameYOffset = entityFrameYOffset;

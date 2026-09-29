@@ -243,7 +243,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void HandleUserInterfaceToggle_IdleBarOptionsClicked_TogglesOptions()
+        public void HandleUserInterfaceToggle_InterfaceOptionsClicked_TogglesOptions()
         {
             OptionsMenuView view = OpenAndRender(OptionsMenuTab.Gameplay);
             bool initiallyVisible = _bootstrap
@@ -252,6 +252,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             bool initiallyAlwaysOpen = _bootstrap
                 .GetUserSettingsManager()
                 .Settings.UserInterface.KeepIdleBarOpen;
+            bool initiallyShowingStats = _bootstrap
+                .GetUserSettingsManager()
+                .Settings.UserInterface.ShowUnitCardStats;
             OptionsToggleRowView[] rows = GetField<OptionsToggleRowView[]>(
                 view,
                 "_userInterfaceRows"
@@ -261,6 +264,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             );
             OptionsToggleRowView pinRow = rows.Single(row =>
                 row.OptionIndex == (int)UserInterfaceOption.KeepIdleBarOpen
+            );
+            OptionsToggleRowView statsRow = rows.Single(row =>
+                row.OptionIndex == (int)UserInterfaceOption.ShowUnitCardStats
             );
 
             GetField<Button>(showRow, "_button").onClick.Invoke();
@@ -273,6 +279,12 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.AreEqual(
                 !initiallyAlwaysOpen,
                 _bootstrap.GetUserSettingsManager().Settings.UserInterface.KeepIdleBarOpen
+            );
+
+            GetField<Button>(statsRow, "_button").onClick.Invoke();
+            Assert.AreEqual(
+                !initiallyShowingStats,
+                _bootstrap.GetUserSettingsManager().Settings.UserInterface.ShowUnitCardStats
             );
         }
 

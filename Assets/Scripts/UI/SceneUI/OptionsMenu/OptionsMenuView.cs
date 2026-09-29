@@ -1155,8 +1155,14 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             throw new MissingReferenceException(
                 $"{name} expects {gameplayOptionCount} gameplay rows."
             );
-        if (_userInterfaceRows.Length != 2 || Array.Exists(_userInterfaceRows, row => row == null))
-            throw new MissingReferenceException($"{name} expects two user-interface rows.");
+        int userInterfaceOptionCount = Enum.GetValues(typeof(UserInterfaceOption)).Length;
+        if (
+            _userInterfaceRows.Length != userInterfaceOptionCount
+            || Array.Exists(_userInterfaceRows, row => row == null)
+        )
+            throw new MissingReferenceException(
+                $"{name} expects {userInterfaceOptionCount} user-interface rows."
+            );
         if (
             _modsStatusTextField == null
             || _modsRestartTextField == null
