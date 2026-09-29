@@ -3754,12 +3754,16 @@ namespace Rebellion.Simulation
         {
             if (result?.PreviousOwner == null || result.NewOwner != null || recipient == null)
                 return null;
+            AdvisorNotificationType notification =
+                recipient.InstanceID == result.PreviousOwner.InstanceID
+                    ? AdvisorNotificationType.NegativePopularSupport
+                    : AdvisorNotificationType.PositivePopularSupport;
             return BuildPoliticalMessage(
                 MessageResultType.PlanetDeclaredNeutralityBySupport,
                 recipient,
                 Values(result.PreviousOwner, result.Planet?.GetDisplayName()),
                 result.Planet?.InstanceID,
-                AdvisorNotificationType.NegativePopularSupport
+                notification
             );
         }
 
