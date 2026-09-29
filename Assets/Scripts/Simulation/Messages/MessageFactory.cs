@@ -3759,7 +3759,7 @@ namespace Rebellion.Simulation
                 recipient,
                 Values(result.PreviousOwner, result.Planet?.GetDisplayName()),
                 result.Planet?.InstanceID,
-                AdvisorNotificationType.NegativePopularSupport
+                AdvisorNotificationType.None
             );
         }
 

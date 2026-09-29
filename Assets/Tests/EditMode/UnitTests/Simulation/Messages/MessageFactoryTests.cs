@@ -4251,6 +4251,39 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("neutral:Yavin:Empire", message.Body);
             Assert.AreEqual("support-image", message.DisplayImagePath);
             Assert.AreEqual("neutral-audio", message.BackgroundAudioPath);
+            Assert.AreEqual(AdvisorNotificationType.None, DeliveryFor(message).NotificationType);
+        }
+
+        [Test]
+        public void CreateMessages_PlanetNeutralityObservedByOpponent_UsesNoAdvisorNotification()
+        {
+            (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
+                BuildTwoFactionMessageScene();
+
+            List<MessageDelivery> deliveries = CreateMessages(
+                game,
+                new[]
+                {
+                    Definition(
+                        MessageResultType.PlanetDeclaredNeutralityBySupport,
+                        MessageType.PopularSupport,
+                        "{system} neutral",
+                        "neutral:{system}:{faction}"
+                    ),
+                },
+                new PlanetOwnershipChangedResult
+                {
+                    Planet = target,
+                    PreviousOwner = empire,
+                    NewOwner = null,
+                    Reason = PlanetOwnershipChangeReason.PopularSupport,
+                    ObserverFactionInstanceIDs = new List<string> { alliance.InstanceID },
+                }
+            );
+
+            MessageDelivery delivery = FirstDeliveryFor(deliveries, alliance);
+
+            Assert.AreEqual(AdvisorNotificationType.None, delivery.NotificationType);
         }
 
         [Test]
