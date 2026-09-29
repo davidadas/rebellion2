@@ -71,9 +71,9 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Updates ownership knowledge for each faction that observed a control change.
+        /// Updates existing ownership knowledge and records the change for current observers.
         /// </summary>
-        /// <param name="factions">The factions that observed the ownership change.</param>
+        /// <param name="factions">The factions that currently observe the ownership change.</param>
         /// <param name="planet">The planet whose owner changed.</param>
         /// <param name="sector">The sector containing the planet.</param>
         /// <param name="currentTick">The tick when the change was observed.</param>
@@ -84,8 +84,22 @@ namespace Rebellion.Simulation
             int currentTick
         )
         {
-            foreach (Faction faction in factions)
-                _recorder.RecordPlanetOwnershipSnapshot(faction, planet, sector, currentTick);
+            HashSet<string> observerIds = new HashSet<string>(
+                (factions ?? Enumerable.Empty<Faction>())
+                    .Where(faction => faction != null)
+                    .Select(faction => faction.InstanceID)
+            );
+            foreach (Faction faction in _game.GetFactions())
+            {
+                if (observerIds.Contains(faction.InstanceID))
+                {
+                    _recorder.RecordPlanetOwnershipSnapshot(faction, planet, sector, currentTick);
+                }
+                else
+                {
+                    _recorder.UpdateKnownPlanetOwnershipSnapshot(faction, planet, sector);
+                }
+            }
         }
 
         /// <summary>
