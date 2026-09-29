@@ -99,7 +99,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         public void CreateViewData_PausedSpeed_ShowsPausedInsteadOfTick()
         {
             StrategyHudViewData data = _controller.CreateViewData(
-                new StrategyHudRenderData("42", "100", "200", "300", TickSpeed.Paused, null),
+                new StrategyHudRenderData("42", "100", "200", TickSpeed.Paused, null),
                 new FactionTheme()
             );
 
@@ -110,7 +110,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         public void CreateViewData_RunningSpeed_ShowsTick()
         {
             StrategyHudViewData data = _controller.CreateViewData(
-                new StrategyHudRenderData("42", "100", "200", "300", TickSpeed.Medium, null),
+                new StrategyHudRenderData("42", "100", "200", TickSpeed.Medium, null),
                 new FactionTheme()
             );
 
@@ -161,7 +161,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 };
 
                 StrategyHudViewData data = controller.CreateViewData(
-                    new StrategyHudRenderData("42", "100", "200", "300", TickSpeed.Medium, null),
+                    new StrategyHudRenderData("42", "100", "200", TickSpeed.Medium, null),
                     theme
                 );
 
@@ -242,9 +242,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 0.125,
                 0.1875,
                 0.25,
-                100,
-                125,
-                150,
+                25,
+                50,
+                75,
                 new MaintenanceCostBreakdown(5, 10, 15, 20, 25, 0, 50, 10, 15)
             );
 
@@ -266,9 +266,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.AreEqual(0.125, breakdown.RefinedOutputPerTick);
             Assert.AreEqual(0.1875, breakdown.DeliveredRefinedOutputPerTick);
             Assert.AreEqual(0.25, breakdown.ProjectedRefinedOutputPerTick);
-            Assert.AreEqual(100, breakdown.MaintenanceCapacity);
-            Assert.AreEqual(125, breakdown.DeliveredMaintenanceCapacity);
-            Assert.AreEqual(150, breakdown.ProjectedMaintenanceCapacity);
             Assert.AreEqual(75, breakdown.MaintenanceCommitted);
             Assert.AreEqual(5, breakdown.Maintenance.CapitalShips);
             Assert.AreEqual(10, breakdown.Maintenance.Starfighters);
@@ -279,8 +276,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.AreEqual(50, breakdown.Maintenance.Deployed);
             Assert.AreEqual(10, breakdown.Maintenance.EnRoute);
             Assert.AreEqual(15, breakdown.Maintenance.Building);
-            Assert.AreEqual(50, breakdown.MaintenanceHeadroom);
-            Assert.AreEqual(65, breakdown.DeliveredMaintenanceHeadroom);
+            Assert.AreEqual(25, breakdown.MaintenanceHeadroom);
+            Assert.AreEqual(50, breakdown.DeliveredMaintenanceHeadroom);
             Assert.AreEqual(75, breakdown.ProjectedMaintenanceHeadroom);
         }
 
@@ -316,7 +313,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             };
 
             StrategyHudViewData data = _controller.CreateViewData(
-                new StrategyHudRenderData("", "", "", "", TickSpeed.Paused, null),
+                new StrategyHudRenderData("", "", "", TickSpeed.Paused, null),
                 theme
             );
 

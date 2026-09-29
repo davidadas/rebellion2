@@ -365,9 +365,9 @@ public sealed class StrategyHudController : IContextMenuReceiver
             summary.RefinedOutputPerTick,
             summary.DeliveredRefinedOutputPerTick,
             summary.ProjectedRefinedOutputPerTick,
-            summary.MaintenanceCapacity,
-            summary.DeliveredMaintenanceCapacity,
-            summary.ProjectedMaintenanceCapacity,
+            summary.MaintenanceHeadroom,
+            summary.DeliveredMaintenanceHeadroom,
+            summary.ProjectedMaintenanceHeadroom,
             new StrategyHudMaintenanceBreakdown(
                 summary.Maintenance.CapitalShips,
                 summary.Maintenance.Starfighters,

@@ -1460,15 +1460,16 @@ public sealed class StrategyController
         ResourceEconomySummary resourceEconomy = session
             .GetService<ResourceProductionQueries>()
             .GetSummary(faction);
+        StrategyHudResourceBreakdown resourceBreakdown =
+            StrategyHudController.CreateResourceBreakdown(resourceEconomy);
         strategyHudController.Render(
             new StrategyHudRenderData(
                 session.Game.CurrentTick.ToString(),
                 faction?.RawMaterials.ToString() ?? "0",
                 faction?.RefinedMaterials.ToString() ?? "0",
-                faction?.MaintenanceHeadroom.ToString() ?? "0",
                 gameManager.GetGameSpeed(),
                 StrategyHudController.GetUnreadMessageTypes(faction),
-                StrategyHudController.CreateResourceBreakdown(resourceEconomy)
+                resourceBreakdown
             )
         );
     }
