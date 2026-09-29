@@ -2266,6 +2266,34 @@ public sealed class StrategyController
     }
 
     /// <summary>
+    /// Rebuilds shared strategy state after a stationed officer's command changes.
+    /// </summary>
+    void IDefenseWindowActions.RefreshDefenseState()
+    {
+        RefreshStrategyState();
+    }
+
+    /// <summary>
+    /// Assigns one selected live officer to a local command post.
+    /// </summary>
+    /// <param name="items">The selected Defense-window items or snapshots.</param>
+    /// <param name="rank">The requested command rank.</param>
+    /// <returns>True when an appointment changed.</returns>
+    bool IDefenseWindowActions.TrySetOfficerCommand(
+        IReadOnlyList<ISceneNode> items,
+        OfficerRank rank
+    )
+    {
+        Officer selectedOfficer = items?.Count == 1 ? items[0] as Officer : null;
+        if (selectedOfficer == null)
+            return false;
+
+        return session
+                ?.GetService<OfficerCommandCommands>()
+                ?.TrySetRank(selectedOfficer.InstanceID, rank, PlayerFactionId) == true;
+    }
+
+    /// <summary>
     /// Rebuilds shared strategy state after a planet-sector command changes the game.
     /// </summary>
     void IPlanetSectorWindowActions.RefreshPlanetSectorState()

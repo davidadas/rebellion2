@@ -59,7 +59,6 @@ namespace Rebellion.Simulation
                 || officer.InjuryPoints > 0
                 || ((IMovable)officer).GetTransitMovement() != null
                 || commandTarget == null
-                || !IsRankSupportedByTarget(rank, commandTarget)
             )
                 return false;
 
@@ -305,15 +304,5 @@ namespace Rebellion.Simulation
                     or OfficerRank.Commander
                     or OfficerRank.Admiral
                     or OfficerRank.General;
-
-        /// <summary>
-        /// Enforces command scopes: Admirals command fleets, while Generals and Commanders may
-        /// command either a fleet or a planetary system.
-        /// </summary>
-        /// <param name="rank">The requested rank.</param>
-        /// <param name="commandTarget">The local fleet or system command.</param>
-        /// <returns>True when that post exists at the target.</returns>
-        private static bool IsRankSupportedByTarget(OfficerRank rank, ISceneNode commandTarget) =>
-            rank != OfficerRank.Admiral || commandTarget is Fleet;
     }
 }

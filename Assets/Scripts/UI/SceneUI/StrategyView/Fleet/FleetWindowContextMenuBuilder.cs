@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 
@@ -207,7 +206,7 @@ internal static class FleetWindowContextMenuBuilder
             new StrategyMenuCommand(StrategyMenuAction.CreateMission, "Mission", canCreateMission),
         };
         if (personnel.Count == 1 && personnel[0] is Officer officer)
-            commands.Add(BuildOfficerCommandMenu(officer, playerControlsItems));
+            commands.Add(OfficerCommandMenuBuilder.Build(officer, playerControlsItems));
 
         commands.Add(
             new StrategyMenuCommand(
@@ -221,102 +220,6 @@ internal static class FleetWindowContextMenuBuilder
         );
         commands.Add(new StrategyMenuCommand(StrategyMenuAction.Retire, "Retire ", canRetire));
         return commands;
-    }
-
-    /// <summary>
-    /// Builds the Command submenu for one officer.
-    /// </summary>
-    /// <param name="officer">The selected officer.</param>
-    /// <param name="playerControlsOfficer">Whether the player controls the officer.</param>
-    /// <returns>The complete command submenu.</returns>
-    private static StrategyMenuCommand BuildOfficerCommandMenu(
-        Officer officer,
-        bool playerControlsOfficer
-    )
-    {
-        bool canChangeCommand =
-            playerControlsOfficer
-            && !officer.IsCaptured
-            && !officer.IsKilled
-            && !officer.IsRetired
-            && officer.InjuryPoints <= 0
-            && !officer.IsOnMission()
-            && ((IMovable)officer).GetTransitMovement() == null
-            && (
-                officer.GetParentOfType<Fleet>() != null
-                || officer.GetParentOfType<Planet>() != null
-            );
-        bool hasCommandChoice =
-            officer.CurrentRank != OfficerRank.None
-            || officer.AllowedRanks?.Any(rank => rank != OfficerRank.None) == true;
-        bool commandMenuEnabled = canChangeCommand && hasCommandChoice;
-
-        return new StrategyMenuCommand(
-            StrategyMenuAction.Command,
-            "Command",
-            commandMenuEnabled,
-            submenuCommands: new List<StrategyMenuCommand>
-            {
-                BuildOfficerRankCommand(
-                    StrategyMenuAction.CommandNone,
-                    "None",
-                    OfficerRank.None,
-                    officer,
-                    commandMenuEnabled
-                ),
-                BuildOfficerRankCommand(
-                    StrategyMenuAction.CommandCommander,
-                    "Commander",
-                    OfficerRank.Commander,
-                    officer,
-                    commandMenuEnabled
-                ),
-                BuildOfficerRankCommand(
-                    StrategyMenuAction.CommandAdmiral,
-                    "Admiral",
-                    OfficerRank.Admiral,
-                    officer,
-                    commandMenuEnabled
-                ),
-                BuildOfficerRankCommand(
-                    StrategyMenuAction.CommandGeneral,
-                    "General",
-                    OfficerRank.General,
-                    officer,
-                    commandMenuEnabled
-                ),
-            }
-        );
-    }
-
-    /// <summary>
-    /// Builds one radio-style command choice.
-    /// </summary>
-    /// <param name="action">The semantic appointment action.</param>
-    /// <param name="text">The menu label.</param>
-    /// <param name="rank">The represented command post.</param>
-    /// <param name="officer">The selected officer.</param>
-    /// <param name="canChangeCommand">Whether command changes are currently allowed.</param>
-    /// <returns>The command choice.</returns>
-    private static StrategyMenuCommand BuildOfficerRankCommand(
-        StrategyMenuAction action,
-        string text,
-        OfficerRank rank,
-        Officer officer,
-        bool canChangeCommand
-    )
-    {
-        bool rankAllowed = rank == OfficerRank.None || officer.AllowedRanks?.Contains(rank) == true;
-        bool rankSupportedByLocation =
-            rank != OfficerRank.Admiral || officer.GetParentOfType<Fleet>() != null;
-        return new StrategyMenuCommand(
-            action,
-            text,
-            canChangeCommand && rankAllowed && rankSupportedByLocation,
-            officer.CurrentRank == rank
-                ? StrategyContextMenuIconKeys.CheckMark
-                : StrategyContextMenuIconKeys.None
-        );
     }
 
     /// <summary>

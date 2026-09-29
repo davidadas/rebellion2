@@ -31,7 +31,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         [Test]
         public void Build_PersonnelSelection_ReturnsPersonnelCommandOrderAndEligibility()
         {
-            Officer officer = new Officer();
+            Officer officer = new Officer
+            {
+                AllowedRanks = new[] { OfficerRank.Commander, OfficerRank.Admiral },
+                CurrentRank = OfficerRank.Commander,
+            };
+            officer.SetParent(new Rebellion.Game.Galaxy.Planet());
 
             List<StrategyMenuCommand> commands = DefenseWindowContextMenuBuilder.Build(
                 new ISceneNode[] { officer },
@@ -48,6 +53,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
                     StrategyMenuAction.Move,
                     StrategyMenuAction.MoveConfirm,
                     StrategyMenuAction.CreateMission,
+                    StrategyMenuAction.Command,
                     StrategyMenuAction.Encyclopedia,
                     StrategyMenuAction.Status,
                     StrategyMenuAction.Retire,
@@ -55,8 +61,29 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
                 commands.Select(command => command.Action)
             );
             CollectionAssert.AreEqual(
-                new[] { true, true, false, true, true, true },
+                new[] { true, true, false, true, true, true, true },
                 commands.Select(command => command.Enabled)
+            );
+            StrategyMenuCommand commandMenu = commands.Single(command =>
+                command.Action == StrategyMenuAction.Command
+            );
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    StrategyMenuAction.CommandNone,
+                    StrategyMenuAction.CommandCommander,
+                    StrategyMenuAction.CommandAdmiral,
+                    StrategyMenuAction.CommandGeneral,
+                },
+                commandMenu.SubmenuCommands.Select(command => command.Action)
+            );
+            CollectionAssert.AreEqual(
+                new[] { true, true, true, false },
+                commandMenu.SubmenuCommands.Select(command => command.Enabled)
+            );
+            Assert.AreEqual(
+                StrategyContextMenuIconKeys.CheckMark,
+                commandMenu.SubmenuCommands[1].IconKey
             );
         }
 

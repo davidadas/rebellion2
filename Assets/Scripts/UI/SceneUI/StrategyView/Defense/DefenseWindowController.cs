@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -10,6 +11,19 @@ using UnityEngine.EventSystems;
 /// </summary>
 public interface IDefenseWindowActions
 {
+    /// <summary>
+    /// Rebuilds shared strategy state after a stationed officer's command changes.
+    /// </summary>
+    void RefreshDefenseState();
+
+    /// <summary>
+    /// Assigns the selected officer to a local command post.
+    /// </summary>
+    /// <param name="items">The selected Defense-window items.</param>
+    /// <param name="rank">The requested command rank.</param>
+    /// <returns>True when an appointment changed.</returns>
+    bool TrySetOfficerCommand(IReadOnlyList<ISceneNode> items, OfficerRank rank);
+
     /// <summary>
     /// Opens status information for one Defense-window target.
     /// </summary>
@@ -528,6 +542,16 @@ public sealed class DefenseWindowController
 
         switch (strategyCommand.Action)
         {
+            case StrategyMenuAction.CommandNone:
+            case StrategyMenuAction.CommandCommander:
+            case StrategyMenuAction.CommandAdmiral:
+            case StrategyMenuAction.CommandGeneral:
+                if (
+                    strategyCommand.Action.TryGetOfficerRank(out OfficerRank rank)
+                    && actions.TrySetOfficerCommand(source.Items, rank)
+                )
+                    actions.RefreshDefenseState();
+                break;
             case StrategyMenuAction.ToggleIdleBarTracking:
                 if (source.Items.Count == 1)
                     idleBarTrackingActions.ToggleIdleBarTracking(source.Items[0]);

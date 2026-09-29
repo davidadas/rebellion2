@@ -38,7 +38,7 @@ internal static class DefenseWindowContextMenuBuilder
 
         if (selectedItems.All(item => item is Officer || item is SpecialForces))
         {
-            return new List<StrategyMenuCommand>
+            List<StrategyMenuCommand> commands = new List<StrategyMenuCommand>
             {
                 new StrategyMenuCommand(StrategyMenuAction.Move, "Move", canMove),
                 new StrategyMenuCommand(StrategyMenuAction.MoveConfirm, "Confirmed Move", canMove),
@@ -47,10 +47,16 @@ internal static class DefenseWindowContextMenuBuilder
                     "Mission",
                     canCreateMission
                 ),
-                new StrategyMenuCommand(StrategyMenuAction.Encyclopedia, "Encyclopedia", true),
-                new StrategyMenuCommand(StrategyMenuAction.Status, "Status", true),
-                new StrategyMenuCommand(StrategyMenuAction.Retire, "Retire", canRetire),
             };
+            if (selectedItems.Count == 1 && selectedItems[0] is Officer officer)
+                commands.Add(OfficerCommandMenuBuilder.Build(officer, playerControlsItem));
+
+            commands.Add(
+                new StrategyMenuCommand(StrategyMenuAction.Encyclopedia, "Encyclopedia", true)
+            );
+            commands.Add(new StrategyMenuCommand(StrategyMenuAction.Status, "Status", true));
+            commands.Add(new StrategyMenuCommand(StrategyMenuAction.Retire, "Retire", canRetire));
+            return commands;
         }
 
         if (hitItem is Regiment || hitItem is Starfighter)
