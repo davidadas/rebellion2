@@ -159,6 +159,38 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void GetSummary_DeliveredFacilityWithSatisfiedDemand_PreservesCurrentAllocations()
+        {
+            _game.Config.Production.ResourceCollectionBasePercent = 100;
+            _game.Config.Production.ResourceMaintenanceLoadPercent = 20;
+            Planet planet = AddPlanet("PLANET1", rawResourceNodes: 2);
+            Building activeMine = AddBuilding(planet, BuildingType.Mine, processRate: 2);
+            activeMine.ResourceMaintenanceAllocation = 50;
+            AddBuilding(
+                planet,
+                BuildingType.Mine,
+                processRate: 2,
+                status: ManufacturingStatus.Delivering
+            );
+            _game.AttachNode(
+                new Regiment
+                {
+                    InstanceID = "REGIMENT1",
+                    OwnerInstanceID = _faction.InstanceID,
+                    MaintenanceCost = 50,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                planet
+            );
+
+            ResourceEconomySummary summary = new ResourceProductionQueries(_game).GetSummary(
+                _faction
+            );
+
+            Assert.AreEqual((1.0 / 7.0) + (1.0 / 2.0), summary.DeliveredRawOutputPerTick, 0.0001);
+        }
+
+        [Test]
         public void GetSummary_MixedMaintenanceCosts_ClassifiesAssetsAndOrders()
         {
             _faction.AddOwnedUnit(

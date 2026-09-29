@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
@@ -244,122 +243,15 @@ namespace Rebellion.Simulation
             if (facilities.Count == 0)
                 return;
 
-            int facilityCapacity = faction.Settings.ResourceProcessingPointsPerFacility;
-            int totalCapacity = facilities.Count * facilityCapacity;
-            foreach (Building facility in facilities)
-            {
-                facility.ResourceMaintenanceAllocation = Math.Clamp(
-                    facility.ResourceMaintenanceAllocation,
-                    0,
-                    facilityCapacity
-                );
-            }
-
-            int targetAllocation = Math.Min(Math.Max(0, maintenanceDemand), totalCapacity);
-            int currentAllocation = facilities.Sum(facility =>
-                facility.ResourceMaintenanceAllocation
+            List<int> allocations = ResourceProductionQueries.CalculateMaintenanceAllocations(
+                facilities,
+                maintenanceDemand,
+                faction
             );
-            if (currentAllocation < targetAllocation)
+            for (int index = 0; index < facilities.Count; index++)
             {
-                IncreaseResourceAllocations(
-                    facilities,
-                    targetAllocation - currentAllocation,
-                    facilityCapacity,
-                    totalCapacity
-                );
+                facilities[index].ResourceMaintenanceAllocation = allocations[index];
             }
-            else if (currentAllocation > targetAllocation)
-            {
-                DecreaseResourceAllocations(
-                    facilities,
-                    currentAllocation - targetAllocation,
-                    facilityCapacity,
-                    totalCapacity
-                );
-            }
-        }
-
-        /// <summary>
-        /// Adds resource maintenance allocation in stable facility order.
-        /// </summary>
-        /// <param name="facilities">The facilities receiving allocation.</param>
-        /// <param name="remaining">The allocation still to add.</param>
-        /// <param name="facilityCapacity">The capacity of each facility.</param>
-        /// <param name="totalCapacity">The capacity of the resource lane.</param>
-        private static void IncreaseResourceAllocations(
-            List<Building> facilities,
-            int remaining,
-            int facilityCapacity,
-            int totalCapacity
-        )
-        {
-            int currentAllocation = facilities.Sum(facility =>
-                facility.ResourceMaintenanceAllocation
-            );
-            bool changed;
-            do
-            {
-                changed = false;
-                foreach (Building facility in facilities)
-                {
-                    int idealAllocation = currentAllocation * facilityCapacity / totalCapacity;
-                    int added = Math.Clamp(
-                        idealAllocation - facility.ResourceMaintenanceAllocation + 1,
-                        0,
-                        Math.Min(
-                            remaining,
-                            facilityCapacity - facility.ResourceMaintenanceAllocation
-                        )
-                    );
-                    if (added <= 0)
-                        continue;
-
-                    facility.ResourceMaintenanceAllocation += added;
-                    currentAllocation += added;
-                    remaining -= added;
-                    changed = true;
-                    if (remaining == 0)
-                        return;
-                }
-            } while (changed);
-        }
-
-        /// <summary>
-        /// Removes resource maintenance allocation in stable facility order.
-        /// </summary>
-        /// <param name="facilities">The facilities losing allocation.</param>
-        /// <param name="remaining">The allocation still to remove.</param>
-        /// <param name="facilityCapacity">The capacity of each facility.</param>
-        /// <param name="totalCapacity">The capacity of the resource lane.</param>
-        private static void DecreaseResourceAllocations(
-            List<Building> facilities,
-            int remaining,
-            int facilityCapacity,
-            int totalCapacity
-        )
-        {
-            bool changed;
-            do
-            {
-                changed = false;
-                foreach (Building facility in facilities)
-                {
-                    int idealAllocation = (remaining - 1) * facilityCapacity / totalCapacity;
-                    int removed = Math.Clamp(
-                        facility.ResourceMaintenanceAllocation - idealAllocation,
-                        0,
-                        Math.Min(remaining, facility.ResourceMaintenanceAllocation)
-                    );
-                    if (removed <= 0)
-                        continue;
-
-                    facility.ResourceMaintenanceAllocation -= removed;
-                    remaining -= removed;
-                    changed = true;
-                    if (remaining == 0)
-                        return;
-                }
-            } while (changed);
         }
 
         /// <summary>

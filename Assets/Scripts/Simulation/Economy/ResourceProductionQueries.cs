@@ -412,23 +412,143 @@ namespace Rebellion.Simulation
             if (outputPercent <= 0)
                 return 0;
 
-            int facilityCapacity = faction.Settings.ResourceProcessingPointsPerFacility;
-            int targetAllocation = Math.Min(
-                Math.Max(0, maintenanceDemand),
-                facilities.Count * facilityCapacity
+            List<int> allocations = CalculateMaintenanceAllocations(
+                facilities,
+                maintenanceDemand,
+                faction
             );
-            int baseAllocation = targetAllocation / facilities.Count;
-            int remainder = targetAllocation % facilities.Count;
             double output = 0;
             for (int index = 0; index < facilities.Count; index++)
             {
                 Building facility = facilities[index];
-                int allocation = baseAllocation + (index < remainder ? 1 : 0);
+                int allocation = allocations[index];
                 int duration = CalculateSteadyCycleDuration(_game, faction, facility, allocation);
                 output += (double)outputPercent / _percentScale / duration;
             }
 
             return output;
+        }
+
+        /// <summary>
+        /// Calculates the maintenance allocations produced by the resource-processing rebalance.
+        /// </summary>
+        /// <param name="facilities">The facilities receiving maintenance demand.</param>
+        /// <param name="maintenanceDemand">The faction's committed maintenance demand.</param>
+        /// <param name="faction">The faction defining per-facility capacity.</param>
+        /// <returns>The rebalanced allocations in matching facility order.</returns>
+        internal static List<int> CalculateMaintenanceAllocations(
+            IReadOnlyList<Building> facilities,
+            int maintenanceDemand,
+            Faction faction
+        )
+        {
+            int facilityCapacity = faction.Settings.ResourceProcessingPointsPerFacility;
+            List<int> allocations = facilities
+                .Select(facility =>
+                    Math.Clamp(facility.ResourceMaintenanceAllocation, 0, facilityCapacity)
+                )
+                .ToList();
+            int totalCapacity = allocations.Count * facilityCapacity;
+            int targetAllocation = Math.Min(Math.Max(0, maintenanceDemand), totalCapacity);
+            int currentAllocation = allocations.Sum();
+            if (currentAllocation < targetAllocation)
+            {
+                IncreaseMaintenanceAllocations(
+                    allocations,
+                    targetAllocation - currentAllocation,
+                    facilityCapacity,
+                    totalCapacity
+                );
+            }
+            else if (currentAllocation > targetAllocation)
+            {
+                DecreaseMaintenanceAllocations(
+                    allocations,
+                    currentAllocation - targetAllocation,
+                    facilityCapacity,
+                    totalCapacity
+                );
+            }
+
+            return allocations;
+        }
+
+        /// <summary>
+        /// Adds maintenance demand in stable facility order.
+        /// </summary>
+        /// <param name="allocations">The current allocations by facility.</param>
+        /// <param name="remaining">The allocation still to add.</param>
+        /// <param name="facilityCapacity">The capacity of each facility.</param>
+        /// <param name="totalCapacity">The combined facility capacity.</param>
+        private static void IncreaseMaintenanceAllocations(
+            IList<int> allocations,
+            int remaining,
+            int facilityCapacity,
+            int totalCapacity
+        )
+        {
+            int currentAllocation = allocations.Sum();
+            bool changed;
+            do
+            {
+                changed = false;
+                for (int index = 0; index < allocations.Count; index++)
+                {
+                    int idealAllocation = currentAllocation * facilityCapacity / totalCapacity;
+                    int added = Math.Clamp(
+                        idealAllocation - allocations[index] + 1,
+                        0,
+                        Math.Min(remaining, facilityCapacity - allocations[index])
+                    );
+                    if (added <= 0)
+                        continue;
+
+                    allocations[index] += added;
+                    currentAllocation += added;
+                    remaining -= added;
+                    changed = true;
+                    if (remaining == 0)
+                        return;
+                }
+            } while (changed);
+        }
+
+        /// <summary>
+        /// Removes maintenance demand in stable facility order.
+        /// </summary>
+        /// <param name="allocations">The current allocations by facility.</param>
+        /// <param name="remaining">The allocation still to remove.</param>
+        /// <param name="facilityCapacity">The capacity of each facility.</param>
+        /// <param name="totalCapacity">The combined facility capacity.</param>
+        private static void DecreaseMaintenanceAllocations(
+            IList<int> allocations,
+            int remaining,
+            int facilityCapacity,
+            int totalCapacity
+        )
+        {
+            bool changed;
+            do
+            {
+                changed = false;
+                for (int index = 0; index < allocations.Count; index++)
+                {
+                    int idealAllocation = (remaining - 1) * facilityCapacity / totalCapacity;
+                    int removed = Math.Clamp(
+                        allocations[index] - idealAllocation,
+                        0,
+                        Math.Min(remaining, allocations[index])
+                    );
+                    if (removed <= 0)
+                        continue;
+
+                    allocations[index] -= removed;
+                    remaining -= removed;
+                    changed = true;
+                    if (remaining == 0)
+                        return;
+                }
+            } while (changed);
         }
 
         /// <summary>

@@ -12,13 +12,6 @@ using UnityEngine;
 /// </summary>
 public sealed class StrategyHudController : IContextMenuReceiver
 {
-    private const int _rawMaterialsPanelHeight = 92;
-    private const int _rawMaterialsPanelWidth = 170;
-    private const int _refinedMaterialsPanelHeight = 92;
-    private const int _refinedMaterialsPanelWidth = 170;
-    private const int _maintenancePanelHeight = 92;
-    private const int _maintenancePanelWidth = 170;
-
     private readonly Func<FactionTheme> getPlayerTheme;
     private readonly Func<string, Texture2D> getTexture;
     private readonly Action<string> playSfx;
@@ -411,18 +404,18 @@ public sealed class StrategyHudController : IContextMenuReceiver
             accentColor,
             CreateResourcePopover(
                 rawMaterialsLayout,
-                _rawMaterialsPanelWidth,
-                _rawMaterialsPanelHeight
+                StrategyHudView.ResourceBreakdownPanelWidth,
+                StrategyHudView.ResourceBreakdownPanelHeight
             ),
             CreateResourcePopover(
                 refinedMaterialsLayout,
-                _refinedMaterialsPanelWidth,
-                _refinedMaterialsPanelHeight
+                StrategyHudView.ResourceBreakdownPanelWidth,
+                StrategyHudView.ResourceBreakdownPanelHeight
             ),
             CreateResourcePopover(
                 maintenanceLayout,
-                _maintenancePanelWidth,
-                _maintenancePanelHeight
+                StrategyHudView.ResourceBreakdownPanelWidth,
+                StrategyHudView.ResourceBreakdownPanelHeight
             )
         );
     }

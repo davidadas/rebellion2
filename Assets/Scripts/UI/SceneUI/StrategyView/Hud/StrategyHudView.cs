@@ -12,6 +12,9 @@ using UnityEngine.UI;
 /// </summary>
 public sealed class StrategyHudView : MonoBehaviour
 {
+    public const int ResourceBreakdownPanelHeight = 92;
+    public const int ResourceBreakdownPanelWidth = 170;
+
     private const float _resourceBreakdownHoverDelay = 0.75f;
 
     [SerializeField]
