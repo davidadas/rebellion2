@@ -299,6 +299,7 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarCommands fog
             ) = MissionSceneBuilder.Build(new GameConfig());
             MakeAbductionAlwaysSucceed(game);
+            game.Config.DuelResolution.CaptureEvasionInjuryBaseChance = 100;
 
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
             target.IsMain = true;

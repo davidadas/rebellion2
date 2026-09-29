@@ -16,15 +16,20 @@ namespace Rebellion.Game.Missions
     internal interface IMissionExecutionRuntime
     {
         /// <summary>
-        /// Resolves the mission's initial detection attempt.
+        /// Resolves one mission encounter checkpoint.
         /// </summary>
         /// <param name="mission">The mission executing its lifecycle.</param>
+        /// <param name="phase">The encounter checkpoint being resolved.</param>
         /// <param name="results">The result collection receiving detection consequences.</param>
         /// <returns>True when detection foils the mission.</returns>
-        bool ResolveDetection(Mission mission, List<GameResult> results);
+        bool ResolveEncounter(
+            Mission mission,
+            MissionEncounterPhase phase,
+            List<GameResult> results
+        );
 
         /// <summary>
-        /// Resolves betrayal or the completed mission objective.
+        /// Resolves the completed mission objective.
         /// </summary>
         /// <param name="mission">The mission whose progress is complete.</param>
         /// <returns>The results produced by objective resolution.</returns>
@@ -41,6 +46,17 @@ namespace Rebellion.Game.Missions
             MissionCompletedResult completedResult,
             List<GameResult> results
         );
+    }
+
+    /// <summary>
+    /// Identifies a mission encounter checkpoint.
+    /// </summary>
+    internal enum MissionEncounterPhase
+    {
+        DepartureStart,
+        DepartureComplete,
+        Arrival,
+        PreObjective,
     }
 
     /// <summary>
@@ -124,6 +140,7 @@ namespace Rebellion.Game.Missions
         public int MaxProgress { get; set; }
         public int CurrentProgress { get; set; }
         public bool DetectionResolved { get; set; }
+        public bool PreObjectiveEncounterResolved { get; set; }
 
         internal virtual bool AppliesFoiledParticipantConsequences => true;
 
@@ -195,6 +212,7 @@ namespace Rebellion.Game.Missions
             copy.MaxProgress = MaxProgress;
             copy.CurrentProgress = CurrentProgress;
             copy.DetectionResolved = DetectionResolved;
+            copy.PreObjectiveEncounterResolved = PreObjectiveEncounterResolved;
         }
 
         /// <summary>
@@ -300,8 +318,20 @@ namespace Rebellion.Game.Missions
             CurrentProgress = 0;
             MaxProgress = maxProgress;
             DetectionResolved = false;
+            PreObjectiveEncounterResolved = false;
             CaptureMainParticipantIDs();
             HasInitiated = true;
+        }
+
+        /// <summary>
+        /// Starts another objective attempt without repeating the arrival encounter.
+        /// </summary>
+        /// <param name="maxProgress">The rolled duration of the next attempt.</param>
+        internal void Repeat(int maxProgress)
+        {
+            CurrentProgress = 0;
+            MaxProgress = maxProgress;
+            PreObjectiveEncounterResolved = false;
         }
 
         /// <summary>
@@ -336,6 +366,21 @@ namespace Rebellion.Game.Missions
             GetMainParticipants(includeDisabled)
                 .Concat(GetDecoyParticipants(includeDisabled))
                 .ToList();
+
+        /// <summary>
+        /// Returns whether the mission originated outside its target location.
+        /// </summary>
+        /// <param name="encounterPlanet">The planet hosting the current encounter.</param>
+        /// <returns>True when an assigned participant or the encounter came from another planet.</returns>
+        internal bool HasRemoteOrigin(Planet encounterPlanet)
+        {
+            return encounterPlanet?.InstanceID != LocationInstanceID
+                || GetAllParticipants(includeDisabled: true)
+                    .Any(participant =>
+                        !string.IsNullOrEmpty(participant.MissionReturnLocationInstanceID)
+                        && participant.MissionReturnLocationInstanceID != LocationInstanceID
+                    );
+        }
 
         /// <summary>
         /// Gets the mission's primary participants.
@@ -523,16 +568,18 @@ namespace Rebellion.Game.Missions
         /// <param name="decoy">The decoy participant to evaluate.</param>
         /// <param name="detector">The detector being diverted.</param>
         /// <param name="game">The current game state.</param>
+        /// <param name="encounterPlanet">The planet where the encounter occurs.</param>
         /// <returns>The decoy success probability.</returns>
         internal double GetDecoyProbability(
             IMissionParticipant decoy,
             ISceneNode detector,
-            GameRoot game
+            GameRoot game,
+            Planet encounterPlanet = null
         )
         {
             int decoyEspionage = decoy.GetEffectiveRating(SkillRating.Espionage);
             GameConfig.MissionProbabilityTablesConfig missionTables = GetMissionTables(game);
-            Officer commander = FindDetectorCommander(detector);
+            Officer commander = FindDetectorCommander(detector, encounterPlanet);
             int scaledDefender =
                 (commander?.GetEffectiveRating(SkillRating.Espionage) ?? 0)
                 * missionTables.DecoyDefenderScalingPercent
@@ -637,7 +684,7 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Resolves main participants using the original character-first attempt order.
+        /// Resolves main participants with officers before special-forces units.
         /// Officer probabilities are calculated before any attempts and ordered from lowest to
         /// highest. Special forces then attempt the mission in their selected order. Resolution
         /// can stop after the first success for missions whose objective permits only one winner.
@@ -694,7 +741,7 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Rolls the original post-injury death check, which applies only to minor personnel.
+        /// Rolls the post-injury death check, which applies only to minor personnel.
         /// Main characters survive mission injuries regardless of the configured probability.
         /// </summary>
         /// <param name="officer">The injured officer.</param>
@@ -721,16 +768,16 @@ namespace Rebellion.Game.Missions
             officer?.IsMain == false ? Math.Clamp(deathProbability, 0, 100) : 0;
 
         /// <summary>
-        /// Applies the injury and minor-character death checks used when capture is attempted.
+        /// Applies the injury and minor-character death checks used after an evasion attempt.
         /// </summary>
-        /// <param name="officer">The officer attempting to avoid capture.</param>
-        /// <param name="opponent">The entity responsible for the capture attempt.</param>
+        /// <param name="officer">The officer resolving the evasion encounter.</param>
+        /// <param name="opponent">The entity opposing the evasion attempt.</param>
         /// <param name="planet">The planet where the confrontation occurs.</param>
         /// <param name="game">The current game state.</param>
         /// <param name="provider">RNG provider for injury and death rolls.</param>
         /// <param name="results">The result collection receiving injury or death results.</param>
         /// <returns>True when the injury kills the officer.</returns>
-        internal static bool ApplyCaptureEvasionInjury(
+        internal static bool ApplyEvasionInjury(
             Officer officer,
             IGameEntity opponent,
             Planet planet,
@@ -811,12 +858,14 @@ namespace Rebellion.Game.Missions
         /// <param name="provider">RNG provider for selection and probability roll.</param>
         /// <param name="game">The current game state.</param>
         /// <param name="detector">The detector the decoy is attempting to divert.</param>
+        /// <param name="encounterPlanet">The planet where the encounter occurs.</param>
         /// <returns>True if the selected decoy succeeds.</returns>
         private bool CheckDecoySuccessful(
             IMissionParticipant decoy,
             IRandomNumberProvider provider,
             GameRoot game,
-            ISceneNode detector
+            ISceneNode detector,
+            Planet encounterPlanet
         )
         {
             if (decoy == null || detector == null)
@@ -824,7 +873,7 @@ namespace Rebellion.Game.Missions
 
             return IsSuccessfulProbabilityRoll(
                 provider.NextDouble() * 100,
-                GetDecoyProbability(decoy, detector, game)
+                GetDecoyProbability(decoy, detector, game, encounterPlanet)
             );
         }
 
@@ -863,7 +912,7 @@ namespace Rebellion.Game.Missions
             )
                 return false;
 
-            return candidate is Regiment or Starfighter or CapitalShip;
+            return candidate is Regiment or Starfighter;
         }
 
         /// <summary>
@@ -884,10 +933,11 @@ namespace Rebellion.Game.Missions
         /// Finds the commander type paired with the selected detector in its local container.
         /// </summary>
         /// <param name="detector">The selected hostile detector.</param>
+        /// <param name="planet">The planet where the encounter occurs.</param>
         /// <returns>The matching commander, or null when none is assigned.</returns>
-        internal Officer FindDetectorCommander(ISceneNode detector)
+        internal Officer FindDetectorCommander(ISceneNode detector, Planet planet = null)
         {
-            Planet planet = GetParent() as Planet ?? detector?.GetParentOfType<Planet>();
+            planet ??= GetParent() as Planet ?? detector?.GetParentOfType<Planet>();
             if (planet == null)
                 return null;
 
@@ -923,15 +973,17 @@ namespace Rebellion.Game.Missions
         /// <param name="game">The current game state.</param>
         /// <param name="decoy">The decoy selected for this attempt.</param>
         /// <param name="detector">The detector being diverted.</param>
+        /// <param name="encounterPlanet">The planet where the encounter occurs.</param>
         /// <returns>True if the decoy diverts the detector.</returns>
         internal bool RollDecoyCheck(
             IRandomNumberProvider provider,
             GameRoot game,
             IMissionParticipant decoy,
-            ISceneNode detector
+            ISceneNode detector,
+            Planet encounterPlanet = null
         )
         {
-            return CheckDecoySuccessful(decoy, provider, game, detector);
+            return CheckDecoySuccessful(decoy, provider, game, detector, encounterPlanet);
         }
 
         /// <summary>
@@ -969,7 +1021,11 @@ namespace Rebellion.Game.Missions
             if (!DetectionResolved)
             {
                 DetectionResolved = true;
-                wasDetected = runtime.ResolveDetection(this, results);
+                wasDetected = runtime.ResolveEncounter(
+                    this,
+                    MissionEncounterPhase.Arrival,
+                    results
+                );
             }
             if (wasDetected)
             {
@@ -988,6 +1044,30 @@ namespace Rebellion.Game.Missions
             IncrementProgress();
             if (!IsComplete())
                 return results;
+
+            participantsBeforeDetection = GetAllParticipants();
+            if (!PreObjectiveEncounterResolved)
+            {
+                PreObjectiveEncounterResolved = true;
+                wasDetected = runtime.ResolveEncounter(
+                    this,
+                    MissionEncounterPhase.PreObjective,
+                    results
+                );
+            }
+            if (wasDetected)
+            {
+                AddMissionResults(ResolveInterruption(game, provider), results);
+                MissionCompletedResult completed = BuildTerminatingResult(
+                    MissionOutcome.Foiled,
+                    MissionCompletionReason.Foiled,
+                    game,
+                    participantsBeforeDetection
+                );
+                results.Add(completed);
+                runtime.FinishMission(this, completed, results);
+                return results;
+            }
 
             results.AddRange(runtime.ResolveCompletedObjective(this));
             MissionCompletedResult completedResult = results
@@ -1081,25 +1161,6 @@ namespace Rebellion.Game.Missions
                     result.SourceEventInstanceID = SourceEventInstanceID;
                 destination.Add(result);
             }
-        }
-
-        /// <summary>
-        /// Resolves a mission that an assigned officer deliberately betrayed.
-        /// Betrayal fails the objective without applying enemy-detection consequences.
-        /// </summary>
-        /// <param name="game">The game.</param>
-        /// <param name="provider">The provider.</param>
-        /// <returns>The resolved betrayed mission.</returns>
-        internal List<GameResult> ResolveBetrayedMission(
-            GameRoot game,
-            IRandomNumberProvider provider
-        )
-        {
-            List<GameResult> results = OnFailed(game, provider);
-            results.Add(
-                BuildCompletedResult(MissionOutcome.Failed, MissionCompletionReason.Failure, game)
-            );
-            return results;
         }
 
         /// <summary>
@@ -1342,6 +1403,13 @@ namespace Rebellion.Game.Missions
             )
                 _decoyParticipants.Add(participant);
         }
+
+        /// <summary>
+        /// Removes a decoy that separated from the mission before departure.
+        /// </summary>
+        /// <param name="participant">The decoy to remove.</param>
+        internal void RemoveDecoyParticipant(IMissionParticipant participant) =>
+            _decoyParticipants.Remove(participant);
 
         /// <summary>
         /// Removes the child from participant lists (called by GameRoot.MoveNode/DetachNode).

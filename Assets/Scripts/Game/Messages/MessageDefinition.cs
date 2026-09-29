@@ -188,8 +188,14 @@ namespace Rebellion.Game.Messages
         public bool PlanetDestroyed { get; set; }
         public string Subject { get; set; }
         public string Body { get; set; }
+        public string UnattributedSubject { get; set; }
+        public string UnattributedBody { get; set; }
         public string DetailListHeaderTemplate { get; set; }
         public string DetailListItemTemplate { get; set; }
+        public string PersonnelReturningTemplate { get; set; }
+        public string PersonnelLostTemplate { get; set; }
+        public string TargetJoinedTemplate { get; set; }
+        public string TargetNeutralTemplate { get; set; }
         public bool ShowSubjectImage { get; set; }
         public MessageBackgroundImage BackgroundImage { get; set; }
         public Dictionary<string, string> ImagePaths { get; set; } =

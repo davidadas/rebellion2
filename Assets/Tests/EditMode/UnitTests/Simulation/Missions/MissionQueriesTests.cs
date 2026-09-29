@@ -65,7 +65,7 @@ namespace Rebellion.Tests.Simulation
             );
 
             Assert.IsNotNull(odds);
-            Assert.AreEqual(50, odds.FoilProbability, 0.001);
+            Assert.AreEqual(81.25, odds.FoilProbability, 0.001);
         }
 
         [Test]
@@ -105,7 +105,25 @@ namespace Rebellion.Tests.Simulation
             );
 
             Assert.IsNotNull(odds);
-            Assert.AreEqual(35, odds.FoilProbability, 0.001);
+            Assert.AreEqual(57.75, odds.FoilProbability, 0.001);
+        }
+
+        [Test]
+        public void GetMissionOdds_TargetDetector_CombinesArrivalAndPreObjectiveChecks()
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer _) = BuildDetectionScene();
+            Regiment detector = planet.GetChildren<Regiment>().Single();
+            planet.AddVisitor("empire");
+            SetFoilTable(game, new Dictionary<int, int> { { -1000, 50 } });
+            MissionQueries system = new MissionQueries(game);
+
+            MissionOdds odds = system.GetMissionOdds(
+                CreateContext(EspionageMission.MissionTypeID, spy, planet),
+                new List<ISceneNode> { detector }
+            );
+
+            Assert.IsNotNull(odds);
+            Assert.AreEqual(75, odds.FoilProbability, 0.001);
         }
 
         [Test]
@@ -162,7 +180,46 @@ namespace Rebellion.Tests.Simulation
             );
 
             Assert.IsNotNull(odds);
-            Assert.AreEqual(52.777, odds.FoilProbability, 0.001);
+            Assert.AreEqual(69.058641975, odds.FoilProbability, 0.001);
+        }
+
+        [Test]
+        public void GetOperationalMissionOdds_MultipleDecoysAndDetectors_MatchesCompleteOdds()
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer _) = BuildDetectionScene();
+            Regiment secondDetector = CreateCompletedRegiment("r2", "rebels");
+            secondDetector.DetectionRating = 100;
+            game.AttachNode(secondDetector, planet);
+            Officer weakDecoy = EntityFactory.CreateOfficer("weak-decoy", "empire");
+            Officer strongDecoy = EntityFactory.CreateOfficer("strong-decoy", "empire");
+            weakDecoy.SetBaseRating(SkillRating.Espionage, 0);
+            strongDecoy.SetBaseRating(SkillRating.Espionage, 200);
+            game.AttachNode(weakDecoy, spy.GetParent());
+            game.AttachNode(strongDecoy, spy.GetParent());
+            planet.AddVisitor("empire");
+            SetFoilTable(game, new Dictionary<int, int> { { -1000, 50 } });
+            SetDecoyTable(game, new Dictionary<int, int> { { -50, 0 }, { 0, 100 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -1000, 50 } });
+            MissionQueries system = new MissionQueries(game);
+            MissionContext context = CreateContext(
+                EspionageMission.MissionTypeID,
+                new List<IMissionParticipant> { spy },
+                new List<IMissionParticipant> { weakDecoy, strongDecoy },
+                planet
+            );
+
+            MissionOdds complete = system.GetMissionOdds(context);
+            MissionOdds operational = system.GetOperationalMissionOdds(context);
+
+            Assert.IsNotNull(complete);
+            Assert.IsNotNull(operational);
+            Assert.AreEqual(
+                complete.ObjectiveSuccessProbability,
+                operational.ObjectiveSuccessProbability,
+                0.001
+            );
+            Assert.AreEqual(complete.FoilProbability, operational.FoilProbability, 0.001);
+            Assert.AreEqual(0, operational.PersonnelLossProbability);
         }
 
         [Test]
@@ -170,16 +227,23 @@ namespace Rebellion.Tests.Simulation
         {
             (GameRoot game, Planet planet, Officer spy, Officer _) = BuildDetectionScene();
             game.DeleteNode(planet.GetChildren<Regiment>().Single());
-            Fleet fleet = new Fleet { InstanceID = "fleet", OwnerInstanceID = "rebels" };
+            Fleet fleet = planet.GetChildren<Fleet>().Single();
             CapitalShip capitalShip = new CapitalShip
             {
                 InstanceID = "ship",
                 OwnerInstanceID = "rebels",
+                StarfighterCapacity = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Starfighter starfighter = new Starfighter
+            {
+                InstanceID = "fighter",
+                OwnerInstanceID = "rebels",
                 DetectionRating = 100,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
-            game.AttachNode(fleet, planet);
             game.AttachNode(capitalShip, fleet);
+            game.AttachNode(starfighter, capitalShip);
             planet.AddVisitor("empire");
             SetFoilTable(game, new Dictionary<int, int> { { -1000, 100 } });
             MissionQueries system = new MissionQueries(game);
@@ -215,6 +279,60 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNotNull(odds);
             Assert.AreEqual(100, odds.FoilProbability, 0.001);
             Assert.AreEqual(75, odds.PersonnelLossProbability, 0.001);
+        }
+
+        [Test]
+        public void GetMissionOdds_DecoyDivertsDetector_UsesRemainingDetectorForPersonnelLoss()
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer defender) = BuildDetectionScene();
+            Regiment regiment = planet.GetChildren<Regiment>().Single();
+            regiment.DetectionRating = 0;
+            defender.SetBaseRating(SkillRating.Combat, 0);
+            spy.SetBaseRating(SkillRating.Combat, 50);
+
+            Fleet fleet = planet.GetChildren<Fleet>().Single();
+            CapitalShip capitalShip = new CapitalShip
+            {
+                InstanceID = "ship",
+                OwnerInstanceID = "rebels",
+                StarfighterCapacity = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Starfighter starfighter = new Starfighter
+            {
+                InstanceID = "fighter",
+                OwnerInstanceID = "rebels",
+                DetectionRating = 100,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Officer commander = EntityFactory.CreateOfficer("commander", "rebels");
+            commander.CurrentRank = OfficerRank.Commander;
+            commander.SetBaseRating(SkillRating.Combat, 100);
+            game.AttachNode(capitalShip, fleet);
+            game.AttachNode(starfighter, capitalShip);
+            game.AttachNode(commander, capitalShip);
+
+            Officer decoy = EntityFactory.CreateOfficer("decoy", "empire");
+            decoy.SetBaseRating(SkillRating.Espionage, 50);
+            game.AttachNode(decoy, spy.GetParent());
+            planet.AddVisitor("empire");
+            SetFoilTable(game, new Dictionary<int, int> { { -1000, 100 } });
+            SetDecoyTable(game, new Dictionary<int, int> { { -50, 0 }, { 0, 100 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -100, 0 }, { 0, 100 } });
+            MissionQueries system = new MissionQueries(game);
+
+            MissionOdds odds = system.GetMissionOdds(
+                CreateContext(
+                    EspionageMission.MissionTypeID,
+                    new List<IMissionParticipant> { spy },
+                    new List<IMissionParticipant> { decoy },
+                    planet
+                )
+            );
+
+            Assert.IsNotNull(odds);
+            Assert.AreEqual(100, odds.FoilProbability, 0.001);
+            Assert.AreEqual(100, odds.PersonnelLossProbability, 0.001);
         }
 
         [Test]
@@ -1019,6 +1137,9 @@ namespace Rebellion.Tests.Simulation
             Officer defender = EntityFactory.CreateOfficer("defender", "rebels");
             defender.CurrentRank = OfficerRank.General;
             game.AttachNode(defender, planet);
+
+            Fleet fleet = new Fleet { InstanceID = "fleet", OwnerInstanceID = "rebels" };
+            game.AttachNode(fleet, planet);
 
             Regiment regiment = new Regiment
             {

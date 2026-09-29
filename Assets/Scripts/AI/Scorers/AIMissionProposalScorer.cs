@@ -45,9 +45,9 @@ namespace Rebellion.AI.Scorers
             )
                 return 0;
 
-            MissionOdds odds = context.MissionQueries.GetMissionOdds(
+            MissionOdds odds = context.MissionQueries.GetOperationalMissionOdds(
                 missionProposal.CreateContext(),
-                context.Assessment.GetMissionDetectorCandidates(missionProposal.TargetPlanet)
+                context.Assessment.GetMissionDetectors
             );
             if (odds == null)
                 return 0;
@@ -58,7 +58,6 @@ namespace Rebellion.AI.Scorers
 
             double foilProbability = odds.FoilProbability;
             missionProposal.SetFoilProbability(foilProbability);
-            missionProposal.SetPersonnelLossProbability(odds.PersonnelLossProbability);
             GameConfig.AIMissionUtilityConfig utility = context
                 .Game
                 .Config

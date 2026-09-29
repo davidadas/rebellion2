@@ -258,15 +258,11 @@ namespace Rebellion.AI.Selectors
                 )
                     continue;
 
-                double? personnelLossProbability = mission.PersonnelLossProbability;
-                if (!personnelLossProbability.HasValue)
-                {
-                    MissionOdds odds = context.MissionQueries.GetMissionOdds(
-                        mission.CreateContext(),
-                        context.Assessment.GetMissionDetectorCandidates(mission.TargetPlanet)
-                    );
-                    personnelLossProbability = odds?.PersonnelLossProbability;
-                }
+                MissionOdds odds = context.MissionQueries.GetMissionOdds(
+                    mission.CreateContext(),
+                    context.Assessment.GetMissionDetectors
+                );
+                double? personnelLossProbability = odds?.PersonnelLossProbability;
                 if (
                     personnelLossProbability
                     > context.Game.Config.AI.MissionPlanning.MaximumOfficerMissionLossProbability

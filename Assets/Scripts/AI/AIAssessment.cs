@@ -50,8 +50,16 @@ namespace Rebellion.AI
         private readonly HashSet<string> _attackPreparationTargetIds = new HashSet<string>(
             StringComparer.Ordinal
         );
-        private readonly Dictionary<string, IReadOnlyList<ISceneNode>> _planetMissionDetectors =
-            new Dictionary<string, IReadOnlyList<ISceneNode>>(StringComparer.Ordinal);
+        private readonly Dictionary<string, List<ISceneNode>> _planetMissionDetectors =
+            new Dictionary<string, List<ISceneNode>>(StringComparer.Ordinal);
+        private readonly Dictionary<string, List<ISceneNode>> _planetMissionFleetDetectors =
+            new Dictionary<string, List<ISceneNode>>(StringComparer.Ordinal);
+        private readonly HashSet<string> _missionHostileFleetPlanetIds = new HashSet<string>(
+            StringComparer.Ordinal
+        );
+        private readonly HashSet<string> _missionDetectionBlockerPlanetIds = new HashSet<string>(
+            StringComparer.Ordinal
+        );
         private readonly Dictionary<
             (string PlanetId, ManufacturingType ManufacturingType),
             int
@@ -289,6 +297,7 @@ namespace Rebellion.AI
                 )
                     _knownGarrisonedPlanetIds.Add(planet.InstanceID);
             }
+            BuildMissionDetectorIndex();
             OwnedPlanets = BuildOwnedPlanets();
             NearTermRefinedMaterialCommitment = GetNearTermRefinedMaterialCommitment();
             EnemyPlanets = BuildEnemyPlanets();
@@ -980,83 +989,225 @@ namespace Rebellion.AI
         /// <summary>
         /// Returns the known units that can attempt to detect this faction's missions at a planet.
         /// </summary>
+        /// <param name="mission">The faction mission being estimated.</param>
         /// <param name="planet">The planet to inspect.</param>
+        /// <param name="phase">The encounter checkpoint.</param>
+        /// <param name="mainParticipants">The primary participants present.</param>
         /// <returns>The detector candidates indexed for this AI turn.</returns>
-        public IReadOnlyList<ISceneNode> GetMissionDetectorCandidates(Planet planet)
+        internal IReadOnlyList<ISceneNode> GetMissionDetectors(
+            Mission mission,
+            Planet planet,
+            MissionEncounterPhase phase,
+            IReadOnlyList<IMissionParticipant> mainParticipants
+        )
         {
-            if (planet == null)
+            if (
+                mission == null
+                || planet == null
+                || mission.GetOwnerInstanceID() != _faction.InstanceID
+            )
                 return Array.Empty<ISceneNode>();
 
-            return GetOrAdd(
-                _planetMissionDetectors,
-                planet.InstanceID,
-                () => BuildMissionDetectorCandidates(planet)
-            );
+            if (
+                phase != MissionEncounterPhase.PreObjective
+                && (
+                    !_missionHostileFleetPlanetIds.Contains(planet.InstanceID)
+                    || _missionDetectionBlockerPlanetIds.Contains(planet.InstanceID)
+                )
+            )
+                return Array.Empty<ISceneNode>();
+
+            bool includePlanetaryDetectors =
+                phase == MissionEncounterPhase.PreObjective
+                || mainParticipants.Any(participant =>
+                    participant.GetParentOfType<Planet>()?.InstanceID != planet.InstanceID
+                );
+            Dictionary<string, List<ISceneNode>> index = includePlanetaryDetectors
+                ? _planetMissionDetectors
+                : _planetMissionFleetDetectors;
+            return index.TryGetValue(planet.InstanceID, out List<ISceneNode> detectors)
+                ? detectors
+                : Array.Empty<ISceneNode>();
         }
 
         /// <summary>
-        /// Builds detector candidates once from the faction's current view of a planet.
+        /// Indexes detector candidates in runtime encounter order using one graph traversal.
         /// </summary>
-        /// <param name="planet">The planet whose known forces are indexed.</param>
-        /// <returns>The ordered detector candidates.</returns>
-        private IReadOnlyList<ISceneNode> BuildMissionDetectorCandidates(Planet planet)
+        private void BuildMissionDetectorIndex()
         {
-            List<ISceneNode> detectors = new List<ISceneNode>();
-            AddMissionDetectorCandidates(planet.GetChildren<Starfighter>(), detectors);
-            AddMissionDetectorCandidates(planet.GetChildren<Regiment>(), detectors);
+            if (_factionView == null)
+                return;
 
-            bool blocksFleetDetection = planet
-                .GetChildren<Building>()
-                .Any(building =>
-                    building.IsDetectionBlocker
-                    && building.OwnerInstanceID == _faction.InstanceID
-                    && building.ManufacturingStatus == ManufacturingStatus.Complete
-                    && building.Movement == null
-                );
-            if (blocksFleetDetection)
-                return detectors;
+            IReadOnlyList<ISceneNode> visibleNodes = _factionView.GetChildren(recursive: true);
+            List<CapitalShip> capitalShips = new List<CapitalShip>();
+            Dictionary<string, List<Starfighter>> starfightersByCapitalShip = new Dictionary<
+                string,
+                List<Starfighter>
+            >(StringComparer.Ordinal);
+            Dictionary<string, List<Regiment>> regimentsByCapitalShip = new Dictionary<
+                string,
+                List<Regiment>
+            >(StringComparer.Ordinal);
 
-            foreach (Fleet fleet in planet.GetChildren<Fleet>())
+            foreach (ISceneNode node in visibleNodes)
             {
-                foreach (CapitalShip capitalShip in fleet.GetChildren<CapitalShip>())
+                switch (node)
                 {
-                    AddMissionDetectorCandidate(capitalShip, detectors);
-                    AddMissionDetectorCandidates(capitalShip.GetChildren<Starfighter>(), detectors);
-                    AddMissionDetectorCandidates(capitalShip.GetChildren<Regiment>(), detectors);
+                    case Fleet fleet:
+                        IndexMissionHostileFleet(fleet);
+                        break;
+                    case Building building:
+                        IndexMissionDetectionBlocker(building);
+                        break;
+                    case Starfighter starfighter:
+                        IndexMissionDetector(starfighter, starfightersByCapitalShip);
+                        break;
+                    case Regiment regiment:
+                        IndexMissionDetector(regiment, regimentsByCapitalShip);
+                        break;
+                    case CapitalShip capitalShip:
+                        capitalShips.Add(capitalShip);
+                        break;
                 }
             }
 
-            return detectors;
+            foreach (CapitalShip capitalShip in capitalShips)
+            {
+                Fleet fleet = capitalShip.GetParentOfType<Fleet>();
+                if (
+                    fleet == null
+                    || fleet.GetOwnerInstanceID() == _faction.InstanceID
+                    || fleet.Movement != null
+                )
+                    continue;
+
+                if (
+                    starfightersByCapitalShip.TryGetValue(
+                        capitalShip.InstanceID,
+                        out List<Starfighter> containedStarfighters
+                    )
+                )
+                {
+                    foreach (Starfighter starfighter in containedStarfighters)
+                        AddMissionDetectorCandidate(starfighter, true);
+                }
+
+                if (
+                    regimentsByCapitalShip.TryGetValue(
+                        capitalShip.InstanceID,
+                        out List<Regiment> containedRegiments
+                    )
+                )
+                {
+                    foreach (Regiment regiment in containedRegiments)
+                        AddMissionDetectorCandidate(regiment, true);
+                }
+            }
         }
 
         /// <summary>
-        /// Adds mission detector candidates.
+        /// Indexes a stationary hostile fleet by its known planet.
         /// </summary>
-        /// <param name="candidates">Whether candidates.</param>
-        /// <param name="detectors">The detectors.</param>
-        /// <typeparam name="T">The t type.</typeparam>
-        private void AddMissionDetectorCandidates<T>(
-            IEnumerable<T> candidates,
-            ICollection<ISceneNode> detectors
+        /// <param name="fleet">The visible fleet to inspect.</param>
+        private void IndexMissionHostileFleet(Fleet fleet)
+        {
+            Planet planet = fleet.GetParentOfType<Planet>();
+            if (
+                planet != null
+                && _knownPlanets.ContainsKey(planet.InstanceID)
+                && fleet.GetOwnerInstanceID() != _faction.InstanceID
+                && fleet.Movement == null
+            )
+                _missionHostileFleetPlanetIds.Add(planet.InstanceID);
+        }
+
+        /// <summary>
+        /// Indexes a completed friendly building that suppresses approach encounters.
+        /// </summary>
+        /// <param name="building">The visible building to inspect.</param>
+        private void IndexMissionDetectionBlocker(Building building)
+        {
+            Planet planet = building.GetParentOfType<Planet>();
+            if (
+                planet != null
+                && _knownPlanets.ContainsKey(planet.InstanceID)
+                && building.IsDetectionBlocker
+                && building.OwnerInstanceID == _faction.InstanceID
+                && building.ManufacturingStatus == ManufacturingStatus.Complete
+                && building.Movement == null
+            )
+                _missionDetectionBlockerPlanetIds.Add(planet.InstanceID);
+        }
+
+        /// <summary>
+        /// Indexes a visible mission detector by its location.
+        /// </summary>
+        /// <param name="detector">The visible detector to inspect.</param>
+        /// <param name="detectorsByCapitalShip">Contained detectors grouped by capital ship.</param>
+        /// <typeparam name="T">The detector unit type.</typeparam>
+        private void IndexMissionDetector<T>(
+            T detector,
+            IDictionary<string, List<T>> detectorsByCapitalShip
         )
             where T : ISceneNode
         {
-            foreach (T candidate in candidates)
-                AddMissionDetectorCandidate(candidate, detectors);
+            if (!Mission.IsEligibleDetectorForOwner(detector, _faction.InstanceID))
+                return;
+
+            CapitalShip capitalShip = detector.GetParentOfType<CapitalShip>();
+            if (capitalShip == null)
+                AddMissionDetectorCandidate(detector, false);
+            else
+                AddIndexedValue(detectorsByCapitalShip, capitalShip.InstanceID, detector);
         }
 
         /// <summary>
-        /// Adds mission detector candidate.
+        /// Adds a value to an index entry while preserving traversal order.
         /// </summary>
-        /// <param name="candidate">Whether candidate.</param>
-        /// <param name="detectors">The detectors.</param>
-        private void AddMissionDetectorCandidate(
-            ISceneNode candidate,
-            ICollection<ISceneNode> detectors
+        /// <param name="index">The index to update.</param>
+        /// <param name="key">The entry key.</param>
+        /// <param name="value">The value to append.</param>
+        /// <typeparam name="T">The indexed value type.</typeparam>
+        private static void AddIndexedValue<T>(
+            IDictionary<string, List<T>> index,
+            string key,
+            T value
         )
         {
-            if (Mission.IsEligibleDetectorForOwner(candidate, _faction.InstanceID))
-                detectors.Add(candidate);
+            if (!index.TryGetValue(key, out List<T> values))
+            {
+                values = new List<T>();
+                index.Add(key, values);
+            }
+
+            values.Add(value);
+        }
+
+        /// <summary>
+        /// Adds an eligible detector to its known planet's index entry.
+        /// </summary>
+        /// <param name="candidate">The detector to index.</param>
+        /// <param name="isFleetDetector">Whether the detector is contained by a fleet.</param>
+        private void AddMissionDetectorCandidate(ISceneNode candidate, bool isFleetDetector)
+        {
+            Planet planet = candidate?.GetParentOfType<Planet>();
+            if (planet == null || !_knownPlanets.ContainsKey(planet.InstanceID))
+                return;
+
+            if (
+                !_planetMissionDetectors.TryGetValue(
+                    planet.InstanceID,
+                    out List<ISceneNode> detectors
+                )
+            )
+            {
+                detectors = new List<ISceneNode>();
+                _planetMissionDetectors.Add(planet.InstanceID, detectors);
+            }
+
+            detectors.Add(candidate);
+            if (isFleetDetector)
+                AddIndexedValue(_planetMissionFleetDetectors, planet.InstanceID, candidate);
         }
 
         /// <summary>

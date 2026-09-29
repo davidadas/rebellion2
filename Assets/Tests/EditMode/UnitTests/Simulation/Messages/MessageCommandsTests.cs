@@ -102,7 +102,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void DeliverAuthored_AuthoredMessage_PreservesProvenanceAndCurrentTick()
+        public void DeliverAuthored_AuthoredMessage_PreservesSourceAndCurrentTick()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
             game.CurrentTick = 42;

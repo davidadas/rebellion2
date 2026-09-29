@@ -19,6 +19,11 @@ namespace Rebellion.Simulation
     public class MissionCommands : IMissionExecutionRuntime
     {
         private const double _percentScale = 100.0;
+        private static readonly MissionEncounterPhase[] _departureEncounterPhases =
+        {
+            MissionEncounterPhase.DepartureStart,
+            MissionEncounterPhase.DepartureComplete,
+        };
 
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
@@ -192,8 +197,7 @@ namespace Rebellion.Simulation
                 return false;
 
             _game.AttachNode(mission, planet);
-
-            BeginMission(mission);
+            List<IMissionParticipant> startingParticipants = mission.GetAllParticipants();
             _pendingResults.Add(
                 new MissionStartedResult
                 {
@@ -205,7 +209,81 @@ namespace Rebellion.Simulation
                     Tick = _game.CurrentTick,
                 }
             );
+
+            List<GameResult> departureResults = new List<GameResult>();
+            bool departureFoiled = ResolveDepartureEncounters(
+                mission,
+                startingParticipants,
+                departureResults
+            );
+            AddMissionResults(mission, departureResults, _pendingResults);
+            if (departureFoiled)
+            {
+                AddMissionResults(
+                    mission,
+                    mission.ResolveInterruption(_game, _provider),
+                    _pendingResults
+                );
+                MissionCompletedResult completed = mission.BuildCompletedResult(
+                    MissionOutcome.Foiled,
+                    MissionCompletionReason.Foiled,
+                    _game,
+                    startingParticipants
+                );
+                completed.ReturnDestination = startingParticipants
+                    .Where(IsFreeParticipant)
+                    .Select(participant => participant.GetParentOfType<Planet>())
+                    .FirstOrDefault(planet => planet != null);
+                mission.SetResultMissionID(completed);
+                _pendingResults.Add(completed);
+                _game.DetachNode(mission);
+                return true;
+            }
+
+            BeginMission(mission);
             return true;
+        }
+
+        /// <summary>
+        /// Resolves both departure encounter checkpoints at every participant origin.
+        /// </summary>
+        /// <param name="mission">The mission preparing to depart.</param>
+        /// <param name="startingParticipants">The participant snapshot taken before encounters.</param>
+        /// <param name="results">The result collection receiving encounter consequences.</param>
+        /// <returns>True when a departure encounter foils the mission.</returns>
+        private bool ResolveDepartureEncounters(
+            Mission mission,
+            IReadOnlyList<IMissionParticipant> startingParticipants,
+            List<GameResult> results
+        )
+        {
+            List<Planet> origins = startingParticipants
+                .Select(participant => participant.GetParentOfType<Planet>())
+                .Where(planet => planet != null)
+                .Distinct()
+                .ToList();
+
+            foreach (MissionEncounterPhase phase in _departureEncounterPhases)
+            {
+                foreach (Planet origin in origins)
+                {
+                    List<IMissionParticipant> mainParticipants = mission
+                        .GetMainParticipants()
+                        .Where(participant => participant.GetParentOfType<Planet>() == origin)
+                        .ToList();
+                    if (mainParticipants.Count == 0)
+                        continue;
+
+                    List<IMissionParticipant> decoys = mission
+                        .GetDecoyParticipants()
+                        .Where(participant => participant.GetParentOfType<Planet>() == origin)
+                        .ToList();
+                    if (ResolveEncounter(mission, phase, origin, mainParticipants, decoys, results))
+                        return true;
+                }
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -306,37 +384,235 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Resolves the mission's initial detection through the mission system's external services.
+        /// Resolves one mission encounter through the mission system's external services.
         /// </summary>
         /// <param name="mission">The mission executing its lifecycle.</param>
+        /// <param name="phase">The encounter checkpoint being resolved.</param>
         /// <param name="results">The result collection receiving detection consequences.</param>
         /// <returns>True when detection foils the mission.</returns>
-        bool IMissionExecutionRuntime.ResolveDetection(Mission mission, List<GameResult> results)
+        bool IMissionExecutionRuntime.ResolveEncounter(
+            Mission mission,
+            MissionEncounterPhase phase,
+            List<GameResult> results
+        )
         {
-            bool missionFoiled = ResolveDetection(mission, results);
+            Planet planet = mission?.GetParent() as Planet;
+            return ResolveEncounter(
+                mission,
+                phase,
+                planet,
+                mission?.GetMainParticipants(),
+                mission?.GetDecoyParticipants(),
+                results
+            );
+        }
+
+        /// <summary>
+        /// Resolves one encounter for the participant group present at a planet.
+        /// </summary>
+        /// <param name="mission">The mission reaching an encounter checkpoint.</param>
+        /// <param name="phase">The checkpoint being resolved.</param>
+        /// <param name="planet">The planet where the encounter occurs.</param>
+        /// <param name="mainParticipants">The primary team present at the encounter.</param>
+        /// <param name="decoys">The decoy team present at the encounter.</param>
+        /// <param name="results">The result collection receiving consequences.</param>
+        /// <returns>True when the encounter foils the mission.</returns>
+        private bool ResolveEncounter(
+            Mission mission,
+            MissionEncounterPhase phase,
+            Planet planet,
+            IReadOnlyList<IMissionParticipant> mainParticipants,
+            IReadOnlyList<IMissionParticipant> decoys,
+            List<GameResult> results
+        )
+        {
+            if (ResolveForceEncounter(mission, planet, mainParticipants, phase))
+            {
+                ResolveFoiledParticipants(
+                    mission,
+                    mainParticipants,
+                    decoys,
+                    MissionQueries.GetDetectors(mission, planet, phase),
+                    planet,
+                    results
+                );
+                ApplyOfficerDeaths(results);
+                return true;
+            }
+
+            if (
+                phase == MissionEncounterPhase.PreObjective
+                && _officerLoyaltySystem.TryResolveMissionBetrayal(
+                    mission,
+                    out List<GameResult> betrayalResults
+                )
+            )
+            {
+                results.AddRange(betrayalResults);
+                ResolveFoiledParticipants(
+                    mission,
+                    mainParticipants,
+                    decoys,
+                    MissionQueries.GetDetectors(mission, planet, phase),
+                    planet,
+                    results
+                );
+                ApplyOfficerDeaths(results);
+                return true;
+            }
+
+            bool missionFoiled = ResolveDetection(
+                mission,
+                planet,
+                mainParticipants,
+                decoys,
+                phase,
+                phase
+                    is MissionEncounterPhase.DepartureStart
+                        or MissionEncounterPhase.DepartureComplete,
+                results
+            );
             ApplyOfficerDeaths(results);
             return missionFoiled;
         }
 
         /// <summary>
-        /// Resolves betrayal or the objective for a mission that completed its progress.
+        /// Resolves hostile Force-user encounters against the mission's primary officer team.
+        /// </summary>
+        /// <param name="mission">The mission reaching an encounter checkpoint.</param>
+        /// <param name="planet">The planet where the encounter occurs.</param>
+        /// <param name="mainParticipants">The primary team present at the encounter.</param>
+        /// <param name="phase">The mission lifecycle checkpoint being resolved.</param>
+        /// <returns>True when a hostile Force user detects a primary participant.</returns>
+        private bool ResolveForceEncounter(
+            Mission mission,
+            Planet planet,
+            IReadOnlyList<IMissionParticipant> mainParticipants,
+            MissionEncounterPhase phase
+        )
+        {
+            if (mission == null || planet == null || mainParticipants == null)
+                return false;
+
+            GameConfig.JediConfig config = _game.Config.Jedi;
+            List<Officer> participants = mainParticipants
+                .OfType<Officer>()
+                .Where(officer => officer.ForceRank >= config.MissionParticipantEncounterMinimum)
+                .ToList();
+            if (participants.Count == 0)
+                return false;
+
+            List<Officer> defenders = GetForceDefenders(mission, planet, phase);
+
+            foreach (Officer participant in participants)
+            {
+                foreach (Officer defender in defenders)
+                {
+                    int probability = Math.Clamp(
+                        participant.ForceRank
+                            + defender.ForceRank
+                            + config.EncounterProbabilityOffset,
+                        0,
+                        100
+                    );
+                    if (RollProbability(probability))
+                        return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Returns hostile Force users relevant to a mission lifecycle checkpoint.
+        /// </summary>
+        /// <param name="mission">The mission reaching an encounter checkpoint.</param>
+        /// <param name="planet">The planet where the encounter occurs.</param>
+        /// <param name="phase">The mission lifecycle checkpoint being resolved.</param>
+        /// <returns>The eligible hostile Force users in traversal order.</returns>
+        private List<Officer> GetForceDefenders(
+            Mission mission,
+            Planet planet,
+            MissionEncounterPhase phase
+        )
+        {
+            IEnumerable<Officer> candidates = phase switch
+            {
+                MissionEncounterPhase.DepartureStart
+                    when planet.GetOwnerInstanceID() == mission.GetOwnerInstanceID() =>
+                    GetLocalOfficers(planet),
+                MissionEncounterPhase.DepartureComplete or MissionEncounterPhase.Arrival =>
+                    MissionQueries.HasDetectionBlocker(mission, planet)
+                        ? Enumerable.Empty<Officer>()
+                        : GetFleetOfficers(mission, planet),
+                MissionEncounterPhase.PreObjective => GetLocalOfficers(planet)
+                    .Concat(GetFleetOfficers(mission, planet)),
+                _ => Enumerable.Empty<Officer>(),
+            };
+
+            return candidates
+                .Where(officer =>
+                    officer.GetOwnerInstanceID() != mission.GetOwnerInstanceID()
+                    && officer.Movement == null
+                    && !officer.IsCaptured
+                    && !officer.IsKilled
+                    && officer.InjuryPoints == 0
+                    && officer.ForceRank >= _game.Config.Jedi.MissionDefenderEncounterMinimum
+                )
+                .ToList();
+        }
+
+        /// <summary>
+        /// Enumerates officers stationed on a planet or participating in a mission there.
+        /// </summary>
+        /// <param name="planet">The planet containing the local personnel.</param>
+        /// <returns>The local officers in scene traversal order.</returns>
+        private static IEnumerable<Officer> GetLocalOfficers(Planet planet)
+        {
+            return planet.GetChildren<Officer>();
+        }
+
+        /// <summary>
+        /// Enumerates officers contained by hostile capital ships at a planet.
+        /// </summary>
+        /// <param name="mission">The mission selecting the hostile side.</param>
+        /// <param name="planet">The planet containing candidate fleets.</param>
+        /// <returns>The contained hostile officers in scene traversal order.</returns>
+        private static IEnumerable<Officer> GetFleetOfficers(Mission mission, Planet planet)
+        {
+            foreach (
+                Fleet fleet in planet
+                    .GetChildren<Fleet>()
+                    .Where(fleet =>
+                        fleet.GetOwnerInstanceID() != mission.GetOwnerInstanceID()
+                        && fleet.Movement == null
+                    )
+            )
+            {
+                foreach (
+                    CapitalShip ship in fleet
+                        .GetChildren<CapitalShip>()
+                        .Where(ship =>
+                            ship.ManufacturingStatus == ManufacturingStatus.Complete
+                            && ship.Movement == null
+                        )
+                )
+                {
+                    foreach (Officer officer in ship.GetChildren<Officer>())
+                        yield return officer;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Resolves the objective for a mission that completed its progress.
         /// </summary>
         /// <param name="mission">The mission resolving its completed objective.</param>
         /// <returns>The results produced by mission resolution.</returns>
         List<GameResult> IMissionExecutionRuntime.ResolveCompletedObjective(Mission mission)
         {
             List<GameResult> results;
-            if (
-                _officerLoyaltySystem.TryResolveMissionBetrayal(
-                    mission,
-                    out List<GameResult> betrayalResults
-                )
-            )
-            {
-                betrayalResults.AddRange(mission.ResolveBetrayedMission(_game, _provider));
-                results = betrayalResults;
-            }
-            else if (!_uprisingSystem.TryExecuteMission(mission, out results))
+            if (!_uprisingSystem.TryExecuteMission(mission, out results))
             {
                 results = mission.ResolveObjective(_game, _provider);
             }
@@ -376,7 +652,7 @@ namespace Rebellion.Simulation
             if (completedResult == null)
                 TearDownMission(mission, null, results);
             else if (completedResult.CanContinue)
-                BeginMission(mission);
+                mission.Repeat(RollMissionDuration(mission));
             else
                 TearDownMission(mission, completedResult, results);
         }
@@ -398,10 +674,6 @@ namespace Rebellion.Simulation
             List<IMissionParticipant> freeParticipants = GetFreeMissionParticipants(mission)
                 .Distinct()
                 .ToList();
-            if (completedResult != null)
-                completedResult.ReturnDestination = freeParticipants
-                    .Select(_movementQueries.ResolveMissionReturnDestination)
-                    .FirstOrDefault(destination => destination != null);
             List<IMovable> additionalPassengers = GetAdditionalReturnPassengers(
                     mission,
                     completedResult
@@ -429,9 +701,22 @@ namespace Rebellion.Simulation
                 localParticipants,
                 missionPlanet
             );
-            strandedUnits.AddRange(
-                _movementManager.ReturnFromMission(returnParticipants, additionalPassengers)
+            List<IMovable> failedReturns = _movementManager.ReturnFromMission(
+                returnParticipants,
+                additionalPassengers
             );
+            strandedUnits.AddRange(failedReturns);
+            if (completedResult != null)
+            {
+                HashSet<IMovable> failedReturnSet = failedReturns.ToHashSet();
+                IMissionParticipant returningParticipant = returnParticipants.FirstOrDefault(
+                    participant => !failedReturnSet.Contains(participant)
+                );
+                completedResult.ReturnDestination =
+                    localParticipants.Count > 0 ? missionPlanet
+                    : returningParticipant == null ? null
+                    : _movementQueries.ResolveMissionReturnDestination(returningParticipant);
+            }
             ResolveStrandedMissionUnits(strandedUnits, missionPlanet, results);
 
             foreach (GameResult result in results.Skip(resultStart))
@@ -554,36 +839,84 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Resolves per-tick mission detection.
+        /// Resolves mission detection at one encounter checkpoint.
         /// </summary>
         /// <param name="mission">The mission to check for detection.</param>
+        /// <param name="planet">The planet where detection occurs.</param>
+        /// <param name="mainParticipants">The primary team present at the encounter.</param>
+        /// <param name="decoys">The decoy team present at the encounter.</param>
+        /// <param name="phase">The mission lifecycle checkpoint being resolved.</param>
+        /// <param name="isDeparture">Whether the encounter occurs before travel begins.</param>
         /// <param name="results">Collection to append generated results to.</param>
         /// <returns>True if the mission was foiled.</returns>
-        private bool ResolveDetection(Mission mission, List<GameResult> results)
+        private bool ResolveDetection(
+            Mission mission,
+            Planet planet,
+            IReadOnlyList<IMissionParticipant> mainParticipants,
+            IReadOnlyList<IMissionParticipant> decoys,
+            MissionEncounterPhase phase,
+            bool isDeparture,
+            List<GameResult> results
+        )
         {
-            if (mission.GetParent() is not Planet planet)
+            if (mission == null || planet == null || mainParticipants == null || decoys == null)
                 return false;
 
-            List<ISceneNode> activeDetectors = MissionQueries.GetDetectors(mission, planet);
+            List<ISceneNode> activeDetectors = MissionQueries.GetDetectors(mission, planet, phase);
             if (activeDetectors.Count == 0)
                 return false;
 
-            ResolveDecoys(mission, activeDetectors, planet, results);
+            List<IMissionParticipant> availableDecoys = decoys.Where(IsFreeParticipant).ToList();
+            ResolveDecoys(mission, availableDecoys, activeDetectors, planet, isDeparture, results);
 
             int foilChanceModifier = _queries.GetFoilChanceModifier(mission);
             ISceneNode foilingDetector = activeDetectors.FirstOrDefault(detector =>
-                DoesDetectorFoilMission(mission, detector, foilChanceModifier)
+                DoesDetectorFoilMission(
+                    mission,
+                    detector,
+                    foilChanceModifier,
+                    mainParticipants,
+                    planet
+                )
             );
             if (foilingDetector == null)
                 return false;
 
-            if (!mission.AppliesFoiledParticipantConsequences)
-                return true;
-
-            foreach (IMissionParticipant participant in mission.GetMainParticipants().ToList())
-                ResolveFoiledParticipant(mission, participant, activeDetectors, planet, results);
+            ResolveFoiledParticipants(
+                mission,
+                mainParticipants,
+                availableDecoys,
+                activeDetectors,
+                planet,
+                results
+            );
 
             return true;
+        }
+
+        /// <summary>
+        /// Applies escape or capture consequences to a foiled mission's primary team.
+        /// </summary>
+        /// <param name="mission">The mission that was foiled.</param>
+        /// <param name="mainParticipants">The primary participants exposed by the encounter.</param>
+        /// <param name="decoys">The decoy participants exposed by the encounter.</param>
+        /// <param name="detectors">The hostile detectors available for confrontations.</param>
+        /// <param name="planet">The planet where the mission was foiled.</param>
+        /// <param name="results">The result collection receiving encounter consequences.</param>
+        private void ResolveFoiledParticipants(
+            Mission mission,
+            IReadOnlyList<IMissionParticipant> mainParticipants,
+            IReadOnlyList<IMissionParticipant> decoys,
+            IReadOnlyList<ISceneNode> detectors,
+            Planet planet,
+            List<GameResult> results
+        )
+        {
+            if (!mission.AppliesFoiledParticipantConsequences)
+                return;
+
+            foreach (IMissionParticipant participant in decoys.Concat(mainParticipants).ToList())
+                ResolveFoiledParticipant(mission, participant, detectors, planet, results);
         }
 
         /// <summary>
@@ -592,18 +925,28 @@ namespace Rebellion.Simulation
         /// <param name="mission">The mission attempting to remain undetected.</param>
         /// <param name="detector">The hostile unit making the detection attempt.</param>
         /// <param name="foilChanceModifier">The resolved difficulty adjustment.</param>
+        /// <param name="mainParticipants">The primary team present at the encounter.</param>
+        /// <param name="planet">The planet where detection occurs.</param>
         /// <returns>True when the detector foils the mission.</returns>
         private bool DoesDetectorFoilMission(
             Mission mission,
             ISceneNode detector,
-            int foilChanceModifier
+            int foilChanceModifier,
+            IReadOnlyList<IMissionParticipant> mainParticipants,
+            Planet planet
         )
         {
             if (mission == null || detector == null)
                 return false;
 
             return RollProbability(
-                _queries.GetFoilProbability(mission, detector, foilChanceModifier)
+                _queries.GetFoilProbability(
+                    mission,
+                    detector,
+                    foilChanceModifier,
+                    mainParticipants,
+                    planet
+                )
             );
         }
 
@@ -622,33 +965,42 @@ namespace Rebellion.Simulation
         /// A successful decoy removes that detector from this tick's remaining traversal.
         /// </summary>
         /// <param name="mission">The mission being checked.</param>
+        /// <param name="availableDecoys">The mutable pool of decoys still participating in this encounter.</param>
         /// <param name="activeDetectors">The detectors that have not been diverted.</param>
         /// <param name="planet">The planet where detection occurs.</param>
+        /// <param name="isDeparture">Whether the encounter occurs before travel begins.</param>
         /// <param name="results">The result collection receiving confrontation outcomes.</param>
         private void ResolveDecoys(
             Mission mission,
+            List<IMissionParticipant> availableDecoys,
             List<ISceneNode> activeDetectors,
             Planet planet,
+            bool isDeparture,
             List<GameResult> results
         )
         {
             foreach (ISceneNode detector in activeDetectors.ToList())
             {
-                List<IMissionParticipant> decoys = mission
-                    .GetDecoyParticipants()
-                    .Where(IsFreeParticipant)
-                    .ToList();
-                if (decoys.Count == 0)
+                if (availableDecoys.Count == 0)
                     return;
 
-                IMissionParticipant decoy = decoys[_provider.NextInt(0, decoys.Count)];
-                if (mission.RollDecoyCheck(_provider, _game, decoy, detector))
+                IMissionParticipant decoy = availableDecoys[
+                    _provider.NextInt(0, availableDecoys.Count)
+                ];
+                if (mission.RollDecoyCheck(_provider, _game, decoy, detector, planet))
                 {
                     activeDetectors.Remove(detector);
                     continue;
                 }
 
-                ResolveEvasion(mission, decoy, detector, planet, results);
+                availableDecoys.Remove(decoy);
+                if (ResolveEvasion(mission, decoy, detector, planet, results))
+                {
+                    if (isDeparture)
+                        mission.RemoveDecoyParticipant(decoy);
+                    else
+                        ReturnEscapedDecoy(decoy, planet, results);
+                }
             }
         }
 
@@ -685,7 +1037,8 @@ namespace Rebellion.Simulation
         /// <param name="detector">The detector confronting the participant.</param>
         /// <param name="planet">The planet where the confrontation occurs.</param>
         /// <param name="results">The result collection receiving capture or destruction outcomes.</param>
-        private void ResolveEvasion(
+        /// <returns>True when the participant escaped the confrontation.</returns>
+        private bool ResolveEvasion(
             Mission mission,
             IMissionParticipant participant,
             ISceneNode detector,
@@ -693,38 +1046,61 @@ namespace Rebellion.Simulation
             List<GameResult> results
         )
         {
-            Officer commander = mission.FindDetectorCommander(detector);
+            Officer commander = mission.FindDetectorCommander(detector, planet);
             int defenderCombat = commander?.GetEffectiveRating(SkillRating.Combat) ?? 0;
             int score = participant.GetEffectiveRating(SkillRating.Combat) - defenderCombat;
             bool evaded = _provider.NextDouble() * 100 < _queries.GetEvasionProbability(score);
             if (evaded)
-                return;
+            {
+                if (
+                    participant is Officer escapingOfficer
+                    && Mission.ApplyEvasionInjury(
+                        escapingOfficer,
+                        detector,
+                        planet,
+                        _game,
+                        _provider,
+                        results
+                    )
+                )
+                {
+                    _personnelCommands.KillOfficer(escapingOfficer);
+                    return false;
+                }
+
+                return true;
+            }
 
             if (participant is SpecialForces specialForces)
             {
                 DestroySpecialForces(specialForces, planet, results);
-                return;
+                return false;
             }
 
             if (participant is not Officer officer || officer.IsCaptured || officer.IsKilled)
-                return;
-
-            if (
-                Mission.ApplyCaptureEvasionInjury(
-                    officer,
-                    detector,
-                    planet,
-                    _game,
-                    _provider,
-                    results
-                )
-            )
-            {
-                _personnelCommands.KillOfficer(officer);
-                return;
-            }
+                return false;
 
             CaptureOfficer(officer, detector.GetOwnerInstanceID(), planet, results, detector);
+            return false;
+        }
+
+        /// <summary>
+        /// Removes an escaped decoy from the active mission and starts its independent return.
+        /// </summary>
+        /// <param name="decoy">The decoy that escaped its confrontation.</param>
+        /// <param name="planet">The planet where the confrontation occurred.</param>
+        /// <param name="results">The result collection receiving stranded-unit consequences.</param>
+        private void ReturnEscapedDecoy(
+            IMissionParticipant decoy,
+            Planet planet,
+            List<GameResult> results
+        )
+        {
+            List<IMovable> stranded = _movementManager.ReturnFromMission(
+                new[] { decoy },
+                Array.Empty<IMovable>()
+            );
+            ResolveStrandedMissionUnits(stranded, planet, results);
         }
 
         /// <summary>

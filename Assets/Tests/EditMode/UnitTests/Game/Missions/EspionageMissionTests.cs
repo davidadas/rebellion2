@@ -692,6 +692,7 @@ namespace Rebellion.Tests.Game.Missions
                 MaxProgress = 10,
                 CurrentProgress = 5,
                 DetectionResolved = true,
+                PreObjectiveEncounterResolved = true,
             };
 
             string xml = SerializationHelper.Serialize(mission);
@@ -705,6 +706,7 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(10, deserialized.MaxProgress);
             Assert.AreEqual(5, deserialized.CurrentProgress);
             Assert.IsTrue(deserialized.DetectionResolved);
+            Assert.IsTrue(deserialized.PreObjectiveEncounterResolved);
         }
 
         /// <summary>

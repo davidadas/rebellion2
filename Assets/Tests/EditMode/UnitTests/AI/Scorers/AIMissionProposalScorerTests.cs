@@ -498,6 +498,7 @@ namespace Rebellion.Tests.AI.Scorers
             decoy.Ratings[OfficerRating.Espionage] = 50;
             game.AttachNode(participant, origin);
             game.AttachNode(decoy, origin);
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
             game.Config.ProbabilityTables.Mission.Espionage = new Dictionary<int, int>
             {
                 { -1000, 50 },
