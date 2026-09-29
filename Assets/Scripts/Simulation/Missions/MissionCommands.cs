@@ -214,7 +214,8 @@ namespace Rebellion.Simulation
             bool departureFoiled = ResolveDepartureEncounters(
                 mission,
                 startingParticipants,
-                departureResults
+                departureResults,
+                out string foilingFactionInstanceID
             );
             AddMissionResults(mission, departureResults, _pendingResults);
             if (departureFoiled)
@@ -230,6 +231,7 @@ namespace Rebellion.Simulation
                     _game,
                     startingParticipants
                 );
+                completed.FoilingFactionInstanceID = foilingFactionInstanceID;
                 completed.ReturnDestination = startingParticipants
                     .Where(IsFreeParticipant)
                     .Select(participant => participant.GetParentOfType<Planet>())
@@ -250,13 +252,16 @@ namespace Rebellion.Simulation
         /// <param name="mission">The mission preparing to depart.</param>
         /// <param name="startingParticipants">The participant snapshot taken before encounters.</param>
         /// <param name="results">The result collection receiving encounter consequences.</param>
+        /// <param name="foilingFactionInstanceID">The faction whose forces foiled the mission, or null when no encounter foils it.</param>
         /// <returns>True when a departure encounter foils the mission.</returns>
         private bool ResolveDepartureEncounters(
             Mission mission,
             IReadOnlyList<IMissionParticipant> startingParticipants,
-            List<GameResult> results
+            List<GameResult> results,
+            out string foilingFactionInstanceID
         )
         {
+            foilingFactionInstanceID = null;
             List<Planet> origins = startingParticipants
                 .Select(participant => participant.GetParentOfType<Planet>())
                 .Where(planet => planet != null)
@@ -278,7 +283,17 @@ namespace Rebellion.Simulation
                         .GetDecoyParticipants()
                         .Where(participant => participant.GetParentOfType<Planet>() == origin)
                         .ToList();
-                    if (ResolveEncounter(mission, phase, origin, mainParticipants, decoys, results))
+                    if (
+                        ResolveEncounter(
+                            mission,
+                            phase,
+                            origin,
+                            mainParticipants,
+                            decoys,
+                            results,
+                            out foilingFactionInstanceID
+                        )
+                    )
                         return true;
                 }
             }
@@ -389,11 +404,13 @@ namespace Rebellion.Simulation
         /// <param name="mission">The mission executing its lifecycle.</param>
         /// <param name="phase">The encounter checkpoint being resolved.</param>
         /// <param name="results">The result collection receiving detection consequences.</param>
+        /// <param name="foilingFactionInstanceID">The faction whose forces foiled the mission, or null when the foil was internal.</param>
         /// <returns>True when detection foils the mission.</returns>
         bool IMissionExecutionRuntime.ResolveEncounter(
             Mission mission,
             MissionEncounterPhase phase,
-            List<GameResult> results
+            List<GameResult> results,
+            out string foilingFactionInstanceID
         )
         {
             Planet planet = mission?.GetParent() as Planet;
@@ -403,7 +420,8 @@ namespace Rebellion.Simulation
                 planet,
                 mission?.GetMainParticipants(),
                 mission?.GetDecoyParticipants(),
-                results
+                results,
+                out foilingFactionInstanceID
             );
         }
 
@@ -416,6 +434,7 @@ namespace Rebellion.Simulation
         /// <param name="mainParticipants">The primary team present at the encounter.</param>
         /// <param name="decoys">The decoy team present at the encounter.</param>
         /// <param name="results">The result collection receiving consequences.</param>
+        /// <param name="foilingFactionInstanceID">The faction whose forces foiled the mission, or null when the foil was internal.</param>
         /// <returns>True when the encounter foils the mission.</returns>
         private bool ResolveEncounter(
             Mission mission,
@@ -423,10 +442,20 @@ namespace Rebellion.Simulation
             Planet planet,
             IReadOnlyList<IMissionParticipant> mainParticipants,
             IReadOnlyList<IMissionParticipant> decoys,
-            List<GameResult> results
+            List<GameResult> results,
+            out string foilingFactionInstanceID
         )
         {
-            if (ResolveForceEncounter(mission, planet, mainParticipants, phase))
+            foilingFactionInstanceID = null;
+            if (
+                ResolveForceEncounter(
+                    mission,
+                    planet,
+                    mainParticipants,
+                    phase,
+                    out foilingFactionInstanceID
+                )
+            )
             {
                 ResolveFoiledParticipants(
                     mission,
@@ -470,7 +499,8 @@ namespace Rebellion.Simulation
                 phase
                     is MissionEncounterPhase.DepartureStart
                         or MissionEncounterPhase.DepartureComplete,
-                results
+                results,
+                out foilingFactionInstanceID
             );
             ApplyOfficerDeaths(results);
             return missionFoiled;
@@ -483,14 +513,17 @@ namespace Rebellion.Simulation
         /// <param name="planet">The planet where the encounter occurs.</param>
         /// <param name="mainParticipants">The primary team present at the encounter.</param>
         /// <param name="phase">The mission lifecycle checkpoint being resolved.</param>
+        /// <param name="foilingFactionInstanceID">The faction whose Force user foiled the mission.</param>
         /// <returns>True when a hostile Force user detects a primary participant.</returns>
         private bool ResolveForceEncounter(
             Mission mission,
             Planet planet,
             IReadOnlyList<IMissionParticipant> mainParticipants,
-            MissionEncounterPhase phase
+            MissionEncounterPhase phase,
+            out string foilingFactionInstanceID
         )
         {
+            foilingFactionInstanceID = null;
             if (mission == null || planet == null || mainParticipants == null)
                 return false;
 
@@ -516,7 +549,10 @@ namespace Rebellion.Simulation
                         100
                     );
                     if (RollProbability(probability))
+                    {
+                        foilingFactionInstanceID = defender.GetOwnerInstanceID();
                         return true;
+                    }
                 }
             }
 
@@ -848,6 +884,7 @@ namespace Rebellion.Simulation
         /// <param name="phase">The mission lifecycle checkpoint being resolved.</param>
         /// <param name="isDeparture">Whether the encounter occurs before travel begins.</param>
         /// <param name="results">Collection to append generated results to.</param>
+        /// <param name="foilingFactionInstanceID">The faction whose detector foiled the mission.</param>
         /// <returns>True if the mission was foiled.</returns>
         private bool ResolveDetection(
             Mission mission,
@@ -856,9 +893,11 @@ namespace Rebellion.Simulation
             IReadOnlyList<IMissionParticipant> decoys,
             MissionEncounterPhase phase,
             bool isDeparture,
-            List<GameResult> results
+            List<GameResult> results,
+            out string foilingFactionInstanceID
         )
         {
+            foilingFactionInstanceID = null;
             if (mission == null || planet == null || mainParticipants == null || decoys == null)
                 return false;
 
@@ -881,6 +920,8 @@ namespace Rebellion.Simulation
             );
             if (foilingDetector == null)
                 return false;
+
+            foilingFactionInstanceID = foilingDetector.GetOwnerInstanceID();
 
             ResolveFoiledParticipants(
                 mission,

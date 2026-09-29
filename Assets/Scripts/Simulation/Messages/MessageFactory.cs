@@ -467,7 +467,12 @@ namespace Rebellion.Simulation
             Planet target
         )
         {
-            if (result == null || result.Outcome != MissionOutcome.Foiled)
+            if (
+                result == null
+                || result.Outcome != MissionOutcome.Foiled
+                || faction == null
+                || faction.InstanceID != result.FoilingFactionInstanceID
+            )
                 return null;
 
             MessageDelivery message = WithEventLocation(
@@ -747,28 +752,15 @@ namespace Rebellion.Simulation
                     )
                 );
 
-                Faction opposingFaction = GetOpposingFaction(game, actorFaction);
+                Faction foilingFaction = GetFaction(game, result.FoilingFactionInstanceID);
 
                 AddDelivery(
                     deliveries,
-                    opposingFaction,
-                    CreateEnemyMissionFoiled(opposingFaction, result, target)
+                    foilingFaction,
+                    CreateEnemyMissionFoiled(foilingFaction, result, target)
                 );
             }
         }
-
-        /// <summary>
-        /// Returns the playable faction opposing the mission owner.
-        /// </summary>
-        /// <param name="game">The game containing the playable factions.</param>
-        /// <param name="actorFaction">The faction that launched the mission.</param>
-        /// <returns>The opposing faction, or null when no opposing faction exists.</returns>
-        private static Faction GetOpposingFaction(GameRoot game, Faction actorFaction) =>
-            actorFaction == null
-                ? null
-                : game
-                    ?.GetFactions()
-                    .FirstOrDefault(faction => faction.InstanceID != actorFaction.InstanceID);
 
         /// <summary>
         /// Adds messages for side-level recruitment exhaustion results.

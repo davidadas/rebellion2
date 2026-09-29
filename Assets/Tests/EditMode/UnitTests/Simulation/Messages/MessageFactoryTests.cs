@@ -2917,7 +2917,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void CreateMessages_FoiledMission_ReturnsActorAndOpposingFactionReports()
+        public void CreateMessages_FoiledByFaction_ReturnsActorAndFoilingFactionReports()
         {
             (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
                 BuildTwoFactionMessageScene();
@@ -2961,6 +2961,7 @@ namespace Rebellion.Tests.Simulation
                     Mission = mission,
                     MissionName = "Sabotage",
                     Outcome = MissionOutcome.Foiled,
+                    FoilingFactionInstanceID = empire.InstanceID,
                     Participants = new List<IMissionParticipant> { participant },
                 }
             );
@@ -2984,10 +2985,9 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void CreateMessages_FoiledMissionAtNeutralTarget_NotifiesOpposingFaction()
+        public void CreateMessages_InternallyFoiledMissionAtNeutralTarget_ReturnsActorReportOnly()
         {
-            (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
-                BuildTwoFactionMessageScene();
+            (GameRoot game, Faction alliance, _, _, Planet target) = BuildTwoFactionMessageScene();
             target.OwnerInstanceID = null;
             Mission mission = new SabotageMission
             {
@@ -3024,7 +3024,7 @@ namespace Rebellion.Tests.Simulation
             );
 
             Assert.AreEqual("actor-foiled", FirstMessageFor(deliveries, alliance).Title);
-            Assert.AreEqual("enemy-foiled", FirstMessageFor(deliveries, empire).Title);
+            Assert.AreEqual(1, deliveries.Count);
         }
 
         [Test]

@@ -287,6 +287,7 @@ namespace Rebellion.Game.Results
             new List<IMissionParticipant>();
         public MissionOutcome Outcome { get; set; }
         public MissionCompletionReason CompletionReason { get; set; }
+        public string FoilingFactionInstanceID { get; set; }
         public bool CanContinue { get; set; }
     }
 
