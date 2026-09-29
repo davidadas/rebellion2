@@ -220,6 +220,46 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
+        public void BeginRebind_LeftMouseButton_KeepsCaptureActive()
+        {
+            InputTestFixture inputFixture = new();
+            inputFixture.Setup();
+            GameObject inputRoot = new("IsolatedInputManager");
+            InputManager inputManager = inputRoot.AddComponent<InputManager>();
+            Mouse mouse = InputSystem.AddDevice<Mouse>();
+
+            try
+            {
+                using OptionsBindingSession session = new OptionsBindingSession(inputManager);
+                session.Rebuild();
+                int row = session
+                    .Rows.Select((binding, index) => (binding, index))
+                    .First(item => item.binding.Action == "Show Troopers")
+                    .index;
+                InputAction action = inputManager.Asset.FindAction("Strategy/ShowTroopers", true);
+                string originalPath = action.bindings[FindBinding(action, "Primary")].effectivePath;
+                session.BeginRebind(row, false);
+
+                InputSystem.QueueStateEvent(mouse, new MouseState().WithButton(MouseButton.Left));
+                InputSystem.Update();
+                inputFixture.currentTime += 0.1;
+                InputSystem.Update();
+
+                Assert.AreEqual(row, session.ListeningRow);
+                Assert.AreEqual(
+                    originalPath,
+                    action.bindings[FindBinding(action, "Primary")].effectivePath
+                );
+                session.CancelRebind();
+            }
+            finally
+            {
+                Object.DestroyImmediate(inputRoot);
+                inputFixture.TearDown();
+            }
+        }
+
+        [Test]
         public void BeginRebind_Escape_CancelsCaptureWithoutPerformingGlobalShortcut()
         {
             InputTestFixture inputFixture = new();

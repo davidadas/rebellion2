@@ -254,7 +254,9 @@ internal sealed class OptionsBindingSession : IDisposable
             .PerformInteractiveRebinding()
             .WithRebindAddingNewBinding()
             .WithCancelingThrough("<Keyboard>/escape")
-            .WithControlsExcluding("<Keyboard>/anyKey");
+            .WithControlsExcluding("<Keyboard>/anyKey")
+            .WithControlsExcluding("<Mouse>/leftButton")
+            .WithControlsExcluding("<Pointer>/press");
         if (!IsModifierAction(action.name))
         {
             foreach (string path in _modifierControlPaths)
