@@ -32,6 +32,9 @@ public sealed class PlanetSectorPlanetView
     private RawImage planetImage;
 
     [SerializeField]
+    private RawImage galacticInformationImage;
+
+    [SerializeField]
     private RawImage uprisingImage;
 
     [SerializeField]
@@ -157,6 +160,7 @@ public sealed class PlanetSectorPlanetView
             rootTemplate.height
         );
 
+        RenderGalacticInformationMarker(data.GalacticInformationTexture, planetTemplate);
         SetImage(planetImage, data.PlanetTexture);
         SetImage(uprisingImage, data.UprisingTexture);
         uprisingImage.raycastTarget = false;
@@ -406,6 +410,30 @@ public sealed class PlanetSectorPlanetView
     }
 
     /// <summary>
+    /// Centers the active filter marker behind the planet at its texture-authored size.
+    /// </summary>
+    /// <param name="texture">The active filter marker texture, or null.</param>
+    /// <param name="planetBounds">The authored planet-image bounds.</param>
+    private void RenderGalacticInformationMarker(Texture2D texture, RectInt planetBounds)
+    {
+        SetImage(galacticInformationImage, texture);
+        galacticInformationImage.raycastTarget = false;
+        if (texture == null)
+            return;
+
+        Vector2Int size = UILayout.GetTextureSourceSize(texture);
+        int centerX = planetBounds.x + planetBounds.width / 2;
+        int centerY = planetBounds.y + planetBounds.height / 2;
+        UILayout.SetSourceRect(
+            galacticInformationImage.rectTransform,
+            centerX - size.x / 2,
+            centerY - size.y / 2,
+            size.x,
+            size.y
+        );
+    }
+
+    /// <summary>
     /// Reports the currently hovered planet element.
     /// </summary>
     /// <param name="eventData">The pointer event.</param>
@@ -626,6 +654,8 @@ public sealed class PlanetSectorPlanetView
             throw new MissingReferenceException($"{name}/HitAreaImage is missing.");
         if (planetImage == null)
             throw new MissingReferenceException($"{name}/PlanetImage is missing.");
+        if (galacticInformationImage == null)
+            throw new MissingReferenceException($"{name}/GalacticInformationImage is missing.");
         if (uprisingImage == null)
             throw new MissingReferenceException($"{name}/UprisingImage is missing.");
         if (facilityImage == null)

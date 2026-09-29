@@ -14,6 +14,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         private const string _prefabPath =
             "Assets/Prefabs/UI/StrategyView/PlanetSectorPlanet.prefab";
 
+        private Texture2D _galacticInformationTexture;
         private Texture2D _headquartersTexture;
         private Texture2D _normalTexture;
         private Texture2D _planetTexture;
@@ -33,6 +34,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             _planetTexture = new Texture2D(100, 80);
             _normalTexture = new Texture2D(24, 24);
             _pressedTexture = new Texture2D(24, 24);
+            _galacticInformationTexture = new Texture2D(196, 164);
             _headquartersTexture = new Texture2D(16, 16);
             _uprisingTexture = new Texture2D(167, 167);
             UIComponentTestHelper.InvokeLifecycle(_view, "Awake");
@@ -45,6 +47,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         [TearDown]
         public void TearDown()
         {
+            UnityEngine.Object.DestroyImmediate(_galacticInformationTexture);
             UnityEngine.Object.DestroyImmediate(_headquartersTexture);
             UnityEngine.Object.DestroyImmediate(_pressedTexture);
             UnityEngine.Object.DestroyImmediate(_normalTexture);
@@ -67,7 +70,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 PlanetIcon.Mission,
                 CreateSegmentedBar(true, 4, 2),
                 CreateSegmentedBar(false, 0, 0),
-                CreateContinuousBar(true, 0.5f)
+                CreateContinuousBar(true, 0.5f),
+                _galacticInformationTexture
             );
             RectInt planetTemplate = GetSourceRect(GetField<RawImage>("planetImage").transform);
 
@@ -80,6 +84,28 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreEqual(planetTemplate.width, planetBounds.width);
             Assert.AreEqual(planetTemplate.height, planetBounds.height);
             Assert.AreSame(_planetTexture, GetField<RawImage>("planetImage").texture);
+            RawImage galacticInformationImage = _view
+                .transform.Find("GalacticInformationImage")
+                .GetComponent<RawImage>();
+            RectInt galacticInformationBounds = GetSourceRect(galacticInformationImage.transform);
+            Assert.AreSame(_galacticInformationTexture, galacticInformationImage.texture);
+            Assert.AreEqual(
+                UILayout.GetTextureSourceSize(_galacticInformationTexture),
+                galacticInformationBounds.size
+            );
+            Assert.AreEqual(
+                planetTemplate.x + planetTemplate.width / 2,
+                galacticInformationBounds.x + galacticInformationBounds.width / 2
+            );
+            Assert.AreEqual(
+                planetTemplate.y + planetTemplate.height / 2,
+                galacticInformationBounds.y + galacticInformationBounds.height / 2
+            );
+            Assert.IsFalse(galacticInformationImage.raycastTarget);
+            Assert.Less(
+                galacticInformationImage.transform.GetSiblingIndex(),
+                GetField<RawImage>("planetImage").transform.GetSiblingIndex()
+            );
             RawImage uprisingImage = GetField<RawImage>("uprisingImage");
             Assert.AreSame(_uprisingTexture, uprisingImage.texture);
             Assert.AreEqual(planetTemplate, GetSourceRect(uprisingImage.transform));
@@ -143,6 +169,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsFalse(GetField<Image>("energyBarFillImage").gameObject.activeSelf);
             Assert.IsFalse(GetField<Image>("rawBarFillImage").gameObject.activeSelf);
             Assert.IsFalse(GetField<Image>("supportBarFillImage").gameObject.activeSelf);
+        }
+
+        [Test]
+        public void Render_MissingGalacticInformationTexture_HidesMarker()
+        {
+            _view.Render(CreateData(), new Vector2Int(200, 150));
+
+            Assert.IsFalse(_view.transform.Find("GalacticInformationImage").gameObject.activeSelf);
         }
 
         [Test]
@@ -303,13 +337,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         /// <param name="energyBar">The energy bar.</param>
         /// <param name="rawBar">The raw bar.</param>
         /// <param name="supportBar">The support bar.</param>
+        /// <param name="galacticInformationTexture">The active filter marker texture.</param>
         /// <returns>The created data.</returns>
         private PlanetSectorPlanetRenderData CreateData(
             PlanetIcon selectedIcon = PlanetIcon.None,
             PlanetIcon hoveredIcon = PlanetIcon.None,
             PlanetSectorBarRenderData energyBar = null,
             PlanetSectorBarRenderData rawBar = null,
-            PlanetSectorBarRenderData supportBar = null
+            PlanetSectorBarRenderData supportBar = null,
+            Texture2D galacticInformationTexture = null
         )
         {
             return new PlanetSectorPlanetRenderData(
@@ -332,7 +368,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 hoveredIcon,
                 energyBar ?? CreateSegmentedBar(true, 4, 2),
                 rawBar ?? CreateSegmentedBar(true, 4, 2),
-                supportBar ?? CreateContinuousBar(true, 0.5f)
+                supportBar ?? CreateContinuousBar(true, 0.5f),
+                galacticInformationTexture
             );
         }
 

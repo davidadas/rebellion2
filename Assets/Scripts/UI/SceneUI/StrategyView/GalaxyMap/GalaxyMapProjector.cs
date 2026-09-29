@@ -52,7 +52,10 @@ public sealed class GalaxyMapProjector
         UIContext context = GetRequiredContext();
         hoveredSectorInstanceId = briefing?.TargetSectorInstanceID ?? hoveredSectorInstanceId;
         FactionTheme playerTheme = context.GetPlayerFactionTheme();
-        GalacticInformationFilterTheme filter = ResolveFilter(playerTheme, filterMode);
+        GalacticInformationFilterTheme filter = GalacticInformationMarkerProjector.ResolveFilter(
+            playerTheme,
+            filterMode
+        );
         List<GalaxyMapClusterRenderData> clusters = ProjectClusters(
             sectors,
             playerFactionId,
@@ -230,13 +233,7 @@ public sealed class GalaxyMapProjector
     /// <returns>The best configured marker path for the requested intensity.</returns>
     internal static string GetPlanetIconPath(PlanetIcons icons, int markerIndex)
     {
-        return markerIndex switch
-        {
-            0 => icons?.Small,
-            1 => icons?.Medium ?? icons?.Small,
-            2 => icons?.Large ?? icons?.Medium ?? icons?.Small,
-            _ => icons?.XL ?? icons?.Large ?? icons?.Medium ?? icons?.Small,
-        };
+        return GalacticInformationMarkerProjector.GetPlanetIconPath(icons, markerIndex);
     }
 
     /// <summary>
@@ -519,22 +516,6 @@ public sealed class GalaxyMapProjector
     }
 
     /// <summary>
-    /// Resolves the active filter configuration for the current display mode.
-    /// </summary>
-    /// <param name="playerTheme">The current player faction theme.</param>
-    /// <param name="filterMode">The requested galactic-information filter.</param>
-    /// <returns>The configured filter, or null when the display is off.</returns>
-    private static GalacticInformationFilterTheme ResolveFilter(
-        FactionTheme playerTheme,
-        GalacticInformationFilterMode filterMode
-    )
-    {
-        return filterMode == GalacticInformationFilterMode.DisplayOff
-            ? null
-            : playerTheme?.GalacticInformationDisplay?.GetFilter(filterMode);
-    }
-
-    /// <summary>
     /// Resolves the marker texture for one visible planet and evaluated filter result.
     /// </summary>
     /// <param name="context">The current strategy UI context.</param>
@@ -549,24 +530,12 @@ public sealed class GalaxyMapProjector
         bool highlightUnexplored
     )
     {
-        if (planet.IsUnexploredView && !highlightUnexplored)
-        {
-            return context.GetTexture(
-                context.GetPlayerFactionTheme()?.GalaxyBackground?.UnexploredPlanetIconPath
-            );
-        }
-
-        if (marker.Mixed)
-        {
-            return context.GetTexture(
-                context.GetPlayerFactionTheme()?.GalaxyBackground?.PlanetIcons?.Mixed
-            );
-        }
-
-        PlanetIcons icons = context
-            .GetTheme(marker.FactionInstanceId)
-            ?.GalaxyBackground?.PlanetIcons;
-        return context.GetTexture(GetPlanetIconPath(icons, marker.Index));
+        return GalacticInformationMarkerProjector.ResolveTexture(
+            context,
+            planet,
+            marker,
+            highlightUnexplored
+        );
     }
 
     /// <summary>

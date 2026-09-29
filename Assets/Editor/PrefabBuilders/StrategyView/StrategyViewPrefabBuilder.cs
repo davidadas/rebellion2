@@ -7778,6 +7778,16 @@ public static class StrategyViewPrefabBuilder
         hitArea.raycastTarget = false;
         hitArea.canvasRenderer.cullTransparentMesh = false;
         UILayout.SetStretch(hitArea.rectTransform);
+        RawImage galacticInformation = CreateRawImage(
+            "GalacticInformationImage",
+            root.transform,
+            PreviewTheme?.GalaxyBackground?.PlanetIcons?.Small,
+            10,
+            1,
+            _planetSectorPlanetImageWidth,
+            _planetSectorPlanetImageHeight
+        );
+        galacticInformation.raycastTarget = false;
         RawImage planet = CreateRawImage(
             "PlanetImage",
             root.transform,
@@ -7876,6 +7886,7 @@ public static class StrategyViewPrefabBuilder
         );
 
         AssignReference(planetView, "hitAreaImage", hitArea);
+        AssignReference(planetView, "galacticInformationImage", galacticInformation);
         AssignReference(planetView, "planetImage", planet);
         AssignReference(planetView, "uprisingImage", uprising);
         AssignReference(planetView, "facilityImage", facility);

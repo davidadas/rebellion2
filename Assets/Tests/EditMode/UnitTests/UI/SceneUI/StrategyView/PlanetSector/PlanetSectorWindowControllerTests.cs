@@ -30,6 +30,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         private TestActions _actions;
         private PlanetSectorWindowController _controller;
         private int _dirtyCount;
+        private GalacticInformationFilterMode _filterMode;
         private GameFleet _fleet;
         private StrategyFleetCommandController _fleetCommandController;
         private GameRoot _game;
@@ -50,6 +51,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         public void SetUp()
         {
             _dirtyCount = 0;
+            _filterMode = GalacticInformationFilterMode.DisplayOff;
             _game = CreateGame();
             _uiContext = TestContent.CreateUIContext(
                 _game,
@@ -153,6 +155,44 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsFalse(second);
             Assert.AreEqual(1, _windowManager.Windows.Count);
             Assert.AreEqual(1, _dirtyCount);
+        }
+
+        [Test]
+        public void RenderWindows_FilterChanges_RerendersOpenPlanetMarker()
+        {
+            Building shipyard = new Building
+            {
+                InstanceID = "shipyard",
+                OwnerInstanceID = _playerFactionId,
+                BuildingType = BuildingType.Shipyard,
+                ProductionType = ManufacturingType.Ship,
+                ProcessRate = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _planet.Planet.EnergyCapacity = 1;
+            _game.AttachNode(shipyard, _planet.Planet);
+            PlanetSectorWindowView view = OpenWindow(out UIWindow window);
+
+            _controller.RenderWindow(view, window);
+
+            PlanetSectorPlanetView planetView =
+                view.GetComponentsInChildren<PlanetSectorPlanetView>(true)
+                    .Single(item => item.name == "Planet0");
+            RawImage markerImage = planetView
+                .transform.Find("GalacticInformationImage")
+                .GetComponent<RawImage>();
+            Assert.IsFalse(markerImage.gameObject.activeSelf);
+
+            _filterMode = GalacticInformationFilterMode.IdleShipyards;
+            _controller.RenderWindows();
+
+            Assert.IsTrue(markerImage.gameObject.activeSelf);
+            Assert.AreSame(
+                _uiContext.GetTexture(
+                    _uiContext.GetPlayerFactionTheme().GalaxyBackground.PlanetIcons.XL
+                ),
+                markerImage.texture
+            );
         }
 
         [Test]
@@ -680,7 +720,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 () => new[] { _sector },
                 GetWindowPosition,
                 CloseWindow,
-                MarkDirty
+                MarkDirty,
+                () => _filterMode
             );
         }
 
