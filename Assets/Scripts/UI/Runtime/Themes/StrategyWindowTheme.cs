@@ -60,6 +60,8 @@ public class StrategyBookmarkLayout
 
     public int LabelOffsetY { get; set; }
 
+    public int LabelWidth { get; set; }
+
     /// <summary>
     /// Derives the authored bookmark capacity from the list and item heights.
     /// </summary>

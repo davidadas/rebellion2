@@ -170,6 +170,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
                 IconWidth = 16,
                 IconHeight = 8,
                 LabelOffsetX = 22,
+                LabelWidth = 50,
             };
         }
 

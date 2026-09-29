@@ -43,11 +43,19 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
         }
 
         [Test]
+        public void Awake_AuthoredLabel_UsesConfiguredFont()
+        {
+            TextMeshProUGUI label = GetField<TextMeshProUGUI>(_view, "labelTextField");
+
+            Assert.AreEqual(9f, label.fontSize);
+        }
+
+        [Test]
         public void Render_AuthoredGeometry_AppliesSlotIconLabelAndInputBounds()
         {
             StrategyBookmarkLayout layout = CreateLayout();
 
-            _view.Render(2, new BookmarkRenderData(true, "Coruscant", _texture), layout);
+            _view.Render(2, new BookmarkRenderData(true, "Test", _texture), layout);
 
             Assert.AreEqual(2, _view.Index);
             Assert.AreEqual(new RectInt(700, 70, 120, 20), GetSourceRect(_view.transform));
@@ -59,12 +67,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
             Assert.AreSame(_texture, icon.texture);
             Assert.AreEqual(new RectInt(0, 6, 16, 8), GetSourceRect(icon.transform));
             TextMeshProUGUI label = GetField<TextMeshProUGUI>(_view, "labelTextField");
-            Assert.AreEqual("Coruscant", label.text);
+            Assert.AreEqual("Test", label.text);
             Assert.AreEqual(Color.yellow, label.color);
-            Assert.AreEqual(new RectInt(22, 0, 98, 20), GetSourceRect(label.transform));
+            Assert.AreEqual(9f, label.fontSize);
+            Assert.AreEqual(new RectInt(22, 0, 50, 20), GetSourceRect(label.transform));
             Assert.AreEqual(TextAlignmentOptions.MidlineLeft, label.alignment);
             Assert.AreEqual(TextWrappingModes.NoWrap, label.textWrappingMode);
-            Assert.AreEqual(TextOverflowModes.Ellipsis, label.overflowMode);
+            Assert.AreEqual(TextOverflowModes.Truncate, label.overflowMode);
             Assert.IsTrue(_view.gameObject.activeSelf);
         }
 
@@ -85,9 +94,38 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
                 GetSourceRect(GetField<RawImage>(_view, "iconImage").transform)
             );
             Assert.AreEqual(
-                new RectInt(iconWidth, 0, layout.Width - iconWidth, layout.ItemHeight),
+                new RectInt(iconWidth, 0, 50, layout.ItemHeight),
                 GetSourceRect(GetField<TextMeshProUGUI>(_view, "labelTextField").transform)
             );
+        }
+
+        [TestCase(45)]
+        [TestCase(50)]
+        public void Render_ConfiguredLabelWidth_UsesLayoutWidth(int labelWidth)
+        {
+            StrategyBookmarkLayout layout = CreateLayout();
+            layout.LabelWidth = labelWidth;
+
+            _view.Render(0, new BookmarkRenderData(true, "Test", _texture), layout);
+
+            TextMeshProUGUI label = GetField<TextMeshProUGUI>(_view, "labelTextField");
+            Assert.AreEqual(labelWidth, GetSourceRect(label.transform).width);
+        }
+
+        [Test]
+        public void Render_LabelWiderThanMaximumDisplayWidth_PreservesTextForClipping()
+        {
+            StrategyBookmarkLayout layout = CreateLayout();
+            const string labelText = "Synthetic Planet With A Deliberately Long Name";
+
+            _view.Render(0, new BookmarkRenderData(true, labelText, _texture), layout);
+
+            TextMeshProUGUI label = GetField<TextMeshProUGUI>(_view, "labelTextField");
+            float maximumTextWidth = GetSourceRect(label.transform).width;
+            Assert.AreEqual(50f, maximumTextWidth);
+            Assert.Greater(label.GetPreferredValues(labelText).x, maximumTextWidth);
+            Assert.AreEqual(labelText, label.text);
+            Assert.AreEqual(TextOverflowModes.Truncate, label.overflowMode);
         }
 
         [Test]
@@ -143,6 +181,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
                 IconWidth = 16,
                 IconHeight = 8,
                 LabelOffsetX = 22,
+                LabelWidth = 50,
             };
         }
 
