@@ -108,6 +108,7 @@ public sealed class PlanetSectorClusterView
             eventData == null
             || renderData == null
             || !gameObject.activeInHierarchy
+            || !ContainsCurrentRaycast(eventData)
             || transform is not RectTransform rect
             || !TryGetSourcePosition(rect, eventData, out int sourceX, out int sourceY)
         )
@@ -132,6 +133,17 @@ public sealed class PlanetSectorClusterView
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// Reports whether the topmost pointer raycast belongs to this rendered cluster.
+    /// </summary>
+    /// <param name="eventData">The current pointer event.</param>
+    /// <returns>True when no intervening interface element blocks the cluster.</returns>
+    private bool ContainsCurrentRaycast(PointerEventData eventData)
+    {
+        GameObject target = eventData?.pointerCurrentRaycast.gameObject;
+        return target != null && (target == gameObject || target.transform.IsChildOf(transform));
     }
 
     /// <summary>
