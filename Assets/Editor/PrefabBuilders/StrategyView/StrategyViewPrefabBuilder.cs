@@ -845,7 +845,9 @@ public static class StrategyViewPrefabBuilder
         IdleBarView idleBar = CreateIdleBarView(root.transform);
         List<RectTransform> resourceBreakdownPanels = new List<RectTransform>();
         List<TextMeshProUGUI> resourceBreakdownTitles = new List<TextMeshProUGUI>();
-        List<TextMeshProUGUI> resourceBreakdownBodies = new List<TextMeshProUGUI>();
+        List<TextMeshProUGUI> resourceBreakdownPrimaryFields = new List<TextMeshProUGUI>();
+        List<TextMeshProUGUI> resourceBreakdownForecastFields = new List<TextMeshProUGUI>();
+        List<TextMeshProUGUI> resourceBreakdownLifecycleFields = new List<TextMeshProUGUI>();
         GameObject windows = CreateLayer(_windowLayerName, root.transform);
         RectTransform windowsRect = windows.GetComponent<RectTransform>();
         SetStrategySurfaceRect(windowsRect);
@@ -864,45 +866,54 @@ public static class StrategyViewPrefabBuilder
         resourceBreakdownPanels.Add(
             CreateResourceBreakdownPanel(
                 "RawMaterialsPanel",
-                "RAW MATERIALS",
-                "Mines produce it; refineries consume it.",
+                "Mines",
                 hudPopoverLayer,
                 170,
-                58,
+                92,
                 out TextMeshProUGUI rawMaterialsTitle,
-                out TextMeshProUGUI rawMaterialsBody
+                out TextMeshProUGUI rawMaterialsPrimary,
+                out TextMeshProUGUI rawMaterialsForecast,
+                out TextMeshProUGUI rawMaterialsLifecycle
             )
         );
         resourceBreakdownTitles.Add(rawMaterialsTitle);
-        resourceBreakdownBodies.Add(rawMaterialsBody);
+        resourceBreakdownPrimaryFields.Add(rawMaterialsPrimary);
+        resourceBreakdownForecastFields.Add(rawMaterialsForecast);
+        resourceBreakdownLifecycleFields.Add(rawMaterialsLifecycle);
         resourceBreakdownPanels.Add(
             CreateResourceBreakdownPanel(
                 "RefinedMaterialsPanel",
-                "REFINED MATERIALS",
-                "Refineries convert raw material into it.",
+                "Refineries",
                 hudPopoverLayer,
                 170,
-                58,
+                92,
                 out TextMeshProUGUI refinedMaterialsTitle,
-                out TextMeshProUGUI refinedMaterialsBody
+                out TextMeshProUGUI refinedMaterialsPrimary,
+                out TextMeshProUGUI refinedMaterialsForecast,
+                out TextMeshProUGUI refinedMaterialsLifecycle
             )
         );
         resourceBreakdownTitles.Add(refinedMaterialsTitle);
-        resourceBreakdownBodies.Add(refinedMaterialsBody);
+        resourceBreakdownPrimaryFields.Add(refinedMaterialsPrimary);
+        resourceBreakdownForecastFields.Add(refinedMaterialsForecast);
+        resourceBreakdownLifecycleFields.Add(refinedMaterialsLifecycle);
         resourceBreakdownPanels.Add(
             CreateResourceBreakdownPanel(
                 "MaintenancePanel",
-                "MAINTENANCE",
-                "Supports units, facilities, and orders.",
+                "Maintenance",
                 hudPopoverLayer,
-                190,
-                59,
+                170,
+                92,
                 out TextMeshProUGUI maintenanceTitle,
-                out TextMeshProUGUI maintenanceBody
+                out TextMeshProUGUI maintenancePrimary,
+                out TextMeshProUGUI maintenanceForecast,
+                out TextMeshProUGUI maintenanceLifecycle
             )
         );
         resourceBreakdownTitles.Add(maintenanceTitle);
-        resourceBreakdownBodies.Add(maintenanceBody);
+        resourceBreakdownPrimaryFields.Add(maintenancePrimary);
+        resourceBreakdownForecastFields.Add(maintenanceForecast);
+        resourceBreakdownLifecycleFields.Add(maintenanceLifecycle);
         RawImage modalInputBlocker = CreatePanelImage(
             _modalInputBlockerName,
             modalWindowLayer,
@@ -992,7 +1003,21 @@ public static class StrategyViewPrefabBuilder
         AssignReferenceArray(hudView, "resourceBreakdownHoverViews", resourceBreakdownHoverViews);
         AssignReferenceArray(hudView, "resourceBreakdownPanels", resourceBreakdownPanels);
         AssignReferenceArray(hudView, "resourceBreakdownTitleTextFields", resourceBreakdownTitles);
-        AssignReferenceArray(hudView, "resourceBreakdownBodyTextFields", resourceBreakdownBodies);
+        AssignReferenceArray(
+            hudView,
+            "resourceBreakdownPrimaryTextFields",
+            resourceBreakdownPrimaryFields
+        );
+        AssignReferenceArray(
+            hudView,
+            "resourceBreakdownForecastTextFields",
+            resourceBreakdownForecastFields
+        );
+        AssignReferenceArray(
+            hudView,
+            "resourceBreakdownLifecycleTextFields",
+            resourceBreakdownLifecycleFields
+        );
         AssignReference(hudView, "advisorView", advisorView);
         AssignReference(galaxyMapView, "background", background);
         AssignReference(galaxyMapView, "backgroundImage", backgroundImage);
@@ -1011,22 +1036,24 @@ public static class StrategyViewPrefabBuilder
     /// </summary>
     /// <param name="name">The panel object name.</param>
     /// <param name="heading">The panel heading.</param>
-    /// <param name="description">The short resource explanation.</param>
     /// <param name="parent">The HUD popover layer above modeless strategy windows.</param>
     /// <param name="width">The source-space panel width.</param>
     /// <param name="height">The source-space panel height.</param>
     /// <param name="title">The authored panel title.</param>
-    /// <param name="body">The authored dynamic breakdown.</param>
+    /// <param name="primary">The authored dominant current value.</param>
+    /// <param name="forecast">The authored delivery and completion forecasts.</param>
+    /// <param name="lifecycle">The authored lifecycle totals.</param>
     /// <returns>The authored panel root.</returns>
     private static RectTransform CreateResourceBreakdownPanel(
         string name,
         string heading,
-        string description,
         Transform parent,
         int width,
         int height,
         out TextMeshProUGUI title,
-        out TextMeshProUGUI body
+        out TextMeshProUGUI primary,
+        out TextMeshProUGUI forecast,
+        out TextMeshProUGUI lifecycle
     )
     {
         RawImage background = CreatePanelImage(name, parent, new Color(0.03f, 0.03f, 0.04f, 0.96f));
@@ -1037,26 +1064,14 @@ public static class StrategyViewPrefabBuilder
             "TitleTextField",
             heading,
             background.transform,
-            4,
-            2,
-            width - 8,
-            8,
+            6,
+            3,
+            width - 12,
+            9,
             TextAlignmentOptions.Left,
             FontStyles.Bold,
             7.5f
         );
-        CreateResourceBreakdownText(
-            "DescriptionTextField",
-            description,
-            background.transform,
-            4,
-            11,
-            width - 8,
-            8,
-            TextAlignmentOptions.Left,
-            FontStyles.Italic,
-            6
-        ).color = new Color(0.64f, 0.64f, 0.64f, 1f);
 
         RawImage headerDivider = CreatePanelImage(
             "HeaderDivider",
@@ -1064,22 +1079,76 @@ public static class StrategyViewPrefabBuilder
             new Color(0.25f, 0.27f, 0.3f, 0.75f)
         );
         headerDivider.raycastTarget = false;
-        SetSourceRect(headerDivider.rectTransform, 4, 21, width - 8, 1);
+        SetSourceRect(headerDivider.rectTransform, 5, 15, width - 10, 1);
 
-        body = CreateResourceBreakdownText(
-            "BodyTextField",
+        primary = CreateResourceBreakdownText(
+            "PrimaryTextField",
             string.Empty,
             background.transform,
-            5,
-            25,
-            width - 10,
-            height - 28,
+            7,
+            20,
+            76,
+            39,
             TextAlignmentOptions.TopLeft,
             FontStyles.Normal,
             7
         );
+        forecast = CreateResourceBreakdownText(
+            "ForecastTextField",
+            string.Empty,
+            background.transform,
+            94,
+            19,
+            70,
+            41,
+            TextAlignmentOptions.TopLeft,
+            FontStyles.Normal,
+            7
+        );
+        lifecycle = CreateResourceBreakdownText(
+            "LifecycleTextField",
+            string.Empty,
+            background.transform,
+            6,
+            68,
+            width - 12,
+            20,
+            TextAlignmentOptions.TopLeft,
+            FontStyles.Normal,
+            7
+        );
+
+        CreateResourceBreakdownDivider(background.transform, 86, 20, 1, 39);
+        CreateResourceBreakdownDivider(background.transform, 5, 64, width - 10, 1);
+        CreateResourceBreakdownDivider(background.transform, 126, 68, 1, 19);
+
+        CreateResourceBreakdownDivider(background.transform, 0, 0, width, 1);
+        CreateResourceBreakdownDivider(background.transform, 0, height - 1, width, 1);
+        CreateResourceBreakdownDivider(background.transform, 0, 0, 1, height);
+        CreateResourceBreakdownDivider(background.transform, width - 1, 0, 1, height);
         background.gameObject.SetActive(false);
         return background.rectTransform;
+    }
+
+    /// <summary>
+    /// Authors one subtle divider inside a resource summary card.
+    /// </summary>
+    /// <param name="parent">The card receiving the divider.</param>
+    /// <param name="x">The source-space horizontal position.</param>
+    /// <param name="y">The source-space vertical position.</param>
+    /// <param name="width">The source-space divider width.</param>
+    /// <param name="height">The source-space divider height.</param>
+    private static void CreateResourceBreakdownDivider(
+        Transform parent,
+        int x,
+        int y,
+        int width,
+        int height
+    )
+    {
+        RawImage divider = CreatePanelImage("Divider", parent, new Color(0.3f, 0.31f, 0.32f, 0.8f));
+        divider.raycastTarget = false;
+        SetSourceRect(divider.rectTransform, x, y, width, height);
     }
 
     /// <summary>

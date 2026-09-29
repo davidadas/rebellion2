@@ -96,11 +96,66 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, summary.Refineries.Building);
             Assert.AreEqual(1, summary.Refineries.EnRoute);
             Assert.AreEqual(0.5, summary.RawOutputPerTick, 0.0001);
+            Assert.AreEqual(0.25, summary.DeliveredRawOutputPerTick, 0.0001);
+            Assert.AreEqual(0.25, summary.ProjectedRawOutputPerTick, 0.0001);
             Assert.AreEqual(0.25, summary.RefinedOutputPerTick, 0.0001);
+            Assert.AreEqual(0.4, summary.DeliveredRefinedOutputPerTick, 0.0001);
+            Assert.AreEqual(0.6, summary.ProjectedRefinedOutputPerTick, 0.0001);
             Assert.AreEqual(50, summary.MaintenanceCapacity);
+            Assert.AreEqual(50, summary.DeliveredMaintenanceCapacity);
+            Assert.AreEqual(50, summary.ProjectedMaintenanceCapacity);
             Assert.AreEqual(12, summary.MaintenanceCommitted);
             Assert.AreEqual(12, summary.Maintenance.Regiments);
+            Assert.AreEqual(12, summary.Maintenance.Deployed);
             Assert.AreEqual(38, summary.MaintenanceHeadroom);
+        }
+
+        [Test]
+        public void GetSummary_CommittedResourceFacilities_ProjectsSteadyOutputAndCapacity()
+        {
+            Planet planet = AddPlanet("PLANET1", rawResourceNodes: 3);
+            Building activeMine = AddBuilding(planet, BuildingType.Mine, processRate: 2);
+            activeMine.ProductionCycleDuration = 2;
+            Building activeRefinery = AddBuilding(planet, BuildingType.Refinery, processRate: 4);
+            activeRefinery.ProductionCycleDuration = 4;
+            AddBuilding(
+                planet,
+                BuildingType.Mine,
+                processRate: 2,
+                status: ManufacturingStatus.Building
+            );
+            AddBuilding(
+                planet,
+                BuildingType.Refinery,
+                processRate: 4,
+                status: ManufacturingStatus.Building
+            );
+            AddBuilding(
+                planet,
+                BuildingType.Mine,
+                processRate: 2,
+                status: ManufacturingStatus.Delivering
+            );
+            AddBuilding(
+                planet,
+                BuildingType.Refinery,
+                processRate: 4,
+                status: ManufacturingStatus.Delivering
+            );
+
+            ResourceEconomySummary summary = new ResourceProductionQueries(_game).GetSummary(
+                _faction
+            );
+
+            Assert.AreEqual(0.5, summary.RawOutputPerTick, 0.0001);
+            Assert.AreEqual(1.0, summary.DeliveredRawOutputPerTick, 0.0001);
+            Assert.AreEqual(1.5, summary.ProjectedRawOutputPerTick, 0.0001);
+            Assert.AreEqual(0.25, summary.RefinedOutputPerTick, 0.0001);
+            Assert.AreEqual(0.5, summary.DeliveredRefinedOutputPerTick, 0.0001);
+            Assert.AreEqual(0.75, summary.ProjectedRefinedOutputPerTick, 0.0001);
+            Assert.AreEqual(50, summary.MaintenanceCapacity);
+            Assert.AreEqual(100, summary.DeliveredMaintenanceCapacity);
+            Assert.AreEqual(150, summary.ProjectedMaintenanceCapacity);
         }
 
         [Test]
@@ -159,6 +214,9 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(40, summary.Maintenance.SpecialForces);
             Assert.AreEqual(50, summary.Maintenance.Facilities);
             Assert.AreEqual(60, summary.Maintenance.Orders);
+            Assert.AreEqual(130, summary.Maintenance.Deployed);
+            Assert.AreEqual(20, summary.Maintenance.EnRoute);
+            Assert.AreEqual(60, summary.Maintenance.Building);
             Assert.AreEqual(210, summary.MaintenanceCommitted);
         }
 

@@ -38,6 +38,26 @@ namespace Rebellion.Simulation
 
             List<Building> activeMines = GetActiveFacilities(faction, BuildingType.Mine);
             List<Building> activeRefineries = GetActiveFacilities(faction, BuildingType.Refinery);
+            List<Building> deliveredMines = GetProjectedFacilities(
+                faction,
+                BuildingType.Mine,
+                includeBuilding: false
+            );
+            List<Building> deliveredRefineries = GetProjectedFacilities(
+                faction,
+                BuildingType.Refinery,
+                includeBuilding: false
+            );
+            List<Building> projectedMines = GetProjectedFacilities(
+                faction,
+                BuildingType.Mine,
+                includeBuilding: true
+            );
+            List<Building> projectedRefineries = GetProjectedFacilities(
+                faction,
+                BuildingType.Refinery,
+                includeBuilding: true
+            );
             HashSet<string> activeMineIDs = activeMines
                 .Select(facility => facility.InstanceID)
                 .ToHashSet(StringComparer.Ordinal);
@@ -60,8 +80,42 @@ namespace Rebellion.Simulation
                 mines,
                 refineries,
                 CalculateOutputPerTick(faction, activeMines, BuildingType.Mine),
+                CalculateProjectedOutputPerTick(
+                    faction,
+                    deliveredMines,
+                    BuildingType.Mine,
+                    maintenance.AfterDelivery
+                ),
+                CalculateProjectedOutputPerTick(
+                    faction,
+                    projectedMines,
+                    BuildingType.Mine,
+                    maintenance.Committed
+                ),
                 CalculateOutputPerTick(faction, activeRefineries, BuildingType.Refinery),
+                CalculateProjectedOutputPerTick(
+                    faction,
+                    deliveredRefineries,
+                    BuildingType.Refinery,
+                    maintenance.AfterDelivery
+                ),
+                CalculateProjectedOutputPerTick(
+                    faction,
+                    projectedRefineries,
+                    BuildingType.Refinery,
+                    maintenance.Committed
+                ),
                 faction.MaintenanceCapacity,
+                CalculateProjectedMaintenanceCapacity(
+                    faction,
+                    deliveredMines.Count,
+                    deliveredRefineries.Count
+                ),
+                CalculateProjectedMaintenanceCapacity(
+                    faction,
+                    projectedMines.Count,
+                    projectedRefineries.Count
+                ),
                 maintenance
             );
         }
@@ -79,6 +133,9 @@ namespace Rebellion.Simulation
             int specialForces = 0;
             int facilities = 0;
             int orders = 0;
+            int deployed = 0;
+            int enRoute = 0;
+            int building = 0;
 
             foreach (IManufacturable item in faction.GetAllOwnedManufacturables())
             {
@@ -86,8 +143,14 @@ namespace Rebellion.Simulation
                 if (item.GetManufacturingStatus() == ManufacturingStatus.Building)
                 {
                     orders += cost;
+                    building += cost;
                     continue;
                 }
+
+                if (item.GetManufacturingStatus() == ManufacturingStatus.Delivering)
+                    enRoute += cost;
+                else
+                    deployed += cost;
 
                 switch (item)
                 {
@@ -115,7 +178,10 @@ namespace Rebellion.Simulation
                 regiments,
                 specialForces,
                 facilities,
-                orders
+                orders,
+                deployed,
+                enRoute,
+                building
             );
         }
 
@@ -154,6 +220,53 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
+        /// Gets facilities expected to operate after a selected committed lifecycle stage.
+        /// </summary>
+        /// <param name="faction">The owning faction.</param>
+        /// <param name="buildingType">The requested resource-facility type.</param>
+        /// <param name="includeBuilding">Whether facilities still being manufactured are included.</param>
+        /// <returns>The projected facilities in stable planet and building order.</returns>
+        private static List<Building> GetProjectedFacilities(
+            Faction faction,
+            BuildingType buildingType,
+            bool includeBuilding
+        )
+        {
+            List<Building> facilities = new List<Building>();
+            foreach (Planet planet in faction.GetOwnedColonizedPlanets())
+            {
+                if (planet.IsResourceProductionSuspended())
+                    continue;
+
+                IEnumerable<Building> planetFacilities = planet
+                    .GetChildren<Building>()
+                    .Where(building =>
+                        building.BuildingType == buildingType
+                        && building.ProcessRate > 0
+                        && (
+                            includeBuilding
+                            || building.ManufacturingStatus != ManufacturingStatus.Building
+                        )
+                    )
+                    .OrderBy(building =>
+                        building.ManufacturingStatus == ManufacturingStatus.Complete
+                        && building.Movement == null
+                            ? 0
+                        : building.ManufacturingStatus == ManufacturingStatus.Delivering
+                        || building.Movement != null
+                            ? 1
+                        : 2
+                    );
+                if (buildingType == BuildingType.Mine)
+                    planetFacilities = planetFacilities.Take(planet.NumRawResourceNodes);
+
+                facilities.AddRange(planetFacilities);
+            }
+
+            return facilities;
+        }
+
+        /// <summary>
         /// Calculates a steady resource cycle from facility rate, maintenance load, and support.
         /// </summary>
         /// <param name="game">The game containing production configuration.</param>
@@ -166,16 +279,36 @@ namespace Rebellion.Simulation
             Building facility
         )
         {
+            return CalculateSteadyCycleDuration(
+                game,
+                faction,
+                facility,
+                facility.ResourceMaintenanceAllocation
+            );
+        }
+
+        /// <summary>
+        /// Calculates a steady resource cycle for an explicit projected maintenance allocation.
+        /// </summary>
+        /// <param name="game">The game containing production configuration.</param>
+        /// <param name="faction">The faction operating the facility.</param>
+        /// <param name="facility">The resource facility.</param>
+        /// <param name="maintenanceAllocation">The projected maintenance load.</param>
+        /// <returns>The steady cycle duration in ticks.</returns>
+        private static int CalculateSteadyCycleDuration(
+            GameRoot game,
+            Faction faction,
+            Building facility,
+            int maintenanceAllocation
+        )
+        {
             GameConfig.ProductionConfig config = game.Config.Production;
             int facilityCapacity = faction.Settings.ResourceProcessingPointsPerFacility;
             int scaledCapacity = Math.Max(
                 1,
                 facilityCapacity * config.ResourceMaintenanceLoadPercent / _percentScale
             );
-            int maintenancePenalty = DivideRoundingUp(
-                facility.ResourceMaintenanceAllocation,
-                scaledCapacity
-            );
+            int maintenancePenalty = DivideRoundingUp(maintenanceAllocation, scaledCapacity);
             int baseDuration = Math.Max(1, facility.ProcessRate + maintenancePenalty);
             Planet planet = facility.GetParentOfType<Planet>();
             int support = Math.Max(1, planet?.GetPopularSupport(faction.InstanceID) ?? 0);
@@ -254,6 +387,71 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
+        /// Calculates steady output after every committed facility is operating.
+        /// </summary>
+        /// <param name="faction">The faction operating the facilities.</param>
+        /// <param name="facilities">The projected active facilities.</param>
+        /// <param name="buildingType">The resource-facility type.</param>
+        /// <param name="maintenanceDemand">The committed maintenance load.</param>
+        /// <returns>The projected gross output per tick.</returns>
+        private double CalculateProjectedOutputPerTick(
+            Faction faction,
+            IReadOnlyList<Building> facilities,
+            BuildingType buildingType,
+            int maintenanceDemand
+        )
+        {
+            if (facilities.Count == 0)
+                return 0;
+
+            DifficultyModifiers modifier = _game.GetDifficultyModifier(faction);
+            int outputPercent =
+                buildingType == BuildingType.Mine
+                    ? modifier.MineOutputPercent
+                    : modifier.RefineryOutputPercent;
+            if (outputPercent <= 0)
+                return 0;
+
+            int facilityCapacity = faction.Settings.ResourceProcessingPointsPerFacility;
+            int targetAllocation = Math.Min(
+                Math.Max(0, maintenanceDemand),
+                facilities.Count * facilityCapacity
+            );
+            int baseAllocation = targetAllocation / facilities.Count;
+            int remainder = targetAllocation % facilities.Count;
+            double output = 0;
+            for (int index = 0; index < facilities.Count; index++)
+            {
+                Building facility = facilities[index];
+                int allocation = baseAllocation + (index < remainder ? 1 : 0);
+                int duration = CalculateSteadyCycleDuration(_game, faction, facility, allocation);
+                output += (double)outputPercent / _percentScale / duration;
+            }
+
+            return output;
+        }
+
+        /// <summary>
+        /// Calculates maintenance capacity after committed resource facilities are operating.
+        /// </summary>
+        /// <param name="faction">The faction receiving the projected capacity.</param>
+        /// <param name="mineCount">The projected usable mine count.</param>
+        /// <param name="refineryCount">The projected active refinery count.</param>
+        /// <returns>The projected maintenance capacity.</returns>
+        private static int CalculateProjectedMaintenanceCapacity(
+            Faction faction,
+            int mineCount,
+            int refineryCount
+        )
+        {
+            int materialCapacity = Math.Min(
+                faction.GetTotalAvailableResourceNodes(),
+                Math.Min(mineCount, refineryCount)
+            );
+            return materialCapacity * faction.Settings.ResourceProcessingPointsPerFacility;
+        }
+
+        /// <summary>
         /// Divides non-negative integers while rounding any remainder upward.
         /// </summary>
         /// <param name="dividend">The value to divide.</param>
@@ -276,6 +474,10 @@ namespace Rebellion.Simulation
         public int SpecialForces { get; }
         public int Facilities { get; }
         public int Orders { get; }
+        public int Deployed { get; }
+        public int EnRoute { get; }
+        public int Building { get; }
+        public int AfterDelivery => Deployed + EnRoute;
         public int Committed =>
             CapitalShips + Starfighters + Regiments + SpecialForces + Facilities + Orders;
 
@@ -288,13 +490,19 @@ namespace Rebellion.Simulation
         /// <param name="specialForces">Maintenance committed to special forces.</param>
         /// <param name="facilities">Maintenance committed to completed facilities.</param>
         /// <param name="orders">Maintenance reserved by unfinished orders.</param>
+        /// <param name="deployed">Maintenance used by deployed assets.</param>
+        /// <param name="enRoute">Maintenance used by assets being delivered.</param>
+        /// <param name="building">Maintenance reserved by assets being manufactured.</param>
         public MaintenanceCostBreakdown(
             int capitalShips,
             int starfighters,
             int regiments,
             int specialForces,
             int facilities,
-            int orders
+            int orders,
+            int deployed = 0,
+            int enRoute = 0,
+            int building = 0
         )
         {
             CapitalShips = capitalShips;
@@ -303,6 +511,9 @@ namespace Rebellion.Simulation
             SpecialForces = specialForces;
             Facilities = facilities;
             Orders = orders;
+            Deployed = deployed;
+            EnRoute = enRoute;
+            Building = building;
         }
     }
 
@@ -344,17 +555,33 @@ namespace Rebellion.Simulation
                 0,
                 0,
                 0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
                 new MaintenanceCostBreakdown(0, 0, 0, 0, 0, 0)
             );
 
         public ResourceFacilityCounts Mines { get; }
         public ResourceFacilityCounts Refineries { get; }
         public double RawOutputPerTick { get; }
+        public double DeliveredRawOutputPerTick { get; }
+        public double ProjectedRawOutputPerTick { get; }
         public double RefinedOutputPerTick { get; }
+        public double DeliveredRefinedOutputPerTick { get; }
+        public double ProjectedRefinedOutputPerTick { get; }
         public int MaintenanceCapacity { get; }
+        public int DeliveredMaintenanceCapacity { get; }
+        public int ProjectedMaintenanceCapacity { get; }
         public MaintenanceCostBreakdown Maintenance { get; }
         public int MaintenanceCommitted => Maintenance.Committed;
-        public int MaintenanceHeadroom => MaintenanceCapacity - MaintenanceCommitted;
+        public int MaintenanceHeadroom => MaintenanceCapacity - Maintenance.Deployed;
+        public int DeliveredMaintenanceHeadroom =>
+            DeliveredMaintenanceCapacity - Maintenance.AfterDelivery;
+        public int ProjectedMaintenanceHeadroom =>
+            ProjectedMaintenanceCapacity - Maintenance.Committed;
 
         /// <summary>
         /// Creates an immutable resource-economy summary.
@@ -362,23 +589,41 @@ namespace Rebellion.Simulation
         /// <param name="mines">The mine totals.</param>
         /// <param name="refineries">The refinery totals.</param>
         /// <param name="rawOutputPerTick">The gross raw-material output per tick.</param>
+        /// <param name="deliveredRawOutputPerTick">The gross raw-material output after deliveries.</param>
+        /// <param name="projectedRawOutputPerTick">The projected gross raw-material output per tick.</param>
         /// <param name="refinedOutputPerTick">The gross refined-material output per tick.</param>
+        /// <param name="deliveredRefinedOutputPerTick">The gross refined-material output after deliveries.</param>
+        /// <param name="projectedRefinedOutputPerTick">The projected gross refined-material output per tick.</param>
         /// <param name="maintenanceCapacity">The available maintenance capacity.</param>
+        /// <param name="deliveredMaintenanceCapacity">The maintenance capacity after deliveries.</param>
+        /// <param name="projectedMaintenanceCapacity">The projected maintenance capacity.</param>
         /// <param name="maintenance">The maintenance committed by asset category.</param>
         public ResourceEconomySummary(
             ResourceFacilityCounts mines,
             ResourceFacilityCounts refineries,
             double rawOutputPerTick,
+            double deliveredRawOutputPerTick,
+            double projectedRawOutputPerTick,
             double refinedOutputPerTick,
+            double deliveredRefinedOutputPerTick,
+            double projectedRefinedOutputPerTick,
             int maintenanceCapacity,
+            int deliveredMaintenanceCapacity,
+            int projectedMaintenanceCapacity,
             MaintenanceCostBreakdown maintenance
         )
         {
             Mines = mines ?? throw new ArgumentNullException(nameof(mines));
             Refineries = refineries ?? throw new ArgumentNullException(nameof(refineries));
             RawOutputPerTick = rawOutputPerTick;
+            DeliveredRawOutputPerTick = deliveredRawOutputPerTick;
+            ProjectedRawOutputPerTick = projectedRawOutputPerTick;
             RefinedOutputPerTick = refinedOutputPerTick;
+            DeliveredRefinedOutputPerTick = deliveredRefinedOutputPerTick;
+            ProjectedRefinedOutputPerTick = projectedRefinedOutputPerTick;
             MaintenanceCapacity = maintenanceCapacity;
+            DeliveredMaintenanceCapacity = deliveredMaintenanceCapacity;
+            ProjectedMaintenanceCapacity = projectedMaintenanceCapacity;
             Maintenance = maintenance ?? throw new ArgumentNullException(nameof(maintenance));
         }
     }

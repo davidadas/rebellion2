@@ -12,12 +12,12 @@ using UnityEngine;
 /// </summary>
 public sealed class StrategyHudController : IContextMenuReceiver
 {
-    private const int _rawMaterialsPanelHeight = 58;
+    private const int _rawMaterialsPanelHeight = 92;
     private const int _rawMaterialsPanelWidth = 170;
-    private const int _refinedMaterialsPanelHeight = 58;
+    private const int _refinedMaterialsPanelHeight = 92;
     private const int _refinedMaterialsPanelWidth = 170;
-    private const int _maintenancePanelHeight = 59;
-    private const int _maintenancePanelWidth = 190;
+    private const int _maintenancePanelHeight = 92;
+    private const int _maintenancePanelWidth = 170;
 
     private readonly Func<FactionTheme> getPlayerTheme;
     private readonly Func<string, Texture2D> getTexture;
@@ -367,15 +367,24 @@ public sealed class StrategyHudController : IContextMenuReceiver
             summary.Refineries.Building,
             summary.Refineries.EnRoute,
             summary.RawOutputPerTick,
+            summary.DeliveredRawOutputPerTick,
+            summary.ProjectedRawOutputPerTick,
             summary.RefinedOutputPerTick,
+            summary.DeliveredRefinedOutputPerTick,
+            summary.ProjectedRefinedOutputPerTick,
             summary.MaintenanceCapacity,
+            summary.DeliveredMaintenanceCapacity,
+            summary.ProjectedMaintenanceCapacity,
             new StrategyHudMaintenanceBreakdown(
                 summary.Maintenance.CapitalShips,
                 summary.Maintenance.Starfighters,
                 summary.Maintenance.Regiments,
                 summary.Maintenance.SpecialForces,
                 summary.Maintenance.Facilities,
-                summary.Maintenance.Orders
+                summary.Maintenance.Orders,
+                summary.Maintenance.Deployed,
+                summary.Maintenance.EnRoute,
+                summary.Maintenance.Building
             )
         );
     }

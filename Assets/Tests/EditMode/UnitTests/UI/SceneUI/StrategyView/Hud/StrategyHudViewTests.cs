@@ -121,39 +121,96 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 "resourceBreakdownHoverViews"
             );
             RectTransform[] resourcePanels = GetField<RectTransform[]>("resourceBreakdownPanels");
-            TextMeshProUGUI[] resourceBodies = GetField<TextMeshProUGUI[]>(
-                "resourceBreakdownBodyTextFields"
+            TextMeshProUGUI[] resourcePrimaryFields = GetField<TextMeshProUGUI[]>(
+                "resourceBreakdownPrimaryTextFields"
+            );
+            TextMeshProUGUI[] resourceForecastFields = GetField<TextMeshProUGUI[]>(
+                "resourceBreakdownForecastTextFields"
+            );
+            TextMeshProUGUI[] resourceLifecycleFields = GetField<TextMeshProUGUI[]>(
+                "resourceBreakdownLifecycleTextFields"
             );
             Assert.AreEqual(new RectInt(459, 20, 80, 11), GetSourceRect(resourceHoverViews[0]));
             Assert.AreEqual(new RectInt(553, 20, 80, 11), GetSourceRect(resourceHoverViews[1]));
             Assert.AreEqual(new RectInt(653, 20, 80, 11), GetSourceRect(resourceHoverViews[2]));
             Assert.AreEqual(
-                new RectInt(369, 34, 170, 58),
+                new RectInt(369, 34, 170, 92),
                 UILayout.GetSourceRect(resourcePanels[0])
             );
             Assert.AreEqual(
-                new RectInt(463, 34, 170, 58),
+                new RectInt(463, 34, 170, 92),
                 UILayout.GetSourceRect(resourcePanels[1])
             );
             Assert.AreEqual(
-                new RectInt(543, 34, 190, 59),
+                new RectInt(563, 34, 170, 92),
                 UILayout.GetSourceRect(resourcePanels[2])
             );
             Assert.IsTrue(resourcePanels.All(panel => !panel.gameObject.activeSelf));
             Assert.AreEqual(
-                "ACTIVE<pos=60%><b>1</b>\nBUILDING<pos=60%><b>3</b>\nIN TRANSIT<pos=60%><b>4</b>\nPRODUCING<pos=60%><b>+0.25/TICK</b>",
-                resourceBodies[0].text
+                "<size=6><color=#A8A8A8>Mining per tick</color></size>\n<size=16><b>0.25</b></size>",
+                resourcePrimaryFields[0].text
             );
             Assert.AreEqual(
-                "ACTIVE<pos=60%><b>5</b>\nBUILDING<pos=60%><b>7</b>\nIN TRANSIT<pos=60%><b>8</b>\nPRODUCING<pos=60%><b>+0.13/TICK</b>",
-                resourceBodies[1].text
+                "<size=6><color=#A8A8A8>Refining per tick</color></size>\n<size=16><b>0.13</b></size>",
+                resourcePrimaryFields[1].text
             );
             Assert.AreEqual(
-                "CAP SHIPS<pos=34%><b>105</b><pos=48%>SPEC FORCES<pos=83%><b>120</b>\nFIGHTERS<pos=34%><b>110</b><pos=48%>FACILITIES<pos=83%><b>125</b>\nREGIMENTS<pos=34%><b>115</b><pos=48%>ORDERS<pos=83%><b>130</b>\n<color=#A8A8A8>USED</color><pos=16%><b>705/1000</b><pos=48%><color=#A8A8A8>AVAILABLE</color><pos=83%><b>+295</b>",
-                resourceBodies[2].text
+                "<size=6><color=#A8A8A8>Free maintenance</color></size>\n<size=16><b>+500</b></size>",
+                resourcePrimaryFields[2].text
             );
             Assert.IsTrue(
-                resourceBodies.All(body => body.preferredWidth <= body.rectTransform.rect.width)
+                resourcePrimaryFields.All(field =>
+                    field.preferredWidth <= field.rectTransform.rect.width
+                )
+            );
+            Assert.IsTrue(
+                resourcePrimaryFields.All(field =>
+                    field.preferredHeight <= field.rectTransform.rect.height
+                )
+            );
+            Assert.AreEqual(
+                "<size=9><b>0.38</b></size>\n<size=5.5><color=#A8A8A8>After delivery</color></size>\n<size=9><b>0.50</b></size>\n<size=5.5><color=#A8A8A8>Built and delivered</color></size>",
+                resourceForecastFields[0].text
+            );
+            Assert.AreEqual(
+                "<size=9><b>0.19</b></size>\n<size=5.5><color=#A8A8A8>After delivery</color></size>\n<size=9><b>0.25</b></size>\n<size=5.5><color=#A8A8A8>Built and delivered</color></size>",
+                resourceForecastFields[1].text
+            );
+            Assert.AreEqual(
+                "<size=9><b>+525</b></size>\n<size=5.5><color=#A8A8A8>After delivery</color></size>\n<size=9><b>+495</b></size>\n<size=5.5><color=#A8A8A8>Built and delivered</color></size>",
+                resourceForecastFields[2].text
+            );
+            Assert.IsTrue(
+                resourceForecastFields.All(field =>
+                    field.preferredWidth <= field.rectTransform.rect.width
+                )
+            );
+            Assert.IsTrue(
+                resourceForecastFields.All(field =>
+                    field.preferredHeight <= field.rectTransform.rect.height
+                )
+            );
+            Assert.AreEqual(
+                "<size=9><b>3</b></size><pos=25%><size=9><b>+4</b></size><pos=50%><size=9><b>+3</b></size><pos=79%><size=9><b>10</b></size>\n<size=5.5><color=#A8A8A8>Deployed</color></size><pos=25%><size=5.5><color=#A8A8A8>In transit</color></size><pos=50%><size=5.5><color=#A8A8A8>Building</color></size><pos=79%><size=5.5><color=#A8A8A8>Total</color></size>",
+                resourceLifecycleFields[0].text
+            );
+            Assert.AreEqual(
+                "<size=9><b>11</b></size><pos=25%><size=9><b>+8</b></size><pos=50%><size=9><b>+7</b></size><pos=79%><size=9><b>26</b></size>\n<size=5.5><color=#A8A8A8>Deployed</color></size><pos=25%><size=5.5><color=#A8A8A8>In transit</color></size><pos=50%><size=5.5><color=#A8A8A8>Building</color></size><pos=79%><size=5.5><color=#A8A8A8>Total</color></size>",
+                resourceLifecycleFields[1].text
+            );
+            Assert.AreEqual(
+                "<size=9><b>500</b></size><pos=25%><size=9><b>+75</b></size><pos=50%><size=9><b>+130</b></size><pos=79%><size=9><b>705</b></size>\n<size=5.5><color=#A8A8A8>Deployed</color></size><pos=25%><size=5.5><color=#A8A8A8>In transit</color></size><pos=50%><size=5.5><color=#A8A8A8>Building</color></size><pos=79%><size=5.5><color=#A8A8A8>Total</color></size>",
+                resourceLifecycleFields[2].text
+            );
+            Assert.IsTrue(
+                resourceLifecycleFields.All(field =>
+                    field.preferredWidth <= field.rectTransform.rect.width
+                )
+            );
+            Assert.IsTrue(
+                resourceLifecycleFields.All(field =>
+                    field.preferredHeight <= field.rectTransform.rect.height
+                )
             );
         }
 
@@ -427,22 +484,38 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                         7,
                         8,
                         0.25,
+                        0.375,
+                        0.5,
                         0.125,
+                        0.1875,
+                        0.25,
                         1000,
-                        new StrategyHudMaintenanceBreakdown(105, 110, 115, 120, 125, 130)
+                        1100,
+                        1200,
+                        new StrategyHudMaintenanceBreakdown(
+                            105,
+                            110,
+                            115,
+                            120,
+                            125,
+                            130,
+                            500,
+                            75,
+                            130
+                        )
                     ),
                     Color.red,
                     new StrategyHudResourcePopoverViewData(
                         new RectInt(459, 20, 80, 11),
-                        new RectInt(369, 34, 170, 58)
+                        new RectInt(369, 34, 170, 92)
                     ),
                     new StrategyHudResourcePopoverViewData(
                         new RectInt(553, 20, 80, 11),
-                        new RectInt(463, 34, 170, 58)
+                        new RectInt(463, 34, 170, 92)
                     ),
                     new StrategyHudResourcePopoverViewData(
                         new RectInt(653, 20, 80, 11),
-                        new RectInt(543, 34, 190, 59)
+                        new RectInt(563, 34, 170, 92)
                     )
                 ),
                 _speedTexture,

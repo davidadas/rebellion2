@@ -72,9 +72,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 7,
                 8,
                 0.25,
+                0.375,
+                0.5,
                 0.125,
+                0.1875,
+                0.25,
                 100,
-                new StrategyHudMaintenanceBreakdown(5, 10, 15, 20, 25, 0)
+                125,
+                150,
+                new StrategyHudMaintenanceBreakdown(5, 10, 15, 20, 25, 0, 50, 10, 15)
             );
 
             StrategyHudRenderData data = new StrategyHudRenderData(
@@ -88,6 +94,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             );
 
             Assert.AreSame(breakdown, data.ResourceBreakdown);
+            Assert.AreEqual(3, breakdown.DeployedMines);
+            Assert.AreEqual(10, breakdown.TotalMines);
+            Assert.AreEqual(11, breakdown.DeployedRefineries);
+            Assert.AreEqual(26, breakdown.TotalRefineries);
+            Assert.AreEqual(50, breakdown.MaintenanceHeadroom);
+            Assert.AreEqual(65, breakdown.DeliveredMaintenanceHeadroom);
+            Assert.AreEqual(75, breakdown.ProjectedMaintenanceHeadroom);
         }
     }
 }

@@ -57,7 +57,13 @@ public sealed class StrategyHudView : MonoBehaviour
     private TextMeshProUGUI[] resourceBreakdownTitleTextFields = Array.Empty<TextMeshProUGUI>();
 
     [SerializeField]
-    private TextMeshProUGUI[] resourceBreakdownBodyTextFields = Array.Empty<TextMeshProUGUI>();
+    private TextMeshProUGUI[] resourceBreakdownPrimaryTextFields = Array.Empty<TextMeshProUGUI>();
+
+    [SerializeField]
+    private TextMeshProUGUI[] resourceBreakdownForecastTextFields = Array.Empty<TextMeshProUGUI>();
+
+    [SerializeField]
+    private TextMeshProUGUI[] resourceBreakdownLifecycleTextFields = Array.Empty<TextMeshProUGUI>();
 
     [SerializeField]
     private StrategyAdvisorView advisorView;
@@ -289,26 +295,53 @@ public sealed class StrategyHudView : MonoBehaviour
             return;
         }
 
-        resourceBreakdownBodyTextFields[0].text = string.Join(
+        resourceBreakdownPrimaryTextFields[0].text = string.Join(
             "\n",
-            $"ACTIVE<pos=60%><b>{data.Totals.ActiveMines}</b>",
-            $"BUILDING<pos=60%><b>{data.Totals.BuildingMines}</b>",
-            $"IN TRANSIT<pos=60%><b>{data.Totals.EnRouteMines}</b>",
-            $"PRODUCING<pos=60%><b>+{FormatRate(data.Totals.RawOutputPerTick)}/TICK</b>"
+            "<size=6><color=#A8A8A8>Mining per tick</color></size>",
+            $"<size=16><b>{FormatRate(data.Totals.RawOutputPerTick)}</b></size>"
         );
-        resourceBreakdownBodyTextFields[1].text = string.Join(
-            "\n",
-            $"ACTIVE<pos=60%><b>{data.Totals.ActiveRefineries}</b>",
-            $"BUILDING<pos=60%><b>{data.Totals.BuildingRefineries}</b>",
-            $"IN TRANSIT<pos=60%><b>{data.Totals.EnRouteRefineries}</b>",
-            $"PRODUCING<pos=60%><b>+{FormatRate(data.Totals.RefinedOutputPerTick)}/TICK</b>"
+        resourceBreakdownForecastTextFields[0].text = FormatForecast(
+            data.Totals.DeliveredRawOutputPerTick,
+            data.Totals.ProjectedRawOutputPerTick
         );
-        resourceBreakdownBodyTextFields[2].text = string.Join(
+        resourceBreakdownLifecycleTextFields[0].text = FormatLifecycle(
+            data.Totals.DeployedMines,
+            data.Totals.EnRouteMines,
+            data.Totals.BuildingMines,
+            data.Totals.TotalMines
+        );
+
+        resourceBreakdownPrimaryTextFields[1].text = string.Join(
             "\n",
-            $"CAP SHIPS<pos=34%><b>{data.Totals.Maintenance.CapitalShips}</b><pos=48%>SPEC FORCES<pos=83%><b>{data.Totals.Maintenance.SpecialForces}</b>",
-            $"FIGHTERS<pos=34%><b>{data.Totals.Maintenance.Starfighters}</b><pos=48%>FACILITIES<pos=83%><b>{data.Totals.Maintenance.Facilities}</b>",
-            $"REGIMENTS<pos=34%><b>{data.Totals.Maintenance.Regiments}</b><pos=48%>ORDERS<pos=83%><b>{data.Totals.Maintenance.Orders}</b>",
-            $"<color=#A8A8A8>USED</color><pos=16%><b>{data.Totals.MaintenanceCommitted}/{data.Totals.MaintenanceCapacity}</b><pos=48%><color=#A8A8A8>AVAILABLE</color><pos=83%><b>{FormatSigned(data.Totals.MaintenanceHeadroom)}</b>"
+            "<size=6><color=#A8A8A8>Refining per tick</color></size>",
+            $"<size=16><b>{FormatRate(data.Totals.RefinedOutputPerTick)}</b></size>"
+        );
+        resourceBreakdownForecastTextFields[1].text = FormatForecast(
+            data.Totals.DeliveredRefinedOutputPerTick,
+            data.Totals.ProjectedRefinedOutputPerTick
+        );
+        resourceBreakdownLifecycleTextFields[1].text = FormatLifecycle(
+            data.Totals.DeployedRefineries,
+            data.Totals.EnRouteRefineries,
+            data.Totals.BuildingRefineries,
+            data.Totals.TotalRefineries
+        );
+
+        resourceBreakdownPrimaryTextFields[2].text = string.Join(
+            "\n",
+            "<size=6><color=#A8A8A8>Free maintenance</color></size>",
+            $"<size=16><b>{FormatSigned(data.Totals.MaintenanceHeadroom)}</b></size>"
+        );
+        resourceBreakdownForecastTextFields[2].text = FormatForecast(
+            data.Totals.DeliveredMaintenanceHeadroom,
+            data.Totals.ProjectedMaintenanceHeadroom,
+            signed: true
+        );
+        resourceBreakdownLifecycleTextFields[2].text = FormatLifecycle(
+            data.Totals.Maintenance.Deployed,
+            data.Totals.Maintenance.EnRoute,
+            data.Totals.Maintenance.Building,
+            data.Totals.MaintenanceCommitted
         );
     }
 
@@ -323,6 +356,34 @@ public sealed class StrategyHudView : MonoBehaviour
     }
 
     /// <summary>
+    /// Formats the two future values shown beside the dominant current value.
+    /// </summary>
+    /// <param name="afterDelivery">The value after in-transit items arrive.</param>
+    /// <param name="afterCompletion">The value after all committed items are complete.</param>
+    /// <param name="signed">Whether positive values include a plus sign.</param>
+    /// <returns>The formatted forecast column.</returns>
+    private static string FormatForecast(
+        double afterDelivery,
+        double afterCompletion,
+        bool signed = false
+    )
+    {
+        string deliveryValue = signed
+            ? FormatSigned((int)afterDelivery)
+            : FormatRate(afterDelivery);
+        string completionValue = signed
+            ? FormatSigned((int)afterCompletion)
+            : FormatRate(afterCompletion);
+        return string.Join(
+            "\n",
+            $"<size=9><b>{deliveryValue}</b></size>",
+            "<size=5.5><color=#A8A8A8>After delivery</color></size>",
+            $"<size=9><b>{completionValue}</b></size>",
+            "<size=5.5><color=#A8A8A8>Built and delivered</color></size>"
+        );
+    }
+
+    /// <summary>
     /// Formats positive maintenance headroom with an explicit plus sign.
     /// </summary>
     /// <param name="value">The maintenance headroom.</param>
@@ -330,6 +391,23 @@ public sealed class StrategyHudView : MonoBehaviour
     private static string FormatSigned(int value)
     {
         return value.ToString("+0;-0;0", CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>
+    /// Formats the deployed, delivering, manufacturing, and total lifecycle strip.
+    /// </summary>
+    /// <param name="deployed">The deployed count or maintenance cost.</param>
+    /// <param name="enRoute">The in-transit count or maintenance cost.</param>
+    /// <param name="building">The manufacturing count or maintenance cost.</param>
+    /// <param name="total">The committed total.</param>
+    /// <returns>The formatted lifecycle strip.</returns>
+    private static string FormatLifecycle(int deployed, int enRoute, int building, int total)
+    {
+        return string.Join(
+            "\n",
+            $"<size=9><b>{deployed}</b></size><pos=25%><size=9><b>+{enRoute}</b></size><pos=50%><size=9><b>+{building}</b></size><pos=79%><size=9><b>{total}</b></size>",
+            "<size=5.5><color=#A8A8A8>Deployed</color></size><pos=25%><size=5.5><color=#A8A8A8>In transit</color></size><pos=50%><size=5.5><color=#A8A8A8>Building</color></size><pos=79%><size=5.5><color=#A8A8A8>Total</color></size>"
+        );
     }
 
     /// <summary>
@@ -684,15 +762,21 @@ public sealed class StrategyHudView : MonoBehaviour
             resourceBreakdownHoverViews == null
             || resourceBreakdownPanels == null
             || resourceBreakdownTitleTextFields == null
-            || resourceBreakdownBodyTextFields == null
+            || resourceBreakdownPrimaryTextFields == null
+            || resourceBreakdownForecastTextFields == null
+            || resourceBreakdownLifecycleTextFields == null
             || resourceBreakdownHoverViews.Length != 3
             || resourceBreakdownPanels.Length != 3
             || resourceBreakdownTitleTextFields.Length != 3
-            || resourceBreakdownBodyTextFields.Length != 3
+            || resourceBreakdownPrimaryTextFields.Length != 3
+            || resourceBreakdownForecastTextFields.Length != 3
+            || resourceBreakdownLifecycleTextFields.Length != 3
             || Array.Exists(resourceBreakdownHoverViews, item => item == null)
             || Array.Exists(resourceBreakdownPanels, item => item == null)
             || Array.Exists(resourceBreakdownTitleTextFields, item => item == null)
-            || Array.Exists(resourceBreakdownBodyTextFields, item => item == null)
+            || Array.Exists(resourceBreakdownPrimaryTextFields, item => item == null)
+            || Array.Exists(resourceBreakdownForecastTextFields, item => item == null)
+            || Array.Exists(resourceBreakdownLifecycleTextFields, item => item == null)
         )
             throw new MissingReferenceException($"{name}/ResourceBreakdown popovers are missing.");
         if (advisorView == null)

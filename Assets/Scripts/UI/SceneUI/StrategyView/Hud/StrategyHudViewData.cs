@@ -84,6 +84,12 @@ public sealed class StrategyHudResourceBreakdown
             0,
             0,
             0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
             StrategyHudMaintenanceBreakdown.Empty
         );
 
@@ -95,6 +101,10 @@ public sealed class StrategyHudResourceBreakdown
 
     public int EnRouteMines { get; }
 
+    public int DeployedMines => ActiveMines + OfflineMines;
+
+    public int TotalMines => DeployedMines + EnRouteMines + BuildingMines;
+
     public int ActiveRefineries { get; }
 
     public int OfflineRefineries { get; }
@@ -103,19 +113,38 @@ public sealed class StrategyHudResourceBreakdown
 
     public int EnRouteRefineries { get; }
 
+    public int DeployedRefineries => ActiveRefineries + OfflineRefineries;
+
+    public int TotalRefineries => DeployedRefineries + EnRouteRefineries + BuildingRefineries;
+
     public double RawOutputPerTick { get; }
+
+    public double DeliveredRawOutputPerTick { get; }
+
+    public double ProjectedRawOutputPerTick { get; }
 
     public double RefinedOutputPerTick { get; }
 
+    public double DeliveredRefinedOutputPerTick { get; }
+
+    public double ProjectedRefinedOutputPerTick { get; }
+
     public int MaintenanceCapacity { get; }
+
+    public int DeliveredMaintenanceCapacity { get; }
+
+    public int ProjectedMaintenanceCapacity { get; }
 
     public StrategyHudMaintenanceBreakdown Maintenance { get; }
 
-    public double RawNetPerTick => RawOutputPerTick - RefinedOutputPerTick;
-
     public int MaintenanceCommitted => Maintenance.Committed;
 
-    public int MaintenanceHeadroom => MaintenanceCapacity - MaintenanceCommitted;
+    public int MaintenanceHeadroom => MaintenanceCapacity - Maintenance.Deployed;
+
+    public int DeliveredMaintenanceHeadroom =>
+        DeliveredMaintenanceCapacity - Maintenance.AfterDelivery;
+
+    public int ProjectedMaintenanceHeadroom => ProjectedMaintenanceCapacity - MaintenanceCommitted;
 
     /// <summary>
     /// Creates immutable resource-facility totals.
@@ -129,8 +158,14 @@ public sealed class StrategyHudResourceBreakdown
     /// <param name="buildingRefineries">The refineries under construction.</param>
     /// <param name="enRouteRefineries">The refineries traveling to a destination.</param>
     /// <param name="rawOutputPerTick">The gross raw-material output per tick.</param>
+    /// <param name="deliveredRawOutputPerTick">The gross raw-material output after deliveries.</param>
+    /// <param name="projectedRawOutputPerTick">The projected gross raw-material output per tick.</param>
     /// <param name="refinedOutputPerTick">The gross refined-material output per tick.</param>
+    /// <param name="deliveredRefinedOutputPerTick">The gross refined-material output after deliveries.</param>
+    /// <param name="projectedRefinedOutputPerTick">The projected gross refined-material output per tick.</param>
     /// <param name="maintenanceCapacity">The available maintenance capacity.</param>
+    /// <param name="deliveredMaintenanceCapacity">The maintenance capacity after deliveries.</param>
+    /// <param name="projectedMaintenanceCapacity">The projected maintenance capacity.</param>
     /// <param name="maintenance">The maintenance committed by asset category.</param>
     public StrategyHudResourceBreakdown(
         int activeMines,
@@ -142,8 +177,14 @@ public sealed class StrategyHudResourceBreakdown
         int buildingRefineries,
         int enRouteRefineries,
         double rawOutputPerTick,
+        double deliveredRawOutputPerTick,
+        double projectedRawOutputPerTick,
         double refinedOutputPerTick,
+        double deliveredRefinedOutputPerTick,
+        double projectedRefinedOutputPerTick,
         int maintenanceCapacity,
+        int deliveredMaintenanceCapacity,
+        int projectedMaintenanceCapacity,
         StrategyHudMaintenanceBreakdown maintenance
     )
     {
@@ -156,8 +197,14 @@ public sealed class StrategyHudResourceBreakdown
         BuildingRefineries = buildingRefineries;
         EnRouteRefineries = enRouteRefineries;
         RawOutputPerTick = rawOutputPerTick;
+        DeliveredRawOutputPerTick = deliveredRawOutputPerTick;
+        ProjectedRawOutputPerTick = projectedRawOutputPerTick;
         RefinedOutputPerTick = refinedOutputPerTick;
+        DeliveredRefinedOutputPerTick = deliveredRefinedOutputPerTick;
+        ProjectedRefinedOutputPerTick = projectedRefinedOutputPerTick;
         MaintenanceCapacity = maintenanceCapacity;
+        DeliveredMaintenanceCapacity = deliveredMaintenanceCapacity;
+        ProjectedMaintenanceCapacity = projectedMaintenanceCapacity;
         Maintenance = maintenance ?? StrategyHudMaintenanceBreakdown.Empty;
     }
 }
@@ -168,7 +215,7 @@ public sealed class StrategyHudResourceBreakdown
 public sealed class StrategyHudMaintenanceBreakdown
 {
     public static StrategyHudMaintenanceBreakdown Empty { get; } =
-        new StrategyHudMaintenanceBreakdown(0, 0, 0, 0, 0, 0);
+        new StrategyHudMaintenanceBreakdown(0, 0, 0, 0, 0, 0, 0, 0, 0);
 
     public int CapitalShips { get; }
 
@@ -182,6 +229,14 @@ public sealed class StrategyHudMaintenanceBreakdown
 
     public int Orders { get; }
 
+    public int Deployed { get; }
+
+    public int EnRoute { get; }
+
+    public int Building { get; }
+
+    public int AfterDelivery => Deployed + EnRoute;
+
     public int Committed =>
         CapitalShips + Starfighters + Regiments + SpecialForces + Facilities + Orders;
 
@@ -194,13 +249,19 @@ public sealed class StrategyHudMaintenanceBreakdown
     /// <param name="specialForces">Maintenance committed to special forces.</param>
     /// <param name="facilities">Maintenance committed to facilities.</param>
     /// <param name="orders">Maintenance reserved by unfinished orders.</param>
+    /// <param name="deployed">Maintenance used by deployed assets.</param>
+    /// <param name="enRoute">Maintenance used by assets being delivered.</param>
+    /// <param name="building">Maintenance reserved by assets being manufactured.</param>
     public StrategyHudMaintenanceBreakdown(
         int capitalShips,
         int starfighters,
         int regiments,
         int specialForces,
         int facilities,
-        int orders
+        int orders,
+        int deployed,
+        int enRoute,
+        int building
     )
     {
         CapitalShips = capitalShips;
@@ -209,6 +270,9 @@ public sealed class StrategyHudMaintenanceBreakdown
         SpecialForces = specialForces;
         Facilities = facilities;
         Orders = orders;
+        Deployed = deployed;
+        EnRoute = enRoute;
+        Building = building;
     }
 }
 
