@@ -57,6 +57,7 @@ namespace Rebellion.Tests.Simulation
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
             Assert.AreEqual(MissionOutcome.Foiled, completed.Outcome);
             Assert.AreEqual(MissionCompletionReason.Foiled, completed.CompletionReason);
+            Assert.IsNull(completed.FoilingFactionInstanceID);
             Assert.IsTrue(officer.IsCaptured);
             Assert.AreEqual(
                 mission.InstanceID,
@@ -867,11 +868,10 @@ namespace Rebellion.Tests.Simulation
 
             List<GameResult> results = system.UpdateMission(mission);
 
-            Assert.IsTrue(
-                results
-                    .OfType<MissionCompletedResult>()
-                    .Any(result => result.Outcome == MissionOutcome.Foiled)
-            );
+            MissionCompletedResult completed = results
+                .OfType<MissionCompletedResult>()
+                .Single(result => result.Outcome == MissionOutcome.Foiled);
+            Assert.AreEqual(defender.OwnerInstanceID, completed.FoilingFactionInstanceID);
         }
 
         [Test]
@@ -2078,11 +2078,10 @@ namespace Rebellion.Tests.Simulation
 
             List<GameResult> results = system.UpdateMission(mission);
 
-            Assert.IsTrue(
-                results
-                    .OfType<MissionCompletedResult>()
-                    .Any(result => result.Outcome == MissionOutcome.Foiled)
-            );
+            MissionCompletedResult completed = results
+                .OfType<MissionCompletedResult>()
+                .Single(result => result.Outcome == MissionOutcome.Foiled);
+            Assert.AreEqual(defender.OwnerInstanceID, completed.FoilingFactionInstanceID);
             Assert.IsTrue(spy.IsCaptured);
             Assert.AreEqual(
                 mission.InstanceID,

@@ -21,11 +21,13 @@ namespace Rebellion.Game.Missions
         /// <param name="mission">The mission executing its lifecycle.</param>
         /// <param name="phase">The encounter checkpoint being resolved.</param>
         /// <param name="results">The result collection receiving detection consequences.</param>
+        /// <param name="foilingFactionInstanceID">The faction whose forces foiled the mission, or null when the foil was internal.</param>
         /// <returns>True when detection foils the mission.</returns>
         bool ResolveEncounter(
             Mission mission,
             MissionEncounterPhase phase,
-            List<GameResult> results
+            List<GameResult> results,
+            out string foilingFactionInstanceID
         );
 
         /// <summary>
@@ -1018,13 +1020,15 @@ namespace Rebellion.Game.Missions
 
             List<IMissionParticipant> participantsBeforeDetection = GetAllParticipants();
             bool wasDetected = false;
+            string foilingFactionInstanceID = null;
             if (!DetectionResolved)
             {
                 DetectionResolved = true;
                 wasDetected = runtime.ResolveEncounter(
                     this,
                     MissionEncounterPhase.Arrival,
-                    results
+                    results,
+                    out foilingFactionInstanceID
                 );
             }
             if (wasDetected)
@@ -1036,6 +1040,7 @@ namespace Rebellion.Game.Missions
                     game,
                     participantsBeforeDetection
                 );
+                completed.FoilingFactionInstanceID = foilingFactionInstanceID;
                 results.Add(completed);
                 runtime.FinishMission(this, completed, results);
                 return results;
@@ -1052,7 +1057,8 @@ namespace Rebellion.Game.Missions
                 wasDetected = runtime.ResolveEncounter(
                     this,
                     MissionEncounterPhase.PreObjective,
-                    results
+                    results,
+                    out foilingFactionInstanceID
                 );
             }
             if (wasDetected)
@@ -1064,6 +1070,7 @@ namespace Rebellion.Game.Missions
                     game,
                     participantsBeforeDetection
                 );
+                completed.FoilingFactionInstanceID = foilingFactionInstanceID;
                 results.Add(completed);
                 runtime.FinishMission(this, completed, results);
                 return results;
