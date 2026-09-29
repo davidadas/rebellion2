@@ -17,6 +17,8 @@ public sealed class PlanetSectorPlanetView
         IPointerClickHandler,
         IDropHandler
 {
+    private const int _galacticInformationMarkerBottomOverhang = 4;
+
     private static readonly PlanetIcon[] _hitTestIcons =
     {
         PlanetIcon.Facility,
@@ -410,7 +412,7 @@ public sealed class PlanetSectorPlanetView
     }
 
     /// <summary>
-    /// Centers the active filter marker behind the planet at its texture-authored size.
+    /// Positions the active filter marker at the planet's lower-left edge.
     /// </summary>
     /// <param name="texture">The active filter marker texture, or null.</param>
     /// <param name="planetBounds">The authored planet-image bounds.</param>
@@ -422,12 +424,15 @@ public sealed class PlanetSectorPlanetView
             return;
 
         Vector2Int size = UILayout.GetTextureSourceSize(texture);
-        int centerX = planetBounds.x + planetBounds.width / 2;
-        int centerY = planetBounds.y + planetBounds.height / 2;
+        int markerY =
+            planetBounds.y
+            + planetBounds.height
+            + _galacticInformationMarkerBottomOverhang
+            - size.y;
         UILayout.SetSourceRect(
             galacticInformationImage.rectTransform,
-            centerX - size.x / 2,
-            centerY - size.y / 2,
+            planetBounds.x,
+            markerY,
             size.x,
             size.y
         );

@@ -11,6 +11,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
     [TestFixture]
     public class PlanetSectorPlanetViewTests
     {
+        private const int _galacticInformationMarkerBottomOverhang = 4;
+        private const int _galacticInformationMarkerSourceSize = 15;
+        private const int _galacticInformationTexturePixelSize = 68;
         private const string _prefabPath =
             "Assets/Prefabs/UI/StrategyView/PlanetSectorPlanet.prefab";
 
@@ -34,7 +37,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             _planetTexture = new Texture2D(100, 80);
             _normalTexture = new Texture2D(24, 24);
             _pressedTexture = new Texture2D(24, 24);
-            _galacticInformationTexture = new Texture2D(196, 164);
+            _galacticInformationTexture = new Texture2D(
+                _galacticInformationTexturePixelSize,
+                _galacticInformationTexturePixelSize
+            );
             _headquartersTexture = new Texture2D(16, 16);
             _uprisingTexture = new Texture2D(167, 167);
             UIComponentTestHelper.InvokeLifecycle(_view, "Awake");
@@ -90,21 +96,24 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             RectInt galacticInformationBounds = GetSourceRect(galacticInformationImage.transform);
             Assert.AreSame(_galacticInformationTexture, galacticInformationImage.texture);
             Assert.AreEqual(
-                UILayout.GetTextureSourceSize(_galacticInformationTexture),
+                new Vector2Int(
+                    _galacticInformationMarkerSourceSize,
+                    _galacticInformationMarkerSourceSize
+                ),
                 galacticInformationBounds.size
             );
+            Assert.AreEqual(planetTemplate.x, galacticInformationBounds.x);
             Assert.AreEqual(
-                planetTemplate.x + planetTemplate.width / 2,
-                galacticInformationBounds.x + galacticInformationBounds.width / 2
-            );
-            Assert.AreEqual(
-                planetTemplate.y + planetTemplate.height / 2,
-                galacticInformationBounds.y + galacticInformationBounds.height / 2
+                planetTemplate.y
+                    + planetTemplate.height
+                    + _galacticInformationMarkerBottomOverhang
+                    - _galacticInformationMarkerSourceSize,
+                galacticInformationBounds.y
             );
             Assert.IsFalse(galacticInformationImage.raycastTarget);
-            Assert.Less(
+            Assert.Greater(
                 galacticInformationImage.transform.GetSiblingIndex(),
-                GetField<RawImage>("planetImage").transform.GetSiblingIndex()
+                GetField<RawImage>("uprisingImage").transform.GetSiblingIndex()
             );
             RawImage uprisingImage = GetField<RawImage>("uprisingImage");
             Assert.AreSame(_uprisingTexture, uprisingImage.texture);

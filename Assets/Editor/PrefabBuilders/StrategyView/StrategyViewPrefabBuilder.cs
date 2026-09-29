@@ -211,6 +211,9 @@ public static class StrategyViewPrefabBuilder
     private const float _galaxyProjectionWidth = 315f;
     private const float _galaxyProjectionHeight = 215f;
     private const int _planetPreviewWidth = 37;
+    private const int _planetSectorGalacticInformationMarkerBottomOverhang = 4;
+    private const int _planetSectorGalacticInformationMarkerHeight = 15;
+    private const int _planetSectorGalacticInformationMarkerWidth = 15;
     private const int _planetSectorPlanetImageWidth = 37;
     private const int _planetSectorPlanetImageHeight = 37;
     private const int _planetSectorFacilityIconWidth = 27;
@@ -7778,16 +7781,6 @@ public static class StrategyViewPrefabBuilder
         hitArea.raycastTarget = false;
         hitArea.canvasRenderer.cullTransparentMesh = false;
         UILayout.SetStretch(hitArea.rectTransform);
-        RawImage galacticInformation = CreateRawImage(
-            "GalacticInformationImage",
-            root.transform,
-            PreviewTheme?.GalaxyBackground?.PlanetIcons?.Small,
-            10,
-            1,
-            _planetSectorPlanetImageWidth,
-            _planetSectorPlanetImageHeight
-        );
-        galacticInformation.raycastTarget = false;
         RawImage planet = CreateRawImage(
             "PlanetImage",
             root.transform,
@@ -7807,6 +7800,19 @@ public static class StrategyViewPrefabBuilder
             _planetSectorPlanetImageHeight
         );
         uprising.raycastTarget = false;
+        RawImage galacticInformation = CreateRawImage(
+            "GalacticInformationImage",
+            root.transform,
+            PreviewTheme?.GalaxyBackground?.PlanetIcons?.Small,
+            10,
+            1
+                + _planetSectorPlanetImageHeight
+                + _planetSectorGalacticInformationMarkerBottomOverhang
+                - _planetSectorGalacticInformationMarkerHeight,
+            _planetSectorGalacticInformationMarkerWidth,
+            _planetSectorGalacticInformationMarkerHeight
+        );
+        galacticInformation.raycastTarget = false;
         RawImage facility = CreateRawImage(
             "FacilityImage",
             root.transform,
