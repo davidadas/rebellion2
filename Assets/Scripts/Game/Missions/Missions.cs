@@ -159,7 +159,7 @@ namespace Rebellion.Game.Missions
 
         /// <summary>
         /// Resolves every participant attempt while applying the capture operation immediately
-        /// after each successful attempt, as in the original mission dispatcher.
+        /// after each successful attempt.
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <param name="provider">RNG provider for success, injury, and death rolls.</param>
@@ -205,7 +205,7 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Applies the original capture injury check, then captures the target if they survive.
+        /// Applies the capture injury check, then captures the target if they survive.
         /// Minor personnel can die from the injury; main characters cannot.
         /// </summary>
         /// <param name="game">The current game state.</param>
@@ -224,7 +224,7 @@ namespace Rebellion.Game.Missions
 
             List<GameResult> results = new List<GameResult>();
             if (
-                ApplyCaptureEvasionInjury(
+                ApplyEvasionInjury(
                     target,
                     successfulParticipant,
                     GetParent() as Planet,
@@ -508,7 +508,7 @@ namespace Rebellion.Game.Missions
 
         /// <summary>
         /// Applies assassination injury to the target. Only minor personnel receive the
-        /// original post-injury death roll; main characters always survive the hit.
+        /// post-injury death roll; main characters always survive the hit.
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <param name="provider">RNG provider for injury dice and kill check.</param>
@@ -588,6 +588,9 @@ namespace Rebellion.Game.Missions
     {
         public const string MissionTypeID = "Diplomacy";
 
+        [PersistableMember(Name = "StartingTargetOwnerInstanceID")]
+        private string _startingTargetOwnerInstanceId;
+
         /// <summary>
         /// Returns whether successful participants remain on the target planet.
         /// </summary>
@@ -596,6 +599,17 @@ namespace Rebellion.Game.Missions
         /// <summary>Creates an empty diplomacy mission copy.</summary>
         /// <returns>An empty diplomacy mission.</returns>
         protected override BaseSceneNode CreateNodeCopy() => new DiplomacyMission();
+
+        /// <summary>
+        /// Copies the target ownership snapshot used to distinguish a declaration of neutrality.
+        /// </summary>
+        /// <param name="destination">The copied diplomacy mission.</param>
+        protected override void CopyStateTo(BaseSceneNode destination)
+        {
+            base.CopyStateTo(destination);
+            ((DiplomacyMission)destination)._startingTargetOwnerInstanceId =
+                _startingTargetOwnerInstanceId;
+        }
 
         /// <summary>
         /// Default constructor used for deserialization.
@@ -628,7 +642,10 @@ namespace Rebellion.Game.Missions
                 mainParticipants,
                 decoyParticipants,
                 SkillRating.Diplomacy
-            ) { }
+            )
+        {
+            _startingTargetOwnerInstanceId = target.GetOwnerInstanceID() ?? string.Empty;
+        }
 
         /// <summary>
         /// Returns a new DiplomacyMission if the target is a valid planet, or null.
@@ -675,7 +692,10 @@ namespace Rebellion.Game.Missions
             if (GetParent() is Planet planet)
             {
                 string owner = planet.GetOwnerInstanceID();
+                _startingTargetOwnerInstanceId ??= owner ?? string.Empty;
                 if (owner != null && owner != OwnerInstanceID)
+                    return MissionCompletionReason.TargetChangedSides;
+                if (owner == null && _startingTargetOwnerInstanceId == OwnerInstanceID)
                     return MissionCompletionReason.TargetChangedSides;
                 if (planet.IsInUprising)
                     return MissionCompletionReason.Failure;
@@ -1011,7 +1031,7 @@ namespace Rebellion.Game.Missions
         /// <summary>
         /// Returns whether the target belongs to a faction other than the mission owner.
         /// Neutral and owner-controlled planets still produce their direct intelligence snapshot,
-        /// but do not grant the original game's additional-system bonus.
+        /// but do not grant the additional-system bonus.
         /// </summary>
         /// <param name="game">The game.</param>
         /// <param name="targetPlanet">The target planet.</param>
@@ -1195,7 +1215,7 @@ namespace Rebellion.Game.Missions
         /// or the mission faction has troops present there.
         /// </summary>
         /// <param name="game">The current game state.</param>
-        /// <returns>True while the original mission executor would leave the task active.</returns>
+        /// <returns>True while the mission should remain active.</returns>
         public override bool ShouldRepeatAfterCompletion(GameRoot game)
         {
             if (GetParent() is not Planet planet)
@@ -2241,9 +2261,7 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Resolves whether research can execute after participants arrive.
-        /// A matching facility is required to issue the mission, but the original game does not
-        /// cancel active research if that facility is subsequently destroyed.
+        /// Resolves whether research can continue while its objective timer advances.
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <returns>The failure reason, or null when research can advance.</returns>
@@ -2253,9 +2271,12 @@ namespace Rebellion.Game.Missions
             if (reason.HasValue)
                 return reason;
 
-            return GetParent() is Planet p && p.GetOwnerInstanceID() == OwnerInstanceID
+            if (GetParent() is not Planet planet || planet.GetOwnerInstanceID() != OwnerInstanceID)
+                return MissionCompletionReason.TargetUnavailable;
+
+            return HasResearchFacility(planet, Discipline)
                 ? null
-                : MissionCompletionReason.TargetUnavailable;
+                : MissionCompletionReason.NoResearchFacilities;
         }
 
         /// <summary>
@@ -2717,7 +2738,7 @@ namespace Rebellion.Game.Missions
                 && regiment.ManufacturingStatus == ManufacturingStatus.Complete
                 && regiment.Movement == null;
             Fleet targetFleet = target is CapitalShip ? target.GetParentOfType<Fleet>() : null;
-            game.DetachNode(target);
+            game.DeleteNode(target);
             if (targetFleet?.GetChildren<CapitalShip>().Count == 0)
                 game.DetachNode(targetFleet);
 

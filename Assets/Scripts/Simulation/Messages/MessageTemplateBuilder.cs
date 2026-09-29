@@ -26,6 +26,8 @@ namespace Rebellion.Simulation
         /// <param name="imageOverride">The image path to use instead of the definition image path.</param>
         /// <param name="overlayImagePath">The overlay image path to assign to the message.</param>
         /// <param name="officerVoicePath">The officer voice path to assign to the message.</param>
+        /// <param name="subjectTemplate">The optional subject template override.</param>
+        /// <param name="bodyTemplate">The optional body template override.</param>
         /// <returns>The prepared delivery, or null when no definition was provided.</returns>
         public MessageDelivery Build(
             MessageDefinition definition,
@@ -34,7 +36,9 @@ namespace Rebellion.Simulation
             Faction imageFaction = null,
             string imageOverride = null,
             string overlayImagePath = null,
-            string officerVoicePath = null
+            string officerVoicePath = null,
+            string subjectTemplate = null,
+            string bodyTemplate = null
         )
         {
             if (definition == null)
@@ -53,8 +57,8 @@ namespace Rebellion.Simulation
                     );
             }
 
-            string title = Interpolate(definition.Subject, values);
-            string body = Interpolate(definition.Body, values);
+            string title = Interpolate(subjectTemplate ?? definition.Subject, values);
+            string body = Interpolate(bodyTemplate ?? definition.Body, values);
 
             return new MessageDelivery
             {

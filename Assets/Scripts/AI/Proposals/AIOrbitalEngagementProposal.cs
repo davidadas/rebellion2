@@ -214,7 +214,8 @@ namespace Rebellion.AI.Proposals
             int required = context.GetAttackDemand(targetPlanet)?.OrbitalStrength ?? 0;
             return required > 0
                 && Fleet?.HasOperationalCapitalShips() == true
-                && context.Assessment.GetReadyFleetCombatValue(Fleet) >= required;
+                && context.Assessment.GetReadyFleetCombatValueAgainstCapitalShips(Fleet)
+                    >= required;
         }
 
         /// <summary>
@@ -227,7 +228,8 @@ namespace Rebellion.AI.Proposals
         {
             int required = context.GetAttackDemand(targetPlanet)?.OrbitalStrength ?? 0;
             return required > 0
-                && context.Assessment.GetProjectedFleetCombatValue(Fleet) >= required;
+                && context.Assessment.GetProjectedFleetCombatValueAgainstCapitalShips(Fleet)
+                    >= required;
         }
 
         /// <summary>
@@ -249,7 +251,9 @@ namespace Rebellion.AI.Proposals
                 ? demand.OccupationRegimentCount
                 : demand.RegimentCount;
             int requiredRegimentStrength = canBombardDefenders ? 0 : demand.RegimentStrength;
-            int availableCombat = context.Assessment.GetReadyFleetCombatValue(Fleet);
+            int availableCombat = context.Assessment.GetReadyFleetCombatValueAgainstCapitalShips(
+                Fleet
+            );
             return Fleet?.HasOperationalCapitalShips() == true
                 && availableCombat > 0
                 && availableCombat >= demand.CombatStrength

@@ -879,8 +879,12 @@ namespace Rebellion.AI.Planners
 
             int contribution = demand.CapitalShipRole switch
             {
-                AICapitalShipProductionRole.General =>
-                    context.Assessment.GetProjectedCapitalShipCombatValue(capitalShip),
+                AICapitalShipProductionRole.General => demand.DestinationFleet?.Order?.OrderType
+                == FleetOrderType.Attack
+                    ? context.Assessment.GetProjectedCapitalShipCombatValueAgainstCapitalShips(
+                        capitalShip
+                    )
+                    : context.Assessment.GetProjectedCapitalShipCombatValue(capitalShip),
                 AICapitalShipProductionRole.TroopTransport => capitalShip.RegimentCapacity,
                 AICapitalShipProductionRole.Bombardment =>
                     context.Assessment.GetProjectedCapitalShipBombardmentStrength(

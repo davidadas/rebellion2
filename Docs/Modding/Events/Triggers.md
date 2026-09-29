@@ -169,7 +169,7 @@ Activates when a mission completes.
 
 - `MissionTypeID` **[Optional]:** The `TypeID` of the mission that must have completed.
 - `Outcome` **[Optional]:** Accepts `Success`, `Failed`, or `Foiled`.
-- `CompletionReason` **[Optional]:** Accepts `None`, `Success`, `Failure`, `Foiled`, `TargetUnavailable`, `NoResearchFacilities`, `ResearchProgress`, or `ResearchBreakthrough`.
+- `CompletionReason` **[Optional]:** Accepts `None`, `Success`, `Failure`, `Foiled`, `TargetUnavailable`, `TargetChangedSides`, `NoResearchFacilities`, `ResearchProgress`, or `ResearchBreakthrough`.
 - `SourceEventInstanceID` **[Optional]:** The `InstanceID` of the authored event that must have produced the result.
 - `Bindings` **[Optional]:** Supports `Mission`, `MissionName`, `MissionTypeID`, `TargetName`, `Location`, `ReturnDestination`, `Participants`, `Outcome`, `CompletionReason`, and `CanContinue`.
 - `Participants` **[Optional]:** Optionally requires `Any` or `All` listed units to have participated.

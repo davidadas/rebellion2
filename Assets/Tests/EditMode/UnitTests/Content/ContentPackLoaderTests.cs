@@ -132,6 +132,31 @@ namespace Rebellion.Tests.Content
             );
         }
 
+        [Test]
+        public void LoadGameConfig_DefaultMissionExecutionSpeedIncrease_MatchesDifficulty()
+        {
+            GameConfig config = ContentPackLoader.LoadGameConfig(
+                TestContent.Pack.ContentRootPath,
+                TestContent.Pack.PackRootPath,
+                TestContent.Pack.Definition.GameConfigPath
+            );
+
+            Assert.AreEqual(
+                0,
+                config.DifficultyModifiers[GameDifficulty.Easy].MissionExecutionSpeedIncreasePercent
+            );
+            Assert.AreEqual(
+                0,
+                config
+                    .DifficultyModifiers[GameDifficulty.Medium]
+                    .MissionExecutionSpeedIncreasePercent
+            );
+            Assert.AreEqual(
+                50,
+                config.DifficultyModifiers[GameDifficulty.Hard].MissionExecutionSpeedIncreasePercent
+            );
+        }
+
         /// <summary>
         /// Loads game config from fixture.
         /// </summary>

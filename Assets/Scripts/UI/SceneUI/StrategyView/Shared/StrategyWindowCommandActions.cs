@@ -14,6 +14,18 @@ public interface IStrategyWindowCommandActions
     void ExecuteTargetedCommand(StrategyWindowTargetingSource source, StrategyMissionTarget target);
 
     /// <summary>
+    /// Resolves a completed item drop to its mission or movement command.
+    /// </summary>
+    /// <param name="sourceWindow">The strategy window that owns the dragged selection.</param>
+    /// <param name="target">The exact drop target.</param>
+    /// <param name="items">The dragged scene nodes.</param>
+    void ExecuteItemDrop(
+        UIWindow sourceWindow,
+        StrategyMissionTarget target,
+        IReadOnlyList<ISceneNode> items
+    );
+
+    /// <summary>
     /// Opens mission creation for selected participants and a target.
     /// </summary>
     /// <param name="target">The selected mission target.</param>

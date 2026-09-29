@@ -813,7 +813,6 @@ public sealed class StrategyController
             TryGetDragPreview,
             TryGetSourcePosition,
             GetGalaxyMapDropTarget,
-            () => PlayerFactionId,
             windowCommandController,
             strategyWindowLayerView.ItemDragStartDistance
         );

@@ -16,6 +16,7 @@ namespace Rebellion.Analyzers
         public const string MissingTypeParameterDiagnosticId = "REB0004";
         public const string MissingReturnsDiagnosticId = "REB0005";
         public const string InheritdocDiagnosticId = "REB0007";
+        public const string TestCommentDiagnosticId = "REB0009";
 
         private static readonly ImmutableHashSet<string> _testAttributeNames =
             ImmutableHashSet.Create("Test", "TestCase", "TestCaseSource", "UnityTest");
@@ -67,13 +68,23 @@ namespace Rebellion.Analyzers
             isEnabledByDefault: true
         );
 
+        private static readonly DiagnosticDescriptor _testCommentRule = new DiagnosticDescriptor(
+            TestCommentDiagnosticId,
+            "Test methods must not have leading comments",
+            "Test method '{0}' must not have a leading comment",
+            "Documentation",
+            DiagnosticSeverity.Error,
+            isEnabledByDefault: true
+        );
+
         public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
             ImmutableArray.Create(
                 _missingSummaryRule,
                 _missingParameterRule,
                 _missingTypeParameterRule,
                 _missingReturnsRule,
-                _inheritdocRule
+                _inheritdocRule,
+                _testCommentRule
             );
 
         /// <summary>
@@ -99,7 +110,19 @@ namespace Rebellion.Analyzers
         {
             BaseMethodDeclarationSyntax declaration = (BaseMethodDeclarationSyntax)context.Node;
             if (declaration is MethodDeclarationSyntax testMethod && IsTestMethod(testMethod))
+            {
+                if (HasLeadingComment(testMethod))
+                {
+                    context.ReportDiagnostic(
+                        Diagnostic.Create(
+                            _testCommentRule,
+                            testMethod.GetLocation(),
+                            testMethod.Identifier.ValueText
+                        )
+                    );
+                }
                 return;
+            }
 
             DocumentationCommentTriviaSyntax documentation = declaration
                 .GetLeadingTrivia()
@@ -205,6 +228,52 @@ namespace Rebellion.Analyzers
                         : name
                 )
                 .Any(_testAttributeNames.Contains);
+        }
+
+        /// <summary>
+        /// Checks whether a test declaration has a comment before its method name.
+        /// </summary>
+        /// <param name="method">The test method declaration to inspect.</param>
+        /// <returns>True when the declaration has a leading comment.</returns>
+        private static bool HasLeadingComment(MethodDeclarationSyntax method)
+        {
+            return method.GetLeadingTrivia().Any(IsAttachedLeadingComment)
+                || method
+                    .DescendantTrivia(descendIntoTrivia: true)
+                    .Any(trivia =>
+                        trivia.SpanStart >= method.SpanStart
+                        && trivia.SpanStart < method.Identifier.SpanStart
+                        && IsComment(trivia)
+                    );
+        }
+
+        /// <summary>
+        /// Checks whether leading trivia is a comment directly attached to its following token.
+        /// </summary>
+        /// <param name="trivia">The syntax trivia to inspect.</param>
+        /// <returns>True when the trivia is an attached comment.</returns>
+        private static bool IsAttachedLeadingComment(SyntaxTrivia trivia)
+        {
+            if (!IsComment(trivia) || !trivia.Token.LeadingTrivia.Contains(trivia))
+                return false;
+
+            FileLinePositionSpan commentLines = trivia.GetLocation().GetLineSpan();
+            FileLinePositionSpan tokenLines = trivia.Token.GetLocation().GetLineSpan();
+            return tokenLines.StartLinePosition.Line
+                <= commentLines.EndLinePosition.Line + 1;
+        }
+
+        /// <summary>
+        /// Checks whether trivia is a regular or documentation comment.
+        /// </summary>
+        /// <param name="trivia">The syntax trivia to inspect.</param>
+        /// <returns>True when the trivia is a comment.</returns>
+        private static bool IsComment(SyntaxTrivia trivia)
+        {
+            return trivia.IsKind(SyntaxKind.SingleLineCommentTrivia)
+                || trivia.IsKind(SyntaxKind.MultiLineCommentTrivia)
+                || trivia.IsKind(SyntaxKind.SingleLineDocumentationCommentTrivia)
+                || trivia.IsKind(SyntaxKind.MultiLineDocumentationCommentTrivia);
         }
 
         /// <summary>

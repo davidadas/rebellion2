@@ -2118,8 +2118,10 @@ namespace Rebellion.Tests.Simulation
                             MessageResultType.MissionReport,
                             MessageType.Mission,
                             "success",
-                            "body",
-                            outcome: MessageResultOutcome.Success
+                            "body{personnel_status}",
+                            outcome: MessageResultOutcome.Success,
+                            personnelReturningTemplate: "Personnel are returning.",
+                            personnelLostTemplate: "All personnel failed to return."
                         ),
                     },
                     new MissionCompletedResult
@@ -2135,6 +2137,7 @@ namespace Rebellion.Tests.Simulation
             );
 
             Assert.AreEqual(mission.InstanceID, message.MissionInstanceID);
+            Assert.AreEqual("body", message.Body);
         }
 
         [Test]
@@ -2187,6 +2190,273 @@ namespace Rebellion.Tests.Simulation
 
             Assert.AreEqual("missing:Sabotage:Yavin", message.Title);
             Assert.AreEqual("missing-body:Sabotage:Yavin", message.Body);
+        }
+
+        [Test]
+        public void CreateMessages_MissionReportWithReturningPersonnel_AppendsDestinationStatus()
+        {
+            (GameRoot game, Faction alliance, _, Planet origin, Planet target) =
+                BuildTwoFactionMessageScene();
+            Mission mission = new SabotageMission
+            {
+                DisplayName = "Sabotage",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            game.AttachNode(mission, target);
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.MissionReport,
+                            MessageType.Mission,
+                            "report",
+                            "complete {personnel_status}",
+                            outcome: MessageResultOutcome.Success,
+                            personnelReturningTemplate: "Personnel are returning to {destination}.",
+                            personnelLostTemplate: "All personnel failed to return."
+                        ),
+                    },
+                    new MissionCompletedResult
+                    {
+                        Mission = mission,
+                        Outcome = MissionOutcome.Success,
+                        ReturnDestination = origin,
+                    }
+                ),
+                alliance
+            );
+
+            Assert.AreEqual("complete Personnel are returning to Coruscant.", message.Body);
+        }
+
+        [Test]
+        public void CreateMessages_MissionReportWithNoReturningPersonnel_AppendsLossStatus()
+        {
+            (GameRoot game, Faction alliance, _, _, Planet target) = BuildTwoFactionMessageScene();
+            Mission mission = new SabotageMission
+            {
+                DisplayName = "Sabotage",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            game.AttachNode(mission, target);
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.MissionReport,
+                            MessageType.Mission,
+                            "report",
+                            "complete {personnel_status}",
+                            outcome: MessageResultOutcome.Failed,
+                            personnelReturningTemplate: "Personnel are returning to {destination}.",
+                            personnelLostTemplate: "All personnel assigned to the mission have failed to return."
+                        ),
+                    },
+                    new MissionCompletedResult
+                    {
+                        Mission = mission,
+                        Outcome = MissionOutcome.Failed,
+                    }
+                ),
+                alliance
+            );
+
+            Assert.AreEqual(
+                "complete All personnel assigned to the mission have failed to return.",
+                message.Body
+            );
+        }
+
+        [Test]
+        public void CreateMessages_MissionReportWithoutOfficer_UsesUnattributedTemplates()
+        {
+            (GameRoot game, Faction alliance, _, _, Planet target) = BuildTwoFactionMessageScene();
+            Mission mission = new SabotageMission
+            {
+                DisplayName = "Sabotage",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            game.AttachNode(mission, target);
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.MissionReport,
+                            MessageType.Mission,
+                            "officer subject",
+                            "officer body",
+                            outcome: MessageResultOutcome.Success,
+                            unattributedSubject: "unit subject",
+                            unattributedBody: "unit body"
+                        ),
+                    },
+                    new MissionCompletedResult
+                    {
+                        Mission = mission,
+                        Outcome = MissionOutcome.Success,
+                    }
+                ),
+                alliance
+            );
+
+            Assert.AreEqual("unit subject", message.Title);
+            Assert.AreEqual("unit body", message.Body);
+        }
+
+        [Test]
+        public void CreateMessages_MissionReportWithCapturedOfficer_UsesUnattributedTemplates()
+        {
+            (GameRoot game, Faction alliance, _, _, Planet target) = BuildTwoFactionMessageScene();
+            Officer officer = new Officer
+            {
+                InstanceID = "captured-officer",
+                DisplayName = "Captured Officer",
+                OwnerInstanceID = alliance.InstanceID,
+                IsCaptured = true,
+                IsMain = true,
+            };
+            Mission mission = new SabotageMission
+            {
+                DisplayName = "Sabotage",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            game.AttachNode(mission, target);
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.MissionReport,
+                            MessageType.Mission,
+                            "officer subject",
+                            "officer body",
+                            outcome: MessageResultOutcome.Foiled,
+                            unattributedSubject: "unit subject",
+                            unattributedBody: "unit body"
+                        ),
+                    },
+                    new MissionCompletedResult
+                    {
+                        Mission = mission,
+                        Participants = new List<IMissionParticipant> { officer },
+                        Outcome = MissionOutcome.Foiled,
+                    }
+                ),
+                alliance
+            );
+
+            Assert.AreEqual("unit subject", message.Title);
+            Assert.AreEqual("unit body", message.Body);
+        }
+
+        [TestCase(
+            SabotageMission.MissionTypeID,
+            MissionCompletionReason.TargetUnavailable,
+            MissionOutcome.Failed,
+            "failed because the target was not found"
+        )]
+        [TestCase(
+            ResearchMission.MissionTypeID,
+            MissionCompletionReason.NoResearchFacilities,
+            MissionOutcome.Failed,
+            "failed because we have no research facilities"
+        )]
+        [TestCase(
+            ResearchMission.MissionTypeID,
+            MissionCompletionReason.ResearchProgress,
+            MissionOutcome.Success,
+            "is making progress"
+        )]
+        [TestCase(
+            DiplomacyMission.MissionTypeID,
+            MissionCompletionReason.TargetChangedSides,
+            MissionOutcome.Failed,
+            "has joined the Empire"
+        )]
+        public void CreateMessages_AuthoredCompletionReason_ReturnsExpectedReport(
+            string missionTypeId,
+            MissionCompletionReason completionReason,
+            MissionOutcome outcome,
+            string expectedBodyText
+        )
+        {
+            (GameRoot game, Faction alliance, _, _, Planet target) = BuildTwoFactionMessageScene();
+            Mission mission = missionTypeId switch
+            {
+                ResearchMission.MissionTypeID => new ResearchMission(),
+                DiplomacyMission.MissionTypeID => new DiplomacyMission(),
+                _ => new SabotageMission(),
+            };
+            mission.DisplayName = missionTypeId;
+            mission.OwnerInstanceID = alliance.InstanceID;
+            game.AttachNode(mission, target);
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    TestContent.Data.MessageDefinitions,
+                    new MissionCompletedResult
+                    {
+                        Mission = mission,
+                        MissionName = missionTypeId,
+                        MissionTypeID = missionTypeId,
+                        Outcome = outcome,
+                        CompletionReason = completionReason,
+                    }
+                ),
+                alliance
+            );
+
+            StringAssert.Contains(expectedBodyText, message.Body);
+        }
+
+        [Test]
+        public void CreateMessages_DiplomacyTargetDeclaredNeutrality_ReturnsNeutralityReport()
+        {
+            (GameRoot game, Faction alliance, _, _, Planet target) = BuildTwoFactionMessageScene();
+            Mission mission = new DiplomacyMission
+            {
+                DisplayName = "Diplomacy",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            game.AttachNode(mission, target);
+            target.OwnerInstanceID = null;
+            Assert.IsNull(target.GetOwnerInstanceID());
+            Assert.AreSame(target, mission.GetParent());
+            MessageDefinition definition = TestContent.Data.MessageDefinitions.Single(item =>
+                item.ResultType == MessageResultType.MissionReport
+                && item.MissionCompletionReason == MissionCompletionReason.TargetChangedSides
+            );
+            Assert.AreEqual("the system has declared neutrality", definition.TargetNeutralTemplate);
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    TestContent.Data.MessageDefinitions,
+                    new MissionCompletedResult
+                    {
+                        Mission = mission,
+                        MissionName = "Diplomacy",
+                        MissionTypeID = DiplomacyMission.MissionTypeID,
+                        Outcome = MissionOutcome.Failed,
+                        CompletionReason = MissionCompletionReason.TargetChangedSides,
+                    }
+                ),
+                alliance
+            );
+
+            StringAssert.Contains("system has declared neutrality", message.Body);
         }
 
         [Test]
@@ -2647,7 +2917,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void CreateMessages_FoiledMission_ReturnsFoiledActorReportAndFoiledTargetReport()
+        public void CreateMessages_FoiledMission_ReturnsActorAndOpposingFactionReports()
         {
             (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
                 BuildTwoFactionMessageScene();
@@ -2711,6 +2981,50 @@ namespace Rebellion.Tests.Simulation
                 AdvisorNotificationType.AgentReport,
                 FirstDeliveryFor(deliveries, empire).NotificationType
             );
+        }
+
+        [Test]
+        public void CreateMessages_FoiledMissionAtNeutralTarget_NotifiesOpposingFaction()
+        {
+            (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
+                BuildTwoFactionMessageScene();
+            target.OwnerInstanceID = null;
+            Mission mission = new SabotageMission
+            {
+                DisplayName = "Sabotage",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            game.AttachNode(mission, target);
+
+            List<MessageDelivery> deliveries = CreateMessages(
+                game,
+                new[]
+                {
+                    Definition(
+                        MessageResultType.MissionReport,
+                        MessageType.Mission,
+                        "actor-foiled",
+                        "actor-body",
+                        outcome: MessageResultOutcome.Foiled
+                    ),
+                    Definition(
+                        MessageResultType.EnemyMissionFoiled,
+                        MessageType.Mission,
+                        "enemy-foiled",
+                        "enemy-body",
+                        outcome: MessageResultOutcome.Foiled
+                    ),
+                },
+                new MissionCompletedResult
+                {
+                    Mission = mission,
+                    MissionName = "Sabotage",
+                    Outcome = MissionOutcome.Foiled,
+                }
+            );
+
+            Assert.AreEqual("actor-foiled", FirstMessageFor(deliveries, alliance).Title);
+            Assert.AreEqual("enemy-foiled", FirstMessageFor(deliveries, empire).Title);
         }
 
         [Test]
@@ -4698,6 +5012,12 @@ namespace Rebellion.Tests.Simulation
         /// <param name="voicePaths">The voice paths.</param>
         /// <param name="showSubjectImage">Whether show subject image.</param>
         /// <param name="planetDestroyed">Whether planet destroyed.</param>
+        /// <param name="personnelReturningTemplate">The returning-personnel template.</param>
+        /// <param name="personnelLostTemplate">The lost-personnel template.</param>
+        /// <param name="targetJoinedTemplate">The joined-faction target template.</param>
+        /// <param name="targetNeutralTemplate">The neutral-target template.</param>
+        /// <param name="unattributedSubject">The subject used when no officer reports.</param>
+        /// <param name="unattributedBody">The body used when no officer reports.</param>
         /// <returns>The result of definition.</returns>
         private static MessageDefinition Definition(
             MessageResultType resultType,
@@ -4717,7 +5037,13 @@ namespace Rebellion.Tests.Simulation
             Dictionary<string, string> imagePaths = null,
             Dictionary<string, string> voicePaths = null,
             bool showSubjectImage = false,
-            bool planetDestroyed = false
+            bool planetDestroyed = false,
+            string personnelReturningTemplate = null,
+            string personnelLostTemplate = null,
+            string targetJoinedTemplate = null,
+            string targetNeutralTemplate = null,
+            string unattributedSubject = null,
+            string unattributedBody = null
         )
         {
             MessageDefinition definition = new MessageDefinition
@@ -4732,6 +5058,12 @@ namespace Rebellion.Tests.Simulation
                 ManufacturingType = manufacturingType,
                 Subject = titleTemplate,
                 Body = bodyTemplate,
+                UnattributedSubject = unattributedSubject,
+                UnattributedBody = unattributedBody,
+                PersonnelReturningTemplate = personnelReturningTemplate,
+                PersonnelLostTemplate = personnelLostTemplate,
+                TargetJoinedTemplate = targetJoinedTemplate,
+                TargetNeutralTemplate = targetNeutralTemplate,
                 ShowSubjectImage = showSubjectImage,
                 BackgroundImage =
                     string.IsNullOrWhiteSpace(imageKey) && string.IsNullOrWhiteSpace(imagePath)

@@ -940,11 +940,11 @@ namespace Rebellion.Game
             public Dictionary<int, int> LossPercentByMinimumSupport { get; set; } =
                 new Dictionary<int, int>();
 
-            public int CapitalShipSuppression { get; set; } = 10;
+            public int CapitalShipSuppression { get; set; }
 
-            public int StarfighterSuppression { get; set; } = 5;
+            public int StarfighterSuppression { get; set; }
 
-            public int RegimentSuppression { get; set; } = 2;
+            public int RegimentSuppression { get; set; }
         }
 
         /// <summary>
@@ -1081,6 +1081,10 @@ namespace Rebellion.Game
 
             public int EncounterProbabilityOffset { get; set; }
 
+            public int MissionParticipantEncounterMinimum { get; set; }
+
+            public int MissionDefenderEncounterMinimum { get; set; }
+
             public Dictionary<int, int> RankLabelByMinimumForceRank { get; set; } =
                 new Dictionary<int, int>();
 
@@ -1121,15 +1125,15 @@ namespace Rebellion.Game
             public Dictionary<int, int> CombatCaptureAvoidance { get; set; } =
                 new Dictionary<int, int>();
 
-            public int CaptureEvasionInjuryBaseChance { get; set; } = 100;
+            public int CaptureEvasionInjuryBaseChance { get; set; }
 
-            public int MinimumInjuryChance { get; set; } = 1;
+            public int MinimumInjuryChance { get; set; }
 
-            public int InjuryBase { get; set; } = 1;
+            public int InjuryBase { get; set; }
 
-            public int InjurySecondaryRollMaximum { get; set; } = 29;
+            public int InjurySecondaryRollMaximum { get; set; }
 
-            public int CombatReward { get; set; } = 1;
+            public int CombatReward { get; set; }
         }
 
         /// <summary>
@@ -1220,13 +1224,13 @@ namespace Rebellion.Game
         [PersistableObject]
         public class GameSpeedConfig
         {
-            public float FastTickIntervalSeconds { get; set; } = 1f;
+            public float FastTickIntervalSeconds { get; set; }
 
-            public float MediumTickIntervalSeconds { get; set; } = 10f;
+            public float MediumTickIntervalSeconds { get; set; }
 
-            public float SlowTickIntervalSeconds { get; set; } = 60f;
+            public float SlowTickIntervalSeconds { get; set; }
 
-            public float VerySlowTickIntervalSeconds { get; set; } = 120f;
+            public float VerySlowTickIntervalSeconds { get; set; }
         }
 
         /// <summary>
@@ -1327,9 +1331,9 @@ namespace Rebellion.Game
 
             public Dictionary<int, int> Evasion { get; set; } = new Dictionary<int, int>();
 
-            public int DefaultSuccessProbability { get; set; } = 50;
+            public int DefaultSuccessProbability { get; set; }
 
-            public int DefaultEvasionProbability { get; set; } = 50;
+            public int DefaultEvasionProbability { get; set; }
 
             public Dictionary<int, int> InciteUprising { get; set; } = new Dictionary<int, int>();
 

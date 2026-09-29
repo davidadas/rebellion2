@@ -1,3 +1,4 @@
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.AI;
 using Rebellion.AI.Demands;
@@ -175,6 +176,51 @@ namespace Rebellion.Tests.AI.Fleets
             Assert.IsNotNull(scenario.Fleet.Movement);
         }
 
+        [Test]
+        public void CanSelect_LaserHeavyFleetCannotDefeatCapitalTarget_ReturnsFalse()
+        {
+            EngagementScenario scenario = CreateScenario(includeHostileFleet: true);
+            scenario
+                .Context
+                .Game
+                .Config
+                .AI
+                .FleetDeployment
+                .AttackStrengthPercentOfStrongestHostileFleet = 175;
+            scenario.Context.Game.Config.Combat.SpaceCombat.LaserCannonCapitalDamageMultiplier =
+                1d / 6d;
+            CapitalShip attackingShip = scenario.Fleet.GetChildren<CapitalShip>()[0];
+            ConfigureCombatShip(attackingShip, hullStrength: 1200);
+            attackingShip.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = new[]
+            {
+                60,
+                60,
+                90,
+                90,
+                0,
+            };
+            CapitalShip defendingShip = scenario
+                .Target.GetChildren<Fleet>()[0]
+                .GetChildren<CapitalShip>()[0];
+            ConfigureCombatShip(defendingShip, hullStrength: 1400);
+            defendingShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 15, 0, 30, 30, 0 };
+            AITestSceneBuilder.RevealPlanet(
+                scenario.Context.Game,
+                scenario.Context.Faction,
+                scenario.Target
+            );
+            RefreshContext(scenario);
+            AIOrbitalEngagementProposal proposal = new AIOrbitalEngagementProposal(
+                scenario.Fleet,
+                scenario.Context.Assessment.GetKnownPlanet(scenario.Target.InstanceID),
+                scenario.Origin
+            );
+
+            bool canSelect = proposal.CanSelect(scenario.Context);
+
+            Assert.IsFalse(canSelect);
+        }
+
         /// <summary>
         /// Creates an engagement scenario with optional hostile orbital forces.
         /// </summary>
@@ -227,6 +273,20 @@ namespace Rebellion.Tests.AI.Fleets
                 TargetPlanetId = scenario.Target.InstanceID,
                 OriginPlanetId = scenario.Origin.InstanceID,
             };
+        }
+
+        /// <summary>
+        /// Resets a synthetic ship to the supplied durability with no primary weapons.
+        /// </summary>
+        /// <param name="ship">The ship to configure.</param>
+        /// <param name="hullStrength">The ship's current and maximum hull strength.</param>
+        private static void ConfigureCombatShip(CapitalShip ship, int hullStrength)
+        {
+            ship.MaxHullStrength = hullStrength;
+            ship.CurrentHullStrength = hullStrength;
+            ship.MaxShieldStrength = 0;
+            foreach (PrimaryWeaponType weaponType in ship.PrimaryWeapons.Keys.ToList())
+                ship.PrimaryWeapons[weaponType] = new int[5];
         }
 
         /// <summary>

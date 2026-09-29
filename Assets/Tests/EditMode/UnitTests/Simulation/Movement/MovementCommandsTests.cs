@@ -2187,7 +2187,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void RequestMove_OfficerToOwnedUncolonizedPlanetWithOnlyInboundRegiment_IsRejected()
+        public void RequestMove_OfficerToOwnedUncolonizedPlanetWithOnlyInboundRegiment_StartsTransit()
         {
             (
                 GameRoot game,
@@ -2195,7 +2195,7 @@ namespace Rebellion.Tests.Simulation
                 Planet destination,
                 Officer officer,
                 MovementCommands movement
-            ) = BuildScene(new GameConfig());
+            ) = BuildScene();
             destination.IsColonized = false;
             Regiment inboundRegiment = new Regiment
             {
@@ -2208,8 +2208,8 @@ namespace Rebellion.Tests.Simulation
 
             movement.RequestMove(officer, destination);
 
-            Assert.AreSame(origin, officer.GetParent());
-            Assert.IsNull(officer.Movement);
+            Assert.AreSame(destination, officer.GetParent());
+            Assert.IsNotNull(officer.Movement);
         }
 
         [Test]
@@ -2806,11 +2806,11 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ReturnFromMission_MissingRecordedLocation_UsesFriendlyPlanetInsteadOfUnrelatedFleet()
+        public void ReturnFromMission_MissingRecordedLocation_UsesNearestCompatibleFleet()
         {
             (
                 GameRoot game,
-                Planet origin,
+                Planet _,
                 Planet destination,
                 Officer officer,
                 MovementCommands movement
@@ -2838,7 +2838,7 @@ namespace Rebellion.Tests.Simulation
             );
 
             Assert.IsEmpty(stranded);
-            Assert.AreSame(origin, officer.GetParent());
+            Assert.AreSame(ship, officer.GetParent());
         }
 
         [Test]
@@ -3991,6 +3991,45 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void TrySetFleetWaypointRoute_CapitalShipArrivesAtIntermediateWaypoint_CapturesIntelligence()
+        {
+            (
+                GameRoot game,
+                _,
+                Planet firstDestination,
+                Planet secondDestination,
+                Fleet sourceFleet,
+                MovementCommands movement
+            ) = BuildWaypointScene();
+            game.ChangeOwnership(firstDestination, "rebels");
+            Regiment defendingRegiment = EntityFactory.CreateRegiment("defender", "rebels");
+            defendingRegiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(defendingRegiment, firstDestination);
+            CapitalShip ship = sourceFleet.GetChildren<CapitalShip>().Single();
+
+            bool routeSet = movement.TrySetFleetWaypointRoute(
+                new ISceneNode[] { ship },
+                new[] { firstDestination.InstanceID, secondDestination.InstanceID },
+                "empire"
+            );
+            Assert.IsTrue(routeSet);
+            ship.Movement.TicksElapsed = ship.Movement.TransitTicks - 1;
+
+            new MovementTickProcessor(movement).ProcessTick(game);
+
+            Faction empire = game.GetFactionByOwnerInstanceID("empire");
+            PlanetSnapshot snapshot = empire.Fog.Snapshots["sector"].Planets[
+                firstDestination.InstanceID
+            ];
+            Assert.AreEqual(game.CurrentTick, snapshot.TickCaptured);
+            Assert.IsTrue(
+                snapshot.Regiments.Any(regiment =>
+                    regiment.InstanceID == defendingRegiment.InstanceID
+                )
+            );
+        }
+
+        [Test]
         public void TrySetFleetWaypointRoute_CapitalShipUnderConstruction_PreservesRouteUntilComplete()
         {
             (
@@ -4760,7 +4799,17 @@ namespace Rebellion.Tests.Simulation
             MovementCommands movement
         ) BuildWaypointScene()
         {
-            GameRoot game = TestGame.Create(TestConfig.Create());
+            GameConfig config = new GameConfig
+            {
+                Movement = new GameConfig.MovementConfig
+                {
+                    DistanceDivisor = 5,
+                    MinTransitTicks = 1,
+                    SameSectorMinTransitTicks = 1,
+                    DefaultFighterHyperdrive = 60,
+                },
+            };
+            GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
             PlanetSector sector = new PlanetSector { InstanceID = "sector" };

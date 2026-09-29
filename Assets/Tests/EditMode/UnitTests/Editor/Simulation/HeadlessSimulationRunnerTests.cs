@@ -44,9 +44,6 @@ namespace Rebellion.Tests.Editor.Simulation
             );
         }
 
-        /// <summary>
-        /// Verifies an explicitly invalid simulation difficulty is rejected.
-        /// </summary>
         [Test]
         public void SimulationOptions_ParseDifficulty_InvalidValueThrowsArgumentException()
         {

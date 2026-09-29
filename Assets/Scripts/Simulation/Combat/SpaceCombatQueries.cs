@@ -210,7 +210,18 @@ namespace Rebellion.Simulation
         {
             List<IReadOnlyCollection<ISceneNode>> groups =
                 new List<IReadOnlyCollection<ISceneNode>>();
-            if (IsRetreatBlockedByGravityWell(planet, opponents))
+            Faction faction =
+                planet == null || string.IsNullOrEmpty(ownerInstanceId)
+                    ? null
+                    : _game?.GetFactionByOwnerInstanceID(ownerInstanceId);
+            if (
+                (
+                    faction != null
+                    && _game.IsFactionAIControlled(faction)
+                    && planet.GetOwnerInstanceID() == faction.InstanceID
+                    && planet.GetInstanceID() == faction.HQInstanceID
+                ) || IsRetreatBlockedByGravityWell(planet, opponents)
+            )
                 return groups;
 
             foreach (

@@ -150,12 +150,14 @@ namespace Rebellion.Tests.Game.Galaxy
         }
 
         [Test]
-        public void AddOfficer_UncolonizedPlanet_ThrowsException()
+        public void AddOfficer_OwnedUncolonizedPlanet_AddsToPlanet()
         {
             _planet.IsColonized = false;
             Officer officer = new Officer { OwnerInstanceID = "FNALL1" };
 
-            Assert.Throws<SceneAccessException>(() => _planet.AddChild(officer));
+            _planet.AddChild(officer);
+
+            Assert.Contains(officer, _planet.GetChildren<Officer>().ToList());
         }
 
         [Test]
@@ -176,7 +178,7 @@ namespace Rebellion.Tests.Game.Galaxy
         }
 
         [Test]
-        public void AddOfficer_UncolonizedPlanetWithInTransitRegiment_ThrowsException()
+        public void AddOfficer_OwnedUncolonizedPlanetWithInTransitRegiment_AddsToPlanet()
         {
             _planet.IsColonized = false;
             Regiment inboundRegiment = new Regiment
@@ -188,7 +190,9 @@ namespace Rebellion.Tests.Game.Galaxy
             _planet.AddChild(inboundRegiment);
             Officer officer = new Officer { OwnerInstanceID = "FNALL1" };
 
-            Assert.Throws<SceneAccessException>(() => _planet.AddChild(officer));
+            _planet.AddChild(officer);
+
+            Assert.Contains(officer, _planet.GetChildren<Officer>().ToList());
         }
 
         [Test]

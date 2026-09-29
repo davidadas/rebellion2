@@ -87,7 +87,7 @@ or replacement result payload is required.
 | `ResolveCombat`, `ResolveCombatRetreat`, `CompleteCombatResolution`, `ReconcileLoadedCombatState`, `ProcessAvailableWaypointContinuations` | Combat commands own battle mutations; GameTickProcessor owns suspension/resumption and waypoint/next-encounter sequencing. |
 | `StoreDeferredMessageResults`, `TakeDeferredMessageResults`, `_deferredMessageResults`, `BeginPendingCombatDecision` | GameTickProcessor owns pending-combat scheduling and its existing message-release boundary. |
 | `ProcessResults`, `HandleSystemResultsProduced` | Bus delivery plus registered presentation callbacks. Preserve the currently distinct notification paths; do not broadcast extra notifications as cleanup. |
-| `ProcessMessageReactions` | Message delivery callback and bus follow-up processing, preserving batch/provenance filters and combat delay. No separate result pipeline. |
+| `ProcessMessageReactions` | Message delivery callback and bus follow-up processing, preserving batch/source filters and combat delay. No separate result pipeline. |
 | `ProcessFactionAutomation` | Caller invokes the automation operation; preserve its existing automation-then-naming order when options change. |
 | `GetGame`, `GetCurrentTick`, `GetPlayerFaction`, `GetPlayerUIState` | Read the existing game/player data at the application composition boundary; don't inject the entire session into each UI controller. |
 | `ReplaceGame`, `GameReplaced`, `ReconcileLoadedState` | GameRuntime replaces runtime ownership and rebinds presentation. Existing hot-load behavior and save gating must pass before deleting forwarding APIs. |
@@ -499,7 +499,7 @@ publication after the bus replaces both returned-list routing and `ResultsProduc
   reaction batch at the existing boundary; the extraction does not add publication.
 - Ran **38 custody tests against the original implementation**, including seven
   new cases for duplicate batches, mixed release/capture results, missing-owner
-  failure order, null input, and release tick provenance. Moved tick tests to the
+  failure order, null input, and release tick origin. Moved tick tests to the
   command fixture and result-selection tests to the observer fixture, then added
   direct checks that release preserves movement and does not apply escape loyalty.
 - Verified custody extraction with `./build.sh all`: **5,039 / 5,039 tests passed**,
@@ -855,13 +855,13 @@ publication after the bus replaces both returned-list routing and `ResultsProduc
 - Extracted durable message delivery/expiration into `MessageCommands` and
   automatic result-batch selection into `MessageObserver`. The session constructs
   one shared `MessageFactory` at the existing initialization point. Automatic
-  message provenance filtering, batch materialization, authored template
+  message source filtering, batch materialization, authored template
   resolution before persistence, message identity and retention rules are unchanged.
 - Compared all **six non-constructor method bodies** and all **nine message test
   bodies** after dependency rebinding. Ran **252 message/factory/event/manager/tick/
   runtime cases before extraction**, including four new characterizations of
   authored-result filtering, null authored input, template failure before delivery,
-  and delivery provenance/current tick. Moved tests to matching runtime fixtures.
+  and delivery source/current tick. Moved tests to matching runtime fixtures.
 - Kept the existing combat message-release boundary and follow-up loop; this
   extraction does not subscribe message delivery to every bus wave or change its
   notification timing. Request removal and final pipeline ownership remain pending.
@@ -1138,7 +1138,7 @@ publication after the bus replaces both returned-list routing and `ResultsProduc
   media/voice selection remains in action interpretation.
 - Separated resolved factory output from authored input. `MessageDelivery`, next
   to the factory in Simulation, holds actual message content, the recipient,
-  advisor metadata, provenance, and an optional existing report. It does not
+  advisor metadata, source information, and an optional existing report. It does not
   duplicate the old text/media/navigation fields or retain unresolved subjects,
   locations, or a request tick. Preparing content does not consume an instance
   identifier. `CreateMessage` applies that content to an existing report only
@@ -1215,9 +1215,9 @@ state is not the finished architecture.
   relationships remain compared; no other XML values are normalized. Raw hashes
   and raw final XML are retained alongside the comparable form.
 - Restarted after fresh Unity compilation checks. At the checkpoint through tick
-  75, all 76 state/RNG records and all 364 callback/provenance trace records match.
+  75, all 76 state/RNG records and all 364 callback/source trace records match.
   The two 2,000-tick runs are **still running**; this is not a completed comparison.
-  Trace records cover callback categories, result types, ticks, and provenance,
+  Trace records cover callback categories, result types, ticks, and source information,
   not every transient result field. Durable state is compared in full.
 - A later checkpoint matches through tick 625. Both baseline and refactored runs
   logged the same `HAN_BOUNTY_HUNTERS` / `SetNodeStateAction` exception for Han
@@ -1231,7 +1231,7 @@ state is not the finished architecture.
   and trace prefix still match, and both error-message sequences are identical
   after removing wall-clock timestamps. Neither gameplay issue was changed.
 - At the halfway checkpoint, all 1,001 state/RNG records through tick 1,000 and
-  the shared 8,491 callback/provenance trace records match. Both processes remain
+  the shared 8,491 callback/source trace records match. Both processes remain
   live; do not treat this checkpoint as the final comparison.
 - Production gameplay and result routing were not changed during this check.
   The result-pipeline ownership decision above remains pending.
@@ -1314,7 +1314,7 @@ Verification completed before this last ownership step:
 
 - Final matched replay: both baseline and final session-based runtime completed
   2,000 ticks with exit code zero, using the same serialized input and content.
-  All 2,001 tick/RNG records, all 16,105 ordered callback/provenance records and
+  All 2,001 tick/RNG records, all 16,105 ordered callback/source records and
   the final serialized state matched. Only random movement-group labels were
   canonicalized, retaining their one-to-one identity and membership relationships.
 - This replay serialized at the beginning and end, unlike the earlier every-tick

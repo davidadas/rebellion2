@@ -32,9 +32,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(captive.CanEscape, "CanEscape should be cleared after escape");
         }
 
-        /// <summary>
-        /// Verifies a successful escape stops evaluating later destinations.
-        /// </summary>
         [Test]
         public void ProcessTick_MultipleEscapeDestinations_StopsAfterAcceptedMove()
         {

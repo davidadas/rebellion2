@@ -341,7 +341,9 @@ namespace Rebellion.AI.Proposals
             AIAttackDemand demand = context.GetAttackDemand(targetPlanet);
             if (demand == null)
                 return false;
-            int availableCombat = context.Assessment.GetReadyFleetCombatValue(Fleet);
+            int availableCombat = context.Assessment.GetReadyFleetCombatValueAgainstCapitalShips(
+                Fleet
+            );
             int requiredRegiments = GetRequiredRegimentCount(context, targetPlanet);
             return Fleet?.HasOperationalCapitalShips() == true
                 && availableCombat > 0

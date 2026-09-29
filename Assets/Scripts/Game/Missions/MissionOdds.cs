@@ -17,7 +17,7 @@ namespace Rebellion.Game.Missions
         public double OverallSuccessProbability { get; }
 
         /// <summary>
-        /// Creates complete mission odds from the objective and pre-objective foiling chances.
+        /// Creates complete mission odds from the objective and cumulative encounter chances.
         /// </summary>
         /// <param name="objectiveSuccessProbability">Chance that the objective reports success if reached.</param>
         /// <param name="foilProbability">Chance that the mission is foiled before the objective.</param>

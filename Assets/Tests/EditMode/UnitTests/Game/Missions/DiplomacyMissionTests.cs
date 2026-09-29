@@ -243,6 +243,20 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void GetAbortReason_WhenOwnedPlanetDeclaresNeutrality_ReturnsTargetChangedSides()
+        {
+            GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: "empire");
+            Mission mission = CreateAndAttachMission(game, planet);
+
+            planet.OwnerInstanceID = null;
+
+            Assert.AreEqual(
+                MissionCompletionReason.TargetChangedSides,
+                mission.GetAbortReason(game)
+            );
+        }
+
+        [Test]
         public void ResolveInterruption_WhenPlanetChangedSides_RevealsPlanetToMissionOwner()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: null);
@@ -409,6 +423,68 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsTrue(deserialized.HasInitiated);
             Assert.AreEqual(12, deserialized.MaxProgress);
             Assert.AreEqual(3, deserialized.CurrentProgress);
+        }
+
+        [Test]
+        public void Serialize_RoundTrip_PreservesStartingTargetOwner()
+        {
+            GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: "empire");
+            Officer diplomat = EntityFactory.CreateOfficer("diplomat", "empire");
+            Mission mission = CreateDiplomacyMission(
+                "empire",
+                planet,
+                new List<IMissionParticipant> { diplomat },
+                new List<IMissionParticipant>()
+            );
+
+            string xml = SerializationHelper.Serialize(mission);
+            StringAssert.Contains(
+                "<StartingTargetOwnerInstanceID>empire</StartingTargetOwnerInstanceID>",
+                xml
+            );
+            Mission deserialized = SerializationHelper.Deserialize<Mission>(xml);
+            string roundTripXml = SerializationHelper.Serialize(deserialized);
+            StringAssert.Contains(
+                "<StartingTargetOwnerInstanceID>empire</StartingTargetOwnerInstanceID>",
+                roundTripXml
+            );
+            game.AttachNode(deserialized, planet);
+            planet.OwnerInstanceID = null;
+
+            Assert.AreEqual(
+                MissionCompletionReason.TargetChangedSides,
+                deserialized.GetAbortReason(game)
+            );
+        }
+
+        [Test]
+        public void GetAbortReason_LegacyMissionWithoutOwnershipSnapshot_DetectsLaterNeutrality()
+        {
+            GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: "empire");
+            Officer diplomat = EntityFactory.CreateOfficer("diplomat", "empire");
+            Mission mission = CreateDiplomacyMission(
+                "empire",
+                planet,
+                new List<IMissionParticipant> { diplomat },
+                new List<IMissionParticipant>()
+            );
+            string xml = SerializationHelper
+                .Serialize(mission)
+                .Replace(
+                    "<StartingTargetOwnerInstanceID>empire</StartingTargetOwnerInstanceID>",
+                    string.Empty
+                );
+            Mission deserialized = SerializationHelper.Deserialize<Mission>(xml);
+            game.AttachNode(deserialized, planet);
+
+            Assert.IsNull(deserialized.GetAbortReason(game));
+
+            planet.OwnerInstanceID = null;
+
+            Assert.AreEqual(
+                MissionCompletionReason.TargetChangedSides,
+                deserialized.GetAbortReason(game)
+            );
         }
 
         /// <summary>

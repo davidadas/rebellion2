@@ -702,9 +702,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(3, mine.ManufacturingProgress);
         }
 
-        /// <summary>
-        /// Verifies an AI manufacturing modifier below normal slows production-cycle progress.
-        /// </summary>
         [Test]
         public void ProcessTick_AIDifficultyBelowNormal_SlowsManufacturing()
         {
@@ -723,10 +720,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0, _shipyard.ProductionCycleProgress, 0.0001);
         }
 
-        /// <summary>
-        /// Verifies an AI manufacturing modifier above normal applies completed points and retains
-        /// fractional excess progress.
-        /// </summary>
         [Test]
         public void ProcessTick_AIDifficultyAboveNormal_AppliesExcessManufacturingProgress()
         {

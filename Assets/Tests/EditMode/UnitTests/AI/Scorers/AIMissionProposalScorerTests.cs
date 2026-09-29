@@ -20,9 +20,6 @@ namespace Rebellion.Tests.AI.Scorers
     [TestFixture]
     public class AIMissionProposalScorerTests
     {
-        /// <summary>
-        /// Verifies mandatory mission cleanup receives the neutral domain score.
-        /// </summary>
         [Test]
         public void Score_AbortMissionProposal_ReturnsZero()
         {
@@ -501,6 +498,7 @@ namespace Rebellion.Tests.AI.Scorers
             decoy.Ratings[OfficerRating.Espionage] = 50;
             game.AttachNode(participant, origin);
             game.AttachNode(decoy, origin);
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
             game.Config.ProbabilityTables.Mission.Espionage = new Dictionary<int, int>
             {
                 { -1000, 50 },

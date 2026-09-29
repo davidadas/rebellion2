@@ -261,6 +261,65 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void FindSafeRelocationDestinations_InTransitUnit_RanksFromCurrentPosition()
+        {
+            (
+                GameRoot game,
+                Planet excludedOrigin,
+                Planet assignedDestination,
+                Officer officer,
+                MovementQueries movement
+            ) = BuildScene();
+            excludedOrigin.OwnerInstanceID = "rebels";
+            Planet livePositionNearest = new Planet
+            {
+                InstanceID = "live-position-nearest",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 20,
+                PositionY = 0,
+            };
+            Planet assignedDestinationNearest = new Planet
+            {
+                InstanceID = "assigned-destination-nearest",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 90,
+                PositionY = 100,
+            };
+            game.AttachNode(livePositionNearest, assignedDestination.GetParent());
+            game.AttachNode(assignedDestinationNearest, assignedDestination.GetParent());
+            game.MoveNode(officer, assignedDestination);
+            officer.Movement = new MovementState
+            {
+                OriginPosition = excludedOrigin.GetPosition(),
+                CurrentPosition = new Point(10, 0),
+            };
+
+            IReadOnlyList<ContainerNode> destinations = movement.FindSafeRelocationDestinations(
+                officer,
+                assignedDestination
+            );
+
+            Assert.AreSame(livePositionNearest, destinations.First());
+        }
+
+        [Test]
+        public void CanUseSafeRelocationDestination_AlreadyAtAllowedOrigin_ReturnsTrue()
+        {
+            (_, Planet origin, _, Officer officer, MovementQueries movement) = BuildScene();
+
+            bool accepted = movement.CanUseSafeRelocationDestination(
+                officer,
+                origin,
+                origin,
+                allowOriginPlanet: true
+            );
+
+            Assert.IsTrue(accepted);
+        }
+
+        [Test]
         public void CanSetFleetWaypointRoute_ValidRoute_DoesNotMutateFleet()
         {
             (
@@ -310,6 +369,33 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void TryGetSelectionTransitTicks_CapitalShipToPlanet_ReturnsTransitTime()
+        {
+            GameConfig config = CreateMovementConfig();
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer _,
+                MovementQueries movement
+            ) = BuildScene(config);
+            Fleet fleet = EntityFactory.CreateFleet("fleet", "empire");
+            CapitalShip ship = CreateMovableCapitalShip("ship");
+            game.AttachNode(fleet, origin);
+            game.AttachNode(ship, fleet);
+
+            bool estimated = movement.TryGetSelectionTransitTicks(
+                new ISceneNode[] { ship },
+                destination,
+                "empire",
+                out int transitTicks
+            );
+
+            Assert.IsTrue(estimated);
+            Assert.Greater(transitTicks, 0);
+        }
+
+        [Test]
         public void TryGetSelectionTransitTicks_StarfighterToEnemyBlockadedPlanet_ReturnsFalse()
         {
             (
@@ -326,6 +412,44 @@ namespace Rebellion.Tests.Simulation
 
             bool estimated = movement.TryGetSelectionTransitTicks(
                 new ISceneNode[] { starfighter },
+                destination,
+                "empire",
+                out _
+            );
+
+            Assert.IsFalse(estimated);
+        }
+
+        [Test]
+        public void TryGetSelectionTransitTicks_GroupExceedsDestinationCapacity_ReturnsFalse()
+        {
+            GameConfig config = CreateMovementConfig();
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer _,
+                MovementQueries movement
+            ) = BuildScene(config);
+            origin.EnergyCapacity = 2;
+            destination.EnergyCapacity = 1;
+            Building firstBuilding = new Building
+            {
+                InstanceID = "first-building",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            Building secondBuilding = new Building
+            {
+                InstanceID = "second-building",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            game.AttachNode(firstBuilding, origin);
+            game.AttachNode(secondBuilding, origin);
+
+            bool estimated = movement.TryGetSelectionTransitTicks(
+                new ISceneNode[] { firstBuilding, secondBuilding },
                 destination,
                 "empire",
                 out _
@@ -388,6 +512,24 @@ namespace Rebellion.Tests.Simulation
             MovementQueries movement = new MovementQueries(game);
 
             return (game, origin, destination, officer, movement);
+        }
+
+        /// <summary>
+        /// Creates synthetic movement configuration for transit-query tests.
+        /// </summary>
+        /// <returns>The synthetic game configuration.</returns>
+        private static GameConfig CreateMovementConfig()
+        {
+            return new GameConfig
+            {
+                Movement = new GameConfig.MovementConfig
+                {
+                    DistanceDivisor = 5,
+                    MinTransitTicks = 1,
+                    SameSectorMinTransitTicks = 1,
+                    DefaultFighterHyperdrive = 60,
+                },
+            };
         }
 
         /// <summary>

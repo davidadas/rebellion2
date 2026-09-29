@@ -1,8 +1,7 @@
 # Rebellion 2
 
-An open-source remake of the 1998 strategy game *Star Wars: Rebellion*, built with Unity.
-Despite the name, Rebellion 2 is not a sequel: it is a modernized recreation of the original game
-with the improvements we have always wanted.
+An open-source remake of the 1998 strategy game *Star Wars: Rebellion*, built with Unity and the
+improvements we have always wanted.
 
 <img width="3770" height="2110" alt="Rebellion 2 strategy view" src="https://github.com/user-attachments/assets/f3b454e3-aa88-4363-b8ba-19d2447acb2e" />
 
@@ -46,7 +45,7 @@ Rebellion 2 is approximately **60% complete toward a feature-complete single-pla
 | --- | ---: | --- | ---: |
 | Foundation and Data | 60% | Strategy Simulation | 60% |
 | Strategic AI | 50% | Missions | 80% |
-| Original Game Events | 85% | Custom Events API | 30% |
+| Campaign Events | 85% | Custom Events API | 30% |
 | Strategy Interface | 80% | UI Upscaling | 40% |
 | Save Games | 100% | Settings | 10% |
 | Moddability | 65% | Modding Tools | 0% |

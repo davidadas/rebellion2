@@ -102,6 +102,38 @@ public sealed class StrategyWindowCommandController
     }
 
     /// <summary>
+    /// Resolves a completed item drop to mission creation or movement.
+    /// </summary>
+    /// <param name="sourceWindow">The strategy window that owns the dragged selection.</param>
+    /// <param name="target">The exact drop target.</param>
+    /// <param name="items">The dragged scene nodes.</param>
+    public void ExecuteItemDrop(
+        UIWindow sourceWindow,
+        StrategyMissionTarget target,
+        IReadOnlyList<ISceneNode> items
+    )
+    {
+        string playerFactionId = GetPlayerFactionID();
+        ISceneNode destination = target?.Item ?? target?.Planet?.Planet;
+        bool opensMission =
+            target?.Planet?.Planet != null
+            && destination != null
+            && destination is not Fleet
+            && !string.IsNullOrEmpty(playerFactionId)
+            && !string.Equals(
+                destination.GetOwnerInstanceID(),
+                playerFactionId,
+                StringComparison.Ordinal
+            )
+            && StrategyContextMenuAvailability.CanCreateMission(items, playerFactionId);
+
+        if (opensMission)
+            OpenMissionCreateWindow(target, items);
+        else
+            TryExecuteMove(sourceWindow, target, items);
+    }
+
+    /// <summary>
     /// Opens mission creation for selected participants and a target.
     /// </summary>
     /// <param name="target">The selected mission target.</param>
@@ -152,20 +184,38 @@ public sealed class StrategyWindowCommandController
     )
     {
         List<ISceneNode> sourceItems = CopyItems(items);
+        if (ContainsInTransitUnit(sourceItems))
+        {
+            playInTransitOrderRejected();
+            return;
+        }
+
+        if (TargetsCapitalShipUnderConstruction(target))
+        {
+            playUnitUnderConstructionOrderRejected();
+            return;
+        }
+
         ContainerNode destination = target?.GetMoveDestination() as ContainerNode;
-        MovementCommands movementSystem = services.GetService<MovementCommands>();
-        int transitTimeInDays =
-            movementSystem != null
-            && services
-                .GetService<MovementQueries>()
-                .TryGetSelectionTransitTicks(
-                    sourceItems,
-                    destination,
-                    GetPlayerFactionID(),
-                    out int transitTicks
-                )
-                ? transitTicks
-                : -1;
+        if (!ChangesDestination(sourceItems, destination))
+            return;
+
+        MovementQueries movementQueries = services.GetService<MovementQueries>();
+        if (
+            services.GetService<MovementCommands>() == null
+            || movementQueries == null
+            || !movementQueries.TryGetSelectionTransitTicks(
+                sourceItems,
+                destination,
+                GetPlayerFactionID(),
+                out int transitTimeInDays
+            )
+        )
+        {
+            playInvalidOrderRejected();
+            return;
+        }
+
         confirmDialogWindowController.OpenMove(
             sourceItems,
             transitTimeInDays,
