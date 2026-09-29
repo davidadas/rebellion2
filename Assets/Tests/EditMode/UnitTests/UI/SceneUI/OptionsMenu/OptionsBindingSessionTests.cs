@@ -219,8 +219,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             }
         }
 
-        [Test]
-        public void BeginRebind_LeftMouseButton_KeepsCaptureActive()
+        [TestCase(MouseButton.Left)]
+        [TestCase(MouseButton.Right)]
+        public void BeginRebind_ReservedMouseButton_KeepsCaptureActive(MouseButton button)
         {
             InputTestFixture inputFixture = new();
             inputFixture.Setup();
@@ -240,7 +241,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 string originalPath = action.bindings[FindBinding(action, "Primary")].effectivePath;
                 session.BeginRebind(row, false);
 
-                InputSystem.QueueStateEvent(mouse, new MouseState().WithButton(MouseButton.Left));
+                InputSystem.QueueStateEvent(mouse, new MouseState().WithButton(button));
                 InputSystem.Update();
                 inputFixture.currentTime += 0.1;
                 InputSystem.Update();

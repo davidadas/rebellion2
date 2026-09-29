@@ -256,6 +256,7 @@ internal sealed class OptionsBindingSession : IDisposable
             .WithCancelingThrough("<Keyboard>/escape")
             .WithControlsExcluding("<Keyboard>/anyKey")
             .WithControlsExcluding("<Mouse>/leftButton")
+            .WithControlsExcluding("<Mouse>/rightButton")
             .WithControlsExcluding("<Pointer>/press");
         if (!IsModifierAction(action.name))
         {
