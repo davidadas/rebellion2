@@ -294,6 +294,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
                     null,
                     rect.TransformPoint(localPoint)
                 ),
+                pointerCurrentRaycast = new RaycastResult { gameObject = cluster.gameObject },
             };
         }
 
