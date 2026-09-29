@@ -657,6 +657,7 @@ namespace Rebellion.Tests.AI.Planners
             );
             specialForcesDecoy.Ratings[SkillRating.Espionage] = 60;
             Officer officerDecoy = EntityFactory.CreateOfficer("officer-decoy", empire.InstanceID);
+            officerDecoy.Ratings[SkillRating.Diplomacy] = 0;
             officerDecoy.Ratings[SkillRating.Espionage] = 100;
             game.AttachNode(leadSpy, origin);
             game.AttachNode(specialForcesDecoy, origin);
@@ -683,6 +684,42 @@ namespace Rebellion.Tests.AI.Planners
             );
             Assert.IsTrue(proposals.Any(proposal => proposal.Participant == leadSpy));
             Assert.IsFalse(proposals.Any(proposal => proposal.Participant == specialForcesDecoy));
+        }
+
+        [Test]
+        public void AssignSpecialForcesIntent_WithOnlyDiplomatCoverage_KeepsEveryUnitPrimary()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, system, "origin", empire.InstanceID);
+            SpecialForces firstSpy = CreateSpecialForces(
+                "first-spy",
+                empire.InstanceID,
+                EspionageMission.MissionTypeID
+            );
+            SpecialForces secondSpy = CreateSpecialForces(
+                "second-spy",
+                empire.InstanceID,
+                EspionageMission.MissionTypeID
+            );
+            Officer diplomat = EntityFactory.CreateOfficer("diplomat", empire.InstanceID);
+            diplomat.Ratings[SkillRating.Diplomacy] = 100;
+            diplomat.Ratings[SkillRating.Espionage] = 100;
+            game.AttachNode(firstSpy, origin);
+            game.AttachNode(secondSpy, origin);
+            game.AttachNode(diplomat, origin);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIMissionPlanner.AssignSpecialForcesIntent(context);
+
+            Assert.AreEqual(
+                SpecialForcesIntent.PrimaryAgent,
+                context.GetSpecialForcesIntent(firstSpy)
+            );
+            Assert.AreEqual(
+                SpecialForcesIntent.PrimaryAgent,
+                context.GetSpecialForcesIntent(secondSpy)
+            );
         }
 
         [Test]
@@ -724,6 +761,7 @@ namespace Rebellion.Tests.AI.Planners
             Planet origin = AITestSceneBuilder.AddPlanet(game, system, "origin", empire.InstanceID);
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
             Officer leadSpy = EntityFactory.CreateOfficer("lead-spy", empire.InstanceID);
+            leadSpy.Ratings[SkillRating.Diplomacy] = 0;
             leadSpy.Ratings[SkillRating.Espionage] = 80;
             SpecialForces decoy = CreateSpecialForces(
                 "decoy",
@@ -1118,6 +1156,7 @@ namespace Rebellion.Tests.AI.Planners
                 new ResearchCatalogEntry { Order = 1 },
             };
             Officer researcher = EntityFactory.CreateOfficer("researcher", empire.InstanceID);
+            researcher.Ratings[SkillRating.Diplomacy] = 0;
             researcher.ShipResearch = 60;
             game.AttachNode(researcher, planet);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
@@ -1132,6 +1171,40 @@ namespace Rebellion.Tests.AI.Planners
 
             Assert.AreEqual(researcher, proposal.Participant);
             Assert.IsTrue(proposal.CanExecute(context));
+        }
+
+        [Test]
+        public void Plan_WithAvailableResearch_OffersOnlyResearchForOfficer()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet planet = AITestSceneBuilder.AddPlanet(game, system, "p1", empire.InstanceID);
+            planet.IsInUprising = true;
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "shipyard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            empire.ResearchCatalog[ResearchDiscipline.ShipDesign] = new List<ResearchCatalogEntry>
+            {
+                new ResearchCatalogEntry { Order = 1 },
+            };
+            Officer researcher = EntityFactory.CreateOfficer("researcher", empire.InstanceID);
+            researcher.Ratings[SkillRating.Diplomacy] = 0;
+            researcher.ShipResearch = 60;
+            game.AttachNode(researcher, planet);
+
+            string[] missionTypeIds = new AIMissionPlanner()
+                .Plan(AITestSceneBuilder.CreateContext(game, empire))
+                .OfType<AIMissionProposal>()
+                .Where(proposal => proposal.Participant == researcher)
+                .Select(proposal => proposal.MissionTypeID)
+                .Distinct()
+                .ToArray();
+
+            CollectionAssert.AreEqual(new[] { MissionTypeIDs.Research }, missionTypeIds);
         }
 
         [Test]
@@ -1258,6 +1331,70 @@ namespace Rebellion.Tests.AI.Planners
                 .ToArray();
 
             CollectionAssert.AreEqual(new[] { DiplomacyMission.MissionTypeID }, missionTypeIds);
+        }
+
+        [Test]
+        public void Plan_WithQualifiedDiplomatAndNoDiplomacyTarget_OffersNoOtherMission()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, system, "origin", empire.InstanceID);
+            Planet sabotageTarget = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "sabotage-target",
+                rebels.InstanceID
+            );
+            AddShield(game, sabotageTarget, "shield", rebels.InstanceID);
+            StubMission activeDiplomacy = EntityFactory.CreateMission(
+                "active-diplomacy",
+                empire.InstanceID,
+                origin.InstanceID
+            );
+            activeDiplomacy.ConfigKey = DiplomacyMission.MissionTypeID;
+            game.AttachNode(activeDiplomacy, origin);
+            Officer diplomat = CreateRecruiter("diplomat", empire.InstanceID, isMain: true);
+            diplomat.Ratings[SkillRating.Diplomacy] = 100;
+            diplomat.Ratings[SkillRating.Espionage] = 100;
+            diplomat.Ratings[SkillRating.Combat] = 100;
+            game.AttachNode(diplomat, origin);
+            AddRecruitableOfficer(game, empire.InstanceID);
+            AITestSceneBuilder.RevealPlanet(game, empire, sabotageTarget);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIMissionProposal[] proposals = new AIMissionPlanner()
+                .Plan(context)
+                .OfType<AIMissionProposal>()
+                .Where(proposal => proposal.Participants.Contains(diplomat))
+                .ToArray();
+
+            Assert.IsEmpty(proposals);
+        }
+
+        [Test]
+        public void Plan_WithDiplomatJediAndStudent_DoesNotOfferJediTraining()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet planet = AITestSceneBuilder.AddPlanet(game, system, "planet", empire.InstanceID);
+            Officer diplomat = CreateJedi("diplomat", empire.InstanceID, 100, isTrainer: true);
+            diplomat.Ratings[SkillRating.Diplomacy] = 100;
+            Officer student = CreateJedi("student", empire.InstanceID, 20, isTrainer: false);
+            game.AttachNode(diplomat, planet);
+            game.AttachNode(student, planet);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIMissionProposal[] proposals = new AIMissionPlanner()
+                .Plan(context)
+                .OfType<AIMissionProposal>()
+                .ToArray();
+
+            Assert.IsFalse(
+                proposals.Any(proposal =>
+                    proposal.MissionTypeID == JediTrainingMission.MissionTypeID
+                    && proposal.Participants.Contains(diplomat)
+                )
+            );
         }
 
         /// <summary>
@@ -1398,6 +1535,7 @@ namespace Rebellion.Tests.AI.Planners
         )
         {
             Officer officer = EntityFactory.CreateOfficer(instanceId, ownerInstanceId);
+            officer.Ratings[SkillRating.Diplomacy] = 0;
             officer.IsForceSensitive = true;
             officer.IsKnownJedi = true;
             officer.IsForceEligible = true;

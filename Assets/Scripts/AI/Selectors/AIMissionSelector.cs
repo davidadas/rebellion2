@@ -136,6 +136,8 @@ namespace Rebellion.AI.Selectors
             List<IMissionParticipant> decoys = context
                 .Assessment.AvailableMissionParticipants.Where(participant =>
                     !claimedParticipants.Contains(participant)
+                    && !context.IsOfficerReservedForCommand(participant.InstanceID)
+                    && (participant is not Officer officer || !context.IsDiplomat(officer))
                     && IsAvailableDecoy(context, participant)
                 )
                 .ToList();

@@ -108,7 +108,7 @@ namespace Rebellion.AI.Proposals
         /// <returns>True if this mission proposal may be selected.</returns>
         public override bool CanSelect(AITurnContext context)
         {
-            return IsStillValid();
+            return IsAllowedByOfficerPolicy(context) && IsStillValid();
         }
 
         /// <summary>
@@ -118,7 +118,7 @@ namespace Rebellion.AI.Proposals
         /// <returns>True if this mission can still be created.</returns>
         public override bool CanExecute(AITurnContext context)
         {
-            if (context?.Missions == null || !IsStillValid())
+            if (context?.Missions == null || !IsAllowedByOfficerPolicy(context) || !IsStillValid())
                 return false;
 
             return context.MissionQueries.CanCreateMission(CreateContext());
@@ -201,6 +201,18 @@ namespace Rebellion.AI.Proposals
                 return false;
 
             return IsTargetOfficerAvailable();
+        }
+
+        /// <summary>
+        /// Prevents AI diplomats from being assigned to any non-diplomacy mission role.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <returns>True when every officer participant is allowed on this mission.</returns>
+        private bool IsAllowedByOfficerPolicy(AITurnContext context)
+        {
+            return context == null
+                || MissionTypeID == MissionTypeIDs.Diplomacy
+                || !Participants.OfType<Officer>().Any(context.IsDiplomat);
         }
 
         /// <summary>

@@ -294,6 +294,7 @@ namespace Rebellion.Tests.AI.Helpers
         /// <param name="planetaryAssault">The planetary assault.</param>
         /// <param name="random">The random.</param>
         /// <param name="maintenance">The maintenance.</param>
+        /// <param name="officerCommands">The officer-command system.</param>
         /// <returns>The created context.</returns>
         public static AITurnContext CreateContext(
             GameRoot game,
@@ -304,7 +305,8 @@ namespace Rebellion.Tests.AI.Helpers
             BombardmentCommands bombardment = null,
             PlanetaryAssaultCommands planetaryAssault = null,
             IRandomNumberProvider random = null,
-            MaintenanceCommands maintenance = null
+            MaintenanceCommands maintenance = null,
+            OfficerCommandCommands officerCommands = null
         )
         {
             IRandomNumberProvider provider = random ?? new StubRNG();
@@ -371,7 +373,8 @@ namespace Rebellion.Tests.AI.Helpers
                 assessment,
                 strategicPlan,
                 factionView,
-                maintenance
+                maintenance,
+                officerCommands ?? new OfficerCommandCommands(game)
             );
             new AIAttackDemandGenerator().Generate(context);
             return context;

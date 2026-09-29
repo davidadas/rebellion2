@@ -102,7 +102,10 @@ namespace Rebellion.AI.Planners
                 availableSpecialForces,
                 SpecialForcesIntent.PrimaryAgent
             );
-            List<Officer> availableOfficers = availableParticipants.OfType<Officer>().ToList();
+            List<Officer> availableOfficers = availableParticipants
+                .OfType<Officer>()
+                .Where(officer => !context.IsDiplomat(officer))
+                .ToList();
             if (availableOfficers.Count == 0)
                 return;
 
@@ -194,17 +197,23 @@ namespace Rebellion.AI.Planners
 
             foreach (IMissionParticipant participant in availableParticipants)
             {
+                if (participant is Officer diplomat && context.IsDiplomat(diplomat))
+                {
+                    AddDiplomacyProposals(context, diplomat, proposals);
+                    continue;
+                }
+
                 if (AddRecruitmentProposals(context, participant, proposals))
                     continue;
 
-                if (AddDiplomacyProposals(context, participant, proposals))
+                if (
+                    participant is Officer researchOfficer
+                    && AddResearchProposals(context, researchOfficer, proposals)
+                )
                     continue;
 
                 AddReconnaissanceProposals(context, participant, proposals);
                 AddSubdueUprisingProposals(context, participant, proposals);
-
-                if (participant is Officer officer)
-                    AddResearchProposals(context, officer, proposals);
 
                 AddRescueProposals(context, participant, proposals);
                 AddEspionageProposals(context, participant, proposals);
@@ -286,6 +295,7 @@ namespace Rebellion.AI.Planners
             return _preferredRecruiter ??= context
                 .Assessment.AvailableMissionParticipants.OfType<Officer>()
                 .Where(officer => officer.IsMain)
+                .Where(officer => !context.IsDiplomat(officer))
                 .Where(officer =>
                     officer.GetEffectiveRating(OfficerRating.Leadership)
                     >= context.Game.Config.AI.RecruitmentMinimumLeadership
@@ -325,48 +335,40 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Adds diplomacy work for a qualified participant and reserves that participant from
-        /// competing mission assignments while a valid diplomacy target remains.
+        /// Adds diplomacy work for an officer reserved exclusively for diplomacy.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <param name="participant">The participant being considered.</param>
+        /// <param name="officer">The diplomat being considered.</param>
         /// <param name="proposals">The proposal collection to update.</param>
-        /// <returns>True when diplomacy proposals reserve the participant.</returns>
-        private bool AddDiplomacyProposals(
-            AITurnContext context,
-            IMissionParticipant participant,
-            List<AIProposal> proposals
-        )
-        {
-            if (
-                participant.GetEffectiveRating(OfficerRating.Diplomacy)
-                < context.Game.Config.AI.DiplomacyMinimumSkill
-            )
-                return false;
-
-            int proposalCount = proposals.Count;
-            foreach (Planet planet in GetDiplomacyCandidatePlanets(context))
-                TryAddProposal(
-                    context,
-                    proposals,
-                    CreateProposal(participant, MissionTypeIDs.Diplomacy, planet)
-                );
-
-            return proposals.Count > proposalCount;
-        }
-
-        /// <summary>
-        /// Adds research proposals.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="officer">The officer to evaluate.</param>
-        /// <param name="proposals">The proposal collection to update.</param>
-        private void AddResearchProposals(
+        private void AddDiplomacyProposals(
             AITurnContext context,
             Officer officer,
             List<AIProposal> proposals
         )
         {
+            foreach (Planet planet in GetDiplomacyCandidatePlanets(context))
+                TryAddProposal(
+                    context,
+                    proposals,
+                    CreateProposal(officer, MissionTypeIDs.Diplomacy, planet)
+                );
+        }
+
+        /// <summary>
+        /// Adds research work for a qualified officer and reserves that officer from competing
+        /// mission assignments while useful research remains.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="officer">The officer to evaluate.</param>
+        /// <param name="proposals">The proposal collection to update.</param>
+        /// <returns>True when research proposals reserve the officer.</returns>
+        private bool AddResearchProposals(
+            AITurnContext context,
+            Officer officer,
+            List<AIProposal> proposals
+        )
+        {
+            int proposalCount = proposals.Count;
             foreach (Planet planet in GetResearchCandidatePlanets(context, officer))
             {
                 foreach (
@@ -389,6 +391,8 @@ namespace Rebellion.AI.Planners
                     );
                 }
             }
+
+            return proposals.Count > proposalCount;
         }
 
         /// <summary>
@@ -409,6 +413,7 @@ namespace Rebellion.AI.Planners
                 List<Officer> availableJedi = context
                     .Assessment.AvailableMissionParticipants.OfType<Officer>()
                     .Where(officer => officer.GetParentOfType<Planet>() == planet)
+                    .Where(officer => !context.IsDiplomat(officer))
                     .Where(officer => officer.CanPerformMission(MissionTypeIDs.JediTraining))
                     .Where(officer => officer.IsForceSensitive && officer.IsForceEligible)
                     .ToList();
