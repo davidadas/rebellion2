@@ -117,12 +117,137 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.IsTrue(notificationButtons[0].interactable);
             Assert.AreEqual(Selectable.Transition.None, notificationButtons[0].transition);
             Assert.AreSame(notifications[0], notificationButtons[0].targetGraphic);
+            UIRaycastArea[] resourceHoverViews = GetField<UIRaycastArea[]>(
+                "resourceBreakdownHoverViews"
+            );
+            RectTransform[] resourcePanels = GetField<RectTransform[]>("resourceBreakdownPanels");
+            TextMeshProUGUI[] resourcePrimaryFields = GetField<TextMeshProUGUI[]>(
+                "resourceBreakdownPrimaryTextFields"
+            );
+            TextMeshProUGUI[] resourceForecastFields = GetField<TextMeshProUGUI[]>(
+                "resourceBreakdownForecastTextFields"
+            );
+            TextMeshProUGUI[] resourceLifecycleFields = GetField<TextMeshProUGUI[]>(
+                "resourceBreakdownLifecycleTextFields"
+            );
+            Assert.AreEqual(new RectInt(459, 20, 80, 11), GetSourceRect(resourceHoverViews[0]));
+            Assert.AreEqual(new RectInt(553, 20, 80, 11), GetSourceRect(resourceHoverViews[1]));
+            Assert.AreEqual(new RectInt(653, 20, 80, 11), GetSourceRect(resourceHoverViews[2]));
+            Assert.AreEqual(
+                new RectInt(369, 34, 170, 92),
+                UILayout.GetSourceRect(resourcePanels[0])
+            );
+            Assert.AreEqual(
+                new RectInt(463, 34, 170, 92),
+                UILayout.GetSourceRect(resourcePanels[1])
+            );
+            Assert.AreEqual(
+                new RectInt(563, 34, 170, 92),
+                UILayout.GetSourceRect(resourcePanels[2])
+            );
+            Assert.IsTrue(resourcePanels.All(panel => !panel.gameObject.activeSelf));
+            Assert.AreEqual(
+                "<size=6><color=#A8A8A8>Mining per tick</color></size>\n<size=16><b>0.25</b></size>",
+                resourcePrimaryFields[0].text
+            );
+            Assert.AreEqual(
+                "<size=6><color=#A8A8A8>Refining per tick</color></size>\n<size=16><b>0.13</b></size>",
+                resourcePrimaryFields[1].text
+            );
+            Assert.AreEqual(
+                "<size=6><color=#A8A8A8>Free maintenance</color></size>\n<size=16><b>+500</b></size>",
+                resourcePrimaryFields[2].text
+            );
+            Assert.IsTrue(
+                resourcePrimaryFields.All(field =>
+                    field.preferredWidth <= field.rectTransform.rect.width
+                )
+            );
+            Assert.IsTrue(
+                resourcePrimaryFields.All(field =>
+                    field.preferredHeight <= field.rectTransform.rect.height
+                )
+            );
+            Assert.AreEqual(
+                "<size=9><b>0.38</b></size>\n<size=5.5><color=#A8A8A8>After delivery</color></size>\n<size=9><b>0.50</b></size>\n<size=5.5><color=#A8A8A8>Built and delivered</color></size>",
+                resourceForecastFields[0].text
+            );
+            Assert.AreEqual(
+                "<size=9><b>0.19</b></size>\n<size=5.5><color=#A8A8A8>After delivery</color></size>\n<size=9><b>0.25</b></size>\n<size=5.5><color=#A8A8A8>Built and delivered</color></size>",
+                resourceForecastFields[1].text
+            );
+            Assert.AreEqual(
+                "<size=9><b>+525</b></size>\n<size=5.5><color=#A8A8A8>After delivery</color></size>\n<size=9><b>+495</b></size>\n<size=5.5><color=#A8A8A8>Built and delivered</color></size>",
+                resourceForecastFields[2].text
+            );
+            Assert.IsTrue(
+                resourceForecastFields.All(field =>
+                    field.preferredWidth <= field.rectTransform.rect.width
+                )
+            );
+            Assert.IsTrue(
+                resourceForecastFields.All(field =>
+                    field.preferredHeight <= field.rectTransform.rect.height
+                )
+            );
+            Assert.AreEqual(
+                "<size=9><b>3</b></size><pos=25%><size=9><b>+4</b></size><pos=50%><size=9><b>+3</b></size><pos=79%><size=9><b>10</b></size>\n<size=5.5><color=#A8A8A8>Deployed</color></size><pos=25%><size=5.5><color=#A8A8A8>In transit</color></size><pos=50%><size=5.5><color=#A8A8A8>Building</color></size><pos=79%><size=5.5><color=#A8A8A8>Total</color></size>",
+                resourceLifecycleFields[0].text
+            );
+            Assert.AreEqual(
+                "<size=9><b>11</b></size><pos=25%><size=9><b>+8</b></size><pos=50%><size=9><b>+7</b></size><pos=79%><size=9><b>26</b></size>\n<size=5.5><color=#A8A8A8>Deployed</color></size><pos=25%><size=5.5><color=#A8A8A8>In transit</color></size><pos=50%><size=5.5><color=#A8A8A8>Building</color></size><pos=79%><size=5.5><color=#A8A8A8>Total</color></size>",
+                resourceLifecycleFields[1].text
+            );
+            Assert.AreEqual(
+                "<size=9><b>500</b></size><pos=25%><size=9><b>+75</b></size><pos=50%><size=9><b>+130</b></size><pos=79%><size=9><b>705</b></size>\n<size=5.5><color=#A8A8A8>Deployed</color></size><pos=25%><size=5.5><color=#A8A8A8>In transit</color></size><pos=50%><size=5.5><color=#A8A8A8>Building</color></size><pos=79%><size=5.5><color=#A8A8A8>Total</color></size>",
+                resourceLifecycleFields[2].text
+            );
+            Assert.IsTrue(
+                resourceLifecycleFields.All(field =>
+                    field.preferredWidth <= field.rectTransform.rect.width
+                )
+            );
+            Assert.IsTrue(
+                resourceLifecycleFields.All(field =>
+                    field.preferredHeight <= field.rectTransform.rect.height
+                )
+            );
+        }
+
+        [Test]
+        public void ResourceBreakdownHover_PointerExits_HidesPanel()
+        {
+            _view.Render(CreateViewData(CreateButtons(0), CreateNotifications(0), null));
+            UIRaycastArea hoverArea = GetField<UIRaycastArea[]>("resourceBreakdownHoverViews")[0];
+            RectTransform panel = GetField<RectTransform[]>("resourceBreakdownPanels")[0];
+            PointerEventData eventData = CreatePointerEvent(PointerEventData.InputButton.Left);
+            panel.gameObject.SetActive(true);
+
+            hoverArea.OnPointerExit(eventData);
+
+            Assert.IsFalse(panel.gameObject.activeSelf);
+        }
+
+        [Test]
+        public void PrefabProperties_ResourceBreakdownPanel_PlacesLayerAboveModelessWindows()
+        {
+            RectTransform[] panels = GetField<RectTransform[]>("resourceBreakdownPanels");
+            Transform popoverLayer = panels[0].parent;
+            Transform windows = popoverLayer.parent;
+            Transform modelessWindows = windows.Find("ModelessWindows");
+            Transform modalWindows = windows.Find("ModalWindows");
+
+            Assert.AreEqual("HudPopovers", popoverLayer.name);
+            Assert.IsTrue(panels.All(panel => panel.parent == popoverLayer));
+            Assert.Greater(popoverLayer.GetSiblingIndex(), modelessWindows.GetSiblingIndex());
+            Assert.Less(popoverLayer.GetSiblingIndex(), modalWindows.GetSiblingIndex());
         }
 
         [Test]
         public void Render_MissingOptionalImages_HidesImagesAndDisablesNotification()
         {
             StrategyHudViewData data = new StrategyHudViewData(
+                null,
                 null,
                 null,
                 null,
@@ -155,6 +280,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.IsFalse(GetField<RawImage[]>("mainButtonImages")[0].gameObject.activeSelf);
             Assert.IsFalse(GetField<UIRaycastArea[]>("buttonViews")[0].gameObject.activeSelf);
             Assert.IsFalse(GetField<UIRaycastArea>("speedContextView").gameObject.activeSelf);
+            Assert.IsTrue(
+                GetField<UIRaycastArea[]>("resourceBreakdownHoverViews")
+                    .All(hoverView => !hoverView.gameObject.activeSelf)
+            );
+            Assert.IsTrue(
+                GetField<RectTransform[]>("resourceBreakdownPanels")
+                    .All(panel => !panel.gameObject.activeSelf)
+            );
             Assert.IsFalse(
                 GetField<RawImage[]>("messageNotificationImages")[0].gameObject.activeSelf
             );
@@ -340,6 +473,51 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 new StrategyHudCounterViewData("456", Color.green, null),
                 new StrategyHudCounterViewData("789", Color.blue, null),
                 new StrategyHudCounterViewData("12", Color.yellow, null),
+                new StrategyHudResourceBreakdownViewData(
+                    new StrategyHudResourceBreakdown(
+                        1,
+                        2,
+                        3,
+                        4,
+                        5,
+                        6,
+                        7,
+                        8,
+                        0.25,
+                        0.375,
+                        0.5,
+                        0.125,
+                        0.1875,
+                        0.25,
+                        1000,
+                        1100,
+                        1200,
+                        new StrategyHudMaintenanceBreakdown(
+                            105,
+                            110,
+                            115,
+                            120,
+                            125,
+                            130,
+                            500,
+                            75,
+                            130
+                        )
+                    ),
+                    Color.red,
+                    new StrategyHudResourcePopoverViewData(
+                        new RectInt(459, 20, 80, 11),
+                        new RectInt(369, 34, 170, 92)
+                    ),
+                    new StrategyHudResourcePopoverViewData(
+                        new RectInt(553, 20, 80, 11),
+                        new RectInt(463, 34, 170, 92)
+                    ),
+                    new StrategyHudResourcePopoverViewData(
+                        new RectInt(653, 20, 80, 11),
+                        new RectInt(563, 34, 170, 92)
+                    )
+                ),
                 _speedTexture,
                 new RectInt(100, 20, 50, 16),
                 _displayTexture,

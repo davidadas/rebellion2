@@ -4,6 +4,7 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
+using Rebellion.Simulation;
 using UnityEngine;
 
 /// <summary>
@@ -257,6 +258,13 @@ public sealed class StrategyHudController : IContextMenuReceiver
                 textColor,
                 hudTheme?.MaintenanceSourceLayout
             ),
+            resourceBreakdown: CreateResourceBreakdownViewData(
+                data.ResourceBreakdown,
+                textColor,
+                hudTheme?.RawMaterialsSourceLayout,
+                hudTheme?.RefinedMaterialsSourceLayout,
+                hudTheme?.MaintenanceSourceLayout
+            ),
             speedIndicatorTexture: ResolveTexture(
                 GetSpeedIndicatorPath(hudTheme?.SpeedIndicators, data.Speed)
             ),
@@ -328,6 +336,114 @@ public sealed class StrategyHudController : IContextMenuReceiver
         }
 
         return types;
+    }
+
+    /// <summary>
+    /// Maps the current resource economy into HUD presentation data.
+    /// </summary>
+    /// <param name="summary">The authoritative resource economy summary.</param>
+    /// <returns>The resource-economy presentation.</returns>
+    internal static StrategyHudResourceBreakdown CreateResourceBreakdown(
+        ResourceEconomySummary summary
+    )
+    {
+        if (summary == null)
+            return StrategyHudResourceBreakdown.Empty;
+
+        return new StrategyHudResourceBreakdown(
+            summary.Mines.Active,
+            summary.Mines.Offline,
+            summary.Mines.Building,
+            summary.Mines.EnRoute,
+            summary.Refineries.Active,
+            summary.Refineries.Offline,
+            summary.Refineries.Building,
+            summary.Refineries.EnRoute,
+            summary.RawOutputPerTick,
+            summary.DeliveredRawOutputPerTick,
+            summary.ProjectedRawOutputPerTick,
+            summary.RefinedOutputPerTick,
+            summary.DeliveredRefinedOutputPerTick,
+            summary.ProjectedRefinedOutputPerTick,
+            summary.MaintenanceCapacity,
+            summary.DeliveredMaintenanceCapacity,
+            summary.ProjectedMaintenanceCapacity,
+            new StrategyHudMaintenanceBreakdown(
+                summary.Maintenance.CapitalShips,
+                summary.Maintenance.Starfighters,
+                summary.Maintenance.Regiments,
+                summary.Maintenance.SpecialForces,
+                summary.Maintenance.Facilities,
+                summary.Maintenance.Orders,
+                summary.Maintenance.Deployed,
+                summary.Maintenance.EnRoute,
+                summary.Maintenance.Building
+            )
+        );
+    }
+
+    /// <summary>
+    /// Projects the resource hover panel beneath the active faction's resource counters.
+    /// </summary>
+    /// <param name="totals">The current facility totals.</param>
+    /// <param name="accentColor">The active faction accent color.</param>
+    /// <param name="rawMaterialsLayout">The raw-material counter layout.</param>
+    /// <param name="refinedMaterialsLayout">The refined-material counter layout.</param>
+    /// <param name="maintenanceLayout">The maintenance counter layout.</param>
+    /// <returns>The resource-breakdown presentation data.</returns>
+    private static StrategyHudResourceBreakdownViewData CreateResourceBreakdownViewData(
+        StrategyHudResourceBreakdown totals,
+        Color accentColor,
+        SourceRectLayout rawMaterialsLayout,
+        SourceRectLayout refinedMaterialsLayout,
+        SourceRectLayout maintenanceLayout
+    )
+    {
+        return new StrategyHudResourceBreakdownViewData(
+            totals,
+            accentColor,
+            CreateResourcePopover(
+                rawMaterialsLayout,
+                StrategyHudView.ResourceBreakdownPanelWidth,
+                StrategyHudView.ResourceBreakdownPanelHeight
+            ),
+            CreateResourcePopover(
+                refinedMaterialsLayout,
+                StrategyHudView.ResourceBreakdownPanelWidth,
+                StrategyHudView.ResourceBreakdownPanelHeight
+            ),
+            CreateResourcePopover(
+                maintenanceLayout,
+                StrategyHudView.ResourceBreakdownPanelWidth,
+                StrategyHudView.ResourceBreakdownPanelHeight
+            )
+        );
+    }
+
+    /// <summary>
+    /// Projects one resource counter into its own compact popover.
+    /// </summary>
+    /// <param name="layout">The resource-counter layout.</param>
+    /// <param name="panelWidth">The popover width.</param>
+    /// <param name="panelHeight">The popover height.</param>
+    /// <returns>The resource popover placement.</returns>
+    private static StrategyHudResourcePopoverViewData CreateResourcePopover(
+        SourceRectLayout layout,
+        int panelWidth,
+        int panelHeight
+    )
+    {
+        if (layout == null)
+            return StrategyHudResourcePopoverViewData.Empty;
+
+        RectInt hitArea = ToRequiredRect(layout);
+        RectInt panelBounds = new RectInt(
+            Math.Max(0, hitArea.xMax - panelWidth),
+            hitArea.yMax + 3,
+            panelWidth,
+            panelHeight
+        );
+        return new StrategyHudResourcePopoverViewData(hitArea, panelBounds);
     }
 
     /// <summary>

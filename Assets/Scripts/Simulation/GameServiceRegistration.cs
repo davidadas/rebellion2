@@ -82,6 +82,7 @@ namespace Rebellion.Simulation
             services.AddSingleton<HeadquartersCommands>();
             services.AddSingleton<ManufacturingQueries>();
             services.AddSingleton<ManufacturingCommands>();
+            services.AddSingleton<ResourceProductionQueries>();
             services.AddSingleton<NamingCommands>();
             services.AddSingleton<CaptiveCommands>();
             services.AddSingleton<FactionAutomationCommands>();

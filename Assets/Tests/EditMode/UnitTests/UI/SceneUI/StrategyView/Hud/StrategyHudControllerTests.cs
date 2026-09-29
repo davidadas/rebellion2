@@ -6,6 +6,7 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Units;
+using Rebellion.Simulation;
 using UnityEngine;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
@@ -227,6 +228,122 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             HashSet<MessageType> types = StrategyHudController.GetUnreadMessageTypes(null);
 
             Assert.IsEmpty(types);
+        }
+
+        [Test]
+        public void CreateResourceBreakdown_EconomySummary_MapsAllValues()
+        {
+            ResourceEconomySummary summary = new ResourceEconomySummary(
+                new ResourceFacilityCounts(1, 2, 3, 4),
+                new ResourceFacilityCounts(5, 6, 7, 8),
+                0.25,
+                0.375,
+                0.5,
+                0.125,
+                0.1875,
+                0.25,
+                100,
+                125,
+                150,
+                new MaintenanceCostBreakdown(5, 10, 15, 20, 25, 0, 50, 10, 15)
+            );
+
+            StrategyHudResourceBreakdown breakdown = StrategyHudController.CreateResourceBreakdown(
+                summary
+            );
+
+            Assert.AreEqual(1, breakdown.ActiveMines);
+            Assert.AreEqual(2, breakdown.OfflineMines);
+            Assert.AreEqual(3, breakdown.BuildingMines);
+            Assert.AreEqual(4, breakdown.EnRouteMines);
+            Assert.AreEqual(5, breakdown.ActiveRefineries);
+            Assert.AreEqual(6, breakdown.OfflineRefineries);
+            Assert.AreEqual(7, breakdown.BuildingRefineries);
+            Assert.AreEqual(8, breakdown.EnRouteRefineries);
+            Assert.AreEqual(0.25, breakdown.RawOutputPerTick);
+            Assert.AreEqual(0.375, breakdown.DeliveredRawOutputPerTick);
+            Assert.AreEqual(0.5, breakdown.ProjectedRawOutputPerTick);
+            Assert.AreEqual(0.125, breakdown.RefinedOutputPerTick);
+            Assert.AreEqual(0.1875, breakdown.DeliveredRefinedOutputPerTick);
+            Assert.AreEqual(0.25, breakdown.ProjectedRefinedOutputPerTick);
+            Assert.AreEqual(100, breakdown.MaintenanceCapacity);
+            Assert.AreEqual(125, breakdown.DeliveredMaintenanceCapacity);
+            Assert.AreEqual(150, breakdown.ProjectedMaintenanceCapacity);
+            Assert.AreEqual(75, breakdown.MaintenanceCommitted);
+            Assert.AreEqual(5, breakdown.Maintenance.CapitalShips);
+            Assert.AreEqual(10, breakdown.Maintenance.Starfighters);
+            Assert.AreEqual(15, breakdown.Maintenance.Regiments);
+            Assert.AreEqual(20, breakdown.Maintenance.SpecialForces);
+            Assert.AreEqual(25, breakdown.Maintenance.Facilities);
+            Assert.AreEqual(0, breakdown.Maintenance.Orders);
+            Assert.AreEqual(50, breakdown.Maintenance.Deployed);
+            Assert.AreEqual(10, breakdown.Maintenance.EnRoute);
+            Assert.AreEqual(15, breakdown.Maintenance.Building);
+            Assert.AreEqual(50, breakdown.MaintenanceHeadroom);
+            Assert.AreEqual(65, breakdown.DeliveredMaintenanceHeadroom);
+            Assert.AreEqual(75, breakdown.ProjectedMaintenanceHeadroom);
+        }
+
+        [Test]
+        public void CreateViewData_ResourceCounterLayouts_PositionsBreakdownBelowCounters()
+        {
+            FactionTheme theme = new FactionTheme
+            {
+                TacticalHUDLayout = new TacticalHUDLayout
+                {
+                    RawMaterialsSourceLayout = new SourceRectLayout
+                    {
+                        X = 459,
+                        Y = 20,
+                        Width = 80,
+                        Height = 11,
+                    },
+                    RefinedMaterialsSourceLayout = new SourceRectLayout
+                    {
+                        X = 553,
+                        Y = 20,
+                        Width = 80,
+                        Height = 11,
+                    },
+                    MaintenanceSourceLayout = new SourceRectLayout
+                    {
+                        X = 653,
+                        Y = 20,
+                        Width = 80,
+                        Height = 11,
+                    },
+                },
+            };
+
+            StrategyHudViewData data = _controller.CreateViewData(
+                new StrategyHudRenderData("", "", "", "", TickSpeed.Paused, null),
+                theme
+            );
+
+            Assert.AreEqual(
+                new RectInt(459, 20, 80, 11),
+                data.ResourceBreakdown.RawMaterials.HitArea
+            );
+            Assert.AreEqual(
+                new RectInt(369, 34, 170, 92),
+                data.ResourceBreakdown.RawMaterials.PanelBounds
+            );
+            Assert.AreEqual(
+                new RectInt(553, 20, 80, 11),
+                data.ResourceBreakdown.RefinedMaterials.HitArea
+            );
+            Assert.AreEqual(
+                new RectInt(463, 34, 170, 92),
+                data.ResourceBreakdown.RefinedMaterials.PanelBounds
+            );
+            Assert.AreEqual(
+                new RectInt(653, 20, 80, 11),
+                data.ResourceBreakdown.Maintenance.HitArea
+            );
+            Assert.AreEqual(
+                new RectInt(563, 34, 170, 92),
+                data.ResourceBreakdown.Maintenance.PanelBounds
+            );
         }
 
         [Test]

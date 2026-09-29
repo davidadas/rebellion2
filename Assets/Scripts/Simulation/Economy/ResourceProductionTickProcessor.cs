@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
@@ -59,8 +58,14 @@ namespace Rebellion.Simulation
             ServicePendingRawMaterialRequests(game, faction);
             ServicePendingRefinedMaterialRequests(game, faction);
 
-            List<Building> mines = GetActiveResourceFacilities(faction, BuildingType.Mine);
-            List<Building> refineries = GetActiveResourceFacilities(faction, BuildingType.Refinery);
+            List<Building> mines = ResourceProductionQueries.GetActiveFacilities(
+                faction,
+                BuildingType.Mine
+            );
+            List<Building> refineries = ResourceProductionQueries.GetActiveFacilities(
+                faction,
+                BuildingType.Refinery
+            );
 
             int maintenanceDemand = faction.GetTotalProjectedMaintenanceCost();
             RebalanceResourceAllocations(mines, maintenanceDemand, faction);
@@ -224,40 +229,6 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Gets active mine or refinery facilities in stable planet and building order.
-        /// </summary>
-        /// <param name="faction">The owning faction.</param>
-        /// <param name="buildingType">The resource facility type.</param>
-        /// <returns>The active facilities.</returns>
-        private static List<Building> GetActiveResourceFacilities(
-            Faction faction,
-            BuildingType buildingType
-        )
-        {
-            List<Building> facilities = new List<Building>();
-            foreach (Planet planet in faction.GetOwnedColonizedPlanets())
-            {
-                if (planet.IsResourceProductionSuspended())
-                    continue;
-
-                IEnumerable<Building> planetFacilities = planet
-                    .GetChildren<Building>()
-                    .Where(building =>
-                        building.BuildingType == buildingType
-                        && building.ManufacturingStatus == ManufacturingStatus.Complete
-                        && building.Movement == null
-                        && building.ProcessRate > 0
-                    );
-                if (buildingType == BuildingType.Mine)
-                    planetFacilities = planetFacilities.Take(planet.NumRawResourceNodes);
-
-                facilities.AddRange(planetFacilities);
-            }
-
-            return facilities;
-        }
-
-        /// <summary>
         /// Rebalances one resource lane toward the faction's maintenance demand.
         /// </summary>
         /// <param name="facilities">The mines or refineries to rebalance.</param>
@@ -272,122 +243,15 @@ namespace Rebellion.Simulation
             if (facilities.Count == 0)
                 return;
 
-            int facilityCapacity = faction.Settings.ResourceProcessingPointsPerFacility;
-            int totalCapacity = facilities.Count * facilityCapacity;
-            foreach (Building facility in facilities)
-            {
-                facility.ResourceMaintenanceAllocation = Math.Clamp(
-                    facility.ResourceMaintenanceAllocation,
-                    0,
-                    facilityCapacity
-                );
-            }
-
-            int targetAllocation = Math.Min(Math.Max(0, maintenanceDemand), totalCapacity);
-            int currentAllocation = facilities.Sum(facility =>
-                facility.ResourceMaintenanceAllocation
+            List<int> allocations = ResourceProductionQueries.CalculateMaintenanceAllocations(
+                facilities,
+                maintenanceDemand,
+                faction
             );
-            if (currentAllocation < targetAllocation)
+            for (int index = 0; index < facilities.Count; index++)
             {
-                IncreaseResourceAllocations(
-                    facilities,
-                    targetAllocation - currentAllocation,
-                    facilityCapacity,
-                    totalCapacity
-                );
+                facilities[index].ResourceMaintenanceAllocation = allocations[index];
             }
-            else if (currentAllocation > targetAllocation)
-            {
-                DecreaseResourceAllocations(
-                    facilities,
-                    currentAllocation - targetAllocation,
-                    facilityCapacity,
-                    totalCapacity
-                );
-            }
-        }
-
-        /// <summary>
-        /// Adds resource maintenance allocation in stable facility order.
-        /// </summary>
-        /// <param name="facilities">The facilities receiving allocation.</param>
-        /// <param name="remaining">The allocation still to add.</param>
-        /// <param name="facilityCapacity">The capacity of each facility.</param>
-        /// <param name="totalCapacity">The capacity of the resource lane.</param>
-        private static void IncreaseResourceAllocations(
-            List<Building> facilities,
-            int remaining,
-            int facilityCapacity,
-            int totalCapacity
-        )
-        {
-            int currentAllocation = facilities.Sum(facility =>
-                facility.ResourceMaintenanceAllocation
-            );
-            bool changed;
-            do
-            {
-                changed = false;
-                foreach (Building facility in facilities)
-                {
-                    int idealAllocation = currentAllocation * facilityCapacity / totalCapacity;
-                    int added = Math.Clamp(
-                        idealAllocation - facility.ResourceMaintenanceAllocation + 1,
-                        0,
-                        Math.Min(
-                            remaining,
-                            facilityCapacity - facility.ResourceMaintenanceAllocation
-                        )
-                    );
-                    if (added <= 0)
-                        continue;
-
-                    facility.ResourceMaintenanceAllocation += added;
-                    currentAllocation += added;
-                    remaining -= added;
-                    changed = true;
-                    if (remaining == 0)
-                        return;
-                }
-            } while (changed);
-        }
-
-        /// <summary>
-        /// Removes resource maintenance allocation in stable facility order.
-        /// </summary>
-        /// <param name="facilities">The facilities losing allocation.</param>
-        /// <param name="remaining">The allocation still to remove.</param>
-        /// <param name="facilityCapacity">The capacity of each facility.</param>
-        /// <param name="totalCapacity">The capacity of the resource lane.</param>
-        private static void DecreaseResourceAllocations(
-            List<Building> facilities,
-            int remaining,
-            int facilityCapacity,
-            int totalCapacity
-        )
-        {
-            bool changed;
-            do
-            {
-                changed = false;
-                foreach (Building facility in facilities)
-                {
-                    int idealAllocation = (remaining - 1) * facilityCapacity / totalCapacity;
-                    int removed = Math.Clamp(
-                        facility.ResourceMaintenanceAllocation - idealAllocation,
-                        0,
-                        Math.Min(remaining, facility.ResourceMaintenanceAllocation)
-                    );
-                    if (removed <= 0)
-                        continue;
-
-                    facility.ResourceMaintenanceAllocation -= removed;
-                    remaining -= removed;
-                    changed = true;
-                    if (remaining == 0)
-                        return;
-                }
-            } while (changed);
         }
 
         /// <summary>
@@ -511,20 +375,11 @@ namespace Rebellion.Simulation
         )
         {
             GameConfig.ProductionConfig config = game.Config.Production;
-            int facilityCapacity = faction.Settings.ResourceProcessingPointsPerFacility;
-            int scaledCapacity = Math.Max(
-                1,
-                facilityCapacity * config.ResourceMaintenanceLoadPercent / _percentScale
+            int duration = ResourceProductionQueries.CalculateSteadyCycleDuration(
+                game,
+                faction,
+                facility
             );
-            int maintenancePenalty = DivideRoundingUp(
-                facility.ResourceMaintenanceAllocation,
-                scaledCapacity
-            );
-            int baseDuration = Math.Max(1, facility.ProcessRate + maintenancePenalty);
-            Planet planet = facility.GetParentOfType<Planet>();
-            int support = Math.Max(1, planet?.GetPopularSupport(faction.InstanceID) ?? 0);
-            int supportModifier = config.ResourceCollectionBasePercent * _percentScale / support;
-            int duration = Math.Max(1, baseDuration * supportModifier / _percentScale);
             if (!facility.ResourceStartupCyclePending)
                 return duration;
 
@@ -532,17 +387,6 @@ namespace Rebellion.Simulation
             int startupRandomMaximum =
                 duration * config.ResourceStartupRandomPercent / _percentScale;
             return Math.Max(1, startupBase + game.Random.NextInt(0, startupRandomMaximum + 1));
-        }
-
-        /// <summary>
-        /// Divides non-negative integers while rounding any remainder upward.
-        /// </summary>
-        /// <param name="dividend">The value to divide.</param>
-        /// <param name="divisor">The positive divisor.</param>
-        /// <returns>The rounded-up quotient.</returns>
-        private static int DivideRoundingUp(int dividend, int divisor)
-        {
-            return (dividend + divisor - 1) / divisor;
         }
     }
 }
