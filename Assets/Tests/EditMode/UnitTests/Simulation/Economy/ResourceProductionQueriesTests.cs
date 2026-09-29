@@ -253,6 +253,54 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void GetSummary_CompleteAssetWithMovement_ClassifiesMaintenanceAsEnRoute()
+        {
+            _faction.AddOwnedUnit(
+                new Regiment
+                {
+                    MaintenanceCost = 30,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                    Movement = new MovementState(),
+                }
+            );
+
+            ResourceEconomySummary summary = new ResourceProductionQueries(_game).GetSummary(
+                _faction
+            );
+
+            Assert.AreEqual(0, summary.Maintenance.Deployed);
+            Assert.AreEqual(30, summary.Maintenance.EnRoute);
+        }
+
+        [Test]
+        public void GetSummary_CompleteAssetInMovingFleet_ClassifiesMaintenanceAsEnRoute()
+        {
+            Planet planet = AddPlanet("PLANET1", rawResourceNodes: 0);
+            Fleet fleet = new Fleet
+            {
+                InstanceID = "FLEET1",
+                OwnerInstanceID = _faction.InstanceID,
+                Movement = new MovementState(),
+            };
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "SHIP1",
+                OwnerInstanceID = _faction.InstanceID,
+                MaintenanceCost = 40,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(fleet, planet);
+            _game.AttachNode(ship, fleet);
+
+            ResourceEconomySummary summary = new ResourceProductionQueries(_game).GetSummary(
+                _faction
+            );
+
+            Assert.AreEqual(0, summary.Maintenance.Deployed);
+            Assert.AreEqual(40, summary.Maintenance.EnRoute);
+        }
+
+        [Test]
         public void GetSummary_UninitializedLowSupportMine_UsesCalculatedCycleRate()
         {
             Planet planet = AddPlanet("PLANET1", rawResourceNodes: 1, support: 50);

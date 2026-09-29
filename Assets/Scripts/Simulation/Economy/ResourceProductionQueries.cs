@@ -147,7 +147,10 @@ namespace Rebellion.Simulation
                     continue;
                 }
 
-                if (item.GetManufacturingStatus() == ManufacturingStatus.Delivering)
+                if (
+                    item.GetManufacturingStatus() == ManufacturingStatus.Delivering
+                    || item.GetTransitMovement() != null
+                )
                     enRoute += cost;
                 else
                     deployed += cost;
