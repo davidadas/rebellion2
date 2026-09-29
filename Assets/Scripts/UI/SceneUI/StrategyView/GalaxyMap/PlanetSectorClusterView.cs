@@ -44,7 +44,7 @@ public sealed class PlanetSectorClusterView
     public event Action<PlanetSectorClusterView> HoverCleared;
 
     /// <summary>
-    /// Raised when the rendered cluster receives a left-button double-click.
+    /// Raised when the rendered cluster receives a left-button click.
     /// </summary>
     public event Action<PlanetSectorClusterView, PointerEventData> OpenRequested;
 
@@ -175,7 +175,7 @@ public sealed class PlanetSectorClusterView
     }
 
     /// <summary>
-    /// Emits a semantic open request for a left-button double-click.
+    /// Emits a semantic open request for a left-button click.
     /// </summary>
     /// <param name="eventData">The originating pointer event.</param>
     public void OnPointerClick(PointerEventData eventData)
@@ -183,7 +183,6 @@ public sealed class PlanetSectorClusterView
         if (
             !string.IsNullOrEmpty(SectorInstanceId)
             && eventData?.button == PointerEventData.InputButton.Left
-            && eventData.clickCount >= 2
         )
         {
             OpenRequested?.Invoke(this, eventData);
