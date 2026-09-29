@@ -581,13 +581,13 @@ public static class StrategyViewPrefabBuilder
         TextMeshProUGUI label = CreateTextLabel("LabelTextField", slot.transform);
         label.text = "Corellia";
         label.color = Color.yellow;
-        label.fontSize = 12;
+        label.fontSize = 9;
         label.alignment = TextAlignmentOptions.MidlineLeft;
         SetSourceRect(
             label.rectTransform,
             layout.LabelOffsetX,
             0,
-            layout.Width - layout.LabelOffsetX,
+            Mathf.Min(layout.LabelWidth, layout.Width - layout.LabelOffsetX),
             layout.ItemHeight
         );
 
