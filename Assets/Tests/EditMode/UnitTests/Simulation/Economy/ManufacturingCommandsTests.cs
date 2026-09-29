@@ -4814,6 +4814,58 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
+        [Test]
+        public void StartManufacturing_SpecialForcesDestinationFleet_BoardsAvailableShip()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet producer = CreateOrderTestPlanet(game, "producer", "empire");
+            game.AttachNode(
+                new Building
+                {
+                    InstanceID = "training",
+                    OwnerInstanceID = "empire",
+                    BuildingType = BuildingType.TrainingFacility,
+                    ProductionType = ManufacturingType.Troop,
+                    ProcessRate = 1,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                producer
+            );
+            Planet destination = CreateOrderTestPlanet(game, "destination", "empire");
+            Fleet fleet = EntityFactory.CreateFleet("fleet", "empire");
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "ship",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, destination);
+            game.AttachNode(ship, fleet);
+            ManufacturingCommands manager = new ManufacturingCommands(
+                game,
+                new FleetCommands(game),
+                new ManufacturingQueries(game)
+            );
+            SpecialForces template = new SpecialForces
+            {
+                TypeID = "special-forces",
+                DisplayName = "Special forces",
+                ConstructionCost = 10,
+                MaintenanceCost = 0,
+                BaseBuildSpeed = 1,
+                ManufacturingFactionInstanceIDs = new List<string> { "empire" },
+            };
+
+            bool started = manager.StartManufacturing(producer, template, fleet, 1, "empire");
+
+            Assert.IsTrue(started);
+            SpecialForces queued = producer
+                .GetManufacturingQueue()[ManufacturingType.Troop]
+                .OfType<SpecialForces>()
+                .Single();
+            Assert.AreSame(ship, queued.GetParent());
+        }
+
         /// <summary>
         /// Configures the current game to apply an AI manufacturing-speed modifier.
         /// </summary>

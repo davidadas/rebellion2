@@ -399,6 +399,16 @@ namespace Rebellion.Simulation
                     return false;
                 parent = target;
             }
+            else if (item is SpecialForces)
+            {
+                CapitalShip target = ManufacturingQueries.FindSpecialForcesCarrier(
+                    destination,
+                    item.GetOwnerInstanceID()
+                );
+                if (target == null)
+                    return false;
+                parent = target;
+            }
 
             if (!parent.CanAcceptChild(item))
                 return false;
