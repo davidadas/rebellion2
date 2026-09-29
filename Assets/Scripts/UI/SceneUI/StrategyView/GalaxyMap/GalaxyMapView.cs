@@ -50,7 +50,7 @@ public sealed class GalaxyMapView : MonoBehaviour
     public event Action<string> SectorHovered;
 
     /// <summary>
-    /// Raised when a rendered sector cluster is double-clicked.
+    /// Raised when a rendered sector cluster is clicked.
     /// </summary>
     public event Action<string, int, int> SectorOpenRequested;
 
@@ -322,7 +322,7 @@ public sealed class GalaxyMapView : MonoBehaviour
     }
 
     /// <summary>
-    /// Converts a child cluster double-click to a semantic sector-open request.
+    /// Converts a child cluster click to a semantic sector-open request.
     /// </summary>
     /// <param name="clusterView">The requested cluster view.</param>
     /// <param name="eventData">The originating pointer event.</param>
