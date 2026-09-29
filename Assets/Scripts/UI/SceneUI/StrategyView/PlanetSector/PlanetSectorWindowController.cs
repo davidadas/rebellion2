@@ -426,6 +426,7 @@ public sealed class PlanetSectorWindowController
         if (session.Sector == null)
             return;
 
+        GalacticInformationFilterMode filterMode = getFilterMode();
         view.Render(
             projector.CreateRenderData(
                 session.Sector,
@@ -435,7 +436,8 @@ public sealed class PlanetSectorWindowController
                 session.HoveredIcon,
                 GetActiveWaypointPlan(),
                 getSelectedFleetInstanceIds(),
-                getFilterMode() == GalacticInformationFilterMode.FleetWaypoints
+                filterMode == GalacticInformationFilterMode.FleetWaypoints,
+                filterMode
             )
         );
     }

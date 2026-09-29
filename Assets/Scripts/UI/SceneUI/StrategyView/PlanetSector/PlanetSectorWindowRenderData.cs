@@ -110,6 +110,8 @@ public sealed class PlanetSectorPlanetRenderData
 
     public Texture2D FleetTexture { get; }
 
+    public Texture2D GalacticInformationTexture { get; }
+
     public Texture2D HeadquartersTexture { get; }
 
     public PlanetIcon HoveredIcon { get; }
@@ -159,6 +161,7 @@ public sealed class PlanetSectorPlanetRenderData
     /// <param name="energyBar">The energy status bar.</param>
     /// <param name="rawResourceBar">The raw-resource status bar.</param>
     /// <param name="supportBar">The popular-support status bar.</param>
+    /// <param name="galacticInformationTexture">The active filter's star-marker artwork.</param>
     public PlanetSectorPlanetRenderData(
         int planetIndex,
         Vector2Int galaxyOffset,
@@ -179,7 +182,8 @@ public sealed class PlanetSectorPlanetRenderData
         PlanetIcon hoveredIcon,
         PlanetSectorBarRenderData energyBar,
         PlanetSectorBarRenderData rawResourceBar,
-        PlanetSectorBarRenderData supportBar
+        PlanetSectorBarRenderData supportBar,
+        Texture2D galacticInformationTexture = null
     )
     {
         PlanetIndex = planetIndex;
@@ -202,6 +206,7 @@ public sealed class PlanetSectorPlanetRenderData
         EnergyBar = energyBar ?? throw new ArgumentNullException(nameof(energyBar));
         RawResourceBar = rawResourceBar ?? throw new ArgumentNullException(nameof(rawResourceBar));
         SupportBar = supportBar ?? throw new ArgumentNullException(nameof(supportBar));
+        GalacticInformationTexture = galacticInformationTexture;
     }
 }
 

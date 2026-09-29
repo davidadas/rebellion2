@@ -17,6 +17,8 @@ public sealed class PlanetSectorPlanetView
         IPointerClickHandler,
         IDropHandler
 {
+    private const int _galacticInformationMarkerBottomOverhang = 4;
+
     private static readonly PlanetIcon[] _hitTestIcons =
     {
         PlanetIcon.Facility,
@@ -30,6 +32,9 @@ public sealed class PlanetSectorPlanetView
 
     [SerializeField]
     private RawImage planetImage;
+
+    [SerializeField]
+    private RawImage galacticInformationImage;
 
     [SerializeField]
     private RawImage uprisingImage;
@@ -157,6 +162,7 @@ public sealed class PlanetSectorPlanetView
             rootTemplate.height
         );
 
+        RenderGalacticInformationMarker(data.GalacticInformationTexture, planetTemplate);
         SetImage(planetImage, data.PlanetTexture);
         SetImage(uprisingImage, data.UprisingTexture);
         uprisingImage.raycastTarget = false;
@@ -406,6 +412,33 @@ public sealed class PlanetSectorPlanetView
     }
 
     /// <summary>
+    /// Positions the active filter marker at the planet's lower-left edge.
+    /// </summary>
+    /// <param name="texture">The active filter marker texture, or null.</param>
+    /// <param name="planetBounds">The authored planet-image bounds.</param>
+    private void RenderGalacticInformationMarker(Texture2D texture, RectInt planetBounds)
+    {
+        SetImage(galacticInformationImage, texture);
+        galacticInformationImage.raycastTarget = false;
+        if (texture == null)
+            return;
+
+        Vector2Int size = UILayout.GetTextureSourceSize(texture);
+        int markerY =
+            planetBounds.y
+            + planetBounds.height
+            + _galacticInformationMarkerBottomOverhang
+            - size.y;
+        UILayout.SetSourceRect(
+            galacticInformationImage.rectTransform,
+            planetBounds.x,
+            markerY,
+            size.x,
+            size.y
+        );
+    }
+
+    /// <summary>
     /// Reports the currently hovered planet element.
     /// </summary>
     /// <param name="eventData">The pointer event.</param>
@@ -626,6 +659,8 @@ public sealed class PlanetSectorPlanetView
             throw new MissingReferenceException($"{name}/HitAreaImage is missing.");
         if (planetImage == null)
             throw new MissingReferenceException($"{name}/PlanetImage is missing.");
+        if (galacticInformationImage == null)
+            throw new MissingReferenceException($"{name}/GalacticInformationImage is missing.");
         if (uprisingImage == null)
             throw new MissingReferenceException($"{name}/UprisingImage is missing.");
         if (facilityImage == null)

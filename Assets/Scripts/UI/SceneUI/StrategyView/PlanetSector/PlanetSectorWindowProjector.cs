@@ -40,6 +40,7 @@ internal sealed class PlanetSectorWindowProjector
     /// <param name="waypointPlan">The active uncommitted waypoint plan, or null.</param>
     /// <param name="selectedFleetInstanceIds">The fleets selected in open strategy windows.</param>
     /// <param name="showAllWaypointRoutes">Whether every player waypoint route is visible.</param>
+    /// <param name="filterMode">The galactic-information filter applied to visible planets.</param>
     /// <returns>The immutable planet-sector presentation.</returns>
     public PlanetSectorWindowRenderData CreateRenderData(
         GalaxyMapSector mapSector,
@@ -49,10 +50,16 @@ internal sealed class PlanetSectorWindowProjector
         PlanetIcon hoveredIcon,
         StrategyWindowTargetingSource waypointPlan = null,
         IReadOnlyCollection<string> selectedFleetInstanceIds = null,
-        bool showAllWaypointRoutes = false
+        bool showAllWaypointRoutes = false,
+        GalacticInformationFilterMode filterMode = GalacticInformationFilterMode.DisplayOff
     )
     {
         UIContext uiContext = GetUIContext();
+        string playerFactionId = uiContext.GetPlayerFactionInstanceID();
+        GalacticInformationFilterTheme filter = GalacticInformationMarkerProjector.ResolveFilter(
+            uiContext.GetPlayerFactionTheme(),
+            filterMode
+        );
         PlanetSector sector = mapSector?.PlanetSector;
         IReadOnlyList<GalaxyMapPlanet> planets =
             mapSector?.Planets ?? Array.Empty<GalaxyMapPlanet>();
@@ -70,7 +77,9 @@ internal sealed class PlanetSectorWindowProjector
                     selectedPlanetInstanceId,
                     selectedIcon,
                     hoveredPlanetInstanceId,
-                    hoveredIcon
+                    hoveredIcon,
+                    playerFactionId,
+                    filter
                 )
             );
         }
@@ -203,6 +212,8 @@ internal sealed class PlanetSectorWindowProjector
     /// <param name="selectedIcon">The selected planet icon.</param>
     /// <param name="hoveredPlanetInstanceId">The hovered planet identifier.</param>
     /// <param name="hoveredIcon">The hovered planet icon.</param>
+    /// <param name="playerFactionId">The viewing player's faction identifier.</param>
+    /// <param name="filter">The active galactic-information filter, or null.</param>
     /// <returns>The immutable planet presentation.</returns>
     private static PlanetSectorPlanetRenderData CreatePlanetData(
         UIContext uiContext,
@@ -212,7 +223,9 @@ internal sealed class PlanetSectorWindowProjector
         string selectedPlanetInstanceId,
         PlanetIcon selectedIcon,
         string hoveredPlanetInstanceId,
-        PlanetIcon hoveredIcon
+        PlanetIcon hoveredIcon,
+        string playerFactionId,
+        GalacticInformationFilterTheme filter
     )
     {
         Planet planet = strategyPlanet?.Planet;
@@ -242,6 +255,19 @@ internal sealed class PlanetSectorWindowProjector
         Texture2D missionPressedTexture = string.IsNullOrEmpty(missionFactionId)
             ? null
             : GetOverlayTexture(uiContext, missionFactionId, PlanetIcon.Mission, true);
+        Texture2D galacticInformationTexture =
+            filter == null || planet == null
+                ? null
+                : GalacticInformationMarkerProjector.ResolveTexture(
+                    uiContext,
+                    planet,
+                    GalacticInformationFilterEvaluator.Evaluate(
+                        uiContext.Game,
+                        planet,
+                        playerFactionId,
+                        filter
+                    )
+                );
 
         return new PlanetSectorPlanetRenderData(
             planetIndex,
@@ -287,7 +313,8 @@ internal sealed class PlanetSectorWindowProjector
                 : PlanetIcon.None,
             unexplored ? CreateHiddenBar() : CreateEnergyBar(planet),
             unexplored ? CreateHiddenBar() : CreateRawResourceBar(planet),
-            unexplored ? CreateHiddenBar() : CreateSupportBar(uiContext, planet, popularSupport)
+            unexplored ? CreateHiddenBar() : CreateSupportBar(uiContext, planet, popularSupport),
+            galacticInformationTexture
         );
     }
 

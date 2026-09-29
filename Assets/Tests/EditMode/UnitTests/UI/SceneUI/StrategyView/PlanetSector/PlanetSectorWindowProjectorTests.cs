@@ -331,6 +331,38 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 (Color32)opposingTheme.GetPrimaryColor(),
                 presentation.SupportBar.BackgroundColor
             );
+            Assert.IsNull(presentation.GalacticInformationTexture);
+        }
+
+        [Test]
+        public void CreateRenderData_IdleShipyardFilter_ReturnsEvaluatedMarkerTexture()
+        {
+            Planet planet = CreatePlanet("planet", _playerFactionId, 13, 25);
+            planet.AddTestChild(
+                new Building
+                {
+                    OwnerInstanceID = _playerFactionId,
+                    BuildingType = BuildingType.Shipyard,
+                    ProductionType = ManufacturingType.Ship,
+                    ProcessRate = 1,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                }
+            );
+            FactionTheme playerTheme = _uiContext.GetPlayerFactionTheme();
+
+            PlanetSectorWindowRenderData data = _projector.CreateRenderData(
+                CreateSector(new GalaxyMapPlanet(_planetSector, planet, string.Empty)),
+                null,
+                PlanetIcon.None,
+                null,
+                PlanetIcon.None,
+                filterMode: GalacticInformationFilterMode.IdleShipyards
+            );
+
+            Assert.AreSame(
+                _uiContext.GetTexture(playerTheme.GalaxyBackground.PlanetIcons.XL),
+                data.Planets[0].GalacticInformationTexture
+            );
         }
 
         [Test]
