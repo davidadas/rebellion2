@@ -527,7 +527,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             hudController.Initialize(new TestHudActions());
             StrategyHudView hudView = rootObject.GetComponentInChildren<StrategyHudView>(true);
             hudController.BindView(hudView);
-            hudController.Render(new StrategyHudRenderData("", "", "", "", TickSpeed.Paused, null));
+            hudController.Render(new StrategyHudRenderData("", "", "", TickSpeed.Paused, null));
             GalaxyMapController mapController = new GalaxyMapController(() => null);
             mapController.Initialize(new TestGalaxyMapActions());
             return new StrategyBriefingController(

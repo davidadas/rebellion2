@@ -489,9 +489,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                         0.125,
                         0.1875,
                         0.25,
-                        1000,
-                        1100,
-                        1200,
+                        500,
+                        525,
+                        495,
                         new StrategyHudMaintenanceBreakdown(
                             105,
                             110,

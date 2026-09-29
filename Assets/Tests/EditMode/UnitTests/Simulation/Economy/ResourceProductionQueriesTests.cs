@@ -101,13 +101,12 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0.25, summary.RefinedOutputPerTick, 0.0001);
             Assert.AreEqual(0.4, summary.DeliveredRefinedOutputPerTick, 0.0001);
             Assert.AreEqual(0.6, summary.ProjectedRefinedOutputPerTick, 0.0001);
-            Assert.AreEqual(50, summary.MaintenanceCapacity);
-            Assert.AreEqual(50, summary.DeliveredMaintenanceCapacity);
-            Assert.AreEqual(50, summary.ProjectedMaintenanceCapacity);
+            Assert.AreEqual(38, summary.MaintenanceHeadroom);
+            Assert.AreEqual(38, summary.DeliveredMaintenanceHeadroom);
+            Assert.AreEqual(38, summary.ProjectedMaintenanceHeadroom);
             Assert.AreEqual(12, summary.MaintenanceCommitted);
             Assert.AreEqual(12, summary.Maintenance.Regiments);
             Assert.AreEqual(12, summary.Maintenance.Deployed);
-            Assert.AreEqual(38, summary.MaintenanceHeadroom);
         }
 
         [Test]
@@ -153,9 +152,71 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0.25, summary.RefinedOutputPerTick, 0.0001);
             Assert.AreEqual(0.5, summary.DeliveredRefinedOutputPerTick, 0.0001);
             Assert.AreEqual(0.75, summary.ProjectedRefinedOutputPerTick, 0.0001);
-            Assert.AreEqual(50, summary.MaintenanceCapacity);
-            Assert.AreEqual(100, summary.DeliveredMaintenanceCapacity);
-            Assert.AreEqual(150, summary.ProjectedMaintenanceCapacity);
+            Assert.AreEqual(50, summary.MaintenanceHeadroom);
+            Assert.AreEqual(100, summary.DeliveredMaintenanceHeadroom);
+            Assert.AreEqual(150, summary.ProjectedMaintenanceHeadroom);
+        }
+
+        [Test]
+        public void GetSummary_CommittedUnits_DeductsCostsFromEveryHeadroomProjection()
+        {
+            Planet planet = AddPlanet("PLANET1", rawResourceNodes: 3);
+            AddBuilding(planet, BuildingType.Mine, processRate: 2);
+            AddBuilding(planet, BuildingType.Refinery, processRate: 4);
+            AddBuilding(
+                planet,
+                BuildingType.Mine,
+                processRate: 2,
+                status: ManufacturingStatus.Delivering
+            );
+            AddBuilding(
+                planet,
+                BuildingType.Refinery,
+                processRate: 4,
+                status: ManufacturingStatus.Delivering
+            );
+            AddBuilding(
+                planet,
+                BuildingType.Mine,
+                processRate: 2,
+                status: ManufacturingStatus.Building
+            );
+            AddBuilding(
+                planet,
+                BuildingType.Refinery,
+                processRate: 4,
+                status: ManufacturingStatus.Building
+            );
+            _faction.AddOwnedUnit(
+                new Regiment
+                {
+                    MaintenanceCost = 10,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                }
+            );
+            _faction.AddOwnedUnit(
+                new Starfighter
+                {
+                    MaintenanceCost = 20,
+                    ManufacturingStatus = ManufacturingStatus.Delivering,
+                }
+            );
+            _faction.AddOwnedUnit(
+                new CapitalShip
+                {
+                    MaintenanceCost = 30,
+                    ManufacturingStatus = ManufacturingStatus.Building,
+                }
+            );
+
+            ResourceEconomySummary summary = new ResourceProductionQueries(_game).GetSummary(
+                _faction
+            );
+
+            Assert.AreEqual(-10, summary.MaintenanceHeadroom);
+            Assert.AreEqual(40, summary.DeliveredMaintenanceHeadroom);
+            Assert.AreEqual(90, summary.ProjectedMaintenanceHeadroom);
+            Assert.AreEqual(_faction.MaintenanceHeadroom, summary.MaintenanceHeadroom);
         }
 
         [Test]

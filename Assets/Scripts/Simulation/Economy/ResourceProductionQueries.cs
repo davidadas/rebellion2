@@ -75,6 +75,16 @@ namespace Rebellion.Simulation
                 activeRefineryIDs
             );
             MaintenanceCostBreakdown maintenance = CalculateMaintenanceCosts(faction);
+            int deliveredMaintenanceCapacity = CalculateProjectedMaintenanceCapacity(
+                faction,
+                deliveredMines.Count,
+                deliveredRefineries.Count
+            );
+            int projectedMaintenanceCapacity = CalculateProjectedMaintenanceCapacity(
+                faction,
+                projectedMines.Count,
+                projectedRefineries.Count
+            );
 
             return new ResourceEconomySummary(
                 mines,
@@ -105,17 +115,9 @@ namespace Rebellion.Simulation
                     BuildingType.Refinery,
                     maintenance.Committed
                 ),
-                faction.MaintenanceCapacity,
-                CalculateProjectedMaintenanceCapacity(
-                    faction,
-                    deliveredMines.Count,
-                    deliveredRefineries.Count
-                ),
-                CalculateProjectedMaintenanceCapacity(
-                    faction,
-                    projectedMines.Count,
-                    projectedRefineries.Count
-                ),
+                faction.MaintenanceHeadroom,
+                deliveredMaintenanceCapacity - maintenance.Committed,
+                projectedMaintenanceCapacity - maintenance.Committed,
                 maintenance
             );
         }
@@ -695,16 +697,11 @@ namespace Rebellion.Simulation
         public double RefinedOutputPerTick { get; }
         public double DeliveredRefinedOutputPerTick { get; }
         public double ProjectedRefinedOutputPerTick { get; }
-        public int MaintenanceCapacity { get; }
-        public int DeliveredMaintenanceCapacity { get; }
-        public int ProjectedMaintenanceCapacity { get; }
+        public int MaintenanceHeadroom { get; }
+        public int DeliveredMaintenanceHeadroom { get; }
+        public int ProjectedMaintenanceHeadroom { get; }
         public MaintenanceCostBreakdown Maintenance { get; }
         public int MaintenanceCommitted => Maintenance.Committed;
-        public int MaintenanceHeadroom => MaintenanceCapacity - Maintenance.Deployed;
-        public int DeliveredMaintenanceHeadroom =>
-            DeliveredMaintenanceCapacity - Maintenance.AfterDelivery;
-        public int ProjectedMaintenanceHeadroom =>
-            ProjectedMaintenanceCapacity - Maintenance.Committed;
 
         /// <summary>
         /// Creates an immutable resource-economy summary.
@@ -717,9 +714,9 @@ namespace Rebellion.Simulation
         /// <param name="refinedOutputPerTick">The gross refined-material output per tick.</param>
         /// <param name="deliveredRefinedOutputPerTick">The gross refined-material output after deliveries.</param>
         /// <param name="projectedRefinedOutputPerTick">The projected gross refined-material output per tick.</param>
-        /// <param name="maintenanceCapacity">The available maintenance capacity.</param>
-        /// <param name="deliveredMaintenanceCapacity">The maintenance capacity after deliveries.</param>
-        /// <param name="projectedMaintenanceCapacity">The projected maintenance capacity.</param>
+        /// <param name="maintenanceHeadroom">The currently available maintenance headroom.</param>
+        /// <param name="deliveredMaintenanceHeadroom">The maintenance headroom after deliveries.</param>
+        /// <param name="projectedMaintenanceHeadroom">The maintenance headroom after all committed construction and deliveries.</param>
         /// <param name="maintenance">The maintenance committed by asset category.</param>
         public ResourceEconomySummary(
             ResourceFacilityCounts mines,
@@ -730,9 +727,9 @@ namespace Rebellion.Simulation
             double refinedOutputPerTick,
             double deliveredRefinedOutputPerTick,
             double projectedRefinedOutputPerTick,
-            int maintenanceCapacity,
-            int deliveredMaintenanceCapacity,
-            int projectedMaintenanceCapacity,
+            int maintenanceHeadroom,
+            int deliveredMaintenanceHeadroom,
+            int projectedMaintenanceHeadroom,
             MaintenanceCostBreakdown maintenance
         )
         {
@@ -744,9 +741,9 @@ namespace Rebellion.Simulation
             RefinedOutputPerTick = refinedOutputPerTick;
             DeliveredRefinedOutputPerTick = deliveredRefinedOutputPerTick;
             ProjectedRefinedOutputPerTick = projectedRefinedOutputPerTick;
-            MaintenanceCapacity = maintenanceCapacity;
-            DeliveredMaintenanceCapacity = deliveredMaintenanceCapacity;
-            ProjectedMaintenanceCapacity = projectedMaintenanceCapacity;
+            MaintenanceHeadroom = maintenanceHeadroom;
+            DeliveredMaintenanceHeadroom = deliveredMaintenanceHeadroom;
+            ProjectedMaintenanceHeadroom = projectedMaintenanceHeadroom;
             Maintenance = maintenance ?? throw new ArgumentNullException(nameof(maintenance));
         }
     }

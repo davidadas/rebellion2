@@ -15,7 +15,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 null,
                 null,
                 null,
-                null,
                 TickSpeed.Paused,
                 null
             );
@@ -43,7 +42,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 "12",
                 "34",
                 "56",
-                "78",
                 TickSpeed.Fast,
                 unreadTypes
             );
@@ -52,7 +50,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.AreEqual("12", data.TickText);
             Assert.AreEqual("34", data.RawMaterialsText);
             Assert.AreEqual("56", data.RefinedMaterialsText);
-            Assert.AreEqual("78", data.MaintenanceText);
+            Assert.AreEqual(string.Empty, data.MaintenanceText);
             Assert.AreEqual(TickSpeed.Fast, data.Speed);
             Assert.IsTrue(data.HasUnreadMessageType(MessageType.Fleet));
             Assert.IsTrue(data.HasUnreadMessageType(MessageType.Mission));
@@ -77,14 +75,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 0.125,
                 0.1875,
                 0.25,
-                100,
-                125,
-                150,
+                25,
+                50,
+                75,
                 new StrategyHudMaintenanceBreakdown(5, 10, 15, 20, 25, 0, 50, 10, 15)
             );
 
             StrategyHudRenderData data = new StrategyHudRenderData(
-                "",
                 "",
                 "",
                 "",
@@ -98,8 +95,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.AreEqual(10, breakdown.TotalMines);
             Assert.AreEqual(11, breakdown.DeployedRefineries);
             Assert.AreEqual(26, breakdown.TotalRefineries);
-            Assert.AreEqual(50, breakdown.MaintenanceHeadroom);
-            Assert.AreEqual(65, breakdown.DeliveredMaintenanceHeadroom);
+            Assert.AreEqual("25", data.MaintenanceText);
+            Assert.AreEqual(25, breakdown.MaintenanceHeadroom);
+            Assert.AreEqual(50, breakdown.DeliveredMaintenanceHeadroom);
             Assert.AreEqual(75, breakdown.ProjectedMaintenanceHeadroom);
         }
     }

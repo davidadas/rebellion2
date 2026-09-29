@@ -29,7 +29,6 @@ public sealed class StrategyHudRenderData
     /// <param name="tickText">The displayed game tick.</param>
     /// <param name="rawMaterialsText">The displayed raw-material total.</param>
     /// <param name="refinedMaterialsText">The displayed refined-material total.</param>
-    /// <param name="maintenanceText">The displayed maintenance headroom.</param>
     /// <param name="speed">The current strategy speed.</param>
     /// <param name="unreadMessageTypes">The message categories containing unread messages.</param>
     /// <param name="resourceBreakdown">The current resource-facility totals.</param>
@@ -37,7 +36,6 @@ public sealed class StrategyHudRenderData
         string tickText,
         string rawMaterialsText,
         string refinedMaterialsText,
-        string maintenanceText,
         TickSpeed speed,
         IEnumerable<MessageType> unreadMessageTypes,
         StrategyHudResourceBreakdown resourceBreakdown = null
@@ -46,9 +44,12 @@ public sealed class StrategyHudRenderData
         TickText = tickText ?? string.Empty;
         RawMaterialsText = rawMaterialsText ?? string.Empty;
         RefinedMaterialsText = refinedMaterialsText ?? string.Empty;
-        MaintenanceText = maintenanceText ?? string.Empty;
         Speed = speed;
         ResourceBreakdown = resourceBreakdown ?? StrategyHudResourceBreakdown.Empty;
+        MaintenanceText =
+            resourceBreakdown == null
+                ? string.Empty
+                : ResourceBreakdown.MaintenanceHeadroom.ToString();
         this.unreadMessageTypes =
             unreadMessageTypes == null
                 ? new HashSet<MessageType>()
@@ -129,22 +130,15 @@ public sealed class StrategyHudResourceBreakdown
 
     public double ProjectedRefinedOutputPerTick { get; }
 
-    public int MaintenanceCapacity { get; }
-
-    public int DeliveredMaintenanceCapacity { get; }
-
-    public int ProjectedMaintenanceCapacity { get; }
-
     public StrategyHudMaintenanceBreakdown Maintenance { get; }
 
     public int MaintenanceCommitted => Maintenance.Committed;
 
-    public int MaintenanceHeadroom => MaintenanceCapacity - Maintenance.Deployed;
+    public int MaintenanceHeadroom { get; }
 
-    public int DeliveredMaintenanceHeadroom =>
-        DeliveredMaintenanceCapacity - Maintenance.AfterDelivery;
+    public int DeliveredMaintenanceHeadroom { get; }
 
-    public int ProjectedMaintenanceHeadroom => ProjectedMaintenanceCapacity - MaintenanceCommitted;
+    public int ProjectedMaintenanceHeadroom { get; }
 
     /// <summary>
     /// Creates immutable resource-facility totals.
@@ -163,9 +157,9 @@ public sealed class StrategyHudResourceBreakdown
     /// <param name="refinedOutputPerTick">The gross refined-material output per tick.</param>
     /// <param name="deliveredRefinedOutputPerTick">The gross refined-material output after deliveries.</param>
     /// <param name="projectedRefinedOutputPerTick">The projected gross refined-material output per tick.</param>
-    /// <param name="maintenanceCapacity">The available maintenance capacity.</param>
-    /// <param name="deliveredMaintenanceCapacity">The maintenance capacity after deliveries.</param>
-    /// <param name="projectedMaintenanceCapacity">The projected maintenance capacity.</param>
+    /// <param name="maintenanceHeadroom">The currently available maintenance headroom.</param>
+    /// <param name="deliveredMaintenanceHeadroom">The maintenance headroom after deliveries.</param>
+    /// <param name="projectedMaintenanceHeadroom">The maintenance headroom after all committed construction and deliveries.</param>
     /// <param name="maintenance">The maintenance committed by asset category.</param>
     public StrategyHudResourceBreakdown(
         int activeMines,
@@ -182,9 +176,9 @@ public sealed class StrategyHudResourceBreakdown
         double refinedOutputPerTick,
         double deliveredRefinedOutputPerTick,
         double projectedRefinedOutputPerTick,
-        int maintenanceCapacity,
-        int deliveredMaintenanceCapacity,
-        int projectedMaintenanceCapacity,
+        int maintenanceHeadroom,
+        int deliveredMaintenanceHeadroom,
+        int projectedMaintenanceHeadroom,
         StrategyHudMaintenanceBreakdown maintenance
     )
     {
@@ -202,9 +196,9 @@ public sealed class StrategyHudResourceBreakdown
         RefinedOutputPerTick = refinedOutputPerTick;
         DeliveredRefinedOutputPerTick = deliveredRefinedOutputPerTick;
         ProjectedRefinedOutputPerTick = projectedRefinedOutputPerTick;
-        MaintenanceCapacity = maintenanceCapacity;
-        DeliveredMaintenanceCapacity = deliveredMaintenanceCapacity;
-        ProjectedMaintenanceCapacity = projectedMaintenanceCapacity;
+        MaintenanceHeadroom = maintenanceHeadroom;
+        DeliveredMaintenanceHeadroom = deliveredMaintenanceHeadroom;
+        ProjectedMaintenanceHeadroom = projectedMaintenanceHeadroom;
         Maintenance = maintenance ?? StrategyHudMaintenanceBreakdown.Empty;
     }
 }
