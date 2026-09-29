@@ -195,6 +195,9 @@ namespace Rebellion.Simulation
             if (template is CapitalShip)
                 return true;
 
+            if (template is SpecialForces)
+                return FindSpecialForcesCarrier(fleet, ownerInstanceId) != null;
+
             IEnumerable<CapitalShip> carriers = fleet
                 .GetChildren<CapitalShip>()
                 .Where(IsManufacturingCarrierAvailable);
@@ -229,10 +232,44 @@ namespace Rebellion.Simulation
             )
                 return false;
 
+            if (template is SpecialForces)
+                return true;
+
             if (template is Starfighter)
                 return capitalShip.GetExcessStarfighterCapacity() >= count;
 
             return template is Regiment && capitalShip.GetExcessRegimentCapacity() >= count;
+        }
+
+        /// <summary>
+        /// Finds a complete stationary capital ship that can receive manufactured special forces.
+        /// </summary>
+        /// <param name="fleet">The destination fleet.</param>
+        /// <param name="ownerInstanceId">The owner of the manufacturing order.</param>
+        /// <returns>An available carrier, or null when the fleet cannot receive special forces.</returns>
+        internal static CapitalShip FindSpecialForcesCarrier(Fleet fleet, string ownerInstanceId)
+        {
+            if (
+                fleet == null
+                || fleet.Movement != null
+                || !string.Equals(
+                    fleet.GetOwnerInstanceID(),
+                    ownerInstanceId,
+                    StringComparison.Ordinal
+                )
+            )
+                return null;
+
+            return fleet
+                .GetChildren<CapitalShip>()
+                .FirstOrDefault(ship =>
+                    IsManufacturingCarrierAvailable(ship)
+                    && string.Equals(
+                        ship.GetOwnerInstanceID(),
+                        ownerInstanceId,
+                        StringComparison.Ordinal
+                    )
+                );
         }
 
         /// <summary>

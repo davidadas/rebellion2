@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
@@ -143,6 +144,60 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void CanStartManufacturing_SpecialForcesDestinationFleetHasAvailableShip_ReturnsTrue()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet producer = CreateOrderTestTrainingPlanet(game, "producer", "empire");
+            Planet destination = CreateOrderTestPlanet(game, "destination", "empire");
+            Fleet fleet = EntityFactory.CreateFleet("fleet", "empire");
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "ship",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, destination);
+            game.AttachNode(ship, fleet);
+
+            bool canStart = new ManufacturingQueries(game).CanStartManufacturing(
+                producer,
+                CreateOrderTestSpecialForcesTemplate(),
+                fleet,
+                1,
+                "empire"
+            );
+
+            Assert.IsTrue(canStart);
+        }
+
+        [Test]
+        public void CanStartManufacturing_SpecialForcesDestinationIsAvailableShip_ReturnsTrue()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet producer = CreateOrderTestTrainingPlanet(game, "producer", "empire");
+            Planet destination = CreateOrderTestPlanet(game, "destination", "empire");
+            Fleet fleet = EntityFactory.CreateFleet("fleet", "empire");
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "ship",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, destination);
+            game.AttachNode(ship, fleet);
+
+            bool canStart = new ManufacturingQueries(game).CanStartManufacturing(
+                producer,
+                CreateOrderTestSpecialForcesTemplate(),
+                ship,
+                1,
+                "empire"
+            );
+
+            Assert.IsTrue(canStart);
+        }
+
+        [Test]
         public void EstimateManufacturingTicks_MixedFacilityRates_UsesIntegerRateShares()
         {
             GameRoot game = CreateOrderTestGame();
@@ -266,6 +321,35 @@ namespace Rebellion.Tests.Simulation
         }
 
         /// <summary>
+        /// Creates an order test training planet.
+        /// </summary>
+        /// <param name="game">The game.</param>
+        /// <param name="planetId">The planet id.</param>
+        /// <param name="factionId">The faction id.</param>
+        /// <returns>The created order test training planet.</returns>
+        private static Planet CreateOrderTestTrainingPlanet(
+            GameRoot game,
+            string planetId,
+            string factionId
+        )
+        {
+            Planet planet = CreateOrderTestPlanet(game, planetId, factionId);
+            game.AttachNode(
+                new Building
+                {
+                    InstanceID = $"{planetId}_training",
+                    OwnerInstanceID = factionId,
+                    BuildingType = BuildingType.TrainingFacility,
+                    ProductionType = ManufacturingType.Troop,
+                    ProcessRate = 1,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                planet
+            );
+            return planet;
+        }
+
+        /// <summary>
         /// Creates order test construction planet.
         /// </summary>
         /// <param name="game">The game.</param>
@@ -375,6 +459,23 @@ namespace Rebellion.Tests.Simulation
                 MaintenanceCost = 0,
                 BaseBuildSpeed = 1,
                 BuildingType = BuildingType.Mine,
+            };
+        }
+
+        /// <summary>
+        /// Creates an order test special-forces template.
+        /// </summary>
+        /// <returns>The created special-forces template.</returns>
+        private static SpecialForces CreateOrderTestSpecialForcesTemplate()
+        {
+            return new SpecialForces
+            {
+                TypeID = "special-forces",
+                DisplayName = "Special forces",
+                ConstructionCost = 10,
+                MaintenanceCost = 0,
+                BaseBuildSpeed = 1,
+                ManufacturingFactionInstanceIDs = new List<string> { "empire" },
             };
         }
     }
