@@ -160,6 +160,31 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void Execute_CivilianBombardment_ControlTransferDoesNotCascadeSupport()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, PlanetSector planetSector) = CreatePlanet(
+                game,
+                "p1",
+                owner: null,
+                energy: 10
+            );
+            planet.PopularSupport["alliance"] = 61;
+            planet.PopularSupport["empire"] = 39;
+            Planet secondPlanet = AddPlanet(game, planetSector, "p2", "empire");
+            secondPlanet.PopularSupport["alliance"] = 30;
+            secondPlanet.PopularSupport["empire"] = 70;
+            AddBuilding(game, planet, "mine", ownerId: null, BuildingType.Mine);
+            Fleet fleet = AddBombardmentFleet(game, planet, "alliance", bombardment: 1);
+
+            MakeBombardment(game, new SequenceRNG(intValues: new[] { 0, 10 }))
+                .Execute(new List<Fleet> { fleet }, planet, BombardmentType.Civilian);
+
+            Assert.AreEqual(26, secondPlanet.GetPopularSupport("alliance"));
+            Assert.AreEqual(74, secondPlanet.GetPopularSupport("empire"));
+        }
+
+        [Test]
         public void Execute_EmpireCivilianBombardment_HalvesCoreTargetPenalty()
         {
             GameRoot game = CreateGame();
@@ -822,8 +847,8 @@ namespace Rebellion.Tests.Simulation
 
             CollectionAssert.Contains(result.DestroyedRegiments, regiment);
             Assert.AreEqual("alliance", planet.GetOwnerInstanceID());
-            Assert.AreEqual(71, planet.GetPopularSupport("alliance"));
-            Assert.AreEqual(61, secondPlanet.GetPopularSupport("alliance"));
+            Assert.AreEqual(70, planet.GetPopularSupport("alliance"));
+            Assert.AreEqual(60, secondPlanet.GetPopularSupport("alliance"));
             Assert.AreEqual("alliance", secondPlanet.GetOwnerInstanceID());
             Assert.IsTrue(
                 result
@@ -881,7 +906,7 @@ namespace Rebellion.Tests.Simulation
                 .Execute(new List<Fleet> { fleet }, planet, BombardmentType.Military);
 
             Assert.AreEqual("alliance", planet.GetOwnerInstanceID());
-            Assert.AreEqual(61, planet.GetPopularSupport("alliance"));
+            Assert.AreEqual(60, planet.GetPopularSupport("alliance"));
             Assert.AreEqual("empire", result.OwnershipChange.PreviousOwner.InstanceID);
             Assert.AreEqual("alliance", result.OwnershipChange.NewOwner.InstanceID);
         }

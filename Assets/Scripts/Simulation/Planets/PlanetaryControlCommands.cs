@@ -21,9 +21,7 @@ namespace Rebellion.Simulation
         private readonly ManufacturingCommands _manufacturingSystem;
         private readonly FogOfWarCommands _fogOfWarSystem;
         private readonly FogOfWarQueries _fogOfWarQueries;
-        private readonly HashSet<string> _controlShiftedOwners = new HashSet<string>();
         private readonly HashSet<string> _controlChangesInProgress = new HashSet<string>();
-        private int _controlShiftTick = -1;
 
         /// <summary>
         /// Creates a new PlanetaryControlCommands.
@@ -445,15 +443,13 @@ namespace Rebellion.Simulation
         )
         {
             List<PlanetOwnershipChangedResult> results = new List<PlanetOwnershipChangedResult>();
-            Queue<(Planet planet, Faction faction, int shift)> pending =
-                new Queue<(Planet planet, Faction faction, int shift)>();
-            EnqueueSupportShifts(pending, planets, faction, shift);
+            if (planets == null || faction == null || shift == 0)
+                return results;
 
-            while (pending.Count > 0)
+            foreach (Planet planet in planets)
             {
-                (Planet planet, Faction shiftFaction, int supportShift) = pending.Dequeue();
                 Faction previousController = _queries.GetPlanetController(planet);
-                ShiftPopularSupport(planet, shiftFaction, supportShift);
+                ShiftPopularSupport(planet, faction, shift);
                 Faction newController = _queries.GetPlanetController(planet);
                 if (previousController?.InstanceID == newController?.InstanceID)
                     continue;
@@ -467,23 +463,6 @@ namespace Rebellion.Simulation
                     controlChange.Reason = PlanetOwnershipChangeReason.PopularSupport;
                     results.Add(controlChange);
                 }
-
-                if (!CanApplyControlSupportShift(previousController))
-                    continue;
-
-                Faction beneficiary =
-                    newController
-                    ?? _game
-                        .GetFactions()
-                        .FirstOrDefault(candidate =>
-                            candidate.InstanceID != previousController?.InstanceID
-                        );
-                EnqueueSupportShifts(
-                    pending,
-                    GetAffectedPlanets(planet.GetParentOfType<PlanetSector>()),
-                    beneficiary,
-                    _game.Config.SupportShift.ControlChangeSupportShift
-                );
             }
 
             return results;
@@ -521,6 +500,19 @@ namespace Rebellion.Simulation
             }
 
             planet.SetPopularSupport(opposingFaction.InstanceID, 100 - newSupport);
+        }
+
+        /// <summary>
+        /// Gets populated, intact planets affected by a sector-level support shift.
+        /// </summary>
+        /// <param name="sector">The planet sector to inspect.</param>
+        /// <returns>The planets eligible for the support shift.</returns>
+        private static IEnumerable<Planet> GetAffectedPlanets(PlanetSector sector)
+        {
+            return sector
+                    ?.GetChildren<Planet>()
+                    .Where(planet => planet.IsPopulated() && !planet.IsDestroyed)
+                ?? Enumerable.Empty<Planet>();
         }
 
         /// <summary>
@@ -591,59 +583,6 @@ namespace Rebellion.Simulation
                 if (ownsControlChange)
                     _controlChangesInProgress.Remove(planet.InstanceID);
             }
-        }
-
-        /// <summary>
-        /// Limits propagated control-change support shifts to one per displaced faction each tick.
-        /// </summary>
-        /// <param name="previousController">The faction displaced by the control change.</param>
-        /// <returns>True when the support shift may be propagated.</returns>
-        private bool CanApplyControlSupportShift(Faction previousController)
-        {
-            if (previousController == null)
-                return true;
-
-            if (_controlShiftTick != _game.CurrentTick)
-            {
-                _controlShiftTick = _game.CurrentTick;
-                _controlShiftedOwners.Clear();
-            }
-
-            return _controlShiftedOwners.Add(previousController.InstanceID);
-        }
-
-        /// <summary>
-        /// Adds valid support-shift work items to the pending queue.
-        /// </summary>
-        /// <param name="pending">The queue receiving support shifts.</param>
-        /// <param name="planets">The planets to enqueue.</param>
-        /// <param name="faction">The faction whose support changes.</param>
-        /// <param name="shift">The signed support adjustment.</param>
-        private static void EnqueueSupportShifts(
-            Queue<(Planet planet, Faction faction, int shift)> pending,
-            IEnumerable<Planet> planets,
-            Faction faction,
-            int shift
-        )
-        {
-            if (planets == null || faction == null || shift == 0)
-                return;
-
-            foreach (Planet planet in planets)
-                pending.Enqueue((planet, faction, shift));
-        }
-
-        /// <summary>
-        /// Gets populated, intact planets affected by a sector-level support shift.
-        /// </summary>
-        /// <param name="sector">The planet sector to inspect.</param>
-        /// <returns>The planets eligible for the support shift.</returns>
-        private static IEnumerable<Planet> GetAffectedPlanets(PlanetSector sector)
-        {
-            return sector
-                    ?.GetChildren<Planet>()
-                    .Where(planet => planet.IsPopulated() && !planet.IsDestroyed)
-                ?? Enumerable.Empty<Planet>();
         }
 
         /// <summary>
