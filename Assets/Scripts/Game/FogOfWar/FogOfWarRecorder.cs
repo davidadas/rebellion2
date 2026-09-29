@@ -734,7 +734,8 @@ namespace Rebellion.Game.FogOfWar
         }
 
         /// <summary>
-        /// Updates a faction's recorded owner for a planet without revealing other current state.
+        /// Updates a faction's recorded owner for a planet and its already-known buildings without
+        /// revealing other current state.
         /// </summary>
         /// <param name="faction">The faction receiving the ownership observation.</param>
         /// <param name="planet">The observed planet.</param>
@@ -763,7 +764,73 @@ namespace Rebellion.Game.FogOfWar
                 sectorSnapshot.Planets[planet.InstanceID] = snapshot;
             }
 
+            UpdatePlanetOwnership(planet, snapshot);
+        }
+
+        /// <summary>
+        /// Updates ownership in an existing planet snapshot without creating new intelligence.
+        /// </summary>
+        /// <param name="faction">The faction whose existing snapshot is updated.</param>
+        /// <param name="planet">The planet whose ownership changed.</param>
+        /// <param name="sector">The sector containing the planet.</param>
+        public void UpdateKnownPlanetOwnershipSnapshot(
+            Faction faction,
+            Planet planet,
+            PlanetSector sector
+        )
+        {
+            if (faction == null || planet == null || sector == null)
+                return;
+
+            if (
+                !faction.Fog.Snapshots.TryGetValue(
+                    sector.InstanceID,
+                    out PlanetSectorSnapshot sectorSnapshot
+                )
+                || !sectorSnapshot.Planets.TryGetValue(
+                    planet.InstanceID,
+                    out PlanetSnapshot snapshot
+                )
+            )
+                return;
+
+            UpdatePlanetOwnership(planet, snapshot);
+        }
+
+        /// <summary>
+        /// Updates ownership on a known planet and its known buildings.
+        /// </summary>
+        /// <param name="planet">The authoritative planet containing the current ownership.</param>
+        /// <param name="snapshot">The existing snapshot to update.</param>
+        private static void UpdatePlanetOwnership(Planet planet, PlanetSnapshot snapshot)
+        {
             snapshot.OwnerInstanceID = planet.OwnerInstanceID;
+            UpdateKnownBuildingOwnership(planet, snapshot);
+        }
+
+        /// <summary>
+        /// Updates ownership on buildings already present in a planet snapshot without adding
+        /// buildings the faction has not observed.
+        /// </summary>
+        /// <param name="planet">The authoritative planet containing the current buildings.</param>
+        /// <param name="snapshot">The snapshot containing previously observed buildings.</param>
+        private static void UpdateKnownBuildingOwnership(Planet planet, PlanetSnapshot snapshot)
+        {
+            Dictionary<string, string> currentOwners = planet
+                .GetChildren<Building>(includeDisabled: true)
+                .Where(building => !string.IsNullOrEmpty(building.InstanceID))
+                .ToDictionary(
+                    building => building.InstanceID,
+                    building => building.OwnerInstanceID
+                );
+            foreach (Building building in snapshot.Buildings)
+            {
+                if (
+                    !string.IsNullOrEmpty(building.InstanceID)
+                    && currentOwners.TryGetValue(building.InstanceID, out string ownerInstanceID)
+                )
+                    building.SetOwnerInstanceID(ownerInstanceID);
+            }
         }
 
         /// <summary>

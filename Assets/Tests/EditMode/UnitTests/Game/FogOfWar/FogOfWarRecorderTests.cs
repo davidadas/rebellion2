@@ -160,5 +160,41 @@ namespace Rebellion.Tests.Game.FogOfWar
             Assert.AreEqual(vader.InstanceID, recordedParticipant.InstanceID);
             Assert.IsFalse(recordedParticipant.IsEnabled);
         }
+
+        [Test]
+        public void RecordPlanetOwnershipSnapshot_TransferredBuildings_UpdatesKnownWithoutRevealingUnknown()
+        {
+            _tatooine.IsColonized = true;
+            _tatooine.EnergyCapacity = 2;
+            Building knownBuilding = new Building
+            {
+                InstanceID = "KNOWN_MINE",
+                OwnerInstanceID = null,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(knownBuilding, _tatooine);
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordPlanetSnapshot(_alliance, _tatooine, _outerRim, 10);
+
+            Building unknownBuilding = new Building
+            {
+                InstanceID = "UNKNOWN_MINE",
+                OwnerInstanceID = null,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(unknownBuilding, _tatooine);
+            _tatooine.SetOwnerInstanceID(_empire.InstanceID);
+            knownBuilding.SetOwnerInstanceID(_empire.InstanceID);
+            unknownBuilding.SetOwnerInstanceID(_empire.InstanceID);
+
+            recorder.RecordPlanetOwnershipSnapshot(_alliance, _tatooine, _outerRim, 20);
+
+            PlanetSnapshot snapshot = _alliance.Fog.Snapshots[_outerRim.InstanceID].Planets[
+                _tatooine.InstanceID
+            ];
+            Assert.AreEqual(_empire.InstanceID, snapshot.OwnerInstanceID);
+            Assert.AreEqual(_empire.InstanceID, snapshot.Buildings.Single().OwnerInstanceID);
+            Assert.AreEqual(knownBuilding.InstanceID, snapshot.Buildings.Single().InstanceID);
+        }
     }
 }

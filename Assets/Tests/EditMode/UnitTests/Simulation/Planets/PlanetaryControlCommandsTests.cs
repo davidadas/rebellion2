@@ -232,53 +232,74 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void TransferPlanet_HiddenObserverSnapshot_NotRefreshed()
+        public void TransferPlanet_HiddenOuterRimKnownFacility_UpdatesOwnershipWithoutObservingChange()
         {
             Faction observer = AddFaction("observer");
             _targetPlanet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.OuterRim;
-            _game.ChangeOwnership(_targetPlanet, "empire");
-            _targetPlanet.EnergyCapacity = 1;
+            _targetPlanet.EnergyCapacity = 2;
+            Building knownBuilding = AddBuilding(_targetPlanet, "known-building", null);
 
             CapturePlanetSnapshot(observer, _targetPlanet, 5);
-            AddBuilding(_targetPlanet, "hidden-transfer-building", "empire");
+            AddBuilding(_targetPlanet, "unknown-building", null);
 
             _game.CurrentTick = 20;
-            _commands.TransferPlanet(_targetPlanet, _rebels);
+            PlanetOwnershipChangedResult result = _commands.TransferPlanet(_targetPlanet, _empire);
 
             PlanetSnapshot snapshot = GetPlanetSnapshot(observer, _targetPlanet);
             Assert.AreEqual(5, snapshot.TickCaptured);
-            Assert.AreEqual("empire", snapshot.OwnerInstanceID);
-            Assert.AreEqual(0, snapshot.Buildings.Count);
+            Assert.AreEqual(_empire.InstanceID, snapshot.OwnerInstanceID);
+            Assert.AreEqual(knownBuilding.InstanceID, snapshot.Buildings.Single().InstanceID);
+            Assert.AreEqual(_empire.InstanceID, snapshot.Buildings.Single().OwnerInstanceID);
+            CollectionAssert.DoesNotContain(result.ObserverFactionInstanceIDs, observer.InstanceID);
         }
 
         [Test]
-        public void TransferPlanet_CoreObserverSnapshot_RefreshesOwnershipOnly()
+        public void TransferPlanet_HiddenOuterRimUnknownPlanet_DoesNotCreateSnapshot()
         {
             Faction observer = AddFaction("observer");
-            _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
-            _targetPlanet.EnergyCapacity = 1;
+            PlanetSector sector = _targetPlanet.GetParentOfType<PlanetSector>();
+            sector.SectorType = PlanetSectorType.OuterRim;
+
+            PlanetOwnershipChangedResult result = _commands.TransferPlanet(_targetPlanet, _empire);
+
+            Assert.IsFalse(
+                observer.Fog.Snapshots.TryGetValue(
+                    sector.InstanceID,
+                    out PlanetSectorSnapshot sectorSnapshot
+                ) && sectorSnapshot.Planets.ContainsKey(_targetPlanet.InstanceID)
+            );
+            CollectionAssert.DoesNotContain(result.ObserverFactionInstanceIDs, observer.InstanceID);
+        }
+
+        [Test]
+        public void TransferPlanet_CoreObserver_UpdatesKnownBuildingOwnershipWithoutRevealingUnknown()
+        {
+            Faction observer = AddFaction("observer");
+            _targetPlanet.EnergyCapacity = 2;
+            Building knownBuilding = AddBuilding(_targetPlanet, "known-building", null);
             CapturePlanetSnapshot(observer, _targetPlanet, 5);
-            AddBuilding(_targetPlanet, "hidden-transfer-building", _empire.InstanceID);
+            AddBuilding(_targetPlanet, "unknown-building", null);
 
             _game.CurrentTick = 20;
-            PlanetOwnershipChangedResult result = _commands.TransferPlanet(_targetPlanet, _rebels);
+            PlanetOwnershipChangedResult result = _commands.TransferPlanet(_targetPlanet, _empire);
 
             PlanetSnapshot snapshot = GetPlanetSnapshot(observer, _targetPlanet);
             Assert.AreEqual(5, snapshot.TickCaptured);
-            Assert.AreEqual(_rebels.InstanceID, snapshot.OwnerInstanceID);
-            Assert.AreEqual(0, snapshot.Buildings.Count);
+            Assert.AreEqual(_empire.InstanceID, snapshot.OwnerInstanceID);
+            Assert.AreEqual(knownBuilding.InstanceID, snapshot.Buildings.Single().InstanceID);
+            Assert.AreEqual(_empire.InstanceID, snapshot.Buildings.Single().OwnerInstanceID);
             CollectionAssert.Contains(result.ObserverFactionInstanceIDs, observer.InstanceID);
         }
 
         [Test]
-        public void TransferPlanet_OuterRimVisibleObserverSnapshot_RefreshesOwnershipOnly()
+        public void TransferPlanet_VisibleOuterRimObserver_UpdatesKnownBuildingOwnershipWithoutRevealingUnknown()
         {
             Faction observer = AddFaction("observer");
             _targetPlanet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.OuterRim;
-            _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
-            _targetPlanet.EnergyCapacity = 1;
+            _targetPlanet.EnergyCapacity = 2;
+            Building knownBuilding = AddBuilding(_targetPlanet, "known-building", null);
             CapturePlanetSnapshot(observer, _targetPlanet, 5);
-            AddBuilding(_targetPlanet, "hidden-transfer-building", _empire.InstanceID);
+            AddBuilding(_targetPlanet, "unknown-building", null);
             Fleet observerFleet = new Fleet(observer.InstanceID, "Observer Fleet");
             CapitalShip observerShip = new CapitalShip
             {
@@ -290,12 +311,13 @@ namespace Rebellion.Tests.Simulation
             _game.AttachNode(observerShip, observerFleet);
 
             _game.CurrentTick = 20;
-            PlanetOwnershipChangedResult result = _commands.TransferPlanet(_targetPlanet, _rebels);
+            PlanetOwnershipChangedResult result = _commands.TransferPlanet(_targetPlanet, _empire);
 
             PlanetSnapshot snapshot = GetPlanetSnapshot(observer, _targetPlanet);
             Assert.AreEqual(5, snapshot.TickCaptured);
-            Assert.AreEqual(_rebels.InstanceID, snapshot.OwnerInstanceID);
-            Assert.AreEqual(0, snapshot.Buildings.Count);
+            Assert.AreEqual(_empire.InstanceID, snapshot.OwnerInstanceID);
+            Assert.AreEqual(knownBuilding.InstanceID, snapshot.Buildings.Single().InstanceID);
+            Assert.AreEqual(_empire.InstanceID, snapshot.Buildings.Single().OwnerInstanceID);
             CollectionAssert.Contains(result.ObserverFactionInstanceIDs, observer.InstanceID);
         }
 
@@ -922,7 +944,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ProcessTick_ReleaseToNeutral_HiddenObserverSnapshot_NotRefreshed()
+        public void ProcessTick_ReleaseToNeutral_HiddenObserverSnapshot_UpdatesKnownOwnership()
         {
             Faction observer = AddFaction("observer");
             _targetPlanet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.OuterRim;
@@ -940,7 +962,7 @@ namespace Rebellion.Tests.Simulation
 
             PlanetSnapshot snapshot = GetPlanetSnapshot(observer, planet);
             Assert.AreEqual(5, snapshot.TickCaptured);
-            Assert.AreEqual("empire", snapshot.OwnerInstanceID);
+            Assert.IsNull(snapshot.OwnerInstanceID);
         }
 
         [Test]
