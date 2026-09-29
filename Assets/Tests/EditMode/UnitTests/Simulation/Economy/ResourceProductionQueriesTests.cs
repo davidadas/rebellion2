@@ -158,7 +158,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void GetSummary_CommittedMaintenance_ReservesHeadroomAtEveryProjection()
+        public void GetSummary_CommittedUnits_DeductsCostsFromEveryHeadroomProjection()
         {
             Planet planet = AddPlanet("PLANET1", rawResourceNodes: 3);
             AddBuilding(planet, BuildingType.Mine, processRate: 2);
