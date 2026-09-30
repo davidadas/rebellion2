@@ -314,7 +314,8 @@ internal sealed class PlanetSectorWindowProjector
             unexplored ? CreateHiddenBar() : CreateEnergyBar(planet),
             unexplored ? CreateHiddenBar() : CreateRawResourceBar(planet),
             unexplored ? CreateHiddenBar() : CreateSupportBar(uiContext, planet, popularSupport),
-            galacticInformationTexture
+            galacticInformationTexture,
+            uiContext.GetTextureContentBounds
         );
     }
 

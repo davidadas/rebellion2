@@ -38,7 +38,13 @@ internal static class TestContent
         EncyclopediaCatalog encyclopediaCatalog
     )
     {
-        return new UIContext(game, themeLibrary, encyclopediaCatalog, Assets.GetTexture);
+        return new UIContext(
+            game,
+            themeLibrary,
+            encyclopediaCatalog,
+            Assets.GetTexture,
+            Assets.GetTextureContentBounds
+        );
     }
 
     /// <summary>

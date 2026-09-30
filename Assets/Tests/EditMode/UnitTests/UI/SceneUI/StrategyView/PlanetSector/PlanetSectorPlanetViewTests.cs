@@ -181,6 +181,45 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         }
 
         [Test]
+        public void Render_SelectedIcon_UsesTightVisiblePixelHitBounds()
+        {
+            RawImage facilityImage = GetField<RawImage>("facilityImage");
+            RectInt authoredBounds = GetSourceRect(facilityImage.transform);
+            RectInt contentBounds = new RectInt(6, 4, 12, 16);
+            PlanetSectorPlanetRenderData data = CreateData(
+                selectedIcon: PlanetIcon.Facility,
+                getTextureContentBounds: texture =>
+                    texture == _pressedTexture
+                        ? contentBounds
+                        : new RectInt(0, 0, texture.width, texture.height)
+            );
+
+            _view.Render(data, new Vector2Int(200, 150));
+
+            bool found = _view.TryGetIconHitBounds(PlanetIcon.Facility, out RectInt hitBounds);
+
+            Assert.IsTrue(found);
+            Assert.AreEqual(
+                new RectInt(authoredBounds.x + 6, authoredBounds.y + 3, 15, 12),
+                hitBounds
+            );
+            Assert.AreEqual(authoredBounds, GetSourceRect(facilityImage.transform));
+            Assert.AreEqual(new Rect(0f, 0f, 1f, 1f), facilityImage.uvRect);
+            MethodInfo getSourceIcon = typeof(PlanetSectorPlanetView).GetMethod(
+                "GetSourceIcon",
+                BindingFlags.Instance | BindingFlags.NonPublic
+            );
+            Assert.AreEqual(
+                PlanetIcon.None,
+                getSourceIcon.Invoke(_view, new object[] { authoredBounds.x, authoredBounds.y })
+            );
+            Assert.AreEqual(
+                PlanetIcon.Facility,
+                getSourceIcon.Invoke(_view, new object[] { hitBounds.x, hitBounds.y })
+            );
+        }
+
+        [Test]
         public void Render_MissingGalacticInformationTexture_HidesMarker()
         {
             _view.Render(CreateData(), new Vector2Int(200, 150));
@@ -428,6 +467,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         /// <param name="rawBar">The raw bar.</param>
         /// <param name="supportBar">The support bar.</param>
         /// <param name="galacticInformationTexture">The active filter marker texture.</param>
+        /// <param name="getTextureContentBounds">The optional visible-pixel bounds resolver.</param>
         /// <returns>The created data.</returns>
         private PlanetSectorPlanetRenderData CreateData(
             PlanetIcon selectedIcon = PlanetIcon.None,
@@ -435,7 +475,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             PlanetSectorBarRenderData energyBar = null,
             PlanetSectorBarRenderData rawBar = null,
             PlanetSectorBarRenderData supportBar = null,
-            Texture2D galacticInformationTexture = null
+            Texture2D galacticInformationTexture = null,
+            Func<Texture2D, RectInt> getTextureContentBounds = null
         )
         {
             return new PlanetSectorPlanetRenderData(
@@ -459,7 +500,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 energyBar ?? CreateSegmentedBar(true, 4, 2),
                 rawBar ?? CreateSegmentedBar(true, 4, 2),
                 supportBar ?? CreateContinuousBar(true, 0.5f),
-                galacticInformationTexture
+                galacticInformationTexture,
+                getTextureContentBounds
             );
         }
 

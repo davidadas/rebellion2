@@ -91,6 +91,8 @@ public sealed class PlanetSectorPlanetView
     private Image supportBarFillImage;
 
     private PlanetSectorBarView energyBar;
+    private readonly Dictionary<RawImage, RectInt> iconHitBounds =
+        new Dictionary<RawImage, RectInt>();
     private PlanetSectorPlanetRenderData lastRenderData;
     private PlanetSectorBarView rawBar;
     private PlanetSectorBarView supportBar;
@@ -171,25 +173,10 @@ public sealed class PlanetSectorPlanetView
         SetImage(planetImage, data.PlanetTexture);
         SetImage(uprisingImage, data.UprisingTexture);
         uprisingImage.raycastTarget = false;
-        RenderIcon(
-            facilityImage,
-            PlanetIcon.Facility,
-            data.FacilityTexture,
-            data.FacilityPressedTexture
-        );
-        RenderIcon(
-            defenseImage,
-            PlanetIcon.Defense,
-            data.DefenseTexture,
-            data.DefensePressedTexture
-        );
-        RenderIcon(fleetImage, PlanetIcon.Fleet, data.FleetTexture, data.FleetPressedTexture);
-        RenderIcon(
-            missionImage,
-            PlanetIcon.Mission,
-            data.MissionTexture,
-            data.MissionPressedTexture
-        );
+        RenderIcon(facilityImage, PlanetIcon.Facility, data.FacilityIcon);
+        RenderIcon(defenseImage, PlanetIcon.Defense, data.DefenseIcon);
+        RenderIcon(fleetImage, PlanetIcon.Fleet, data.FleetIcon);
+        RenderIcon(missionImage, PlanetIcon.Mission, data.MissionIcon);
         SetImage(headquartersImage, data.HeadquartersTexture);
         energyBar.Render(data.EnergyBar, planetWidth);
         rawBar.Render(data.RawResourceBar, planetWidth);
@@ -236,6 +223,19 @@ public sealed class PlanetSectorPlanetView
 
         rect = image.rectTransform;
         return true;
+    }
+
+    /// <summary>
+    /// Tries to resolve a visible icon's tight local source-space interaction bounds.
+    /// </summary>
+    /// <param name="icon">The requested planet icon.</param>
+    /// <param name="bounds">Receives the icon's visible-pixel bounds.</param>
+    /// <returns>True when the icon is visible and has measured interaction bounds.</returns>
+    internal bool TryGetIconHitBounds(PlanetIcon icon, out RectInt bounds)
+    {
+        bounds = default;
+        RawImage image = GetIconImage(icon);
+        return image && image.isActiveAndEnabled && iconHitBounds.TryGetValue(image, out bounds);
     }
 
     /// <summary>
@@ -428,17 +428,67 @@ public sealed class PlanetSectorPlanetView
     /// </summary>
     /// <param name="image">The destination image.</param>
     /// <param name="icon">The represented icon.</param>
-    /// <param name="normalTexture">The normal image.</param>
-    /// <param name="pressedTexture">The pressed image.</param>
-    private void RenderIcon(
-        RawImage image,
-        PlanetIcon icon,
-        Texture2D normalTexture,
-        Texture2D pressedTexture
-    )
+    /// <param name="data">The icon textures and their visible-pixel bounds.</param>
+    private void RenderIcon(RawImage image, PlanetIcon icon, PlanetSectorIconRenderData data)
     {
         bool pressed = lastRenderData.SelectedIcon == icon || lastRenderData.HoveredIcon == icon;
-        SetImage(image, pressed ? pressedTexture : normalTexture);
+        Texture2D texture = data.GetTexture(pressed);
+        SetImage(image, texture);
+        SetIconHitBounds(image, texture, data.GetContentBounds(pressed));
+    }
+
+    /// <summary>
+    /// Restricts one icon's interaction rectangle to its visible pixels.
+    /// </summary>
+    /// <param name="image">The icon image.</param>
+    /// <param name="texture">The displayed icon texture.</param>
+    /// <param name="contentBounds">The visible texture bounds in bottom-left coordinates.</param>
+    private void SetIconHitBounds(RawImage image, Texture2D texture, RectInt contentBounds)
+    {
+        if (texture == null || contentBounds.width <= 0 || contentBounds.height <= 0)
+        {
+            iconHitBounds.Remove(image);
+            return;
+        }
+
+        iconHitBounds[image] = CalculateIconHitBounds(
+            UILayout.GetSourceRect(image.rectTransform),
+            texture,
+            contentBounds
+        );
+    }
+
+    /// <summary>
+    /// Converts visible texture pixels into a tight source-space interaction rectangle.
+    /// </summary>
+    /// <param name="authoredBounds">The full authored source-space rectangle.</param>
+    /// <param name="texture">The displayed texture.</param>
+    /// <param name="contentBounds">The visible texture bounds in bottom-left coordinates.</param>
+    /// <returns>The tight source-space interaction rectangle.</returns>
+    private static RectInt CalculateIconHitBounds(
+        RectInt authoredBounds,
+        Texture texture,
+        RectInt contentBounds
+    )
+    {
+        int left = Mathf.FloorToInt(
+            authoredBounds.width * contentBounds.xMin / (float)texture.width
+        );
+        int right = Mathf.CeilToInt(
+            authoredBounds.width * contentBounds.xMax / (float)texture.width
+        );
+        int top = Mathf.FloorToInt(
+            authoredBounds.height * (texture.height - contentBounds.yMax) / (float)texture.height
+        );
+        int bottom = Mathf.CeilToInt(
+            authoredBounds.height * (texture.height - contentBounds.yMin) / (float)texture.height
+        );
+        return new RectInt(
+            authoredBounds.x + left,
+            authoredBounds.y + top,
+            right - left,
+            bottom - top
+        );
     }
 
     /// <summary>
@@ -722,16 +772,18 @@ public sealed class PlanetSectorPlanetView
             && IsTargetOrChild(target, headquartersImage);
         PlanetIcon icon = PlanetIcon.None;
         bool planetImageHit = headquartersTargetHit;
+        bool resolvedSourcePosition = false;
         if (
             !headquartersTargetHit
             && TryGetPointerSourcePosition(eventData, out int sourceX, out int sourceY)
         )
         {
+            resolvedSourcePosition = true;
             icon = GetSourceIcon(sourceX, sourceY);
             planetImageHit = icon == PlanetIcon.None && IsPlanetImageSourcePoint(sourceX, sourceY);
         }
 
-        if (icon == PlanetIcon.None && !planetImageHit)
+        if (!resolvedSourcePosition && icon == PlanetIcon.None && !planetImageHit)
         {
             icon = GetTargetIcon(target);
             planetImageHit = IsPlanetImageTarget(target);
@@ -768,9 +820,10 @@ public sealed class PlanetSectorPlanetView
     /// <returns>The matching icon, or none.</returns>
     private PlanetIcon GetSourceIcon(int x, int y)
     {
+        Vector2Int point = new Vector2Int(x, y);
         foreach (PlanetIcon icon in _hitTestIcons)
         {
-            if (IsImageSourcePoint(GetIconImage(icon), x, y))
+            if (TryGetIconHitBounds(icon, out RectInt bounds) && bounds.Contains(point))
                 return icon;
         }
 

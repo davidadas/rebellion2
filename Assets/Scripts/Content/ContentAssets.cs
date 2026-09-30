@@ -26,6 +26,10 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
         string,
         Texture2D
     >(StringComparer.Ordinal);
+    private readonly Dictionary<Texture2D, string> textureAddresses =
+        new Dictionary<Texture2D, string>();
+    private readonly Dictionary<Texture2D, RectInt> textureContentBounds =
+        new Dictionary<Texture2D, RectInt>();
     private readonly Dictionary<string, Sprite> sprites = new Dictionary<string, Sprite>(
         StringComparer.Ordinal
     );
@@ -126,6 +130,52 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
     }
 
     /// <summary>
+    /// Gets the smallest texture rectangle containing every visible pixel.
+    /// </summary>
+    /// <param name="texture">The addressed texture to inspect.</param>
+    /// <returns>The visible-pixel bounds, or the full texture when no tighter bounds are available.</returns>
+    public RectInt GetTextureContentBounds(Texture2D texture)
+    {
+        ThrowIfDisposed();
+        if (texture == null)
+            return default;
+
+        RectInt fullBounds = new RectInt(0, 0, texture.width, texture.height);
+        if (textureContentBounds.TryGetValue(texture, out RectInt bounds))
+            return bounds;
+        if (!textureAddresses.TryGetValue(texture, out string address))
+            return fullBounds;
+
+        string filePath = ResolveOptionalAssetFile(address, _textureExtensions);
+        if (filePath == null)
+            return fullBounds;
+
+        Texture2D readableTexture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+        try
+        {
+            byte[] bytes = File.ReadAllBytes(filePath);
+            if (!ImageConversion.LoadImage(readableTexture, bytes, false))
+                return fullBounds;
+
+            bounds = CalculateTextureContentBounds(readableTexture);
+            textureContentBounds[texture] = bounds;
+            return bounds;
+        }
+        catch (IOException)
+        {
+            return fullBounds;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return fullBounds;
+        }
+        finally
+        {
+            DestroyAsset(readableTexture);
+        }
+    }
+
+    /// <summary>
     /// Resolves and caches a texture that meets Unity's hardware cursor requirements.
     /// </summary>
     /// <param name="path">The application content address.</param>
@@ -211,6 +261,7 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
         texture.filterMode = FilterMode.Point;
         texture.wrapMode = TextureWrapMode.Clamp;
         cache.Add(normalizedPath, texture);
+        textureAddresses[texture] = normalizedPath;
         return texture;
     }
 
@@ -351,9 +402,41 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
         audioLoads.Clear();
         textures.Clear();
         readableTextures.Clear();
+        textureAddresses.Clear();
+        textureContentBounds.Clear();
         sprites.Clear();
         unavailableTextures.Clear();
         disposed = true;
+    }
+
+    /// <summary>
+    /// Calculates the smallest bottom-left-origin rectangle containing visible pixels.
+    /// </summary>
+    /// <param name="texture">The readable texture.</param>
+    /// <returns>The visible-pixel bounds, or the full texture when it is empty.</returns>
+    private static RectInt CalculateTextureContentBounds(Texture2D texture)
+    {
+        int minimumX = texture.width;
+        int minimumY = texture.height;
+        int maximumX = -1;
+        int maximumY = -1;
+        Color32[] pixels = texture.GetPixels32();
+        for (int index = 0; index < pixels.Length; index++)
+        {
+            if (pixels[index].a == 0)
+                continue;
+
+            int x = index % texture.width;
+            int y = index / texture.width;
+            minimumX = Mathf.Min(minimumX, x);
+            minimumY = Mathf.Min(minimumY, y);
+            maximumX = Mathf.Max(maximumX, x);
+            maximumY = Mathf.Max(maximumY, y);
+        }
+
+        return maximumX < minimumX || maximumY < minimumY
+            ? new RectInt(0, 0, texture.width, texture.height)
+            : new RectInt(minimumX, minimumY, maximumX - minimumX + 1, maximumY - minimumY + 1);
     }
 
     /// <summary>
