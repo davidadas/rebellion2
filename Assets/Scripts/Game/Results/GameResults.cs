@@ -70,6 +70,7 @@ namespace Rebellion.Game.Results
     {
         None,
         PopularSupport,
+        GarrisonRemoved,
     }
 
     #endregion

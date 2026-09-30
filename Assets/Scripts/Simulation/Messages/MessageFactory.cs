@@ -3591,6 +3591,7 @@ namespace Rebellion.Simulation
                 if (
                     result.NewOwner != null
                     && result.Reason != PlanetOwnershipChangeReason.PopularSupport
+                    && result.Reason != PlanetOwnershipChangeReason.GarrisonRemoved
                 )
                     continue;
 

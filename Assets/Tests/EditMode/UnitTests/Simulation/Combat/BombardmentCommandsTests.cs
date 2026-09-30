@@ -160,7 +160,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void Execute_CivilianBombardment_ControlTransferCascadesSectorSupport()
+        public void Execute_CivilianBombardment_ShiftsSectorSupport()
         {
             GameRoot game = CreateGame();
             (Planet planet, PlanetSector planetSector) = CreatePlanet(
@@ -180,8 +180,8 @@ namespace Rebellion.Tests.Simulation
             MakeBombardment(game, new SequenceRNG(intValues: new[] { 0, 10 }))
                 .Execute(new List<Fleet> { fleet }, planet, BombardmentType.Civilian);
 
-            Assert.AreEqual(25, secondPlanet.GetPopularSupport("alliance"));
-            Assert.AreEqual(75, secondPlanet.GetPopularSupport("empire"));
+            Assert.AreEqual(26, secondPlanet.GetPopularSupport("alliance"));
+            Assert.AreEqual(74, secondPlanet.GetPopularSupport("empire"));
         }
 
         [Test]
@@ -838,7 +838,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void Execute_DestroyedGarrison_CanTransferPlanetBySupport()
+        public void Execute_DestroyedGarrison_ReportsGarrisonRemovedOwnershipChange()
         {
             GameRoot game = CreateGame();
             (Planet planet, PlanetSector planetSector) = CreatePlanet(
@@ -861,18 +861,16 @@ namespace Rebellion.Tests.Simulation
 
             CollectionAssert.Contains(result.DestroyedRegiments, regiment);
             Assert.AreEqual("alliance", planet.GetOwnerInstanceID());
-            Assert.AreEqual(71, planet.GetPopularSupport("alliance"));
-            Assert.AreEqual(61, secondPlanet.GetPopularSupport("alliance"));
-            Assert.AreEqual("alliance", secondPlanet.GetOwnerInstanceID());
-            Assert.IsTrue(
-                result
-                    .Events.OfType<PlanetOwnershipChangedResult>()
-                    .Any(change =>
-                        change.Planet == secondPlanet && change.NewOwner?.InstanceID == "alliance"
-                    )
-            );
+            Assert.AreEqual(60, planet.GetPopularSupport("alliance"));
+            Assert.AreEqual(50, secondPlanet.GetPopularSupport("alliance"));
+            Assert.IsNull(secondPlanet.GetOwnerInstanceID());
+            Assert.IsEmpty(result.Events.OfType<PlanetOwnershipChangedResult>());
             Assert.AreEqual("empire", result.OwnershipChange.PreviousOwner.InstanceID);
             Assert.AreEqual("alliance", result.OwnershipChange.NewOwner.InstanceID);
+            Assert.AreEqual(
+                PlanetOwnershipChangeReason.GarrisonRemoved,
+                result.OwnershipChange.Reason
+            );
         }
 
         [Test]
@@ -900,13 +898,17 @@ namespace Rebellion.Tests.Simulation
                 .Execute(new List<Fleet> { fleet }, planet, BombardmentType.Military);
 
             Assert.IsNull(planet.GetOwnerInstanceID());
-            Assert.AreEqual(59, planet.GetPopularSupport("alliance"));
-            Assert.AreEqual(30, secondPlanet.GetPopularSupport("alliance"));
+            Assert.AreEqual(49, planet.GetPopularSupport("alliance"));
+            Assert.AreEqual(20, secondPlanet.GetPopularSupport("alliance"));
             Assert.IsNull(result.OwnershipChange.NewOwner);
+            Assert.AreEqual(
+                PlanetOwnershipChangeReason.GarrisonRemoved,
+                result.OwnershipChange.Reason
+            );
         }
 
         [Test]
-        public void Execute_DestroyedGarrison_SupportShiftCanTransferPlanet()
+        public void Execute_DestroyedGarrison_ReportsNeutralOwnershipChange()
         {
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "empire", energy: 10);
@@ -919,10 +921,14 @@ namespace Rebellion.Tests.Simulation
                 )
                 .Execute(new List<Fleet> { fleet }, planet, BombardmentType.Military);
 
-            Assert.AreEqual("alliance", planet.GetOwnerInstanceID());
-            Assert.AreEqual(61, planet.GetPopularSupport("alliance"));
+            Assert.IsNull(planet.GetOwnerInstanceID());
+            Assert.AreEqual(50, planet.GetPopularSupport("alliance"));
             Assert.AreEqual("empire", result.OwnershipChange.PreviousOwner.InstanceID);
-            Assert.AreEqual("alliance", result.OwnershipChange.NewOwner.InstanceID);
+            Assert.IsNull(result.OwnershipChange.NewOwner);
+            Assert.AreEqual(
+                PlanetOwnershipChangeReason.GarrisonRemoved,
+                result.OwnershipChange.Reason
+            );
         }
 
         [Test]

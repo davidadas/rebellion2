@@ -4089,8 +4089,11 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("empire-image", message.DisplayImagePath);
         }
 
-        [Test]
-        public void CreateMessages_PlanetJoinedBySupport_ReportsNewOwner()
+        [TestCase(PlanetOwnershipChangeReason.PopularSupport)]
+        [TestCase(PlanetOwnershipChangeReason.GarrisonRemoved)]
+        public void CreateMessages_PoliticalOwnershipChange_ReportsNewOwner(
+            PlanetOwnershipChangeReason reason
+        )
         {
             (GameRoot game, Faction alliance, _, _, Planet target) = BuildTwoFactionMessageScene();
             target.OwnerInstanceID = null;
@@ -4113,7 +4116,7 @@ namespace Rebellion.Tests.Simulation
                         Planet = target,
                         PreviousOwner = null,
                         NewOwner = alliance,
-                        Reason = PlanetOwnershipChangeReason.PopularSupport,
+                        Reason = reason,
                     }
                 ),
                 alliance

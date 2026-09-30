@@ -129,14 +129,10 @@ namespace Rebellion.Tests.Simulation
                     typeof(PlanetOwnershipChangedResult),
                     typeof(PlanetStatChangedResult),
                     typeof(PlanetOwnershipChangedResult),
-                    typeof(PlanetOwnershipChangedResult),
                 },
                 results.Select(result => result.GetType())
             );
-            CollectionAssert.AreEqual(
-                new[] { 4, 4, 5, 5, 5 },
-                results.Select(result => result.Tick)
-            );
+            CollectionAssert.AreEqual(new[] { 4, 4, 5, 5 }, results.Select(result => result.Tick));
         }
 
         [Test]
@@ -257,7 +253,7 @@ namespace Rebellion.Tests.Simulation
             PlanetOwnershipChangedResult change = changes.Single();
             Assert.AreEqual(_empire, change.PreviousOwner);
             Assert.AreEqual(expectedOwnerId, change.NewOwner?.InstanceID);
-            Assert.AreEqual(PlanetOwnershipChangeReason.PopularSupport, change.Reason);
+            Assert.AreEqual(PlanetOwnershipChangeReason.GarrisonRemoved, change.Reason);
             Assert.IsEmpty(
                 new PlanetaryControlTickProcessor(_commands)
                     .ProcessTick(_game)
@@ -524,6 +520,231 @@ namespace Rebellion.Tests.Simulation
                 .Single();
             Assert.AreEqual(PlanetOwnershipChangeReason.PopularSupport, change.Reason);
             Assert.AreEqual(18, change.Tick);
+        }
+
+        [Test]
+        public void Connect_PopularSupportTransfer_ShiftsSectorSupport()
+        {
+            _targetPlanet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.OuterRim;
+            _targetPlanet.PopularSupport = new Dictionary<string, int>
+            {
+                { _rebels.InstanceID, 59 },
+                { _empire.InstanceID, 41 },
+            };
+            _empirePlanet.PopularSupport = new Dictionary<string, int>
+            {
+                { _rebels.InstanceID, 20 },
+                { _empire.InstanceID, 80 },
+            };
+            GameResultBus bus = new GameResultBus();
+            _observer.Connect(bus);
+
+            List<GameResult> results = bus.Publish(
+                new PopularSupportShiftResult
+                {
+                    Planet = _targetPlanet,
+                    Faction = _rebels,
+                    Shift = 1,
+                    Tick = 10,
+                }
+            );
+
+            Assert.AreEqual(_rebels.InstanceID, _targetPlanet.OwnerInstanceID);
+            Assert.AreEqual(61, _targetPlanet.GetPopularSupport(_rebels.InstanceID));
+            Assert.AreEqual(21, _empirePlanet.GetPopularSupport(_rebels.InstanceID));
+            CollectionAssert.AreEqual(
+                new[] { _targetPlanet },
+                results.OfType<PlanetOwnershipChangedResult>().Select(result => result.Planet)
+            );
+        }
+
+        [Test]
+        public void Connect_NeutralTransfers_CascadesSectorSupport()
+        {
+            PlanetSector sector = _targetPlanet.GetParentOfType<PlanetSector>();
+            sector.SectorType = PlanetSectorType.OuterRim;
+            _targetPlanet.PopularSupport = new Dictionary<string, int>
+            {
+                { _rebels.InstanceID, 59 },
+                { _empire.InstanceID, 41 },
+            };
+            _empirePlanet.PopularSupport = new Dictionary<string, int>
+            {
+                { _rebels.InstanceID, 20 },
+                { _empire.InstanceID, 80 },
+            };
+            Planet secondNeutral = new Planet
+            {
+                InstanceID = "second-neutral",
+                DisplayName = "Second neutral",
+                IsColonized = true,
+                PopularSupport = new Dictionary<string, int>
+                {
+                    { _rebels.InstanceID, 59 },
+                    { _empire.InstanceID, 41 },
+                },
+            };
+            _game.AttachNode(secondNeutral, sector);
+            GameResultBus bus = new GameResultBus();
+            _observer.Connect(bus);
+
+            List<GameResult> results = bus.Publish(
+                new PopularSupportShiftResult
+                {
+                    Planet = _targetPlanet,
+                    Faction = _rebels,
+                    Shift = 1,
+                    Tick = 10,
+                }
+            );
+
+            Assert.AreEqual(_rebels.InstanceID, secondNeutral.OwnerInstanceID);
+            Assert.AreEqual(62, _targetPlanet.GetPopularSupport(_rebels.InstanceID));
+            Assert.AreEqual(61, secondNeutral.GetPopularSupport(_rebels.InstanceID));
+            Assert.AreEqual(22, _empirePlanet.GetPopularSupport(_rebels.InstanceID));
+            CollectionAssert.AreEqual(
+                new[] { _targetPlanet, secondNeutral },
+                results.OfType<PlanetOwnershipChangedResult>().Select(result => result.Planet)
+            );
+        }
+
+        [Test]
+        public void Connect_OwnedTransfers_ShiftsOnceForDisplacedFaction()
+        {
+            _targetPlanet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.OuterRim;
+            _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
+            _targetPlanet.PopularSupport = new Dictionary<string, int>
+            {
+                { _rebels.InstanceID, 59 },
+                { _empire.InstanceID, 41 },
+            };
+            _empirePlanet.PopularSupport = new Dictionary<string, int>
+            {
+                { _rebels.InstanceID, 59 },
+                { _empire.InstanceID, 41 },
+            };
+            GameResultBus bus = new GameResultBus();
+            _observer.Connect(bus);
+
+            List<GameResult> results = bus.Publish(
+                new PopularSupportShiftResult
+                {
+                    Planet = _targetPlanet,
+                    Faction = _rebels,
+                    Shift = 1,
+                    Tick = 10,
+                }
+            );
+
+            Assert.AreEqual(_rebels.InstanceID, _targetPlanet.OwnerInstanceID);
+            Assert.AreEqual(_rebels.InstanceID, _empirePlanet.OwnerInstanceID);
+            Assert.AreEqual(61, _targetPlanet.GetPopularSupport(_rebels.InstanceID));
+            Assert.AreEqual(60, _empirePlanet.GetPopularSupport(_rebels.InstanceID));
+            Assert.AreEqual(2, results.OfType<PlanetOwnershipChangedResult>().Count());
+        }
+
+        [Test]
+        public void Connect_GarrisonRemoved_ShiftsSectorByTen()
+        {
+            _targetPlanet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.OuterRim;
+            _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
+            _targetPlanet.PopularSupport = new Dictionary<string, int>
+            {
+                { _rebels.InstanceID, 60 },
+                { _empire.InstanceID, 40 },
+            };
+            _empirePlanet.PopularSupport = new Dictionary<string, int>
+            {
+                { _rebels.InstanceID, 20 },
+                { _empire.InstanceID, 80 },
+            };
+            Regiment regiment = EntityFactory.CreateRegiment("garrison", _empire.InstanceID);
+            regiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            _game.AttachNode(regiment, _targetPlanet);
+            _game.DetachNode(regiment);
+            GameResultBus bus = new GameResultBus();
+            _observer.Connect(bus);
+
+            List<GameResult> results = bus.Publish(
+                new PlanetGarrisonChangedResult { Planet = _targetPlanet, Tick = 10 }
+            );
+
+            Assert.AreEqual(_rebels.InstanceID, _targetPlanet.OwnerInstanceID);
+            Assert.AreEqual(70, _targetPlanet.GetPopularSupport(_rebels.InstanceID));
+            Assert.AreEqual(30, _empirePlanet.GetPopularSupport(_rebels.InstanceID));
+            PlanetOwnershipChangedResult change = results
+                .OfType<PlanetOwnershipChangedResult>()
+                .Single();
+            Assert.AreEqual(PlanetOwnershipChangeReason.GarrisonRemoved, change.Reason);
+        }
+
+        [Test]
+        public void Connect_GarrisonRemovalCreatesNeutrality_DrainsResultingTransfer()
+        {
+            _targetPlanet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.OuterRim;
+            _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
+            _targetPlanet.PopularSupport = new Dictionary<string, int>
+            {
+                { _rebels.InstanceID, 50 },
+                { _empire.InstanceID, 50 },
+            };
+            _empirePlanet.PopularSupport = new Dictionary<string, int>
+            {
+                { _rebels.InstanceID, 20 },
+                { _empire.InstanceID, 80 },
+            };
+            Regiment regiment = EntityFactory.CreateRegiment("garrison", _empire.InstanceID);
+            regiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            _game.AttachNode(regiment, _targetPlanet);
+            _game.DetachNode(regiment);
+            GameResultBus bus = new GameResultBus();
+            _observer.Connect(bus);
+
+            List<GameResult> results = bus.Publish(
+                new PlanetGarrisonChangedResult { Planet = _targetPlanet, Tick = 10 }
+            );
+
+            Assert.AreEqual(_rebels.InstanceID, _targetPlanet.OwnerInstanceID);
+            Assert.AreEqual(61, _targetPlanet.GetPopularSupport(_rebels.InstanceID));
+            Assert.AreEqual(31, _empirePlanet.GetPopularSupport(_rebels.InstanceID));
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    PlanetOwnershipChangeReason.GarrisonRemoved,
+                    PlanetOwnershipChangeReason.PopularSupport,
+                },
+                results.OfType<PlanetOwnershipChangedResult>().Select(result => result.Reason)
+            );
+        }
+
+        [Test]
+        public void Connect_UnclassifiedOwnershipChange_DoesNotShiftSectorSupport()
+        {
+            _targetPlanet.PopularSupport = new Dictionary<string, int>
+            {
+                { _rebels.InstanceID, 60 },
+                { _empire.InstanceID, 40 },
+            };
+            _empirePlanet.PopularSupport = new Dictionary<string, int>
+            {
+                { _rebels.InstanceID, 20 },
+                { _empire.InstanceID, 80 },
+            };
+            GameResultBus bus = new GameResultBus();
+            _observer.Connect(bus);
+
+            bus.Publish(
+                new PlanetOwnershipChangedResult
+                {
+                    Planet = _targetPlanet,
+                    PreviousOwner = _empire,
+                    NewOwner = _rebels,
+                    Reason = PlanetOwnershipChangeReason.None,
+                }
+            );
+
+            Assert.AreEqual(60, _targetPlanet.GetPopularSupport(_rebels.InstanceID));
+            Assert.AreEqual(20, _empirePlanet.GetPopularSupport(_rebels.InstanceID));
         }
 
         /// <summary>

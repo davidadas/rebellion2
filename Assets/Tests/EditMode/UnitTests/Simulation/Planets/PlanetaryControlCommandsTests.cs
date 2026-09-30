@@ -1001,7 +1001,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ApplySupportShift_NeutralPlanetJoins_ShiftsSectorSupport()
+        public void ApplySupportShift_NeutralPlanetJoins_ReportsOwnershipWithoutApplyingReaction()
         {
             _targetPlanet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.OuterRim;
             _targetPlanet.SetPopularSupport(_rebels.InstanceID, 59);
@@ -1017,8 +1017,8 @@ namespace Rebellion.Tests.Simulation
             );
 
             Assert.AreEqual(_rebels.InstanceID, _targetPlanet.OwnerInstanceID);
-            Assert.AreEqual(61, _targetPlanet.GetPopularSupport(_rebels.InstanceID));
-            Assert.AreEqual(21, _empirePlanet.GetPopularSupport(_rebels.InstanceID));
+            Assert.AreEqual(60, _targetPlanet.GetPopularSupport(_rebels.InstanceID));
+            Assert.AreEqual(20, _empirePlanet.GetPopularSupport(_rebels.InstanceID));
             CollectionAssert.AreEqual(
                 new[] { _targetPlanet },
                 results.OfType<PlanetOwnershipChangedResult>().Select(result => result.Planet)
@@ -1026,63 +1026,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ApplySupportShift_NeutralPlanetsJoin_CascadesSectorSupport()
-        {
-            _targetPlanet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.OuterRim;
-            _targetPlanet.SetPopularSupport(_rebels.InstanceID, 59);
-            _targetPlanet.SetPopularSupport(_empire.InstanceID, 41);
-            _empirePlanet.SetPopularSupport(_rebels.InstanceID, 20);
-            _empirePlanet.SetPopularSupport(_empire.InstanceID, 80);
-            Planet secondNeutral = AddPlanet(
-                _targetPlanet.GetParentOfType<PlanetSector>(),
-                "second-neutral",
-                ownerInstanceId: null,
-                rebelSupport: 59
-            );
-
-            List<GameResult> results = _commands.ApplySupportShift(
-                _targetPlanet,
-                _rebels,
-                shift: 1,
-                tick: 10
-            );
-
-            Assert.AreEqual(_rebels.InstanceID, secondNeutral.OwnerInstanceID);
-            Assert.AreEqual(62, _targetPlanet.GetPopularSupport(_rebels.InstanceID));
-            Assert.AreEqual(61, secondNeutral.GetPopularSupport(_rebels.InstanceID));
-            Assert.AreEqual(22, _empirePlanet.GetPopularSupport(_rebels.InstanceID));
-            CollectionAssert.AreEqual(
-                new[] { _targetPlanet, secondNeutral },
-                results.OfType<PlanetOwnershipChangedResult>().Select(result => result.Planet)
-            );
-        }
-
-        [Test]
-        public void ApplySupportShift_OwnedPlanetsChangeControl_ShiftsOnceForDisplacedFaction()
-        {
-            _targetPlanet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.OuterRim;
-            _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
-            _targetPlanet.SetPopularSupport(_rebels.InstanceID, 59);
-            _targetPlanet.SetPopularSupport(_empire.InstanceID, 41);
-            _empirePlanet.SetPopularSupport(_rebels.InstanceID, 59);
-            _empirePlanet.SetPopularSupport(_empire.InstanceID, 41);
-
-            List<GameResult> results = _commands.ApplySupportShift(
-                _targetPlanet,
-                _rebels,
-                shift: 1,
-                tick: 10
-            );
-
-            Assert.AreEqual(_rebels.InstanceID, _targetPlanet.OwnerInstanceID);
-            Assert.AreEqual(_rebels.InstanceID, _empirePlanet.OwnerInstanceID);
-            Assert.AreEqual(61, _targetPlanet.GetPopularSupport(_rebels.InstanceID));
-            Assert.AreEqual(60, _empirePlanet.GetPopularSupport(_rebels.InstanceID));
-            Assert.AreEqual(2, results.OfType<PlanetOwnershipChangedResult>().Count());
-        }
-
-        [Test]
-        public void ReconcilePlanetAfterGarrisonChange_LastGarrisonRemoved_ShiftsSectorByTen()
+        public void ReconcilePlanetAfterGarrisonChange_LastGarrisonRemoved_ReportsReactionCause()
         {
             _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
             _targetPlanet.SetPopularSupport(_rebels.InstanceID, 60);
@@ -1097,9 +1041,12 @@ namespace Rebellion.Tests.Simulation
             List<GameResult> results = _commands.ReconcilePlanetAfterGarrisonChange(_targetPlanet);
 
             Assert.AreEqual(_rebels.InstanceID, _targetPlanet.OwnerInstanceID);
-            Assert.AreEqual(70, _targetPlanet.GetPopularSupport(_rebels.InstanceID));
-            Assert.AreEqual(30, _empirePlanet.GetPopularSupport(_rebels.InstanceID));
-            Assert.AreEqual(1, results.OfType<PlanetOwnershipChangedResult>().Count());
+            Assert.AreEqual(60, _targetPlanet.GetPopularSupport(_rebels.InstanceID));
+            Assert.AreEqual(20, _empirePlanet.GetPopularSupport(_rebels.InstanceID));
+            PlanetOwnershipChangedResult change = results
+                .OfType<PlanetOwnershipChangedResult>()
+                .Single();
+            Assert.AreEqual(PlanetOwnershipChangeReason.GarrisonRemoved, change.Reason);
         }
 
         [Test]
@@ -1499,37 +1446,6 @@ namespace Rebellion.Tests.Simulation
             Faction faction = new Faction { InstanceID = instanceId, DisplayName = instanceId };
             _game.GetFactions().Add(faction);
             return faction;
-        }
-
-        /// <summary>
-        /// Adds a populated planet with complementary faction support.
-        /// </summary>
-        /// <param name="sector">The sector receiving the planet.</param>
-        /// <param name="instanceId">The planet instance ID.</param>
-        /// <param name="ownerInstanceId">The initial owner instance ID.</param>
-        /// <param name="rebelSupport">The initial rebel support.</param>
-        /// <returns>The attached planet.</returns>
-        private Planet AddPlanet(
-            PlanetSector sector,
-            string instanceId,
-            string ownerInstanceId,
-            int rebelSupport
-        )
-        {
-            Planet planet = new Planet
-            {
-                InstanceID = instanceId,
-                DisplayName = instanceId,
-                OwnerInstanceID = ownerInstanceId,
-                IsColonized = true,
-                PopularSupport = new Dictionary<string, int>
-                {
-                    { _rebels.InstanceID, rebelSupport },
-                    { _empire.InstanceID, 100 - rebelSupport },
-                },
-            };
-            _game.AttachNode(planet, sector);
-            return planet;
         }
 
         /// <summary>

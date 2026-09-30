@@ -6,7 +6,7 @@ using Rebellion.Game.Results;
 
 namespace Rebellion.Simulation
 {
-    /// <summary>Routes garrison and support changes to planetary control operations.</summary>
+    /// <summary>Routes garrison, support, and ownership changes to planetary control operations.</summary>
     public sealed class PlanetaryControlObserver : IResultObserver, IDisposable
     {
         private readonly PlanetaryControlCommands _commands;
@@ -19,8 +19,8 @@ namespace Rebellion.Simulation
             _commands = commands ?? throw new ArgumentNullException(nameof(commands));
         }
 
-        /// <summary>Registers garrison and support callbacks with the result bus.</summary>
-        /// <param name="results">The bus that delivers garrison and support changes.</param>
+        /// <summary>Registers garrison, support, and ownership callbacks with the result bus.</summary>
+        /// <param name="results">The bus that delivers garrison, support, and ownership changes.</param>
         public void Connect(GameResultBus results)
         {
             if (_subscriptions != null)
@@ -34,10 +34,11 @@ namespace Rebellion.Simulation
             {
                 results.Subscribe<PlanetGarrisonChangedResult>(HandleResults),
                 results.Subscribe<PopularSupportShiftResult>(HandleResults),
+                results.Subscribe<PlanetOwnershipChangedResult>(HandleResults),
             };
         }
 
-        /// <summary>Stops receiving garrison and support changes.</summary>
+        /// <summary>Stops receiving garrison, support, and ownership changes.</summary>
         public void Dispose()
         {
             foreach (IDisposable subscription in _subscriptions ?? Array.Empty<IDisposable>())
@@ -88,6 +89,21 @@ namespace Rebellion.Simulation
                     )
                 );
             }
+
+            return reactions;
+        }
+
+        /// <summary>Applies sector support reactions in ownership-change order.</summary>
+        /// <param name="results">The completed ownership changes.</param>
+        /// <returns>Any ownership changes caused by the resulting support reactions.</returns>
+        public List<GameResult> HandleResults(IReadOnlyList<PlanetOwnershipChangedResult> results)
+        {
+            List<GameResult> reactions = new List<GameResult>();
+            if (results == null)
+                return reactions;
+
+            foreach (PlanetOwnershipChangedResult result in results)
+                reactions.AddRange(_commands.ApplyOwnershipSupport(result));
 
             return reactions;
         }
