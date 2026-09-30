@@ -257,7 +257,9 @@ namespace Rebellion.Simulation
                     : result.AttackingFaction.Settings.CivilianBombardmentOuterRimSupportPenalty;
             results.AddRange(
                 ApplyBombardmentSupportShift(
-                    PlanetaryControlQueries.GetSupportReactionPlanets(sector),
+                    sector
+                        .GetChildren<Planet>()
+                        .Where(planet => planet.IsPopulated() && !planet.IsDestroyed),
                     result.AttackingFaction,
                     shift
                 )
@@ -293,7 +295,8 @@ namespace Rebellion.Simulation
             IEnumerable<Planet> corePlanets = _game
                 .GetSceneNodesByType<PlanetSector>()
                 .Where(sector => sector.SectorType == PlanetSectorType.Core)
-                .SelectMany(PlanetaryControlQueries.GetSupportReactionPlanets);
+                .SelectMany(sector => sector.GetChildren<Planet>())
+                .Where(planet => planet.IsPopulated() && !planet.IsDestroyed);
             results.AddRange(
                 ApplyBombardmentSupportShift(
                     corePlanets,
@@ -305,7 +308,8 @@ namespace Rebellion.Simulation
             IEnumerable<Planet> outerRimPlanets = _game
                 .GetSceneNodesByType<PlanetSector>()
                 .Where(sector => sector.SectorType == PlanetSectorType.OuterRim)
-                .SelectMany(PlanetaryControlQueries.GetSupportReactionPlanets)
+                .SelectMany(sector => sector.GetChildren<Planet>())
+                .Where(planet => planet.IsPopulated() && !planet.IsDestroyed)
                 .Where(planet =>
                     planet.GetPopularSupport(attacker.InstanceID)
                     < _game.Config.Combat.Bombardment.DestroyPlanetOuterRimSupportThreshold
@@ -439,7 +443,14 @@ namespace Rebellion.Simulation
                 return results;
 
             PlanetSector sector = change.Planet.GetParentOfType<PlanetSector>();
-            foreach (Planet planet in PlanetaryControlQueries.GetSupportReactionPlanets(sector))
+            if (sector == null)
+                return results;
+
+            foreach (
+                Planet planet in sector
+                    .GetChildren<Planet>()
+                    .Where(planet => planet.IsPopulated() && !planet.IsDestroyed)
+            )
             {
                 Faction previousController = _queries.GetPlanetOwner(planet);
                 _commands.ChangePopularSupport(planet, beneficiary, shift);

@@ -89,19 +89,6 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Gets populated, intact planets affected by a sector-level support reaction.
-        /// </summary>
-        /// <param name="sector">The sector to inspect.</param>
-        /// <returns>The planets eligible for the support reaction.</returns>
-        internal static IEnumerable<Planet> GetSupportReactionPlanets(PlanetSector sector)
-        {
-            return sector
-                    ?.GetChildren<Planet>()
-                    .Where(planet => planet.IsPopulated() && !planet.IsDestroyed)
-                ?? Enumerable.Empty<Planet>();
-        }
-
-        /// <summary>
         /// Gets the distinct owners of completed, stationary regiments on a planet.
         /// </summary>
         /// <param name="planet">The planet to inspect.</param>
