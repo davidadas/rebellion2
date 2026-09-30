@@ -11,7 +11,7 @@ using UnityEngine.EventSystems;
 /// <summary>
 /// Performs game-level and shared-window actions requested by the fleet feature.
 /// </summary>
-public interface IFleetWindowActions
+public interface IFleetWindowActions : IOfficerCommandActions
 {
     /// <summary>
     /// Opens Encyclopedia information for one selected fleet item.
@@ -36,14 +36,6 @@ public interface IFleetWindowActions
     /// Rebuilds shared strategy state after a fleet command changes the game.
     /// </summary>
     void RefreshFleetState();
-
-    /// <summary>
-    /// Assigns the selected officer to a local command post.
-    /// </summary>
-    /// <param name="items">The selected fleet-window items.</param>
-    /// <param name="rank">The requested command rank.</param>
-    /// <returns>True when an appointment changed.</returns>
-    bool TrySetOfficerCommand(IReadOnlyList<ISceneNode> items, OfficerRank rank);
 }
 
 /// <summary>

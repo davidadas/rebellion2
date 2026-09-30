@@ -2231,12 +2231,15 @@ public sealed class StrategyController
     }
 
     /// <summary>
-    /// Assigns one selected live officer to a local command post.
+    /// Assigns one selected live officer to a command post for a strategy feature window.
     /// </summary>
-    /// <param name="items">The selected fleet-window items or snapshots.</param>
+    /// <param name="items">The selected strategy-window items or snapshots.</param>
     /// <param name="rank">The requested command rank.</param>
     /// <returns>True when an appointment changed.</returns>
-    bool IFleetWindowActions.TrySetOfficerCommand(IReadOnlyList<ISceneNode> items, OfficerRank rank)
+    bool IOfficerCommandActions.TrySetOfficerCommand(
+        IReadOnlyList<ISceneNode> items,
+        OfficerRank rank
+    )
     {
         Officer selectedOfficer = items?.Count == 1 ? items[0] as Officer : null;
         if (selectedOfficer == null)
@@ -2263,6 +2266,14 @@ public sealed class StrategyController
     void IDefenseWindowActions.OpenDefenseStatusWindow(StrategyStatusTarget target)
     {
         TryOpenStatusWindow(target);
+    }
+
+    /// <summary>
+    /// Rebuilds shared strategy state after a stationed officer's command changes.
+    /// </summary>
+    void IDefenseWindowActions.RefreshDefenseState()
+    {
+        RefreshStrategyState();
     }
 
     /// <summary>

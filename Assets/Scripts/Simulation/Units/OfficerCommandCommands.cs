@@ -43,23 +43,37 @@ namespace Rebellion.Simulation
             string requestingFactionInstanceId
         )
         {
-            ISceneNode commandTarget = ResolveCommandTarget(officer);
             if (
                 officer == null
                 || string.IsNullOrWhiteSpace(requestingFactionInstanceId)
-                || !IsSupportedRank(rank)
                 || !string.Equals(
                     officer.GetOwnerInstanceID(),
                     requestingFactionInstanceId,
                     StringComparison.Ordinal
                 )
+            )
+                return false;
+
+            return CanChangeRank(officer, rank);
+        }
+
+        /// <summary>
+        /// Determines whether an officer's state and deployment permit a command change.
+        /// </summary>
+        /// <param name="officer">The officer to inspect.</param>
+        /// <param name="rank">The requested command post, or None to resign.</param>
+        /// <returns>True when the officer may receive the requested rank.</returns>
+        internal static bool CanChangeRank(Officer officer, OfficerRank rank)
+        {
+            if (
+                officer == null
+                || !IsSupportedRank(rank)
                 || officer.IsCaptured
                 || officer.IsKilled
                 || officer.IsRetired
                 || officer.InjuryPoints > 0
                 || ((IMovable)officer).GetTransitMovement() != null
-                || commandTarget == null
-                || !IsRankSupportedByTarget(rank, commandTarget)
+                || ResolveCommandTarget(officer) == null
             )
                 return false;
 
@@ -152,73 +166,6 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Removes command posts from relocated officers when their destination command already
-        /// has an officer holding the same post. Officers traveling with an entire fleet retain
-        /// that fleet's command because every officer in the command moves together.
-        /// </summary>
-        /// <param name="movedNode">The relocated officer or container.</param>
-        /// <param name="tick">The current game tick.</param>
-        /// <param name="results">The movement results receiving command changes.</param>
-        internal static void ReconcileRelocatedCommandRanks(
-            ISceneNode movedNode,
-            int tick,
-            ICollection<GameResult> results
-        )
-        {
-            if (movedNode == null)
-                return;
-            if (results == null)
-                throw new ArgumentNullException(nameof(results));
-
-            HashSet<Officer> movedOfficers = new HashSet<Officer>(
-                movedNode is Officer officer ? new[] { officer }
-                : movedNode is ContainerNode container
-                    ? container.GetChildren<Officer>(recursive: true)
-                : Enumerable.Empty<Officer>()
-            );
-            HashSet<Officer> retainedMovedOfficers = new HashSet<Officer>();
-
-            foreach (
-                Officer relocatedOfficer in movedOfficers
-                    .Where(candidate => candidate.CurrentRank != OfficerRank.None)
-                    .ToList()
-            )
-            {
-                ISceneNode commandTarget = ResolveCommandHierarchyTarget(relocatedOfficer);
-                if (commandTarget == null)
-                    continue;
-
-                bool postAlreadyFilled = GetCommandOfficers(commandTarget)
-                    .Any(candidate =>
-                        !ReferenceEquals(candidate, relocatedOfficer)
-                        && candidate.CurrentRank == relocatedOfficer.CurrentRank
-                        && string.Equals(
-                            candidate.GetOwnerInstanceID(),
-                            relocatedOfficer.GetOwnerInstanceID(),
-                            StringComparison.Ordinal
-                        )
-                        && (
-                            !movedOfficers.Contains(candidate)
-                            || retainedMovedOfficers.Contains(candidate)
-                        )
-                    );
-                if (postAlreadyFilled)
-                {
-                    ApplyRankChange(
-                        relocatedOfficer,
-                        OfficerRank.None,
-                        commandTarget,
-                        tick,
-                        results
-                    );
-                    continue;
-                }
-
-                retainedMovedOfficers.Add(relocatedOfficer);
-            }
-        }
-
-        /// <summary>
         /// Enumerates officers competing for posts in one fleet or planetary system.
         /// Planetary posts exclude officers attached to fleets in orbit.
         /// </summary>
@@ -305,15 +252,5 @@ namespace Rebellion.Simulation
                     or OfficerRank.Commander
                     or OfficerRank.Admiral
                     or OfficerRank.General;
-
-        /// <summary>
-        /// Enforces command scopes: Admirals command fleets, while Generals and Commanders may
-        /// command either a fleet or a planetary system.
-        /// </summary>
-        /// <param name="rank">The requested rank.</param>
-        /// <param name="commandTarget">The local fleet or system command.</param>
-        /// <returns>True when that post exists at the target.</returns>
-        private static bool IsRankSupportedByTarget(OfficerRank rank, ISceneNode commandTarget) =>
-            rank != OfficerRank.Admiral || commandTarget is Fleet;
     }
 }
