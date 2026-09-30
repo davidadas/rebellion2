@@ -338,6 +338,41 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreEqual(0, interactionCount);
         }
 
+        [Test]
+        public void PointerHandlers_StatusBar_RaisesHoverWithoutInteractionEvents()
+        {
+            _view.Render(
+                CreateData(energyBar: CreateSegmentedBar(true, 4, 2, "Energy Consumption 2/4")),
+                new Vector2Int(200, 150)
+            );
+            Image energyBackground = GetField<Image>("energyBarBackgroundImage");
+            PointerEventData eventData = CreatePointerEvent(
+                energyBackground.gameObject,
+                PointerEventData.InputButton.Left,
+                1
+            );
+            int statusHoverCount = 0;
+            int interactionCount = 0;
+            PlanetSectorStatusBar hoveredBar = PlanetSectorStatusBar.None;
+            _view.StatusBarHovered += (_, statusBar) =>
+            {
+                statusHoverCount++;
+                hoveredBar = statusBar;
+            };
+            _view.Pressed += (_, _, _) => interactionCount++;
+            _view.Clicked += (_, _, _) => interactionCount++;
+            _view.Released += (_, _, _) => interactionCount++;
+
+            _view.OnPointerEnter(eventData);
+            _view.OnPointerDown(eventData);
+            _view.OnPointerClick(eventData);
+            _view.OnDrop(eventData);
+
+            Assert.AreEqual(1, statusHoverCount);
+            Assert.AreEqual(PlanetSectorStatusBar.Energy, hoveredBar);
+            Assert.AreEqual(0, interactionCount);
+        }
+
         /// <summary>
         /// Creates data.
         /// </summary>
@@ -388,11 +423,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         /// <param name="visible">Whether visible.</param>
         /// <param name="cellCount">The cell count.</param>
         /// <param name="litCells">The lit cells.</param>
+        /// <param name="tooltipText">The optional hover label.</param>
         /// <returns>The created segmented bar.</returns>
         private static PlanetSectorBarRenderData CreateSegmentedBar(
             bool visible,
             int cellCount,
-            int litCells
+            int litCells,
+            string tooltipText = null
         )
         {
             return new PlanetSectorBarRenderData(
@@ -402,7 +439,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 0f,
                 new Color32(0, 255, 0, 255),
                 new Color32(255, 0, 0, 255),
-                new Color32(0, 0, 0, 255)
+                new Color32(0, 0, 0, 255),
+                tooltipText
             );
         }
 

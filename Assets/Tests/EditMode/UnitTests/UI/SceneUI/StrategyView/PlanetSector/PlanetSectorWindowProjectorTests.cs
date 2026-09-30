@@ -317,10 +317,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 new Color32(160, 160, 160, 255),
                 presentation.EnergyBar.BackgroundColor
             );
+            Assert.AreEqual("Energy Consumption 2/3", presentation.EnergyBar.TooltipText);
             Assert.AreEqual(4, presentation.RawResourceBar.CellCount);
             Assert.AreEqual(1, presentation.RawResourceBar.LitCells);
             Assert.AreEqual(new Color32(255, 255, 84, 255), presentation.RawResourceBar.FillColor);
             Assert.AreEqual(new Color32(236, 106, 46, 255), presentation.RawResourceBar.EmptyColor);
+            Assert.AreEqual("Raw Materials 1/4", presentation.RawResourceBar.TooltipText);
             Assert.IsTrue(presentation.SupportBar.Visible);
             Assert.AreEqual(0.75f, presentation.SupportBar.FillRatio);
             Assert.AreEqual(
@@ -331,6 +333,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 (Color32)opposingTheme.GetPrimaryColor(),
                 presentation.SupportBar.BackgroundColor
             );
+            Assert.AreEqual("Popular Support", presentation.SupportBar.TooltipText);
             Assert.IsNull(presentation.GalacticInformationTexture);
         }
 
@@ -657,6 +660,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsFalse(presentation.EnergyBar.Visible);
             Assert.IsFalse(presentation.RawResourceBar.Visible);
             Assert.IsFalse(presentation.SupportBar.Visible);
+            Assert.IsEmpty(presentation.EnergyBar.TooltipText);
+            Assert.IsEmpty(presentation.RawResourceBar.TooltipText);
+            Assert.IsEmpty(presentation.SupportBar.TooltipText);
         }
 
         [Test]
@@ -680,11 +686,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreEqual(0, presentation.EnergyBar.CellCount);
             Assert.AreEqual(1f, presentation.EnergyBar.FillRatio);
             Assert.AreEqual(new Color32(0, 0, 255, 255), presentation.EnergyBar.FillColor);
+            Assert.AreEqual("Energy Consumption 0/0", presentation.EnergyBar.TooltipText);
             Assert.IsTrue(presentation.RawResourceBar.Visible);
             Assert.AreEqual(0, presentation.RawResourceBar.CellCount);
             Assert.AreEqual(1f, presentation.RawResourceBar.FillRatio);
             Assert.AreEqual(new Color32(236, 106, 46, 255), presentation.RawResourceBar.FillColor);
+            Assert.AreEqual("Raw Materials 0/0", presentation.RawResourceBar.TooltipText);
             Assert.IsFalse(presentation.SupportBar.Visible);
+            Assert.IsEmpty(presentation.SupportBar.TooltipText);
         }
 
         [Test]

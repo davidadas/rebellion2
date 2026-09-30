@@ -274,6 +274,45 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreEqual(1, releasedCount);
         }
 
+        [TestCase("energyBarBackgroundImage", "Energy Consumption 2/4")]
+        [TestCase("rawBarBackgroundImage", "Raw Materials 2/4")]
+        [TestCase("supportBarBackgroundImage", "Popular Support")]
+        public void PlanetStatusBar_Hover_ShowsCreamTooltip(
+            string barImageField,
+            string expectedText
+        )
+        {
+            _view.Render(
+                new PlanetSectorWindowRenderData(
+                    "Sesswenna",
+                    new[] { CreatePlanet(0, Vector2Int.zero, "Coruscant") }
+                )
+            );
+            PlanetSectorPlanetView planet = GetPlanetViews()[0];
+            Image barImage = GetPlanetField<Image>(planet, barImageField);
+            PointerEventData eventData = CreatePointerEvent(
+                barImage.gameObject,
+                PointerEventData.InputButton.Left,
+                1
+            );
+
+            planet.OnPointerEnter(eventData);
+
+            RectTransform labelRoot = GetField<RectTransform>("hoverLabelRoot");
+            Image labelBackground = GetField<Image>("hoverLabelBackgroundImage");
+            TextMeshProUGUI labelText = GetField<TextMeshProUGUI>("hoverLabelText");
+            Assert.IsTrue(labelRoot.gameObject.activeSelf);
+            Assert.AreEqual(expectedText, labelText.text);
+            Assert.AreEqual(Color.black, labelRoot.GetComponent<Image>().color);
+            Assert.AreEqual(new Color32(255, 255, 225, 255), (Color32)labelBackground.color);
+            Assert.AreSame(_view.transform, labelRoot.parent);
+            Assert.AreEqual(_view.transform.childCount - 1, labelRoot.GetSiblingIndex());
+
+            planet.OnPointerExit(eventData);
+
+            Assert.IsFalse(labelRoot.gameObject.activeSelf);
+        }
+
         [Test]
         public void OnDestroy_RenderedChildren_UnbindsEventsAndRaisesDestroyedEvent()
         {
@@ -317,14 +356,25 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Texture2D headquartersTexture = null
         )
         {
-            PlanetSectorBarRenderData segmented = new PlanetSectorBarRenderData(
+            PlanetSectorBarRenderData energy = new PlanetSectorBarRenderData(
                 true,
                 4,
                 2,
                 0f,
                 Color.green,
                 Color.red,
-                Color.black
+                Color.black,
+                "Energy Consumption 2/4"
+            );
+            PlanetSectorBarRenderData rawMaterials = new PlanetSectorBarRenderData(
+                true,
+                4,
+                2,
+                0f,
+                Color.green,
+                Color.red,
+                Color.black,
+                "Raw Materials 2/4"
             );
             PlanetSectorBarRenderData continuous = new PlanetSectorBarRenderData(
                 true,
@@ -333,7 +383,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 0.5f,
                 Color.green,
                 Color.clear,
-                Color.black
+                Color.black,
+                "Popular Support"
             );
             return new PlanetSectorPlanetRenderData(
                 index,
@@ -353,8 +404,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 Color.yellow,
                 PlanetIcon.None,
                 PlanetIcon.None,
-                segmented,
-                segmented,
+                energy,
+                rawMaterials,
                 continuous
             );
         }

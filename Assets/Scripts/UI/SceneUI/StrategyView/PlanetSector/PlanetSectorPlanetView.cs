@@ -119,6 +119,11 @@ public sealed class PlanetSectorPlanetView
     > Hovered;
 
     /// <summary>
+    /// Occurs when the pointer hovers over a planet status bar.
+    /// </summary>
+    internal event Action<PlanetSectorPlanetView, PlanetSectorStatusBar> StatusBarHovered;
+
+    /// <summary>
     /// Occurs when the control is pressed.
     /// </summary>
     internal event Action<
@@ -265,6 +270,43 @@ public sealed class PlanetSectorPlanetView
             return false;
 
         texture = lastRenderData.HeadquartersTexture;
+        return true;
+    }
+
+    /// <summary>
+    /// Tries to resolve the hover label and window-relative bounds for one visible status bar.
+    /// </summary>
+    /// <param name="statusBar">The requested status bar.</param>
+    /// <param name="tooltipText">Receives the status bar hover label.</param>
+    /// <param name="bounds">Receives the status bar bounds relative to the sector window.</param>
+    /// <returns>True when the requested status bar is visible and has a hover label.</returns>
+    internal bool TryGetStatusBarTooltip(
+        PlanetSectorStatusBar statusBar,
+        out string tooltipText,
+        out RectInt bounds
+    )
+    {
+        tooltipText = string.Empty;
+        bounds = default;
+        PlanetSectorBarRenderData data = GetStatusBarData(statusBar);
+        RectTransform barRoot = GetStatusBarRoot(statusBar);
+        if (
+            data == null
+            || barRoot?.gameObject.activeInHierarchy != true
+            || !data.Visible
+            || string.IsNullOrEmpty(data.TooltipText)
+        )
+            return false;
+
+        RectInt planetBounds = GetRenderedSourceRect();
+        RectInt barBounds = UILayout.GetSourceRect(barRoot);
+        tooltipText = data.TooltipText;
+        bounds = new RectInt(
+            planetBounds.x + barBounds.x,
+            planetBounds.y + barBounds.y,
+            barBounds.width,
+            barBounds.height
+        );
         return true;
     }
 
@@ -444,11 +486,142 @@ public sealed class PlanetSectorPlanetView
     /// <param name="eventData">The pointer event.</param>
     private void DispatchHover(PointerEventData eventData)
     {
+        PlanetSectorStatusBar statusBar = GetStatusBar(null, eventData);
+        if (statusBar != PlanetSectorStatusBar.None)
+        {
+            HoverCleared?.Invoke(this);
+            StatusBarHovered?.Invoke(this, statusBar);
+            return;
+        }
+
         PlanetSectorWindowElement element = CreateElement(null, eventData, true);
         if (element == null)
             HoverCleared?.Invoke(this);
         else
             Hovered?.Invoke(this, element, eventData);
+    }
+
+    /// <summary>
+    /// Gets the visible status bar beneath a pointer from source geometry or its raycast target.
+    /// </summary>
+    /// <param name="target">The optional explicit raycast target.</param>
+    /// <param name="eventData">The pointer event.</param>
+    /// <returns>The hovered status bar, or none.</returns>
+    private PlanetSectorStatusBar GetStatusBar(GameObject target, PointerEventData eventData)
+    {
+        if (lastRenderData == null || eventData == null)
+            return PlanetSectorStatusBar.None;
+
+        if (TryGetPointerSourcePosition(eventData, out int sourceX, out int sourceY))
+        {
+            PlanetSectorStatusBar sourceStatusBar = GetSourceStatusBar(sourceX, sourceY);
+            if (sourceStatusBar != PlanetSectorStatusBar.None)
+                return sourceStatusBar;
+        }
+
+        target ??= eventData.pointerCurrentRaycast.gameObject;
+        target ??= eventData.pointerPressRaycast.gameObject;
+        return GetTargetStatusBar(target);
+    }
+
+    /// <summary>
+    /// Gets the visible status bar containing one source-space point.
+    /// </summary>
+    /// <param name="x">The local source-space horizontal coordinate.</param>
+    /// <param name="y">The local source-space vertical coordinate.</param>
+    /// <returns>The matching status bar, or none.</returns>
+    private PlanetSectorStatusBar GetSourceStatusBar(int x, int y)
+    {
+        PlanetSectorStatusBar[] statusBars =
+        {
+            PlanetSectorStatusBar.Energy,
+            PlanetSectorStatusBar.RawMaterials,
+            PlanetSectorStatusBar.PopularSupport,
+        };
+        Vector2Int point = new Vector2Int(x, y);
+        foreach (PlanetSectorStatusBar statusBar in statusBars)
+        {
+            RectTransform barRoot = GetStatusBarRoot(statusBar);
+            if (
+                IsStatusBarInteractive(statusBar)
+                && barRoot != null
+                && UILayout.GetSourceRect(barRoot).Contains(point)
+            )
+                return statusBar;
+        }
+
+        return PlanetSectorStatusBar.None;
+    }
+
+    /// <summary>
+    /// Gets the visible status bar represented by a raycast target.
+    /// </summary>
+    /// <param name="target">The raycast target.</param>
+    /// <returns>The matching status bar, or none.</returns>
+    private PlanetSectorStatusBar GetTargetStatusBar(GameObject target)
+    {
+        PlanetSectorStatusBar[] statusBars =
+        {
+            PlanetSectorStatusBar.Energy,
+            PlanetSectorStatusBar.RawMaterials,
+            PlanetSectorStatusBar.PopularSupport,
+        };
+        foreach (PlanetSectorStatusBar statusBar in statusBars)
+        {
+            if (
+                IsStatusBarInteractive(statusBar)
+                && IsTargetOrChild(target, GetStatusBarRoot(statusBar))
+            )
+                return statusBar;
+        }
+
+        return PlanetSectorStatusBar.None;
+    }
+
+    /// <summary>
+    /// Determines whether one status bar is visible and has a hover label.
+    /// </summary>
+    /// <param name="statusBar">The candidate status bar.</param>
+    /// <returns>True when the status bar accepts hover interaction.</returns>
+    private bool IsStatusBarInteractive(PlanetSectorStatusBar statusBar)
+    {
+        PlanetSectorBarRenderData data = GetStatusBarData(statusBar);
+        RectTransform barRoot = GetStatusBarRoot(statusBar);
+        return data?.Visible == true
+            && !string.IsNullOrEmpty(data.TooltipText)
+            && barRoot?.gameObject.activeInHierarchy == true;
+    }
+
+    /// <summary>
+    /// Gets the current render data for one planet status bar.
+    /// </summary>
+    /// <param name="statusBar">The requested status bar.</param>
+    /// <returns>The matching status-bar presentation, or null.</returns>
+    private PlanetSectorBarRenderData GetStatusBarData(PlanetSectorStatusBar statusBar)
+    {
+        return statusBar switch
+        {
+            PlanetSectorStatusBar.Energy => lastRenderData?.EnergyBar,
+            PlanetSectorStatusBar.RawMaterials => lastRenderData?.RawResourceBar,
+            PlanetSectorStatusBar.PopularSupport => lastRenderData?.SupportBar,
+            _ => null,
+        };
+    }
+
+    /// <summary>
+    /// Gets the authored root for one planet status bar.
+    /// </summary>
+    /// <param name="statusBar">The requested status bar.</param>
+    /// <returns>The matching authored transform, or null.</returns>
+    private RectTransform GetStatusBarRoot(PlanetSectorStatusBar statusBar)
+    {
+        return statusBar switch
+        {
+            PlanetSectorStatusBar.Energy => energyBarRoot,
+            PlanetSectorStatusBar.RawMaterials => rawBarRoot,
+            PlanetSectorStatusBar.PopularSupport => supportBarRoot,
+            _ => null,
+        };
     }
 
     /// <summary>

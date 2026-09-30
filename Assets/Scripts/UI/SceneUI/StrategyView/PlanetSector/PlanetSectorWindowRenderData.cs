@@ -211,6 +211,20 @@ public sealed class PlanetSectorPlanetRenderData
 }
 
 /// <summary>
+/// Identifies one status bar rendered beneath a planet.
+/// </summary>
+public enum PlanetSectorStatusBar
+{
+    None,
+
+    Energy,
+
+    RawMaterials,
+
+    PopularSupport,
+}
+
+/// <summary>
 /// Describes one immutable segmented or continuous planet status bar.
 /// </summary>
 public sealed class PlanetSectorBarRenderData
@@ -227,6 +241,8 @@ public sealed class PlanetSectorBarRenderData
 
     public int LitCells { get; }
 
+    public string TooltipText { get; }
+
     public bool Visible { get; }
 
     /// <summary>
@@ -239,6 +255,7 @@ public sealed class PlanetSectorBarRenderData
     /// <param name="fillColor">The occupied or continuous fill color.</param>
     /// <param name="emptyColor">The unoccupied segmented cell color.</param>
     /// <param name="backgroundColor">The bar background color.</param>
+    /// <param name="tooltipText">The hover label displayed for the bar.</param>
     public PlanetSectorBarRenderData(
         bool visible,
         int cellCount,
@@ -246,7 +263,8 @@ public sealed class PlanetSectorBarRenderData
         float fillRatio,
         Color32 fillColor,
         Color32 emptyColor,
-        Color32 backgroundColor
+        Color32 backgroundColor,
+        string tooltipText = null
     )
     {
         Visible = visible;
@@ -256,6 +274,7 @@ public sealed class PlanetSectorBarRenderData
         FillColor = fillColor;
         EmptyColor = emptyColor;
         BackgroundColor = backgroundColor;
+        TooltipText = tooltipText ?? string.Empty;
     }
 }
 
