@@ -181,7 +181,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void UpdateMission_MultipleParticipantsSucceed_AppliesEveryAttempt()
+        public void UpdateMission_MultipleParticipantsSucceed_AppliesOnlyFirstAttempt()
         {
             (
                 GameRoot game,
@@ -223,7 +223,7 @@ namespace Rebellion.Tests.Game.Missions
                 MissionOutcome.Failed,
                 results.OfType<MissionCompletedResult>().Single().Outcome
             );
-            Assert.AreEqual(12, empirePlanet.GetPopularSupport("empire"));
+            Assert.AreEqual(11, empirePlanet.GetPopularSupport("empire"));
         }
 
         [Test]

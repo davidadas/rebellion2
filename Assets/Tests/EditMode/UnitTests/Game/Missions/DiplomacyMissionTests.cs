@@ -102,6 +102,37 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void ResolveObjective_MultipleOfficersSucceed_ImprovesOnlyFirstSuccessfulOfficer()
+        {
+            GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: "empire");
+            Officer firstOfficer = EntityFactory.CreateOfficer("o1", "empire");
+            firstOfficer.SetBaseRating(SkillRating.Diplomacy, 100);
+            game.AttachNode(firstOfficer, planet);
+            Officer secondOfficer = EntityFactory.CreateOfficer("o2", "empire");
+            secondOfficer.SetBaseRating(SkillRating.Diplomacy, 100);
+            game.AttachNode(secondOfficer, planet);
+            int firstRating = firstOfficer.GetBaseRating(SkillRating.Diplomacy);
+            int secondRating = secondOfficer.GetBaseRating(SkillRating.Diplomacy);
+            Mission mission = CreateDiplomacyMission(
+                "empire",
+                planet,
+                new List<IMissionParticipant> { firstOfficer, secondOfficer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, planet);
+            game.Config.ProbabilityTables.Mission.Diplomacy = new Dictionary<int, int>
+            {
+                { 0, 100 },
+            };
+
+            List<GameResult> results = ExecuteDiplomacySuccess(mission, game, new FixedRNG(0.0));
+
+            Assert.AreEqual(1, results.OfType<PopularSupportShiftResult>().Count());
+            Assert.AreEqual(firstRating + 1, firstOfficer.GetBaseRating(SkillRating.Diplomacy));
+            Assert.AreEqual(secondRating, secondOfficer.GetBaseRating(SkillRating.Diplomacy));
+        }
+
+        [Test]
         public void ResolveObjective_OwnedPlanet_UsesDiplomacySupportConfig()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: "empire");

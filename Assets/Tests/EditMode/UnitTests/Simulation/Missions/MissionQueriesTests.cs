@@ -498,7 +498,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void GetMissionOdds_Assassination_CombinesHitAndKillChecksPerParticipant()
+        public void GetMissionOdds_Assassination_AppliesOneKillCheckAfterAnyParticipantHits()
         {
             (
                 GameRoot game,
@@ -529,8 +529,8 @@ namespace Rebellion.Tests.Simulation
             );
 
             Assert.IsNotNull(odds);
-            Assert.AreEqual(43.75, odds.ObjectiveSuccessProbability, 0.001);
-            Assert.AreEqual(43.75, odds.OverallSuccessProbability, 0.001);
+            Assert.AreEqual(37.5, odds.ObjectiveSuccessProbability, 0.001);
+            Assert.AreEqual(37.5, odds.OverallSuccessProbability, 0.001);
         }
 
         [Test]

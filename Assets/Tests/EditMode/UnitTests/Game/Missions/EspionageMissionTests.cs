@@ -496,7 +496,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void ResolveObjective_MultipleOfficersSucceed_ImprovesEverySuccessfulOfficer()
+        public void ResolveObjective_MultipleOfficersSucceed_StopsAfterFirstSuccess()
         {
             (
                 GameRoot game,
@@ -533,7 +533,7 @@ namespace Rebellion.Tests.Game.Missions
 
             Assert.AreEqual(officerRatingBefore + 1, officer.GetBaseRating(SkillRating.Espionage));
             Assert.AreEqual(
-                strongerRatingBefore + 1,
+                strongerRatingBefore,
                 strongerOfficer.GetBaseRating(SkillRating.Espionage)
             );
         }

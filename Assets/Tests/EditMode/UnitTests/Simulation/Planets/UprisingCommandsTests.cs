@@ -766,6 +766,72 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNotEmpty(results.OfType<MissionCompletedResult>());
         }
 
+        [Test]
+        public void TryExecuteMission_FirstOfficerSucceeds_DoesNotAttemptRemainingOfficers()
+        {
+            CountingRNG rng = new CountingRNG();
+            (GameRoot game, Planet planet, UprisingCommands system) = BuildScene(rng: rng);
+            Officer firstOfficer = EntityFactory.CreateOfficer("first", "rebels");
+            firstOfficer.SetBaseRating(SkillRating.Leadership, 100);
+            Officer secondOfficer = EntityFactory.CreateOfficer("second", "rebels");
+            secondOfficer.SetBaseRating(SkillRating.Leadership, 100);
+            game.Config.ProbabilityTables.Mission.InciteUprising = new Dictionary<int, int>
+            {
+                { 90, 100 },
+            };
+            Mission mission = MissionTestFactory.TryCreate(
+                InciteUprisingMission.MissionTypeID,
+                game,
+                "rebels",
+                planet,
+                new List<IMissionParticipant> { firstOfficer, secondOfficer }
+            );
+            game.AttachNode(mission, planet);
+
+            bool handled = system.TryExecuteMission(mission, out _);
+
+            Assert.IsTrue(handled);
+            Assert.AreEqual(1, rng.DoubleCallCount);
+        }
+
+        [Test]
+        public void TryExecuteMission_FirstSpecialForcesSucceeds_DoesNotAttemptRemainingSpecialForces()
+        {
+            CountingRNG rng = new CountingRNG();
+            (GameRoot game, Planet planet, UprisingCommands system) = BuildScene(rng: rng);
+            SpecialForces firstSpecialForces = new SpecialForces
+            {
+                InstanceID = "first",
+                OwnerInstanceID = "rebels",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            firstSpecialForces.SetBaseRating(SkillRating.Leadership, 100);
+            SpecialForces secondSpecialForces = new SpecialForces
+            {
+                InstanceID = "second",
+                OwnerInstanceID = "rebels",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            secondSpecialForces.SetBaseRating(SkillRating.Leadership, 100);
+            game.Config.ProbabilityTables.Mission.InciteUprising = new Dictionary<int, int>
+            {
+                { 90, 100 },
+            };
+            Mission mission = MissionTestFactory.TryCreate(
+                InciteUprisingMission.MissionTypeID,
+                game,
+                "rebels",
+                planet,
+                new List<IMissionParticipant> { firstSpecialForces, secondSpecialForces }
+            );
+            game.AttachNode(mission, planet);
+
+            bool handled = system.TryExecuteMission(mission, out _);
+
+            Assert.IsTrue(handled);
+            Assert.AreEqual(1, rng.DoubleCallCount);
+        }
+
         /// <summary>
         /// Builds scene.
         /// </summary>

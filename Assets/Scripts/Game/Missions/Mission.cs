@@ -686,10 +686,10 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Resolves main participants with officers before special-forces units.
+        /// Rolls the main participants' mission attempts until one succeeds.
         /// Officer probabilities are calculated before any attempts and ordered from lowest to
-        /// highest. Special forces then attempt the mission in their selected order. Resolution
-        /// can stop after the first success for missions whose objective permits only one winner.
+        /// highest. Special forces then attempt the mission in their selected order if every
+        /// officer fails.
         /// </summary>
         /// <param name="provider">RNG provider for rolling against the success probability.</param>
         /// <param name="game">The current game state.</param>
@@ -697,13 +697,11 @@ namespace Rebellion.Game.Missions
         /// Optional mission-specific resolution applied immediately after each successful roll.
         /// Return true when that attempt earned the mission's normal participant improvement.
         /// </param>
-        /// <param name="stopAfterFirstSuccess">Whether resolution stops after the first successful attempt.</param>
-        /// <returns>The participants whose attempts succeeded, in attempt order.</returns>
-        protected internal List<IMissionParticipant> ResolveSuccessfulParticipants(
+        /// <returns>The first participant whose attempt succeeds, or null if every attempt fails.</returns>
+        protected internal IMissionParticipant RollParticipantAttempts(
             IRandomNumberProvider provider,
             GameRoot game,
-            Func<IMissionParticipant, bool> resolveSuccessfulAttempt = null,
-            bool stopAfterFirstSuccess = false
+            Func<IMissionParticipant, bool> resolveSuccessfulAttempt = null
         )
         {
             List<(Officer Participant, double Probability)> officerAttempts = GetMainParticipants()
@@ -713,18 +711,14 @@ namespace Rebellion.Game.Missions
                 )
                 .OrderBy(attempt => attempt.Probability)
                 .ToList();
-            List<IMissionParticipant> successfulParticipants = new List<IMissionParticipant>();
-
             foreach ((Officer participant, double probability) in officerAttempts)
             {
                 if (!RollProbability(provider, probability))
                     continue;
 
-                successfulParticipants.Add(participant);
                 if (resolveSuccessfulAttempt?.Invoke(participant) == true)
                     ImproveMissionParticipantRating(participant);
-                if (stopAfterFirstSuccess)
-                    return successfulParticipants;
+                return participant;
             }
 
             foreach (SpecialForces specialForces in GetMainParticipants().OfType<SpecialForces>())
@@ -732,14 +726,12 @@ namespace Rebellion.Game.Missions
                 if (!RollParticipantSuccess(specialForces, provider, game))
                     continue;
 
-                successfulParticipants.Add(specialForces);
                 if (resolveSuccessfulAttempt?.Invoke(specialForces) == true)
                     ImproveMissionParticipantRating(specialForces);
-                if (stopAfterFirstSuccess)
-                    return successfulParticipants;
+                return specialForces;
             }
 
-            return successfulParticipants;
+            return null;
         }
 
         /// <summary>
@@ -1101,16 +1093,13 @@ namespace Rebellion.Game.Missions
             MissionOutcome outcome;
             MissionCompletionReason completionReason;
 
-            List<IMissionParticipant> successfulParticipants = ResolveSuccessfulParticipants(
-                provider,
-                game
-            );
-            if (successfulParticipants.Count > 0)
+            IMissionParticipant successfulParticipant = RollParticipantAttempts(provider, game);
+            if (successfulParticipant != null)
             {
                 outcome = MissionOutcome.Success;
                 completionReason = MissionCompletionReason.Success;
-                results.AddRange(OnSuccess(game, provider, successfulParticipants[0]));
-                ImproveMissionParticipants(successfulParticipants);
+                results.AddRange(OnSuccess(game, provider, successfulParticipant));
+                ImproveMissionParticipantRating(successfulParticipant);
             }
             else
             {
@@ -1297,16 +1286,6 @@ namespace Rebellion.Game.Missions
         {
             if (participant is Officer officer && participant.CanImproveMissionRating)
                 officer.IncrementBaseRating(ParticipantRating);
-        }
-
-        /// <summary>
-        /// Applies this mission's configured improvement to each eligible successful participant.
-        /// </summary>
-        /// <param name="participants">The successful participants to improve.</param>
-        private void ImproveMissionParticipants(IEnumerable<IMissionParticipant> participants)
-        {
-            foreach (IMissionParticipant participant in participants)
-                ImproveMissionParticipantRating(participant);
         }
 
         /// <summary>

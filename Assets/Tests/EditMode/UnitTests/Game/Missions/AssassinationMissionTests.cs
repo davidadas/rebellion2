@@ -198,7 +198,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void ResolveObjective_FirstHitSurvivedAndSecondHitKills_CreditsSecondAssassin()
+        public void ResolveObjective_FirstHitSurvives_DoesNotAttemptSecondAssassin()
         {
             (
                 GameRoot game,
@@ -238,19 +238,16 @@ namespace Rebellion.Tests.Game.Missions
 
             List<GameResult> results = mission.ResolveObjective(
                 game,
-                new SequenceRNG(
-                    intValues: new[] { 0, 0, 99, 0, 0, 0 },
-                    doubleValues: new[] { 0.0, 0.0 }
-                )
+                new SequenceRNG(intValues: new[] { 0, 0, 99 }, doubleValues: new[] { 0.0 })
             );
 
-            Assert.AreEqual(2, results.OfType<OfficerInjuredResult>().Count());
-            OfficerAssassinatedResult killed = results.OfType<OfficerAssassinatedResult>().Single();
-            Assert.AreSame(secondAssassin, killed.Assassin);
+            Assert.AreEqual(1, results.OfType<OfficerInjuredResult>().Count());
+            Assert.IsEmpty(results.OfType<OfficerAssassinatedResult>());
+            Assert.IsFalse(target.IsKilled);
             Assert.AreEqual(firstRating, firstAssassin.GetBaseRating(SkillRating.Combat));
-            Assert.AreEqual(secondRating + 1, secondAssassin.GetBaseRating(SkillRating.Combat));
+            Assert.AreEqual(secondRating, secondAssassin.GetBaseRating(SkillRating.Combat));
             Assert.AreEqual(
-                MissionOutcome.Success,
+                MissionOutcome.Failed,
                 results.OfType<MissionCompletedResult>().Single().Outcome
             );
         }

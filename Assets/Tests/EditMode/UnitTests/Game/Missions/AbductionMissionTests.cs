@@ -402,11 +402,13 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void ResolveObjective_MultipleSuccessfulParticipants_EachAttemptsCapture()
+        public void ResolveObjective_MultipleSuccessfulParticipants_FirstSuccessStopsFurtherAttempts()
         {
             var (game, empirePlanet, enemyPlanet, officer, _) = MissionSceneBuilder.Build();
             Officer secondOfficer = EntityFactory.CreateOfficer("officer2", "empire");
             game.AttachNode(secondOfficer, empirePlanet);
+            int firstCombat = officer.GetBaseRating(SkillRating.Combat);
+            int secondCombat = secondOfficer.GetBaseRating(SkillRating.Combat);
             Officer target = EntityFactory.CreateOfficer("target", "rebels");
             target.SetBaseRating(SkillRating.Combat, 100);
             game.AttachNode(target, enemyPlanet);
@@ -423,11 +425,13 @@ namespace Rebellion.Tests.Game.Missions
 
             List<GameResult> results = mission.ResolveObjective(
                 game,
-                new SequenceRNG(intValues: new[] { 50, 50 }, doubleValues: new[] { 0.0, 0.0 })
+                new SequenceRNG(intValues: new[] { 50 }, doubleValues: new[] { 0.0 })
             );
 
-            Assert.AreEqual(2, results.OfType<OfficerCaptureStateResult>().Count());
+            Assert.AreEqual(1, results.OfType<OfficerCaptureStateResult>().Count());
             Assert.IsTrue(target.IsCaptured);
+            Assert.AreEqual(firstCombat + 1, officer.GetBaseRating(SkillRating.Combat));
+            Assert.AreEqual(secondCombat, secondOfficer.GetBaseRating(SkillRating.Combat));
         }
 
         [Test]

@@ -158,8 +158,8 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Resolves every participant attempt while applying the capture operation immediately
-        /// after each successful attempt.
+        /// Resolves the first successful main participant and immediately applies the capture
+        /// operation.
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <param name="provider">RNG provider for success, injury, and death rolls.</param>
@@ -170,25 +170,20 @@ namespace Rebellion.Game.Missions
         )
         {
             List<GameResult> results = new List<GameResult>();
-            bool targetKilled = false;
-            List<IMissionParticipant> successfulParticipants = ResolveSuccessfulParticipants(
+            IMissionParticipant successfulParticipant = RollParticipantAttempts(
                 provider,
                 game,
                 participant =>
                 {
-                    if (targetKilled)
-                        return true;
-
                     List<GameResult> attemptResults = OnSuccess(game, provider, participant);
                     results.AddRange(attemptResults);
-                    targetKilled = attemptResults.Exists(result => result is OfficerKilledResult);
                     return true;
                 }
             );
 
             MissionOutcome outcome;
             MissionCompletionReason completionReason;
-            if (successfulParticipants.Count == 0)
+            if (successfulParticipant == null)
             {
                 outcome = MissionOutcome.Failed;
                 completionReason = MissionCompletionReason.Failure;
@@ -407,7 +402,10 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="participants">The participants attempting the assassination.</param>
         /// <param name="context">The authoritative or observed state used for evaluation.</param>
-        /// <returns>The probability that at least one participant both hits and kills the target.</returns>
+        /// <returns>
+        /// The probability that at least one participant hits the target and the resulting death
+        /// roll succeeds.
+        /// </returns>
         protected override double GetObjectiveSuccessProbability(
             IEnumerable<IMissionParticipant> participants,
             MissionEvaluationContext context
@@ -421,14 +419,8 @@ namespace Rebellion.Game.Missions
             if (killProbability == 0)
                 return 0;
 
-            IEnumerable<double> probabilities = (
-                participants ?? Enumerable.Empty<IMissionParticipant>()
-            )
-                .Where(participant => participant != null)
-                .Select(participant =>
-                    GetAgentProbability(participant, context) * killProbability / 100d
-                );
-            return CombineSuccessProbabilities(probabilities);
+            double hitProbability = base.GetObjectiveSuccessProbability(participants, context);
+            return hitProbability * killProbability / 100d;
         }
 
         /// <summary>
@@ -477,14 +469,11 @@ namespace Rebellion.Game.Missions
             MissionCompletionReason completionReason = MissionCompletionReason.Failure;
 
             bool targetKilled = false;
-            List<IMissionParticipant> successfulParticipants = ResolveSuccessfulParticipants(
+            IMissionParticipant successfulParticipant = RollParticipantAttempts(
                 provider,
                 game,
                 participant =>
                 {
-                    if (targetKilled)
-                        return true;
-
                     List<GameResult> attemptResults = OnSuccess(game, provider, participant);
                     results.AddRange(attemptResults);
                     if (attemptResults.Exists(result => result is OfficerKilledResult))
@@ -492,7 +481,7 @@ namespace Rebellion.Game.Missions
                     return targetKilled;
                 }
             );
-            if (successfulParticipants.Count == 0)
+            if (successfulParticipant == null)
             {
                 results.AddRange(OnFailed(game, provider));
             }
@@ -1867,7 +1856,7 @@ namespace Rebellion.Game.Missions
         )
         {
             RecruitedOfficerInstanceID = null;
-            List<IMissionParticipant> successfulParticipants = ResolveSuccessfulParticipants(
+            IMissionParticipant successfulParticipant = RollParticipantAttempts(
                 provider,
                 game,
                 _ =>
@@ -1879,8 +1868,7 @@ namespace Rebellion.Game.Missions
                     Officer recruitedOfficer = targets.RandomElement(provider);
                     RecruitedOfficerInstanceID = recruitedOfficer.InstanceID;
                     return true;
-                },
-                stopAfterFirstSuccess: true
+                }
             );
 
             List<GameResult> results;
@@ -1890,13 +1878,13 @@ namespace Rebellion.Game.Missions
             {
                 outcome = MissionOutcome.Success;
                 completionReason = MissionCompletionReason.Success;
-                results = OnSuccess(game, provider, successfulParticipants[0]);
+                results = OnSuccess(game, provider, successfulParticipant);
             }
             else
             {
                 outcome = MissionOutcome.Failed;
                 completionReason =
-                    successfulParticipants.Count > 0
+                    successfulParticipant != null
                         ? MissionCompletionReason.TargetUnavailable
                         : MissionCompletionReason.Failure;
                 results = OnFailed(game, provider);

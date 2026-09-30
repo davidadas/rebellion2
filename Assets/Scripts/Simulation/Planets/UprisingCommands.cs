@@ -116,14 +116,11 @@ namespace Rebellion.Simulation
             List<GameResult> results = new List<GameResult>();
             bool objectiveAchieved = false;
 
-            mission.ResolveSuccessfulParticipants(
+            mission.RollParticipantAttempts(
                 _provider,
                 _game,
                 _ =>
                 {
-                    if (objectiveAchieved && mission is SubdueUprisingMission)
-                        return false;
-
                     objectiveAchieved = ResolveMissionAttempt(mission, results);
                     return objectiveAchieved;
                 }
