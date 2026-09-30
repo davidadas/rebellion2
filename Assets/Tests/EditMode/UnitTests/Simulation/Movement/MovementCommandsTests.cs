@@ -51,7 +51,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void RequestMove_RankedOfficerToOccupiedCommand_ResignsRelocatedOfficer()
+        public void RequestMove_RankedOfficerFromFleetToOccupiedPlanet_PreservesBothRanks()
         {
             (
                 GameRoot game,
@@ -60,21 +60,26 @@ namespace Rebellion.Tests.Simulation
                 Officer officer,
                 MovementCommands movement
             ) = BuildScene();
+            Fleet fleet = EntityFactory.CreateFleet("source-fleet", "empire");
+            CapitalShip ship = CreateMovableCapitalShip("source-ship");
             officer.CurrentRank = OfficerRank.Commander;
             Officer incumbent = EntityFactory.CreateOfficer("incumbent", "empire");
             incumbent.CurrentRank = OfficerRank.Commander;
+            game.AttachNode(fleet, origin);
+            game.AttachNode(ship, fleet);
+            game.MoveNode(officer, ship);
             game.AttachNode(incumbent, destination);
 
             movement.RequestMove(officer, destination);
 
-            Assert.AreEqual(OfficerRank.None, officer.CurrentRank);
+            Assert.AreSame(destination, officer.GetParent());
+            Assert.AreEqual(OfficerRank.Commander, officer.CurrentRank);
             Assert.AreEqual(OfficerRank.Commander, incumbent.CurrentRank);
-            CommandKindChangedResult result = new MovementTickProcessor(movement)
-                .ProcessTick(game)
-                .OfType<CommandKindChangedResult>()
-                .Single();
-            Assert.AreSame(officer, result.Officer);
-            Assert.AreEqual((int)OfficerRank.None, result.CommandKind);
+            Assert.IsEmpty(
+                new MovementTickProcessor(movement)
+                    .ProcessTick(game)
+                    .OfType<CommandKindChangedResult>()
+            );
         }
 
         [Test]
@@ -2660,7 +2665,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void CompleteMissionAtLocation_RankedOfficerToOccupiedCommand_ResignsOfficer()
+        public void CompleteMissionAtLocation_RankedOfficerToOccupiedCommand_PreservesBothRanks()
         {
             (
                 GameRoot game,
@@ -2684,7 +2689,7 @@ namespace Rebellion.Tests.Simulation
 
             Assert.IsEmpty(stranded);
             Assert.AreSame(destination, officer.GetParent());
-            Assert.AreEqual(OfficerRank.None, officer.CurrentRank);
+            Assert.AreEqual(OfficerRank.Commander, officer.CurrentRank);
             Assert.AreEqual(OfficerRank.Commander, incumbent.CurrentRank);
         }
 
@@ -4349,7 +4354,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void TryRequestMove_ShipWithRankedOfficerToOccupiedCommand_ResignsRelocatedOfficer()
+        public void TryRequestMove_ShipWithRankedOfficerToOccupiedCommand_PreservesBothRanks()
         {
             (GameRoot game, Planet origin, Planet _, Officer _, MovementCommands movement) =
                 BuildScene();
@@ -4376,7 +4381,7 @@ namespace Rebellion.Tests.Simulation
 
             Assert.IsTrue(moved);
             Assert.AreSame(destinationFleet, sourceShip.GetParent());
-            Assert.AreEqual(OfficerRank.None, relocated.CurrentRank);
+            Assert.AreEqual(OfficerRank.Admiral, relocated.CurrentRank);
             Assert.AreEqual(OfficerRank.Admiral, incumbent.CurrentRank);
         }
 
