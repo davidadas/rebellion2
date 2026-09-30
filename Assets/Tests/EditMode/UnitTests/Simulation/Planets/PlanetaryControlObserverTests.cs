@@ -88,7 +88,11 @@ namespace Rebellion.Tests.Simulation
                 new PlanetaryControlQueries(_game),
                 new FogOfWarQueries(_game)
             );
-            _observer = new PlanetaryControlObserver(_commands);
+            _observer = new PlanetaryControlObserver(
+                _game,
+                _commands,
+                new PlanetaryControlQueries(_game)
+            );
         }
 
         [Test]

@@ -76,6 +76,32 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
+        /// Returns the faction currently recorded as a planet's owner.
+        /// </summary>
+        /// <param name="planet">The planet whose owner is requested.</param>
+        /// <returns>The recorded owner, or null when the planet is neutral.</returns>
+        internal Faction GetPlanetOwner(Planet planet)
+        {
+            string ownerInstanceId = planet?.GetOwnerInstanceID();
+            return string.IsNullOrEmpty(ownerInstanceId)
+                ? null
+                : _game.GetFactionByOwnerInstanceID(ownerInstanceId);
+        }
+
+        /// <summary>
+        /// Gets populated, intact planets affected by a sector-level support reaction.
+        /// </summary>
+        /// <param name="sector">The sector to inspect.</param>
+        /// <returns>The planets eligible for the support reaction.</returns>
+        internal static IEnumerable<Planet> GetSupportReactionPlanets(PlanetSector sector)
+        {
+            return sector
+                    ?.GetChildren<Planet>()
+                    .Where(planet => planet.IsPopulated() && !planet.IsDestroyed)
+                ?? Enumerable.Empty<Planet>();
+        }
+
+        /// <summary>
         /// Gets the distinct owners of completed, stationary regiments on a planet.
         /// </summary>
         /// <param name="planet">The planet to inspect.</param>

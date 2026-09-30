@@ -344,6 +344,7 @@ namespace Rebellion.Tests.AI.Helpers
                     game,
                     provider,
                     planetaryControl,
+                    new PlanetaryControlQueries(game),
                     new BombardmentQueries(game)
                 );
             PlanetaryAssaultCommands planetaryAssaultSystem =

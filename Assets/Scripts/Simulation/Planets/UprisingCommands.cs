@@ -1139,7 +1139,7 @@ namespace Rebellion.Simulation
                 _game.Config.SupportShift.WeakSupportPenaltyDivisor
             );
 
-            _planetaryControl.ShiftPopularSupport(planet, faction, shift);
+            _planetaryControl.ChangePopularSupport(planet, faction, shift);
         }
 
         /// <summary>

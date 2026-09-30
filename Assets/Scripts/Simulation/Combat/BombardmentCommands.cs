@@ -19,6 +19,7 @@ namespace Rebellion.Simulation
     {
         private readonly GameRoot _game;
         private readonly BombardmentQueries _queries;
+        private readonly PlanetaryControlQueries _controlQueries;
         private readonly IRandomNumberProvider _provider;
         private readonly PlanetaryControlCommands _ownership;
         private readonly PersonnelCommands _personnelCommands;
@@ -34,12 +35,14 @@ namespace Rebellion.Simulation
         /// <param name="game">Active game state.</param>
         /// <param name="provider">Random-number provider used by bombardment resolution.</param>
         /// <param name="ownership">Planetary control commands used for support and ownership changes.</param>
+        /// <param name="controlQueries">Planetary control queries used to resolve ownership changes.</param>
         /// <param name="queries">Bombardment eligibility and strength rules.</param>
         /// <param name="personnelCommands">Personnel lifecycle commands.</param>
         public BombardmentCommands(
             GameRoot game,
             IRandomNumberProvider provider,
             PlanetaryControlCommands ownership,
+            PlanetaryControlQueries controlQueries,
             BombardmentQueries queries,
             PersonnelCommands personnelCommands = null
         )
@@ -47,6 +50,8 @@ namespace Rebellion.Simulation
             _game = game;
             _provider = provider;
             _ownership = ownership ?? throw new ArgumentNullException(nameof(ownership));
+            _controlQueries =
+                controlQueries ?? throw new ArgumentNullException(nameof(controlQueries));
             _personnelCommands =
                 personnelCommands ?? new PersonnelCommands(new PersonnelQueries(game));
             _queries = queries ?? throw new ArgumentNullException(nameof(queries));
@@ -731,9 +736,7 @@ namespace Rebellion.Simulation
                 return results;
 
             int shift = GetCivilianBombardmentSectorPenalty(sector, attacker);
-            results.AddRange(
-                _ownership.ShiftBombardmentSupport(GetAffectedPlanets(sector), attacker, shift)
-            );
+            results.AddRange(ChangePopularSupport(GetAffectedPlanets(sector), attacker, shift));
             return results;
         }
 
@@ -756,7 +759,7 @@ namespace Rebellion.Simulation
                 _game.Config.SupportShift.WeakSupportPenaltyDivisor
             );
 
-            return _ownership.ShiftBombardmentSupport(new[] { planet }, attacker, shift);
+            return ChangePopularSupport(new[] { planet }, attacker, shift);
         }
 
         /// <summary>
@@ -786,7 +789,7 @@ namespace Rebellion.Simulation
                 .SelectMany(GetAffectedPlanets)
                 .ToList();
             results.AddRange(
-                _ownership.ShiftBombardmentSupport(
+                ChangePopularSupport(
                     corePlanets,
                     attacker,
                     _game.Config.Combat.Bombardment.DestroyPlanetCoreSupportPenalty
@@ -803,7 +806,7 @@ namespace Rebellion.Simulation
                 )
                 .ToList();
             results.AddRange(
-                _ownership.ShiftBombardmentSupport(
+                ChangePopularSupport(
                     outerRimPlanets,
                     attacker,
                     _game.Config.Combat.Bombardment.DestroyPlanetOuterRimSupportPenalty
@@ -832,7 +835,52 @@ namespace Rebellion.Simulation
             )
                 return new List<PlanetOwnershipChangedResult>();
 
-            return _ownership.ResolveBombardmentControl(planet, previousOwnerId);
+            Faction controller = _controlQueries.GetPlanetController(planet);
+            PlanetOwnershipChangedResult change = _ownership.ChangePlanetOwner(planet, controller);
+            if (change == null)
+                return new List<PlanetOwnershipChangedResult>();
+
+            change.Reason = PlanetOwnershipChangeReason.GarrisonRemoved;
+            return new List<PlanetOwnershipChangedResult> { change };
+        }
+
+        /// <summary>
+        /// Applies bombardment support changes and records any immediate ownership transitions.
+        /// </summary>
+        /// <param name="planets">The planets receiving the support change.</param>
+        /// <param name="faction">The faction whose support changes.</param>
+        /// <param name="shift">The signed support adjustment.</param>
+        /// <returns>The ownership changes caused by the support adjustments.</returns>
+        private List<PlanetOwnershipChangedResult> ChangePopularSupport(
+            IEnumerable<Planet> planets,
+            Faction faction,
+            int shift
+        )
+        {
+            List<PlanetOwnershipChangedResult> results = new List<PlanetOwnershipChangedResult>();
+            if (planets == null || faction == null || shift == 0)
+                return results;
+
+            foreach (Planet planet in planets)
+            {
+                Faction previousOwner = _controlQueries.GetPlanetOwner(planet);
+                _ownership.ChangePopularSupport(planet, faction, shift);
+                Faction controller = _controlQueries.GetPlanetController(planet);
+                if (previousOwner?.InstanceID == controller?.InstanceID)
+                    continue;
+
+                PlanetOwnershipChangedResult change = _ownership.ChangePlanetOwner(
+                    planet,
+                    controller
+                );
+                if (change == null)
+                    continue;
+
+                change.Reason = PlanetOwnershipChangeReason.PopularSupport;
+                results.Add(change);
+            }
+
+            return results;
         }
 
         /// <summary>

@@ -38,6 +38,7 @@ namespace Rebellion.Tests.Simulation
                 game,
                 rng,
                 planetaryControl,
+                new PlanetaryControlQueries(game),
                 new BombardmentQueries(game)
             );
         }
