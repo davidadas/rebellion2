@@ -250,7 +250,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             PlanetSectorClusterView cluster = FindCluster("sector-1");
             PointerEventData eventData = CreateMapPointerEvent(Vector2.zero);
             eventData.button = PointerEventData.InputButton.Left;
-            eventData.clickCount = 1;
+            eventData.clickCount = 2;
 
             cluster.OnPointerEnter(eventData);
             cluster.OnPointerExit(eventData);
@@ -283,7 +283,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             PlanetSectorClusterView cluster = FindCluster("sector-1");
             PointerEventData eventData = CreateMapPointerEvent(Vector2.zero);
             eventData.button = PointerEventData.InputButton.Left;
-            eventData.clickCount = 1;
+            eventData.clickCount = 2;
 
             UIComponentTestHelper.InvokeLifecycle(_view, "OnDestroy");
             cluster.OnPointerEnter(eventData);
