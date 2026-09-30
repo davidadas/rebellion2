@@ -21,7 +21,9 @@ namespace Rebellion.Simulation
         private readonly ManufacturingCommands _manufacturingSystem;
         private readonly FogOfWarCommands _fogOfWarSystem;
         private readonly FogOfWarQueries _fogOfWarQueries;
+        private readonly HashSet<string> _controlShiftedOwners = new HashSet<string>();
         private readonly HashSet<string> _controlChangesInProgress = new HashSet<string>();
+        private int _controlShiftTick = -1;
 
         /// <summary>
         /// Creates a new PlanetaryControlCommands.
@@ -236,6 +238,7 @@ namespace Rebellion.Simulation
             if (planet.OwnerInstanceID == newController?.InstanceID)
                 return reactions;
 
+            Faction previousController = GetOwner(planet);
             PlanetOwnershipChangedResult ownershipChange = ChangePlanetControl(
                 planet,
                 newController
@@ -246,6 +249,9 @@ namespace Rebellion.Simulation
             ownershipChange.Reason = PlanetOwnershipChangeReason.PopularSupport;
             ownershipChange.Tick = tick;
             reactions.Add(ownershipChange);
+            reactions.AddRange(
+                ApplyPoliticalControlChangeSupport(planet, previousController, newController, tick)
+            );
 
             return reactions;
         }
@@ -296,6 +302,27 @@ namespace Rebellion.Simulation
         /// <returns>Any ownership-change results produced.</returns>
         public List<GameResult> ReconcilePlanet(Planet planet)
         {
+            return ReconcilePlanet(planet, garrisonChanged: false);
+        }
+
+        /// <summary>
+        /// Re-evaluates one planet after its active regiment garrison changes.
+        /// </summary>
+        /// <param name="planet">The planet to evaluate.</param>
+        /// <returns>Any ownership and local support changes produced.</returns>
+        internal List<GameResult> ReconcilePlanetAfterGarrisonChange(Planet planet)
+        {
+            return ReconcilePlanet(planet, garrisonChanged: true);
+        }
+
+        /// <summary>
+        /// Re-evaluates one planet and applies the support rule for its transition type.
+        /// </summary>
+        /// <param name="planet">The planet to evaluate.</param>
+        /// <param name="garrisonChanged">Whether active regiment presence caused the evaluation.</param>
+        /// <returns>Any ownership and local support changes produced.</returns>
+        private List<GameResult> ReconcilePlanet(Planet planet, bool garrisonChanged)
+        {
             List<GameResult> results = new List<GameResult>();
             if (planet == null || !_controlChangesInProgress.Add(planet.InstanceID))
                 return results;
@@ -310,6 +337,7 @@ namespace Rebellion.Simulation
 
                 List<string> regimentOwners = _queries.GetActiveRegimentOwners(planet);
                 Faction controller = _queries.GetPlanetController(planet, regimentOwners);
+                Faction previousController = GetOwner(planet);
                 PlanetOwnershipChangedResult result = ChangePlanetControl(planet, controller);
                 if (result != null)
                 {
@@ -317,6 +345,24 @@ namespace Rebellion.Simulation
                         result.Reason = PlanetOwnershipChangeReason.PopularSupport;
 
                     results.Add(result);
+                    if (regimentOwners.Count == 0)
+                    {
+                        results.AddRange(
+                            garrisonChanged
+                                ? ApplyGarrisonRemovalSupport(
+                                    planet,
+                                    previousController,
+                                    controller,
+                                    _game.CurrentTick
+                                )
+                                : ApplyPoliticalControlChangeSupport(
+                                    planet,
+                                    previousController,
+                                    controller,
+                                    _game.CurrentTick
+                                )
+                        );
+                    }
                 }
             }
             finally
@@ -442,30 +488,10 @@ namespace Rebellion.Simulation
             int shift
         )
         {
-            List<PlanetOwnershipChangedResult> results = new List<PlanetOwnershipChangedResult>();
-            if (planets == null || faction == null || shift == 0)
-                return results;
-
-            foreach (Planet planet in planets)
-            {
-                Faction previousController = _queries.GetPlanetController(planet);
-                ShiftPopularSupport(planet, faction, shift);
-                Faction newController = _queries.GetPlanetController(planet);
-                if (previousController?.InstanceID == newController?.InstanceID)
-                    continue;
-
-                PlanetOwnershipChangedResult controlChange = ChangePlanetControl(
-                    planet,
-                    newController
-                );
-                if (controlChange != null)
-                {
-                    controlChange.Reason = PlanetOwnershipChangeReason.PopularSupport;
-                    results.Add(controlChange);
-                }
-            }
-
-            return results;
+            Queue<(Planet planet, Faction faction, int shift)> pending =
+                new Queue<(Planet planet, Faction faction, int shift)>();
+            EnqueueSupportShifts(pending, planets, faction, shift);
+            return ApplySupportShifts(pending, _game.CurrentTick);
         }
 
         /// <summary>
@@ -513,6 +539,198 @@ namespace Rebellion.Simulation
                     ?.GetChildren<Planet>()
                     .Where(planet => planet.IsPopulated() && !planet.IsDestroyed)
                 ?? Enumerable.Empty<Planet>();
+        }
+
+        /// <summary>
+        /// Applies the local support response to a control change without active regiments.
+        /// </summary>
+        /// <param name="planet">The planet whose political control changed.</param>
+        /// <param name="previousController">The faction that previously controlled the planet.</param>
+        /// <param name="newController">The faction that now controls the planet.</param>
+        /// <param name="tick">The tick assigned to resulting ownership changes.</param>
+        /// <returns>Ownership changes caused by the resulting local support shifts.</returns>
+        private List<PlanetOwnershipChangedResult> ApplyPoliticalControlChangeSupport(
+            Planet planet,
+            Faction previousController,
+            Faction newController,
+            int tick
+        )
+        {
+            Queue<(Planet planet, Faction faction, int shift)> pending =
+                new Queue<(Planet planet, Faction faction, int shift)>();
+            EnqueuePoliticalControlChangeSupport(
+                pending,
+                planet,
+                previousController,
+                newController
+            );
+            return ApplySupportShifts(pending, tick);
+        }
+
+        /// <summary>
+        /// Applies the local support response after the last active garrison leaves a planet.
+        /// </summary>
+        /// <param name="planet">The planet whose garrison was removed.</param>
+        /// <param name="previousController">The faction that previously controlled the planet.</param>
+        /// <param name="newController">The faction that now controls the planet.</param>
+        /// <param name="tick">The tick assigned to resulting ownership changes.</param>
+        /// <returns>Ownership changes caused by the resulting local support shifts.</returns>
+        private List<PlanetOwnershipChangedResult> ApplyGarrisonRemovalSupport(
+            Planet planet,
+            Faction previousController,
+            Faction newController,
+            int tick
+        )
+        {
+            Faction beneficiary = GetControlChangeBeneficiary(previousController, newController);
+            Queue<(Planet planet, Faction faction, int shift)> pending =
+                new Queue<(Planet planet, Faction faction, int shift)>();
+            EnqueueSupportShifts(
+                pending,
+                GetAffectedPlanets(planet.GetParentOfType<PlanetSector>()),
+                beneficiary,
+                _game.Config.SupportShift.GarrisonRemovalSupportShift
+            );
+            return ApplySupportShifts(pending, tick);
+        }
+
+        /// <summary>
+        /// Applies queued support shifts and resolves every resulting political control change.
+        /// </summary>
+        /// <param name="pending">The queued planets, factions, and signed support shifts.</param>
+        /// <param name="tick">The tick assigned to resulting ownership changes.</param>
+        /// <returns>Ownership changes caused by the support shifts.</returns>
+        private List<PlanetOwnershipChangedResult> ApplySupportShifts(
+            Queue<(Planet planet, Faction faction, int shift)> pending,
+            int tick
+        )
+        {
+            List<PlanetOwnershipChangedResult> results = new List<PlanetOwnershipChangedResult>();
+            while (pending.Count > 0)
+            {
+                (Planet planet, Faction faction, int shift) = pending.Dequeue();
+                Faction previousController = GetOwner(planet);
+                ShiftPopularSupport(planet, faction, shift);
+                Faction newController = _queries.GetPlanetController(planet);
+                if (previousController?.InstanceID == newController?.InstanceID)
+                    continue;
+
+                PlanetOwnershipChangedResult controlChange = ChangePlanetControl(
+                    planet,
+                    newController
+                );
+                if (controlChange == null)
+                    continue;
+
+                controlChange.Reason = PlanetOwnershipChangeReason.PopularSupport;
+                controlChange.Tick = tick;
+                results.Add(controlChange);
+                EnqueuePoliticalControlChangeSupport(
+                    pending,
+                    planet,
+                    previousController,
+                    newController
+                );
+            }
+
+            return results;
+        }
+
+        /// <summary>
+        /// Queues the local support response for a political control change when permitted this tick.
+        /// </summary>
+        /// <param name="pending">The queue receiving support shifts.</param>
+        /// <param name="planet">The planet whose political control changed.</param>
+        /// <param name="previousController">The faction that previously controlled the planet.</param>
+        /// <param name="newController">The faction that now controls the planet.</param>
+        private void EnqueuePoliticalControlChangeSupport(
+            Queue<(Planet planet, Faction faction, int shift)> pending,
+            Planet planet,
+            Faction previousController,
+            Faction newController
+        )
+        {
+            if (!CanApplyControlSupportShift(previousController))
+                return;
+
+            EnqueueSupportShifts(
+                pending,
+                GetAffectedPlanets(planet.GetParentOfType<PlanetSector>()),
+                GetControlChangeBeneficiary(previousController, newController),
+                _game.Config.SupportShift.ControlChangeSupportShift
+            );
+        }
+
+        /// <summary>
+        /// Limits political control-change support shifts to one per displaced faction each tick.
+        /// </summary>
+        /// <param name="previousController">The faction displaced by the control change.</param>
+        /// <returns>True when the support shift may be propagated.</returns>
+        private bool CanApplyControlSupportShift(Faction previousController)
+        {
+            if (previousController == null)
+                return true;
+
+            if (_controlShiftTick != _game.CurrentTick)
+            {
+                _controlShiftTick = _game.CurrentTick;
+                _controlShiftedOwners.Clear();
+            }
+
+            return _controlShiftedOwners.Add(previousController.InstanceID);
+        }
+
+        /// <summary>
+        /// Returns the faction favored by a control change.
+        /// </summary>
+        /// <param name="previousController">The faction that previously controlled the planet.</param>
+        /// <param name="newController">The faction that now controls the planet.</param>
+        /// <returns>The faction receiving the local support shift.</returns>
+        private Faction GetControlChangeBeneficiary(
+            Faction previousController,
+            Faction newController
+        )
+        {
+            return newController
+                ?? _game
+                    .GetFactions()
+                    .FirstOrDefault(candidate =>
+                        candidate.InstanceID != previousController?.InstanceID
+                    );
+        }
+
+        /// <summary>
+        /// Adds valid support-shift work items to the pending queue.
+        /// </summary>
+        /// <param name="pending">The queue receiving support shifts.</param>
+        /// <param name="planets">The planets to enqueue.</param>
+        /// <param name="faction">The faction whose support changes.</param>
+        /// <param name="shift">The signed support adjustment.</param>
+        private static void EnqueueSupportShifts(
+            Queue<(Planet planet, Faction faction, int shift)> pending,
+            IEnumerable<Planet> planets,
+            Faction faction,
+            int shift
+        )
+        {
+            if (planets == null || faction == null || shift == 0)
+                return;
+
+            foreach (Planet planet in planets)
+                pending.Enqueue((planet, faction, shift));
+        }
+
+        /// <summary>
+        /// Returns the faction currently recorded as the planet owner.
+        /// </summary>
+        /// <param name="planet">The planet whose owner is requested.</param>
+        /// <returns>The current owner, or null for neutral control.</returns>
+        private Faction GetOwner(Planet planet)
+        {
+            string ownerInstanceId = planet?.GetOwnerInstanceID();
+            return string.IsNullOrEmpty(ownerInstanceId)
+                ? null
+                : _game.GetFactionByOwnerInstanceID(ownerInstanceId);
         }
 
         /// <summary>
@@ -604,9 +822,18 @@ namespace Rebellion.Simulation
                     if (support < threshold)
                         continue;
 
+                    Faction previousController = GetOwner(planet);
                     PlanetOwnershipChangedResult result = TransferPlanet(planet, faction);
                     result.Reason = PlanetOwnershipChangeReason.PopularSupport;
                     results.Add(result);
+                    results.AddRange(
+                        ApplyPoliticalControlChangeSupport(
+                            planet,
+                            previousController,
+                            faction,
+                            _game.CurrentTick
+                        )
+                    );
 
                     GameLogger.Log(
                         $"Planet {planet.GetDisplayName()} transferred to {faction.DisplayName} (support {support} > {threshold})"

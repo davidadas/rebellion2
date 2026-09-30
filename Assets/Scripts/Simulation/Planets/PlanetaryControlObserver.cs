@@ -60,7 +60,7 @@ namespace Rebellion.Simulation
                 .Where(planet => planet != null)
                 .Distinct();
             foreach (Planet planet in affectedPlanets)
-                controlResults.AddRange(_commands.ReconcilePlanet(planet));
+                controlResults.AddRange(_commands.ReconcilePlanetAfterGarrisonChange(planet));
 
             return controlResults;
         }

@@ -129,10 +129,14 @@ namespace Rebellion.Tests.Simulation
                     typeof(PlanetOwnershipChangedResult),
                     typeof(PlanetStatChangedResult),
                     typeof(PlanetOwnershipChangedResult),
+                    typeof(PlanetOwnershipChangedResult),
                 },
                 results.Select(result => result.GetType())
             );
-            CollectionAssert.AreEqual(new[] { 4, 4, 5, 5 }, results.Select(result => result.Tick));
+            CollectionAssert.AreEqual(
+                new[] { 4, 4, 5, 5, 5 },
+                results.Select(result => result.Tick)
+            );
         }
 
         [Test]
