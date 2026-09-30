@@ -16,6 +16,7 @@ public sealed class PlanetSectorWindowView : MonoBehaviour
     private const int _hoverLabelHorizontalPadding = 3;
     private const int _maximumHoverLabelWidth = 160;
     private const int _minimumHoverLabelWidth = 20;
+    private const float _statusBarHoverDelaySeconds = 0.5f;
 
     [SerializeField]
     private TextMeshProUGUI sectorNameTextField;
@@ -50,7 +51,10 @@ public sealed class PlanetSectorWindowView : MonoBehaviour
     private readonly List<PlanetSectorPlanetView> planetViews = new List<PlanetSectorPlanetView>();
     private Image hoverLabelBackgroundImage;
     private RectTransform hoverLabelRoot;
+    private float hoverLabelShowTime;
     private TextMeshProUGUI hoverLabelText;
+    private PlanetSectorStatusBar hoveredStatusBar;
+    private PlanetSectorPlanetView hoveredStatusBarView;
     private WaypointRouteOverlay waypointOverlay;
 
     /// <summary>
@@ -443,6 +447,22 @@ public sealed class PlanetSectorWindowView : MonoBehaviour
     }
 
     /// <summary>
+    /// Reveals a status-bar label after the pointer has rested on the same bar for half a second.
+    /// </summary>
+    private void Update()
+    {
+        AdvanceStatusBarHover(Time.unscaledTime);
+    }
+
+    /// <summary>
+    /// Cancels a pending status-bar label when the window is hidden.
+    /// </summary>
+    private void OnDisable()
+    {
+        CancelHoverLabel();
+    }
+
+    /// <summary>
     /// Releases child subscriptions and notifies the owning controller.
     /// </summary>
     private void OnDestroy()
@@ -450,6 +470,23 @@ public sealed class PlanetSectorWindowView : MonoBehaviour
         for (int index = 0; index < planetViews.Count; index++)
             UnbindPlanetView(planetViews[index]);
         Destroyed?.Invoke(this);
+    }
+
+    /// <summary>
+    /// Advances the delayed status-bar hover using an explicit unscaled timestamp.
+    /// </summary>
+    /// <param name="unscaledTime">The current unscaled time.</param>
+    internal void AdvanceStatusBarHover(float unscaledTime)
+    {
+        if (
+            hoveredStatusBarView == null
+            || hoveredStatusBar == PlanetSectorStatusBar.None
+            || hoverLabelRoot?.gameObject.activeSelf == true
+            || unscaledTime < hoverLabelShowTime
+        )
+            return;
+
+        ShowHoverLabel(hoveredStatusBarView, hoveredStatusBar);
     }
 
     /// <summary>
@@ -536,7 +573,7 @@ public sealed class PlanetSectorWindowView : MonoBehaviour
     /// <param name="view">The planet view that lost hover.</param>
     private void HandlePlanetHoverCleared(PlanetSectorPlanetView view)
     {
-        HideHoverLabel();
+        CancelHoverLabel();
         HoverCleared?.Invoke(this);
     }
 
@@ -552,7 +589,7 @@ public sealed class PlanetSectorWindowView : MonoBehaviour
         PointerEventData eventData
     )
     {
-        HideHoverLabel();
+        CancelHoverLabel();
         Hovered?.Invoke(this, element, eventData);
     }
 
@@ -566,7 +603,19 @@ public sealed class PlanetSectorWindowView : MonoBehaviour
         PlanetSectorStatusBar statusBar
     )
     {
-        ShowHoverLabel(view, statusBar);
+        if (view == null || statusBar == PlanetSectorStatusBar.None)
+        {
+            CancelHoverLabel();
+            return;
+        }
+
+        if (hoveredStatusBarView == view && hoveredStatusBar == statusBar)
+            return;
+
+        HideHoverLabel();
+        hoveredStatusBarView = view;
+        hoveredStatusBar = statusBar;
+        hoverLabelShowTime = Time.unscaledTime + _statusBarHoverDelaySeconds;
     }
 
     /// <summary>
@@ -582,7 +631,7 @@ public sealed class PlanetSectorWindowView : MonoBehaviour
             || !view.TryGetStatusBarTooltip(statusBar, out string text, out RectInt barBounds)
         )
         {
-            HideHoverLabel();
+            CancelHoverLabel();
             return;
         }
 
@@ -629,6 +678,17 @@ public sealed class PlanetSectorWindowView : MonoBehaviour
     {
         if (hoverLabelRoot != null)
             hoverLabelRoot.gameObject.SetActive(false);
+    }
+
+    /// <summary>
+    /// Hides the status-bar hover label and clears any pending delayed reveal.
+    /// </summary>
+    private void CancelHoverLabel()
+    {
+        hoveredStatusBarView = null;
+        hoveredStatusBar = PlanetSectorStatusBar.None;
+        hoverLabelShowTime = 0f;
+        HideHoverLabel();
     }
 
     /// <summary>

@@ -301,6 +301,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             RectTransform labelRoot = GetField<RectTransform>("hoverLabelRoot");
             Image labelBackground = GetField<Image>("hoverLabelBackgroundImage");
             TextMeshProUGUI labelText = GetField<TextMeshProUGUI>("hoverLabelText");
+            float showTime = GetField<float>("hoverLabelShowTime");
+            Assert.IsFalse(labelRoot.gameObject.activeSelf);
+
+            _view.AdvanceStatusBarHover(showTime - 0.01f);
+
+            Assert.IsFalse(labelRoot.gameObject.activeSelf);
+
+            _view.AdvanceStatusBarHover(showTime);
+
             Assert.IsTrue(labelRoot.gameObject.activeSelf);
             Assert.AreEqual(expectedText, labelText.text);
             Assert.AreEqual(Color.black, labelRoot.GetComponent<Image>().color);
@@ -311,6 +320,31 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             planet.OnPointerExit(eventData);
 
             Assert.IsFalse(labelRoot.gameObject.activeSelf);
+        }
+
+        [Test]
+        public void PlanetStatusBar_HoverExitBeforeDelay_DoesNotShowTooltip()
+        {
+            _view.Render(
+                new PlanetSectorWindowRenderData(
+                    "Sesswenna",
+                    new[] { CreatePlanet(0, Vector2Int.zero, "Coruscant") }
+                )
+            );
+            PlanetSectorPlanetView planet = GetPlanetViews()[0];
+            Image barImage = GetPlanetField<Image>(planet, "energyBarBackgroundImage");
+            PointerEventData eventData = CreatePointerEvent(
+                barImage.gameObject,
+                PointerEventData.InputButton.Left,
+                1
+            );
+
+            planet.OnPointerEnter(eventData);
+            float showTime = GetField<float>("hoverLabelShowTime");
+            planet.OnPointerExit(eventData);
+            _view.AdvanceStatusBarHover(showTime + 1f);
+
+            Assert.IsFalse(GetField<RectTransform>("hoverLabelRoot").gameObject.activeSelf);
         }
 
         [Test]
