@@ -402,7 +402,10 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="participants">The participants attempting the assassination.</param>
         /// <param name="context">The authoritative or observed state used for evaluation.</param>
-        /// <returns>The probability that at least one participant both hits and kills the target.</returns>
+        /// <returns>
+        /// The probability that at least one participant hits the target and the resulting death
+        /// roll succeeds.
+        /// </returns>
         protected override double GetObjectiveSuccessProbability(
             IEnumerable<IMissionParticipant> participants,
             MissionEvaluationContext context
@@ -416,14 +419,8 @@ namespace Rebellion.Game.Missions
             if (killProbability == 0)
                 return 0;
 
-            IEnumerable<double> probabilities = (
-                participants ?? Enumerable.Empty<IMissionParticipant>()
-            )
-                .Where(participant => participant != null)
-                .Select(participant =>
-                    GetAgentProbability(participant, context) * killProbability / 100d
-                );
-            return CombineSuccessProbabilities(probabilities);
+            double hitProbability = base.GetObjectiveSuccessProbability(participants, context);
+            return hitProbability * killProbability / 100d;
         }
 
         /// <summary>
