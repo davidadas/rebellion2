@@ -33,14 +33,7 @@ namespace Rebellion.Tests.Simulation
         /// <returns>The result of make bombardment.</returns>
         protected BombardmentCommands MakeBombardment(GameRoot game, IRandomNumberProvider rng)
         {
-            (_, PlanetaryControlCommands planetaryControl) = CreatePlanetaryCombatSystems(game);
-            return new BombardmentCommands(
-                game,
-                rng,
-                planetaryControl,
-                new PlanetaryControlQueries(game),
-                new BombardmentQueries(game)
-            );
+            return new BombardmentCommands(game, rng, new BombardmentQueries(game));
         }
 
         /// <summary>

@@ -8,6 +8,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Simulation;
+using Rebellion.Util.Random;
 
 namespace Rebellion.Tests.Simulation
 {
@@ -102,7 +103,31 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void Execute_CivilianBombardment_AppliesCoreSupportPenalties()
+        public void Execute_CivilianTargetDestroyed_DoesNotApplyPoliticalReaction()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, PlanetSector sector) = CreatePlanet(game, "p1", "empire", energy: 10);
+            planet.PopularSupport["alliance"] = 30;
+            planet.PopularSupport["empire"] = 70;
+            Planet secondPlanet = AddPlanet(game, sector, "p2", "empire");
+            secondPlanet.PopularSupport["alliance"] = 30;
+            secondPlanet.PopularSupport["empire"] = 70;
+            AddBuilding(game, planet, "mine", "empire", BuildingType.Mine);
+            Fleet fleet = AddBombardmentFleet(game, planet, "alliance", bombardment: 1);
+
+            BombardmentResult result = MakeBombardment(
+                    game,
+                    new SequenceRNG(intValues: new[] { 0, 10 })
+                )
+                .Execute(new List<Fleet> { fleet }, planet, BombardmentType.Civilian);
+
+            Assert.AreEqual(30, planet.GetPopularSupport("alliance"));
+            Assert.AreEqual(30, secondPlanet.GetPopularSupport("alliance"));
+            Assert.IsNull(result.OwnershipChange);
+        }
+
+        [Test]
+        public void TryExecute_CivilianBombardment_AppliesCoreSupportPenalties()
         {
             GameRoot game = CreateGame();
             (Planet planet, PlanetSector planetSector) = CreatePlanet(
@@ -119,11 +144,13 @@ namespace Rebellion.Tests.Simulation
             Building mine = AddBuilding(game, planet, "mine", "empire", BuildingType.Mine);
             Fleet fleet = AddBombardmentFleet(game, planet, "alliance", bombardment: 1);
 
-            BombardmentResult result = MakeBombardment(
-                    game,
-                    new SequenceRNG(intValues: new[] { 0, 10 })
-                )
-                .Execute(new List<Fleet> { fleet }, planet, BombardmentType.Civilian);
+            BombardmentResult result = TryExecuteBombardment(
+                game,
+                new SequenceRNG(intValues: new[] { 0, 10 }),
+                new List<Fleet> { fleet },
+                planet,
+                BombardmentType.Civilian
+            );
 
             CollectionAssert.Contains(result.DestroyedBuildings, mine);
             Assert.AreEqual(6, planet.GetPopularSupport("alliance"));
@@ -133,7 +160,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void Execute_CivilianBombardment_SupportFlipCarriesNotificationContext()
+        public void TryExecute_CivilianBombardment_SupportFlipCarriesNotificationContext()
         {
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", owner: null, energy: 10);
@@ -142,11 +169,13 @@ namespace Rebellion.Tests.Simulation
             AddBuilding(game, planet, "mine", ownerId: null, BuildingType.Mine);
             Fleet fleet = AddBombardmentFleet(game, planet, "alliance", bombardment: 1);
 
-            BombardmentResult result = MakeBombardment(
-                    game,
-                    new SequenceRNG(intValues: new[] { 0, 10 })
-                )
-                .Execute(new List<Fleet> { fleet }, planet, BombardmentType.Civilian);
+            BombardmentResult result = TryExecuteBombardment(
+                game,
+                new SequenceRNG(intValues: new[] { 0, 10 }),
+                new List<Fleet> { fleet },
+                planet,
+                BombardmentType.Civilian
+            );
 
             Assert.AreEqual("empire", planet.GetOwnerInstanceID());
             Assert.AreEqual(
@@ -160,7 +189,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void Execute_CivilianBombardment_ShiftsSectorSupport()
+        public void TryExecute_CivilianBombardment_ShiftsSectorSupport()
         {
             GameRoot game = CreateGame();
             (Planet planet, PlanetSector planetSector) = CreatePlanet(
@@ -177,15 +206,20 @@ namespace Rebellion.Tests.Simulation
             AddBuilding(game, planet, "mine", ownerId: null, BuildingType.Mine);
             Fleet fleet = AddBombardmentFleet(game, planet, "alliance", bombardment: 1);
 
-            MakeBombardment(game, new SequenceRNG(intValues: new[] { 0, 10 }))
-                .Execute(new List<Fleet> { fleet }, planet, BombardmentType.Civilian);
+            TryExecuteBombardment(
+                game,
+                new SequenceRNG(intValues: new[] { 0, 10 }),
+                new List<Fleet> { fleet },
+                planet,
+                BombardmentType.Civilian
+            );
 
-            Assert.AreEqual(26, secondPlanet.GetPopularSupport("alliance"));
-            Assert.AreEqual(74, secondPlanet.GetPopularSupport("empire"));
+            Assert.AreEqual(25, secondPlanet.GetPopularSupport("alliance"));
+            Assert.AreEqual(75, secondPlanet.GetPopularSupport("empire"));
         }
 
         [Test]
-        public void Execute_EmpireCivilianBombardment_HalvesCoreTargetPenalty()
+        public void TryExecute_EmpireCivilianBombardment_HalvesCoreTargetPenalty()
         {
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 10);
@@ -194,8 +228,13 @@ namespace Rebellion.Tests.Simulation
             AddBuilding(game, planet, "mine", "alliance", BuildingType.Mine);
             Fleet fleet = AddBombardmentFleet(game, planet, "empire", bombardment: 1);
 
-            MakeBombardment(game, new SequenceRNG(intValues: new[] { 0, 10 }))
-                .Execute(new List<Fleet> { fleet }, planet, BombardmentType.Civilian);
+            TryExecuteBombardment(
+                game,
+                new SequenceRNG(intValues: new[] { 0, 10 }),
+                new List<Fleet> { fleet },
+                planet,
+                BombardmentType.Civilian
+            );
 
             Assert.AreEqual(17, planet.GetPopularSupport("empire"));
             Assert.AreEqual(83, planet.GetPopularSupport("alliance"));
@@ -203,7 +242,7 @@ namespace Rebellion.Tests.Simulation
 
         [TestCase("alliance", "empire", 8, 28)]
         [TestCase("empire", "alliance", 9, 29)]
-        public void Execute_CivilianBombardment_AppliesOuterRimSupportPenalties(
+        public void TryExecute_CivilianBombardment_AppliesOuterRimSupportPenalties(
             string attackerId,
             string defenderId,
             int expectedTargetSupport,
@@ -226,8 +265,13 @@ namespace Rebellion.Tests.Simulation
             AddBuilding(game, planet, "mine", defenderId, BuildingType.Mine);
             Fleet fleet = AddBombardmentFleet(game, planet, attackerId, bombardment: 1);
 
-            MakeBombardment(game, new SequenceRNG(intValues: new[] { 0, 10 }))
-                .Execute(new List<Fleet> { fleet }, planet, BombardmentType.Civilian);
+            TryExecuteBombardment(
+                game,
+                new SequenceRNG(intValues: new[] { 0, 10 }),
+                new List<Fleet> { fleet },
+                planet,
+                BombardmentType.Civilian
+            );
 
             Assert.AreEqual(expectedTargetSupport, planet.GetPopularSupport(attackerId));
             Assert.AreEqual(expectedPlanetSupport, secondPlanet.GetPopularSupport(attackerId));
@@ -604,7 +648,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void Execute_MilitaryCollateral_CanDestroyCivilianTarget()
+        public void TryExecute_MilitaryCollateral_CanDestroyCivilianTarget()
         {
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "empire", energy: 10);
@@ -612,11 +656,13 @@ namespace Rebellion.Tests.Simulation
             Building mine = AddBuilding(game, planet, "mine", "empire", BuildingType.Mine);
             Fleet fleet = AddBombardmentFleet(game, planet, "alliance", bombardment: 1);
 
-            BombardmentResult result = MakeBombardment(
-                    game,
-                    new SequenceRNG(intValues: new[] { 0, 0, 10, 0, 10 })
-                )
-                .Execute(new List<Fleet> { fleet }, planet, BombardmentType.Military);
+            BombardmentResult result = TryExecuteBombardment(
+                game,
+                new SequenceRNG(intValues: new[] { 0, 0, 10, 0, 10 }),
+                new List<Fleet> { fleet },
+                planet,
+                BombardmentType.Military
+            );
 
             CollectionAssert.Contains(result.DestroyedRegiments, regiment);
             CollectionAssert.Contains(result.DestroyedBuildings, mine);
@@ -665,7 +711,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void Execute_DestroyPlanetWithDeathStar_DestroysPlanetAndMinorPersonnel()
+        public void TryExecute_DestroyPlanetWithDeathStar_DestroysPlanetAndMinorPersonnel()
         {
             GameRoot game = CreateGame();
             (Planet planet, PlanetSector planetSector) = CreatePlanet(
@@ -693,11 +739,13 @@ namespace Rebellion.Tests.Simulation
             );
             fleet.GetChildren<CapitalShip>()[0].CanDestroyPlanets = true;
 
-            BombardmentResult result = MakeBombardment(
-                    game,
-                    new SequenceRNG(intValues: new[] { 0, 0 })
-                )
-                .Execute(new List<Fleet> { fleet }, planet, BombardmentType.DestroyPlanet);
+            BombardmentResult result = TryExecuteBombardment(
+                game,
+                new SequenceRNG(intValues: new[] { 0, 0 }),
+                new List<Fleet> { fleet },
+                planet,
+                BombardmentType.DestroyPlanet
+            );
 
             Assert.IsTrue(result.PlanetDestroyed);
             Assert.IsTrue(planet.IsDestroyed);
@@ -776,7 +824,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void Execute_DestroyPlanet_PenalizesOuterRimSupportBelowThreshold()
+        public void TryExecute_DestroyPlanet_PenalizesOuterRimSupportBelowThreshold()
         {
             GameRoot game = CreateGame();
             (Planet planet, PlanetSector planetSector) = CreatePlanet(
@@ -808,8 +856,13 @@ namespace Rebellion.Tests.Simulation
             );
             fleet.GetChildren<CapitalShip>()[0].CanDestroyPlanets = true;
 
-            MakeBombardment(game, new SequenceRNG())
-                .Execute(new List<Fleet> { fleet }, planet, BombardmentType.DestroyPlanet);
+            TryExecuteBombardment(
+                game,
+                new SequenceRNG(),
+                new List<Fleet> { fleet },
+                planet,
+                BombardmentType.DestroyPlanet
+            );
 
             Assert.AreEqual(87, lowSupportPlanet.GetPopularSupport("alliance"));
             Assert.AreEqual(90, thresholdPlanet.GetPopularSupport("alliance"));
@@ -1155,6 +1208,30 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(ownershipChange.Reason, result.OwnershipChange.Reason);
             Assert.AreEqual(42, result.Tick);
             Assert.IsFalse(inCombatAtPublication);
+        }
+
+        /// <summary>
+        /// Executes bombardment with the production planetary-control reactions connected.
+        /// </summary>
+        /// <param name="game">The game containing the combatants.</param>
+        /// <param name="provider">The deterministic random-number provider.</param>
+        /// <param name="fleets">The fleets performing the bombardment.</param>
+        /// <param name="planet">The bombardment target.</param>
+        /// <param name="type">The bombardment target profile.</param>
+        /// <returns>The completed bombardment result.</returns>
+        private BombardmentResult TryExecuteBombardment(
+            GameRoot game,
+            IRandomNumberProvider provider,
+            IReadOnlyList<Fleet> fleets,
+            Planet planet,
+            BombardmentType type
+        )
+        {
+            BombardmentCommands commands = MakeBombardment(game, provider);
+            GameResultBus results = new GameResultBus();
+            ConnectPlanetaryControl(game, results);
+            commands.ResultsProduced += produced => results.Publish(produced);
+            return commands.TryExecute(fleets, planet, type);
         }
 
         /// <summary>

@@ -74,14 +74,12 @@ namespace Rebellion.Simulation
 
             foreach (BombardmentResult result in results)
             {
-                if (
-                    result?.Planet == null
-                    || result.DestroyedRegiments == null
-                    || result.DestroyedRegiments.Count == 0
-                )
+                if (result?.Planet == null)
                     continue;
 
-                controlResults.AddRange(ReconcileGarrisonChange(result.Planet));
+                controlResults.AddRange(ApplyBombardmentSupport(result));
+                if (result.DestroyedRegiments?.Count > 0)
+                    controlResults.AddRange(ReconcileGarrisonChange(result.Planet));
             }
 
             return controlResults;
@@ -222,6 +220,142 @@ namespace Rebellion.Simulation
             if (regimentOwners.Count == 0)
                 change.Reason = PlanetOwnershipChangeReason.GarrisonRemoved;
             results.Add(change);
+            return results;
+        }
+
+        /// <summary>
+        /// Applies political reactions to civilian destruction and destroyed planets.
+        /// </summary>
+        /// <param name="result">The completed bombardment to evaluate.</param>
+        /// <returns>Ownership changes caused by the support penalties.</returns>
+        private List<GameResult> ApplyBombardmentSupport(BombardmentResult result)
+        {
+            List<GameResult> results = new List<GameResult>();
+            if (result.AttackingFaction == null)
+                return results;
+
+            if (result.PlanetDestroyed)
+            {
+                results.AddRange(
+                    ApplyDirectBombardmentPenalty(result.Planet, result.AttackingFaction)
+                );
+                results.AddRange(ApplyDestroyedPlanetPenalty(result.AttackingFaction));
+                return results;
+            }
+
+            if (result.DestroyedBuildings?.Any(BombardmentQueries.IsCivilianTarget) != true)
+                return results;
+
+            results.AddRange(ApplyDirectBombardmentPenalty(result.Planet, result.AttackingFaction));
+            PlanetSector sector = result.Planet.GetParentOfType<PlanetSector>();
+            if (sector == null)
+                return results;
+
+            int shift =
+                sector.SectorType == PlanetSectorType.Core
+                    ? result.AttackingFaction.Settings.CivilianBombardmentCoreSupportPenalty
+                    : result.AttackingFaction.Settings.CivilianBombardmentOuterRimSupportPenalty;
+            results.AddRange(
+                ApplyBombardmentSupportShift(
+                    PlanetaryControlQueries.GetSupportReactionPlanets(sector),
+                    result.AttackingFaction,
+                    shift
+                )
+            );
+            return results;
+        }
+
+        /// <summary>
+        /// Applies the direct popular-support penalty at a bombarded planet.
+        /// </summary>
+        /// <param name="planet">Planet receiving the support shift.</param>
+        /// <param name="attacker">Faction responsible for the bombardment.</param>
+        /// <returns>Ownership changes caused by the support shift.</returns>
+        private List<GameResult> ApplyDirectBombardmentPenalty(Planet planet, Faction attacker)
+        {
+            int shift = PlanetaryControlQueries.ApplyCoreSupportResistance(
+                planet,
+                attacker,
+                _game.Config.Combat.Bombardment.CivilianSupportPenalty,
+                _game.Config.SupportShift.WeakSupportPenaltyDivisor
+            );
+            return ApplyBombardmentSupportShift(new[] { planet }, attacker, shift);
+        }
+
+        /// <summary>
+        /// Applies galaxy-wide popular-support penalties after a planet is destroyed.
+        /// </summary>
+        /// <param name="attacker">Faction responsible for destroying the planet.</param>
+        /// <returns>Ownership changes caused by the support shifts.</returns>
+        private List<GameResult> ApplyDestroyedPlanetPenalty(Faction attacker)
+        {
+            List<GameResult> results = new List<GameResult>();
+            IEnumerable<Planet> corePlanets = _game
+                .GetSceneNodesByType<PlanetSector>()
+                .Where(sector => sector.SectorType == PlanetSectorType.Core)
+                .SelectMany(PlanetaryControlQueries.GetSupportReactionPlanets);
+            results.AddRange(
+                ApplyBombardmentSupportShift(
+                    corePlanets,
+                    attacker,
+                    _game.Config.Combat.Bombardment.DestroyPlanetCoreSupportPenalty
+                )
+            );
+
+            IEnumerable<Planet> outerRimPlanets = _game
+                .GetSceneNodesByType<PlanetSector>()
+                .Where(sector => sector.SectorType == PlanetSectorType.OuterRim)
+                .SelectMany(PlanetaryControlQueries.GetSupportReactionPlanets)
+                .Where(planet =>
+                    planet.GetPopularSupport(attacker.InstanceID)
+                    < _game.Config.Combat.Bombardment.DestroyPlanetOuterRimSupportThreshold
+                );
+            results.AddRange(
+                ApplyBombardmentSupportShift(
+                    outerRimPlanets,
+                    attacker,
+                    _game.Config.Combat.Bombardment.DestroyPlanetOuterRimSupportPenalty
+                )
+            );
+            return results;
+        }
+
+        /// <summary>
+        /// Applies one bombardment support shift and reports resulting ownership changes.
+        /// </summary>
+        /// <param name="planets">Planets receiving the support shift.</param>
+        /// <param name="faction">Faction whose support changes.</param>
+        /// <param name="shift">Signed support adjustment.</param>
+        /// <returns>Ownership changes caused by the support adjustment.</returns>
+        private List<GameResult> ApplyBombardmentSupportShift(
+            IEnumerable<Planet> planets,
+            Faction faction,
+            int shift
+        )
+        {
+            List<GameResult> results = new List<GameResult>();
+            if (planets == null || faction == null || shift == 0)
+                return results;
+
+            foreach (Planet planet in planets)
+            {
+                Faction previousOwner = _queries.GetPlanetOwner(planet);
+                _commands.ChangePopularSupport(planet, faction, shift);
+                Faction controller = _queries.GetPlanetController(planet);
+                if (previousOwner?.InstanceID == controller?.InstanceID)
+                    continue;
+
+                PlanetOwnershipChangedResult change = _commands.ChangePlanetOwner(
+                    planet,
+                    controller
+                );
+                if (change == null)
+                    continue;
+
+                change.Reason = PlanetOwnershipChangeReason.PopularSupport;
+                results.Add(change);
+            }
+
             return results;
         }
 
