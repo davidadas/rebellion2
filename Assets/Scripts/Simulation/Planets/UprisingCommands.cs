@@ -116,7 +116,7 @@ namespace Rebellion.Simulation
             List<GameResult> results = new List<GameResult>();
             bool objectiveAchieved = false;
 
-            mission.ResolveSuccessfulMainParticipant(
+            mission.RollParticipantAttempts(
                 _provider,
                 _game,
                 _ =>

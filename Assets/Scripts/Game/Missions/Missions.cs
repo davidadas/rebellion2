@@ -170,7 +170,7 @@ namespace Rebellion.Game.Missions
         )
         {
             List<GameResult> results = new List<GameResult>();
-            IMissionParticipant successfulParticipant = ResolveSuccessfulMainParticipant(
+            IMissionParticipant successfulParticipant = RollParticipantAttempts(
                 provider,
                 game,
                 participant =>
@@ -472,7 +472,7 @@ namespace Rebellion.Game.Missions
             MissionCompletionReason completionReason = MissionCompletionReason.Failure;
 
             bool targetKilled = false;
-            IMissionParticipant successfulParticipant = ResolveSuccessfulMainParticipant(
+            IMissionParticipant successfulParticipant = RollParticipantAttempts(
                 provider,
                 game,
                 participant =>
@@ -1859,7 +1859,7 @@ namespace Rebellion.Game.Missions
         )
         {
             RecruitedOfficerInstanceID = null;
-            IMissionParticipant successfulParticipant = ResolveSuccessfulMainParticipant(
+            IMissionParticipant successfulParticipant = RollParticipantAttempts(
                 provider,
                 game,
                 _ =>

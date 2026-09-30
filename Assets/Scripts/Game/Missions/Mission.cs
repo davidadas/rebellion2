@@ -686,7 +686,7 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Resolves the first main participant whose mission roll succeeds.
+        /// Rolls the main participants' mission attempts until one succeeds.
         /// Officer probabilities are calculated before any attempts and ordered from lowest to
         /// highest. Special forces then attempt the mission in their selected order if every
         /// officer fails.
@@ -698,7 +698,7 @@ namespace Rebellion.Game.Missions
         /// Return true when that attempt earned the mission's normal participant improvement.
         /// </param>
         /// <returns>The first participant whose attempt succeeds, or null if every attempt fails.</returns>
-        protected internal IMissionParticipant ResolveSuccessfulMainParticipant(
+        protected internal IMissionParticipant RollParticipantAttempts(
             IRandomNumberProvider provider,
             GameRoot game,
             Func<IMissionParticipant, bool> resolveSuccessfulAttempt = null
@@ -1093,10 +1093,7 @@ namespace Rebellion.Game.Missions
             MissionOutcome outcome;
             MissionCompletionReason completionReason;
 
-            IMissionParticipant successfulParticipant = ResolveSuccessfulMainParticipant(
-                provider,
-                game
-            );
+            IMissionParticipant successfulParticipant = RollParticipantAttempts(provider, game);
             if (successfulParticipant != null)
             {
                 outcome = MissionOutcome.Success;
