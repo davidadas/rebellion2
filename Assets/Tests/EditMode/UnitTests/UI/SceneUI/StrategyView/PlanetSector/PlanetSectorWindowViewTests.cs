@@ -276,7 +276,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
 
         [TestCase("energyBarBackgroundImage", "Energy Consumption 2/4")]
         [TestCase("rawBarBackgroundImage", "Raw Materials 2/4")]
-        [TestCase("supportBarBackgroundImage", "Popular Support")]
+        [TestCase("supportBarBackgroundImage", "Popular Support 50/100")]
         public void PlanetStatusBar_Hover_ShowsCreamTooltip(
             string barImageField,
             string expectedText
@@ -418,7 +418,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 Color.green,
                 Color.clear,
                 Color.black,
-                "Popular Support"
+                "Popular Support 50/100"
             );
             return new PlanetSectorPlanetRenderData(
                 index,

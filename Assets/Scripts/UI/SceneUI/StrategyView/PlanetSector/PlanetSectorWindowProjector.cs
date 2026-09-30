@@ -514,7 +514,7 @@ internal sealed class PlanetSectorWindowProjector
             uiContext.GetPlayerFactionTheme().GetPrimaryColor(),
             Color.clear,
             GetOpposingSupportColor(uiContext, planet),
-            "Popular Support"
+            $"Popular Support {support}/100"
         );
     }
 

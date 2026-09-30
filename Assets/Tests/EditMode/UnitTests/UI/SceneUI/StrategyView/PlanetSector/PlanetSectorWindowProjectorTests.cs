@@ -333,7 +333,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 (Color32)opposingTheme.GetPrimaryColor(),
                 presentation.SupportBar.BackgroundColor
             );
-            Assert.AreEqual("Popular Support", presentation.SupportBar.TooltipText);
+            Assert.AreEqual("Popular Support 75/100", presentation.SupportBar.TooltipText);
             Assert.IsNull(presentation.GalacticInformationTexture);
         }
 
