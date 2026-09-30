@@ -113,10 +113,6 @@ namespace Rebellion.Simulation
 
             string attackerId = attackingFleets[0].GetOwnerInstanceID();
             string defenderId = targetPlanet.GetOwnerInstanceID();
-            int initialDefenderRegimentCount = GetActiveDefenderRegiments(
-                targetPlanet,
-                defenderId
-            ).Count;
             result.AttackingFaction = _game.GetFactionByOwnerInstanceID(attackerId);
             result.AttackerOwnerInstanceID = attackerId;
             result.DefenderOwnerInstanceID = defenderId;
@@ -168,11 +164,6 @@ namespace Rebellion.Simulation
                     defenderId,
                     type,
                     result
-                );
-
-                AddOwnershipChanges(
-                    result,
-                    ReconcileControl(targetPlanet, defenderId, initialDefenderRegimentCount)
                 );
 
                 if (result.DestroyedRegiments.Count > 0)
@@ -816,35 +807,6 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Reconciles planet control after bombardment removes the defending garrison.
-        /// </summary>
-        /// <param name="planet">Bombarded planet.</param>
-        /// <param name="previousOwnerId">Faction instance ID that controlled the planet.</param>
-        /// <param name="initialDefenderRegimentCount">Number of active defenders before bombardment.</param>
-        /// <returns>Ownership changes caused by the garrison removal.</returns>
-        private List<PlanetOwnershipChangedResult> ReconcileControl(
-            Planet planet,
-            string previousOwnerId,
-            int initialDefenderRegimentCount
-        )
-        {
-            if (
-                string.IsNullOrEmpty(previousOwnerId)
-                || initialDefenderRegimentCount == 0
-                || GetActiveDefenderRegiments(planet, previousOwnerId).Count > 0
-            )
-                return new List<PlanetOwnershipChangedResult>();
-
-            Faction controller = _controlQueries.GetPlanetController(planet);
-            PlanetOwnershipChangedResult change = _ownership.ChangePlanetOwner(planet, controller);
-            if (change == null)
-                return new List<PlanetOwnershipChangedResult>();
-
-            change.Reason = PlanetOwnershipChangeReason.GarrisonRemoved;
-            return new List<PlanetOwnershipChangedResult> { change };
-        }
-
-        /// <summary>
         /// Applies bombardment support changes and records any immediate ownership transitions.
         /// </summary>
         /// <param name="planets">The planets receiving the support change.</param>
@@ -984,23 +946,6 @@ namespace Rebellion.Simulation
                     BombardmentQueries.IsActiveBombardmentUnit(building)
                     && building.BuildingType == BuildingType.Weapon
                 );
-        }
-
-        /// <summary>
-        /// Returns active defending regiments owned by the specified faction.
-        /// </summary>
-        /// <param name="planet">Planet containing the defenders.</param>
-        /// <param name="defenderId">Defending faction instance ID.</param>
-        /// <returns>The active defending regiments.</returns>
-        private static List<Regiment> GetActiveDefenderRegiments(Planet planet, string defenderId)
-        {
-            return planet
-                .GetAllRegiments()
-                .Where(regiment =>
-                    BombardmentQueries.IsActiveBombardmentUnit(regiment)
-                    && regiment.GetOwnerInstanceID() == defenderId
-                )
-                .ToList();
         }
 
         /// <summary>

@@ -44,6 +44,21 @@ namespace Rebellion.Tests.Simulation
         }
 
         /// <summary>
+        /// Connects planetary-control reactions to a combat result bus.
+        /// </summary>
+        /// <param name="game">The game whose planetary control is observed.</param>
+        /// <param name="results">The result bus receiving combat outcomes.</param>
+        protected void ConnectPlanetaryControl(GameRoot game, GameResultBus results)
+        {
+            (_, PlanetaryControlCommands planetaryControl) = CreatePlanetaryCombatSystems(game);
+            new PlanetaryControlObserver(
+                game,
+                planetaryControl,
+                new PlanetaryControlQueries(game)
+            ).Connect(results);
+        }
+
+        /// <summary>
         /// Executes make planetary assault.
         /// </summary>
         /// <param name="game">The game.</param>

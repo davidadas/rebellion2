@@ -838,7 +838,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void Execute_DestroyedGarrison_ReportsGarrisonRemovedOwnershipChange()
+        public void TryExecute_DestroyedGarrison_ReportsGarrisonRemovedOwnershipChange()
         {
             GameRoot game = CreateGame();
             (Planet planet, PlanetSector planetSector) = CreatePlanet(
@@ -853,17 +853,25 @@ namespace Rebellion.Tests.Simulation
             Regiment regiment = AddRegiment(game, planet, "defender", "empire");
             Fleet fleet = AddBombardmentFleet(game, planet, "alliance", bombardment: 1);
 
-            BombardmentResult result = MakeBombardment(
-                    game,
-                    new SequenceRNG(intValues: new[] { 1, 0, 10 })
-                )
-                .Execute(new List<Fleet> { fleet }, planet, BombardmentType.Military);
+            BombardmentCommands commands = MakeBombardment(
+                game,
+                new SequenceRNG(intValues: new[] { 1, 0, 10 })
+            );
+            GameResultBus results = new GameResultBus();
+            ConnectPlanetaryControl(game, results);
+            commands.ResultsProduced += produced => results.Publish(produced);
+
+            BombardmentResult result = commands.TryExecute(
+                new List<Fleet> { fleet },
+                planet,
+                BombardmentType.Military
+            );
 
             CollectionAssert.Contains(result.DestroyedRegiments, regiment);
             Assert.AreEqual("alliance", planet.GetOwnerInstanceID());
-            Assert.AreEqual(60, planet.GetPopularSupport("alliance"));
-            Assert.AreEqual(50, secondPlanet.GetPopularSupport("alliance"));
-            Assert.IsNull(secondPlanet.GetOwnerInstanceID());
+            Assert.AreEqual(71, planet.GetPopularSupport("alliance"));
+            Assert.AreEqual(61, secondPlanet.GetPopularSupport("alliance"));
+            Assert.AreEqual("alliance", secondPlanet.GetOwnerInstanceID());
             Assert.IsEmpty(result.Events.OfType<PlanetOwnershipChangedResult>());
             Assert.AreEqual("empire", result.OwnershipChange.PreviousOwner.InstanceID);
             Assert.AreEqual("alliance", result.OwnershipChange.NewOwner.InstanceID);
@@ -874,7 +882,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void Execute_DestroyedGarrison_CanLeavePlanetNeutral()
+        public void TryExecute_DestroyedGarrison_CanLeavePlanetNeutral()
         {
             GameRoot game = CreateGame();
             (Planet planet, PlanetSector planetSector) = CreatePlanet(
@@ -891,15 +899,23 @@ namespace Rebellion.Tests.Simulation
             AddRegiment(game, planet, "defender", "empire");
             Fleet fleet = AddBombardmentFleet(game, planet, "alliance", bombardment: 1);
 
-            BombardmentResult result = MakeBombardment(
-                    game,
-                    new SequenceRNG(intValues: new[] { 1, 0, 10 })
-                )
-                .Execute(new List<Fleet> { fleet }, planet, BombardmentType.Military);
+            BombardmentCommands commands = MakeBombardment(
+                game,
+                new SequenceRNG(intValues: new[] { 1, 0, 10 })
+            );
+            GameResultBus results = new GameResultBus();
+            ConnectPlanetaryControl(game, results);
+            commands.ResultsProduced += produced => results.Publish(produced);
+
+            BombardmentResult result = commands.TryExecute(
+                new List<Fleet> { fleet },
+                planet,
+                BombardmentType.Military
+            );
 
             Assert.IsNull(planet.GetOwnerInstanceID());
-            Assert.AreEqual(49, planet.GetPopularSupport("alliance"));
-            Assert.AreEqual(20, secondPlanet.GetPopularSupport("alliance"));
+            Assert.AreEqual(59, planet.GetPopularSupport("alliance"));
+            Assert.AreEqual(30, secondPlanet.GetPopularSupport("alliance"));
             Assert.IsNull(result.OwnershipChange.NewOwner);
             Assert.AreEqual(
                 PlanetOwnershipChangeReason.GarrisonRemoved,
@@ -908,18 +924,27 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void Execute_DestroyedGarrison_ReportsNeutralOwnershipChange()
+        public void TryExecute_DestroyedGarrison_ReportsNeutralOwnershipChange()
         {
             GameRoot game = CreateGame();
+            game.Config.SupportShift.GarrisonRemovalSupportShift = 0;
             (Planet planet, _) = CreatePlanet(game, "p1", "empire", energy: 10);
             AddRegiment(game, planet, "defender", "empire");
             Fleet fleet = AddBombardmentFleet(game, planet, "alliance", bombardment: 1);
 
-            BombardmentResult result = MakeBombardment(
-                    game,
-                    new SequenceRNG(intValues: new[] { 1, 0, 10 })
-                )
-                .Execute(new List<Fleet> { fleet }, planet, BombardmentType.Military);
+            BombardmentCommands commands = MakeBombardment(
+                game,
+                new SequenceRNG(intValues: new[] { 1, 0, 10 })
+            );
+            GameResultBus results = new GameResultBus();
+            ConnectPlanetaryControl(game, results);
+            commands.ResultsProduced += produced => results.Publish(produced);
+
+            BombardmentResult result = commands.TryExecute(
+                new List<Fleet> { fleet },
+                planet,
+                BombardmentType.Military
+            );
 
             Assert.IsNull(planet.GetOwnerInstanceID());
             Assert.AreEqual(50, planet.GetPopularSupport("alliance"));
@@ -929,6 +954,41 @@ namespace Rebellion.Tests.Simulation
                 PlanetOwnershipChangeReason.GarrisonRemoved,
                 result.OwnershipChange.Reason
             );
+        }
+
+        [Test]
+        public void TryExecute_GarrisonReactionChangesControlAgain_PreservesEventsAndSummarizesReport()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "empire", energy: 10);
+            AddRegiment(game, planet, "defender", "empire");
+            Fleet fleet = AddBombardmentFleet(game, planet, "alliance", bombardment: 1);
+            BombardmentCommands commands = MakeBombardment(
+                game,
+                new SequenceRNG(intValues: new[] { 1, 0, 10 })
+            );
+            GameResultBus results = new GameResultBus();
+            ConnectPlanetaryControl(game, results);
+            IReadOnlyList<GameResult> settled = null;
+            commands.ResultsProduced += produced => settled = results.Publish(produced);
+
+            BombardmentResult result = commands.TryExecute(
+                new List<Fleet> { fleet },
+                planet,
+                BombardmentType.Military
+            );
+
+            List<PlanetOwnershipChangedResult> ownershipChanges = settled
+                .OfType<PlanetOwnershipChangedResult>()
+                .Where(change => change.Planet == planet)
+                .ToList();
+            Assert.AreEqual(2, ownershipChanges.Count);
+            Assert.AreEqual("empire", ownershipChanges[0].PreviousOwner.InstanceID);
+            Assert.IsNull(ownershipChanges[0].NewOwner);
+            Assert.IsNull(ownershipChanges[1].PreviousOwner);
+            Assert.AreEqual("alliance", ownershipChanges[1].NewOwner.InstanceID);
+            Assert.AreEqual("empire", result.OwnershipChange.PreviousOwner.InstanceID);
+            Assert.AreEqual("alliance", result.OwnershipChange.NewOwner.InstanceID);
         }
 
         [Test]
@@ -1058,6 +1118,7 @@ namespace Rebellion.Tests.Simulation
         {
             GameRoot game = CreateGame();
             game.CurrentTick = 42;
+            game.Config.SupportShift.GarrisonRemovalSupportShift = 0;
             (Planet planet, _) = CreatePlanet(game, "target", "empire", energy: 10);
             AddRegiment(game, planet, "defender", "empire");
             Fleet fleet = AddBombardmentFleet(game, planet, "alliance", bombardment: 1);
@@ -1065,12 +1126,16 @@ namespace Rebellion.Tests.Simulation
                 game,
                 new SequenceRNG(intValues: new[] { 1, 0, 10 })
             );
+            GameResultBus resultBus = new GameResultBus();
+            ConnectPlanetaryControl(game, resultBus);
             IReadOnlyList<GameResult> published = null;
+            IReadOnlyList<GameResult> settled = null;
             bool inCombatAtPublication = true;
             system.ResultsProduced += results =>
             {
                 published = results;
                 inCombatAtPublication = fleet.IsInCombat;
+                settled = resultBus.Publish(results);
             };
 
             BombardmentResult result = system.TryExecute(
@@ -1080,12 +1145,14 @@ namespace Rebellion.Tests.Simulation
             );
 
             Assert.IsNotNull(result.OwnershipChange);
-            CollectionAssert.AreEqual(
-                new GameResult[] { result }
-                    .Concat(result.Events)
-                    .Append(result.OwnershipChange),
-                published
-            );
+            PlanetOwnershipChangedResult ownershipChange = settled
+                .OfType<PlanetOwnershipChangedResult>()
+                .Single();
+            CollectionAssert.AreEqual(new GameResult[] { result }.Concat(result.Events), published);
+            CollectionAssert.AreEqual(published.Append(ownershipChange), settled);
+            Assert.AreEqual(ownershipChange.PreviousOwner, result.OwnershipChange.PreviousOwner);
+            Assert.AreEqual(ownershipChange.NewOwner, result.OwnershipChange.NewOwner);
+            Assert.AreEqual(ownershipChange.Reason, result.OwnershipChange.Reason);
             Assert.AreEqual(42, result.Tick);
             Assert.IsFalse(inCombatAtPublication);
         }

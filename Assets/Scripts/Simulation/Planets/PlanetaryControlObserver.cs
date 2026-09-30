@@ -46,9 +46,11 @@ namespace Rebellion.Simulation
 
             _subscriptions = new IDisposable[]
             {
+                results.Subscribe<BombardmentResult>(HandleResults),
                 results.Subscribe<PlanetGarrisonChangedResult>(HandleResults),
                 results.Subscribe<PopularSupportShiftResult>(HandleResults),
                 results.Subscribe<PlanetOwnershipChangedResult>(HandleResults),
+                results.Observe<GameResult>(CompleteBombardmentResults),
             };
         }
 
@@ -57,6 +59,80 @@ namespace Rebellion.Simulation
         {
             foreach (IDisposable subscription in _subscriptions ?? Array.Empty<IDisposable>())
                 subscription.Dispose();
+        }
+
+        /// <summary>
+        /// Reconciles bombardment-driven garrison losses and records the resulting control change.
+        /// </summary>
+        /// <param name="results">The completed bombardments to inspect.</param>
+        /// <returns>Any ownership changes caused by destroyed garrisons.</returns>
+        public List<GameResult> HandleResults(IReadOnlyList<BombardmentResult> results)
+        {
+            List<GameResult> controlResults = new List<GameResult>();
+            if (results == null)
+                return controlResults;
+
+            foreach (BombardmentResult result in results)
+            {
+                if (
+                    result?.Planet == null
+                    || result.DestroyedRegiments == null
+                    || result.DestroyedRegiments.Count == 0
+                )
+                    continue;
+
+                controlResults.AddRange(ReconcileGarrisonChange(result.Planet));
+            }
+
+            return controlResults;
+        }
+
+        /// <summary>
+        /// Records each bombardment's final ownership outcome after all reactions settle.
+        /// </summary>
+        /// <param name="results">The settled result batch.</param>
+        private static void CompleteBombardmentResults(IReadOnlyList<GameResult> results)
+        {
+            if (results == null)
+                return;
+
+            List<PlanetOwnershipChangedResult> ownershipChanges = results
+                .OfType<PlanetOwnershipChangedResult>()
+                .ToList();
+            foreach (BombardmentResult bombardment in results.OfType<BombardmentResult>())
+            {
+                List<PlanetOwnershipChangedResult> matchingChanges = ownershipChanges
+                    .Where(change => change.Planet == bombardment.Planet)
+                    .ToList();
+                if (matchingChanges.Count == 0)
+                    continue;
+
+                PlanetOwnershipChangedResult first = matchingChanges[0];
+                PlanetOwnershipChangedResult last = matchingChanges[^1];
+                if (first.PreviousOwner?.InstanceID == last.NewOwner?.InstanceID)
+                {
+                    bombardment.OwnershipChange = null;
+                    continue;
+                }
+
+                bombardment.OwnershipChange = new PlanetOwnershipChangedResult
+                {
+                    Planet = bombardment.Planet,
+                    PreviousOwner = first.PreviousOwner,
+                    NewOwner = last.NewOwner,
+                    Reason = matchingChanges
+                        .Select(change => change.Reason)
+                        .LastOrDefault(reason => reason != PlanetOwnershipChangeReason.None),
+                    Tick = first.Tick,
+                    SourceEventInstanceID = first.SourceEventInstanceID,
+                    ObserverFactionInstanceIDs = matchingChanges
+                        .SelectMany(change =>
+                            change.ObserverFactionInstanceIDs ?? new List<string>()
+                        )
+                        .Distinct()
+                        .ToList(),
+                };
+            }
         }
 
         /// <summary>
