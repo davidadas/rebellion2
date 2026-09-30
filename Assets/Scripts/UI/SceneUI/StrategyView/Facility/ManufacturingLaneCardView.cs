@@ -173,7 +173,7 @@ public sealed class ManufacturingLaneCardView : MonoBehaviour
         int width =
             cost > 0
                 ? Mathf.Clamp(
-                    Mathf.RoundToInt(progress / (float)cost * progressFillRect.width),
+                    (int)((long)progress * progressFillRect.width / cost),
                     0,
                     progressFillRect.width
                 )
