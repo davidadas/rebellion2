@@ -91,6 +91,8 @@ public sealed class PlanetSectorPlanetView
     private Image supportBarFillImage;
 
     private PlanetSectorBarView energyBar;
+    private readonly Dictionary<RawImage, RectInt> iconHitBounds =
+        new Dictionary<RawImage, RectInt>();
     private PlanetSectorPlanetRenderData lastRenderData;
     private PlanetSectorBarView rawBar;
     private PlanetSectorBarView supportBar;
@@ -117,6 +119,11 @@ public sealed class PlanetSectorPlanetView
         PlanetSectorWindowElement,
         PointerEventData
     > Hovered;
+
+    /// <summary>
+    /// Occurs when the pointer hovers over a planet status bar.
+    /// </summary>
+    internal event Action<PlanetSectorPlanetView, PlanetSectorStatusBar> StatusBarHovered;
 
     /// <summary>
     /// Occurs when the control is pressed.
@@ -166,31 +173,17 @@ public sealed class PlanetSectorPlanetView
         SetImage(planetImage, data.PlanetTexture);
         SetImage(uprisingImage, data.UprisingTexture);
         uprisingImage.raycastTarget = false;
-        RenderIcon(
-            facilityImage,
-            PlanetIcon.Facility,
-            data.FacilityTexture,
-            data.FacilityPressedTexture
-        );
-        RenderIcon(
-            defenseImage,
-            PlanetIcon.Defense,
-            data.DefenseTexture,
-            data.DefensePressedTexture
-        );
-        RenderIcon(fleetImage, PlanetIcon.Fleet, data.FleetTexture, data.FleetPressedTexture);
-        RenderIcon(
-            missionImage,
-            PlanetIcon.Mission,
-            data.MissionTexture,
-            data.MissionPressedTexture
-        );
+        RenderIcon(facilityImage, PlanetIcon.Facility, data.FacilityIcon);
+        RenderIcon(defenseImage, PlanetIcon.Defense, data.DefenseIcon);
+        RenderIcon(fleetImage, PlanetIcon.Fleet, data.FleetIcon);
+        RenderIcon(missionImage, PlanetIcon.Mission, data.MissionIcon);
         SetImage(headquartersImage, data.HeadquartersTexture);
         energyBar.Render(data.EnergyBar, planetWidth);
         rawBar.Render(data.RawResourceBar, planetWidth);
         supportBar.Render(data.SupportBar, planetWidth);
         UILayout.SetTextContent(planetNameTextField, data.Name, data.NameColor);
         gameObject.SetActive(true);
+        ConfigureStatusBarHitArea();
     }
 
     /// <summary>
@@ -233,6 +226,19 @@ public sealed class PlanetSectorPlanetView
     }
 
     /// <summary>
+    /// Tries to resolve a visible icon's tight local source-space interaction bounds.
+    /// </summary>
+    /// <param name="icon">The requested planet icon.</param>
+    /// <param name="bounds">Receives the icon's visible-pixel bounds.</param>
+    /// <returns>True when the icon is visible and has measured interaction bounds.</returns>
+    internal bool TryGetIconHitBounds(PlanetIcon icon, out RectInt bounds)
+    {
+        bounds = default;
+        RawImage image = GetIconImage(icon);
+        return image && image.isActiveAndEnabled && iconHitBounds.TryGetValue(image, out bounds);
+    }
+
+    /// <summary>
     /// Tries to resolve the fleet image used by a drag preview.
     /// </summary>
     /// <param name="texture">Receives the fleet drag image.</param>
@@ -265,6 +271,43 @@ public sealed class PlanetSectorPlanetView
             return false;
 
         texture = lastRenderData.HeadquartersTexture;
+        return true;
+    }
+
+    /// <summary>
+    /// Tries to resolve the hover label and window-relative bounds for one visible status bar.
+    /// </summary>
+    /// <param name="statusBar">The requested status bar.</param>
+    /// <param name="tooltipText">Receives the status bar hover label.</param>
+    /// <param name="bounds">Receives the status bar bounds relative to the sector window.</param>
+    /// <returns>True when the requested status bar is visible and has a hover label.</returns>
+    internal bool TryGetStatusBarTooltip(
+        PlanetSectorStatusBar statusBar,
+        out string tooltipText,
+        out RectInt bounds
+    )
+    {
+        tooltipText = string.Empty;
+        bounds = default;
+        PlanetSectorBarRenderData data = GetStatusBarData(statusBar);
+        RectTransform barRoot = GetStatusBarRoot(statusBar);
+        if (
+            data == null
+            || barRoot?.gameObject.activeInHierarchy != true
+            || !data.Visible
+            || string.IsNullOrEmpty(data.TooltipText)
+        )
+            return false;
+
+        RectInt planetBounds = GetRenderedSourceRect();
+        RectInt barBounds = UILayout.GetSourceRect(barRoot);
+        tooltipText = data.TooltipText;
+        bounds = new RectInt(
+            planetBounds.x + barBounds.x,
+            planetBounds.y + barBounds.y,
+            barBounds.width,
+            barBounds.height
+        );
         return true;
     }
 
@@ -385,17 +428,67 @@ public sealed class PlanetSectorPlanetView
     /// </summary>
     /// <param name="image">The destination image.</param>
     /// <param name="icon">The represented icon.</param>
-    /// <param name="normalTexture">The normal image.</param>
-    /// <param name="pressedTexture">The pressed image.</param>
-    private void RenderIcon(
-        RawImage image,
-        PlanetIcon icon,
-        Texture2D normalTexture,
-        Texture2D pressedTexture
-    )
+    /// <param name="data">The icon textures and their visible-pixel bounds.</param>
+    private void RenderIcon(RawImage image, PlanetIcon icon, PlanetSectorIconRenderData data)
     {
         bool pressed = lastRenderData.SelectedIcon == icon || lastRenderData.HoveredIcon == icon;
-        SetImage(image, pressed ? pressedTexture : normalTexture);
+        Texture2D texture = data.GetTexture(pressed);
+        SetImage(image, texture);
+        SetIconHitBounds(image, texture, data.GetContentBounds(pressed));
+    }
+
+    /// <summary>
+    /// Restricts one icon's interaction rectangle to its visible pixels.
+    /// </summary>
+    /// <param name="image">The icon image.</param>
+    /// <param name="texture">The displayed icon texture.</param>
+    /// <param name="contentBounds">The visible texture bounds in bottom-left coordinates.</param>
+    private void SetIconHitBounds(RawImage image, Texture2D texture, RectInt contentBounds)
+    {
+        if (texture == null || contentBounds.width <= 0 || contentBounds.height <= 0)
+        {
+            iconHitBounds.Remove(image);
+            return;
+        }
+
+        iconHitBounds[image] = CalculateIconHitBounds(
+            UILayout.GetSourceRect(image.rectTransform),
+            texture,
+            contentBounds
+        );
+    }
+
+    /// <summary>
+    /// Converts visible texture pixels into a tight source-space interaction rectangle.
+    /// </summary>
+    /// <param name="authoredBounds">The full authored source-space rectangle.</param>
+    /// <param name="texture">The displayed texture.</param>
+    /// <param name="contentBounds">The visible texture bounds in bottom-left coordinates.</param>
+    /// <returns>The tight source-space interaction rectangle.</returns>
+    private static RectInt CalculateIconHitBounds(
+        RectInt authoredBounds,
+        Texture texture,
+        RectInt contentBounds
+    )
+    {
+        int left = Mathf.FloorToInt(
+            authoredBounds.width * contentBounds.xMin / (float)texture.width
+        );
+        int right = Mathf.CeilToInt(
+            authoredBounds.width * contentBounds.xMax / (float)texture.width
+        );
+        int top = Mathf.FloorToInt(
+            authoredBounds.height * (texture.height - contentBounds.yMax) / (float)texture.height
+        );
+        int bottom = Mathf.CeilToInt(
+            authoredBounds.height * (texture.height - contentBounds.yMin) / (float)texture.height
+        );
+        return new RectInt(
+            authoredBounds.x + left,
+            authoredBounds.y + top,
+            right - left,
+            bottom - top
+        );
     }
 
     /// <summary>
@@ -444,11 +537,214 @@ public sealed class PlanetSectorPlanetView
     /// <param name="eventData">The pointer event.</param>
     private void DispatchHover(PointerEventData eventData)
     {
+        PlanetSectorStatusBar statusBar = GetStatusBar(null, eventData);
+        if (statusBar != PlanetSectorStatusBar.None)
+        {
+            HoverCleared?.Invoke(this);
+            StatusBarHovered?.Invoke(this, statusBar);
+            return;
+        }
+
         PlanetSectorWindowElement element = CreateElement(null, eventData, true);
         if (element == null)
             HoverCleared?.Invoke(this);
         else
             Hovered?.Invoke(this, element, eventData);
+    }
+
+    /// <summary>
+    /// Gets the visible status bar beneath a pointer from source geometry or its raycast target.
+    /// </summary>
+    /// <param name="target">The optional explicit raycast target.</param>
+    /// <param name="eventData">The pointer event.</param>
+    /// <returns>The hovered status bar, or none.</returns>
+    private PlanetSectorStatusBar GetStatusBar(GameObject target, PointerEventData eventData)
+    {
+        if (lastRenderData == null || eventData == null)
+            return PlanetSectorStatusBar.None;
+
+        if (TryGetPointerSourcePosition(eventData, out int sourceX, out int sourceY))
+        {
+            PlanetSectorStatusBar sourceStatusBar = GetSourceStatusBar(sourceX, sourceY);
+            if (sourceStatusBar != PlanetSectorStatusBar.None)
+                return sourceStatusBar;
+        }
+
+        target ??= eventData.pointerCurrentRaycast.gameObject;
+        target ??= eventData.pointerPressRaycast.gameObject;
+        return GetTargetStatusBar(target);
+    }
+
+    /// <summary>
+    /// Gets the visible status bar containing one source-space point.
+    /// </summary>
+    /// <param name="x">The local source-space horizontal coordinate.</param>
+    /// <param name="y">The local source-space vertical coordinate.</param>
+    /// <returns>The matching status bar, or none.</returns>
+    private PlanetSectorStatusBar GetSourceStatusBar(int x, int y)
+    {
+        if (!TryGetStatusBarHitBounds(out RectInt hitBounds))
+            return PlanetSectorStatusBar.None;
+
+        Vector2Int point = new Vector2Int(x, y);
+        if (!hitBounds.Contains(point))
+            return PlanetSectorStatusBar.None;
+
+        PlanetSectorStatusBar[] statusBars =
+        {
+            PlanetSectorStatusBar.Energy,
+            PlanetSectorStatusBar.RawMaterials,
+            PlanetSectorStatusBar.PopularSupport,
+        };
+        PlanetSectorStatusBar nearestStatusBar = PlanetSectorStatusBar.None;
+        float nearestDistance = float.MaxValue;
+        foreach (PlanetSectorStatusBar statusBar in statusBars)
+        {
+            RectTransform barRoot = GetStatusBarRoot(statusBar);
+            if (!IsStatusBarInteractive(statusBar) || barRoot == null)
+                continue;
+
+            RectInt barBounds = UILayout.GetSourceRect(barRoot);
+            float distance = Mathf.Abs(y + 0.5f - (barBounds.y + barBounds.height * 0.5f));
+            if (distance < nearestDistance)
+            {
+                nearestStatusBar = statusBar;
+                nearestDistance = distance;
+            }
+        }
+
+        return nearestStatusBar;
+    }
+
+    /// <summary>
+    /// Configures the transparent raycast surface that covers the complete status-bar block.
+    /// </summary>
+    private void ConfigureStatusBarHitArea()
+    {
+        bool visible = TryGetStatusBarHitBounds(out RectInt bounds);
+        hitAreaImage.enabled = visible;
+        hitAreaImage.raycastTarget = visible;
+        hitAreaImage.canvasRenderer.cullTransparentMesh = false;
+        if (visible)
+        {
+            UILayout.SetSourceRect(
+                hitAreaImage.rectTransform,
+                bounds.x,
+                bounds.y,
+                bounds.width,
+                bounds.height
+            );
+        }
+    }
+
+    /// <summary>
+    /// Gets the union of all visible status-bar rows with hover labels.
+    /// </summary>
+    /// <param name="bounds">Receives the complete local source-space hover bounds.</param>
+    /// <returns>True when at least one status bar accepts hover interaction.</returns>
+    private bool TryGetStatusBarHitBounds(out RectInt bounds)
+    {
+        bounds = default;
+        bool found = false;
+        PlanetSectorStatusBar[] statusBars =
+        {
+            PlanetSectorStatusBar.Energy,
+            PlanetSectorStatusBar.RawMaterials,
+            PlanetSectorStatusBar.PopularSupport,
+        };
+        foreach (PlanetSectorStatusBar statusBar in statusBars)
+        {
+            RectTransform barRoot = GetStatusBarRoot(statusBar);
+            if (!IsStatusBarInteractive(statusBar) || barRoot == null)
+                continue;
+
+            RectInt barBounds = UILayout.GetSourceRect(barRoot);
+            if (!found)
+            {
+                bounds = barBounds;
+                found = true;
+                continue;
+            }
+
+            int xMin = Mathf.Min(bounds.xMin, barBounds.xMin);
+            int yMin = Mathf.Min(bounds.yMin, barBounds.yMin);
+            int xMax = Mathf.Max(bounds.xMax, barBounds.xMax);
+            int yMax = Mathf.Max(bounds.yMax, barBounds.yMax);
+            bounds = new RectInt(xMin, yMin, xMax - xMin, yMax - yMin);
+        }
+
+        return found;
+    }
+
+    /// <summary>
+    /// Gets the visible status bar represented by a raycast target.
+    /// </summary>
+    /// <param name="target">The raycast target.</param>
+    /// <returns>The matching status bar, or none.</returns>
+    private PlanetSectorStatusBar GetTargetStatusBar(GameObject target)
+    {
+        PlanetSectorStatusBar[] statusBars =
+        {
+            PlanetSectorStatusBar.Energy,
+            PlanetSectorStatusBar.RawMaterials,
+            PlanetSectorStatusBar.PopularSupport,
+        };
+        foreach (PlanetSectorStatusBar statusBar in statusBars)
+        {
+            if (
+                IsStatusBarInteractive(statusBar)
+                && IsTargetOrChild(target, GetStatusBarRoot(statusBar))
+            )
+                return statusBar;
+        }
+
+        return PlanetSectorStatusBar.None;
+    }
+
+    /// <summary>
+    /// Determines whether one status bar is visible and has a hover label.
+    /// </summary>
+    /// <param name="statusBar">The candidate status bar.</param>
+    /// <returns>True when the status bar accepts hover interaction.</returns>
+    private bool IsStatusBarInteractive(PlanetSectorStatusBar statusBar)
+    {
+        PlanetSectorBarRenderData data = GetStatusBarData(statusBar);
+        RectTransform barRoot = GetStatusBarRoot(statusBar);
+        return data?.Visible == true
+            && !string.IsNullOrEmpty(data.TooltipText)
+            && barRoot?.gameObject.activeInHierarchy == true;
+    }
+
+    /// <summary>
+    /// Gets the current render data for one planet status bar.
+    /// </summary>
+    /// <param name="statusBar">The requested status bar.</param>
+    /// <returns>The matching status-bar presentation, or null.</returns>
+    private PlanetSectorBarRenderData GetStatusBarData(PlanetSectorStatusBar statusBar)
+    {
+        return statusBar switch
+        {
+            PlanetSectorStatusBar.Energy => lastRenderData?.EnergyBar,
+            PlanetSectorStatusBar.RawMaterials => lastRenderData?.RawResourceBar,
+            PlanetSectorStatusBar.PopularSupport => lastRenderData?.SupportBar,
+            _ => null,
+        };
+    }
+
+    /// <summary>
+    /// Gets the authored root for one planet status bar.
+    /// </summary>
+    /// <param name="statusBar">The requested status bar.</param>
+    /// <returns>The matching authored transform, or null.</returns>
+    private RectTransform GetStatusBarRoot(PlanetSectorStatusBar statusBar)
+    {
+        return statusBar switch
+        {
+            PlanetSectorStatusBar.Energy => energyBarRoot,
+            PlanetSectorStatusBar.RawMaterials => rawBarRoot,
+            PlanetSectorStatusBar.PopularSupport => supportBarRoot,
+            _ => null,
+        };
     }
 
     /// <summary>
@@ -476,16 +772,18 @@ public sealed class PlanetSectorPlanetView
             && IsTargetOrChild(target, headquartersImage);
         PlanetIcon icon = PlanetIcon.None;
         bool planetImageHit = headquartersTargetHit;
+        bool resolvedSourcePosition = false;
         if (
             !headquartersTargetHit
             && TryGetPointerSourcePosition(eventData, out int sourceX, out int sourceY)
         )
         {
+            resolvedSourcePosition = true;
             icon = GetSourceIcon(sourceX, sourceY);
             planetImageHit = icon == PlanetIcon.None && IsPlanetImageSourcePoint(sourceX, sourceY);
         }
 
-        if (icon == PlanetIcon.None && !planetImageHit)
+        if (!resolvedSourcePosition && icon == PlanetIcon.None && !planetImageHit)
         {
             icon = GetTargetIcon(target);
             planetImageHit = IsPlanetImageTarget(target);
@@ -522,9 +820,10 @@ public sealed class PlanetSectorPlanetView
     /// <returns>The matching icon, or none.</returns>
     private PlanetIcon GetSourceIcon(int x, int y)
     {
+        Vector2Int point = new Vector2Int(x, y);
         foreach (PlanetIcon icon in _hitTestIcons)
         {
-            if (IsImageSourcePoint(GetIconImage(icon), x, y))
+            if (TryGetIconHitBounds(icon, out RectInt bounds) && bounds.Contains(point))
                 return icon;
         }
 

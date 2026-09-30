@@ -314,7 +314,8 @@ internal sealed class PlanetSectorWindowProjector
             unexplored ? CreateHiddenBar() : CreateEnergyBar(planet),
             unexplored ? CreateHiddenBar() : CreateRawResourceBar(planet),
             unexplored ? CreateHiddenBar() : CreateSupportBar(uiContext, planet, popularSupport),
-            galacticInformationTexture
+            galacticInformationTexture,
+            uiContext.GetTextureContentBounds
         );
     }
 
@@ -401,7 +402,7 @@ internal sealed class PlanetSectorWindowProjector
     /// <returns>The energy bar presentation.</returns>
     private static PlanetSectorBarRenderData CreateEnergyBar(Planet planet)
     {
-        if (planet == null || planet.EnergyCapacity <= 0)
+        if (planet == null)
         {
             return new PlanetSectorBarRenderData(
                 true,
@@ -414,14 +415,31 @@ internal sealed class PlanetSectorWindowProjector
             );
         }
 
+        int energyUsed = planet.GetEnergyUsed();
+        string tooltipText = $"Energy Consumption {energyUsed}/{planet.EnergyCapacity}";
+        if (planet.EnergyCapacity <= 0)
+        {
+            return new PlanetSectorBarRenderData(
+                true,
+                0,
+                0,
+                1f,
+                _energyEmptyColor,
+                Color.clear,
+                Color.clear,
+                tooltipText
+            );
+        }
+
         return new PlanetSectorBarRenderData(
             true,
             planet.EnergyCapacity,
-            Mathf.Min(planet.GetChildren<Building>().Count, planet.EnergyCapacity),
+            Mathf.Min(energyUsed, planet.EnergyCapacity),
             0f,
             _energyCapacityColor,
             _energyAvailableColor,
-            _barBackgroundColor
+            _barBackgroundColor,
+            tooltipText
         );
     }
 
@@ -432,7 +450,7 @@ internal sealed class PlanetSectorWindowProjector
     /// <returns>The raw-resource bar presentation.</returns>
     private static PlanetSectorBarRenderData CreateRawResourceBar(Planet planet)
     {
-        if (planet == null || planet.NumRawResourceNodes <= 0)
+        if (planet == null)
         {
             return new PlanetSectorBarRenderData(
                 true,
@@ -445,14 +463,31 @@ internal sealed class PlanetSectorWindowProjector
             );
         }
 
+        int minedResources = planet.GetRawMinedResources();
+        string tooltipText = $"Raw Materials {minedResources}/{planet.NumRawResourceNodes}";
+        if (planet.NumRawResourceNodes <= 0)
+        {
+            return new PlanetSectorBarRenderData(
+                true,
+                0,
+                0,
+                1f,
+                _rawAvailableColor,
+                Color.clear,
+                Color.clear,
+                tooltipText
+            );
+        }
+
         return new PlanetSectorBarRenderData(
             true,
             planet.NumRawResourceNodes,
-            Mathf.Min(planet.GetRawMinedResources(), planet.NumRawResourceNodes),
+            Mathf.Min(minedResources, planet.NumRawResourceNodes),
             0f,
             _rawCapacityColor,
             _rawAvailableColor,
-            _barBackgroundColor
+            _barBackgroundColor,
+            tooltipText
         );
     }
 
@@ -479,7 +514,8 @@ internal sealed class PlanetSectorWindowProjector
             support / 100f,
             uiContext.GetPlayerFactionTheme().GetPrimaryColor(),
             Color.clear,
-            GetOpposingSupportColor(uiContext, planet)
+            GetOpposingSupportColor(uiContext, planet),
+            $"Popular Support {support}/100"
         );
     }
 

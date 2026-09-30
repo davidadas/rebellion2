@@ -878,6 +878,8 @@ namespace Rebellion.Game
 
             public int GarrisonRemovalSupportShift { get; set; }
 
+            public int ControlChangeSupportShift { get; set; }
+
             public int BlockadeMatchShift { get; set; }
 
             public int BlockadeOpposeShift { get; set; }

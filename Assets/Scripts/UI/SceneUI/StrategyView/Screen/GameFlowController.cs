@@ -243,11 +243,13 @@ public sealed class GameFlowController : MonoBehaviour
             gameData.SpecialForces,
             gameData.Officers
         );
+        ContentAssets contentAssets = bootstrap.GetContentAssets();
         uiContext = new UIContext(
             session.Game,
             themeLibrary,
             encyclopediaCatalog,
-            bootstrap.GetContentAssets().GetTexture
+            contentAssets.GetTexture,
+            contentAssets.GetTextureContentBounds
         );
 
         if (activeGameManager != null)

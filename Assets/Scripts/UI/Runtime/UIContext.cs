@@ -15,6 +15,7 @@ public sealed class UIContext
     private GameRoot game;
     private readonly FactionThemeLibrary themeLibrary;
     private readonly Func<string, Texture2D> loadTexture;
+    private readonly Func<Texture2D, RectInt> getTextureContentBounds;
 
     public GameRoot Game => game;
 
@@ -27,11 +28,13 @@ public sealed class UIContext
     /// <param name="themeLibrary">The faction-theme library.</param>
     /// <param name="encyclopediaCatalog">The Encyclopedia catalog.</param>
     /// <param name="loadTexture">The active content texture resolver.</param>
+    /// <param name="getTextureContentBounds">The optional visible-pixel bounds resolver.</param>
     public UIContext(
         GameRoot game,
         FactionThemeLibrary themeLibrary,
         EncyclopediaCatalog encyclopediaCatalog,
-        Func<string, Texture2D> loadTexture
+        Func<string, Texture2D> loadTexture,
+        Func<Texture2D, RectInt> getTextureContentBounds = null
     )
     {
         if (game == null)
@@ -48,6 +51,12 @@ public sealed class UIContext
         this.game = game;
         this.themeLibrary = themeLibrary;
         this.loadTexture = loadTexture;
+        this.getTextureContentBounds =
+            getTextureContentBounds
+            ?? (
+                texture =>
+                    texture == null ? default : new RectInt(0, 0, texture.width, texture.height)
+            );
         EncyclopediaCatalog = encyclopediaCatalog;
     }
 
@@ -109,6 +118,16 @@ public sealed class UIContext
             return null;
 
         return loadTexture(path);
+    }
+
+    /// <summary>
+    /// Gets the smallest texture rectangle containing every visible pixel.
+    /// </summary>
+    /// <param name="texture">The texture to measure.</param>
+    /// <returns>The visible-pixel bounds.</returns>
+    public RectInt GetTextureContentBounds(Texture2D texture)
+    {
+        return getTextureContentBounds(texture);
     }
 
     /// <summary>
