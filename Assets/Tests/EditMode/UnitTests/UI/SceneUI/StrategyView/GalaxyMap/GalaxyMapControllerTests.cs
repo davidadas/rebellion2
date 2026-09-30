@@ -101,7 +101,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             PlanetSectorClusterView cluster = FindRenderedCluster();
             PointerEventData eventData = CreateMapPointerEvent(Vector2.zero);
             eventData.button = PointerEventData.InputButton.Left;
-            eventData.clickCount = 1;
+            eventData.clickCount = 2;
 
             cluster.OnPointerEnter(eventData);
             cluster.OnPointerEnter(eventData);

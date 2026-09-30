@@ -284,7 +284,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         }
 
         [Test]
-        public void PointerEvents_RenderedCluster_EmitHoverExitAndClickRequests()
+        public void PointerEvents_RenderedCluster_EmitHoverExitAndDoubleClickRequests()
         {
             _view.Render(CreateCluster("sector-1", "Corellian", true, null));
             PlanetSectorClusterView hoveredView = null;
@@ -300,7 +300,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             };
             PointerEventData eventData = CreatePointerEvent(new Vector2(25f, 25f));
             eventData.button = PointerEventData.InputButton.Left;
-            eventData.clickCount = 1;
+            eventData.clickCount = 2;
 
             _view.OnPointerEnter(eventData);
             _view.OnPointerExit(eventData);
@@ -313,7 +313,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         }
 
         [Test]
-        public void PointerEvents_UnrenderedOrRightClick_DoNotEmitOpenOrHoverRequests()
+        public void PointerEvents_UnrenderedOrSingleClick_DoNotEmitOpenOrHoverRequests()
         {
             int hoverCount = 0;
             int openCount = 0;
@@ -321,11 +321,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             _view.OpenRequested += (_, _) => openCount++;
             PointerEventData eventData = CreatePointerEvent(new Vector2(25f, 25f));
             eventData.button = PointerEventData.InputButton.Right;
-            eventData.clickCount = 1;
+            eventData.clickCount = 2;
 
             _view.OnPointerEnter(eventData);
             _view.OnPointerClick(eventData);
             _view.Render(CreateCluster("sector-1", "Corellian", true, null));
+            eventData.button = PointerEventData.InputButton.Left;
+            eventData.clickCount = 1;
             _view.OnPointerClick(eventData);
 
             Assert.AreEqual(0, hoverCount);
