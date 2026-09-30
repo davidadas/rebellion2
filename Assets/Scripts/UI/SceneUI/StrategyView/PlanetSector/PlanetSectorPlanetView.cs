@@ -196,6 +196,7 @@ public sealed class PlanetSectorPlanetView
         supportBar.Render(data.SupportBar, planetWidth);
         UILayout.SetTextContent(planetNameTextField, data.Name, data.NameColor);
         gameObject.SetActive(true);
+        ConfigureStatusBarHitArea();
     }
 
     /// <summary>
@@ -532,25 +533,97 @@ public sealed class PlanetSectorPlanetView
     /// <returns>The matching status bar, or none.</returns>
     private PlanetSectorStatusBar GetSourceStatusBar(int x, int y)
     {
+        if (!TryGetStatusBarHitBounds(out RectInt hitBounds))
+            return PlanetSectorStatusBar.None;
+
+        Vector2Int point = new Vector2Int(x, y);
+        if (!hitBounds.Contains(point))
+            return PlanetSectorStatusBar.None;
+
         PlanetSectorStatusBar[] statusBars =
         {
             PlanetSectorStatusBar.Energy,
             PlanetSectorStatusBar.RawMaterials,
             PlanetSectorStatusBar.PopularSupport,
         };
-        Vector2Int point = new Vector2Int(x, y);
+        PlanetSectorStatusBar nearestStatusBar = PlanetSectorStatusBar.None;
+        float nearestDistance = float.MaxValue;
         foreach (PlanetSectorStatusBar statusBar in statusBars)
         {
             RectTransform barRoot = GetStatusBarRoot(statusBar);
-            if (
-                IsStatusBarInteractive(statusBar)
-                && barRoot != null
-                && UILayout.GetSourceRect(barRoot).Contains(point)
-            )
-                return statusBar;
+            if (!IsStatusBarInteractive(statusBar) || barRoot == null)
+                continue;
+
+            RectInt barBounds = UILayout.GetSourceRect(barRoot);
+            float distance = Mathf.Abs(y + 0.5f - (barBounds.y + barBounds.height * 0.5f));
+            if (distance < nearestDistance)
+            {
+                nearestStatusBar = statusBar;
+                nearestDistance = distance;
+            }
         }
 
-        return PlanetSectorStatusBar.None;
+        return nearestStatusBar;
+    }
+
+    /// <summary>
+    /// Configures the transparent raycast surface that covers the complete status-bar block.
+    /// </summary>
+    private void ConfigureStatusBarHitArea()
+    {
+        bool visible = TryGetStatusBarHitBounds(out RectInt bounds);
+        hitAreaImage.enabled = visible;
+        hitAreaImage.raycastTarget = visible;
+        hitAreaImage.canvasRenderer.cullTransparentMesh = false;
+        if (visible)
+        {
+            UILayout.SetSourceRect(
+                hitAreaImage.rectTransform,
+                bounds.x,
+                bounds.y,
+                bounds.width,
+                bounds.height
+            );
+        }
+    }
+
+    /// <summary>
+    /// Gets the union of all visible status-bar rows with hover labels.
+    /// </summary>
+    /// <param name="bounds">Receives the complete local source-space hover bounds.</param>
+    /// <returns>True when at least one status bar accepts hover interaction.</returns>
+    private bool TryGetStatusBarHitBounds(out RectInt bounds)
+    {
+        bounds = default;
+        bool found = false;
+        PlanetSectorStatusBar[] statusBars =
+        {
+            PlanetSectorStatusBar.Energy,
+            PlanetSectorStatusBar.RawMaterials,
+            PlanetSectorStatusBar.PopularSupport,
+        };
+        foreach (PlanetSectorStatusBar statusBar in statusBars)
+        {
+            RectTransform barRoot = GetStatusBarRoot(statusBar);
+            if (!IsStatusBarInteractive(statusBar) || barRoot == null)
+                continue;
+
+            RectInt barBounds = UILayout.GetSourceRect(barRoot);
+            if (!found)
+            {
+                bounds = barBounds;
+                found = true;
+                continue;
+            }
+
+            int xMin = Mathf.Min(bounds.xMin, barBounds.xMin);
+            int yMin = Mathf.Min(bounds.yMin, barBounds.yMin);
+            int xMax = Mathf.Max(bounds.xMax, barBounds.xMax);
+            int yMax = Mathf.Max(bounds.yMax, barBounds.yMax);
+            bounds = new RectInt(xMin, yMin, xMax - xMin, yMax - yMin);
+        }
+
+        return found;
     }
 
     /// <summary>

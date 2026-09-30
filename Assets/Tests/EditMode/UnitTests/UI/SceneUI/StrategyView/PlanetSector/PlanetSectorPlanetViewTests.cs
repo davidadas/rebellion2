@@ -373,6 +373,52 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreEqual(0, interactionCount);
         }
 
+        [Test]
+        public void Render_StatusBarTooltips_CreatesOneHitAreaAcrossCompleteBarBlock()
+        {
+            _view.gameObject.SetActive(false);
+            _view.Render(
+                CreateData(
+                    energyBar: CreateSegmentedBar(true, 4, 2, "Energy Consumption 2/4"),
+                    rawBar: CreateSegmentedBar(true, 8, 3, "Raw Materials 3/8"),
+                    supportBar: CreateContinuousBar(true, 0.5f, "Popular Support")
+                ),
+                new Vector2Int(200, 150)
+            );
+            RawImage hitArea = GetField<RawImage>("hitAreaImage");
+            RectInt energyBounds = GetSourceRect(GetField<RectTransform>("energyBarRoot"));
+            RectInt supportBounds = GetSourceRect(GetField<RectTransform>("supportBarRoot"));
+            RectInt expectedBounds = new RectInt(
+                Mathf.Min(energyBounds.xMin, supportBounds.xMin),
+                energyBounds.yMin,
+                Mathf.Max(energyBounds.xMax, supportBounds.xMax)
+                    - Mathf.Min(energyBounds.xMin, supportBounds.xMin),
+                supportBounds.yMax - energyBounds.yMin
+            );
+
+            Assert.IsTrue(hitArea.enabled);
+            Assert.IsTrue(hitArea.raycastTarget);
+            Assert.AreEqual(expectedBounds, GetSourceRect(hitArea.transform));
+
+            MethodInfo getStatusBar = typeof(PlanetSectorPlanetView).GetMethod(
+                "GetSourceStatusBar",
+                BindingFlags.Instance | BindingFlags.NonPublic
+            );
+            int rightEdge = expectedBounds.xMax - 1;
+            Assert.AreEqual(
+                PlanetSectorStatusBar.Energy,
+                getStatusBar.Invoke(_view, new object[] { rightEdge, energyBounds.yMax })
+            );
+            Assert.AreEqual(
+                PlanetSectorStatusBar.RawMaterials,
+                getStatusBar.Invoke(_view, new object[] { rightEdge, energyBounds.yMax + 1 })
+            );
+            Assert.AreEqual(
+                PlanetSectorStatusBar.PopularSupport,
+                getStatusBar.Invoke(_view, new object[] { rightEdge, supportBounds.yMax - 1 })
+            );
+        }
+
         /// <summary>
         /// Creates data.
         /// </summary>
@@ -449,8 +495,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         /// </summary>
         /// <param name="visible">Whether visible.</param>
         /// <param name="ratio">The ratio.</param>
+        /// <param name="tooltipText">The optional hover label.</param>
         /// <returns>The created continuous bar.</returns>
-        private static PlanetSectorBarRenderData CreateContinuousBar(bool visible, float ratio)
+        private static PlanetSectorBarRenderData CreateContinuousBar(
+            bool visible,
+            float ratio,
+            string tooltipText = null
+        )
         {
             return new PlanetSectorBarRenderData(
                 visible,
@@ -459,7 +510,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 ratio,
                 new Color32(0, 255, 0, 255),
                 default,
-                new Color32(0, 0, 0, 255)
+                new Color32(0, 0, 0, 255),
+                tooltipText
             );
         }
 
