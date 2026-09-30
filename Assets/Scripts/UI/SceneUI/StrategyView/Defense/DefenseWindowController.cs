@@ -9,20 +9,12 @@ using UnityEngine.EventSystems;
 /// <summary>
 /// Performs game-level and shared-window actions requested by the Defense feature.
 /// </summary>
-public interface IDefenseWindowActions
+public interface IDefenseWindowActions : IOfficerCommandActions
 {
     /// <summary>
     /// Rebuilds shared strategy state after a stationed officer's command changes.
     /// </summary>
     void RefreshDefenseState();
-
-    /// <summary>
-    /// Assigns the selected officer to a local command post.
-    /// </summary>
-    /// <param name="items">The selected Defense-window items.</param>
-    /// <param name="rank">The requested command rank.</param>
-    /// <returns>True when an appointment changed.</returns>
-    bool TrySetOfficerCommand(IReadOnlyList<ISceneNode> items, OfficerRank rank);
 
     /// <summary>
     /// Opens status information for one Defense-window target.

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 
 /// <summary>
@@ -85,6 +86,20 @@ public interface IStrategyWindowCommandActions
     /// <param name="items">The selected fleets or their visible snapshots.</param>
     /// <returns>True when at least one waypoint was cleared.</returns>
     bool ClearFleetWaypoints(IReadOnlyList<ISceneNode> items);
+}
+
+/// <summary>
+/// Performs officer command assignments requested by strategy feature windows.
+/// </summary>
+public interface IOfficerCommandActions
+{
+    /// <summary>
+    /// Assigns the selected officer to a local command post.
+    /// </summary>
+    /// <param name="items">The selected strategy-window items.</param>
+    /// <param name="rank">The requested command rank.</param>
+    /// <returns>True when an appointment changed.</returns>
+    bool TrySetOfficerCommand(IReadOnlyList<ISceneNode> items, OfficerRank rank);
 }
 
 /// <summary>

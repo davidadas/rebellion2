@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
+using Rebellion.Simulation;
 
 /// <summary>
 /// Builds the command-rank submenu shared by stationed and fleet personnel views.
@@ -16,22 +16,13 @@ internal static class OfficerCommandMenuBuilder
     /// <returns>The complete command submenu.</returns>
     public static StrategyMenuCommand Build(Officer officer, bool playerControlsOfficer)
     {
-        bool canChangeCommand =
-            playerControlsOfficer
-            && !officer.IsCaptured
-            && !officer.IsKilled
-            && !officer.IsRetired
-            && officer.InjuryPoints <= 0
-            && !officer.IsOnMission()
-            && ((IMovable)officer).GetTransitMovement() == null
-            && (
-                officer.GetParentOfType<Fleet>() != null
-                || officer.GetParentOfType<Planet>() != null
-            );
         bool hasCommandChoice =
             officer.CurrentRank != OfficerRank.None
             || officer.AllowedRanks?.Any(rank => rank != OfficerRank.None) == true;
-        bool commandMenuEnabled = canChangeCommand && hasCommandChoice;
+        bool commandMenuEnabled =
+            playerControlsOfficer
+            && hasCommandChoice
+            && OfficerCommandCommands.CanChangeRank(officer, OfficerRank.None);
 
         return new StrategyMenuCommand(
             StrategyMenuAction.Command,
@@ -88,11 +79,10 @@ internal static class OfficerCommandMenuBuilder
         bool canChangeCommand
     )
     {
-        bool rankAllowed = rank == OfficerRank.None || officer.AllowedRanks?.Contains(rank) == true;
         return new StrategyMenuCommand(
             action,
             text,
-            canChangeCommand && rankAllowed,
+            canChangeCommand && OfficerCommandCommands.CanChangeRank(officer, rank),
             officer.CurrentRank == rank
                 ? StrategyContextMenuIconKeys.CheckMark
                 : StrategyContextMenuIconKeys.None

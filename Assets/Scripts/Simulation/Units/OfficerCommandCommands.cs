@@ -43,22 +43,37 @@ namespace Rebellion.Simulation
             string requestingFactionInstanceId
         )
         {
-            ISceneNode commandTarget = ResolveCommandTarget(officer);
             if (
                 officer == null
                 || string.IsNullOrWhiteSpace(requestingFactionInstanceId)
-                || !IsSupportedRank(rank)
                 || !string.Equals(
                     officer.GetOwnerInstanceID(),
                     requestingFactionInstanceId,
                     StringComparison.Ordinal
                 )
+            )
+                return false;
+
+            return CanChangeRank(officer, rank);
+        }
+
+        /// <summary>
+        /// Determines whether an officer's state and deployment permit a command change.
+        /// </summary>
+        /// <param name="officer">The officer to inspect.</param>
+        /// <param name="rank">The requested command post, or None to resign.</param>
+        /// <returns>True when the officer may receive the requested rank.</returns>
+        internal static bool CanChangeRank(Officer officer, OfficerRank rank)
+        {
+            if (
+                officer == null
+                || !IsSupportedRank(rank)
                 || officer.IsCaptured
                 || officer.IsKilled
                 || officer.IsRetired
                 || officer.InjuryPoints > 0
                 || ((IMovable)officer).GetTransitMovement() != null
-                || commandTarget == null
+                || ResolveCommandTarget(officer) == null
             )
                 return false;
 
