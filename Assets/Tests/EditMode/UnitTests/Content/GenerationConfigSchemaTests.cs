@@ -212,10 +212,23 @@ namespace Rebellion.Tests.Content
         </BudgetLevels>
         <UnitTable>
           <WeightedUnitEntry>
-            <CumulativeWeight>0</CumulativeWeight>
+            <Weight>1</Weight>
             <Units><UnitEntry><TypeID>UNIT_TYPE</TypeID><Count>1</Count></UnitEntry></Units>
           </WeightedUnitEntry>
         </UnitTable>
+        <Bonuses>
+          <StartingUnitBudgetBonus>
+            <Difficulty>Hard</Difficulty>
+            <AIOnly>true</AIOnly>
+            <Category>Regiment</Category>
+            <BudgetLevels>
+              <BudgetLevel>
+                <GalaxySize>0</GalaxySize>
+                <Percentage>0</Percentage>
+              </BudgetLevel>
+            </BudgetLevels>
+          </StartingUnitBudgetBonus>
+        </Bonuses>
       </FactionBudget>
     </FactionBudgets>
   </UnitDeployment>
