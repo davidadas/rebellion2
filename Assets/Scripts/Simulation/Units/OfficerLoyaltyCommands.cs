@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
-using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
@@ -28,6 +27,32 @@ namespace Rebellion.Simulation
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
             _provider = provider ?? game.Random;
+        }
+
+        /// <summary>
+        /// Applies one signed global loyalty shift relative to the favored faction.
+        /// Officers belonging to the favored faction receive the shift; officers belonging to
+        /// every other faction receive its inverse. Officers whose loyalty cannot change ignore it.
+        /// </summary>
+        /// <param name="favoredFaction">The faction for which the shift is positive.</param>
+        /// <param name="shift">The signed shift relative to the favored faction.</param>
+        public void ApplyGlobalShift(Faction favoredFaction, int shift)
+        {
+            if (favoredFaction == null)
+                throw new ArgumentNullException(nameof(favoredFaction));
+            if (shift == 0)
+                return;
+
+            foreach (
+                Officer officer in _game.GetRegisteredSceneNodesByType<Officer>(
+                    includeDisabled: true
+                )
+            )
+            {
+                int officerShift =
+                    officer.GetOwnerInstanceID() == favoredFaction.InstanceID ? shift : -shift;
+                officer.TryAdjustLoyalty(officerShift);
+            }
         }
 
         /// <summary>
@@ -70,45 +95,6 @@ namespace Rebellion.Simulation
 
             int probability = 100 - Math.Clamp(officer.Loyalty, 0, 100);
             return _provider.NextInt(0, 100) < probability;
-        }
-
-        /// <summary>
-        /// Applies the acquired planet's support-based loyalty shift after a faction gains control.
-        /// </summary>
-        /// <param name="planet">The acquired planet.</param>
-        /// <param name="incomingFaction">The faction gaining a planet.</param>
-        public void ApplyControlShift(Planet planet, Faction incomingFaction)
-        {
-            if (planet == null || incomingFaction == null)
-                return;
-
-            Faction opposingFaction = _game
-                .GetFactions()
-                .FirstOrDefault(faction => faction.InstanceID != incomingFaction.InstanceID);
-            if (opposingFaction == null)
-                return;
-
-            int divisor = _game.Config.OfficerLoyalty.PlanetAcquisitionSupportDivisor;
-            if (divisor <= 0)
-                throw new InvalidOperationException(
-                    $"{nameof(GameConfig.OfficerLoyaltyConfig.PlanetAcquisitionSupportDivisor)} must be greater than zero."
-                );
-
-            int incomingSupport = planet.GetPopularSupport(incomingFaction.InstanceID);
-            int opposingSupport = planet.GetPopularSupport(opposingFaction.InstanceID);
-            int loyaltyShift =
-                (incomingSupport - opposingSupport) / divisor + incomingSupport / divisor;
-            if (loyaltyShift == 0)
-                return;
-
-            foreach (Officer officer in _game.GetSceneNodesByType<Officer>())
-            {
-                int signedShift =
-                    officer.GetOwnerInstanceID() == incomingFaction.InstanceID
-                        ? loyaltyShift
-                        : -loyaltyShift;
-                officer.TryAdjustLoyalty(signedShift);
-            }
         }
     }
 }

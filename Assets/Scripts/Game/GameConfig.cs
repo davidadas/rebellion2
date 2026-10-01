@@ -45,8 +45,6 @@ namespace Rebellion.Game
 
         public CaptiveConfig Captive { get; set; } = new CaptiveConfig();
 
-        public OfficerLoyaltyConfig OfficerLoyalty { get; set; } = new OfficerLoyaltyConfig();
-
         public GameSpeedConfig GameSpeed { get; set; } = new GameSpeedConfig();
 
         public MessageConfig Messages { get; set; } = new MessageConfig();
@@ -1207,15 +1205,6 @@ namespace Rebellion.Game
             public int Minimum { get; set; }
 
             public int Maximum { get; set; }
-        }
-
-        /// <summary>
-        /// Officer loyalty reactions to strategic control changes.
-        /// </summary>
-        [PersistableObject]
-        public class OfficerLoyaltyConfig
-        {
-            public int PlanetAcquisitionSupportDivisor { get; set; }
         }
 
         /// <summary>

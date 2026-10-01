@@ -90,6 +90,12 @@ namespace Rebellion.Game.Factions
         public int CivilianBombardmentOuterRimSupportPenalty { get; set; }
 
         /// <summary>
+        /// Divisor used to convert battle losses into global officer-loyalty changes favoring
+        /// this faction.
+        /// </summary>
+        public int BattleLossLoyaltyDivisor { get; set; }
+
+        /// <summary>
         /// Condition under which the weak support penalty triggers.
         /// </summary>
         public SupportChange SupportResistance { get; set; } = SupportChange.Increase;
