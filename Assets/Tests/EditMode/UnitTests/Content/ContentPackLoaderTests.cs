@@ -152,7 +152,7 @@ namespace Rebellion.Tests.Content
                     .MissionExecutionSpeedIncreasePercent
             );
             Assert.AreEqual(
-                50,
+                10,
                 config.DifficultyModifiers[GameDifficulty.Hard].MissionExecutionSpeedIncreasePercent
             );
         }
