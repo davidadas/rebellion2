@@ -563,6 +563,37 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void Connect_PlanetFullySupportsDisplacedFaction_PreservesSupport()
+        {
+            _targetPlanet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.OuterRim;
+            _targetPlanet.PopularSupport = new Dictionary<string, int>
+            {
+                { _rebels.InstanceID, 59 },
+                { _empire.InstanceID, 41 },
+            };
+            _empirePlanet.PopularSupport = new Dictionary<string, int>
+            {
+                { _rebels.InstanceID, 0 },
+                { _empire.InstanceID, 100 },
+            };
+            GameResultBus bus = new GameResultBus();
+            _observer.Connect(bus);
+
+            bus.Publish(
+                new PopularSupportShiftResult
+                {
+                    Planet = _targetPlanet,
+                    Faction = _rebels,
+                    Shift = 1,
+                    Tick = 10,
+                }
+            );
+
+            Assert.AreEqual(0, _empirePlanet.GetPopularSupport(_rebels.InstanceID));
+            Assert.AreEqual(100, _empirePlanet.GetPopularSupport(_empire.InstanceID));
+        }
+
+        [Test]
         public void Connect_NeutralTransfers_CascadesSectorSupport()
         {
             PlanetSector sector = _targetPlanet.GetParentOfType<PlanetSector>();
@@ -659,8 +690,8 @@ namespace Rebellion.Tests.Simulation
             };
             _empirePlanet.PopularSupport = new Dictionary<string, int>
             {
-                { _rebels.InstanceID, 20 },
-                { _empire.InstanceID, 80 },
+                { _rebels.InstanceID, 0 },
+                { _empire.InstanceID, 100 },
             };
             Regiment regiment = EntityFactory.CreateRegiment("garrison", _empire.InstanceID);
             regiment.ManufacturingStatus = ManufacturingStatus.Complete;
@@ -675,7 +706,7 @@ namespace Rebellion.Tests.Simulation
 
             Assert.AreEqual(_rebels.InstanceID, _targetPlanet.OwnerInstanceID);
             Assert.AreEqual(70, _targetPlanet.GetPopularSupport(_rebels.InstanceID));
-            Assert.AreEqual(30, _empirePlanet.GetPopularSupport(_rebels.InstanceID));
+            Assert.AreEqual(10, _empirePlanet.GetPopularSupport(_rebels.InstanceID));
             PlanetOwnershipChangedResult change = results
                 .OfType<PlanetOwnershipChangedResult>()
                 .Single();

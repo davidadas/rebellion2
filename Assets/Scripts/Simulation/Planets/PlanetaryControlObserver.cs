@@ -442,6 +442,8 @@ namespace Rebellion.Simulation
             if (beneficiary == null || shift == 0)
                 return results;
 
+            Faction displacedFaction = change.PreviousOwner ?? GetOpposingFaction(change.NewOwner);
+
             PlanetSector sector = change.Planet.GetParentOfType<PlanetSector>();
             if (sector == null)
                 return results;
@@ -452,6 +454,15 @@ namespace Rebellion.Simulation
                     .Where(planet => planet.IsPopulated() && !planet.IsDestroyed)
             )
             {
+                if (
+                    change.Reason == PlanetOwnershipChangeReason.PopularSupport
+                    && displacedFaction != null
+                    && planet.GetOpposingPopularSupport(displacedFaction.InstanceID) == 0
+                )
+                {
+                    continue;
+                }
+
                 Faction previousController = _queries.GetPlanetOwner(planet);
                 _commands.ChangePopularSupport(planet, beneficiary, shift);
                 Faction controller = _queries.GetPlanetController(planet);
