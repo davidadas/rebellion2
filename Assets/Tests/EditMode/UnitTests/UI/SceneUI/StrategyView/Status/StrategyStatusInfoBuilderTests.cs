@@ -942,7 +942,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             CapitalShip ship = new CapitalShip
             {
                 InstanceID = "capital-ship",
-                DisplayName = "Assault Frigate",
+                TypeID = "assault-frigate",
+                DisplayName = "Griffin",
                 OwnerInstanceID = _ownerId,
                 ManufacturingStatus = ManufacturingStatus.Complete,
                 MaintenanceCost = 12,
@@ -1207,7 +1208,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                 instanceId => game.GetSceneNodeByInstanceID<ISceneNode>(instanceId),
                 game.GetPlayerFaction()?.InstanceID,
                 game.CurrentTick,
-                game.Config?.Jedi
+                game.Config?.Jedi,
+                typeId => typeId == "assault-frigate" ? "Assault Frigate" : null
             );
         }
     }

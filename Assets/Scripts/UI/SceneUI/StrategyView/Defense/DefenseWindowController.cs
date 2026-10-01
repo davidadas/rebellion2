@@ -748,7 +748,9 @@ public sealed class DefenseWindowController
     {
         view.RenderItemSelection(
             session.SelectedItemIndexes,
-            projector.GetItemSelectionTexture(session)
+            projector.GetItemSelectionTexture(session),
+            projector.GetItemNameColor(session, true),
+            projector.GetItemNameColor(session, false)
         );
     }
 
