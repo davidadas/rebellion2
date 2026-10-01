@@ -243,7 +243,11 @@ namespace Rebellion.Simulation
                 return results;
             }
 
-            if (result.DestroyedBuildings?.Any(BombardmentQueries.IsCivilianTarget) != true)
+            bool damagedCivilianTarget =
+                result.EnergyCapacityDamage > 0
+                || result.AllocatedEnergyDamage > 0
+                || result.DestroyedBuildings?.Any(BombardmentQueries.IsCivilianTarget) == true;
+            if (!damagedCivilianTarget)
                 return results;
 
             results.AddRange(ApplyDirectBombardmentPenalty(result.Planet, result.AttackingFaction));
@@ -430,6 +434,8 @@ namespace Rebellion.Simulation
                     if (!CanApplyControlSupportShift(change.PreviousOwner))
                         return results;
                     shift = _game.Config.SupportShift.ControlChangeSupportShift;
+                    if (change.PreviousOwner != null && change.NewOwner != null)
+                        shift += _game.Config.SupportShift.ControlChangeSupportShift;
                     break;
                 case PlanetOwnershipChangeReason.GarrisonRemoved:
                     shift = _game.Config.SupportShift.GarrisonRemovalSupportShift;

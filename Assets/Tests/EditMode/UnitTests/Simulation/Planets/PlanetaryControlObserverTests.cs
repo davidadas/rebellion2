@@ -526,6 +526,48 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(18, change.Tick);
         }
 
+        [TestCase(1, 0)]
+        [TestCase(0, 1)]
+        public void HandleResults_EnergyInfrastructureDamage_AppliesCivilianBombardmentPenalty(
+            int energyCapacityDamage,
+            int allocatedEnergyDamage
+        )
+        {
+            _targetPlanet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.OuterRim;
+            _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
+            _targetPlanet.PopularSupport = new Dictionary<string, int>
+            {
+                { _rebels.InstanceID, 50 },
+                { _empire.InstanceID, 50 },
+            };
+            _empirePlanet.PopularSupport = new Dictionary<string, int>
+            {
+                { _rebels.InstanceID, 20 },
+                { _empire.InstanceID, 80 },
+            };
+            _game.Config.Combat.Bombardment.CivilianSupportPenalty = -20;
+            _rebels.Settings.CivilianBombardmentOuterRimSupportPenalty = -2;
+            Regiment regiment = EntityFactory.CreateRegiment("garrison", _empire.InstanceID);
+            regiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            _game.AttachNode(regiment, _targetPlanet);
+
+            _observer.HandleResults(
+                new[]
+                {
+                    new BombardmentResult
+                    {
+                        Planet = _targetPlanet,
+                        AttackingFaction = _rebels,
+                        EnergyCapacityDamage = energyCapacityDamage,
+                        AllocatedEnergyDamage = allocatedEnergyDamage,
+                    },
+                }
+            );
+
+            Assert.AreEqual(28, _targetPlanet.GetPopularSupport(_rebels.InstanceID));
+            Assert.AreEqual(18, _empirePlanet.GetPopularSupport(_rebels.InstanceID));
+        }
+
         [Test]
         public void Connect_PopularSupportTransfer_ShiftsSectorSupport()
         {
@@ -673,8 +715,8 @@ namespace Rebellion.Tests.Simulation
 
             Assert.AreEqual(_rebels.InstanceID, _targetPlanet.OwnerInstanceID);
             Assert.AreEqual(_rebels.InstanceID, _empirePlanet.OwnerInstanceID);
-            Assert.AreEqual(61, _targetPlanet.GetPopularSupport(_rebels.InstanceID));
-            Assert.AreEqual(60, _empirePlanet.GetPopularSupport(_rebels.InstanceID));
+            Assert.AreEqual(62, _targetPlanet.GetPopularSupport(_rebels.InstanceID));
+            Assert.AreEqual(61, _empirePlanet.GetPopularSupport(_rebels.InstanceID));
             Assert.AreEqual(2, results.OfType<PlanetOwnershipChangedResult>().Count());
         }
 
