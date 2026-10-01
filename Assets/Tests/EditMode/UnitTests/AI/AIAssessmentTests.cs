@@ -924,7 +924,7 @@ namespace Rebellion.Tests.AI
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
             Assert.AreEqual(
-                context.Assessment.GetBombardmentShieldResistance(target) + 1,
+                context.Assessment.GetBombardmentShieldStrength(target) + 1,
                 context.GetAttackDemand(target).BombardmentStrength
             );
             Assert.Zero(context.Assessment.GetFleetBombardmentStrength(blockedFleet));
@@ -1288,7 +1288,7 @@ namespace Rebellion.Tests.AI
             Assert.AreEqual(200, context.GetAttackDemand(firstTarget).CombatStrength);
             Assert.AreEqual(4, context.GetAttackDemand(firstTarget).RegimentCount);
             Assert.AreEqual(20, context.GetAttackDemand(firstTarget).RegimentStrength);
-            Assert.AreEqual(2, context.GetAttackDemand(firstTarget).BombardmentStrength);
+            Assert.AreEqual(11, context.GetAttackDemand(firstTarget).BombardmentStrength);
             Assert.AreEqual(300, context.GetAttackDemand(secondTarget).CombatStrength);
             Assert.AreEqual(3, context.GetAttackDemand(secondTarget).RegimentCount);
             Assert.AreEqual(20, context.GetAttackDemand(secondTarget).RegimentStrength);

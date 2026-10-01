@@ -411,7 +411,7 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void Seed_BudgetUnitTable_UsesPreviousThresholdRow()
+        public void Seed_BudgetUnitTable_UsesConfiguredWeights()
         {
             Planet planet = OwnedPlanet("CORUSCANT", "FNEMP1", ownerSupport: 100);
             planet.EnergyCapacity = 2;
@@ -454,7 +454,7 @@ namespace Rebellion.Tests.Generation
                             {
                                 new WeightedUnitEntry
                                 {
-                                    CumulativeWeight = 1,
+                                    Weight = 1,
                                     Units = new List<UnitEntry>
                                     {
                                         new UnitEntry { TypeID = "FIRST", Count = 1 },
@@ -462,7 +462,7 @@ namespace Rebellion.Tests.Generation
                                 },
                                 new WeightedUnitEntry
                                 {
-                                    CumulativeWeight = 9,
+                                    Weight = 8,
                                     Units = new List<UnitEntry>
                                     {
                                         new UnitEntry { TypeID = "SECOND", Count = 1 },
@@ -480,7 +480,7 @@ namespace Rebellion.Tests.Generation
                 config,
                 new GalaxyClassificationResult(),
                 regimentTemplates: regimentTemplates,
-                rng: new SequenceRNG(intValues: new[] { 1 })
+                rng: new SequenceRNG(intValues: new[] { 0 })
             );
             context.Summary.GalaxySize = GameSize.Small;
             context.Summary.Difficulty = GameDifficulty.Easy;
@@ -537,7 +537,7 @@ namespace Rebellion.Tests.Generation
                             {
                                 new WeightedUnitEntry
                                 {
-                                    CumulativeWeight = 100,
+                                    Weight = 100,
                                     Units = new List<UnitEntry>
                                     {
                                         new UnitEntry { TypeID = "SPAL004", Count = 1 },
@@ -571,6 +571,190 @@ namespace Rebellion.Tests.Generation
                     && unit.Movement == null
                 )
             );
+        }
+
+        [Test]
+        public void Seed_HardAiBonusBudget_DeploysBaseFleetAndBonusRegiments()
+        {
+            (GenerationContext context, Planet planet) = CreateStartingUnitBonusContext(
+                StartingUnitBudgetCategory.Regiment
+            );
+            context.Summary.Difficulty = GameDifficulty.Hard;
+
+            new UnitSeeder().Seed(context);
+
+            Assert.AreEqual(
+                1,
+                planet.GetChildren<Fleet>().Single().GetChildren<CapitalShip>().Count
+            );
+            Assert.AreEqual(3, planet.GetChildren<Regiment>().Count);
+        }
+
+        [Test]
+        public void Seed_HardAiStarfighterBonusBudget_DeploysOnlyBonusStarfighters()
+        {
+            (GenerationContext context, Planet planet) = CreateStartingUnitBonusContext(
+                StartingUnitBudgetCategory.Starfighter
+            );
+            context.Summary.Difficulty = GameDifficulty.Hard;
+
+            new UnitSeeder().Seed(context);
+
+            Assert.AreEqual(3, planet.GetChildren<Starfighter>().Count);
+            Assert.AreEqual(0, planet.GetChildren<Regiment>().Count);
+        }
+
+        [Test]
+        public void Seed_HardHumanBonusBudget_DoesNotDeployBonusRegiments()
+        {
+            (GenerationContext context, Planet planet) = CreateStartingUnitBonusContext(
+                StartingUnitBudgetCategory.Regiment
+            );
+            context.Summary.PlayerFactionID = "FNEMP1";
+            context.Summary.Difficulty = GameDifficulty.Hard;
+
+            new UnitSeeder().Seed(context);
+
+            Assert.AreEqual(
+                1,
+                planet.GetChildren<Fleet>().Single().GetChildren<CapitalShip>().Count
+            );
+            Assert.AreEqual(0, planet.GetChildren<Regiment>().Count);
+        }
+
+        [Test]
+        public void Seed_MediumAiBonusBudget_DoesNotDeployBonusRegiments()
+        {
+            (GenerationContext context, Planet planet) = CreateStartingUnitBonusContext(
+                StartingUnitBudgetCategory.Regiment
+            );
+            context.Summary.Difficulty = GameDifficulty.Medium;
+
+            new UnitSeeder().Seed(context);
+
+            Assert.AreEqual(
+                1,
+                planet.GetChildren<Fleet>().Single().GetChildren<CapitalShip>().Count
+            );
+            Assert.AreEqual(0, planet.GetChildren<Regiment>().Count);
+        }
+
+        /// <summary>
+        /// Creates a seeded planet and context for starting-unit bonus tests.
+        /// </summary>
+        /// <param name="category">The category receiving the test bonus.</param>
+        /// <returns>The generation context and its owned planet.</returns>
+        private static (GenerationContext Context, Planet Planet) CreateStartingUnitBonusContext(
+            StartingUnitBudgetCategory category
+        )
+        {
+            Planet planet = OwnedPlanet("CORUSCANT", "FNEMP1", ownerSupport: 100);
+            planet.EnergyCapacity = 8;
+            planet.NumRawResourceNodes = 4;
+            for (int i = 0; i < 4; i++)
+            {
+                planet.AddChild(CompleteBuilding($"mine{i}", BuildingType.Mine, "FNEMP1"));
+                planet.AddChild(CompleteBuilding($"refinery{i}", BuildingType.Refinery, "FNEMP1"));
+            }
+
+            Faction empire = new Faction { InstanceID = "FNEMP1" };
+            empire.Settings.RefinementMultiplier = 1;
+            empire.Settings.ResourceProcessingPointsPerFacility = 1;
+            GenerationContext context = BuildContext(
+                new[] { WrapSector(planet) },
+                new[] { empire },
+                CreateStartingUnitBonusConfig(category),
+                new GalaxyClassificationResult(),
+                regimentTemplates: new[]
+                {
+                    new Regiment { TypeID = "REGIMENT", MaintenanceCost = 1 },
+                },
+                shipTemplates: new[]
+                {
+                    new CapitalShip { TypeID = "SHIP", MaintenanceCost = 1 },
+                },
+                fighterTemplates: new[]
+                {
+                    new Starfighter { TypeID = "FIGHTER", MaintenanceCost = 1 },
+                }
+            );
+            return (context, planet);
+        }
+
+        /// <summary>
+        /// Creates a starting-unit budget with a base fleet allocation and one Hard AI category bonus.
+        /// </summary>
+        /// <param name="category">The category receiving the test bonus.</param>
+        /// <returns>The generation configuration.</returns>
+        private static GameGenerationConfig CreateStartingUnitBonusConfig(
+            StartingUnitBudgetCategory category
+        )
+        {
+            return new GameGenerationConfig
+            {
+                GalaxyClassification = new GalaxyClassificationSection
+                {
+                    FactionSetups = new List<FactionSetup>(),
+                },
+                UnitDeployment = new UnitDeploymentSection
+                {
+                    UprisingPreventionThreshold = 0,
+                    SupportDeficitPerGarrisonTroop = 10,
+                    FixedGarrisons = new List<FixedGarrison>(),
+                    FixedFleets = new List<FixedFleet>(),
+                    FactionBudgets = new List<FactionBudget>
+                    {
+                        new FactionBudget
+                        {
+                            FactionID = "FNEMP1",
+                            BudgetLevels = new List<BudgetLevel>
+                            {
+                                new BudgetLevel { GalaxySize = 0, Percentage = 25 },
+                            },
+                            UnitTable = new List<WeightedUnitEntry>
+                            {
+                                new WeightedUnitEntry
+                                {
+                                    Weight = 1,
+                                    Units = new List<UnitEntry>
+                                    {
+                                        new UnitEntry { TypeID = "SHIP", Count = 1 },
+                                    },
+                                },
+                                new WeightedUnitEntry
+                                {
+                                    Weight = 1,
+                                    Units = new List<UnitEntry>
+                                    {
+                                        new UnitEntry { TypeID = "REGIMENT", Count = 1 },
+                                    },
+                                },
+                                new WeightedUnitEntry
+                                {
+                                    Weight = 1,
+                                    Units = new List<UnitEntry>
+                                    {
+                                        new UnitEntry { TypeID = "FIGHTER", Count = 1 },
+                                    },
+                                },
+                            },
+                            Bonuses = new List<StartingUnitBudgetBonus>
+                            {
+                                new StartingUnitBudgetBonus
+                                {
+                                    Difficulty = GameDifficulty.Hard,
+                                    AIOnly = true,
+                                    Category = category,
+                                    BudgetLevels = new List<BudgetLevel>
+                                    {
+                                        new BudgetLevel { GalaxySize = 0, Percentage = 75 },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            };
         }
 
         /// <summary>
