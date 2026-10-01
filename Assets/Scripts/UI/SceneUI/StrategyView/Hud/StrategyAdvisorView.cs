@@ -68,6 +68,11 @@ public sealed class StrategyAdvisorView : MonoBehaviour
     private bool playbackPaused;
 
     /// <summary>
+    /// Gets whether an advisor animation is active or waiting for local playback.
+    /// </summary>
+    internal bool IsPlaybackActive => activeAnimation != null || playbackQueue.Count > 0;
+
+    /// <summary>
     /// Validates authored references and subscribes advisor inputs when Unity creates the view.
     /// </summary>
     private void Awake()

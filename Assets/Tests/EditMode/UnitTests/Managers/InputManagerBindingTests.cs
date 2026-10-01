@@ -148,6 +148,30 @@ namespace Rebellion.Tests.Managers
             }
         }
 
+        [TestCase("AdvisorBuildShips", "<Keyboard>/b")]
+        [TestCase("AdvisorBuildTroops", "<Keyboard>/t")]
+        [TestCase("AdvisorBuildFacilities", "<Keyboard>/f")]
+        public void AdvisorBuildShortcut_WhenUsingDefaults_UsesOriginalAltChord(
+            string actionName,
+            string keyPath
+        )
+        {
+            GameObject root = new GameObject("InputManager");
+            try
+            {
+                InputAction action = root.AddComponent<InputManager>()
+                    .Asset.FindAction($"Strategy/{actionName}", true);
+                int chord = FindBinding(action, "PrimaryChord");
+
+                Assert.AreEqual("<Keyboard>/alt", action.bindings[chord + 1].effectivePath);
+                Assert.AreEqual(keyPath, action.bindings[chord + 2].effectivePath);
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+            }
+        }
+
         /// <summary>
         /// Finds a top-level authored binding by name.
         /// </summary>

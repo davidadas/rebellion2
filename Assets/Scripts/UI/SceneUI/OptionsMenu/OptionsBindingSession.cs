@@ -813,6 +813,9 @@ internal sealed class OptionsBindingSession : IDisposable
             "CancelOrSettings" => "Cancel",
             "MultiSelectModifier" => "Toggle Selection Modifier",
             "RangeSelectModifier" => "Range Selection Modifier",
+            "AdvisorBuildShips" => "Build Ships",
+            "AdvisorBuildTroops" => "Build Troops",
+            "AdvisorBuildFacilities" => "Build Facilities",
             _ => Humanize(actionName),
         };
     }
