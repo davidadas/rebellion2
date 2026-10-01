@@ -2010,7 +2010,7 @@ namespace Rebellion.Tests.AI.Demands
                     && item.DestinationFleet == fleet
                 );
 
-            Assert.AreEqual(11, demand.QuantityNeeded);
+            Assert.AreEqual(191, demand.QuantityNeeded);
             Assert.AreEqual(AICapitalShipProductionRole.Bombardment, demand.CapitalShipRole);
         }
 

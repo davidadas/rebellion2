@@ -1989,7 +1989,7 @@ namespace Rebellion.AI.Demands
                 && targetPlanet != null
                 && context.Assessment.GetDefendingRegimentCount(targetPlanet) > 0
                 && context.Assessment.GetProjectedFleetBombardmentStrength(fleet)
-                    > context.Assessment.GetBombardmentShieldResistance(targetPlanet);
+                    > context.Assessment.GetBombardmentShieldStrength(targetPlanet);
         }
 
         /// <summary>
