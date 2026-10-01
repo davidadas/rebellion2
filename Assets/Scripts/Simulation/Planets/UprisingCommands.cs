@@ -443,8 +443,21 @@ namespace Rebellion.Simulation
             planet.NextUprisingIncidentTick = 0;
             planet.UprisingIncidentTimerOrder = 0;
 
+            int incidentResultStart = results.Count;
             ResolveUprisingIncident(planet, faction, results);
-            results.AddRange(_planetaryControl.ReconcilePlanet(planet));
+            bool garrisonChanged = results
+                .Skip(incidentResultStart)
+                .OfType<PlanetGarrisonChangedResult>()
+                .Any(result => result.Planet == planet);
+            List<GameResult> controlResults = _planetaryControl.ReconcilePlanet(planet);
+            if (garrisonChanged)
+            {
+                foreach (
+                    PlanetOwnershipChangedResult ownershipChange in controlResults.OfType<PlanetOwnershipChangedResult>()
+                )
+                    ownershipChange.Reason = PlanetOwnershipChangeReason.GarrisonRemoved;
+            }
+            results.AddRange(controlResults);
             if (!planet.IsInUprising)
                 return;
 

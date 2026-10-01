@@ -201,14 +201,7 @@ namespace Rebellion.AI.Proposals
                 return;
             }
 
-            BombardmentResult bombardmentResult = context.Bombardment.Execute(
-                attackingFleets,
-                liveTarget,
-                BombardmentType.Military
-            );
-            context.AddResult(bombardmentResult);
-            context.AddResults(bombardmentResult.Events);
-            context.AddResult(bombardmentResult.OwnershipChange);
+            context.Bombardment.TryExecute(attackingFleets, liveTarget, BombardmentType.Military);
 
             if (!TryClearCompletedAttackOrder(context, liveTarget))
             {

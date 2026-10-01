@@ -261,14 +261,10 @@ public static partial class HeadlessSimulationRunner
             PlanetOwnershipChangedResult[] ownershipChanges = results
                 .OfType<PlanetOwnershipChangedResult>()
                 .ToArray();
-            HashSet<PlanetOwnershipChangedResult> primaryChanges = bombardments
-                .Select(result => result.OwnershipChange)
-                .Concat(
-                    results
-                        .OfType<PlanetaryAssaultResult>()
-                        .Select(result => result.OwnershipChange)
-                )
-                .Where(change => change != null)
+            HashSet<Planet> primaryTargets = bombardments
+                .Select(result => result.Planet)
+                .Concat(results.OfType<PlanetaryAssaultResult>().Select(result => result.Planet))
+                .Where(planet => planet != null)
                 .ToHashSet();
             HashSet<PlanetOwnershipChangedResult> recordedCascadeChanges = new();
 
@@ -306,7 +302,7 @@ public static partial class HeadlessSimulationRunner
                 );
                 string[] additionalFlips = relatedChanges
                     .Where(change =>
-                        !primaryChanges.Contains(change)
+                        !primaryTargets.Contains(change.Planet)
                         && change.Planet != directChange.Planet
                         && recordedCascadeChanges.Add(change)
                     )

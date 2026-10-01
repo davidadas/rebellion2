@@ -332,6 +332,27 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void ProcessTick_IncidentDestroysLastGarrison_ReportsGarrisonRemoval()
+        {
+            (GameRoot game, Planet planet, UprisingCommands system) = BuildScene(
+                ownerSupport: 10,
+                opposingSupport: 50,
+                troopCount: 1,
+                rng: new SequenceRNG(intValues: new[] { 3, 3, 0 })
+            );
+            ScheduleIncident(planet, 1);
+            game.CurrentTick = 1;
+
+            IReadOnlyList<GameResult> results = new UprisingTickProcessor(system).ProcessTick(game);
+
+            PlanetOwnershipChangedResult ownershipChange = results
+                .OfType<PlanetOwnershipChangedResult>()
+                .Single(change => change.Planet == planet);
+            Assert.AreEqual(PlanetOwnershipChangeReason.GarrisonRemoved, ownershipChange.Reason);
+            Assert.IsNull(planet.GetOwnerInstanceID());
+        }
+
+        [Test]
         public void ProcessTick_Incident_CapturesOnlyUsableOfficer()
         {
             (GameRoot game, Planet planet, UprisingCommands system) = BuildScene(
