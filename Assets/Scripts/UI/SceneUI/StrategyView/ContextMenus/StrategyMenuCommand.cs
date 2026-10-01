@@ -435,17 +435,15 @@ public static class StrategyContextMenuAvailability
             Officer capturedOfficer in items.OfType<Officer>().Where(officer => officer.IsCaptured)
         )
         {
-            bool hasEscort = items
-                .OfType<Officer>()
-                .Any(officer =>
-                    !ReferenceEquals(officer, capturedOfficer)
-                    && !officer.IsCaptured
-                    && string.Equals(
-                        officer.GetOwnerInstanceID(),
-                        playerFactionId,
-                        System.StringComparison.Ordinal
-                    )
-                );
+            bool hasEscort = items.Any(item =>
+                !ReferenceEquals(item, capturedOfficer)
+                && string.Equals(
+                    item.GetOwnerInstanceID(),
+                    playerFactionId,
+                    System.StringComparison.Ordinal
+                )
+                && (item is SpecialForces || item is Officer { IsCaptured: false })
+            );
 
             if (!hasEscort)
                 return false;
