@@ -390,7 +390,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         [Test]
-        public void Build_OfficerAtPlanet_EnablesEligibleCommandPosts()
+        public void Build_OfficerAtPlanet_DisablesFleetOnlyAdmiralPost()
         {
             Officer officer = new Officer
             {
@@ -408,7 +408,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 .Single(command => command.Action == StrategyMenuAction.Command);
 
             CollectionAssert.AreEqual(
-                new[] { true, true, true, true },
+                new[] { true, true, false, true },
                 commandMenu.SubmenuCommands.Select(command => command.Enabled)
             );
         }

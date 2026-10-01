@@ -78,7 +78,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
                 commandMenu.SubmenuCommands.Select(command => command.Action)
             );
             CollectionAssert.AreEqual(
-                new[] { true, true, true, false },
+                new[] { true, true, false, false },
                 commandMenu.SubmenuCommands.Select(command => command.Enabled)
             );
             Assert.AreEqual(
