@@ -137,19 +137,18 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void TrySetRank_EligibleAdmiralAtPlanet_AssignsPost()
+        public void CanSetRank_AdmiralAtPlanet_IsRejected()
         {
             GameRoot game = BuildScene(out Planet planet);
             Officer officer = CreateOfficer(game, planet, "candidate", OfficerRank.Admiral);
 
-            bool changed = new OfficerCommandCommands(game).TrySetRank(
-                officer.InstanceID,
+            bool allowed = new OfficerCommandCommands(game).CanSetRank(
+                officer,
                 OfficerRank.Admiral,
                 _ownerId
             );
 
-            Assert.IsTrue(changed);
-            Assert.AreEqual(OfficerRank.Admiral, officer.CurrentRank);
+            Assert.IsFalse(allowed);
         }
 
         [Test]
