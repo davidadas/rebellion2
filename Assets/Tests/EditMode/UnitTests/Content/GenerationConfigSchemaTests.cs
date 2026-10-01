@@ -216,8 +216,35 @@ namespace Rebellion.Tests.Content
             <Units><UnitEntry><TypeID>UNIT_TYPE</TypeID><Count>1</Count></UnitEntry></Units>
           </WeightedUnitEntry>
         </UnitTable>
+        <Bonuses>
+          <StartingUnitBudgetBonus>
+            <Difficulty>Hard</Difficulty>
+            <AIOnly>true</AIOnly>
+            <RollMaximumExclusive>2</RollMaximumExclusive>
+            <BudgetLevels>
+              <BudgetLevel>
+                <GalaxySize>0</GalaxySize>
+                <Percentage>0</Percentage>
+              </BudgetLevel>
+            </BudgetLevels>
+            <UnitTable>
+              <WeightedUnitEntry>
+                <CumulativeWeight>1</CumulativeWeight>
+                <Units><UnitEntry><TypeID>UNIT_TYPE</TypeID><Count>1</Count></UnitEntry></Units>
+              </WeightedUnitEntry>
+            </UnitTable>
+          </StartingUnitBudgetBonus>
+        </Bonuses>
       </FactionBudget>
     </FactionBudgets>
+    <CountMultipliers>
+      <StartingUnitCountMultiplier>
+        <Difficulty>Hard</Difficulty>
+        <AIOnly>true</AIOnly>
+        <StarfighterCountMultiplier>2</StarfighterCountMultiplier>
+        <RegimentCountMultiplier>2</RegimentCountMultiplier>
+      </StartingUnitCountMultiplier>
+    </CountMultipliers>
   </UnitDeployment>
   <Balance>
     <SupportBoostPerUnit>0</SupportBoostPerUnit>
