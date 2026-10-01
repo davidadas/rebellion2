@@ -155,11 +155,7 @@ namespace Rebellion.Simulation
                 );
                 result.StrikeAttempts = Math.Max(
                     0,
-                    result.BombardmentStrength
-                        - BombardmentQueries.GetBombardmentShieldResistance(
-                            result.ShieldStrength,
-                            _game.Config.Combat.Bombardment
-                        )
+                    result.BombardmentStrength - result.ShieldStrength
                 );
 
                 bool civilianTargetsDestroyed = ResolveStrikes(

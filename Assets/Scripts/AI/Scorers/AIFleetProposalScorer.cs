@@ -1287,7 +1287,7 @@ namespace Rebellion.AI.Scorers
             int bombardment = projected
                 ? context.Assessment.GetProjectedFleetBombardmentStrength(fleet)
                 : context.Assessment.GetFleetBombardmentStrength(fleet);
-            return bombardment > context.Assessment.GetBombardmentShieldResistance(targetPlanet);
+            return bombardment > context.Assessment.GetBombardmentShieldStrength(targetPlanet);
         }
 
         /// <summary>
@@ -1306,7 +1306,7 @@ namespace Rebellion.AI.Scorers
             return fleet != null
                 && targetPlanet != null
                 && context.Assessment.GetFleetBombardmentStrength(fleet)
-                    > context.Assessment.GetBombardmentShieldResistance(targetPlanet)
+                    > context.Assessment.GetBombardmentShieldStrength(targetPlanet)
                 && context.Assessment.HasBombardmentTargets(targetPlanet);
         }
 

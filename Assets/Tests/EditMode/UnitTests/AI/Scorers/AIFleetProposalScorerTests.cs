@@ -417,9 +417,9 @@ namespace Rebellion.Tests.AI.Fleets
             AddShield(game, target, "shield-1", rebels.InstanceID, 50);
             AddShield(game, target, "shield-2", rebels.InstanceID, 50);
             Fleet capitalOnly = AddAssaultFleet(game, owned, "capital-only", empire.InstanceID);
-            capitalOnly.GetChildren<CapitalShip>()[0].Bombardment = 10;
+            capitalOnly.GetChildren<CapitalShip>()[0].Bombardment = 100;
             Fleet combinedArms = AddAssaultFleet(game, owned, "combined", empire.InstanceID);
-            combinedArms.GetChildren<CapitalShip>()[0].Bombardment = 10;
+            combinedArms.GetChildren<CapitalShip>()[0].Bombardment = 100;
             Starfighter bomber = new Starfighter
             {
                 InstanceID = "bomber",

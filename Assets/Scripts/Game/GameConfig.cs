@@ -978,7 +978,6 @@ namespace Rebellion.Game
         {
             public int AttackerLeadershipDivisor { get; set; }
             public int DefenderLeadershipDivisor { get; set; }
-            public int ShieldStrengthDivisor { get; set; }
             public int StrikeRollMinimum { get; set; }
             public int StrikeRollMaximum { get; set; }
             public int EnergyResistance { get; set; }

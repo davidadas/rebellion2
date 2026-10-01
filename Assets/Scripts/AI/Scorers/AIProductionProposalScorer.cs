@@ -715,7 +715,7 @@ namespace Rebellion.AI.Scorers
                 fleet != null
                 && context.Assessment.GetDefendingRegimentCount(targetPlanet) > 0
                 && context.Assessment.GetProjectedFleetBombardmentStrength(fleet)
-                    > context.Assessment.GetBombardmentShieldResistance(targetPlanet);
+                    > context.Assessment.GetBombardmentShieldStrength(targetPlanet);
             return canBombardDefenders ? demand.OccupationRegimentCount : demand.RegimentCount;
         }
 
