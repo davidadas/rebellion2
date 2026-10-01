@@ -1660,16 +1660,13 @@ namespace Rebellion.AI
         }
 
         /// <summary>
-        /// Returns planetary shield resistance on the bombardment-rating scale.
+        /// Returns the planetary shield strength absorbed before bombardment strikes occur.
         /// </summary>
         /// <param name="planet">The planet whose shields are evaluated.</param>
         /// <returns>The bombardment strength absorbed by the shields.</returns>
-        public int GetBombardmentShieldResistance(Planet planet)
+        public int GetBombardmentShieldStrength(Planet planet)
         {
-            return BombardmentQueries.GetBombardmentShieldResistance(
-                BombardmentQueries.GetBombardmentShieldStrength(planet),
-                _game.Config.Combat.Bombardment
-            );
+            return BombardmentQueries.GetBombardmentShieldStrength(planet);
         }
 
         /// <summary>

@@ -299,7 +299,7 @@ public static partial class HeadlessSimulationRunner
                 target,
                 context.Game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit
             )
-                ? context.Assessment.GetBombardmentShieldResistance(target) + 1
+                ? context.Assessment.GetBombardmentShieldStrength(target) + 1
                 : 0;
         }
 

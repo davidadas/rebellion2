@@ -103,7 +103,7 @@ namespace Rebellion.AI.Proposals
 
             if (
                 context.Assessment.GetFleetBombardmentStrength(Fleet)
-                    > context.Assessment.GetBombardmentShieldResistance(HostilePlanet)
+                    > context.Assessment.GetBombardmentShieldStrength(HostilePlanet)
                 && context.Assessment.HasBombardmentTargets(HostilePlanet)
             )
                 return true;
@@ -114,7 +114,7 @@ namespace Rebellion.AI.Proposals
             bool canBombardDefenders =
                 context.Assessment.GetDefendingRegimentCount(HostilePlanet) > 0
                 && context.Assessment.GetFleetBombardmentStrength(Fleet)
-                    > context.Assessment.GetBombardmentShieldResistance(HostilePlanet);
+                    > context.Assessment.GetBombardmentShieldStrength(HostilePlanet);
             int requiredRegiments = canBombardDefenders
                 ? demand.OccupationRegimentCount
                 : demand.RegimentCount;
