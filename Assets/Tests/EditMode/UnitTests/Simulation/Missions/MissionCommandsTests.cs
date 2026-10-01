@@ -349,12 +349,11 @@ namespace Rebellion.Tests.Simulation
             AddMissionReturnPlanet(game, sector, "far-planet", "empire", positionX: 100);
             List<GameResult> results = system.UpdateMission(mission);
 
-            Assert.AreEqual(
-                MissionOutcome.Failed,
-                results.OfType<MissionCompletedResult>().Single().Outcome
-            );
+            MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
+            Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
             Assert.AreSame(carrier, officer.GetParent());
             Assert.AreSame(carrier, specialForces.GetParent());
+            Assert.AreSame(fleetLocation, completed.ReturnDestination);
             Assert.IsFalse(officer.IsCaptured);
         }
 
@@ -379,12 +378,11 @@ namespace Rebellion.Tests.Simulation
             );
             List<GameResult> results = system.UpdateMission(mission);
 
-            Assert.AreEqual(
-                MissionOutcome.Failed,
-                results.OfType<MissionCompletedResult>().Single().Outcome
-            );
+            MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
+            Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
             Assert.AreSame(destination, officer.GetParent());
             Assert.AreSame(destination, specialForces.GetParent());
+            Assert.AreSame(destination, completed.ReturnDestination);
             Assert.IsFalse(officer.IsCaptured);
         }
 
@@ -3418,12 +3416,16 @@ namespace Rebellion.Tests.Simulation
             while (!mission.IsComplete())
                 mission.IncrementProgress();
 
-            system.UpdateMission(mission);
+            List<GameResult> results = system.UpdateMission(mission);
 
             Assert.AreEqual(
                 ship,
                 officer.GetParent(),
                 "Officer should return to its recorded ship when the origin fleet has moved"
+            );
+            Assert.AreSame(
+                planetB,
+                results.OfType<MissionCompletedResult>().Single().ReturnDestination
             );
         }
 

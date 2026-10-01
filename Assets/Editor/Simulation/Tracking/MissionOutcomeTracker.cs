@@ -161,6 +161,8 @@ public static partial class HeadlessSimulationRunner
         public int Succeeded;
         public int Failed;
         public int Foiled;
+        public int InternallyFoiled;
+        public int ExternallyFoiled;
         public int Injuries;
         public int Captures;
         public int FoiledMissionInjuries;
@@ -188,6 +190,8 @@ public static partial class HeadlessSimulationRunner
         public int Succeeded;
         public int Failed;
         public int Foiled;
+        public int InternallyFoiled;
+        public int ExternallyFoiled;
         public int Injuries;
         public int Captures;
         public int FoiledMissionInjuries;
@@ -233,6 +237,10 @@ public static partial class HeadlessSimulationRunner
                         break;
                     case MissionOutcome.Foiled:
                         counts.Foiled++;
+                        if (string.IsNullOrEmpty(result.FoilingFactionInstanceID))
+                            counts.InternallyFoiled++;
+                        else
+                            counts.ExternallyFoiled++;
                         break;
                 }
 
@@ -282,6 +290,8 @@ public static partial class HeadlessSimulationRunner
                 Succeeded = total.Succeeded,
                 Failed = total.Failed,
                 Foiled = total.Foiled,
+                InternallyFoiled = total.InternallyFoiled,
+                ExternallyFoiled = total.ExternallyFoiled,
                 Injuries = total.Injuries,
                 Captures = total.Captures,
                 FoiledMissionInjuries = total.FoiledMissionInjuries,
@@ -431,6 +441,8 @@ public static partial class HeadlessSimulationRunner
             public int Succeeded;
             public int Failed;
             public int Foiled;
+            public int InternallyFoiled;
+            public int ExternallyFoiled;
             public int Injuries;
             public int Captures;
             public int FoiledMissionInjuries;
@@ -445,6 +457,8 @@ public static partial class HeadlessSimulationRunner
                 Succeeded += other.Succeeded;
                 Failed += other.Failed;
                 Foiled += other.Foiled;
+                InternallyFoiled += other.InternallyFoiled;
+                ExternallyFoiled += other.ExternallyFoiled;
                 Injuries += other.Injuries;
                 Captures += other.Captures;
                 FoiledMissionInjuries += other.FoiledMissionInjuries;
@@ -464,6 +478,8 @@ public static partial class HeadlessSimulationRunner
                     Succeeded = Succeeded,
                     Failed = Failed,
                     Foiled = Foiled,
+                    InternallyFoiled = InternallyFoiled,
+                    ExternallyFoiled = ExternallyFoiled,
                     Injuries = Injuries,
                     Captures = Captures,
                     FoiledMissionInjuries = FoiledMissionInjuries,
