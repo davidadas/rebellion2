@@ -181,7 +181,7 @@ namespace Rebellion.AI.Proposals
             bool canDamageMilitaryTargets =
                 canBombard
                 && context.Assessment.GetFleetBombardmentStrength(Fleet)
-                    > context.Assessment.GetBombardmentShieldResistance(liveTarget);
+                    > context.Assessment.GetBombardmentShieldStrength(liveTarget);
             bool shouldBombardMilitaryTargets =
                 canDamageMilitaryTargets
                 && BombardmentQueries.HasActiveMilitaryTargets(
@@ -407,7 +407,7 @@ namespace Rebellion.AI.Proposals
                 && targetPlanet != null
                 && context.Assessment.GetDefendingRegimentCount(targetPlanet) > 0
                 && context.Assessment.GetFleetBombardmentStrength(Fleet)
-                    > context.Assessment.GetBombardmentShieldResistance(targetPlanet);
+                    > context.Assessment.GetBombardmentShieldStrength(targetPlanet);
         }
 
         /// <summary>
@@ -421,7 +421,7 @@ namespace Rebellion.AI.Proposals
             return Fleet != null
                 && targetPlanet != null
                 && context.Assessment.GetFleetBombardmentStrength(Fleet)
-                    > context.Assessment.GetBombardmentShieldResistance(targetPlanet)
+                    > context.Assessment.GetBombardmentShieldStrength(targetPlanet)
                 && context.Assessment.HasBombardmentTargets(targetPlanet);
         }
 

@@ -103,6 +103,18 @@ namespace Rebellion.Game.Units
         }
 
         /// <summary>
+        /// Determines whether a registered unit definition belongs to the requested category.
+        /// </summary>
+        /// <typeparam name="T">The unit category to check.</typeparam>
+        /// <param name="typeID">The unit type identifier.</param>
+        /// <returns>True when the registered definition is assignable to the requested category.</returns>
+        public bool IsType<T>(string typeID)
+            where T : class, ISceneNode, IManufacturable
+        {
+            return _templates.TryGetValue(typeID, out ISceneNode template) && template is T;
+        }
+
+        /// <summary>
         /// Combines the available unit-definition categories into one template sequence.
         /// </summary>
         /// <param name="categories">The categories.</param>
