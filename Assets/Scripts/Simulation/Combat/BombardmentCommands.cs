@@ -68,29 +68,6 @@ namespace Rebellion.Simulation
             if (!_queries.CanExecute(fleets, targetPlanet, type))
                 return null;
 
-            BombardmentResult result = Execute(fleets, targetPlanet, type);
-            List<GameResult> results = new List<GameResult> { result };
-            results.AddRange(result.Events);
-            if (result.OwnershipChange != null)
-                results.Add(result.OwnershipChange);
-
-            ResultsProduced?.Invoke(results);
-            return result;
-        }
-
-        /// <summary>
-        /// Runs the 6-stage orbital bombardment pipeline against a target planet.
-        /// </summary>
-        /// <param name="attackingFleets">Fleets performing the bombardment (all must share a faction).</param>
-        /// <param name="targetPlanet">Planet being bombarded.</param>
-        /// <param name="type">Targets and consequences selected for the bombardment.</param>
-        /// <returns>Bombardment outcome, including strikes and any ship/regiment/building destruction.</returns>
-        public BombardmentResult Execute(
-            List<Fleet> attackingFleets,
-            Planet targetPlanet,
-            BombardmentType type
-        )
-        {
             BombardmentResult result = new BombardmentResult
             {
                 Planet = targetPlanet,
@@ -98,67 +75,65 @@ namespace Rebellion.Simulation
                 Tick = _game.CurrentTick,
             };
 
-            if (!_queries.CanExecute(attackingFleets, targetPlanet, type))
-                return result;
-
-            string attackerId = attackingFleets[0].GetOwnerInstanceID();
+            string attackerId = fleets[0].GetOwnerInstanceID();
             string defenderId = targetPlanet.GetOwnerInstanceID();
             result.AttackingFaction = _game.GetFactionByOwnerInstanceID(attackerId);
             result.AttackerOwnerInstanceID = attackerId;
             result.DefenderOwnerInstanceID = defenderId;
-            result.AttackingUnits.AddRange(CombatUnitSnapshot.CaptureFleetUnits(attackingFleets));
+            result.AttackingUnits.AddRange(CombatUnitSnapshot.CaptureFleetUnits(fleets));
             result.DefendingUnits.AddRange(
                 CombatUnitSnapshot.CapturePlanetUnits(targetPlanet, defenderId)
             );
 
-            SetBombardmentCombatState(attackingFleets, targetPlanet, true);
+            SetBombardmentCombatState(fleets, targetPlanet, true);
             try
             {
                 bool destroysPlanet =
                     type == BombardmentType.DestroyPlanet
-                    && BombardmentQueries.HasPlanetDestroyingShip(attackingFleets);
+                    && BombardmentQueries.HasPlanetDestroyingShip(fleets);
                 if (destroysPlanet)
                     DestroyPlanet(targetPlanet, result);
 
-                ResolveBombardmentDefenseFire(attackingFleets, targetPlanet, result);
-                if (destroysPlanet)
-                    return result;
-
-                if (!BombardmentQueries.GetActiveCapitalShips(attackingFleets).Any())
-                    return result;
-
-                result.BombardmentStrength = BombardmentQueries.GetBombardmentStrength(
-                    attackingFleets,
-                    _game.Config.Combat.Bombardment
-                );
-                result.ShieldStrength = BombardmentQueries.GetBombardmentShieldStrength(
-                    targetPlanet
-                );
-                result.StrikeAttempts = Math.Max(
-                    0,
-                    result.BombardmentStrength - result.ShieldStrength
-                );
-
-                ResolveStrikes(targetPlanet, defenderId, type, result);
-
-                if (result.DestroyedRegiments.Count > 0)
+                ResolveBombardmentDefenseFire(fleets, targetPlanet, result);
+                if (!destroysPlanet && BombardmentQueries.GetActiveCapitalShips(fleets).Any())
                 {
-                    result.Events.Add(
-                        new PlanetGarrisonChangedResult
-                        {
-                            Planet = targetPlanet,
-                            Tick = _game.CurrentTick,
-                        }
+                    result.BombardmentStrength = BombardmentQueries.GetBombardmentStrength(
+                        fleets,
+                        _game.Config.Combat.Bombardment
                     );
-                }
+                    result.ShieldStrength = BombardmentQueries.GetBombardmentShieldStrength(
+                        targetPlanet
+                    );
+                    result.StrikeAttempts = Math.Max(
+                        0,
+                        result.BombardmentStrength - result.ShieldStrength
+                    );
 
-                return result;
+                    ResolveStrikes(targetPlanet, defenderId, type, result);
+
+                    if (result.DestroyedRegiments.Count > 0)
+                    {
+                        result.Events.Add(
+                            new PlanetGarrisonChangedResult
+                            {
+                                Planet = targetPlanet,
+                                Tick = _game.CurrentTick,
+                            }
+                        );
+                    }
+                }
             }
             finally
             {
                 RecordUnitOutcomes(result);
-                SetBombardmentCombatState(attackingFleets, targetPlanet, false);
+                SetBombardmentCombatState(fleets, targetPlanet, false);
             }
+
+            List<GameResult> results = new List<GameResult> { result };
+            results.AddRange(result.Events);
+
+            ResultsProduced?.Invoke(results);
+            return result;
         }
 
         /// <summary>
