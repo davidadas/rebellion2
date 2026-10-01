@@ -1825,7 +1825,7 @@ namespace Rebellion.AI.Planners
             return fleet != null
                 && targetPlanet != null
                 && context.Assessment.GetFleetBombardmentStrength(fleet)
-                    > context.Assessment.GetBombardmentShieldResistance(targetPlanet)
+                    > context.Assessment.GetBombardmentShieldStrength(targetPlanet)
                 && context.Assessment.HasBombardmentTargets(targetPlanet);
         }
 
@@ -1931,7 +1931,7 @@ namespace Rebellion.AI.Planners
             int bombardment = projected
                 ? context.Assessment.GetProjectedFleetBombardmentStrength(fleet)
                 : context.Assessment.GetFleetBombardmentStrength(fleet);
-            return bombardment > context.Assessment.GetBombardmentShieldResistance(targetPlanet);
+            return bombardment > context.Assessment.GetBombardmentShieldStrength(targetPlanet);
         }
     }
 }
