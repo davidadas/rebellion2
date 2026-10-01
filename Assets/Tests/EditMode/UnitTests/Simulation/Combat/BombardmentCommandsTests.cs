@@ -254,13 +254,27 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void Execute_PlanetaryShieldStrength_UsesBombardmentScale()
+        public void Execute_TwoPlanetaryShields_AbsorbTheirFullCombinedStrength()
         {
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "empire", energy: 10);
             AddRegiment(game, planet, "defender", "empire");
-            Building shield = AddBuilding(game, planet, "shield", "empire", BuildingType.Defense);
-            shield.ShieldStrength = 40;
+            Building firstShield = AddBuilding(
+                game,
+                planet,
+                "shield-1",
+                "empire",
+                BuildingType.Defense
+            );
+            firstShield.ShieldStrength = 40;
+            Building secondShield = AddBuilding(
+                game,
+                planet,
+                "shield-2",
+                "empire",
+                BuildingType.Defense
+            );
+            secondShield.ShieldStrength = 40;
             Fleet fleet = AddBombardmentFleet(game, planet, "alliance", bombardment: 5);
 
             BombardmentResult result = MakeBombardment(
@@ -270,8 +284,8 @@ namespace Rebellion.Tests.Simulation
                 .Execute(new List<Fleet> { fleet }, planet, BombardmentType.Military);
 
             Assert.AreEqual(5, result.BombardmentStrength);
-            Assert.AreEqual(40, result.ShieldStrength);
-            Assert.AreEqual(1, result.StrikeAttempts);
+            Assert.AreEqual(80, result.ShieldStrength);
+            Assert.Zero(result.StrikeAttempts);
         }
 
         [Test]

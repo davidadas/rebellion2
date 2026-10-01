@@ -285,6 +285,28 @@ namespace Rebellion.Generation
         public string FactionID;
         public List<BudgetLevel> BudgetLevels;
         public List<WeightedUnitEntry> UnitTable;
+        public List<StartingUnitBudgetBonus> Bonuses;
+    }
+
+    /// <summary>
+    /// Identifies the unit category eligible for an additional starting budget.
+    /// </summary>
+    public enum StartingUnitBudgetCategory
+    {
+        Starfighter,
+        Regiment,
+    }
+
+    /// <summary>
+    /// Defines an additional starting-unit allocation for one difficulty and controller role.
+    /// </summary>
+    [PersistableObject]
+    public class StartingUnitBudgetBonus
+    {
+        public GameDifficulty Difficulty;
+        public bool AIOnly;
+        public StartingUnitBudgetCategory Category;
+        public List<BudgetLevel> BudgetLevels;
     }
 
     /// <summary>
@@ -303,7 +325,7 @@ namespace Rebellion.Generation
     [PersistableObject]
     public class WeightedUnitEntry
     {
-        public int CumulativeWeight;
+        public int Weight;
         public List<UnitEntry> Units;
     }
 

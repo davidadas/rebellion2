@@ -92,7 +92,7 @@ namespace Rebellion.AI.Demands
                 ),
                 combatCount + occupationCount,
                 occupationCount,
-                blockedByShields ? assessment.GetBombardmentShieldResistance(planet) + 1 : 0,
+                blockedByShields ? assessment.GetBombardmentShieldStrength(planet) + 1 : 0,
                 blockedByShields
             );
         }
