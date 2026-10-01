@@ -20,7 +20,7 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Applies the original weak-support reduction to a shift on a core sector.
+        /// Applies the configured weak-support reduction to a shift on a core sector.
         /// </summary>
         /// <param name="planet">The planet receiving the support shift.</param>
         /// <param name="faction">The faction whose support is changing.</param>

@@ -756,6 +756,36 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void Connect_CoreGarrisonRemoved_AppliesResistedSectorShift()
+        {
+            _targetPlanet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.Core;
+            _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
+            _targetPlanet.PopularSupport = new Dictionary<string, int>
+            {
+                { _rebels.InstanceID, 60 },
+                { _empire.InstanceID, 40 },
+            };
+            _empirePlanet.PopularSupport = new Dictionary<string, int>
+            {
+                { _rebels.InstanceID, 0 },
+                { _empire.InstanceID, 100 },
+            };
+            _rebels.Settings.SupportResistance = SupportChange.Increase;
+            _game.Config.SupportShift.WeakSupportPenaltyDivisor = 2;
+            Regiment regiment = EntityFactory.CreateRegiment("garrison", _empire.InstanceID);
+            regiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            _game.AttachNode(regiment, _targetPlanet);
+            _game.DetachNode(regiment);
+            GameResultBus bus = new GameResultBus();
+            _observer.Connect(bus);
+
+            bus.Publish(new PlanetGarrisonChangedResult { Planet = _targetPlanet, Tick = 10 });
+
+            Assert.AreEqual(65, _targetPlanet.GetPopularSupport(_rebels.InstanceID));
+            Assert.AreEqual(5, _empirePlanet.GetPopularSupport(_rebels.InstanceID));
+        }
+
+        [Test]
         public void Connect_GarrisonRemovalCreatesNeutrality_DrainsResultingTransfer()
         {
             _targetPlanet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.OuterRim;

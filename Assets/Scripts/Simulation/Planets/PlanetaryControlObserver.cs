@@ -279,13 +279,11 @@ namespace Rebellion.Simulation
         /// <returns>Ownership changes caused by the support shift.</returns>
         private List<GameResult> ApplyDirectBombardmentPenalty(Planet planet, Faction attacker)
         {
-            int shift = PlanetaryControlQueries.ApplyCoreSupportResistance(
-                planet,
+            return ApplyBombardmentSupportShift(
+                new[] { planet },
                 attacker,
-                _game.Config.Combat.Bombardment.CivilianSupportPenalty,
-                _game.Config.SupportShift.WeakSupportPenaltyDivisor
+                _game.Config.Combat.Bombardment.CivilianSupportPenalty
             );
-            return ApplyBombardmentSupportShift(new[] { planet }, attacker, shift);
         }
 
         /// <summary>
@@ -378,14 +376,8 @@ namespace Rebellion.Simulation
             if (request.Planet == null || request.Faction == null || request.Shift == 0)
                 return results;
 
-            int shift = PlanetaryControlQueries.ApplyCoreSupportResistance(
-                request.Planet,
-                request.Faction,
-                request.Shift,
-                _game.Config.SupportShift.WeakSupportPenaltyDivisor
-            );
             int oldSupport = request.Planet.GetPopularSupport(request.Faction.InstanceID);
-            _commands.ChangePopularSupport(request.Planet, request.Faction, shift);
+            _commands.ChangePopularSupport(request.Planet, request.Faction, request.Shift);
             int newSupport = request.Planet.GetPopularSupport(request.Faction.InstanceID);
             if (oldSupport == newSupport)
                 return results;

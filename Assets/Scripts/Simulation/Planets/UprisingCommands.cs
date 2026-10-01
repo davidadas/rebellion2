@@ -1145,13 +1145,6 @@ namespace Rebellion.Simulation
             if (shift == 0)
                 return;
 
-            shift = PlanetaryControlQueries.ApplyCoreSupportResistance(
-                planet,
-                faction,
-                shift,
-                _game.Config.SupportShift.WeakSupportPenaltyDivisor
-            );
-
             _planetaryControl.ChangePopularSupport(planet, faction, shift);
         }
 

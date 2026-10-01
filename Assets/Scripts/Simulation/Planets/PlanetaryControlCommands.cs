@@ -100,12 +100,6 @@ namespace Rebellion.Simulation
             int shift = blockadeSupportsFavoredFaction
                 ? config.BlockadeMatchShift
                 : config.BlockadeOpposeShift;
-            shift = PlanetaryControlQueries.ApplyCoreSupportResistance(
-                planet,
-                blockadingFaction,
-                shift,
-                config.WeakSupportPenaltyDivisor
-            );
             ChangePopularSupport(planet, blockadingFaction, shift);
             ScheduleBlockadeSupport(planet, interval);
         }
@@ -342,6 +336,15 @@ namespace Rebellion.Simulation
         internal void ChangePopularSupport(Planet planet, Faction faction, int shift)
         {
             if (planet == null || faction == null || shift == 0 || !planet.IsPopulated())
+                return;
+
+            shift = PlanetaryControlQueries.ApplyCoreSupportResistance(
+                planet,
+                faction,
+                shift,
+                _game.Config.SupportShift.WeakSupportPenaltyDivisor
+            );
+            if (shift == 0)
                 return;
 
             int currentSupport = planet.GetPopularSupport(faction.InstanceID);
