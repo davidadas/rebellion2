@@ -72,6 +72,7 @@ namespace Rebellion.AI.Demands
         public int BaseDemandPercent { get; }
         public Planet ReferencePlanet { get; }
         public bool EstablishesInitialShield { get; }
+        public bool UsesIdleShipyardCapacity { get; }
 
         // Reserve Policy.
         public bool CanUseRefinedMaterialReserve =>
@@ -109,6 +110,7 @@ namespace Rebellion.AI.Demands
         /// <param name="referencePlanet">Planet whose unmet need prompted this demand.</param>
         /// <param name="establishesInitialShield">Whether this demand establishes a planet's first shield.</param>
         /// <param name="deficitCount">Original unmet quantity before proposal batching.</param>
+        /// <param name="usesIdleShipyardCapacity">Whether this is opportunistic work for an otherwise idle local shipyard.</param>
         public AIProductionDemand(
             string id,
             AIProductionDemandKind kind,
@@ -123,7 +125,8 @@ namespace Rebellion.AI.Demands
             int baseDemandPercent = 0,
             Planet referencePlanet = null,
             bool establishesInitialShield = false,
-            int deficitCount = 0
+            int deficitCount = 0,
+            bool usesIdleShipyardCapacity = false
         )
         {
             Id = id;
@@ -137,6 +140,7 @@ namespace Rebellion.AI.Demands
             BaseDemandPercent = baseDemandPercent;
             ReferencePlanet = referencePlanet;
             EstablishesInitialShield = establishesInitialShield;
+            UsesIdleShipyardCapacity = usesIdleShipyardCapacity;
             ProductTypeId = productTypeId;
             CapitalShipRole = capitalShipRole;
             BuildingToReplace = buildingToReplace;
@@ -163,7 +167,8 @@ namespace Rebellion.AI.Demands
                 BaseDemandPercent,
                 ReferencePlanet,
                 EstablishesInitialShield,
-                DeficitCount
+                DeficitCount,
+                UsesIdleShipyardCapacity
             );
         }
 

@@ -405,9 +405,6 @@ namespace Rebellion.AI.Scorers
         /// <returns>The defensive urgency.</returns>
         private static double GetDefensePressure(AITurnContext context, AIProductionDemand demand)
         {
-            if (demand.Id?.Contains(":idle-shipyard:", StringComparison.Ordinal) == true)
-                return demand.BaseDemandPercent;
-
             GameConfig.AIProductionDemandUtilityConfig utility = context
                 .Game
                 .Config

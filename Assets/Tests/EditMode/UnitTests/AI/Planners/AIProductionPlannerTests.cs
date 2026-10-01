@@ -623,6 +623,76 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
+        public void Plan_WithIdleMultiShipyardDemand_UsesLocalEmptyShipyard()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Infrastructure.ProductionQueueTargetPlanningIntervals = 10;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet destination = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "destination",
+                empire.InstanceID
+            );
+            Planet alternate = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "alternate",
+                empire.InstanceID
+            );
+            for (int index = 0; index < 2; index++)
+            {
+                AITestSceneBuilder.AddProductionFacility(
+                    game,
+                    destination,
+                    $"destination-shipyard-{index}",
+                    BuildingType.Shipyard,
+                    ManufacturingType.Ship
+                );
+                AITestSceneBuilder.AddProductionFacility(
+                    game,
+                    alternate,
+                    $"alternate-shipyard-{index}",
+                    BuildingType.Shipyard,
+                    ManufacturingType.Ship
+                );
+            }
+            Starfighter fighter = AITestSceneBuilder.CreateStarfighter(
+                "fighter",
+                empire.InstanceID
+            );
+            empire.ResearchQueue[ManufacturingType.Ship] = new List<Technology>
+            {
+                new Technology(fighter),
+            };
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            context.SetProductionDemands(
+                new[]
+                {
+                    new AIProductionDemand(
+                        "idle-demand",
+                        AIProductionDemandKind.PlanetaryStarfighterReserve,
+                        ManufacturingType.Ship,
+                        BuildingType.None,
+                        destination,
+                        1,
+                        targetCount: 1,
+                        baseDemandPercent: 1,
+                        usesIdleShipyardCapacity: true
+                    ),
+                }
+            );
+
+            AIManufactureProposal proposal = new AIProductionPlanner()
+                .Plan(context)
+                .OfType<AIManufactureProposal>()
+                .Single();
+
+            Assert.AreSame(destination, proposal.ProducerPlanet);
+            Assert.AreSame(destination, proposal.Destination);
+        }
+
+        [Test]
         public void Plan_WithSpecialForcesMissionDemand_SelectsRequestedUnlockedType()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);

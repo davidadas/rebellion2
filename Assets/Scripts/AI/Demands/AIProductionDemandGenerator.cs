@@ -737,7 +737,7 @@ namespace Rebellion.AI.Demands
                     || context.Assessment.GetPlanetProductionFacilityCount(
                         planet,
                         ManufacturingType.Ship
-                    ) <= 0
+                    ) <= 1
                     || planet
                         .GetManufacturingQueue()
                         .TryGetValue(ManufacturingType.Ship, out List<IManufacturable> queue)
@@ -745,11 +745,8 @@ namespace Rebellion.AI.Demands
                 )
                     continue;
 
-                int targetCount =
-                    GetPlanetaryStarfighterCount(context, planet)
-                    + context.Game.Config.AI.Infrastructure.IdleShipyardFighterReserveCount;
-                if (GetOwnedStarfighterCount(context, planet) >= targetCount)
-                    continue;
+                int ownedCount = GetOwnedStarfighterCount(context, planet);
+                int targetCount = ownedCount + 1;
 
                 requirements.Add(
                     new AIProductionDemand(
@@ -770,7 +767,8 @@ namespace Rebellion.AI.Demands
                             .Config
                             .AI
                             .Infrastructure
-                            .IdleShipyardFighterDemandPercent
+                            .IdleShipyardFighterDemandPercent,
+                        usesIdleShipyardCapacity: true
                     )
                 );
             }

@@ -1677,12 +1677,18 @@ namespace Rebellion.AI.Planners
             if (_producerPlanets.TryGetValue(key, out List<Planet> producers))
                 return producers;
 
-            IEnumerable<Planet> eligibleProducers = context.Assessment.OwnedPlanets.Where(planet =>
-                mode == ProducerMode.FacilityExpansion ? CanQueueFacilityExpansion(context, planet)
-                : mode == ProducerMode.Distributed
-                    ? HasProductionFacility(context, planet, demand.ManufacturingType)
-                : CanProduce(planet, demand.ManufacturingType)
-            );
+            IEnumerable<Planet> eligibleProducers = demand.UsesIdleShipyardCapacity
+                ? context.Assessment.OwnedPlanets.Where(planet =>
+                    planet == destinationPlanet
+                    && HasProductionFacility(context, planet, demand.ManufacturingType)
+                )
+                : context.Assessment.OwnedPlanets.Where(planet =>
+                    mode == ProducerMode.FacilityExpansion
+                        ? CanQueueFacilityExpansion(context, planet)
+                    : mode == ProducerMode.Distributed
+                        ? HasProductionFacility(context, planet, demand.ManufacturingType)
+                    : CanProduce(planet, demand.ManufacturingType)
+                );
             eligibleProducers = eligibleProducers.Where(producer =>
                 CanAllocateProducerToDemand(context, producer, demand)
             );
@@ -1898,7 +1904,9 @@ namespace Rebellion.AI.Planners
                 ManufacturingType.Ship
             );
             return demand.Kind == AIProductionDemandKind.PlanetaryStarfighterReserve
-                ? shipyardCount == 1
+                ? demand.UsesIdleShipyardCapacity
+                    ? shipyardCount > 1
+                    : shipyardCount == 1
                 : shipyardCount > 0;
         }
 

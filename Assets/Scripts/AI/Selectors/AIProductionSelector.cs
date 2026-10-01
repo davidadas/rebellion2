@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.AI.Demands;
 using Rebellion.AI.Proposals;
 using Rebellion.AI.Scorers;
@@ -33,6 +34,8 @@ namespace Rebellion.AI.Selectors
         );
         private readonly HashSet<string> _drainingProducerStreams = new(StringComparer.Ordinal);
         private int _selectedMaintenanceCost;
+        private int? _unfinishedPlanetStarfighterCount;
+        private int _selectedIdleShipyardFighterCount;
 
         /// <summary>
         /// Creates a production selector backed by the current turn's allocation ledger.
@@ -129,6 +132,8 @@ namespace Rebellion.AI.Selectors
             ReserveProducerCapacity(proposal);
             ReserveDestinationEnergy(proposal);
             _selectedMaintenanceCost += proposal.GetMaintenanceCost();
+            if (proposal.Demand?.UsesIdleShipyardCapacity == true)
+                _selectedIdleShipyardFighterCount += proposal.GetManufacturingCount();
         }
 
         /// <summary>
@@ -140,7 +145,38 @@ namespace Rebellion.AI.Selectors
         internal bool CanReserve(AITurnContext context, AIManufactureProposal proposal)
         {
             return _selectionState.CanReserve(GetReservations(proposal))
-                && !WouldExceedMaintenanceHeadroom(context, proposal);
+                && !WouldExceedMaintenanceHeadroom(context, proposal)
+                && CanReserveIdleShipyardCapacity(context, proposal);
+        }
+
+        /// <summary>
+        /// Returns whether opportunistic fighter work fits the faction-wide concurrency limit.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="proposal">The manufacturing action to inspect.</param>
+        /// <returns>True when the proposal is not opportunistic or a filler slot remains.</returns>
+        private bool CanReserveIdleShipyardCapacity(
+            AITurnContext context,
+            AIManufactureProposal proposal
+        )
+        {
+            if (proposal?.Demand?.UsesIdleShipyardCapacity != true)
+                return true;
+
+            if (!_unfinishedPlanetStarfighterCount.HasValue)
+            {
+                _unfinishedPlanetStarfighterCount = context
+                    .Assessment.OwnedPlanets.SelectMany(context.Assessment.GetPlanetStarfighters)
+                    .Count(starfighter =>
+                        starfighter.ManufacturingStatus != ManufacturingStatus.Complete
+                    );
+            }
+
+            int limit = context.Game.Config.AI.Infrastructure.IdleShipyardFighterReserveCount;
+            return _unfinishedPlanetStarfighterCount.Value
+                    + _selectedIdleShipyardFighterCount
+                    + proposal.GetManufacturingCount()
+                <= limit;
         }
 
         /// <summary>

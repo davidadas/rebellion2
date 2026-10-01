@@ -392,6 +392,61 @@ namespace Rebellion.Tests.AI.Phases
             CollectionAssert.AreEqual(new[] { proposal }, selected);
         }
 
+        [Test]
+        public void Select_WithMultipleIdleShipyardFighters_SelectsConfiguredConcurrentCount()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Infrastructure.IdleShipyardFighterReserveCount = 1;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet higherPlanet = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "higher-planet",
+                empire.InstanceID
+            );
+            Planet lowerPlanet = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "lower-planet",
+                empire.InstanceID
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                higherPlanet,
+                "higher-shipyard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                lowerPlanet,
+                "lower-shipyard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            Starfighter fighter = AITestSceneBuilder.CreateStarfighter(
+                "fighter",
+                empire.InstanceID
+            );
+            AIManufactureProposal higher = CreateIdleShipyardFighterProposal(
+                higherPlanet,
+                fighter,
+                20
+            );
+            AIManufactureProposal lower = CreateIdleShipyardFighterProposal(
+                lowerPlanet,
+                fighter,
+                10
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            context.AddProposal(lower);
+            context.AddProposal(higher);
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+
+            CollectionAssert.AreEqual(new[] { higher }, selected);
+        }
+
         [TestCase(AIProductionDemandKind.ConstructionFacility, BuildingType.ConstructionFacility)]
         [TestCase(AIProductionDemandKind.Shipyard, BuildingType.Shipyard)]
         [TestCase(AIProductionDemandKind.TrainingFacility, BuildingType.TrainingFacility)]
@@ -734,6 +789,40 @@ namespace Rebellion.Tests.AI.Phases
 
             empire.RefinedMaterialStockpile = 0;
             return AITestSceneBuilder.CreateContext(game, empire);
+        }
+
+        /// <summary>
+        /// Creates one scored opportunistic planetary-fighter proposal.
+        /// </summary>
+        /// <param name="planet">Planet producing and receiving the fighter.</param>
+        /// <param name="fighter">Fighter technology to manufacture.</param>
+        /// <param name="score">Proposal score.</param>
+        /// <returns>The configured proposal.</returns>
+        private static AIManufactureProposal CreateIdleShipyardFighterProposal(
+            Planet planet,
+            Starfighter fighter,
+            double score
+        )
+        {
+            AIProductionDemand demand = new AIProductionDemand(
+                $"idle-{planet.InstanceID}",
+                AIProductionDemandKind.PlanetaryStarfighterReserve,
+                ManufacturingType.Ship,
+                BuildingType.None,
+                planet,
+                1,
+                targetCount: 1,
+                baseDemandPercent: 1,
+                usesIdleShipyardCapacity: true
+            );
+            AIManufactureProposal proposal = new AIManufactureProposal(
+                demand,
+                planet,
+                new Technology(fighter),
+                true
+            );
+            proposal.SetScore(score);
+            return proposal;
         }
 
         /// <summary>

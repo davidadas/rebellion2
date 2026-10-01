@@ -1221,6 +1221,13 @@ namespace Rebellion.Tests.AI.Demands
                 BuildingType.Shipyard,
                 ManufacturingType.Ship
             );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "second-shipyard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
             for (
                 int index = 0;
                 index < game.Config.AI.NonCapitalSummary.StarfighterRequirementInfrastructure;
@@ -1264,9 +1271,11 @@ namespace Rebellion.Tests.AI.Demands
             );
 
             Assert.AreEqual(1, demand.QuantityNeeded);
-            Assert.AreEqual(
+            Assert.IsTrue(demand.UsesIdleShipyardCapacity);
+            Assert.GreaterOrEqual(
+                AIProductionProposalScorer.GetDemandPressure(context, demand),
                 game.Config.AI.Infrastructure.IdleShipyardFighterDemandPercent,
-                AIProductionProposalScorer.GetDemandPressure(context, demand)
+                "Idle work should retain its configured minimum pressure."
             );
 
             game.AttachNode(
@@ -1276,11 +1285,14 @@ namespace Rebellion.Tests.AI.Demands
             demands = new AIProductionDemandGenerator().BuildDemands(
                 AITestSceneBuilder.CreateContext(game, empire)
             );
-            Assert.IsFalse(
-                demands.Any(item =>
-                    item.Kind == AIProductionDemandKind.PlanetaryStarfighterReserve
-                    && item.DestinationPlanet == planet
-                )
+            AIProductionDemand nextDemand = demands.Single(item =>
+                item.Kind == AIProductionDemandKind.PlanetaryStarfighterReserve
+                && item.DestinationPlanet == planet
+            );
+            Assert.AreEqual(1, nextDemand.QuantityNeeded);
+            Assert.AreEqual(
+                game.Config.AI.NonCapitalSummary.StarfighterRequirementInfrastructure + 2,
+                nextDemand.TargetCount
             );
         }
 
