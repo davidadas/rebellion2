@@ -229,7 +229,6 @@ namespace Rebellion.Generation
         public List<FixedGarrison> FixedGarrisons;
         public List<FixedFleet> FixedFleets;
         public List<FactionBudget> FactionBudgets;
-        public List<StartingUnitCountMultiplier> CountMultipliers;
     }
 
     /// <summary>
@@ -290,30 +289,24 @@ namespace Rebellion.Generation
     }
 
     /// <summary>
+    /// Identifies the unit category eligible for an additional starting budget.
+    /// </summary>
+    public enum StartingUnitBudgetCategory
+    {
+        Starfighter,
+        Regiment,
+    }
+
+    /// <summary>
     /// Defines an additional starting-unit allocation for one difficulty and controller role.
     /// </summary>
     [PersistableObject]
     public class StartingUnitBudgetBonus
     {
-        public const int StandardRollMaximumExclusive = 101;
-
         public GameDifficulty Difficulty;
         public bool AIOnly;
-        public int RollMaximumExclusive = StandardRollMaximumExclusive;
+        public StartingUnitBudgetCategory Category;
         public List<BudgetLevel> BudgetLevels;
-        public List<WeightedUnitEntry> UnitTable;
-    }
-
-    /// <summary>
-    /// Multiplies selected starting-unit counts for one difficulty and controller role.
-    /// </summary>
-    [PersistableObject]
-    public class StartingUnitCountMultiplier
-    {
-        public GameDifficulty Difficulty;
-        public bool AIOnly;
-        public int StarfighterCountMultiplier = 1;
-        public int RegimentCountMultiplier = 1;
     }
 
     /// <summary>
@@ -332,7 +325,7 @@ namespace Rebellion.Generation
     [PersistableObject]
     public class WeightedUnitEntry
     {
-        public int CumulativeWeight;
+        public int Weight;
         public List<UnitEntry> Units;
     }
 

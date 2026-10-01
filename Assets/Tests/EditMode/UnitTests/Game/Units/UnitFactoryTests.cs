@@ -60,6 +60,26 @@ namespace Rebellion.Tests.Game.Units
             StringAssert.Contains("Unit TypeID 'X_WING' is not a Regiment", exception.Message);
         }
 
+        [Test]
+        public void IsType_MatchingCategory_ReturnsTrue()
+        {
+            UnitFactory factory = CreateFactory(new Starfighter { TypeID = "X_WING" });
+
+            bool result = factory.IsType<Starfighter>("X_WING");
+
+            Assert.IsTrue(result);
+        }
+
+        [Test]
+        public void IsType_DifferentCategory_ReturnsFalse()
+        {
+            UnitFactory factory = CreateFactory(new Starfighter { TypeID = "X_WING" });
+
+            bool result = factory.IsType<Regiment>("X_WING");
+
+            Assert.IsFalse(result);
+        }
+
         /// <summary>
         /// Creates a unit factory containing only the supplied starfighter definitions.
         /// </summary>

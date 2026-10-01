@@ -49,7 +49,6 @@ namespace Rebellion.Generation
                 ctx.Rng
             );
             DeployBudgetUnits(ctx, factory, config);
-            ApplyStartingUnitCountMultipliers(ctx, factory, config.CountMultipliers);
         }
 
         /// <summary>
@@ -358,10 +357,9 @@ namespace Rebellion.Generation
         }
 
         /// <summary>
-        /// Deploys units for each faction using a maintenance-budget loop.
-        /// Budget is calculated from available maintenance capacity, then units are
-        /// rolled from a weighted table and placed on random owned core planets
-        /// until the budget is exhausted.
+        /// Deploys each faction's normal starting allocation before applying conditional bonus
+        /// allocations. Capturing every faction's available capacity first keeps a bonus from
+        /// changing another faction's normal random-roll sequence or budget.
         /// </summary>
         /// <param name="ctx">The generation context.</param>
         /// <param name="factory">Unit factory for creating and costing unit instances.</param>
@@ -372,6 +370,13 @@ namespace Rebellion.Generation
             UnitDeploymentSection config
         )
         {
+            List<(
+                FactionBudget Budget,
+                Faction Faction,
+                List<Planet> Planets,
+                int AvailableCapacity
+            )> allocations = new();
+
             foreach (FactionBudget budget in config.FactionBudgets)
             {
                 Faction faction = ctx.Factions.FirstOrDefault(f =>
@@ -385,160 +390,91 @@ namespace Rebellion.Generation
                     continue;
 
                 int availableCapacity = CalculateAvailableMaintenanceCapacity(ctx, faction);
+                allocations.Add((budget, faction, ownedCorePlanets, availableCapacity));
+            }
+
+            foreach (var allocation in allocations)
+            {
                 DeployBudgetAllocation(
                     ctx,
-                    budget.UnitTable,
-                    ownedCorePlanets,
-                    faction,
+                    allocation.Budget.UnitTable,
+                    allocation.Planets,
+                    allocation.Faction,
                     factory,
                     CalculateDeployBudget(
-                        availableCapacity,
-                        budget.BudgetLevels,
+                        allocation.AvailableCapacity,
+                        allocation.Budget.BudgetLevels,
                         (int)ctx.Summary.GalaxySize
-                    ),
-                    StartingUnitBudgetBonus.StandardRollMaximumExclusive
+                    )
                 );
+            }
 
+            foreach (var allocation in allocations)
+            {
                 foreach (
-                    StartingUnitBudgetBonus bonus in budget.Bonuses
+                    StartingUnitBudgetBonus bonus in allocation.Budget.Bonuses
                         ?? Enumerable.Empty<StartingUnitBudgetBonus>()
                 )
                 {
-                    if (!IsBudgetBonusApplicable(ctx, faction, bonus))
+                    if (!IsBudgetBonusApplicable(ctx, allocation.Faction, bonus))
                         continue;
 
                     DeployBudgetAllocation(
                         ctx,
-                        bonus.UnitTable,
-                        ownedCorePlanets,
-                        faction,
+                        FilterUnitTable(allocation.Budget.UnitTable, bonus.Category, factory),
+                        allocation.Planets,
+                        allocation.Faction,
                         factory,
                         CalculateDeployBudget(
-                            availableCapacity,
+                            allocation.AvailableCapacity,
                             bonus.BudgetLevels,
                             (int)ctx.Summary.GalaxySize
-                        ),
-                        bonus.RollMaximumExclusive
+                        )
                     );
                 }
             }
         }
 
         /// <summary>
-        /// Applies the matching starting-unit count multiplier to each faction.
+        /// Selects entries made entirely from the category funded by an additional budget.
         /// </summary>
-        /// <param name="ctx">The generation context.</param>
-        /// <param name="factory">Unit factory used to create the additional units.</param>
-        /// <param name="multipliers">Configured count multipliers.</param>
-        private void ApplyStartingUnitCountMultipliers(
-            GenerationContext ctx,
-            UnitFactory factory,
-            List<StartingUnitCountMultiplier> multipliers
-        )
-        {
-            foreach (Faction faction in ctx.Factions)
-            {
-                StartingUnitCountMultiplier multiplier = multipliers?.FirstOrDefault(candidate =>
-                    IsStartingUnitCountMultiplierApplicable(ctx, faction, candidate)
-                );
-                if (multiplier == null)
-                    continue;
-
-                MultiplyStartingUnitCounts(ctx.Sectors, faction, factory, multiplier);
-            }
-        }
-
-        /// <summary>
-        /// Determines whether a starting-unit count multiplier applies to a faction.
-        /// </summary>
-        /// <param name="ctx">The generation context.</param>
-        /// <param name="faction">The candidate faction.</param>
-        /// <param name="multiplier">The configured multiplier.</param>
-        /// <returns>True when the difficulty and controller role match.</returns>
-        private bool IsStartingUnitCountMultiplierApplicable(
-            GenerationContext ctx,
-            Faction faction,
-            StartingUnitCountMultiplier multiplier
-        )
-        {
-            if (multiplier.Difficulty != ctx.Summary.Difficulty)
-                return false;
-
-            return !multiplier.AIOnly
-                || (
-                    !string.IsNullOrEmpty(ctx.Summary.PlayerFactionID)
-                    && faction.InstanceID != ctx.Summary.PlayerFactionID
-                );
-        }
-
-        /// <summary>
-        /// Multiplies a faction's seeded starfighters and regiments without creating fleets.
-        /// </summary>
-        /// <param name="sectors">All generated planet sectors.</param>
-        /// <param name="faction">The faction receiving additional units.</param>
-        /// <param name="factory">Unit factory used to create the additional units.</param>
-        /// <param name="multiplier">The configured category multipliers.</param>
-        private void MultiplyStartingUnitCounts(
-            PlanetSector[] sectors,
-            Faction faction,
-            UnitFactory factory,
-            StartingUnitCountMultiplier multiplier
-        )
-        {
-            foreach (Planet planet in sectors.SelectMany(sector => sector.GetChildren<Planet>()))
-            {
-                List<Fleet> fleets = planet.GetChildren<Fleet>().ToList();
-                List<Starfighter> starfighters = planet
-                    .GetChildren<Starfighter>()
-                    .Concat(fleets.SelectMany(fleet => fleet.GetStarfighters()))
-                    .Where(starfighter => starfighter.OwnerInstanceID == faction.InstanceID)
-                    .ToList();
-                List<Regiment> regiments = planet
-                    .GetChildren<Regiment>()
-                    .Concat(fleets.SelectMany(fleet => fleet.GetRegiments()))
-                    .Where(regiment => regiment.OwnerInstanceID == faction.InstanceID)
-                    .ToList();
-
-                AddStartingUnitCopies(
-                    planet,
-                    starfighters,
-                    faction.InstanceID,
-                    multiplier.StarfighterCountMultiplier,
-                    factory
-                );
-                AddStartingUnitCopies(
-                    planet,
-                    regiments,
-                    faction.InstanceID,
-                    multiplier.RegimentCountMultiplier,
-                    factory
-                );
-            }
-        }
-
-        /// <summary>
-        /// Adds enough planet-stationed copies to reach the configured count multiplier.
-        /// </summary>
-        /// <typeparam name="T">The manufacturable unit type.</typeparam>
-        /// <param name="planet">The planet receiving additional units.</param>
-        /// <param name="units">The original seeded units to multiply.</param>
-        /// <param name="factionInstanceID">The owning faction identifier.</param>
-        /// <param name="countMultiplier">The desired count multiplier.</param>
-        /// <param name="factory">Unit factory used to create the additional units.</param>
-        private void AddStartingUnitCopies<T>(
-            Planet planet,
-            IReadOnlyCollection<T> units,
-            string factionInstanceID,
-            int countMultiplier,
+        /// <param name="unitTable">The faction's normal weighted unit table.</param>
+        /// <param name="category">The category eligible for the additional budget.</param>
+        /// <param name="factory">The unit factory used to identify authored unit types.</param>
+        /// <returns>Eligible entries retaining their normal configured weights.</returns>
+        private List<WeightedUnitEntry> FilterUnitTable(
+            List<WeightedUnitEntry> unitTable,
+            StartingUnitBudgetCategory category,
             UnitFactory factory
         )
-            where T : class, ISceneNode, IManufacturable
         {
-            for (int copyIndex = 1; copyIndex < countMultiplier; copyIndex++)
+            return unitTable
+                .Where(entry =>
+                    entry.Units?.Count > 0
+                    && entry.Units.All(unit => IsUnitInCategory(unit.TypeID, category, factory))
+                )
+                .ToList();
+        }
+
+        /// <summary>
+        /// Determines whether a unit definition belongs to a starting-budget category.
+        /// </summary>
+        /// <param name="typeID">The unit type identifier.</param>
+        /// <param name="category">The configured category.</param>
+        /// <param name="factory">The unit factory containing the authored definitions.</param>
+        /// <returns>True when the unit belongs to the category.</returns>
+        private bool IsUnitInCategory(
+            string typeID,
+            StartingUnitBudgetCategory category,
+            UnitFactory factory
+        )
+        {
+            return category switch
             {
-                foreach (T unit in units)
-                    planet.AddChild(factory.Create<T>(unit.TypeID, factionInstanceID));
-            }
+                StartingUnitBudgetCategory.Starfighter => factory.IsType<Starfighter>(typeID),
+                StartingUnitBudgetCategory.Regiment => factory.IsType<Regiment>(typeID),
+                _ => false,
+            };
         }
 
         /// <summary>
@@ -550,15 +486,13 @@ namespace Rebellion.Generation
         /// <param name="faction">The faction receiving the units.</param>
         /// <param name="factory">Unit factory for creating and costing units.</param>
         /// <param name="deployBudget">Maintenance budget assigned to this allocation.</param>
-        /// <param name="rollMaximumExclusive">Exclusive upper bound for unit-table rolls.</param>
         private void DeployBudgetAllocation(
             GenerationContext ctx,
             List<WeightedUnitEntry> unitTable,
             List<Planet> ownedCorePlanets,
             Faction faction,
             UnitFactory factory,
-            int deployBudget,
-            int rollMaximumExclusive
+            int deployBudget
         )
         {
             while (deployBudget > 0)
@@ -569,7 +503,6 @@ namespace Rebellion.Generation
                     ownedCorePlanets,
                     faction,
                     factory,
-                    rollMaximumExclusive,
                     ref deployBudget
                 );
                 if (!deployed)
@@ -608,7 +541,6 @@ namespace Rebellion.Generation
         /// <param name="targetPlanets">Planets eligible to receive rolled units.</param>
         /// <param name="faction">The owning faction.</param>
         /// <param name="factory">Unit factory for creating and costing unit instances.</param>
-        /// <param name="rollMaximumExclusive">Exclusive upper bound for unit-table rolls.</param>
         /// <param name="deployBudget">Remaining deployment budget.</param>
         /// <returns>True when a roll was deployed and the loop may continue.</returns>
         private bool TryDeployBudgetRoll(
@@ -617,11 +549,10 @@ namespace Rebellion.Generation
             List<Planet> targetPlanets,
             Faction faction,
             UnitFactory factory,
-            int rollMaximumExclusive,
             ref int deployBudget
         )
         {
-            List<UnitEntry> rolledUnits = RollBudgetUnits(unitTable, rollMaximumExclusive, ctx.Rng);
+            List<UnitEntry> rolledUnits = RollBudgetUnits(unitTable, ctx.Rng);
             if (rolledUnits == null || rolledUnits.Count == 0)
                 return false;
 
@@ -643,29 +574,30 @@ namespace Rebellion.Generation
         /// Rolls a unit bundle from a faction budget table.
         /// </summary>
         /// <param name="unitTable">Weighted unit table to roll against.</param>
-        /// <param name="rollMaximumExclusive">Exclusive upper bound for the random roll.</param>
         /// <param name="rng">Random number provider.</param>
         /// <returns>The selected unit entries, or null when no table is available.</returns>
         private List<UnitEntry> RollBudgetUnits(
             List<WeightedUnitEntry> unitTable,
-            int rollMaximumExclusive,
             IRandomNumberProvider rng
         )
         {
             if (unitTable == null || unitTable.Count == 0)
                 return null;
 
-            int roll = rng.NextInt(1, rollMaximumExclusive);
-            WeightedUnitEntry selected = unitTable[0];
+            int totalWeight = unitTable.Sum(entry => entry.Weight);
+            if (totalWeight <= 0)
+                return null;
+
+            int roll = rng.NextInt(0, totalWeight);
             foreach (WeightedUnitEntry entry in unitTable)
             {
-                if (roll < entry.CumulativeWeight)
-                    return selected.Units;
+                if (roll < entry.Weight)
+                    return entry.Units;
 
-                selected = entry;
+                roll -= entry.Weight;
             }
 
-            return selected.Units;
+            return null;
         }
 
         /// <summary>
