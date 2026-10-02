@@ -847,6 +847,7 @@ namespace Rebellion.Simulation
             )
                 return false;
 
+            int groupTransitTicks = CalculateGroupTransitTicks(units, destinations);
             string movementGroupID = Guid.NewGuid().ToString("N");
             for (int index = 0; index < units.Count; index++)
             {
@@ -860,11 +861,54 @@ namespace Rebellion.Simulation
                         resolvedDestination,
                         results,
                         movementGroupID,
-                        sourceEventInstanceID
+                        sourceEventInstanceID,
+                        groupTransitTicks
                     );
             }
 
             return true;
+        }
+
+        /// <summary>
+        /// Calculates the common duration for units issued one movement-group order.
+        /// </summary>
+        /// <param name="units">The validated movable units.</param>
+        /// <param name="destinations">The resolved destination for each unit.</param>
+        /// <returns>The longest individual transit duration in the group.</returns>
+        private int CalculateGroupTransitTicks(
+            IReadOnlyList<IMovable> units,
+            IReadOnlyList<ContainerNode> destinations
+        )
+        {
+            int groupTransitTicks = 0;
+            for (int index = 0; index < units.Count; index++)
+            {
+                IMovable unit = units[index];
+                ContainerNode destination = destinations[index];
+                if (
+                    MovementQueries.IsManufacturingDestinationChange(unit)
+                    || ReferenceEquals(unit.GetParent(), destination)
+                )
+                    continue;
+
+                Planet originPlanet = unit.GetParentOfType<Planet>();
+                Planet destinationPlanet = MovementQueries.RequireDestinationPlanet(destination);
+                if (ReferenceEquals(originPlanet, destinationPlanet))
+                    continue;
+
+                Point originPosition = unit.Movement?.CurrentPosition ?? originPlanet.GetPosition();
+                groupTransitTicks = Math.Max(
+                    groupTransitTicks,
+                    _queries.CalculateTransitTicks(
+                        unit,
+                        originPosition,
+                        originPlanet,
+                        destinationPlanet
+                    )
+                );
+            }
+
+            return groupTransitTicks;
         }
 
         /// <summary>
@@ -2096,13 +2140,15 @@ namespace Rebellion.Simulation
         /// <param name="results">The collection receiving movement results.</param>
         /// <param name="movementGroupID">The shared movement order identifier.</param>
         /// <param name="sourceEventInstanceID">The event that requested the movement, if any.</param>
+        /// <param name="transitTicksOverride">The common group duration, when applicable.</param>
         /// <returns>True when the movement order was accepted; otherwise false.</returns>
         private bool ExecuteAcceptedMove(
             IMovable unit,
             ContainerNode destination,
             ICollection<GameResult> results,
             string movementGroupID,
-            string sourceEventInstanceID = null
+            string sourceEventInstanceID = null,
+            int? transitTicksOverride = null
         )
         {
             Planet destinationPlanet = MovementQueries.RequireDestinationPlanet(destination);
@@ -2131,12 +2177,14 @@ namespace Rebellion.Simulation
             }
 
             Point originPosition = unit.Movement?.CurrentPosition ?? originPlanet.GetPosition();
-            int transitTicks = _queries.CalculateTransitTicks(
-                unit,
-                originPosition,
-                originPlanet,
-                destinationPlanet
-            );
+            int transitTicks =
+                transitTicksOverride
+                ?? _queries.CalculateTransitTicks(
+                    unit,
+                    originPosition,
+                    originPlanet,
+                    destinationPlanet
+                );
 
             if (unit.GetParent() == destination)
             {

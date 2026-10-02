@@ -4535,6 +4535,63 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void TryRequestMove_MixedSpeedCapitalShipsToPlanet_UsesGroupTransitTime()
+        {
+            GameConfig config = new GameConfig
+            {
+                Movement = new GameConfig.MovementConfig
+                {
+                    DistanceDivisor = 5,
+                    MinTransitTicks = 10,
+                    SameSectorMinTransitTicks = 1,
+                    DefaultFighterHyperdrive = 60,
+                },
+            };
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer _,
+                MovementCommands movement
+            ) = BuildScene(config);
+            destination.PositionX = 12;
+            destination.PositionY = 6;
+            Fleet sourceFleet = EntityFactory.CreateFleet("source-fleet", "empire");
+            game.AttachNode(sourceFleet, origin);
+            CapitalShip fastShip = CreateMovableCapitalShip("fast-ship");
+            fastShip.Hyperdrive = 80;
+            CapitalShip slowShip = CreateMovableCapitalShip("slow-ship");
+            slowShip.Hyperdrive = 100;
+            game.AttachNode(fastShip, sourceFleet);
+            game.AttachNode(slowShip, sourceFleet);
+            MovementQueries queries = new MovementQueries(game);
+            Assert.IsTrue(
+                queries.TryGetSelectionTransitTicks(
+                    new ISceneNode[] { fastShip, slowShip },
+                    destination,
+                    "empire",
+                    out int displayedTransitTicks
+                )
+            );
+
+            bool moved = movement.TryRequestMove(
+                new ISceneNode[] { fastShip, slowShip },
+                destination,
+                "empire"
+            );
+
+            Assert.IsTrue(moved);
+            Assert.AreEqual(2, displayedTransitTicks);
+            Assert.AreEqual(displayedTransitTicks, fastShip.Movement.TransitTicks);
+            Assert.AreEqual(displayedTransitTicks, slowShip.Movement.TransitTicks);
+
+            new MovementTickProcessor(movement).ProcessTick(game);
+
+            Assert.IsNotNull(fastShip.Movement);
+            Assert.IsNotNull(slowShip.Movement);
+        }
+
+        [Test]
         public void TryRequestMove_CapitalShipsAtDifferentPlanets_PreservesSourceFleets()
         {
             (
