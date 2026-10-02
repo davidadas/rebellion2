@@ -4239,6 +4239,41 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void InitiateMission_CommandingOfficer_ClearsCommandRank()
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            officer.FacilityResearch = 1;
+            officer.CurrentRank = OfficerRank.Commander;
+            AddResearchFacilities(game, planet);
+            MissionCommands commands = TestSystems.CreateMissionCommands(
+                game,
+                new StubRNG(),
+                movement
+            );
+
+            bool initiated = commands.InitiateMission(
+                CreateContext(
+                    ResearchMission.MissionTypeID,
+                    officer,
+                    planet,
+                    discipline: ResearchDiscipline.FacilityDesign
+                )
+            );
+            List<GameResult> results = commands.TakePendingResults();
+
+            Assert.IsTrue(initiated);
+            Assert.AreEqual(OfficerRank.None, officer.CurrentRank);
+            CommandKindChangedResult rankChanged = results
+                .OfType<CommandKindChangedResult>()
+                .Single();
+            Assert.AreEqual((int)OfficerRank.None, rankChanged.CommandKind);
+            Assert.AreEqual((int)OfficerRank.Commander, rankChanged.Detail);
+            Assert.IsNull(results.OfType<OfficerCommandingResult>().Single().CommandTarget);
+        }
+
+        [Test]
         public void InitiateMission_ExhaustedResearch_ReturnsFalse()
         {
             (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(

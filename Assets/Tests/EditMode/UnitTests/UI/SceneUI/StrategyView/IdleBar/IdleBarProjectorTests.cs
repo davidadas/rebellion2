@@ -111,6 +111,21 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Assert.IsEmpty(result.Entries);
         }
 
+        [Test]
+        public void Project_CommandingOfficer_ExcludesOfficerUntilCommandEnds()
+        {
+            Officer officer = CreateOfficer("Commander");
+            officer.CurrentRank = OfficerRank.Commander;
+            IdleBarProjector projector = new IdleBarProjector(() => null);
+
+            IdleBarRenderData commanding = projector.Project(_playerFaction, new RectInt());
+            officer.CurrentRank = OfficerRank.None;
+            IdleBarRenderData resigned = projector.Project(_playerFaction, new RectInt());
+
+            Assert.IsFalse(commanding.Entries.Any(entry => entry.Entity == officer));
+            Assert.IsTrue(resigned.Entries.Any(entry => entry.Entity == officer));
+        }
+
         /// <summary>
         /// Creates officer.
         /// </summary>
