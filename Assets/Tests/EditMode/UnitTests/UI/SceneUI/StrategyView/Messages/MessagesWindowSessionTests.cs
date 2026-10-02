@@ -263,7 +263,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
-        public void GetMessageToSelectAfterRemoval_MiddleSelection_ReturnsDisplayedMessageAbove()
+        public void SelectAdjacentMessage_MiddleSelection_SelectsDisplayedMessageAbove()
         {
             Message oldest = CreateMessage("oldest", "Oldest");
             Message middle = CreateMessage("middle", "Middle");
@@ -271,22 +271,22 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             _session.Reconcile(new[] { oldest, middle, newest });
             _session.SelectOnly(middle);
 
-            Message result = _session.GetMessageToSelectAfterRemoval();
+            _session.SelectAdjacentMessage();
 
-            Assert.AreSame(newest, result);
+            Assert.AreSame(newest, _session.GetSelectedMessage());
         }
 
         [Test]
-        public void GetMessageToSelectAfterRemoval_TopSelection_ReturnsDisplayedMessageBelow()
+        public void SelectAdjacentMessage_TopSelection_SelectsDisplayedMessageBelow()
         {
             Message oldest = CreateMessage("oldest", "Oldest");
             Message newest = CreateMessage("newest", "Newest");
             _session.Reconcile(new[] { oldest, newest });
             _session.SelectOnly(newest);
 
-            Message result = _session.GetMessageToSelectAfterRemoval();
+            _session.SelectAdjacentMessage();
 
-            Assert.AreSame(oldest, result);
+            Assert.AreSame(oldest, _session.GetSelectedMessage());
         }
 
         [Test]

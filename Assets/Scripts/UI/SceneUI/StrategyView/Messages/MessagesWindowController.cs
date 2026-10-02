@@ -617,19 +617,13 @@ public sealed class MessagesWindowController
 
         FocusWindow(view);
         Faction playerFaction = GetPlayerFaction();
-        Message messageToSelect = session.GetMessageToSelectAfterRemoval();
         if (RemoveSelectedMessages(playerFaction, session.GetSelectedMessageIDs()))
         {
             StopMessageDetailAudio();
-            session.ClearSelection();
+            session.SelectAdjacentMessage();
             session.HideDetail();
             RefreshSession(session);
-            messageToSelect = GetMessage(session.Messages, messageToSelect?.InstanceID);
-            if (messageToSelect != null)
-            {
-                session.SelectOnly(messageToSelect);
-                MarkMessageRead(messageToSelect);
-            }
+            MarkMessageRead(session.GetSelectedMessage());
         }
 
         RequestRender();

@@ -143,21 +143,26 @@ internal sealed class MessagesWindowSession
     }
 
     /// <summary>
-    /// Finds the nearest unselected message above the primary row, falling back below it.
+    /// Selects the nearest unselected message above the primary row, falling back below it.
     /// </summary>
-    /// <returns>The message to select after removing the current selection, or null.</returns>
-    public Message GetMessageToSelectAfterRemoval()
+    public void SelectAdjacentMessage()
     {
         int selectedIndex = FindMessageIndex(messages, selectedMessageId);
         if (selectedIndex < 0)
-            return null;
+        {
+            ClearSelection();
+            return;
+        }
 
         for (int index = selectedIndex + 1; index < messages.Count; index++)
         {
             Message message = messages[index];
             string messageId = GetMessageID(message);
             if (messageId != null && !selectedMessageIds.Contains(messageId))
-                return message;
+            {
+                SelectOnly(message);
+                return;
+            }
         }
 
         for (int index = selectedIndex - 1; index >= 0; index--)
@@ -165,10 +170,13 @@ internal sealed class MessagesWindowSession
             Message message = messages[index];
             string messageId = GetMessageID(message);
             if (messageId != null && !selectedMessageIds.Contains(messageId))
-                return message;
+            {
+                SelectOnly(message);
+                return;
+            }
         }
 
-        return null;
+        ClearSelection();
     }
 
     /// <summary>
