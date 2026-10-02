@@ -4,6 +4,7 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
+using Rebellion.Game.Units;
 using Rebellion.Simulation;
 using UnityEngine;
 
@@ -126,6 +127,15 @@ public sealed class StrategyHudController : IContextMenuReceiver
     public void ProcessAdvisor(int currentTick, bool announcementsEnabled)
     {
         advisorController.ProcessPending(currentTick, announcementsEnabled);
+    }
+
+    /// <summary>
+    /// Begins protocol-advisor construction targeting for a keyboard shortcut.
+    /// </summary>
+    /// <param name="manufacturingType">The requested manufacturing category.</param>
+    public void BeginAdvisorConstruction(ManufacturingType manufacturingType)
+    {
+        advisorController.BeginConstruction(manufacturingType);
     }
 
     /// <summary>

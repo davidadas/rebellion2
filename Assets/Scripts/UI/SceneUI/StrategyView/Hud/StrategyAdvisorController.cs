@@ -149,6 +149,22 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     }
 
     /// <summary>
+    /// Begins construction targeting from the protocol advisor's authored position.
+    /// </summary>
+    /// <param name="manufacturingType">The requested manufacturing category.</param>
+    public void BeginConstruction(ManufacturingType manufacturingType)
+    {
+        EnsureInitialized();
+        if (getPlayerFaction() == null)
+            return;
+
+        RectInt? protocolBounds = ToRect(theme?.ProtocolSourceLayout);
+        int sourceX = protocolBounds?.x + protocolBounds?.width / 2 ?? 0;
+        int sourceY = protocolBounds?.y + protocolBounds?.height / 2 ?? 0;
+        actions.BeginAdvisorConstruction(manufacturingType, sourceX, sourceY);
+    }
+
+    /// <summary>
     /// Queues or replaces a pending notification derived from a delivered message.
     /// </summary>
     /// <param name="delivery">The delivered message and transient presentation request.</param>
@@ -255,6 +271,9 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
             return;
 
         StrategyAdvisorView targetView = GetRequiredView();
+        if (targetView.IsPlaybackActive)
+            return;
+
         for (int i = 0; i < notificationKeysByPriority.Count; i++)
         {
             string notificationKey = notificationKeysByPriority[i];

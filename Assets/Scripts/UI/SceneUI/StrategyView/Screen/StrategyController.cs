@@ -3506,6 +3506,21 @@ public sealed class StrategyController
         );
         BindInputAction(
             asset,
+            "Strategy/AdvisorBuildShips",
+            () => strategyHudController.BeginAdvisorConstruction(ManufacturingType.Ship)
+        );
+        BindInputAction(
+            asset,
+            "Strategy/AdvisorBuildTroops",
+            () => strategyHudController.BeginAdvisorConstruction(ManufacturingType.Troop)
+        );
+        BindInputAction(
+            asset,
+            "Strategy/AdvisorBuildFacilities",
+            () => strategyHudController.BeginAdvisorConstruction(ManufacturingType.Building)
+        );
+        BindInputAction(
+            asset,
             "Strategy/OpenMissionSetup",
             () => inputController.TryExecuteContextShortcut(StrategyMenuAction.CreateMission)
         );
