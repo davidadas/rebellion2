@@ -51,7 +51,7 @@ Officers are unique authored characters. Add each officer as an `Officer` entry 
 | `IsRecruitable` | Allows the officer to enter play through recruitment. |
 | `RecruitingFactionInstanceIDs` | Factions that may recruit the officer. |
 | `Loyalty` | Starting loyalty used by betrayal and allegiance mechanics. |
-| `CanBetray` | Allows support-based loyalty changes after faction control gains and permits mission betrayal when the loyalty roll fails. |
+| `CanBetray` | Permits mission betrayal and global loyalty changes after battle losses. |
 
 The four entries in `Ratings` are the officer's base `Diplomacy`, `Espionage`, `Combat`, and
 `Leadership` ratings. `ShipResearch`, `TroopResearch`, and `FacilityResearch` are stored separately
@@ -67,6 +67,12 @@ fixed.
 `CanHeal` allows an injured officer to recover. `FastHeal` selects the faster recovery amount from
 game configuration. Capture, injury, death, movement, and mission-return fields are runtime state
 and should not be initialized in the officer catalog.
+
+After a resolved battle establishes one controlling faction, every officer whose `CanBetray` value
+is `true` receives the same global loyalty reaction. Officers owned by the controlling faction get
+the calculated shift and officers owned by the other faction get its inverse; their location and
+battle participation do not limit the reaction. Ordinary planet ownership changes do not cause this
+shift by themselves.
 
 ## Force and command fields
 
