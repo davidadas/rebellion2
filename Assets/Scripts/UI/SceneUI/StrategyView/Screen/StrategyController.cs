@@ -575,7 +575,8 @@ public sealed class StrategyController
             strategyWindowManager,
             windowPlacementController.GetMessagesWindowPosition,
             CloseWindow,
-            MarkDirty
+            MarkDirty,
+            getSelectionModifiers
         );
         encyclopediaWindowController = new EncyclopediaWindowController(
             () => uiContext,

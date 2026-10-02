@@ -8,7 +8,6 @@ using Rebellion.Game.Messages;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Logging;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Factions
@@ -781,9 +780,6 @@ namespace Rebellion.Game.Factions
         {
             Fleet fleet = new Fleet(this.InstanceID, $"Fleet {_nextFleetNumber}");
             fleet.RoleType = roleType;
-            GameLogger.Warning(
-                $"[fleet] born {fleet.InstanceID} role={roleType} owner={this.InstanceID}"
-            );
 
             if (capitalShips != null)
             {
