@@ -772,6 +772,7 @@ public sealed class DefenseWindowController
         )
             return;
 
+        endItemDrag(eventData);
         if (!session.TryGetItem(itemIndex, out ISceneNode item))
             return;
         if (TrySelectTarget(session, item))
