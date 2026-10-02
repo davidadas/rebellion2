@@ -214,10 +214,7 @@ namespace Rebellion.Simulation
         /// <returns>The fighter contribution.</returns>
         private static int GetCarriedStarfighterCombatValue(Starfighter fighter, int squadronSize)
         {
-            int weaponStrength = fighter.GetWeaponStrength();
-            return fighter.MaxSquadronSize > 0
-                ? weaponStrength * Math.Max(0, squadronSize) / fighter.MaxSquadronSize
-                : weaponStrength;
+            return fighter.CalculateCombatValue(squadronSize);
         }
     }
 }

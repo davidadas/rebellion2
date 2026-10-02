@@ -2410,15 +2410,7 @@ namespace Rebellion.AI
         /// <returns>The projected combat value.</returns>
         private static int GetProjectedStarfighterCombatValue(Starfighter starfighter)
         {
-            int weaponStrength =
-                starfighter.LaserCannon + starfighter.IonCannon + starfighter.Torpedoes;
-            int squadronSize =
-                starfighter.ManufacturingStatus == ManufacturingStatus.Complete
-                    ? starfighter.CurrentSquadronSize
-                    : starfighter.MaxSquadronSize;
-            return starfighter.MaxSquadronSize > 0
-                ? weaponStrength * Math.Max(0, squadronSize) / starfighter.MaxSquadronSize
-                : weaponStrength;
+            return starfighter.GetProjectedCombatValue();
         }
 
         /// <summary>

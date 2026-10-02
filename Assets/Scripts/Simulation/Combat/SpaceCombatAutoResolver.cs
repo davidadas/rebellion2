@@ -1864,7 +1864,7 @@ namespace Rebellion.Simulation
                 if (scansForTarget)
                     ScanForWeaponTargets(targets, engagementDistance);
 
-                double squadronStrength = GetRemainingSquadronStrength();
+                int remainingFighterCount = GetRemainingFighterCount();
                 double consumedCharge = 0;
                 for (int weaponIndex = 0; weaponIndex < _weaponTargets.Length; weaponIndex++)
                 {
@@ -1880,7 +1880,7 @@ namespace Rebellion.Simulation
                     double damage =
                         GetEffectiveWeaponStrength(weaponStrength)
                         * GetManeuverMultiplier(target)
-                        * squadronStrength;
+                        * remainingFighterCount;
                     if (damage > 0)
                     {
                         AddPendingDamage(pendingDamage, target, damage, weaponIndex == 2);
@@ -1902,7 +1902,7 @@ namespace Rebellion.Simulation
                 double engagementDistance
             )
             {
-                double squadronStrength = GetRemainingSquadronStrength();
+                int remainingFighterCount = GetRemainingFighterCount();
                 for (int weaponIndex = 0; weaponIndex < _weaponTargets.Length; weaponIndex++)
                 {
                     _weaponTargets[weaponIndex] = null;
@@ -1923,7 +1923,7 @@ namespace Rebellion.Simulation
                                 GetWeaponStrength(weaponIndex, engagementRange, requireRange: true)
                             )
                             * maneuverMultiplier
-                            * squadronStrength;
+                            * remainingFighterCount;
                         if (candidateDamage <= _weaponTargetDamage[weaponIndex])
                             continue;
 
@@ -1944,7 +1944,7 @@ namespace Rebellion.Simulation
                         targetsFighters,
                         engagementDistance: 0,
                         requireRange: true
-                    ) * GetRemainingSquadronStrength();
+                    ) * GetRemainingFighterCount();
             }
 
             /// <summary>
@@ -1992,16 +1992,12 @@ namespace Rebellion.Simulation
             }
 
             /// <summary>
-            /// Returns the durability-adjusted fraction of the full squadron that survives.
+            /// Returns the number of fighters that remain in the squadron.
             /// </summary>
-            /// <returns>The surviving fraction of the full squadron.</returns>
-            private double GetRemainingSquadronStrength()
+            /// <returns>The surviving fighter count.</returns>
+            private int GetRemainingFighterCount()
             {
-                double maximumSquadronSize = Math.Max(Fighter.MaxSquadronSize, 1);
-                return Math.Min(
-                    _currentDurability / (_durabilityPerFighter * maximumSquadronSize),
-                    1
-                );
+                return CurrentSquadronSize;
             }
 
             /// <summary>

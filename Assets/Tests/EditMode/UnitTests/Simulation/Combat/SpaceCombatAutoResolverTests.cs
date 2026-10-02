@@ -738,7 +738,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void Resolve_FullFighterSquadronsWithEqualWeaponStrength_DealEqualDamage()
+        public void Resolve_FullFighterSquadron_DealsDamageForEveryFighter()
         {
             Starfighter singleFighter = CreateFighter(
                 "single-fighter",
@@ -775,11 +775,11 @@ namespace Rebellion.Tests.Simulation
             );
 
             Assert.AreEqual(99, GetShipOutcome(first, firstTarget).HullAfter);
-            Assert.AreEqual(99, GetShipOutcome(second, secondTarget).HullAfter);
+            Assert.AreEqual(88, GetShipOutcome(second, secondTarget).HullAfter);
         }
 
         [Test]
-        public void Resolve_DamagedFighterSquadron_DealsProportionalDamage()
+        public void Resolve_DamagedFighterSquadron_DealsDamageForSurvivingFighters()
         {
             Starfighter attacker = CreateFighter("attacker", squadronSize: 12, weaponStrength: 12);
             attacker.CurrentSquadronSize = 6;
@@ -797,7 +797,7 @@ namespace Rebellion.Tests.Simulation
                 defenderCanWithdraw: true
             );
 
-            Assert.AreEqual(94, GetShipOutcome(result, defender).HullAfter);
+            Assert.AreEqual(28, GetShipOutcome(result, defender).HullAfter);
         }
 
         [Test]
@@ -1072,7 +1072,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void Resolve_FighterForceFallsBelowOpposingStrengthThreshold_WithdrawsForce()
         {
-            CapitalShip attacker = CreateShip("attacker", hull: 10000, weaponStrength: 2);
+            CapitalShip attacker = CreateShip("attacker", hull: 10000, weaponStrength: 20);
             Starfighter defender = CreateFighter("defender", squadronSize: 12, weaponStrength: 1);
             defender.ShieldStrength = 10;
             defender.SublightSpeed = 10;
@@ -1372,8 +1372,8 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void Resolve_TwoCarriersDestroyedWithNonHyperdriveFighters_DestroysFightersAfterTheyFight()
         {
-            CapitalShip attacker = CreateShip("attacker", hull: 1000, weaponStrength: 100);
-            attacker.WeaponRecharge = 100;
+            CapitalShip attacker = CreateShip("attacker", hull: 10000, weaponStrength: 1000);
+            attacker.WeaponRecharge = 1000;
             CapitalShip firstCarrier = CreatePassiveTarget("first-carrier", hull: 1);
             firstCarrier.StarfighterCapacity = 1;
             firstCarrier.SublightSpeed = 1;
@@ -1430,7 +1430,7 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(GetFighterOutcome(result, secondFighter).Withdrew);
             Assert.AreEqual(0, GetFighterOutcome(result, firstFighter).SquadronSizeAfter);
             Assert.AreEqual(0, GetFighterOutcome(result, secondFighter).SquadronSizeAfter);
-            Assert.Less(GetShipOutcome(result, attacker).HullAfter, 1000);
+            Assert.Less(GetShipOutcome(result, attacker).HullAfter, 10000);
         }
 
         [Test]
