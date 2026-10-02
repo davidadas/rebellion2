@@ -1401,6 +1401,9 @@ namespace Rebellion.Simulation
             if (unit is CapitalShip capitalShip)
                 return Math.Max(capitalShip.Hyperdrive, 1);
 
+            if (unit is Officer)
+                return Math.Max(_game.GetConfig().Movement.DefaultOfficerHyperdrive, 1);
+
             return Math.Max(_game.GetConfig().Movement.DefaultFighterHyperdrive, 1);
         }
 
