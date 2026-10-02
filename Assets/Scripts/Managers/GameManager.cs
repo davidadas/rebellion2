@@ -10,7 +10,7 @@ public sealed class GameManager
     private readonly Func<GameRoot> _getGame;
     private readonly GameTickProcessor _tick;
     private float? _tickInterval;
-    private float _tickTimer;
+    private float _tickProgress;
 
     public event Action GameSpeedChanged;
 
@@ -75,11 +75,11 @@ public sealed class GameManager
         if (elapsedSeconds <= 0f || _tick.IsBusy || _tickInterval == null)
             return false;
 
-        _tickTimer += elapsedSeconds;
-        if (_tickTimer < _tickInterval)
+        _tickProgress += elapsedSeconds / _tickInterval.Value;
+        if (_tickProgress < 1f)
             return false;
 
-        _tickTimer = 0f;
+        _tickProgress = 0f;
         return true;
     }
 
@@ -88,7 +88,7 @@ public sealed class GameManager
     /// </summary>
     public void Reset()
     {
-        _tickTimer = 0f;
+        _tickProgress = 0f;
         SetGameSpeed(_getGame().GetGameSpeed());
     }
 
@@ -97,6 +97,6 @@ public sealed class GameManager
     /// </summary>
     private void ResetTickTimer()
     {
-        _tickTimer = 0f;
+        _tickProgress = 0f;
     }
 }

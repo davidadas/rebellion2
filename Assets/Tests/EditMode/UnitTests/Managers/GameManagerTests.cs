@@ -1,8 +1,10 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.Results;
 using Rebellion.Simulation;
 
 namespace Rebellion.Tests.Managers
@@ -31,6 +33,50 @@ namespace Rebellion.Tests.Managers
 
             Assert.IsFalse(manager.TryAdvanceTickTimer(interval / 2f));
             Assert.IsTrue(manager.TryAdvanceTickTimer(interval / 2f));
+        }
+
+        [Test]
+        public void SetGameSpeed_PartialVerySlowTickChangedToMedium_PreservesFractionalProgress()
+        {
+            GameConfig config = new GameConfig();
+            config.GameSpeed.VerySlowTickIntervalSeconds = 120f;
+            config.GameSpeed.MediumTickIntervalSeconds = 10f;
+            GameRoot game = TestGame.Create(config);
+            GameTickProcessor tick = new GameTickProcessor(
+                (results, _) => new List<GameResult>(results),
+                _ => { }
+            );
+            GameManager manager = new GameManager(() => game, tick);
+            manager.SetGameSpeed(TickSpeed.VerySlow);
+            Assert.IsFalse(manager.TryAdvanceTickTimer(60f));
+
+            manager.SetGameSpeed(TickSpeed.Medium);
+
+            Assert.IsFalse(manager.TryAdvanceTickTimer(4.9f));
+            Assert.IsTrue(manager.TryAdvanceTickTimer(0.1f));
+        }
+
+        [Test]
+        public void SetGameSpeed_PartialVerySlowTickPausedThenMedium_PreservesFractionalProgress()
+        {
+            GameConfig config = new GameConfig();
+            config.GameSpeed.VerySlowTickIntervalSeconds = 120f;
+            config.GameSpeed.MediumTickIntervalSeconds = 10f;
+            GameRoot game = TestGame.Create(config);
+            GameTickProcessor tick = new GameTickProcessor(
+                (results, _) => new List<GameResult>(results),
+                _ => { }
+            );
+            GameManager manager = new GameManager(() => game, tick);
+            manager.SetGameSpeed(TickSpeed.VerySlow);
+            Assert.IsFalse(manager.TryAdvanceTickTimer(60f));
+            manager.SetGameSpeed(TickSpeed.Paused);
+            Assert.IsFalse(manager.TryAdvanceTickTimer(120f));
+
+            manager.SetGameSpeed(TickSpeed.Medium);
+
+            Assert.IsFalse(manager.TryAdvanceTickTimer(4.9f));
+            Assert.IsTrue(manager.TryAdvanceTickTimer(0.1f));
         }
 
         [Test]
