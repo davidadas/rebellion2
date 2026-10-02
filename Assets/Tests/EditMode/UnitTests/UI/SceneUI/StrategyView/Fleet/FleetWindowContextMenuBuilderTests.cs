@@ -369,14 +369,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 new[]
                 {
                     StrategyMenuAction.CommandNone,
-                    StrategyMenuAction.CommandCommander,
                     StrategyMenuAction.CommandAdmiral,
                     StrategyMenuAction.CommandGeneral,
+                    StrategyMenuAction.CommandCommander,
                 },
                 commandMenu.SubmenuCommands.Select(command => command.Action)
             );
             CollectionAssert.AreEqual(
-                new[] { "None", "Commander", "Admiral", "General" },
+                new[] { "None", "Admiral", "General", "Commander" },
                 commandMenu.SubmenuCommands.Select(command => command.Text)
             );
             CollectionAssert.AreEqual(
@@ -408,7 +408,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 .Single(command => command.Action == StrategyMenuAction.Command);
 
             CollectionAssert.AreEqual(
-                new[] { true, true, false, true },
+                new[] { true, false, true, true },
                 commandMenu.SubmenuCommands.Select(command => command.Enabled)
             );
         }
@@ -428,12 +428,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 .Single(command => command.Action == StrategyMenuAction.Command);
 
             CollectionAssert.AreEqual(
-                new[] { true, false, false, true },
+                new[] { true, false, true, false },
                 commandMenu.SubmenuCommands.Select(command => command.Enabled)
             );
             Assert.AreEqual(
                 StrategyContextMenuIconKeys.CheckMark,
-                commandMenu.SubmenuCommands[3].IconKey
+                commandMenu.SubmenuCommands[2].IconKey
             );
         }
 

@@ -38,13 +38,6 @@ internal static class OfficerCommandMenuBuilder
                     commandMenuEnabled
                 ),
                 BuildRankCommand(
-                    StrategyMenuAction.CommandCommander,
-                    "Commander",
-                    OfficerRank.Commander,
-                    officer,
-                    commandMenuEnabled
-                ),
-                BuildRankCommand(
                     StrategyMenuAction.CommandAdmiral,
                     "Admiral",
                     OfficerRank.Admiral,
@@ -55,6 +48,13 @@ internal static class OfficerCommandMenuBuilder
                     StrategyMenuAction.CommandGeneral,
                     "General",
                     OfficerRank.General,
+                    officer,
+                    commandMenuEnabled
+                ),
+                BuildRankCommand(
+                    StrategyMenuAction.CommandCommander,
+                    "Commander",
+                    OfficerRank.Commander,
                     officer,
                     commandMenuEnabled
                 ),
