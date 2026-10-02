@@ -35,7 +35,7 @@ catalog's `Regiments` root.
 | `DefenseRating` | Strength contributed while defending a planet. |
 | `DetectionRating` | Detection strength against hostile activity. |
 | `BombardmentDefense` | Resistance to orbital bombardment. |
-| `UprisingDefense` | Strength contributed to suppressing unrest. |
+| `UprisingDefense` | Strength contributed to suppressing unrest and the value used when the regiment is destroyed in the global officer-loyalty battle calculation. |
 
 Regiments use training facilities and the `Troop` research sequence. They may begin directly on a
 planet through fixed garrisons and deployment budgets, or aboard a capital ship through fixed-fleet

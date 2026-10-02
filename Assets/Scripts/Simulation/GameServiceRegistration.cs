@@ -16,13 +16,13 @@ namespace Rebellion.Simulation
         {
             typeof(MovementObserver),
             typeof(HeadquartersObserver),
-            typeof(OfficerLoyaltyObserver),
             typeof(MissionObserver),
             typeof(CaptiveObserver),
             typeof(VictoryObserver),
             typeof(PlanetaryControlObserver),
             typeof(UprisingObserver),
             typeof(JediObserver),
+            typeof(OfficerLoyaltyObserver),
             typeof(FogOfWarObserver),
             typeof(ManufacturingObserver),
         };

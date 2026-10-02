@@ -23,6 +23,7 @@ root. Runtime ships can contain officers, regiments, special forces, and starfig
     <MaintenanceCost>30</MaintenanceCost>
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
+    <UprisingDefense>18</UprisingDefense>
     <MaxHullStrength>900</MaxHullStrength>
     <CurrentHullStrength>900</CurrentHullStrength>
     <DamageControl>8</DamageControl>
@@ -95,6 +96,7 @@ Name pools are authored in the faction data selected by `FactionDataPath`:
 | `DamageControl` | Hull repair capability. |
 | `MaxShieldStrength` | Maximum shield points. |
 | `ShieldRechargeRate` | Shield recovery rate. |
+| `UprisingDefense` | Value contributed when the complete ship is destroyed in the global officer-loyalty battle calculation. |
 | `Hyperdrive` | Strategic travel rating. |
 | `SublightSpeed` | Tactical sublight speed. |
 | `Maneuverability` | Tactical maneuver rating. |

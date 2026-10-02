@@ -25,6 +25,7 @@ namespace Rebellion.Game.Units
         public List<string> ManufacturingFactionInstanceIDs { get; set; }
         public int ResearchOrder { get; set; }
         public int ResearchDifficulty { get; set; }
+        public int UprisingDefense { get; set; }
 
         // General Info.
         public int MaxSquadronSize;
@@ -86,6 +87,7 @@ namespace Rebellion.Game.Units
                     : new List<string>(ManufacturingFactionInstanceIDs);
             copy.ResearchOrder = ResearchOrder;
             copy.ResearchDifficulty = ResearchDifficulty;
+            copy.UprisingDefense = UprisingDefense;
             copy.MaxSquadronSize = MaxSquadronSize;
             copy.CurrentSquadronSize = CurrentSquadronSize;
             copy.DetectionRating = DetectionRating;
