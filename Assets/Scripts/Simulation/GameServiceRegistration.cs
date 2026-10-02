@@ -95,6 +95,7 @@ namespace Rebellion.Simulation
             services.AddSingleton<OfficerCommandCommands>();
             services.AddSingleton<OfficerLoyaltyCommands>();
             services.AddSingleton<MissionQueries>();
+            services.AddSingleton<MissionBetrayalResolver>();
             services.AddSingleton<MissionCommands>();
             services.AddSingleton<SpaceCombatQueries>();
             services.AddSingleton<SpaceCombatCommands>();

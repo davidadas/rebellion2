@@ -317,7 +317,7 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(allianceOfficer, alliancePlanet);
             game.AttachNode(empireOfficer, planet);
 
-            OfficerLoyaltyCommands commands = new OfficerLoyaltyCommands(game, new ThrowingRNG());
+            OfficerLoyaltyCommands commands = new OfficerLoyaltyCommands(game);
             return new BattleScene
             {
                 Game = game,

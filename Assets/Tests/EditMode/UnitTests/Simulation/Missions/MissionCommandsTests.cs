@@ -13,14 +13,14 @@ using Rebellion.SceneGraph;
 using Rebellion.Simulation;
 using Rebellion.Util.Random;
 
-/// <summary>Verifies update mission betraying officer produces failed completion.</summary>
+/// <summary>Verifies mission execution and participant cleanup.</summary>
 namespace Rebellion.Tests.Simulation
 {
     [TestFixture]
     public class MissionCommandsTests
     {
         [Test]
-        public void UpdateMission_BetrayingOfficer_ProducesFoiledCompletion()
+        public void UpdateMission_BetrayingOfficer_AbortsWithoutDetectorConfrontation()
         {
             (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
                 factionOwnsPlanet: true,
@@ -28,6 +28,15 @@ namespace Rebellion.Tests.Simulation
                 loyalty: 0
             );
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
+            Planet returnPlanet = AddMissionReturnPlanet(
+                game,
+                planet.GetParentOfType<PlanetSector>(),
+                "return-planet",
+                "empire",
+                positionX: 100
+            );
+            officer.MissionReturnParentInstanceID = returnPlanet.InstanceID;
+            officer.MissionReturnLocationInstanceID = returnPlanet.InstanceID;
             planet.OwnerInstanceID = "rebels";
             Officer defender = EntityFactory.CreateOfficer("defender", "rebels");
             defender.CurrentRank = OfficerRank.General;
@@ -58,20 +67,25 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(MissionOutcome.Foiled, completed.Outcome);
             Assert.AreEqual(MissionCompletionReason.Foiled, completed.CompletionReason);
             Assert.IsNull(completed.FoilingFactionInstanceID);
-            Assert.IsTrue(officer.IsCaptured);
-            Assert.AreEqual(
-                mission.InstanceID,
-                results.OfType<OfficerCaptureStateResult>().Single().MissionInstanceID
-            );
+            Assert.IsFalse(officer.IsCaptured);
+            Assert.IsFalse(results.OfType<OfficerCaptureStateResult>().Any());
+            Assert.IsNull(mission.GetParent());
         }
 
         [Test]
-        public void UpdateMission_BetrayingDecoy_ResolvesDecoyConfrontation()
+        public void UpdateMission_BetrayingDecoy_DoesNotResolveDetectorConfrontation()
         {
             (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
                 factionOwnsPlanet: true
             );
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
+            Planet returnPlanet = AddMissionReturnPlanet(
+                game,
+                planet.GetParentOfType<PlanetSector>(),
+                "return-planet",
+                "empire",
+                positionX: 100
+            );
             planet.OwnerInstanceID = "rebels";
             Officer defender = EntityFactory.CreateOfficer("defender", "rebels");
             defender.CurrentRank = OfficerRank.General;
@@ -92,8 +106,8 @@ namespace Rebellion.Tests.Simulation
                 canBetray: true,
                 loyalty: 0
             );
-            decoy.MissionReturnParentInstanceID = planet.InstanceID;
-            decoy.MissionReturnLocationInstanceID = planet.InstanceID;
+            decoy.MissionReturnParentInstanceID = returnPlanet.InstanceID;
+            decoy.MissionReturnLocationInstanceID = returnPlanet.InstanceID;
             SetFoilTable(game, new Dictionary<int, int> { { -1000, 0 } });
             SetEvasionTable(game, new Dictionary<int, int> { { -1000, 0 } });
             StubMission mission = CreateMission(game, planet, officer);
@@ -108,12 +122,82 @@ namespace Rebellion.Tests.Simulation
 
             List<GameResult> results = system.UpdateMission(mission);
 
-            Assert.IsTrue(decoy.IsCaptured);
-            Assert.IsTrue(
+            Assert.IsFalse(decoy.IsCaptured);
+            Assert.IsFalse(
                 results
                     .OfType<OfficerCaptureStateResult>()
                     .Any(result => result.TargetOfficer == decoy)
             );
+        }
+
+        [Test]
+        public void UpdateMission_DiplomacyBetrayal_TerminatesRepeatingMission()
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
+                factionOwnsPlanet: true,
+                canBetray: true,
+                loyalty: 0
+            );
+            planet.AddVisitor("empire");
+            Mission mission = MissionTestFactory.TryCreate(
+                DiplomacyMission.MissionTypeID,
+                game,
+                "empire",
+                planet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, planet);
+            game.MoveNode(officer, mission);
+            mission.Initiate(0);
+            MissionCommands system = TestSystems.CreateMissionCommands(
+                game,
+                new StubRNG(),
+                movement
+            );
+
+            List<GameResult> results = system.UpdateMission(mission);
+
+            MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
+            Assert.IsFalse(completed.CanContinue);
+            Assert.IsFalse(results.OfType<PopularSupportShiftResult>().Any());
+            Assert.IsNull(mission.GetParent());
+        }
+
+        [Test]
+        public void UpdateMission_ResearchBetrayal_TerminatesRepeatingMission()
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
+                factionOwnsPlanet: true,
+                canBetray: true,
+                loyalty: 0
+            );
+            officer.FacilityResearch = 1;
+            AddResearchFacilities(game, planet);
+            Mission mission = MissionTestFactory.TryCreate(
+                ResearchMission.MissionTypeID,
+                game,
+                "empire",
+                planet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                discipline: ResearchDiscipline.FacilityDesign
+            );
+            game.AttachNode(mission, planet);
+            game.MoveNode(officer, mission);
+            mission.Initiate(0);
+            MissionCommands system = TestSystems.CreateMissionCommands(
+                game,
+                new StubRNG(),
+                movement
+            );
+
+            List<GameResult> results = system.UpdateMission(mission);
+
+            MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
+            Assert.IsFalse(completed.CanContinue);
+            Assert.IsFalse(results.OfType<ResearchOrderedResult>().Any());
+            Assert.IsNull(mission.GetParent());
         }
 
         [Test]

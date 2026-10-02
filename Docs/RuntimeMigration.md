@@ -45,10 +45,10 @@ it is not duplicated. RNG consumption is a state change.
 | `MaintenanceSystem` | `MaintenanceCommands`: upkeep/scrapping | Direct `Faction.GetTotalProjectedMaintenanceCost`; the forwarding query has no external callers | Scrapping publishes its completed batch immediately, as today |
 | `ManufacturingSystem` | `ManufacturingCommands`: start, enqueue, cancel, retarget, advance, rebuild | `ManufacturingQueries`: eligibility and completion estimates | Destruction/scrap/bombardment/assault callbacks identify affected queues and invoke cancellation/invalidation |
 | `MessageSystem` | `MessageCommands`: deliver and expire messages | None | Automatic message generation consumes settled batches, not individual facts |
-| `MissionSystem` | `MissionCommands`: start, abort, update, teardown, execution-runtime operations | `MissionQueries`: creation previews, options and odds | Capture callback identifies affected missions and invokes interruption; membership/order gate below |
+| `MissionSystem` | `MissionCommands`: start, abort, update, teardown, execution-runtime operations; `MissionBetrayalResolver`: participant betrayal and discovery rolls | `MissionQueries`: creation previews, options and odds | Capture callback identifies affected missions and invokes interruption; membership/order gate below |
 | `MovementSystem` | `MovementCommands`: move, routes, mission returns, evacuation, custody placement | `MovementQueries`: route eligibility, travel estimates, evacuation availability, return-destination selection | Blockade callback invokes relocation; preserve overload-specific publication boundaries |
 | `NamingSystem` | `NamingCommands`: per-faction/tick naming | None | None |
-| `OfficerLoyaltySystem` | `OfficerLoyaltyCommands`: generic global loyalty shifts and mission betrayal rolls | None | `OfficerLoyaltyObserver` derives battle-loss shifts from settled space combat, assault, and bombardment results; ordinary ownership changes do not alter loyalty |
+| `OfficerLoyaltySystem` | `OfficerLoyaltyCommands`: generic global loyalty shifts | None | `OfficerLoyaltyObserver` derives battle-loss shifts from settled space combat, assault, and bombardment results; ordinary ownership changes do not alter loyalty |
 | `PersonnelSystem` | `PersonnelCommands`: kill/retire | `PersonnelQueries.CanRetire` | None |
 | `PlanetaryAssaultSystem` | `PlanetaryAssaultCommands`: execute assault and apply outcome | `PlanetaryAssaultQueries.CanExecute`; existing resolver estimates remain with resolver initially | Publishes completed assault batch |
 | `PlanetaryControlSystem` | `PlanetaryControlCommands`: reconciliation, transfer, neutrality, support changes | `PlanetaryControlQueries`: controller selection, active regiment owners and core support resistance | Garrison/support callbacks delegate reconciliation/support operations |
@@ -444,10 +444,11 @@ publication after the bus replaces both returned-list routing and `ResultsProduc
   eight architecture cases and coverage gates passed (**81.4%** line / **91.3%**
   method). No existing result class or serialized game field changed.
 
-- Kept mission-betrayal operations in `OfficerLoyaltyCommands`. A later implementation
-  audit disproved the planet-support loyalty rule, so the planet-ownership subscription
-  and `ApplyControlShift` were removed. Ordinary planet ownership changes no longer
-  alter officer loyalty.
+- Moved mission-betrayal operations into `MissionBetrayalResolver`, keeping
+  `OfficerLoyaltyCommands` limited to general-purpose loyalty changes. A later
+  implementation audit disproved the planet-support loyalty rule, so the
+  planet-ownership subscription and `ApplyControlShift` were removed. Ordinary planet
+  ownership changes no longer alter officer loyalty.
 - Updated `OfficerLoyaltyObserver` to derive loyalty changes from completed battle
   results. The observer counts only
   fully destroyed capital ships, fighter squadrons, and regiments by their authored
@@ -460,7 +461,7 @@ publication after the bus replaces both returned-list routing and `ResultsProduc
   position in session construction are unchanged.
 - Replaced the ownership-loyalty characterization tests with a connected-session
   regression proving that a `PlanetOwnershipChangedResult` leaves officer loyalty
-  unchanged. Mission-betrayal coverage remains with the command fixture.
+  unchanged. Mission-betrayal coverage resides with the resolver fixture.
 
 - Split victory and Jedi result listeners into `VictoryObserver` and `JediObserver`.
   Their command classes own the existing tick and mutation implementations.

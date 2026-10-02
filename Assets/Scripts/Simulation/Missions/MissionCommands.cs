@@ -30,7 +30,7 @@ namespace Rebellion.Simulation
         private readonly MovementCommands _movementManager;
         private readonly MovementQueries _movementQueries;
         private readonly UprisingCommands _uprisingSystem;
-        private readonly OfficerLoyaltyCommands _officerLoyaltySystem;
+        private readonly MissionBetrayalResolver _betrayalResolver;
         private readonly PersonnelCommands _personnelCommands;
         private readonly MissionQueries _queries;
         private readonly List<GameResult> _pendingResults = new List<GameResult>();
@@ -44,7 +44,7 @@ namespace Rebellion.Simulation
         /// <param name="uprisingSystem">The uprising system used by uprising missions.</param>
         /// <param name="movementQueries">The mission-return destination rules.</param>
         /// <param name="queries">The mission eligibility and probability queries.</param>
-        /// <param name="officerLoyaltySystem">The officer loyalty and betrayal resolver.</param>
+        /// <param name="betrayalResolver">The mission-betrayal resolver.</param>
         /// <param name="personnelCommands">The personnel lifecycle commands.</param>
         public MissionCommands(
             GameRoot game,
@@ -53,7 +53,7 @@ namespace Rebellion.Simulation
             UprisingCommands uprisingSystem,
             MissionQueries queries,
             MovementQueries movementQueries,
-            OfficerLoyaltyCommands officerLoyaltySystem = null,
+            MissionBetrayalResolver betrayalResolver = null,
             PersonnelCommands personnelCommands = null
         )
         {
@@ -62,8 +62,7 @@ namespace Rebellion.Simulation
             _movementManager = movementManager;
             _uprisingSystem =
                 uprisingSystem ?? throw new ArgumentNullException(nameof(uprisingSystem));
-            _officerLoyaltySystem =
-                officerLoyaltySystem ?? new OfficerLoyaltyCommands(game, provider);
+            _betrayalResolver = betrayalResolver ?? new MissionBetrayalResolver(game, provider);
             _personnelCommands =
                 personnelCommands ?? new PersonnelCommands(new PersonnelQueries(game));
             _queries = queries ?? throw new ArgumentNullException(nameof(queries));
@@ -471,22 +470,10 @@ namespace Rebellion.Simulation
 
             if (
                 phase == MissionEncounterPhase.PreObjective
-                && _officerLoyaltySystem.TryResolveMissionBetrayal(
-                    mission,
-                    out List<GameResult> betrayalResults
-                )
+                && _betrayalResolver.TryResolve(mission, out List<GameResult> betrayalResults)
             )
             {
                 results.AddRange(betrayalResults);
-                ResolveFoiledParticipants(
-                    mission,
-                    mainParticipants,
-                    decoys,
-                    MissionQueries.GetDetectors(mission, planet, phase),
-                    planet,
-                    results
-                );
-                ApplyOfficerDeaths(results);
                 return true;
             }
 
