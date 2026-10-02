@@ -3416,6 +3416,7 @@ namespace Rebellion.Tests.Simulation
                     MinTransitTicks = 1,
                     SameSectorMinTransitTicks = 1,
                     DefaultFighterHyperdrive = 60,
+                    DefaultOfficerHyperdrive = 100,
                 },
                 Combat = new GameConfig.CombatConfig
                 {

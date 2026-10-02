@@ -902,6 +902,8 @@ namespace Rebellion.Game
             public int SameSectorMinTransitTicks { get; set; }
 
             public int DefaultFighterHyperdrive { get; set; }
+
+            public int DefaultOfficerHyperdrive { get; set; }
         }
 
         /// <summary>
