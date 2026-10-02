@@ -344,7 +344,7 @@ internal sealed class DefenseWindowProjector
     /// <returns>The optional in-transit overlay.</returns>
     private static Texture GetItemEnrouteOverlayTexture(UIContext uiContext, ISceneNode item)
     {
-        if (!IsItemInTransit(item) || item is Regiment)
+        if (!IsItemInTransit(item))
             return null;
         if (item is IManufacturable { ManufacturingStatus: ManufacturingStatus.Building })
             return null;
