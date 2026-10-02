@@ -400,7 +400,10 @@ public sealed class MessagesWindowView : MonoBehaviour
     private bool HasFocusedMessageRow()
     {
         GameObject selectedObject = EventSystem.current?.currentSelectedGameObject;
-        return selectedObject?.activeInHierarchy == true
+        if (selectedObject == null)
+            return false;
+
+        return selectedObject.activeInHierarchy
             && selectedObject.transform.IsChildOf(transform)
             && selectedObject.GetComponentInParent<MessageWindowRowView>() != null;
     }
