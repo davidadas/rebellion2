@@ -22,7 +22,7 @@ namespace Rebellion.Simulation
             typeof(PlanetaryControlObserver),
             typeof(UprisingObserver),
             typeof(JediObserver),
-            typeof(BattleOfficerLoyaltyObserver),
+            typeof(OfficerLoyaltyObserver),
             typeof(FogOfWarObserver),
             typeof(ManufacturingObserver),
         };

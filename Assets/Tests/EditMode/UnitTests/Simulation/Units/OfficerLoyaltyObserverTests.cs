@@ -10,10 +10,10 @@ using Rebellion.Simulation;
 namespace Rebellion.Tests.Simulation
 {
     [TestFixture]
-    public class BattleOfficerLoyaltyObserverTests
+    public class OfficerLoyaltyObserverTests
     {
         [Test]
-        public void SpaceCombat_ExclusiveController_UsesDestroyedEligibleUnitValues()
+        public void HandleResults_SpaceCombatWithExclusiveController_UsesDestroyedEligibleUnitValues()
         {
             BattleScene scene = CreateScene();
             SpaceCombatResult result = new SpaceCombatResult
@@ -77,7 +77,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void SpaceCombat_BothSidesRemainActive_DoesNotChangeLoyalty()
+        public void HandleResults_SpaceCombatWithBothSidesActive_DoesNotChangeLoyalty()
         {
             BattleScene scene = CreateScene();
             SpaceCombatResult result = new SpaceCombatResult
@@ -103,7 +103,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void PlanetaryAssault_FinalControllerAndDestroyedRegiments_UsesEligibleLossValues()
+        public void HandleResults_PlanetaryAssaultWithFinalController_UsesDestroyedRegimentValues()
         {
             BattleScene scene = CreateScene();
             scene.Planet.OwnerInstanceID = scene.Alliance.InstanceID;
@@ -134,7 +134,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void Bombardment_FinalControllerAndDestroyedFacilities_ExcludesFacilities()
+        public void HandleResults_BombardmentWithDestroyedFacilities_ExcludesFacilities()
         {
             BattleScene scene = CreateScene();
             BombardmentResult result = new BombardmentResult
@@ -160,7 +160,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void Bombardment_DestroyedPlanet_FavorsAttackingFaction()
+        public void HandleResults_BombardmentWithDestroyedPlanet_FavorsAttackingFaction()
         {
             BattleScene scene = CreateScene();
             BombardmentResult result = new BombardmentResult
@@ -179,7 +179,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void BattleLossLoyaltyDivisor_FavoredFactionSetting_ControlsShift()
+        public void HandleResults_FavoredFactionDivisor_ControlsShift()
         {
             BattleScene scene = CreateScene();
             scene.Alliance.Settings.BattleLossLoyaltyDivisor = 40;
@@ -206,7 +206,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void BattleLossLoyaltyDivisor_NonPositive_RejectsAuthoredConfiguration()
+        public void HandleResults_NonPositiveDivisorWithEligibleLoss_RejectsConfiguration()
         {
             BattleScene scene = CreateScene();
             scene.Empire.Settings.BattleLossLoyaltyDivisor = 0;
@@ -227,7 +227,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void BattleLossLoyaltyDivisor_NonPositiveWithNoEligibleLoss_DoesNotReject()
+        public void HandleResults_NonPositiveDivisorWithoutEligibleLoss_DoesNotReject()
         {
             BattleScene scene = CreateScene();
             scene.Empire.Settings.BattleLossLoyaltyDivisor = 0;
@@ -326,7 +326,7 @@ namespace Rebellion.Tests.Simulation
                 Planet = planet,
                 AllianceOfficer = allianceOfficer,
                 EmpireOfficer = empireOfficer,
-                Observer = new BattleOfficerLoyaltyObserver(game, commands),
+                Observer = new OfficerLoyaltyObserver(commands),
             };
         }
 
@@ -338,7 +338,7 @@ namespace Rebellion.Tests.Simulation
             public Planet Planet { get; set; }
             public Officer AllianceOfficer { get; set; }
             public Officer EmpireOfficer { get; set; }
-            public BattleOfficerLoyaltyObserver Observer { get; set; }
+            public OfficerLoyaltyObserver Observer { get; set; }
         }
     }
 }
