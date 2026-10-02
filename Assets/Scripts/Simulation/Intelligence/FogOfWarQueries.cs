@@ -101,7 +101,7 @@ namespace Rebellion.Simulation
                         ? new List<string> { faction.InstanceID }
                         : new List<string>();
 
-                    MergeOwnLiveUnits(viewPlanet, masterPlanet, faction);
+                    MergeFactionControlledUnits(viewPlanet, masterPlanet, faction);
 
                     AddObservedMissions(viewPlanet, planetSnapshot);
 
@@ -171,18 +171,32 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Adds live friendly units to a planet view without duplicating existing entries.
+        /// Adds faction-controlled units to a planet view without duplicating existing entries.
+        /// Owned units remain live references, while enemy officers held by the faction are
+        /// detached copies.
         /// </summary>
         /// <param name="viewPlanet">The planet view being populated.</param>
         /// <param name="masterPlanet">The authoritative planet data source.</param>
         /// <param name="faction">The faction whose view is being built.</param>
-        private static void MergeOwnLiveUnits(
+        private static void MergeFactionControlledUnits(
             Planet viewPlanet,
             Planet masterPlanet,
             Faction faction
         )
         {
             string factionId = faction.InstanceID;
+            IEnumerable<Officer> controlledOfficers = masterPlanet
+                .GetChildren<Officer>()
+                .Where(officer =>
+                    officer.OwnerInstanceID == factionId && !officer.IsCaptured
+                    || officer.IsCaptured && officer.CaptorInstanceID == factionId
+                )
+                .Select(officer =>
+                    officer.OwnerInstanceID == factionId && !officer.IsCaptured
+                        ? officer
+                        : FogOfWarRecorder.CopyOfficerForSnapshot(officer)
+                );
+
             viewPlanet.SetChildren(
                 MergeMissingByInstanceID(
                     viewPlanet.GetChildren<Fleet>(includeDisabled: true),
@@ -195,11 +209,7 @@ namespace Rebellion.Simulation
                 ),
                 MergeMissingByInstanceID(
                     viewPlanet.GetChildren<Officer>(includeDisabled: true),
-                    masterPlanet
-                        .GetChildren<Officer>()
-                        .Where(officer =>
-                            officer.OwnerInstanceID == factionId && !officer.IsCaptured
-                        )
+                    controlledOfficers
                 ),
                 MergeMissingByInstanceID(
                     viewPlanet.GetChildren<Regiment>(includeDisabled: true),

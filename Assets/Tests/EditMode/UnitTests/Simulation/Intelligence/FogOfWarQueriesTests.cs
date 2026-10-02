@@ -682,6 +682,45 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void BuildFactionView_CaptorsPrisonerInTransit_DoesNotRevealPlanetOrOtherUnits()
+        {
+            Officer vader = CreateOfficer("VADER", _empire);
+            vader.IsCaptured = true;
+            vader.CaptorInstanceID = _alliance.InstanceID;
+            vader.Movement = new MovementState
+            {
+                TransitTicks = 10,
+                TicksElapsed = 2,
+                MovementGroupID = "PRISONER_TRANSFER",
+            };
+            _game.AttachNode(vader, _coruscant);
+            Regiment hiddenRegiment = CreateRegiment("HIDDEN_REGIMENT", _empire);
+            _game.AttachNode(hiddenRegiment, _coruscant);
+
+            GalaxyMap view = _queries.BuildFactionView(_alliance);
+
+            Planet viewCoruscant = view.GetChildren<PlanetSector>()
+                .First(s => s.InstanceID == "CORE_SECTOR")
+                .GetChildren<Planet>()
+                .First(p => p.InstanceID == "CORUSCANT");
+            Officer viewPrisoner = viewCoruscant
+                .GetChildren<Officer>()
+                .Single(officer => officer.InstanceID == vader.InstanceID);
+
+            Assert.IsTrue(viewCoruscant.IsUnexploredView);
+            Assert.IsEmpty(viewCoruscant.GetChildren<Regiment>());
+            Assert.AreNotSame(vader, viewPrisoner, "Enemy prisoners must remain view copies.");
+            Assert.IsTrue(viewPrisoner.IsCaptured);
+            Assert.AreEqual(_alliance.InstanceID, viewPrisoner.CaptorInstanceID);
+            Assert.IsNotNull(viewPrisoner.Movement, "The prisoner must still appear in transit.");
+            Assert.AreEqual(
+                vader.Movement.MovementGroupID,
+                viewPrisoner.Movement.MovementGroupID,
+                "The projected prisoner must retain the escort movement group."
+            );
+        }
+
+        [Test]
         public void BuildFactionView_CapturedFriendlyOfficerOnSnapshotPlanet_DoesNotRevealOfficer()
         {
             Officer vader = CreateOfficer("VADER", _empire);
