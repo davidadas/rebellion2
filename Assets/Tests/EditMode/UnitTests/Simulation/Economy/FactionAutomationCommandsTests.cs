@@ -64,7 +64,12 @@ namespace Rebellion.Tests.Simulation
                 new FleetCommands(_game),
                 new ManufacturingQueries(_game)
             );
-            _automation = new FactionAutomationCommands(_game, _gameData, manufacturing);
+            _automation = new FactionAutomationCommands(
+                _game,
+                _gameData,
+                manufacturing,
+                new GarrisonAutomationPlanner(_game, _gameData)
+            );
         }
 
         [Test]

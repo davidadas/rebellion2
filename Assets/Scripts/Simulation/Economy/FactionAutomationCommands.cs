@@ -13,11 +13,11 @@ namespace Rebellion.Simulation
     /// </summary>
     public sealed class FactionAutomationCommands
     {
-        private const int _garrisonSupportTarget = 60;
-        private const int _garrisonSupportStep = 10;
+        private const int _automatedOrderQuantity = 1;
 
         private readonly GameRoot _game;
         private readonly GameDataCatalog _gameData;
+        private readonly GarrisonAutomationPlanner _garrisonPlanner;
         private readonly ManufacturingCommands _manufacturing;
 
         /// <summary>
@@ -26,16 +26,20 @@ namespace Rebellion.Simulation
         /// <param name="game">The active game.</param>
         /// <param name="gameData">Templates available to the selected content pack.</param>
         /// <param name="manufacturing">The manufacturing commands used to place orders.</param>
+        /// <param name="garrisonPlanner">Selects advisor-managed regiment orders.</param>
         public FactionAutomationCommands(
             GameRoot game,
             GameDataCatalog gameData,
-            ManufacturingCommands manufacturing
+            ManufacturingCommands manufacturing,
+            GarrisonAutomationPlanner garrisonPlanner
         )
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
             _gameData = gameData ?? throw new ArgumentNullException(nameof(gameData));
             _manufacturing =
                 manufacturing ?? throw new ArgumentNullException(nameof(manufacturing));
+            _garrisonPlanner =
+                garrisonPlanner ?? throw new ArgumentNullException(nameof(garrisonPlanner));
         }
 
         /// <summary>
@@ -61,27 +65,21 @@ namespace Rebellion.Simulation
         /// <returns>True when an order was queued.</returns>
         private bool TryQueueGarrisonRegiment(Faction faction)
         {
-            List<Planet> controlledPlanets = GetControlledPlanets(faction);
-            GarrisonCandidate destination = FindGarrisonDestination(controlledPlanets, faction);
-            if (destination == null)
-                return false;
-
-            Regiment template = GetAvailableRegiment(faction, destination.Planet.IsInUprising);
-            Planet producer = FindGarrisonProducer(controlledPlanets, destination.Planet);
             if (
-                template == null
-                || producer == null
-                || template.MaintenanceCost > faction.ProjectedMaintenanceHeadroom
+                !_garrisonPlanner.TryCreateOrder(
+                    faction,
+                    out Planet producer,
+                    out Regiment template,
+                    out Planet destination
+                )
             )
-            {
                 return false;
-            }
 
             return _manufacturing.StartManufacturing(
                 producer,
                 template,
-                destination.Planet,
-                1,
+                destination,
+                _automatedOrderQuantity,
                 faction.InstanceID
             );
         }
@@ -149,7 +147,7 @@ namespace Rebellion.Simulation
                     producer,
                     template,
                     destination,
-                    1,
+                    _automatedOrderQuantity,
                     faction.InstanceID
                 );
         }
@@ -173,227 +171,6 @@ namespace Rebellion.Simulation
                 )
                 .OrderBy(planet => planet.InstanceID, StringComparer.Ordinal)
                 .ToList();
-        }
-
-        /// <summary>
-        /// Returns every planet controlled by the faction in scene order.
-        /// </summary>
-        /// <param name="faction">The faction whose planets are requested.</param>
-        /// <returns>The controlled planets.</returns>
-        private List<Planet> GetControlledPlanets(Faction faction)
-        {
-            return _game
-                .GetSceneNodesByType<Planet>()
-                .Where(planet =>
-                    string.Equals(
-                        planet.GetOwnerInstanceID(),
-                        faction.InstanceID,
-                        StringComparison.Ordinal
-                    )
-                )
-                .ToList();
-        }
-
-        /// <summary>
-        /// Selects the highest-priority planet with a garrison shortage.
-        /// </summary>
-        /// <param name="controlledPlanets">The faction's controlled planets.</param>
-        /// <param name="faction">The controlling faction.</param>
-        /// <returns>The selected shortage, or null.</returns>
-        private GarrisonCandidate FindGarrisonDestination(
-            IReadOnlyList<Planet> controlledPlanets,
-            Faction faction
-        )
-        {
-            List<GarrisonCandidate> shortages = controlledPlanets
-                .Where(planet => !planet.IsBlockaded())
-                .Select(planet => new GarrisonCandidate(
-                    planet,
-                    GetGarrisonTarget(planet, faction),
-                    CountFactionRegiments(planet, faction)
-                ))
-                .Where(candidate => candidate.Deficit > 0 && candidate.Sector != null)
-                .ToList();
-            List<GarrisonCandidate> uprisingShortages = shortages
-                .Where(candidate => candidate.Planet.IsInUprising)
-                .ToList();
-            if (uprisingShortages.Count > 0)
-            {
-                PlanetSector uprisingSector = SelectRanked(
-                    uprisingShortages.Select(candidate => candidate.Sector).Distinct(),
-                    sector =>
-                        uprisingShortages
-                            .Where(candidate => candidate.Sector == sector)
-                            .Sum(candidate => candidate.Deficit),
-                    preferGreater: true
-                );
-                return SelectRanked(
-                    uprisingShortages.Where(candidate => candidate.Sector == uprisingSector),
-                    candidate => candidate.Deficit,
-                    preferGreater: false
-                );
-            }
-
-            PlanetSector normalSector = SelectRanked(
-                shortages.Select(candidate => candidate.Sector).Distinct(),
-                sector =>
-                    controlledPlanets.Count(planet =>
-                        planet.GetParentOfType<PlanetSector>() == sector
-                    ),
-                preferGreater: false
-            );
-            return SelectRanked(
-                shortages.Where(candidate => candidate.Sector == normalSector),
-                candidate => candidate.Deficit,
-                preferGreater: true
-            );
-        }
-
-        /// <summary>
-        /// Calculates the desired regiment count for one controlled planet.
-        /// </summary>
-        /// <param name="planet">The planet to protect.</param>
-        /// <param name="faction">The controlling faction.</param>
-        /// <returns>The desired regiment count.</returns>
-        private static int GetGarrisonTarget(Planet planet, Faction faction)
-        {
-            int support = planet.GetPopularSupport(faction.InstanceID);
-            int supportTarget = 1;
-            if (support < _garrisonSupportTarget)
-            {
-                supportTarget =
-                    (int)
-                        Math.Ceiling(
-                            (_garrisonSupportTarget - support) / (double)_garrisonSupportStep
-                        ) + 1;
-            }
-
-            if (planet.IsInUprising)
-                supportTarget *= 2;
-
-            int resourceFacilities =
-                planet.GetTotalBuildingTypeCount(BuildingType.Mine)
-                + planet.GetTotalBuildingTypeCount(BuildingType.Refinery);
-            int facilityTarget =
-                resourceFacilities / 2
-                + planet.GetTotalBuildingTypeCount(BuildingType.Shipyard)
-                + planet.GetTotalBuildingTypeCount(BuildingType.TrainingFacility)
-                + planet.GetTotalBuildingTypeCount(BuildingType.ConstructionFacility);
-            return Math.Max(supportTarget, facilityTarget);
-        }
-
-        /// <summary>
-        /// Counts stationary regiments owned by the controlling faction, including pending orders.
-        /// </summary>
-        /// <param name="planet">The planet to inspect.</param>
-        /// <param name="faction">The controlling faction.</param>
-        /// <returns>The regiment count.</returns>
-        private static int CountFactionRegiments(Planet planet, Faction faction)
-        {
-            return planet
-                .GetAllRegiments()
-                .Count(regiment =>
-                    string.Equals(
-                        regiment.GetOwnerInstanceID(),
-                        faction.InstanceID,
-                        StringComparison.Ordinal
-                    )
-                    && regiment.Movement == null
-                );
-        }
-
-        /// <summary>
-        /// Selects the eligible troop producer closest to the destination's sector.
-        /// </summary>
-        /// <param name="controlledPlanets">The faction's controlled planets.</param>
-        /// <param name="destination">The destination requiring a regiment.</param>
-        /// <returns>The selected producer, or null.</returns>
-        private Planet FindGarrisonProducer(
-            IEnumerable<Planet> controlledPlanets,
-            Planet destination
-        )
-        {
-            PlanetSector destinationSector = destination.GetParentOfType<PlanetSector>();
-            if (destinationSector == null)
-                return null;
-
-            List<Planet> eligibleProducers = controlledPlanets
-                .Where(planet =>
-                    !planet.IsBlockaded()
-                    && !planet.IsInUprising
-                    && !planet.IsManufacturingReserved(ManufacturingType.Troop)
-                    && planet.GetIdleManufacturingFacilities(ManufacturingType.Troop) > 0
-                    && planet.GetParentOfType<PlanetSector>() != null
-                )
-                .ToList();
-            PlanetSector producerSector = SelectRanked(
-                eligibleProducers
-                    .Select(planet => planet.GetParentOfType<PlanetSector>())
-                    .Distinct(),
-                sector => GetSectorDistanceSquared(destinationSector, sector),
-                preferGreater: false
-            );
-            return SelectRanked(
-                eligibleProducers.Where(planet =>
-                    planet.GetParentOfType<PlanetSector>() == producerSector
-                ),
-                planet => planet.GetPopularSupport(planet.GetOwnerInstanceID()),
-                preferGreater: false
-            );
-        }
-
-        /// <summary>
-        /// Calculates squared distance between two sector coordinates.
-        /// </summary>
-        /// <param name="origin">The origin sector.</param>
-        /// <param name="destination">The destination sector.</param>
-        /// <returns>The squared coordinate distance.</returns>
-        private static long GetSectorDistanceSquared(PlanetSector origin, PlanetSector destination)
-        {
-            long deltaX = origin.PositionX - destination.PositionX;
-            long deltaY = origin.PositionY - destination.PositionY;
-            return deltaX * deltaX + deltaY * deltaY;
-        }
-
-        /// <summary>
-        /// Selects the strongest-ranked value and resolves equal ranks through game randomness.
-        /// </summary>
-        /// <typeparam name="T">The candidate type.</typeparam>
-        /// <typeparam name="TRank">The comparable rank type.</typeparam>
-        /// <param name="candidates">The candidates in scene order.</param>
-        /// <param name="getRank">Returns a candidate's rank.</param>
-        /// <param name="preferGreater">Whether larger ranks are preferred.</param>
-        /// <returns>The selected candidate, or the default value.</returns>
-        private T SelectRanked<T, TRank>(
-            IEnumerable<T> candidates,
-            Func<T, TRank> getRank,
-            bool preferGreater
-        )
-            where T : class
-            where TRank : IComparable<TRank>
-        {
-            T selected = null;
-            TRank selectedRank = default;
-            foreach (T candidate in candidates)
-            {
-                TRank rank = getRank(candidate);
-                if (selected == null)
-                {
-                    selected = candidate;
-                    selectedRank = rank;
-                    continue;
-                }
-
-                int comparison = rank.CompareTo(selectedRank);
-                bool isBetter = preferGreater ? comparison > 0 : comparison < 0;
-                if (isBetter || (comparison == 0 && _game.Random.NextInt(0, 10) >= 5))
-                {
-                    selected = candidate;
-                    selectedRank = rank;
-                }
-            }
-
-            return selected;
         }
 
         /// <summary>
@@ -488,29 +265,6 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Selects an unlocked defensive regiment for the destination state.
-        /// </summary>
-        /// <param name="faction">The faction placing the order.</param>
-        /// <param name="isUprising">Whether the destination is in uprising.</param>
-        /// <returns>The selected regiment template, or null.</returns>
-        private Regiment GetAvailableRegiment(Faction faction, bool isUprising)
-        {
-            int unlockedOrder = faction.GetHighestUnlockedOrder(ManufacturingType.Troop);
-            IEnumerable<Regiment> candidates = _gameData.Regiments.Where(template =>
-                IManufacturable.CanBeManufacturedBy(template, faction.InstanceID)
-                && template.ResearchOrder <= unlockedOrder
-                && template.DefenseRating >= template.AttackRating
-            );
-            return isUprising
-                ? SelectRanked(
-                    candidates,
-                    template => template.MaintenanceCost,
-                    preferGreater: false
-                )
-                : SelectRanked(candidates, template => template.DefenseRating, preferGreater: true);
-        }
-
-        /// <summary>
         /// Selects the most advanced unlocked resource-facility template.
         /// </summary>
         /// <param name="faction">The faction placing the order.</param>
@@ -539,29 +293,6 @@ namespace Rebellion.Simulation
         private static int CountBuildings(IEnumerable<Planet> planets, BuildingType buildingType)
         {
             return planets.Sum(planet => planet.GetTotalBuildingTypeCount(buildingType));
-        }
-
-        /// <summary>
-        /// Describes one controlled planet's current garrison shortage.
-        /// </summary>
-        private sealed class GarrisonCandidate
-        {
-            public Planet Planet { get; }
-            public PlanetSector Sector { get; }
-            public int Deficit { get; }
-
-            /// <summary>
-            /// Creates a garrison-shortage candidate.
-            /// </summary>
-            /// <param name="planet">The controlled planet.</param>
-            /// <param name="target">The desired regiment count.</param>
-            /// <param name="current">The current stationary regiment count.</param>
-            public GarrisonCandidate(Planet planet, int target, int current)
-            {
-                Planet = planet;
-                Sector = planet.GetParentOfType<PlanetSector>();
-                Deficit = target - current;
-            }
         }
     }
 }
