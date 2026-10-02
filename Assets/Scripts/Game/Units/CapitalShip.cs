@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Encyclopedia;
+using Rebellion.Game.ShipComponents;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Serialization;
 
@@ -53,6 +54,7 @@ namespace Rebellion.Game.Units
         public string BattleResultImagePath { get; set; }
         public string BattleResultInTransitImagePath { get; set; }
         public string BattleResultDamagedImagePath { get; set; }
+        public string ModelPath { get; set; }
 
         // Naming Info.
         public string ShipNamePoolID { get; set; }
@@ -86,6 +88,13 @@ namespace Rebellion.Game.Units
         public int StarfighterCapacity;
         public int RegimentCapacity;
         public List<CapitalShipRole> Roles = new List<CapitalShipRole>();
+
+        // Component Info.
+        [PersistableMember(Name = "Components")]
+        private List<ShipComponent> _components = new List<ShipComponent>();
+
+        [PersistableMember(Name = "HardpointGroups")]
+        private List<HardpointGroup> _hardpointGroups = new List<HardpointGroup>();
 
         // Unit Info.
         [PersistableMember(Name = "Officers")]
@@ -155,6 +164,7 @@ namespace Rebellion.Game.Units
             copy.BattleResultImagePath = BattleResultImagePath;
             copy.BattleResultInTransitImagePath = BattleResultInTransitImagePath;
             copy.BattleResultDamagedImagePath = BattleResultDamagedImagePath;
+            copy.ModelPath = ModelPath;
             copy.ShipNamePoolID = ShipNamePoolID;
             copy._hasAssignedName = _hasAssignedName;
             copy.ProducerOwnerID = ProducerOwnerID;
@@ -181,6 +191,8 @@ namespace Rebellion.Game.Units
             copy.StarfighterCapacity = StarfighterCapacity;
             copy.RegimentCapacity = RegimentCapacity;
             copy.Roles = new List<CapitalShipRole>(Roles);
+            copy._components = _components?.ConvertAll(component => component?.CreateCopy());
+            copy._hardpointGroups = _hardpointGroups?.ConvertAll(group => group?.CreateCopy());
             copy.PrimaryWeapons = PrimaryWeapons.ToDictionary(
                 entry => entry.Key,
                 entry => entry.Value?.ToArray()
@@ -270,6 +282,24 @@ namespace Rebellion.Game.Units
         public IReadOnlyList<CapitalShipRole> GetRoles()
         {
             return Roles;
+        }
+
+        /// <summary>
+        /// Returns the components installed on this ship.
+        /// </summary>
+        /// <returns>The installed components.</returns>
+        public List<ShipComponent> GetComponents()
+        {
+            return _components;
+        }
+
+        /// <summary>
+        /// Returns the weapon groups installed on this ship.
+        /// </summary>
+        /// <returns>The installed hardpoint groups.</returns>
+        public List<HardpointGroup> GetHardpointGroups()
+        {
+            return _hardpointGroups;
         }
 
         /// <summary>
