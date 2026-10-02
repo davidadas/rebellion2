@@ -82,6 +82,28 @@ internal sealed class MessagesWindowSession
     }
 
     /// <summary>
+    /// Applies replacement, toggle, or range selection to one current message.
+    /// </summary>
+    /// <param name="message">The message receiving the selection gesture.</param>
+    /// <param name="modifiers">The active list-selection modifiers.</param>
+    public void Select(Message message, SelectionModifierState modifiers)
+    {
+        string messageId = GetMessageID(message);
+        int messageIndex = FindMessageIndex(messages, messageId);
+        if (messageIndex < 0)
+            return;
+
+        HashSet<int> selectedIndexes = GetSelectedIndexes();
+        SelectableListSelection.SelectIndexedItem(
+            selectedIndexes,
+            messageIndex,
+            messages.Count,
+            modifiers
+        );
+        CaptureSelection(selectedIndexes, messageId);
+    }
+
+    /// <summary>
     /// Selects every source message while preserving the primary selection.
     /// </summary>
     public void SelectAll()
@@ -115,6 +137,35 @@ internal sealed class MessagesWindowSession
         {
             if (GetMessageID(messages[index]) == selectedMessageId)
                 return messages[index];
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Finds the nearest unselected message above the primary row, falling back below it.
+    /// </summary>
+    /// <returns>The message to select after removing the current selection, or null.</returns>
+    public Message GetMessageToSelectAfterRemoval()
+    {
+        int selectedIndex = FindMessageIndex(messages, selectedMessageId);
+        if (selectedIndex < 0)
+            return null;
+
+        for (int index = selectedIndex + 1; index < messages.Count; index++)
+        {
+            Message message = messages[index];
+            string messageId = GetMessageID(message);
+            if (messageId != null && !selectedMessageIds.Contains(messageId))
+                return message;
+        }
+
+        for (int index = selectedIndex - 1; index >= 0; index--)
+        {
+            Message message = messages[index];
+            string messageId = GetMessageID(message);
+            if (messageId != null && !selectedMessageIds.Contains(messageId))
+                return message;
         }
 
         return null;
@@ -185,6 +236,62 @@ internal sealed class MessagesWindowSession
         }
 
         return messageIds;
+    }
+
+    /// <summary>
+    /// Converts the current identity selection to source indexes.
+    /// </summary>
+    /// <returns>The selected source indexes.</returns>
+    private HashSet<int> GetSelectedIndexes()
+    {
+        HashSet<int> selectedIndexes = new HashSet<int>();
+        for (int index = 0; index < messages.Count; index++)
+        {
+            if (selectedMessageIds.Contains(GetMessageID(messages[index])))
+                selectedIndexes.Add(index);
+        }
+
+        return selectedIndexes;
+    }
+
+    /// <summary>
+    /// Rebuilds identity selection from source indexes and reconciles the primary message.
+    /// </summary>
+    /// <param name="selectedIndexes">The selected source indexes.</param>
+    /// <param name="requestedMessageId">The identity receiving the selection gesture.</param>
+    private void CaptureSelection(HashSet<int> selectedIndexes, string requestedMessageId)
+    {
+        selectedMessageIds.Clear();
+        foreach (int index in selectedIndexes)
+        {
+            if (index < 0 || index >= messages.Count)
+                continue;
+
+            string messageId = GetMessageID(messages[index]);
+            if (messageId != null)
+                selectedMessageIds.Add(messageId);
+        }
+
+        if (selectedMessageIds.Contains(requestedMessageId))
+            selectedMessageId = requestedMessageId;
+        else if (!selectedMessageIds.Contains(selectedMessageId))
+            selectedMessageId = GetFirstSelectedMessageID();
+    }
+
+    /// <summary>
+    /// Gets the first selected identity in newest-first display order.
+    /// </summary>
+    /// <returns>The selected identity, or null.</returns>
+    private string GetFirstSelectedMessageID()
+    {
+        for (int index = messages.Count - 1; index >= 0; index--)
+        {
+            string messageId = GetMessageID(messages[index]);
+            if (selectedMessageIds.Contains(messageId))
+                return messageId;
+        }
+
+        return null;
     }
 
     /// <summary>

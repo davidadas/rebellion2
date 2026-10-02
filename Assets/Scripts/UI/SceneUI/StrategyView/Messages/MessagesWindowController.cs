@@ -40,6 +40,7 @@ public sealed class MessagesWindowController
     private readonly List<AudioPlaybackHandle> detailAudioPlaybacks =
         new List<AudioPlaybackHandle>();
     private readonly Func<Vector2Int> getWindowPosition;
+    private readonly Func<SelectionModifierState> getSelectionModifiers;
     private readonly Func<UIContext> getUIContext;
     private readonly Action markDirty;
     private readonly Action<string> playSfx;
@@ -66,6 +67,7 @@ public sealed class MessagesWindowController
     /// <param name="getWindowPosition">Returns the authored Messages placement.</param>
     /// <param name="closeWindow">Closes a registered strategy window.</param>
     /// <param name="markDirty">Invalidates strategy presentation after window changes.</param>
+    /// <param name="getSelectionModifiers">Returns the active list-selection modifiers.</param>
     public MessagesWindowController(
         Action<string> playSfx,
         Func<string, AudioPlaybackHandle> playSfxInstance,
@@ -74,7 +76,8 @@ public sealed class MessagesWindowController
         UIWindowManager windowManager,
         Func<Vector2Int> getWindowPosition,
         Action<UIWindow> closeWindow,
-        Action markDirty
+        Action markDirty,
+        Func<SelectionModifierState> getSelectionModifiers
     )
     {
         this.playSfx = playSfx ?? throw new ArgumentNullException(nameof(playSfx));
@@ -88,6 +91,8 @@ public sealed class MessagesWindowController
             getWindowPosition ?? throw new ArgumentNullException(nameof(getWindowPosition));
         this.closeWindow = closeWindow ?? throw new ArgumentNullException(nameof(closeWindow));
         this.markDirty = markDirty ?? throw new ArgumentNullException(nameof(markDirty));
+        this.getSelectionModifiers =
+            getSelectionModifiers ?? throw new ArgumentNullException(nameof(getSelectionModifiers));
     }
 
     /// <summary>
@@ -612,12 +617,19 @@ public sealed class MessagesWindowController
 
         FocusWindow(view);
         Faction playerFaction = GetPlayerFaction();
+        Message messageToSelect = session.GetMessageToSelectAfterRemoval();
         if (RemoveSelectedMessages(playerFaction, session.GetSelectedMessageIDs()))
         {
             StopMessageDetailAudio();
             session.ClearSelection();
             session.HideDetail();
             RefreshSession(session);
+            messageToSelect = GetMessage(session.Messages, messageToSelect?.InstanceID);
+            if (messageToSelect != null)
+            {
+                session.SelectOnly(messageToSelect);
+                MarkMessageRead(messageToSelect);
+            }
         }
 
         RequestRender();
@@ -663,7 +675,7 @@ public sealed class MessagesWindowController
         if (message == null)
             return;
 
-        session.SelectOnly(message);
+        session.Select(message, getSelectionModifiers());
         MarkMessageRead(message);
         RequestRender();
     }

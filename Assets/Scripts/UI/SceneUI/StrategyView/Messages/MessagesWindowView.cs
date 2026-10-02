@@ -168,13 +168,14 @@ public sealed class MessagesWindowView : MonoBehaviour
         if (keyboard == null)
             return;
 
-        if (keyboard.upArrowKey.wasPressedThisFrame)
+        bool rowHasFocus = HasFocusedMessageRow();
+        if (!rowHasFocus && keyboard.upArrowKey.wasPressedThisFrame)
         {
             MessageNextRequested?.Invoke(this);
             return;
         }
 
-        if (keyboard.downArrowKey.wasPressedThisFrame)
+        if (!rowHasFocus && keyboard.downArrowKey.wasPressedThisFrame)
         {
             MessagePreviousRequested?.Invoke(this);
             return;
@@ -390,6 +391,18 @@ public sealed class MessagesWindowView : MonoBehaviour
     private static bool IsPressed(KeyControl key)
     {
         return key?.isPressed == true;
+    }
+
+    /// <summary>
+    /// Returns whether the event system is routing navigation through a message row.
+    /// </summary>
+    /// <returns>True when a row inside this window owns keyboard focus.</returns>
+    private bool HasFocusedMessageRow()
+    {
+        GameObject selectedObject = EventSystem.current?.currentSelectedGameObject;
+        return selectedObject?.activeInHierarchy == true
+            && selectedObject.transform.IsChildOf(transform)
+            && selectedObject.GetComponentInParent<MessageWindowRowView>() != null;
     }
 
     /// <summary>
