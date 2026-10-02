@@ -20,7 +20,7 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Applies the original weak-support reduction to a shift on a core sector.
+        /// Applies the configured weak-support reduction to a shift on a core sector.
         /// </summary>
         /// <param name="planet">The planet receiving the support shift.</param>
         /// <param name="faction">The faction whose support is changing.</param>
@@ -73,6 +73,19 @@ namespace Rebellion.Simulation
         public Faction GetPlanetController(Planet planet)
         {
             return GetPlanetController(planet, GetActiveRegimentOwners(planet));
+        }
+
+        /// <summary>
+        /// Returns the faction currently recorded as a planet's owner.
+        /// </summary>
+        /// <param name="planet">The planet whose owner is requested.</param>
+        /// <returns>The recorded owner, or null when the planet is neutral.</returns>
+        internal Faction GetPlanetOwner(Planet planet)
+        {
+            string ownerInstanceId = planet?.GetOwnerInstanceID();
+            return string.IsNullOrEmpty(ownerInstanceId)
+                ? null
+                : _game.GetFactionByOwnerInstanceID(ownerInstanceId);
         }
 
         /// <summary>

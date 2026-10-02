@@ -859,17 +859,11 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Periodic popular support shifts and hostile force penalties.
+        /// Popular support shifts and ownership-transfer settings.
         /// </summary>
         [PersistableObject]
         public class SupportShiftConfig
         {
-            public int FleetPenalty { get; set; }
-
-            public int FighterPenalty { get; set; }
-
-            public int TroopPenalty { get; set; }
-
             public int OwnershipTransferThreshold { get; set; }
 
             public int WeakSupportPenaltyDivisor { get; set; }

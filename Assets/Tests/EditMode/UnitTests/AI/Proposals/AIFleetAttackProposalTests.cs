@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using NUnit.Framework;
@@ -12,7 +13,9 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.Simulation;
 using Rebellion.Tests.AI.Helpers;
+using Rebellion.Util.Random;
 
 namespace Rebellion.Tests.AI.Fleets
 {
@@ -333,13 +336,15 @@ namespace Rebellion.Tests.AI.Fleets
         }
 
         [Test]
-        public void Execute_WithExposedDefendingRegiment_BombardsBeforeAssaulting()
+        public void Execute_BombardmentCapturesTarget_ClearsAttackOrderImmediately()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
+            target.SetPopularSupport(empire.InstanceID, 60);
+            target.SetPopularSupport(rebels.InstanceID, 40);
             Fleet fleet = AddBattleFleet(game, target, empire.InstanceID);
-            fleet.GetChildren<CapitalShip>().Single().Bombardment = 10;
+            fleet.GetChildren<CapitalShip>().Single().Bombardment = 1;
             fleet.Order = new FleetOrder
             {
                 OrderType = FleetOrderType.Attack,
@@ -350,7 +355,16 @@ namespace Rebellion.Tests.AI.Fleets
                 AITestSceneBuilder.CreateRegiment("defender", rebels.InstanceID),
                 target
             );
-            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            game.Random = new SequenceRNG(intValues: new[] { 1, 0, 10 });
+            using GameSession session = new GameSession(game, TestGameData.Create(game.Config));
+            IReadOnlyList<GameResult> resolvedResults = null;
+            session.Pipeline.ResultsResolved += results => resolvedResults = results;
+            AITurnContext context = AITestSceneBuilder.CreateContext(
+                game,
+                empire,
+                bombardment: session.GetService<BombardmentCommands>(),
+                random: game.Random
+            );
             AIFleetAttackProposal proposal = new AIFleetAttackProposal(
                 fleet,
                 FleetOrderType.Attack,
@@ -360,7 +374,9 @@ namespace Rebellion.Tests.AI.Fleets
 
             proposal.Execute(context);
 
-            Assert.AreEqual(1, context.Results.OfType<BombardmentResult>().Count());
+            Assert.AreEqual(1, resolvedResults.OfType<BombardmentResult>().Count());
+            Assert.AreEqual(empire.InstanceID, target.GetOwnerInstanceID());
+            Assert.IsNull(fleet.Order);
         }
 
         [Test]

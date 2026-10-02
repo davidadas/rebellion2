@@ -200,6 +200,21 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
+        /// Determines whether a building belongs to a civilian bombardment target lane.
+        /// </summary>
+        /// <param name="building">Building to inspect.</param>
+        /// <returns>True when the building is a civilian or manufacturing facility.</returns>
+        internal static bool IsCivilianTarget(Building building)
+        {
+            return building?.BuildingType
+                is BuildingType.Mine
+                    or BuildingType.Refinery
+                    or BuildingType.Shipyard
+                    or BuildingType.TrainingFacility
+                    or BuildingType.ConstructionFacility;
+        }
+
+        /// <summary>
         /// Returns whether a planet has an active military target for orbital bombardment.
         /// </summary>
         /// <param name="planet">Planet to inspect.</param>

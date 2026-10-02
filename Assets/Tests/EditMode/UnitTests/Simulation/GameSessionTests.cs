@@ -251,6 +251,77 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void Constructor_CivilianBombardmentExecuted_ConnectsPlanetaryControlReaction()
+        {
+            GameConfig config = new GameConfig();
+            config.Combat.Bombardment.AttackerLeadershipDivisor = 40;
+            config.Combat.Bombardment.DefenderLeadershipDivisor = 40;
+            config.Combat.Bombardment.StrikeRollMinimum = 1;
+            config.Combat.Bombardment.StrikeRollMaximum = 10;
+            config.Combat.Bombardment.CivilianSupportPenalty = -20;
+            config.Smuggling.LossPercentByMinimumSupport[0] = 0;
+            config.SupportShift.OwnershipTransferThreshold = 60;
+            config.SupportShift.ControlChangeSupportShift = 0;
+            GameRoot game = TestGame.Create(config);
+            game.Random = new SequenceRNG(intValues: new[] { 0, 10 });
+            Faction attacker = new Faction
+            {
+                InstanceID = "attacker",
+                Settings = new FactionSettings { CivilianBombardmentOuterRimSupportPenalty = -2 },
+            };
+            Faction defender = new Faction { InstanceID = "defender" };
+            game.GetFactions().Add(attacker);
+            game.GetFactions().Add(defender);
+            PlanetSector sector = new PlanetSector
+            {
+                InstanceID = "sector",
+                SectorType = PlanetSectorType.OuterRim,
+            };
+            Planet target = CreatePlanet("target", defender.InstanceID, 0);
+            target.SetPopularSupport(attacker.InstanceID, 30);
+            target.SetPopularSupport(defender.InstanceID, 70);
+            Planet neighbor = CreatePlanet("neighbor", defender.InstanceID, 1);
+            neighbor.SetPopularSupport(attacker.InstanceID, 30);
+            neighbor.SetPopularSupport(defender.InstanceID, 70);
+            Building mine = new Building
+            {
+                InstanceID = "mine",
+                OwnerInstanceID = defender.InstanceID,
+                BuildingType = BuildingType.Mine,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Fleet fleet = EntityFactory.CreateFleet("fleet", attacker.InstanceID);
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "ship",
+                OwnerInstanceID = attacker.InstanceID,
+                Bombardment = 1,
+                MaxHullStrength = 100,
+                CurrentHullStrength = 100,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(sector, game.Galaxy);
+            game.AttachNode(target, sector);
+            game.AttachNode(neighbor, sector);
+            game.AttachNode(mine, target);
+            game.AttachNode(fleet, target);
+            game.AttachNode(ship, fleet);
+            using GameSession session = new GameSession(game, TestGameData.Create(config));
+            IReadOnlyList<GameResult> resolvedResults = null;
+            session.Pipeline.ResultsResolved += results => resolvedResults = results;
+
+            BombardmentResult result = session
+                .GetService<BombardmentCommands>()
+                .TryExecute(new[] { fleet }, target, BombardmentType.Civilian);
+
+            Assert.IsNotNull(result);
+            CollectionAssert.Contains(result.DestroyedBuildings, mine);
+            CollectionAssert.Contains(resolvedResults, result);
+            Assert.AreEqual(8, target.GetPopularSupport(attacker.InstanceID));
+            Assert.AreEqual(28, neighbor.GetPopularSupport(attacker.InstanceID));
+        }
+
+        [Test]
         public void Constructor_CarrierScrappedOverOwnedUncolonizedPlanet_RelocatesOfficerLocally()
         {
             _planet.IsColonized = false;

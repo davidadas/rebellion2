@@ -33,13 +33,22 @@ namespace Rebellion.Tests.Simulation
         /// <returns>The result of make bombardment.</returns>
         protected BombardmentCommands MakeBombardment(GameRoot game, IRandomNumberProvider rng)
         {
+            return new BombardmentCommands(game, rng, new BombardmentQueries(game));
+        }
+
+        /// <summary>
+        /// Connects planetary-control reactions to a combat result bus.
+        /// </summary>
+        /// <param name="game">The game whose planetary control is observed.</param>
+        /// <param name="results">The result bus receiving combat outcomes.</param>
+        protected void ConnectPlanetaryControl(GameRoot game, GameResultBus results)
+        {
             (_, PlanetaryControlCommands planetaryControl) = CreatePlanetaryCombatSystems(game);
-            return new BombardmentCommands(
+            new PlanetaryControlObserver(
                 game,
-                rng,
                 planetaryControl,
-                new BombardmentQueries(game)
-            );
+                new PlanetaryControlQueries(game)
+            ).Connect(results);
         }
 
         /// <summary>

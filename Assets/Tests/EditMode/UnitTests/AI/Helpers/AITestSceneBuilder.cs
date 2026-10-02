@@ -340,12 +340,7 @@ namespace Rebellion.Tests.AI.Helpers
             );
             BombardmentCommands bombardmentSystem =
                 bombardment
-                ?? new BombardmentCommands(
-                    game,
-                    provider,
-                    planetaryControl,
-                    new BombardmentQueries(game)
-                );
+                ?? new BombardmentCommands(game, provider, new BombardmentQueries(game));
             PlanetaryAssaultCommands planetaryAssaultSystem =
                 planetaryAssault
                 ?? new PlanetaryAssaultCommands(

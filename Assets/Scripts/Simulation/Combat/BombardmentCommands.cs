@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
-using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
@@ -20,7 +19,6 @@ namespace Rebellion.Simulation
         private readonly GameRoot _game;
         private readonly BombardmentQueries _queries;
         private readonly IRandomNumberProvider _provider;
-        private readonly PlanetaryControlCommands _ownership;
         private readonly PersonnelCommands _personnelCommands;
 
         /// <summary>
@@ -33,20 +31,17 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="game">Active game state.</param>
         /// <param name="provider">Random-number provider used by bombardment resolution.</param>
-        /// <param name="ownership">Planetary control commands used for support and ownership changes.</param>
         /// <param name="queries">Bombardment eligibility and strength rules.</param>
         /// <param name="personnelCommands">Personnel lifecycle commands.</param>
         public BombardmentCommands(
             GameRoot game,
             IRandomNumberProvider provider,
-            PlanetaryControlCommands ownership,
             BombardmentQueries queries,
             PersonnelCommands personnelCommands = null
         )
         {
             _game = game;
             _provider = provider;
-            _ownership = ownership ?? throw new ArgumentNullException(nameof(ownership));
             _personnelCommands =
                 personnelCommands ?? new PersonnelCommands(new PersonnelQueries(game));
             _queries = queries ?? throw new ArgumentNullException(nameof(queries));
@@ -73,29 +68,6 @@ namespace Rebellion.Simulation
             if (!_queries.CanExecute(fleets, targetPlanet, type))
                 return null;
 
-            BombardmentResult result = Execute(fleets, targetPlanet, type);
-            List<GameResult> results = new List<GameResult> { result };
-            results.AddRange(result.Events);
-            if (result.OwnershipChange != null)
-                results.Add(result.OwnershipChange);
-
-            ResultsProduced?.Invoke(results);
-            return result;
-        }
-
-        /// <summary>
-        /// Runs the 6-stage orbital bombardment pipeline against a target planet.
-        /// </summary>
-        /// <param name="attackingFleets">Fleets performing the bombardment (all must share a faction).</param>
-        /// <param name="targetPlanet">Planet being bombarded.</param>
-        /// <param name="type">Targets and consequences selected for the bombardment.</param>
-        /// <returns>Bombardment outcome, including strikes and any ship/regiment/building destruction.</returns>
-        public BombardmentResult Execute(
-            List<Fleet> attackingFleets,
-            Planet targetPlanet,
-            BombardmentType type
-        )
-        {
             BombardmentResult result = new BombardmentResult
             {
                 Planet = targetPlanet,
@@ -103,99 +75,65 @@ namespace Rebellion.Simulation
                 Tick = _game.CurrentTick,
             };
 
-            if (!_queries.CanExecute(attackingFleets, targetPlanet, type))
-                return result;
-
-            string attackerId = attackingFleets[0].GetOwnerInstanceID();
+            string attackerId = fleets[0].GetOwnerInstanceID();
             string defenderId = targetPlanet.GetOwnerInstanceID();
-            int initialDefenderRegimentCount = GetActiveDefenderRegiments(
-                targetPlanet,
-                defenderId
-            ).Count;
             result.AttackingFaction = _game.GetFactionByOwnerInstanceID(attackerId);
             result.AttackerOwnerInstanceID = attackerId;
             result.DefenderOwnerInstanceID = defenderId;
-            result.AttackingUnits.AddRange(CombatUnitSnapshot.CaptureFleetUnits(attackingFleets));
+            result.AttackingUnits.AddRange(CombatUnitSnapshot.CaptureFleetUnits(fleets));
             result.DefendingUnits.AddRange(
                 CombatUnitSnapshot.CapturePlanetUnits(targetPlanet, defenderId)
             );
 
-            SetBombardmentCombatState(attackingFleets, targetPlanet, true);
+            SetBombardmentCombatState(fleets, targetPlanet, true);
             try
             {
                 bool destroysPlanet =
                     type == BombardmentType.DestroyPlanet
-                    && BombardmentQueries.HasPlanetDestroyingShip(attackingFleets);
+                    && BombardmentQueries.HasPlanetDestroyingShip(fleets);
                 if (destroysPlanet)
                     DestroyPlanet(targetPlanet, result);
 
-                ResolveBombardmentDefenseFire(attackingFleets, targetPlanet, result);
-                if (destroysPlanet)
+                ResolveBombardmentDefenseFire(fleets, targetPlanet, result);
+                if (!destroysPlanet && BombardmentQueries.GetActiveCapitalShips(fleets).Any())
                 {
-                    AddOwnershipChanges(
-                        result,
-                        ApplyDirectBombardmentPenalty(targetPlanet, result.AttackingFaction)
+                    result.BombardmentStrength = BombardmentQueries.GetBombardmentStrength(
+                        fleets,
+                        _game.Config.Combat.Bombardment
                     );
-                    AddOwnershipChanges(
-                        result,
-                        ApplyDestroyedSystemPenalty(result.AttackingFaction)
+                    result.ShieldStrength = BombardmentQueries.GetBombardmentShieldStrength(
+                        targetPlanet
                     );
-                    return result;
+                    result.StrikeAttempts = Math.Max(
+                        0,
+                        result.BombardmentStrength - result.ShieldStrength
+                    );
+
+                    ResolveStrikes(targetPlanet, defenderId, type, result);
+
+                    if (result.DestroyedRegiments.Count > 0)
+                    {
+                        result.Events.Add(
+                            new PlanetGarrisonChangedResult
+                            {
+                                Planet = targetPlanet,
+                                Tick = _game.CurrentTick,
+                            }
+                        );
+                    }
                 }
-
-                if (!BombardmentQueries.GetActiveCapitalShips(attackingFleets).Any())
-                    return result;
-
-                result.BombardmentStrength = BombardmentQueries.GetBombardmentStrength(
-                    attackingFleets,
-                    _game.Config.Combat.Bombardment
-                );
-                result.ShieldStrength = BombardmentQueries.GetBombardmentShieldStrength(
-                    targetPlanet
-                );
-                result.StrikeAttempts = Math.Max(
-                    0,
-                    result.BombardmentStrength - result.ShieldStrength
-                );
-
-                bool civilianTargetsDestroyed = ResolveStrikes(
-                    targetPlanet,
-                    defenderId,
-                    type,
-                    result
-                );
-
-                AddOwnershipChanges(
-                    result,
-                    ReconcileControl(targetPlanet, defenderId, initialDefenderRegimentCount)
-                );
-
-                if (result.DestroyedRegiments.Count > 0)
-                {
-                    result.Events.Add(
-                        new PlanetGarrisonChangedResult
-                        {
-                            Planet = targetPlanet,
-                            Tick = _game.CurrentTick,
-                        }
-                    );
-                }
-
-                if (civilianTargetsDestroyed)
-                {
-                    AddOwnershipChanges(
-                        result,
-                        ApplyCivilianBombardmentPenalty(targetPlanet, result.AttackingFaction)
-                    );
-                }
-
-                return result;
             }
             finally
             {
                 RecordUnitOutcomes(result);
-                SetBombardmentCombatState(attackingFleets, targetPlanet, false);
+                SetBombardmentCombatState(fleets, targetPlanet, false);
             }
+
+            List<GameResult> results = new List<GameResult> { result };
+            results.AddRange(result.Events);
+
+            ResultsProduced?.Invoke(results);
+            return result;
         }
 
         /// <summary>
@@ -364,26 +302,18 @@ namespace Rebellion.Simulation
         /// <param name="defenderId">Defending faction instance ID.</param>
         /// <param name="type">Bombardment mode controlling eligible target lanes.</param>
         /// <param name="result">Bombardment result receiving successful strikes.</param>
-        /// <returns>True when at least one civilian target was destroyed.</returns>
-        private bool ResolveStrikes(
+        private void ResolveStrikes(
             Planet planet,
             string defenderId,
             BombardmentType type,
             BombardmentResult result
         )
         {
-            bool civilianTargetsDestroyed = false;
-
             if (type == BombardmentType.Military && result.StrikeAttempts > 0)
             {
                 int militaryTargetCount = BuildTargets(planet, defenderId, type).Count;
-                if (
-                    _provider.NextInt(0, militaryTargetCount + 1) == 0
-                    && TryStrikeCivilianTarget(planet, result)
-                )
-                {
-                    civilianTargetsDestroyed = true;
-                }
+                if (_provider.NextInt(0, militaryTargetCount + 1) == 0)
+                    TryStrikeCivilianTarget(planet, result);
             }
 
             for (int attempt = 0; attempt < result.StrikeAttempts; attempt++)
@@ -397,10 +327,7 @@ namespace Rebellion.Simulation
                     continue;
 
                 ApplyStrike(planet, defenderId, target, result);
-                civilianTargetsDestroyed |= target.IsCivilian;
             }
-
-            return civilianTargetsDestroyed;
         }
 
         /// <summary>
@@ -408,19 +335,17 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="planet">Planet containing potential targets.</param>
         /// <param name="result">Bombardment result receiving a successful strike.</param>
-        /// <returns>True when a civilian target was successfully struck.</returns>
-        private bool TryStrikeCivilianTarget(Planet planet, BombardmentResult result)
+        private void TryStrikeCivilianTarget(Planet planet, BombardmentResult result)
         {
             List<BombardmentTarget> targets = BuildCivilianTargets(planet);
             if (targets.Count == 0)
-                return false;
+                return;
 
             BombardmentTarget target = targets[_provider.NextInt(0, targets.Count)];
             if (!RollStrike(target.Resistance))
-                return false;
+                return;
 
             ApplyStrike(planet, planet.GetOwnerInstanceID(), target, result);
-            return true;
         }
 
         /// <summary>
@@ -525,14 +450,13 @@ namespace Rebellion.Simulation
                 .GetAllBuildings()
                 .Where(building =>
                     BombardmentQueries.IsActiveBombardmentUnit(building)
-                    && IsCivilianBuilding(building)
+                    && BombardmentQueries.IsCivilianTarget(building)
                 )
                 .Select(building => new BombardmentTarget
                 {
                     Type = BombardmentTargetType.Building,
                     Entity = building,
                     Resistance = building.Bombardment,
-                    IsCivilian = true,
                 })
                 .ToList();
         }
@@ -711,196 +635,6 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Applies direct and local-sector support penalties for civilian destruction.
-        /// </summary>
-        /// <param name="planet">Planet where civilian targets were destroyed.</param>
-        /// <param name="attacker">Faction responsible for the bombardment.</param>
-        /// <returns>Ownership changes caused by the support shifts.</returns>
-        private List<PlanetOwnershipChangedResult> ApplyCivilianBombardmentPenalty(
-            Planet planet,
-            Faction attacker
-        )
-        {
-            List<PlanetOwnershipChangedResult> results = ApplyDirectBombardmentPenalty(
-                planet,
-                attacker
-            );
-
-            PlanetSector sector = planet.GetParentOfType<PlanetSector>();
-            if (sector == null)
-                return results;
-
-            int shift = GetCivilianBombardmentSectorPenalty(sector, attacker);
-            results.AddRange(
-                _ownership.ShiftBombardmentSupport(GetAffectedPlanets(sector), attacker, shift)
-            );
-            return results;
-        }
-
-        /// <summary>
-        /// Applies the direct popular-support penalty at the bombarded planet.
-        /// </summary>
-        /// <param name="planet">Planet receiving the support shift.</param>
-        /// <param name="attacker">Faction responsible for the bombardment.</param>
-        /// <returns>Ownership changes caused by the support shift.</returns>
-        private List<PlanetOwnershipChangedResult> ApplyDirectBombardmentPenalty(
-            Planet planet,
-            Faction attacker
-        )
-        {
-            int shift = _game.Config.Combat.Bombardment.CivilianSupportPenalty;
-            shift = PlanetaryControlQueries.ApplyCoreSupportResistance(
-                planet,
-                attacker,
-                shift,
-                _game.Config.SupportShift.WeakSupportPenaltyDivisor
-            );
-
-            return _ownership.ShiftBombardmentSupport(new[] { planet }, attacker, shift);
-        }
-
-        /// <summary>
-        /// Returns the attacker's local-sector support penalty for civilian destruction.
-        /// </summary>
-        /// <param name="sector">Planet sector where the destruction occurred.</param>
-        /// <param name="attacker">Faction responsible for the bombardment.</param>
-        /// <returns>The applicable popular-support shift.</returns>
-        private int GetCivilianBombardmentSectorPenalty(PlanetSector sector, Faction attacker)
-        {
-            return sector.SectorType == PlanetSectorType.Core
-                ? attacker.Settings.CivilianBombardmentCoreSupportPenalty
-                : attacker.Settings.CivilianBombardmentOuterRimSupportPenalty;
-        }
-
-        /// <summary>
-        /// Applies galaxy-wide support penalties after a planet is destroyed.
-        /// </summary>
-        /// <param name="attacker">Faction responsible for destroying the planet.</param>
-        /// <returns>Ownership changes caused by the support shifts.</returns>
-        private List<PlanetOwnershipChangedResult> ApplyDestroyedSystemPenalty(Faction attacker)
-        {
-            List<PlanetOwnershipChangedResult> results = new List<PlanetOwnershipChangedResult>();
-            List<Planet> corePlanets = _game
-                .GetSceneNodesByType<PlanetSector>()
-                .Where(sector => sector.SectorType == PlanetSectorType.Core)
-                .SelectMany(GetAffectedPlanets)
-                .ToList();
-            results.AddRange(
-                _ownership.ShiftBombardmentSupport(
-                    corePlanets,
-                    attacker,
-                    _game.Config.Combat.Bombardment.DestroyPlanetCoreSupportPenalty
-                )
-            );
-
-            List<Planet> outerRimPlanets = _game
-                .GetSceneNodesByType<PlanetSector>()
-                .Where(sector => sector.SectorType == PlanetSectorType.OuterRim)
-                .SelectMany(GetAffectedPlanets)
-                .Where(planet =>
-                    planet.GetPopularSupport(attacker.InstanceID)
-                    < _game.Config.Combat.Bombardment.DestroyPlanetOuterRimSupportThreshold
-                )
-                .ToList();
-            results.AddRange(
-                _ownership.ShiftBombardmentSupport(
-                    outerRimPlanets,
-                    attacker,
-                    _game.Config.Combat.Bombardment.DestroyPlanetOuterRimSupportPenalty
-                )
-            );
-            return results;
-        }
-
-        /// <summary>
-        /// Reconciles planet control after bombardment removes the defending garrison.
-        /// </summary>
-        /// <param name="planet">Bombarded planet.</param>
-        /// <param name="previousOwnerId">Faction instance ID that controlled the planet.</param>
-        /// <param name="initialDefenderRegimentCount">Number of active defenders before bombardment.</param>
-        /// <returns>Ownership changes caused by the garrison removal.</returns>
-        private List<PlanetOwnershipChangedResult> ReconcileControl(
-            Planet planet,
-            string previousOwnerId,
-            int initialDefenderRegimentCount
-        )
-        {
-            if (
-                string.IsNullOrEmpty(previousOwnerId)
-                || initialDefenderRegimentCount == 0
-                || GetActiveDefenderRegiments(planet, previousOwnerId).Count > 0
-            )
-                return new List<PlanetOwnershipChangedResult>();
-
-            return _ownership.ResolveBombardmentControl(planet, previousOwnerId);
-        }
-
-        /// <summary>
-        /// Merges ownership changes into the bombardment result by affected planet.
-        /// </summary>
-        /// <param name="result">Bombardment result to update.</param>
-        /// <param name="changes">Ownership changes to merge.</param>
-        private static void AddOwnershipChanges(
-            BombardmentResult result,
-            IEnumerable<PlanetOwnershipChangedResult> changes
-        )
-        {
-            foreach (PlanetOwnershipChangedResult change in changes)
-            {
-                if (change?.Planet == null)
-                    continue;
-
-                if (change.Planet == result.Planet)
-                {
-                    result.OwnershipChange = MergeOwnershipChanges(result.OwnershipChange, change);
-                    continue;
-                }
-
-                PlanetOwnershipChangedResult existing = result
-                    .Events.OfType<PlanetOwnershipChangedResult>()
-                    .FirstOrDefault(candidate => candidate.Planet == change.Planet);
-                if (existing == null)
-                    result.Events.Add(change);
-                else
-                {
-                    PlanetOwnershipChangedResult merged = MergeOwnershipChanges(existing, change);
-                    if (merged == null)
-                        result.Events.Remove(existing);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Combines sequential ownership changes for one planet.
-        /// </summary>
-        /// <param name="first">Existing ownership change.</param>
-        /// <param name="second">Subsequent ownership change.</param>
-        /// <returns>The combined change, or null when the planet returns to its original owner.</returns>
-        private static PlanetOwnershipChangedResult MergeOwnershipChanges(
-            PlanetOwnershipChangedResult first,
-            PlanetOwnershipChangedResult second
-        )
-        {
-            if (first == null)
-                return second;
-            if (second != null)
-            {
-                first.NewOwner = second.NewOwner;
-                first.ObserverFactionInstanceIDs = (
-                    first.ObserverFactionInstanceIDs ?? Enumerable.Empty<string>()
-                )
-                    .Concat(second.ObserverFactionInstanceIDs ?? Enumerable.Empty<string>())
-                    .Distinct()
-                    .ToList();
-                if (second.Reason != PlanetOwnershipChangeReason.None)
-                    first.Reason = second.Reason;
-            }
-            if (first.PreviousOwner?.InstanceID == first.NewOwner?.InstanceID)
-                return null;
-            return first;
-        }
-
-        /// <summary>
         /// Rolls a percentage chance for a bombardment event.
         /// </summary>
         /// <param name="chance">Percentage chance threshold.</param>
@@ -908,19 +642,6 @@ namespace Rebellion.Simulation
         private bool RollBombardmentPercent(int chance)
         {
             return _provider.NextInt(0, 100) < chance;
-        }
-
-        /// <summary>
-        /// Returns populated, undestroyed planets affected by a sector support shift.
-        /// </summary>
-        /// <param name="sector">Planet sector to inspect.</param>
-        /// <returns>The planets eligible for the shift.</returns>
-        private static List<Planet> GetAffectedPlanets(PlanetSector sector)
-        {
-            return sector
-                .GetChildren<Planet>()
-                .Where(planet => planet.IsPopulated() && !planet.IsDestroyed)
-                .ToList();
         }
 
         /// <summary>
@@ -939,23 +660,6 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Returns active defending regiments owned by the specified faction.
-        /// </summary>
-        /// <param name="planet">Planet containing the defenders.</param>
-        /// <param name="defenderId">Defending faction instance ID.</param>
-        /// <returns>The active defending regiments.</returns>
-        private static List<Regiment> GetActiveDefenderRegiments(Planet planet, string defenderId)
-        {
-            return planet
-                .GetAllRegiments()
-                .Where(regiment =>
-                    BombardmentQueries.IsActiveBombardmentUnit(regiment)
-                    && regiment.GetOwnerInstanceID() == defenderId
-                )
-                .ToList();
-        }
-
-        /// <summary>
         /// Returns a capital ship's shield strength at its current hull condition.
         /// </summary>
         /// <param name="ship">Capital ship to evaluate.</param>
@@ -969,27 +673,11 @@ namespace Rebellion.Simulation
             );
         }
 
-        /// <summary>
-        /// Determines whether a building belongs to a civilian bombardment target lane.
-        /// </summary>
-        /// <param name="building">Building to inspect.</param>
-        /// <returns>True when the building is a civilian or manufacturing facility.</returns>
-        private static bool IsCivilianBuilding(Building building)
-        {
-            return building.BuildingType
-                is BuildingType.Mine
-                    or BuildingType.Refinery
-                    or BuildingType.Shipyard
-                    or BuildingType.TrainingFacility
-                    or BuildingType.ConstructionFacility;
-        }
-
         private class BombardmentTarget
         {
             public BombardmentTargetType Type;
             public IGameEntity Entity;
             public int Resistance;
-            public bool IsCivilian;
         }
 
         private enum BombardmentTargetType

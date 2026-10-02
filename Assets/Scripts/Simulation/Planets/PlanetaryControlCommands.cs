@@ -100,13 +100,7 @@ namespace Rebellion.Simulation
             int shift = blockadeSupportsFavoredFaction
                 ? config.BlockadeMatchShift
                 : config.BlockadeOpposeShift;
-            shift = PlanetaryControlQueries.ApplyCoreSupportResistance(
-                planet,
-                blockadingFaction,
-                shift,
-                config.WeakSupportPenaltyDivisor
-            );
-            ShiftPopularSupport(planet, blockadingFaction, shift);
+            ChangePopularSupport(planet, blockadingFaction, shift);
             ScheduleBlockadeSupport(planet, interval);
         }
 
@@ -191,65 +185,6 @@ namespace Rebellion.Simulation
             planet.BlockadeSupportShiftIntervalTicks = interval;
         }
 
-        /// <summary>Applies a resisted support shift and resolves its resulting ownership change.</summary>
-        /// <param name="planet">The planet receiving the shift.</param>
-        /// <param name="faction">The faction whose support changes.</param>
-        /// <param name="shift">The requested signed support adjustment.</param>
-        /// <param name="tick">The originating tick reported by the resulting changes.</param>
-        /// <returns>The support change followed by any resulting ownership change.</returns>
-        public List<GameResult> ApplySupportShift(
-            Planet planet,
-            Faction faction,
-            int shift,
-            int tick
-        )
-        {
-            List<GameResult> reactions = new List<GameResult>();
-            if (planet == null || faction == null || shift == 0)
-                return reactions;
-
-            shift = PlanetaryControlQueries.ApplyCoreSupportResistance(
-                planet,
-                faction,
-                shift,
-                _game.Config.SupportShift.WeakSupportPenaltyDivisor
-            );
-            int oldSupport = planet.GetPopularSupport(faction.InstanceID);
-            ShiftPopularSupport(planet, faction, shift);
-            int newSupport = planet.GetPopularSupport(faction.InstanceID);
-            if (oldSupport == newSupport)
-                return reactions;
-
-            reactions.Add(
-                new PlanetStatChangedResult
-                {
-                    Planet = planet,
-                    Faction = faction,
-                    Category = PlanetChangeCategory.Loyalty,
-                    OldValue = oldSupport,
-                    NewValue = newSupport,
-                    Tick = tick,
-                }
-            );
-
-            Faction newController = _queries.GetPlanetController(planet);
-            if (planet.OwnerInstanceID == newController?.InstanceID)
-                return reactions;
-
-            PlanetOwnershipChangedResult ownershipChange = ChangePlanetControl(
-                planet,
-                newController
-            );
-            if (ownershipChange == null)
-                return reactions;
-
-            ownershipChange.Reason = PlanetOwnershipChangeReason.PopularSupport;
-            ownershipChange.Tick = tick;
-            reactions.Add(ownershipChange);
-
-            return reactions;
-        }
-
         /// <summary>
         /// Transfers the selected planets and units through their existing ownership rules.
         /// </summary>
@@ -310,11 +245,13 @@ namespace Rebellion.Simulation
 
                 List<string> regimentOwners = _queries.GetActiveRegimentOwners(planet);
                 Faction controller = _queries.GetPlanetController(planet, regimentOwners);
-                PlanetOwnershipChangedResult result = ChangePlanetControl(planet, controller);
+                PlanetOwnershipChangedResult result = ChangePlanetOwner(planet, controller);
                 if (result != null)
                 {
                     if (regimentOwners.Count == 0)
+                    {
                         result.Reason = PlanetOwnershipChangeReason.PopularSupport;
+                    }
 
                     results.Add(result);
                 }
@@ -391,92 +328,23 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Reconciles control after bombardment changes the defending garrison.
-        /// </summary>
-        /// <param name="planet">The bombarded planet.</param>
-        /// <param name="previousOwnerId">The faction instance ID that controlled the planet before bombardment.</param>
-        /// <returns>The ownership changes caused by control reconciliation and support propagation.</returns>
-        internal List<PlanetOwnershipChangedResult> ResolveBombardmentControl(
-            Planet planet,
-            string previousOwnerId
-        )
-        {
-            List<PlanetOwnershipChangedResult> results = new List<PlanetOwnershipChangedResult>();
-            Faction provisionalOwner = _queries.GetPlanetController(planet);
-            if (provisionalOwner?.InstanceID == previousOwnerId)
-                return results;
-
-            PlanetOwnershipChangedResult controlChange = ChangePlanetControl(
-                planet,
-                provisionalOwner
-            );
-            if (controlChange != null)
-                results.Add(controlChange);
-
-            Faction supportBeneficiary =
-                provisionalOwner
-                ?? _game
-                    .GetFactions()
-                    .FirstOrDefault(faction => faction.InstanceID != previousOwnerId);
-            results.AddRange(
-                ShiftBombardmentSupport(
-                    GetAffectedPlanets(planet.GetParentOfType<PlanetSector>()),
-                    supportBeneficiary,
-                    _game.Config.SupportShift.GarrisonRemovalSupportShift
-                )
-            );
-
-            return results;
-        }
-
-        /// <summary>
-        /// Applies bombardment-related support shifts and resolves resulting control changes.
-        /// </summary>
-        /// <param name="planets">The planets receiving the support shift.</param>
-        /// <param name="faction">The faction whose support changes.</param>
-        /// <param name="shift">The signed support adjustment.</param>
-        /// <returns>The ownership changes caused by the support shifts.</returns>
-        internal List<PlanetOwnershipChangedResult> ShiftBombardmentSupport(
-            IEnumerable<Planet> planets,
-            Faction faction,
-            int shift
-        )
-        {
-            List<PlanetOwnershipChangedResult> results = new List<PlanetOwnershipChangedResult>();
-            if (planets == null || faction == null || shift == 0)
-                return results;
-
-            foreach (Planet planet in planets)
-            {
-                Faction previousController = _queries.GetPlanetController(planet);
-                ShiftPopularSupport(planet, faction, shift);
-                Faction newController = _queries.GetPlanetController(planet);
-                if (previousController?.InstanceID == newController?.InstanceID)
-                    continue;
-
-                PlanetOwnershipChangedResult controlChange = ChangePlanetControl(
-                    planet,
-                    newController
-                );
-                if (controlChange != null)
-                {
-                    controlChange.Reason = PlanetOwnershipChangeReason.PopularSupport;
-                    results.Add(controlChange);
-                }
-            }
-
-            return results;
-        }
-
-        /// <summary>
         /// Adjusts one faction's popular support on a populated planet.
         /// </summary>
         /// <param name="planet">The planet whose support changes.</param>
         /// <param name="faction">The faction whose support is adjusted.</param>
         /// <param name="shift">The signed support adjustment.</param>
-        internal void ShiftPopularSupport(Planet planet, Faction faction, int shift)
+        internal void ChangePopularSupport(Planet planet, Faction faction, int shift)
         {
             if (planet == null || faction == null || shift == 0 || !planet.IsPopulated())
+                return;
+
+            shift = PlanetaryControlQueries.ApplyCoreSupportResistance(
+                planet,
+                faction,
+                shift,
+                _game.Config.SupportShift.WeakSupportPenaltyDivisor
+            );
+            if (shift == 0)
                 return;
 
             int currentSupport = planet.GetPopularSupport(faction.InstanceID);
@@ -503,25 +371,12 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Gets populated, intact planets affected by a sector-level support shift.
-        /// </summary>
-        /// <param name="sector">The planet sector to inspect.</param>
-        /// <returns>The planets eligible for the support shift.</returns>
-        private static IEnumerable<Planet> GetAffectedPlanets(PlanetSector sector)
-        {
-            return sector
-                    ?.GetChildren<Planet>()
-                    .Where(planet => planet.IsPopulated() && !planet.IsDestroyed)
-                ?? Enumerable.Empty<Planet>();
-        }
-
-        /// <summary>
         /// Transfers or clears planet ownership when the resolved controller changes.
         /// </summary>
         /// <param name="planet">The planet whose control is changing.</param>
         /// <param name="newOwner">The resolved owner, or null for neutral control.</param>
         /// <returns>The ownership-change result, or null when ownership is unchanged.</returns>
-        private PlanetOwnershipChangedResult ChangePlanetControl(Planet planet, Faction newOwner)
+        internal PlanetOwnershipChangedResult ChangePlanetOwner(Planet planet, Faction newOwner)
         {
             if (planet.GetOwnerInstanceID() == newOwner?.InstanceID)
                 return null;

@@ -257,7 +257,18 @@ public static partial class HeadlessSimulationRunner
             if (results == null)
                 return;
 
-            foreach (BombardmentResult result in results.OfType<BombardmentResult>())
+            BombardmentResult[] bombardments = results.OfType<BombardmentResult>().ToArray();
+            PlanetOwnershipChangedResult[] ownershipChanges = results
+                .OfType<PlanetOwnershipChangedResult>()
+                .ToArray();
+            HashSet<Planet> primaryTargets = bombardments
+                .Select(result => result.Planet)
+                .Concat(results.OfType<PlanetaryAssaultResult>().Select(result => result.Planet))
+                .Where(planet => planet != null)
+                .ToHashSet();
+            HashSet<PlanetOwnershipChangedResult> recordedCascadeChanges = new();
+
+            foreach (BombardmentResult result in bombardments)
             {
                 PlanetOwnershipChangedResult directChange = result.OwnershipChange;
                 if (
@@ -279,9 +290,22 @@ public static partial class HeadlessSimulationRunner
                     _results[factionId] = items;
                 }
 
-                string[] additionalFlips = result
-                    .Events.OfType<PlanetOwnershipChangedResult>()
-                    .Where(change => change.Planet != null && change.Planet != directChange.Planet)
+                PlanetSector sector = directChange.Planet.GetParentOfType<PlanetSector>();
+                PlanetOwnershipChangedResult[] relatedChanges = ownershipChanges
+                    .Where(change =>
+                        change?.Planet?.GetParentOfType<PlanetSector>() == sector
+                        && change.Tick == result.Tick
+                    )
+                    .ToArray();
+                PlanetOwnershipChangedResult finalDirectChange = relatedChanges.LastOrDefault(
+                    change => change.Planet == directChange.Planet
+                );
+                string[] additionalFlips = relatedChanges
+                    .Where(change =>
+                        !primaryTargets.Contains(change.Planet)
+                        && change.Planet != directChange.Planet
+                        && recordedCascadeChanges.Add(change)
+                    )
                     .Select(change =>
                         $"{change.Planet.InstanceID}:{change.Planet.GetDisplayName()}"
                     )
@@ -296,7 +320,9 @@ public static partial class HeadlessSimulationRunner
                         PlanetId = directChange.Planet.InstanceID,
                         PlanetName = directChange.Planet.GetDisplayName(),
                         PreviousOwnerFactionId = directChange.PreviousOwner?.InstanceID,
-                        NewOwnerFactionId = directChange.NewOwner?.InstanceID,
+                        NewOwnerFactionId = (finalDirectChange ?? directChange)
+                            .NewOwner
+                            ?.InstanceID,
                         AdditionalFlippedPlanets = additionalFlips,
                     }
                 );
