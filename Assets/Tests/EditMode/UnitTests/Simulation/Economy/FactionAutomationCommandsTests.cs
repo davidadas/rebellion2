@@ -18,9 +18,12 @@ namespace Rebellion.Tests.Simulation
     public class FactionAutomationCommandsTests
     {
         private const string _factionId = "faction";
-        private const string _garrisonTypeId = "garrison";
+        private const string _strongDefenderTypeId = "strong-defender";
+        private const string _cheapDefenderTypeId = "cheap-defender";
+        private const string _offensiveRegimentTypeId = "offensive-regiment";
 
         private GameRoot _game;
+        private GameDataCatalog _gameData;
         private Faction _faction;
         private Planet _producer;
         private Planet _destination;
@@ -33,7 +36,7 @@ namespace Rebellion.Tests.Simulation
         public void SetUp()
         {
             GameConfig config = CreateGameConfig();
-            GameDataCatalog gameData = CreateGameData(config);
+            _gameData = CreateGameData(config);
             _game = TestGame.Create(config);
             _faction = new Faction
             {
@@ -43,6 +46,7 @@ namespace Rebellion.Tests.Simulation
             };
             _faction.Settings.ResourceProcessingPointsPerFacility = 50;
             _game.GetFactions().Add(_faction);
+            _game.GetFactions().Add(new Faction { InstanceID = "enemy" });
 
             PlanetSector planetSector = new PlanetSector { InstanceID = "SECTOR" };
             _game.AttachNode(planetSector, _game.Galaxy);
@@ -52,26 +56,26 @@ namespace Rebellion.Tests.Simulation
             _game.AttachNode(_destination, planetSector);
 
             AddProductionFacility(_producer, "TRAINING", ManufacturingType.Troop);
-            AddProductionFacility(_producer, "CONSTRUCTION", ManufacturingType.Building);
-            AddProductionFacility(_producer, "CONSTRUCTION_2", ManufacturingType.Building);
-            AddResourcePairs(_producer, 10);
+            AddResourcePairs(_producer, 1);
+            SatisfyGarrison(_producer);
 
             ManufacturingCommands manufacturing = new ManufacturingCommands(
                 _game,
                 new FleetCommands(_game),
                 new ManufacturingQueries(_game)
             );
-            _automation = new FactionAutomationCommands(_game, gameData, manufacturing);
+            _automation = new FactionAutomationCommands(_game, _gameData, manufacturing);
         }
 
         [Test]
         public void ProcessFaction_EnabledAutomation_QueuesWorkImmediately()
         {
+            AddProductionInfrastructure();
             _game.CurrentTick = 42;
 
             _automation.ProcessFaction(_faction);
 
-            Assert.IsNotEmpty(_producer.GetManufacturingQueue()[ManufacturingType.Troop]);
+            Assert.Greater(GetQueueCount(_producer, ManufacturingType.Troop), 0);
             Assert.IsNotEmpty(_producer.GetManufacturingQueue()[ManufacturingType.Building]);
             Assert.AreEqual(42, _game.CurrentTick);
         }
@@ -79,6 +83,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void ProcessFaction_FullLanes_DoesNotReplaceExistingOrders()
         {
+            AddProductionInfrastructure();
             _automation.ProcessFaction(_faction);
             IManufacturable[] orders = _producer
                 .GetManufacturingQueue()
@@ -105,62 +110,407 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ProcessTick_ManageGarrisonsConfiguredInFactionContent_QueuesConfiguredRegiment()
+        public void ProcessFaction_SupportBelowSixty_UsesSixtyPercentGarrisonTarget()
         {
             _faction.ManageProduction = false;
-            _destination.SetFullPopularSupport(_faction.InstanceID);
-            AddCompletedRegiment(_producer, "GARRISON_1");
-            AddCompletedRegiment(_producer, "GARRISON_2");
+            _destination.SetPopularSupport(_faction.InstanceID, 59);
+            AddCompletedRegiment(_destination, "DESTINATION_DEFENSE");
 
-            new FactionAutomationTickProcessor(_automation).ProcessTick(_game);
+            _automation.ProcessFaction(_faction);
 
-            Assert.AreEqual(1, _destination.GetAllRegiments().Count);
+            Assert.AreEqual(2, _destination.GetAllRegiments().Count);
             Assert.AreEqual(
                 ManufacturingStatus.Building,
-                _destination.GetAllRegiments().Single().ManufacturingStatus
+                _destination
+                    .GetAllRegiments()
+                    .Single(regiment =>
+                        regiment.ManufacturingStatus == ManufacturingStatus.Building
+                    )
+                    .ManufacturingStatus
             );
-            Assert.AreEqual(_garrisonTypeId, _destination.GetAllRegiments().Single().TypeID);
         }
 
         [Test]
-        public void ProcessTick_ManageGarrisons_PrioritizesUprising()
+        public void ProcessFaction_SupportAtSixty_UsesOneRegimentGarrisonTarget()
         {
             _faction.ManageProduction = false;
-            AddCompletedRegiment(_producer, "GARRISON_1");
-            AddCompletedRegiment(_producer, "GARRISON_2");
+            _destination.SetPopularSupport(_faction.InstanceID, 60);
+            AddCompletedRegiment(_destination, "DESTINATION_DEFENSE");
+
+            _automation.ProcessFaction(_faction);
+
+            Assert.AreEqual(1, _destination.GetAllRegiments().Count);
+        }
+
+        [Test]
+        public void ProcessFaction_Uprising_DoublesSupportGarrisonTarget()
+        {
+            _faction.ManageProduction = false;
+            _destination.IsInUprising = true;
+            AddCompletedRegiment(_destination, "DESTINATION_DEFENSE");
+
+            _automation.ProcessFaction(_faction);
+
+            Assert.AreEqual(2, _destination.GetAllRegiments().Count);
+        }
+
+        [Test]
+        public void ProcessFaction_FacilityTargetExceedsSupportTarget_UsesFacilityTarget()
+        {
+            _faction.ManageProduction = false;
+            AddResourceFacility(_destination, "DESTINATION_MINE_1", BuildingType.Mine);
+            AddResourceFacility(_destination, "DESTINATION_MINE_2", BuildingType.Mine);
+            AddResourceFacility(_destination, "DESTINATION_REFINERY", BuildingType.Refinery);
+            AddStrategicFacility(_destination, "DESTINATION_SHIPYARD", BuildingType.Shipyard);
+            AddStrategicFacility(
+                _destination,
+                "DESTINATION_TRAINING",
+                BuildingType.TrainingFacility
+            );
+            AddStrategicFacility(
+                _destination,
+                "DESTINATION_CONSTRUCTION",
+                BuildingType.ConstructionFacility
+            );
+            AddCompletedRegiments(_destination, "DESTINATION_DEFENSE", 3);
+
+            _automation.ProcessFaction(_faction);
+
+            Assert.AreEqual(4, _destination.GetAllRegiments().Count);
+        }
+
+        [Test]
+        public void ProcessFaction_UnfinishedFacilitiesIncreaseTarget_CountsPendingFacilities()
+        {
+            _faction.ManageProduction = false;
+            AddStrategicFacility(
+                _destination,
+                "PENDING_MINE",
+                BuildingType.Mine,
+                ManufacturingStatus.Building
+            );
+            AddStrategicFacility(
+                _destination,
+                "PENDING_REFINERY",
+                BuildingType.Refinery,
+                ManufacturingStatus.Building
+            );
+            AddStrategicFacility(
+                _destination,
+                "PENDING_CONSTRUCTION",
+                BuildingType.ConstructionFacility,
+                ManufacturingStatus.Building
+            );
+            AddCompletedRegiment(_destination, "DESTINATION_DEFENSE");
+
+            _automation.ProcessFaction(_faction);
+
+            Assert.AreEqual(2, _destination.GetAllRegiments().Count);
+        }
+
+        [Test]
+        public void ProcessFaction_PendingRegimentMeetsTarget_DoesNotQueueAnotherRegiment()
+        {
+            _faction.ManageProduction = false;
+            AddPendingRegiment(_destination, "PENDING_DEFENSE");
+
+            _automation.ProcessFaction(_faction);
+
+            Assert.AreEqual(1, _destination.GetAllRegiments().Count);
+            Assert.AreEqual(0, GetQueueCount(_producer, ManufacturingType.Troop));
+        }
+
+        [Test]
+        public void ProcessFaction_TravelingRegimentDoesNotMeetTarget_QueuesRegiment()
+        {
+            _faction.ManageProduction = false;
+            Regiment traveling = AddCompletedRegiment(_destination, "TRAVELING_DEFENSE");
+            traveling.Movement = new MovementState();
+
+            _automation.ProcessFaction(_faction);
+
+            Assert.AreEqual(2, _destination.GetAllRegiments().Count);
+            Assert.AreEqual(
+                1,
+                _destination
+                    .GetAllRegiments()
+                    .Count(regiment => regiment.ManufacturingStatus == ManufacturingStatus.Building)
+            );
+        }
+
+        [Test]
+        public void ProcessFaction_BlockadedShortage_DoesNotQueueRegiment()
+        {
+            _faction.ManageProduction = false;
+            AddBlockadingFleet(_destination);
+
+            _automation.ProcessFaction(_faction);
+
+            Assert.IsEmpty(_destination.GetAllRegiments());
+            Assert.AreEqual(0, GetQueueCount(_producer, ManufacturingType.Troop));
+        }
+
+        [Test]
+        public void ProcessFaction_UprisingShortageExists_PrioritizesUprising()
+        {
+            _faction.ManageProduction = false;
             Planet uprising = CreatePlanet("UPRISING", 10, 0);
             uprising.IsInUprising = true;
             _game.AttachNode(uprising, _destination.GetParent());
 
-            new FactionAutomationTickProcessor(_automation).ProcessTick(_game);
+            _automation.ProcessFaction(_faction);
 
             Assert.AreEqual(1, uprising.GetAllRegiments().Count);
             Assert.IsEmpty(_destination.GetAllRegiments());
         }
 
         [Test]
-        public void ProcessTick_ManageGarrisons_FillsAvailableCapacityAcrossShortages()
+        public void ProcessFaction_UprisingSectorsDiffer_PrioritizesGreatestAggregateShortage()
         {
             _faction.ManageProduction = false;
-            AddProductionFacility(_producer, "TRAINING_2", ManufacturingType.Troop);
-            AddCompletedRegiment(_producer, "GARRISON_1");
-            AddCompletedRegiment(_producer, "GARRISON_2");
-            Planet secondDestination = CreatePlanet("SECOND_DESTINATION", 10, 0);
-            _game.AttachNode(secondDestination, _destination.GetParent());
+            SatisfyGarrison(_destination);
+            PlanetSector largerShortageSector = CreateSector("LARGER_SHORTAGE", 20, 0);
+            Planet first = CreateUprisingPlanet("FIRST", largerShortageSector, 50);
+            Planet second = CreateUprisingPlanet("SECOND", largerShortageSector, 40);
+            PlanetSector smallerShortageSector = CreateSector("SMALLER_SHORTAGE", 10, 0);
+            Planet third = CreateUprisingPlanet("THIRD", smallerShortageSector, 40);
+            AddCompletedRegiments(second, "SECOND_DEFENSE", 1);
 
-            new FactionAutomationTickProcessor(_automation).ProcessTick(_game);
+            _automation.ProcessFaction(_faction);
 
-            Assert.AreEqual(1, _destination.GetAllRegiments().Count);
-            Assert.AreEqual(1, secondDestination.GetAllRegiments().Count);
+            Assert.AreEqual(1, first.GetAllRegiments().Count);
+            Assert.AreEqual(1, second.GetAllRegiments().Count);
+            Assert.IsEmpty(third.GetAllRegiments());
         }
 
         [Test]
-        public void ProcessTick_ManageGarrisonsWithReservedTrainingFacility_DoesNotQueueWork()
+        public void ProcessFaction_UprisingPlanetsDiffer_PrioritizesSmallestIndividualShortage()
+        {
+            _faction.ManageProduction = false;
+            SatisfyGarrison(_destination);
+            PlanetSector sector = CreateSector("UPRISING_SECTOR", 20, 0);
+            Planet smallerShortage = CreateUprisingPlanet("SMALLER_SHORTAGE", sector, 60);
+            Planet largerShortage = CreateUprisingPlanet("LARGER_SHORTAGE", sector, 30);
+
+            _automation.ProcessFaction(_faction);
+
+            Assert.AreEqual(1, smallerShortage.GetAllRegiments().Count);
+            Assert.IsEmpty(largerShortage.GetAllRegiments());
+        }
+
+        [Test]
+        public void ProcessFaction_NormalSectorsDiffer_PrioritizesSectorWithFewestControlledPlanets()
+        {
+            _faction.ManageProduction = false;
+            SatisfyGarrison(_destination);
+            PlanetSector smallerSector = CreateSector("SMALLER_SECTOR", 20, 0);
+            Planet smallerSectorShortage = CreatePlanet("SMALLER_SECTOR_SHORTAGE", 10, 0);
+            _game.AttachNode(smallerSectorShortage, smallerSector);
+            PlanetSector largerSector = CreateSector("LARGER_SECTOR", 10, 0);
+            Planet largerSectorShortage = CreatePlanet("LARGER_SECTOR_SHORTAGE", 10, 0);
+            Planet largerSectorSatisfied = CreatePlanet("LARGER_SECTOR_SATISFIED", 10, 0);
+            _game.AttachNode(largerSectorShortage, largerSector);
+            _game.AttachNode(largerSectorSatisfied, largerSector);
+            AddCompletedRegiment(largerSectorSatisfied, "LARGER_SECTOR_DEFENSE");
+
+            _automation.ProcessFaction(_faction);
+
+            Assert.AreEqual(1, smallerSectorShortage.GetAllRegiments().Count);
+            Assert.IsEmpty(largerSectorShortage.GetAllRegiments());
+        }
+
+        [Test]
+        public void ProcessFaction_NormalPlanetsDiffer_PrioritizesGreatestIndividualShortage()
+        {
+            _faction.ManageProduction = false;
+            SatisfyGarrison(_destination);
+            Planet smallerShortage = CreatePlanet("SMALLER_SHORTAGE", 10, 0);
+            Planet largerShortage = CreatePlanet("LARGER_SHORTAGE", 10, 0);
+            largerShortage.SetPopularSupport(_faction.InstanceID, 30);
+            _game.AttachNode(smallerShortage, _destination.GetParent());
+            _game.AttachNode(largerShortage, _destination.GetParent());
+
+            _automation.ProcessFaction(_faction);
+
+            Assert.IsEmpty(smallerShortage.GetAllRegiments());
+            Assert.AreEqual(1, largerShortage.GetAllRegiments().Count);
+        }
+
+        [Test]
+        public void ProcessFaction_EqualPriorityDestinations_UsesGameRandom()
+        {
+            _faction.ManageProduction = false;
+            _game.Random = new MaximumRNG();
+            Planet second = CreatePlanet("SECOND", 10, 0);
+            _game.AttachNode(second, _destination.GetParent());
+
+            _automation.ProcessFaction(_faction);
+
+            Assert.AreEqual(1, second.GetAllRegiments().Count);
+            Assert.IsEmpty(_destination.GetAllRegiments());
+        }
+
+        [Test]
+        public void ProcessFaction_ProducersInDifferentSectors_UsesClosestEligibleSector()
+        {
+            _faction.ManageProduction = false;
+            RemoveProductionFacility(_producer, "TRAINING");
+            PlanetSector destinationSector = (PlanetSector)_destination.GetParent();
+            destinationSector.PositionX = 0;
+            PlanetSector nearbySector = CreateSector("NEARBY", 10, 0);
+            PlanetSector distantSector = CreateSector("DISTANT", 100, 0);
+            Planet nearbyProducer = CreateProducer("NEARBY_PRODUCER", nearbySector, 100);
+            Planet distantProducer = CreateProducer("DISTANT_PRODUCER", distantSector, 100);
+
+            _automation.ProcessFaction(_faction);
+
+            Assert.AreEqual(1, GetQueueCount(nearbyProducer, ManufacturingType.Troop));
+            Assert.AreEqual(0, GetQueueCount(distantProducer, ManufacturingType.Troop));
+        }
+
+        [Test]
+        public void ProcessFaction_ProducersShareClosestSector_UsesLowestSupportProducer()
+        {
+            _faction.ManageProduction = false;
+            RemoveProductionFacility(_producer, "TRAINING");
+            PlanetSector sector = CreateSector("PRODUCERS", 10, 0);
+            Planet highSupport = CreateProducer("HIGH_SUPPORT", sector, 100);
+            Planet lowSupport = CreateProducer("LOW_SUPPORT", sector, 70);
+
+            _automation.ProcessFaction(_faction);
+
+            Assert.AreEqual(0, GetQueueCount(highSupport, ManufacturingType.Troop));
+            Assert.AreEqual(1, GetQueueCount(lowSupport, ManufacturingType.Troop));
+        }
+
+        [Test]
+        public void ProcessFaction_CloserProducersAreIneligible_UsesEligibleProducer()
+        {
+            _faction.ManageProduction = false;
+            RemoveProductionFacility(_producer, "TRAINING");
+            PlanetSector closeSector = CreateSector("CLOSE", 1, 0);
+            Planet blockaded = CreateProducer("BLOCKADED", closeSector, 100);
+            AddBlockadingFleet(blockaded);
+            Planet uprising = CreateProducer("UPRISING", closeSector, 100);
+            uprising.IsInUprising = true;
+            Planet reserved = CreateProducer("RESERVED", closeSector, 100);
+            reserved.SetManufacturingReserved(ManufacturingType.Troop, true);
+            Planet busy = CreateProducer("BUSY", closeSector, 100);
+            Regiment activeOrder = AddPendingRegiment(busy, "BUSY_ORDER");
+            busy.AddToManufacturingQueue(activeOrder);
+            PlanetSector distantSector = CreateSector("DISTANT", 50, 0);
+            Planet eligible = CreateProducer("ELIGIBLE", distantSector, 100);
+
+            _automation.ProcessFaction(_faction);
+
+            Assert.AreEqual(1, GetQueueCount(eligible, ManufacturingType.Troop));
+        }
+
+        [Test]
+        public void ProcessFaction_NormalDestination_SelectsHighestDefenseRegiment()
+        {
+            _faction.ManageProduction = false;
+
+            _automation.ProcessFaction(_faction);
+
+            Assert.AreEqual(_strongDefenderTypeId, _destination.GetAllRegiments().Single().TypeID);
+        }
+
+        [Test]
+        public void ProcessFaction_UprisingDestination_SelectsLowestMaintenanceRegiment()
+        {
+            _faction.ManageProduction = false;
+            _destination.IsInUprising = true;
+
+            _automation.ProcessFaction(_faction);
+
+            Assert.AreEqual(_cheapDefenderTypeId, _destination.GetAllRegiments().Single().TypeID);
+        }
+
+        [Test]
+        public void ProcessFaction_OffensiveAndLockedRegiments_IgnoresIneligibleRegiments()
+        {
+            _faction.ManageProduction = false;
+
+            _automation.ProcessFaction(_faction);
+
+            Assert.AreNotEqual(
+                _offensiveRegimentTypeId,
+                _destination.GetAllRegiments().Single().TypeID
+            );
+            Assert.AreNotEqual("locked-defender", _destination.GetAllRegiments().Single().TypeID);
+        }
+
+        [Test]
+        public void ProcessFaction_SelectedRegimentExceedsHeadroom_DoesNotUseCheaperFallback()
+        {
+            _faction.ManageProduction = false;
+            GetRegimentTemplate(_strongDefenderTypeId).MaintenanceCost = 100;
+
+            _automation.ProcessFaction(_faction);
+
+            Assert.IsEmpty(_destination.GetAllRegiments());
+            Assert.AreEqual(0, GetQueueCount(_producer, ManufacturingType.Troop));
+        }
+
+        [Test]
+        public void ProcessFaction_NoMaintenanceHeadroom_DoesNotQueueRegiment()
+        {
+            _faction.ManageProduction = false;
+            _faction.Settings.ResourceProcessingPointsPerFacility = 0;
+
+            _automation.ProcessFaction(_faction);
+
+            Assert.IsEmpty(_destination.GetAllRegiments());
+            Assert.AreEqual(0, GetQueueCount(_producer, ManufacturingType.Troop));
+        }
+
+        [Test]
+        public void ProcessFaction_ZeroCostRegimentAtZeroHeadroom_QueuesRegiment()
+        {
+            _faction.ManageProduction = false;
+            _faction.Settings.ResourceProcessingPointsPerFacility = 0;
+            GetRegimentTemplate(_strongDefenderTypeId).MaintenanceCost = 0;
+
+            _automation.ProcessFaction(_faction);
+
+            Assert.AreEqual(_strongDefenderTypeId, _destination.GetAllRegiments().Single().TypeID);
+            Assert.AreEqual(1, GetQueueCount(_producer, ManufacturingType.Troop));
+        }
+
+        [Test]
+        public void ProcessFaction_NoManufacturableDefensiveRegiment_DoesNotQueueRegiment()
+        {
+            _faction.ManageProduction = false;
+            foreach (Regiment regiment in _gameData.Regiments)
+                regiment.ManufacturingFactionInstanceIDs.Clear();
+
+            _automation.ProcessFaction(_faction);
+
+            Assert.IsEmpty(_destination.GetAllRegiments());
+            Assert.AreEqual(0, GetQueueCount(_producer, ManufacturingType.Troop));
+        }
+
+        [Test]
+        public void ProcessFaction_MultipleIdleTrainingFacilities_QueuesOneRegiment()
+        {
+            _faction.ManageProduction = false;
+            AddProductionFacility(_producer, "TRAINING_2", ManufacturingType.Troop);
+            AddCompletedRegiment(_producer, "PRODUCER_DEFENSE_EXTRA");
+
+            _automation.ProcessFaction(_faction);
+
+            Assert.AreEqual(1, GetQueueCount(_producer, ManufacturingType.Troop));
+            Assert.AreEqual(1, _destination.GetAllRegiments().Count);
+        }
+
+        [Test]
+        public void ProcessFaction_ReservedTrainingFacility_DoesNotQueueWork()
         {
             _faction.ManageProduction = false;
             _producer.SetManufacturingReserved(ManufacturingType.Troop, true);
 
-            new FactionAutomationTickProcessor(_automation).ProcessTick(_game);
+            _automation.ProcessFaction(_faction);
 
             Assert.IsEmpty(_destination.GetAllRegiments());
         }
@@ -169,6 +519,7 @@ namespace Rebellion.Tests.Simulation
         public void ProcessTick_ManageProduction_FillsLaneWithOneProject()
         {
             _faction.ManageGarrisons = false;
+            AddProductionInfrastructure();
 
             new FactionAutomationTickProcessor(_automation).ProcessTick(_game);
 
@@ -180,6 +531,7 @@ namespace Rebellion.Tests.Simulation
         public void ProcessTick_ManageProduction_UsesClosestAvailableResourceSlot()
         {
             _faction.ManageGarrisons = false;
+            AddProductionInfrastructure();
             _destination.PositionX = 1;
             Planet distant = CreatePlanet("DISTANT", 50, 50);
             distant.PositionX = 100;
@@ -195,6 +547,7 @@ namespace Rebellion.Tests.Simulation
         public void ProcessTick_ManageProductionWithReservedBuildingLane_DoesNotQueueWork()
         {
             _faction.ManageGarrisons = false;
+            AddProductionInfrastructure();
             _producer.SetManufacturingReserved(ManufacturingType.Building, true);
             int mineCount = CountResourceFacilities(BuildingType.Mine);
             int refineryCount = CountResourceFacilities(BuildingType.Refinery);
@@ -209,6 +562,7 @@ namespace Rebellion.Tests.Simulation
         public void ProcessTick_ReservedDestination_RemainsAvailableForAutomatedDelivery()
         {
             _faction.ManageGarrisons = false;
+            AddProductionInfrastructure();
             _destination.SetManufacturingReserved(ManufacturingType.Building, true);
             _destination.PositionX = 1;
 
@@ -221,6 +575,7 @@ namespace Rebellion.Tests.Simulation
         public void ProcessTick_ManageProductionWithoutMineCapacity_DoesNotAddRefinery()
         {
             _faction.ManageGarrisons = false;
+            AddProductionInfrastructure();
             _destination.NumRawResourceNodes = 0;
             int refineryCount = CountResourceFacilities(BuildingType.Refinery);
 
@@ -263,6 +618,81 @@ namespace Rebellion.Tests.Simulation
         }
 
         /// <summary>
+        /// Creates and attaches a planet sector at the supplied galactic coordinates.
+        /// </summary>
+        /// <param name="instanceId">The sector identifier.</param>
+        /// <param name="positionX">The horizontal coordinate.</param>
+        /// <param name="positionY">The vertical coordinate.</param>
+        /// <returns>The attached sector.</returns>
+        private PlanetSector CreateSector(string instanceId, int positionX, int positionY)
+        {
+            PlanetSector sector = new PlanetSector
+            {
+                InstanceID = instanceId,
+                PositionX = positionX,
+                PositionY = positionY,
+            };
+            _game.AttachNode(sector, _game.Galaxy);
+            return sector;
+        }
+
+        /// <summary>
+        /// Creates an owned uprising planet in a sector.
+        /// </summary>
+        /// <param name="instanceId">The planet identifier.</param>
+        /// <param name="sector">The containing sector.</param>
+        /// <param name="support">The controlling faction's popular support.</param>
+        /// <returns>The attached uprising planet.</returns>
+        private Planet CreateUprisingPlanet(string instanceId, PlanetSector sector, int support)
+        {
+            Planet planet = CreatePlanet(instanceId, 10, 0);
+            planet.SetPopularSupport(_faction.InstanceID, support);
+            planet.IsInUprising = true;
+            _game.AttachNode(planet, sector);
+            return planet;
+        }
+
+        /// <summary>
+        /// Creates an eligible troop producer and satisfies its own garrison requirement.
+        /// </summary>
+        /// <param name="instanceId">The planet identifier.</param>
+        /// <param name="sector">The containing sector.</param>
+        /// <param name="support">The controlling faction's popular support.</param>
+        /// <returns>The attached producer.</returns>
+        private Planet CreateProducer(string instanceId, PlanetSector sector, int support)
+        {
+            Planet planet = CreatePlanet(instanceId, 10, 0);
+            planet.SetPopularSupport(_faction.InstanceID, support);
+            _game.AttachNode(planet, sector);
+            AddProductionFacility(planet, $"{instanceId}_TRAINING", ManufacturingType.Troop);
+            SatisfyGarrison(planet);
+            return planet;
+        }
+
+        /// <summary>
+        /// Adds the construction capacity and resource facilities used by production tests.
+        /// </summary>
+        private void AddProductionInfrastructure()
+        {
+            AddProductionFacility(_producer, "CONSTRUCTION", ManufacturingType.Building);
+            AddProductionFacility(_producer, "CONSTRUCTION_2", ManufacturingType.Building);
+            for (int index = 1; index < 10; index++)
+            {
+                AddResourceFacility(_producer, $"MINE_{index}", BuildingType.Mine);
+                AddResourceFacility(_producer, $"REFINERY_{index}", BuildingType.Refinery);
+            }
+        }
+
+        /// <summary>
+        /// Adds ample stationary regiments so a setup planet cannot be selected as a shortage.
+        /// </summary>
+        /// <param name="planet">The planet to satisfy.</param>
+        private void SatisfyGarrison(Planet planet)
+        {
+            AddCompletedRegiments(planet, $"{planet.InstanceID}_DEFENSE", 20);
+        }
+
+        /// <summary>
         /// Creates game config.
         /// </summary>
         /// <returns>The created game config.</returns>
@@ -300,11 +730,45 @@ namespace Rebellion.Tests.Simulation
                 BaseBuildSpeed = 1,
                 ManufacturingFactionInstanceIDs = manufacturingFactionIds,
             };
-            Regiment garrison = new Regiment
+            Regiment strongDefender = new Regiment
             {
-                TypeID = _garrisonTypeId,
+                TypeID = _strongDefenderTypeId,
                 ConstructionCost = 1,
+                MaintenanceCost = 4,
                 BaseBuildSpeed = 1,
+                AttackRating = 4,
+                DefenseRating = 8,
+                ManufacturingFactionInstanceIDs = manufacturingFactionIds,
+            };
+            Regiment cheapDefender = new Regiment
+            {
+                TypeID = _cheapDefenderTypeId,
+                ConstructionCost = 1,
+                MaintenanceCost = 1,
+                BaseBuildSpeed = 1,
+                AttackRating = 2,
+                DefenseRating = 4,
+                ManufacturingFactionInstanceIDs = manufacturingFactionIds,
+            };
+            Regiment offensiveRegiment = new Regiment
+            {
+                TypeID = _offensiveRegimentTypeId,
+                ConstructionCost = 1,
+                MaintenanceCost = 1,
+                BaseBuildSpeed = 1,
+                AttackRating = 10,
+                DefenseRating = 9,
+                ManufacturingFactionInstanceIDs = manufacturingFactionIds,
+            };
+            Regiment lockedDefender = new Regiment
+            {
+                TypeID = "locked-defender",
+                ConstructionCost = 1,
+                MaintenanceCost = 1,
+                BaseBuildSpeed = 1,
+                AttackRating = 1,
+                DefenseRating = 20,
+                ResearchOrder = 1,
                 ManufacturingFactionInstanceIDs = manufacturingFactionIds,
             };
             return new GameDataCatalog(
@@ -312,13 +776,17 @@ namespace Rebellion.Tests.Simulation
                 generationConfig,
                 new[]
                 {
-                    new Faction { InstanceID = _factionId, GarrisonTroopTypeID = _garrisonTypeId },
+                    new Faction
+                    {
+                        InstanceID = _factionId,
+                        GarrisonTroopTypeID = _strongDefenderTypeId,
+                    },
                 },
                 Array.Empty<PlanetSector>(),
                 new[] { mine, refinery },
                 Array.Empty<CapitalShip>(),
                 Array.Empty<Starfighter>(),
-                new[] { garrison },
+                new[] { strongDefender, cheapDefender, offensiveRegiment, lockedDefender },
                 Array.Empty<SpecialForces>(),
                 Array.Empty<Officer>(),
                 Array.Empty<GameEvent>(),
@@ -372,17 +840,133 @@ namespace Rebellion.Tests.Simulation
         /// </summary>
         /// <param name="planet">The planet.</param>
         /// <param name="instanceId">The instance id.</param>
-        private void AddCompletedRegiment(Planet planet, string instanceId)
+        /// <returns>The attached regiment.</returns>
+        private Regiment AddCompletedRegiment(Planet planet, string instanceId)
+        {
+            Regiment regiment = new Regiment
+            {
+                InstanceID = instanceId,
+                OwnerInstanceID = _faction.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(regiment, planet);
+            return regiment;
+        }
+
+        /// <summary>
+        /// Adds stationary completed regiments to a planet.
+        /// </summary>
+        /// <param name="planet">The planet receiving the regiments.</param>
+        /// <param name="instanceIdPrefix">The identifier prefix.</param>
+        /// <param name="count">The number of regiments to add.</param>
+        private void AddCompletedRegiments(Planet planet, string instanceIdPrefix, int count)
+        {
+            for (int index = 0; index < count; index++)
+                AddCompletedRegiment(planet, $"{instanceIdPrefix}_{index}");
+        }
+
+        /// <summary>
+        /// Adds an unfinished regiment order directly to its destination.
+        /// </summary>
+        /// <param name="planet">The destination planet.</param>
+        /// <param name="instanceId">The regiment identifier.</param>
+        /// <returns>The attached regiment.</returns>
+        private Regiment AddPendingRegiment(Planet planet, string instanceId)
+        {
+            Regiment regiment = new Regiment
+            {
+                InstanceID = instanceId,
+                OwnerInstanceID = _faction.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            _game.AttachNode(regiment, planet);
+            return regiment;
+        }
+
+        /// <summary>
+        /// Adds a completed strategic facility to a planet.
+        /// </summary>
+        /// <param name="planet">The planet receiving the facility.</param>
+        /// <param name="instanceId">The facility identifier.</param>
+        /// <param name="buildingType">The facility type.</param>
+        /// <param name="status">The facility's manufacturing status.</param>
+        private void AddStrategicFacility(
+            Planet planet,
+            string instanceId,
+            BuildingType buildingType,
+            ManufacturingStatus status = ManufacturingStatus.Complete
+        )
         {
             _game.AttachNode(
-                new Regiment
+                new Building
                 {
                     InstanceID = instanceId,
                     OwnerInstanceID = _faction.InstanceID,
-                    ManufacturingStatus = ManufacturingStatus.Complete,
+                    BuildingType = buildingType,
+                    ManufacturingStatus = status,
                 },
                 planet
             );
+        }
+
+        /// <summary>
+        /// Removes a named production facility from a planet.
+        /// </summary>
+        /// <param name="planet">The planet containing the facility.</param>
+        /// <param name="instanceId">The facility identifier.</param>
+        private void RemoveProductionFacility(Planet planet, string instanceId)
+        {
+            Building facility = planet
+                .GetChildren<Building>()
+                .Single(building => building.InstanceID == instanceId);
+            _game.DetachNode(facility);
+        }
+
+        /// <summary>
+        /// Adds a stationary hostile fleet with an operational capital ship.
+        /// </summary>
+        /// <param name="planet">The planet to blockade.</param>
+        private void AddBlockadingFleet(Planet planet)
+        {
+            string owner = "enemy";
+            Fleet fleet = new Fleet
+            {
+                InstanceID = $"{planet.InstanceID}_BLOCKADE",
+                OwnerInstanceID = owner,
+            };
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = $"{planet.InstanceID}_BLOCKADE_SHIP",
+                OwnerInstanceID = owner,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(fleet, planet);
+            _game.AttachNode(ship, fleet);
+        }
+
+        /// <summary>
+        /// Returns a regiment template by identifier.
+        /// </summary>
+        /// <param name="typeId">The regiment type identifier.</param>
+        /// <returns>The matching template.</returns>
+        private Regiment GetRegimentTemplate(string typeId)
+        {
+            return _gameData.Regiments.Single(regiment => regiment.TypeID == typeId);
+        }
+
+        /// <summary>
+        /// Returns the number of active orders in one manufacturing lane.
+        /// </summary>
+        /// <param name="planet">The producer planet.</param>
+        /// <param name="manufacturingType">The manufacturing lane.</param>
+        /// <returns>The active order count.</returns>
+        private static int GetQueueCount(Planet planet, ManufacturingType manufacturingType)
+        {
+            return planet
+                .GetManufacturingQueue()
+                .TryGetValue(manufacturingType, out List<IManufacturable> queue)
+                ? queue.Count
+                : 0;
         }
 
         /// <summary>
