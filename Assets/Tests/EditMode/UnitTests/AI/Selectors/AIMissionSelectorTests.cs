@@ -231,6 +231,8 @@ namespace Rebellion.Tests.AI.Selectors
             Planet target = AITestSceneBuilder.AddPlanet(game, sector, "target", rebels.InstanceID);
             Officer participant = EntityFactory.CreateOfficer("participant", empire.InstanceID);
             Officer decoy = EntityFactory.CreateOfficer("decoy", empire.InstanceID);
+            participant.Ratings[SkillRating.Diplomacy] = 0;
+            decoy.Ratings[SkillRating.Diplomacy] = 0;
             game.AttachNode(participant, origin);
             game.AttachNode(decoy, origin);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
@@ -248,6 +250,39 @@ namespace Rebellion.Tests.AI.Selectors
                 .SelectedProposals.OfType<AIMissionProposal>()
                 .Single();
             CollectionAssert.AreEqual(new[] { decoy }, selected.DecoyParticipants);
+        }
+
+        [Test]
+        public void Execute_WithUnclaimedDiplomatAvailable_DoesNotAssignDiplomatAsDecoy()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, sector, "origin", empire.InstanceID);
+            Planet target = AITestSceneBuilder.AddPlanet(game, sector, "target", rebels.InstanceID);
+            Officer participant = EntityFactory.CreateOfficer("participant", empire.InstanceID);
+            Officer diplomat = EntityFactory.CreateOfficer("diplomat", empire.InstanceID);
+            participant.Ratings[SkillRating.Diplomacy] = 0;
+            diplomat.Ratings[SkillRating.Diplomacy] = 100;
+            game.AttachNode(participant, origin);
+            game.AttachNode(diplomat, origin);
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIMissionProposal mission = new AIMissionProposal(
+                new[] { participant },
+                EspionageMission.MissionTypeID,
+                target
+            );
+            mission.SetScore(50);
+            mission.SetFoilProbability(0);
+            mission.SetPersonnelLossProbability(0);
+            context.SetSelectedProposals(new[] { mission });
+
+            new AIMissionSelector(new AISelectionState()).FinalizeSelection(context);
+
+            AIMissionProposal selected = context
+                .SelectedProposals.OfType<AIMissionProposal>()
+                .Single();
+            Assert.IsEmpty(selected.DecoyParticipants);
         }
 
         [Test]

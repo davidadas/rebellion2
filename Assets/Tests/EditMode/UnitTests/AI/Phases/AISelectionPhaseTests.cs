@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.AI;
 using Rebellion.AI.Demands;
@@ -11,6 +12,7 @@ using Rebellion.AI.Selectors;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.Tests.AI.Helpers;
@@ -673,6 +675,207 @@ namespace Rebellion.Tests.AI.Phases
 
             Assert.AreEqual(1, context.SelectedProposals.Count);
             Assert.AreSame(proposal, context.SelectedProposals[0]);
+        }
+
+        [Test]
+        public void Execute_WithCompetingAttackAndEspionage_PreservesOneMissionAndReservesCommand()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.Combat.PlanetaryAssault.GeneralLeadershipDivisor = 10;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, sector, "origin", empire.InstanceID);
+            Planet firstTarget = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "first-target",
+                rebels.InstanceID
+            );
+            Planet secondTarget = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "second-target",
+                rebels.InstanceID
+            );
+            Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
+            game.AttachNode(fleet, origin);
+            CapitalShip ship = AITestSceneBuilder.CreateCapitalShip("ship", empire.InstanceID);
+            game.AttachNode(ship, fleet);
+            game.AttachNode(AITestSceneBuilder.CreateRegiment("regiment", empire.InstanceID), ship);
+            Officer missionOfficer = EntityFactory.CreateOfficer(
+                "mission-officer",
+                empire.InstanceID
+            );
+            missionOfficer.AllowedRanks = new[] { OfficerRank.General };
+            missionOfficer.Ratings[SkillRating.Diplomacy] = 0;
+            missionOfficer.Ratings[SkillRating.Leadership] = 100;
+            Officer commandOfficer = EntityFactory.CreateOfficer(
+                "command-officer",
+                empire.InstanceID
+            );
+            commandOfficer.AllowedRanks = new[] { OfficerRank.General };
+            commandOfficer.Ratings[SkillRating.Diplomacy] = 0;
+            commandOfficer.Ratings[SkillRating.Leadership] = 100;
+            game.AttachNode(missionOfficer, origin);
+            game.AttachNode(commandOfficer, origin);
+            AITestSceneBuilder.RevealPlanet(game, empire, firstTarget);
+            AITestSceneBuilder.RevealPlanet(game, empire, secondTarget);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIFleetAttackProposal attack = new AIFleetAttackProposal(
+                fleet,
+                FleetOrderType.Attack,
+                FleetOrderStatus.Building,
+                firstTarget
+            );
+            AIMissionProposal retainedMission = new AIMissionProposal(
+                new[] { missionOfficer },
+                MissionTypeIDs.Espionage,
+                firstTarget
+            );
+            AIMissionProposal displacedMission = new AIMissionProposal(
+                new[] { commandOfficer },
+                MissionTypeIDs.Espionage,
+                secondTarget
+            );
+            attack.SetScore(80);
+            retainedMission.SetScore(100);
+            retainedMission.SetPersonnelLossProbability(0);
+            displacedMission.SetScore(90);
+            displacedMission.SetPersonnelLossProbability(0);
+            context.AddProposals(new AIProposal[] { attack, retainedMission, displacedMission });
+
+            new AISelectionPhase().Execute(context);
+
+            AIMissionProposal selectedMission = context
+                .SelectedProposals.OfType<AIMissionProposal>()
+                .Single();
+            Assert.AreSame(missionOfficer, selectedMission.Participant);
+            Assert.AreEqual(1, context.CommandAssignments.Count);
+            Assert.AreSame(commandOfficer, context.CommandAssignments[0].Officer);
+            Assert.AreSame(fleet, context.CommandAssignments[0].Fleet);
+            Assert.AreEqual(OfficerRank.General, context.CommandAssignments[0].Rank);
+        }
+
+        [Test]
+        public void Execute_WithCommandConflictingWithRequiredDecoy_PreservesEspionageCapability()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.Combat.PlanetaryAssault.GeneralLeadershipDivisor = 10;
+            game.Config.AI.MissionPlanning.EspionageRefreshIntervalTicks = 20;
+            game.Config.AI.MissionPlanning.HostileMissionIntelAgeFoilPenaltyPerRefreshInterval = 5;
+            game.Config.AI.MissionPlanning.MaximumUnprotectedOfficerMissionFoilProbability = 20;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, sector, "origin", empire.InstanceID);
+            Planet firstTarget = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "first-target",
+                rebels.InstanceID
+            );
+            Planet secondTarget = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "second-target",
+                rebels.InstanceID
+            );
+            Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
+            game.AttachNode(fleet, origin);
+            CapitalShip ship = AITestSceneBuilder.CreateCapitalShip("ship", empire.InstanceID);
+            game.AttachNode(ship, fleet);
+            game.AttachNode(AITestSceneBuilder.CreateRegiment("regiment", empire.InstanceID), ship);
+            Officer leadOfficer = EntityFactory.CreateOfficer("lead-officer", empire.InstanceID);
+            leadOfficer.AllowedRanks = new[] { OfficerRank.General };
+            leadOfficer.Ratings[SkillRating.Diplomacy] = 0;
+            leadOfficer.Ratings[SkillRating.Leadership] = 100;
+            Officer supportingOfficer = EntityFactory.CreateOfficer(
+                "supporting-officer",
+                empire.InstanceID
+            );
+            supportingOfficer.AllowedRanks = new[] { OfficerRank.General };
+            supportingOfficer.Ratings[SkillRating.Diplomacy] = 0;
+            supportingOfficer.Ratings[SkillRating.Leadership] = 100;
+            game.AttachNode(leadOfficer, origin);
+            game.AttachNode(supportingOfficer, origin);
+            AITestSceneBuilder.RevealPlanet(game, empire, firstTarget);
+            AITestSceneBuilder.RevealPlanet(game, empire, secondTarget);
+            game.CurrentTick = 100;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIFleetAttackProposal attack = new AIFleetAttackProposal(
+                fleet,
+                FleetOrderType.Attack,
+                FleetOrderStatus.Building,
+                firstTarget
+            );
+            AIMissionProposal leadMission = new AIMissionProposal(
+                new[] { leadOfficer },
+                MissionTypeIDs.Espionage,
+                firstTarget
+            );
+            AIMissionProposal supportingMission = new AIMissionProposal(
+                new[] { supportingOfficer },
+                MissionTypeIDs.Espionage,
+                secondTarget
+            );
+            attack.SetScore(80);
+            leadMission.SetScore(100);
+            supportingMission.SetScore(90);
+            context.AddProposals(new AIProposal[] { attack, leadMission, supportingMission });
+
+            new AISelectionPhase().Execute(context);
+
+            AIMissionProposal selectedMission = context
+                .SelectedProposals.OfType<AIMissionProposal>()
+                .Single();
+            Assert.AreSame(leadOfficer, selectedMission.Participant);
+            CollectionAssert.AreEqual(
+                new[] { supportingOfficer },
+                selectedMission.DecoyParticipants
+            );
+            Assert.IsEmpty(context.CommandAssignments);
+        }
+
+        [Test]
+        public void Execute_WithCompetingAttackAndResearch_PreservesResearchOfficer()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.Combat.PlanetaryAssault.GeneralLeadershipDivisor = 10;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, sector, "origin", empire.InstanceID);
+            Planet target = AITestSceneBuilder.AddPlanet(game, sector, "target", rebels.InstanceID);
+            Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
+            game.AttachNode(fleet, origin);
+            CapitalShip ship = AITestSceneBuilder.CreateCapitalShip("ship", empire.InstanceID);
+            game.AttachNode(ship, fleet);
+            game.AttachNode(AITestSceneBuilder.CreateRegiment("regiment", empire.InstanceID), ship);
+            Officer researcher = EntityFactory.CreateOfficer("researcher", empire.InstanceID);
+            researcher.AllowedRanks = new[] { OfficerRank.General };
+            researcher.Ratings[SkillRating.Diplomacy] = 0;
+            researcher.Ratings[SkillRating.Leadership] = 100;
+            researcher.ShipResearch = 50;
+            game.AttachNode(researcher, origin);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIFleetAttackProposal attack = new AIFleetAttackProposal(
+                fleet,
+                FleetOrderType.Attack,
+                FleetOrderStatus.Building,
+                target
+            );
+            AIMissionProposal research = new AIMissionProposal(
+                new[] { researcher },
+                MissionTypeIDs.Research,
+                origin,
+                discipline: ResearchDiscipline.ShipDesign
+            );
+            attack.SetScore(80);
+            research.SetScore(100);
+            context.AddProposals(new AIProposal[] { attack, research });
+
+            new AISelectionPhase().Execute(context);
+
+            Assert.AreSame(
+                research,
+                context.SelectedProposals.OfType<AIMissionProposal>().Single()
+            );
+            Assert.IsEmpty(context.CommandAssignments);
         }
 
         /// <summary>

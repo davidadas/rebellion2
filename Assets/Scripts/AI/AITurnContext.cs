@@ -32,6 +32,7 @@ namespace Rebellion.AI
         public BombardmentQueries BombardmentQueries { get; }
         public PlanetaryAssaultCommands PlanetaryAssault { get; }
         public PlanetaryAssaultQueries PlanetaryAssaultQueries { get; }
+        public OfficerCommandCommands OfficerCommands { get; }
         public GalaxyMap FactionView { get; }
         public AIAssessment Assessment { get; }
         public AIStrategicPlan StrategicPlan { get; }
@@ -52,6 +53,11 @@ namespace Rebellion.AI
         public IReadOnlyList<AIProductionDemand> ProductionDemands => _productionDemands;
         public IReadOnlyList<AIProposal> Proposals => _proposals;
         public IReadOnlyList<AIProposal> SelectedProposals => _selectedProposals;
+        internal IReadOnlyList<(
+            Officer Officer,
+            Fleet Fleet,
+            OfficerRank Rank
+        )> CommandAssignments => _commandAssignments;
         public IReadOnlyList<GameResult> Results => _results;
 
         private readonly List<AIProductionDemand> _productionDemands =
@@ -61,6 +67,14 @@ namespace Rebellion.AI
         );
         private readonly List<AIProposal> _proposals = new List<AIProposal>();
         private readonly List<AIProposal> _selectedProposals = new List<AIProposal>();
+        private readonly List<(
+            Officer Officer,
+            Fleet Fleet,
+            OfficerRank Rank
+        )> _commandAssignments = new List<(Officer Officer, Fleet Fleet, OfficerRank Rank)>();
+        private readonly HashSet<string> _commandOfficerIds = new HashSet<string>(
+            StringComparer.Ordinal
+        );
         private readonly List<GameResult> _results = new List<GameResult>();
         private readonly Dictionary<SpecialForces, SpecialForcesIntent> _specialForcesIntents =
             new Dictionary<SpecialForces, SpecialForcesIntent>();
@@ -82,6 +96,7 @@ namespace Rebellion.AI
         /// <param name="strategicPlan">The strategic allocations derived from the assessment.</param>
         /// <param name="factionView">The faction-visible galaxy state for this turn.</param>
         /// <param name="maintenance">Maintenance system used to project production capacity.</param>
+        /// <param name="officerCommands">Officer-command system used by selected attack staffing.</param>
         public AITurnContext(
             GameRoot game,
             Faction faction,
@@ -94,7 +109,8 @@ namespace Rebellion.AI
             AIAssessment assessment,
             AIStrategicPlan strategicPlan,
             GalaxyMap factionView = null,
-            MaintenanceCommands maintenance = null
+            MaintenanceCommands maintenance = null,
+            OfficerCommandCommands officerCommands = null
         )
         {
             Game = game;
@@ -109,6 +125,7 @@ namespace Rebellion.AI
             BombardmentQueries = game == null ? null : new BombardmentQueries(game);
             PlanetaryAssault = planetaryAssault;
             PlanetaryAssaultQueries = game == null ? null : new PlanetaryAssaultQueries(game);
+            OfficerCommands = officerCommands;
             Random = random;
             FactionView = factionView;
             Assessment = assessment;
@@ -213,6 +230,58 @@ namespace Rebellion.AI
                 if (proposal != null)
                     _selectedProposals.Add(proposal);
             }
+        }
+
+        /// <summary>
+        /// Replaces the attack-fleet command assignments selected for this turn.
+        /// </summary>
+        /// <param name="assignments">The officer, fleet, and rank assignments to retain.</param>
+        internal void SetCommandAssignments(
+            IEnumerable<(Officer Officer, Fleet Fleet, OfficerRank Rank)> assignments
+        )
+        {
+            _commandAssignments.Clear();
+            _commandOfficerIds.Clear();
+            if (assignments == null)
+                return;
+
+            foreach ((Officer officer, Fleet fleet, OfficerRank rank) in assignments)
+            {
+                if (
+                    officer == null
+                    || fleet == null
+                    || rank == OfficerRank.None
+                    || IsDiplomat(officer)
+                    || !_commandOfficerIds.Add(officer.InstanceID)
+                )
+                    continue;
+
+                _commandAssignments.Add((officer, fleet, rank));
+            }
+        }
+
+        /// <summary>
+        /// Returns whether an officer is reserved to command a selected attack fleet this turn.
+        /// </summary>
+        /// <param name="officerInstanceId">The officer instance identifier to inspect.</param>
+        /// <returns>True when the officer has a selected command assignment.</returns>
+        internal bool IsOfficerReservedForCommand(string officerInstanceId)
+        {
+            return !string.IsNullOrEmpty(officerInstanceId)
+                && _commandOfficerIds.Contains(officerInstanceId);
+        }
+
+        /// <summary>
+        /// Returns whether an officer is reserved exclusively for diplomacy by AI policy.
+        /// </summary>
+        /// <param name="officer">The officer to inspect.</param>
+        /// <returns>True when the officer meets the configured diplomacy threshold.</returns>
+        internal bool IsDiplomat(Officer officer)
+        {
+            return officer != null
+                && Game?.Config?.AI != null
+                && officer.GetEffectiveRating(SkillRating.Diplomacy)
+                    >= Game.Config.AI.DiplomacyMinimumSkill;
         }
 
         /// <summary>

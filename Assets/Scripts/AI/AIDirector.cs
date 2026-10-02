@@ -30,6 +30,7 @@ namespace Rebellion.AI
         private readonly BombardmentQueries _bombardmentQueries;
         private readonly PlanetaryAssaultCommands _planetaryAssault;
         private readonly PlanetaryAssaultQueries _planetaryAssaultQueries;
+        private readonly OfficerCommandCommands _officerCommands;
         private readonly IReadOnlyList<IAITurnPhase> _turnPhases;
 
         /// <summary>
@@ -63,6 +64,7 @@ namespace Rebellion.AI
         /// <param name="planetaryAssault">Planetary-assault system used by fleet attack proposals.</param>
         /// <param name="random">RNG provider used by probabilistic AI decisions.</param>
         /// <param name="maintenance">Maintenance system used to project production capacity.</param>
+        /// <param name="officerCommands">Officer-command system used to staff selected attacks.</param>
         public AIDirector(
             GameRoot game,
             MissionCommands missions,
@@ -71,7 +73,8 @@ namespace Rebellion.AI
             BombardmentCommands bombardment,
             PlanetaryAssaultCommands planetaryAssault,
             IRandomNumberProvider random,
-            MaintenanceCommands maintenance = null
+            MaintenanceCommands maintenance = null,
+            OfficerCommandCommands officerCommands = null
         )
         {
             _game = game;
@@ -86,6 +89,7 @@ namespace Rebellion.AI
             _bombardmentQueries = game == null ? null : new BombardmentQueries(game);
             _planetaryAssault = planetaryAssault;
             _planetaryAssaultQueries = game == null ? null : new PlanetaryAssaultQueries(game);
+            _officerCommands = officerCommands;
             AIProductionDemandGenerator productionDemandGenerator =
                 new AIProductionDemandGenerator();
             AIProductionPlanner productionPlanner = new AIProductionPlanner();
@@ -191,7 +195,8 @@ namespace Rebellion.AI
                     assessment,
                     strategicPlan,
                     factionView,
-                    _maintenance
+                    _maintenance,
+                    _officerCommands
                 );
             }
             finally
