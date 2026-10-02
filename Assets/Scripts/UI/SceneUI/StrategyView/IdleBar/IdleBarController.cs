@@ -123,11 +123,11 @@ public sealed class IdleBarController
         IDisposable
 {
     private const string _entityItemTypeID = "Entity";
-    private static readonly string[] _planetItemTypeIDs =
+    private static readonly ManufacturingType[] _planetManufacturingTypes =
     {
-        nameof(ManufacturingType.Ship),
-        nameof(ManufacturingType.Troop),
-        nameof(ManufacturingType.Building),
+        ManufacturingType.Ship,
+        ManufacturingType.Troop,
+        ManufacturingType.Building,
     };
 
     private readonly Func<Faction> getFaction;
@@ -237,7 +237,7 @@ public sealed class IdleBarController
         RectInt desktopBounds = GetDesktopBounds();
         IdleBarRenderData projected = projector.Project(getFaction(), desktopBounds);
         List<IdleBarEntry> entries = projected
-            .Entries.Where(entry => IsIdleBarTracked(entry.Entity))
+            .Entries.Where(entry => IsIdleBarEntryTracked(entry.Entity))
             .ToList();
         if (
             !string.IsNullOrEmpty(highlightedEntityId)
@@ -307,6 +307,21 @@ public sealed class IdleBarController
 
         return GetItemTypeIDs(entity)
             .Any(type => !ContainsIgnoredItem(ignoredItems, entity.InstanceID, type));
+    }
+
+    /// <summary>
+    /// Reports whether an available entry has at least one tracked reason to appear.
+    /// </summary>
+    /// <param name="entity">The projected idle-bar entity.</param>
+    /// <returns>True when the entry should remain visible.</returns>
+    private bool IsIdleBarEntryTracked(ISceneNode entity)
+    {
+        if (entity is not Planet planet)
+            return IsIdleBarTracked(entity);
+
+        return _planetManufacturingTypes.Any(type =>
+            planet.GetIdleManufacturingFacilities(type) > 0 && IsIdleBarTracked(planet, type)
+        );
     }
 
     /// <summary>
@@ -398,7 +413,9 @@ public sealed class IdleBarController
     /// <returns>The item identities represented by the entity.</returns>
     private static IEnumerable<string> GetItemTypeIDs(ISceneNode entity)
     {
-        return entity is Planet ? _planetItemTypeIDs : new[] { _entityItemTypeID };
+        return entity is Planet
+            ? _planetManufacturingTypes.Select(type => type.ToString())
+            : new[] { _entityItemTypeID };
     }
 
     /// <summary>
