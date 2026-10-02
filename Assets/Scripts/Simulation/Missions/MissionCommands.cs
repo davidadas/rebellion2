@@ -197,6 +197,8 @@ namespace Rebellion.Simulation
 
             _game.AttachNode(mission, planet);
             List<IMissionParticipant> startingParticipants = mission.GetAllParticipants();
+            foreach (Officer officer in startingParticipants.OfType<Officer>())
+                OfficerCommandCommands.ClearRank(officer, _game.CurrentTick, _pendingResults);
             _pendingResults.Add(
                 new MissionStartedResult
                 {
