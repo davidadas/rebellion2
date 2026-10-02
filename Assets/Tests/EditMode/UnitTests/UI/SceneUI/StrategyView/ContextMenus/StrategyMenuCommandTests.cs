@@ -195,6 +195,22 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
         }
 
         [Test]
+        public void CanMoveItems_CapturedOfficerWithPlayerSpecialForces_ReturnsTrue()
+        {
+            Officer captive = CreateOfficer("enemy");
+            captive.IsCaptured = true;
+            captive.CaptorInstanceID = "player";
+            SpecialForces escort = new SpecialForces { OwnerInstanceID = "player" };
+
+            bool canMove = StrategyContextMenuAvailability.CanMoveItems(
+                new ISceneNode[] { captive, escort },
+                "player"
+            );
+
+            Assert.IsTrue(canMove);
+        }
+
+        [Test]
         public void CanMoveItems_CapitalShipUnderConstruction_ReturnsTrue()
         {
             CapitalShip capitalShip = new CapitalShip

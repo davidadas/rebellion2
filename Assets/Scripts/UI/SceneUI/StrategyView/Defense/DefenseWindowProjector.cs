@@ -126,6 +126,22 @@ internal sealed class DefenseWindowProjector
     }
 
     /// <summary>
+    /// Resolves a Defense unit-card name color for one selection state.
+    /// </summary>
+    /// <param name="session">The controller-owned Defense session.</param>
+    /// <param name="selected">Whether the card is selected.</param>
+    /// <returns>The faction color when selected; otherwise white.</returns>
+    public Color32 GetItemNameColor(DefenseWindowSession session, bool selected)
+    {
+        if (session == null)
+            throw new ArgumentNullException(nameof(session));
+
+        return selected
+            ? GetFactionColor(GetRequiredUIContext(), session.Planet?.OwnerFactionId)
+            : _white;
+    }
+
+    /// <summary>
     /// Returns the player's garrison requirement label for the regiment tab.
     /// </summary>
     /// <param name="uiContext">The current presentation context.</param>

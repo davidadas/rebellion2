@@ -15,112 +15,45 @@ namespace Rebellion.Tests.Simulation
     public class OfficerLoyaltyCommandsTests
     {
         [Test]
-        public void ApplyControlShift_FactionGainsPlanet_ShiftsBetrayableOfficerLoyalty()
+        public void ApplyGlobalShift_AllRegisteredOfficers_UsesFactionRelativeSign()
         {
             GameRoot game = BuildScene(
                 out Planet planet,
-                out Officer empireOfficer,
+                out Officer favoredOfficer,
                 canBetray: true,
                 loyalty: 50
             );
-            Faction alliance = new Faction { InstanceID = "alliance" };
-            game.GetFactions().Add(alliance);
-            planet.PopularSupport = new Dictionary<string, int>
-            {
-                { alliance.InstanceID, 100 },
-                { empireOfficer.OwnerInstanceID, 0 },
-            };
-            Planet alliancePlanet = new Planet
-            {
-                InstanceID = "alliance-planet",
-                OwnerInstanceID = alliance.InstanceID,
-                IsColonized = true,
-            };
-            game.AttachNode(alliancePlanet, planet.GetParent());
-            Officer allianceOfficer = EntityFactory.CreateOfficer(
-                "alliance-free",
-                alliance.InstanceID,
+            Faction favoredFaction = game.GetFactions().Single();
+            Faction opposingFaction = new Faction { InstanceID = "alliance" };
+            game.GetFactions().Add(opposingFaction);
+            Officer opposingOfficer = EntityFactory.CreateOfficer(
+                "opposing",
+                opposingFaction.InstanceID,
                 canBetray: true,
                 loyalty: 50
             );
-            game.AttachNode(allianceOfficer, alliancePlanet);
-            Officer commander = EntityFactory.CreateOfficer(
-                "alliance-command",
-                alliance.InstanceID,
-                canBetray: true,
-                loyalty: 50
-            );
-            commander.CurrentRank = OfficerRank.General;
-            game.AttachNode(commander, alliancePlanet);
-            Officer captive = EntityFactory.CreateOfficer(
-                "empire-captive",
-                "empire",
-                canBetray: true,
-                loyalty: 50
-            );
-            captive.IsCaptured = true;
-            game.AttachNode(captive, alliancePlanet);
-            OfficerLoyaltyCommands system = new OfficerLoyaltyCommands(game, new ThrowingRNG());
-
-            system.ApplyControlShift(planet, alliance);
-
-            Assert.AreEqual(52, allianceOfficer.Loyalty);
-            Assert.AreEqual(48, empireOfficer.Loyalty);
-            Assert.AreEqual(52, commander.Loyalty);
-            Assert.AreEqual(48, captive.Loyalty);
-        }
-
-        [Test]
-        public void ApplyControlShift_OfficerCannotBetray_DoesNotShiftLoyalty()
-        {
-            GameRoot game = BuildScene(
-                out Planet planet,
-                out Officer officer,
+            Officer fixedOfficer = EntityFactory.CreateOfficer(
+                "fixed",
+                favoredFaction.InstanceID,
                 canBetray: false,
                 loyalty: 50
             );
-            Faction alliance = new Faction { InstanceID = "alliance" };
-            game.GetFactions().Add(alliance);
-            planet.PopularSupport = new Dictionary<string, int>
+            Planet opposingPlanet = new Planet
             {
-                { alliance.InstanceID, 100 },
-                { officer.OwnerInstanceID, 0 },
+                InstanceID = "alliance-planet",
+                OwnerInstanceID = opposingFaction.InstanceID,
+                IsColonized = true,
             };
-            OfficerLoyaltyCommands commands = new OfficerLoyaltyCommands(game, new ThrowingRNG());
+            game.AttachNode(opposingPlanet, planet.GetParent());
+            game.AttachNode(opposingOfficer, opposingPlanet);
+            game.AttachNode(fixedOfficer, planet);
+            opposingOfficer.IsEnabled = false;
 
-            commands.ApplyControlShift(planet, alliance);
+            new OfficerLoyaltyCommands(game, new ThrowingRNG()).ApplyGlobalShift(favoredFaction, 7);
 
-            Assert.AreEqual(50, officer.Loyalty);
-        }
-
-        [TestCase(100, 0, 2)]
-        [TestCase(80, 20, 1)]
-        [TestCase(60, 40, 0)]
-        [TestCase(10, 90, -1)]
-        public void ApplyControlShift_SupportLevels_DeriveExpectedShift(
-            int incomingSupport,
-            int opposingSupport,
-            int expectedShift
-        )
-        {
-            GameRoot game = BuildScene(
-                out Planet planet,
-                out Officer officer,
-                canBetray: true,
-                loyalty: 50
-            );
-            Faction alliance = new Faction { InstanceID = "alliance" };
-            game.GetFactions().Add(alliance);
-            officer.OwnerInstanceID = alliance.InstanceID;
-            planet.PopularSupport = new Dictionary<string, int>
-            {
-                { alliance.InstanceID, incomingSupport },
-                { "empire", opposingSupport },
-            };
-
-            new OfficerLoyaltyCommands(game, new ThrowingRNG()).ApplyControlShift(planet, alliance);
-
-            Assert.AreEqual(50 + expectedShift, officer.Loyalty);
+            Assert.AreEqual(57, favoredOfficer.Loyalty);
+            Assert.AreEqual(43, opposingOfficer.Loyalty);
+            Assert.AreEqual(50, fixedOfficer.Loyalty);
         }
 
         [Test]
@@ -231,7 +164,6 @@ namespace Rebellion.Tests.Simulation
         )
         {
             GameConfig config = new GameConfig();
-            config.OfficerLoyalty.PlanetAcquisitionSupportDivisor = 80;
             GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             PlanetSector sector = new PlanetSector { InstanceID = "sector" };

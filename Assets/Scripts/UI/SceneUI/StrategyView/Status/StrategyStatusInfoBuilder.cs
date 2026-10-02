@@ -17,6 +17,7 @@ internal sealed class StrategyStatusInfoBuilder
     private readonly IReadOnlyList<GalaxyMapSector> sectors;
     private readonly string playerFactionId;
     private readonly Func<string, ISceneNode> findVisibleNode;
+    private readonly Func<string, string> findTypeDisplayName;
     private readonly int currentTick;
 
     /// <summary>
@@ -27,12 +28,14 @@ internal sealed class StrategyStatusInfoBuilder
     /// <param name="playerFactionId">The player faction identifier.</param>
     /// <param name="currentTick">The current game tick.</param>
     /// <param name="jediConfig">The configured Force-rank presentation.</param>
+    /// <param name="findTypeDisplayName">Resolves a class display name from a type identifier.</param>
     public StrategyStatusInfoBuilder(
         IReadOnlyList<GalaxyMapSector> sectors,
         Func<string, ISceneNode> findVisibleNode,
         string playerFactionId,
         int currentTick,
-        GameConfig.JediConfig jediConfig
+        GameConfig.JediConfig jediConfig,
+        Func<string, string> findTypeDisplayName = null
     )
     {
         this.sectors = sectors ?? throw new ArgumentNullException(nameof(sectors));
@@ -41,6 +44,7 @@ internal sealed class StrategyStatusInfoBuilder
         this.playerFactionId = playerFactionId ?? string.Empty;
         this.currentTick = currentTick;
         this.jediConfig = jediConfig;
+        this.findTypeDisplayName = findTypeDisplayName;
     }
 
     /// <summary>
@@ -606,7 +610,13 @@ internal sealed class StrategyStatusInfoBuilder
             capitalShip.GetDisplayName()
         );
         Fleet fleet = capitalShip.GetParentOfType<Fleet>();
-        info.Rows.Add(new StrategyStatusRow("Class:", capitalShip.GetDisplayName()));
+        string className = findTypeDisplayName?.Invoke(capitalShip.TypeID);
+        info.Rows.Add(
+            new StrategyStatusRow(
+                "Class:",
+                string.IsNullOrWhiteSpace(className) ? capitalShip.GetDisplayName() : className
+            )
+        );
         info.Rows.Add(new StrategyStatusRow("Fleet:", fleet?.GetDisplayName() ?? "None"));
         info.Rows.Add(new StrategyStatusRow("Status:", GetManufacturingStatusText(capitalShip)));
         AddEtaDestinationRow(info, capitalShip);

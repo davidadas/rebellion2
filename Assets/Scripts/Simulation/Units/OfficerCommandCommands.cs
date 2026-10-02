@@ -65,6 +65,7 @@ namespace Rebellion.Simulation
         /// <returns>True when the officer may receive the requested rank.</returns>
         internal static bool CanChangeRank(Officer officer, OfficerRank rank)
         {
+            ISceneNode commandTarget = ResolveCommandTarget(officer);
             if (
                 officer == null
                 || !IsSupportedRank(rank)
@@ -73,7 +74,8 @@ namespace Rebellion.Simulation
                 || officer.IsRetired
                 || officer.InjuryPoints > 0
                 || ((IMovable)officer).GetTransitMovement() != null
-                || ResolveCommandTarget(officer) == null
+                || commandTarget == null
+                || !IsRankSupportedByTarget(rank, commandTarget)
             )
                 return false;
 
@@ -252,5 +254,14 @@ namespace Rebellion.Simulation
                     or OfficerRank.Commander
                     or OfficerRank.Admiral
                     or OfficerRank.General;
+
+        /// <summary>
+        /// Determines whether the requested command post exists at the officer's location.
+        /// </summary>
+        /// <param name="rank">The requested command post.</param>
+        /// <param name="commandTarget">The local fleet or planetary command.</param>
+        /// <returns>True when the target supports the requested post.</returns>
+        private static bool IsRankSupportedByTarget(OfficerRank rank, ISceneNode commandTarget) =>
+            rank != OfficerRank.Admiral || commandTarget is Fleet;
     }
 }

@@ -19,6 +19,7 @@ catalog's `Starfighters` root.
     <MaintenanceCost>4</MaintenanceCost>
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
+    <UprisingDefense>0</UprisingDefense>
     <MaxSquadronSize>12</MaxSquadronSize>
     <CurrentSquadronSize>12</CurrentSquadronSize>
     <DetectionRating>10</DetectionRating>
@@ -46,6 +47,7 @@ catalog's `Starfighters` root.
 | `DetectionRating` | Detection strength. |
 | `Bombardment` | Planetary bombardment strength. |
 | `ShieldStrength` | Shield strength per fighter. |
+| `UprisingDefense` | Value contributed when the complete squadron is destroyed in the global officer-loyalty battle calculation; partial fighter losses do not count. |
 | `Hyperdrive` | Strategic travel rating. A non-hyperdrive fighter must travel aboard a carrier. |
 | `SublightSpeed` | Tactical sublight speed. |
 | `Agility` | Tactical agility. |

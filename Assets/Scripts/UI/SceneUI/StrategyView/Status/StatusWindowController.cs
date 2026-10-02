@@ -272,7 +272,11 @@ public sealed class StatusWindowController
             findVisibleNode,
             game.GetPlayerFaction()?.InstanceID,
             game.CurrentTick,
-            game.Config?.Jedi
+            game.Config?.Jedi,
+            typeId =>
+                uiContext
+                    .EncyclopediaCatalog?.FindEntry(typeId, game.GetPlayerFaction()?.InstanceID)
+                    ?.DisplayName
         ).Build(session.Target);
         if (info == null)
             return;

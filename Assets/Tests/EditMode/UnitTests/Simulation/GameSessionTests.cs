@@ -37,7 +37,11 @@ namespace Rebellion.Tests.Simulation
         public void SetUp()
         {
             _game = TestGame.Create(TestConfig.Create());
-            _faction = new Faction { InstanceID = "owner" };
+            _faction = new Faction
+            {
+                InstanceID = "owner",
+                Settings = new FactionSettings { BattleLossLoyaltyDivisor = 80 },
+            };
             _game.GetFactions().Add(_faction);
             PlanetSector sector = new PlanetSector
             {
@@ -127,6 +131,79 @@ namespace Rebellion.Tests.Simulation
             _session.Results.Publish(CreateSupportShift());
 
             Assert.AreEqual(85, _planet.GetPopularSupport(_faction.InstanceID));
+        }
+
+        [Test]
+        public void Constructor_PlanetOwnershipPublished_DoesNotChangeOfficerLoyalty()
+        {
+            Faction opponent = new Faction { InstanceID = "opponent" };
+            _game.GetFactions().Add(opponent);
+            Officer officer = EntityFactory.CreateOfficer(
+                "officer",
+                _faction.InstanceID,
+                canBetray: true,
+                loyalty: 50
+            );
+            _game.AttachNode(officer, _planet);
+
+            _session.Results.Publish(
+                new PlanetOwnershipChangedResult
+                {
+                    Planet = _planet,
+                    PreviousOwner = _faction,
+                    NewOwner = opponent,
+                }
+            );
+
+            Assert.AreEqual(50, officer.Loyalty);
+        }
+
+        [Test]
+        public void Constructor_CompletedSpaceBattle_AppliesConnectedOfficerLoyaltyReaction()
+        {
+            Faction opponent = new Faction { InstanceID = "opponent" };
+            _game.GetFactions().Add(opponent);
+            Officer favoredOfficer = EntityFactory.CreateOfficer(
+                "favored-officer",
+                _faction.InstanceID,
+                canBetray: true,
+                loyalty: 50
+            );
+            _game.AttachNode(favoredOfficer, _planet);
+            Planet opponentPlanet = new Planet
+            {
+                InstanceID = "opponent-planet",
+                OwnerInstanceID = opponent.InstanceID,
+                IsColonized = true,
+            };
+            _game.AttachNode(opponentPlanet, _planet.GetParent());
+            Officer opponentOfficer = EntityFactory.CreateOfficer(
+                "opponent-officer",
+                opponent.InstanceID,
+                canBetray: true,
+                loyalty: 50
+            );
+            _game.AttachNode(opponentOfficer, opponentPlanet);
+            CombatUnitSnapshot destroyedShip = new CombatUnitSnapshot(
+                new CapitalShip { InstanceID = "destroyed", UprisingDefense = 80 }
+            )
+            {
+                Destroyed = true,
+            };
+
+            _session.Results.Publish(
+                new SpaceCombatResult
+                {
+                    AttackerOwnerInstanceID = _faction.InstanceID,
+                    DefenderOwnerInstanceID = opponent.InstanceID,
+                    AttackerOutcome = SpaceCombatSideOutcome.Active,
+                    DefenderOutcome = SpaceCombatSideOutcome.Destroyed,
+                    DefendingUnits = new List<CombatUnitSnapshot> { destroyedShip },
+                }
+            );
+
+            Assert.AreEqual(52, favoredOfficer.Loyalty);
+            Assert.AreEqual(48, opponentOfficer.Loyalty);
         }
 
         [Test]

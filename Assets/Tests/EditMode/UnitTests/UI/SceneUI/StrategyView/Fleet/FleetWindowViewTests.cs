@@ -162,6 +162,29 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         [Test]
+        public void RenderDetailSelection_WhenSelectionChanges_UpdatesFrameAndNameColor()
+        {
+            _view.Render(
+                CreateRenderData(
+                    true,
+                    new[] { CreateFleetRow("Fleet") },
+                    new[] { CreateDetailItem("Ship") }
+                )
+            );
+            StrategyUnitCardView item = FindDetailItems().Single();
+
+            _view.RenderDetailSelection(new[] { 0 }, _texture, Color.red, Color.white);
+
+            Assert.IsTrue(FindCardObject(item, "SelectionImage").activeSelf);
+            Assert.AreEqual((Color32)Color.red, (Color32)item.NameTextField.color);
+
+            _view.RenderDetailSelection(Array.Empty<int>(), _texture, Color.red, Color.white);
+
+            Assert.IsFalse(FindCardObject(item, "SelectionImage").activeSelf);
+            Assert.AreEqual((Color32)Color.white, (Color32)item.NameTextField.color);
+        }
+
+        [Test]
         public void Render_InvalidTabCount_ThrowsArgumentException()
         {
             FleetWindowRenderData data = CreateRenderData(

@@ -143,7 +143,7 @@ public sealed class StrategyUnitCardView : MonoBehaviour, IStrategyStatusDoubleC
             data.CapturedOverlayTexture,
             entityRenderFrameRect
         );
-        RenderSelection(data.SelectionTexture);
+        RenderSelection(data.SelectionTexture, data.NameColor);
         SetOptionalImageTexture(starfighterBadgeImage, data.StarfighterBadgeTexture);
         SetOptionalImageTexture(troopBadgeImage, data.TroopBadgeTexture);
         SetOptionalImageTexture(personnelBadgeImage, data.PersonnelBadgeTexture);
@@ -155,10 +155,12 @@ public sealed class StrategyUnitCardView : MonoBehaviour, IStrategyStatusDoubleC
     /// Updates only the card's selection presentation.
     /// </summary>
     /// <param name="texture">The selected frame, or null when the card is not selected.</param>
-    internal void RenderSelection(Texture texture)
+    /// <param name="nameColor">The name color for the new selection state.</param>
+    internal void RenderSelection(Texture texture, Color32 nameColor)
     {
         VerifyReferences();
         SetOptionalImageTexture(selectionImage, texture);
+        nameTextField.color = nameColor;
     }
 
     /// <summary>

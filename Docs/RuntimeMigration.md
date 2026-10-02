@@ -48,7 +48,7 @@ it is not duplicated. RNG consumption is a state change.
 | `MissionSystem` | `MissionCommands`: start, abort, update, teardown, execution-runtime operations | `MissionQueries`: creation previews, options and odds | Capture callback identifies affected missions and invokes interruption; membership/order gate below |
 | `MovementSystem` | `MovementCommands`: move, routes, mission returns, evacuation, custody placement | `MovementQueries`: route eligibility, travel estimates, evacuation availability, return-destination selection | Blockade callback invokes relocation; preserve overload-specific publication boundaries |
 | `NamingSystem` | `NamingCommands`: per-faction/tick naming | None | None |
-| `OfficerLoyaltySystem` | `OfficerLoyaltyCommands`: loyalty shifts and betrayal rolls | None | Ownership callback selects affected officers and delegates shifts |
+| `OfficerLoyaltySystem` | `OfficerLoyaltyCommands`: generic global loyalty shifts and mission betrayal rolls | None | `OfficerLoyaltyObserver` derives battle-loss shifts from settled space combat, assault, and bombardment results; ordinary ownership changes do not alter loyalty |
 | `PersonnelSystem` | `PersonnelCommands`: kill/retire | `PersonnelQueries.CanRetire` | None |
 | `PlanetaryAssaultSystem` | `PlanetaryAssaultCommands`: execute assault and apply outcome | `PlanetaryAssaultQueries.CanExecute`; existing resolver estimates remain with resolver initially | Publishes completed assault batch |
 | `PlanetaryControlSystem` | `PlanetaryControlCommands`: reconciliation, transfer, neutrality, support changes | `PlanetaryControlQueries`: controller selection, active regiment owners and core support resistance | Garrison/support callbacks delegate reconciliation/support operations |
@@ -136,15 +136,16 @@ has been removed and independently tested:
 1. Authored-event execution (`GameResult`).
 2. Movement (`BlockadeChangedResult`).
 3. Headquarters (arrival, then ownership).
-4. Officer loyalty (ownership), then captivity (ownership).
+4. Captivity (ownership).
 5. Victory (headquarters loss).
 6. Planetary control (garrison, then support shift).
 7. Uprising (garrison).
 8. Jedi growth (mission completed).
 9. Mission interruption (capture), then custody placement (capture).
-10. Fog of war (intelligence).
-11. Manufacturing (destroyed, scrapped, bombardment, assault).
-12. Settled sabotage observation refreshes fog of war.
+10. Battle officer loyalty (space combat, assault, bombardment).
+11. Fog of war (intelligence).
+12. Manufacturing (destroyed, scrapped, bombardment, assault).
+13. Settled sabotage observation refreshes fog of war.
 
 Presentation is not presently one uniform final broadcast. `ProcessResults`
 announces resolved results, assault/victory collections, processes messages, then
@@ -443,25 +444,23 @@ publication after the bus replaces both returned-list routing and `ResultsProduc
   eight architecture cases and coverage gates passed (**81.4%** line / **91.3%**
   method). No existing result class or serialized game field changed.
 
-- Split officer-loyalty ownership callbacks into `OfficerLoyaltyObserver` and
-  moved loyalty mutation/betrayal operations into `OfficerLoyaltyCommands`.
-  `ApplyControlShift` is the existing mutation body, not a query; betrayal still
-  returns its results to mission resolution at the existing release boundary.
-  The session retains the original ownership subscription position. No new
-  notification is emitted for the existing silent loyalty changes.
+- Kept mission-betrayal operations in `OfficerLoyaltyCommands`. A later implementation
+  audit disproved the planet-support loyalty rule, so the planet-ownership subscription
+  and `ApplyControlShift` were removed. Ordinary planet ownership changes no longer
+  alter officer loyalty.
+- Updated `OfficerLoyaltyObserver` to derive loyalty changes from completed battle
+  results. The observer counts only
+  fully destroyed capital ships, fighter squadrons, and regiments by their authored
+  `UprisingDefense` value, applies the two integer divisions in the required order, and
+  delegates the resulting global faction-relative change to
+  `OfficerLoyaltyCommands`. Facilities, special forces, and partial squadron losses are
+  excluded. Space combat reacts only when one side remains active.
 - Moved research progression into `ResearchCommands` without changing executable
   code beyond type/namespace names. Constructor timer initialization and its RNG
   position in session construction are unchanged.
-- Ran **18 original loyalty/research tests before extraction**, including two
-  new ownership-batch characterizations. They establish sequential clamping,
-  one roll per incoming faction, no roll for neutral/null entries, and no roll
-  for an absent batch. Moved those checks into the listener fixture and kept
-  mutation/betrayal assertions in the command fixture.
-- Verified the loyalty/research extraction with `./build.sh all`: **5,020 / 5,020
-  tests passed**, zero failures/skips. Formatting, lint, 25 analyzer tests,
-  eight architecture cases and coverage gates passed (**81.4%** line / **91.3%**
-  method). The complete research source and loyalty operation bodies compare
-  unchanged after normalizing extraction names, namespaces and documentation.
+- Replaced the ownership-loyalty characterization tests with a connected-session
+  regression proving that a `PlanetOwnershipChangedResult` leaves officer loyalty
+  unchanged. Mission-betrayal coverage remains with the command fixture.
 
 - Split victory and Jedi result listeners into `VictoryObserver` and `JediObserver`.
   Their command classes own the existing tick and mutation implementations.

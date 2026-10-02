@@ -1030,7 +1030,9 @@ public sealed class FleetWindowController
 
         view.RenderDetailSelection(
             session.SelectedDetailItems,
-            projector.GetDetailSelectionTexture(session)
+            projector.GetDetailSelectionTexture(session),
+            projector.GetDetailNameColor(session, true),
+            projector.GetDetailNameColor(session, false)
         );
     }
 
