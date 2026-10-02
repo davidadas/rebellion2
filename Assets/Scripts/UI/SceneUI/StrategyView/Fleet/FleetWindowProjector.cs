@@ -113,6 +113,23 @@ internal sealed class FleetWindowProjector
     }
 
     /// <summary>
+    /// Resolves a fleet detail-card name color for one selection state.
+    /// </summary>
+    /// <param name="session">The controller-owned fleet session.</param>
+    /// <param name="selected">Whether the detail card is selected.</param>
+    /// <returns>The fleet faction color when selected; otherwise white.</returns>
+    public Color32 GetDetailNameColor(FleetWindowSession session, bool selected)
+    {
+        if (session == null)
+            throw new ArgumentNullException(nameof(session));
+
+        Fleet fleet = session.SelectedFleet;
+        return selected && fleet != null
+            ? GetFactionColor(GetUIContext(), fleet.OwnerInstanceID)
+            : (Color32)Color.white;
+    }
+
+    /// <summary>
     /// Projects the fleet-list rows and all resolved themed textures.
     /// </summary>
     /// <param name="uiContext">The current presentation context.</param>
@@ -228,13 +245,16 @@ internal sealed class FleetWindowProjector
         {
             ISceneNode item = items[i];
             CapitalShip capitalShip = item as CapitalShip;
+            bool selected = session.SelectedDetailItems.Contains(i);
             UnitTileIcons icons = uiContext
                 .GetTheme(item.GetOwnerInstanceID())
                 ?.PlanetOverlayTheme?.UnitTileIcons;
             data.Add(
                 new StrategyUnitCardRenderData(
                     name: item.GetDisplayName(),
-                    nameColor: Color.white,
+                    nameColor: selected
+                        ? GetFactionColor(uiContext, fleet.OwnerInstanceID)
+                        : Color.white,
                     showName: true,
                     useAlternateNameLayout: session.ActiveTab == FleetWindowTab.Personnel,
                     backgroundTexture: GetDetailItemBackgroundTexture(
@@ -248,7 +268,7 @@ internal sealed class FleetWindowProjector
                     damagedOverlayTexture: GetDetailDamagedOverlayTexture(uiContext, item),
                     entityTexture: uiContext.GetEntityTexture(item, true),
                     capturedOverlayTexture: uiContext.GetEntityCapturedOverlayTexture(item),
-                    selectionTexture: session.SelectedDetailItems.Contains(i)
+                    selectionTexture: selected
                         ? uiContext.GetTexture(
                             uiContext
                                 .GetTheme(fleet.OwnerInstanceID)

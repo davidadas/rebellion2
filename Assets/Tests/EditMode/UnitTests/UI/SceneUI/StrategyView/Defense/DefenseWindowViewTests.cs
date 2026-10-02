@@ -120,15 +120,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             );
             StrategyUnitCardView card = FindItemCards()[0];
 
-            _view.RenderItemSelection(new[] { 0 }, _texture);
+            _view.RenderItemSelection(new[] { 0 }, _texture, Color.red, Color.white);
 
             Assert.IsTrue(FindCardObject(card, "BackgroundImage").activeSelf);
             Assert.IsTrue(FindCardObject(card, "SelectionImage").activeSelf);
+            Assert.AreEqual((Color32)Color.red, (Color32)card.NameTextField.color);
 
-            _view.RenderItemSelection(Array.Empty<int>(), _texture);
+            _view.RenderItemSelection(Array.Empty<int>(), _texture, Color.red, Color.white);
 
             Assert.IsTrue(FindCardObject(card, "BackgroundImage").activeSelf);
             Assert.IsFalse(FindCardObject(card, "SelectionImage").activeSelf);
+            Assert.AreEqual((Color32)Color.white, (Color32)card.NameTextField.color);
         }
 
         [Test]
