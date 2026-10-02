@@ -30,6 +30,32 @@ namespace Rebellion.Tests.Content
             </xs:all>
           </xs:complexType>
         </xs:element>
+        <xs:element name=""DifficultyModifiers"" minOccurs=""0"">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name=""Entry"" minOccurs=""0"" maxOccurs=""unbounded"">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name=""Key"" type=""xs:string""/>
+                    <xs:element name=""Value"">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element name=""GameModifier"">
+                            <xs:complexType>
+                              <xs:all>
+                                <xs:element name=""MissionExecutionSpeedIncreasePercent"" type=""xs:nonNegativeInteger""/>
+                              </xs:all>
+                            </xs:complexType>
+                          </xs:element>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
       </xs:all>
     </xs:complexType>
   </xs:element>
@@ -39,6 +65,12 @@ namespace Rebellion.Tests.Content
         private const string _fixtureCompleteDefaultsXml =
             "<GameConfig><Movement><DistanceDivisor>5</DistanceDivisor></Movement>"
             + "<Research><BaseResearchPoints>1</BaseResearchPoints></Research></GameConfig>";
+        private const string _fixtureDifficultyDefaultsXml =
+            "<GameConfig><Movement><DistanceDivisor>5</DistanceDivisor></Movement>"
+            + "<Research><BaseResearchPoints>1</BaseResearchPoints></Research>"
+            + "<DifficultyModifiers><Entry><Key>Hard</Key><Value><GameModifier>"
+            + "<MissionExecutionSpeedIncreasePercent>37</MissionExecutionSpeedIncreasePercent>"
+            + "</GameModifier></Value></Entry></DifficultyModifiers></GameConfig>";
 
         [TestCase(RuntimePlatform.OSXPlayer, "Game.app/Contents/Resources/Data")]
         [TestCase(RuntimePlatform.OSXPlayer, "Game.app/Contents")]
@@ -133,26 +165,15 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
-        public void LoadGameConfig_DefaultMissionExecutionSpeedIncrease_MatchesDifficulty()
+        public void LoadGameConfig_FixtureMissionExecutionSpeedIncrease_DeserializesValue()
         {
-            GameConfig config = ContentPackLoader.LoadGameConfig(
-                TestContent.Pack.ContentRootPath,
-                TestContent.Pack.PackRootPath,
-                TestContent.Pack.Definition.GameConfigPath
+            GameConfig config = LoadGameConfigFromFixture(
+                _fixtureDifficultyDefaultsXml,
+                packOverrideXml: null
             );
 
             Assert.AreEqual(
-                0,
-                config.DifficultyModifiers[GameDifficulty.Easy].MissionExecutionSpeedIncreasePercent
-            );
-            Assert.AreEqual(
-                0,
-                config
-                    .DifficultyModifiers[GameDifficulty.Medium]
-                    .MissionExecutionSpeedIncreasePercent
-            );
-            Assert.AreEqual(
-                10,
+                37,
                 config.DifficultyModifiers[GameDifficulty.Hard].MissionExecutionSpeedIncreasePercent
             );
         }

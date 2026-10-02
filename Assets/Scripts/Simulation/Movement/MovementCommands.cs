@@ -408,16 +408,20 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="participants">The mission participants that are free to return.</param>
         /// <param name="additionalPassengers">Additional units that must travel with the first return group.</param>
+        /// <param name="returnLocation">Receives the planet paired with the first accepted return destination.</param>
         /// <returns>Units that could not be assigned to a return destination.</returns>
         internal List<IMovable> ReturnFromMission(
             IReadOnlyList<IMissionParticipant> participants,
-            IReadOnlyList<IMovable> additionalPassengers
+            IReadOnlyList<IMovable> additionalPassengers,
+            out Planet returnLocation
         )
         {
             if (participants == null)
                 throw new ArgumentNullException(nameof(participants));
             if (additionalPassengers == null)
                 throw new ArgumentNullException(nameof(additionalPassengers));
+
+            returnLocation = null;
 
             Dictionary<ContainerNode, List<IMovable>> returnGroups =
                 new Dictionary<ContainerNode, List<IMovable>>();
@@ -479,6 +483,10 @@ namespace Rebellion.Simulation
             }
 
             RestoreMovement(interruptedMovements);
+            ContainerNode firstReturnDestination = returnGroups.Keys.FirstOrDefault();
+            if (firstReturnDestination != null)
+                returnLocation = MovementQueries.RequireDestinationPlanet(firstReturnDestination);
+
             foreach (KeyValuePair<ContainerNode, List<IMovable>> returnGroup in returnGroups)
             {
                 string movementGroupID = Guid.NewGuid().ToString("N");

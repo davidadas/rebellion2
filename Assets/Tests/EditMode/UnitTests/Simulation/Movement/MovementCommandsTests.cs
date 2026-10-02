@@ -2721,11 +2721,13 @@ namespace Rebellion.Tests.Simulation
 
             List<IMovable> stranded = movement.ReturnFromMission(
                 new IMissionParticipant[] { officer },
-                new IMovable[0]
+                new IMovable[0],
+                out Planet returnLocation
             );
 
             Assert.IsEmpty(stranded);
             Assert.AreSame(ship, officer.GetParent());
+            Assert.AreSame(destination, returnLocation);
         }
 
         [Test]
@@ -2747,7 +2749,8 @@ namespace Rebellion.Tests.Simulation
 
             List<IMovable> stranded = movement.ReturnFromMission(
                 new IMissionParticipant[] { officer },
-                new IMovable[0]
+                new IMovable[0],
+                out _
             );
 
             Assert.IsEmpty(stranded);
@@ -2769,7 +2772,8 @@ namespace Rebellion.Tests.Simulation
 
             List<IMovable> stranded = movement.ReturnFromMission(
                 new IMissionParticipant[] { officer },
-                new IMovable[0]
+                new IMovable[0],
+                out _
             );
 
             CollectionAssert.AreEqual(new IMovable[] { officer }, stranded);
@@ -2803,7 +2807,8 @@ namespace Rebellion.Tests.Simulation
 
             List<IMovable> stranded = movement.ReturnFromMission(
                 new IMissionParticipant[] { officer },
-                new IMovable[0]
+                new IMovable[0],
+                out _
             );
 
             Assert.IsEmpty(stranded);
@@ -2839,7 +2844,8 @@ namespace Rebellion.Tests.Simulation
 
             List<IMovable> stranded = movement.ReturnFromMission(
                 new IMissionParticipant[] { officer },
-                new IMovable[0]
+                new IMovable[0],
+                out _
             );
 
             Assert.IsEmpty(stranded);
@@ -2867,7 +2873,8 @@ namespace Rebellion.Tests.Simulation
 
             List<IMovable> stranded = movement.ReturnFromMission(
                 new IMissionParticipant[] { officer },
-                new IMovable[0]
+                new IMovable[0],
+                out _
             );
 
             CollectionAssert.AreEqual(new IMovable[] { officer }, stranded);
@@ -2898,7 +2905,8 @@ namespace Rebellion.Tests.Simulation
 
             List<IMovable> stranded = movement.ReturnFromMission(
                 new IMissionParticipant[] { escort },
-                new IMovable[] { passenger }
+                new IMovable[] { passenger },
+                out _
             );
 
             Assert.IsEmpty(stranded);
@@ -2924,7 +2932,8 @@ namespace Rebellion.Tests.Simulation
 
             List<IMovable> stranded = movement.ReturnFromMission(
                 new IMissionParticipant[0],
-                new IMovable[] { passenger }
+                new IMovable[] { passenger },
+                out _
             );
 
             CollectionAssert.AreEqual(new IMovable[] { passenger }, stranded);
@@ -2969,7 +2978,8 @@ namespace Rebellion.Tests.Simulation
 
             List<IMovable> stranded = movement.ReturnFromMission(
                 new IMissionParticipant[] { firstOfficer, secondOfficer },
-                new IMovable[0]
+                new IMovable[0],
+                out _
             );
 
             Assert.IsEmpty(stranded);

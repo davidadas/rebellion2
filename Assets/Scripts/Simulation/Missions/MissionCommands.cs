@@ -739,19 +739,14 @@ namespace Rebellion.Simulation
             );
             List<IMovable> failedReturns = _movementManager.ReturnFromMission(
                 returnParticipants,
-                additionalPassengers
+                additionalPassengers,
+                out Planet returnLocation
             );
             strandedUnits.AddRange(failedReturns);
             if (completedResult != null)
             {
-                HashSet<IMovable> failedReturnSet = failedReturns.ToHashSet();
-                IMissionParticipant returningParticipant = returnParticipants.FirstOrDefault(
-                    participant => !failedReturnSet.Contains(participant)
-                );
                 completedResult.ReturnDestination =
-                    localParticipants.Count > 0 ? missionPlanet
-                    : returningParticipant == null ? null
-                    : _movementQueries.ResolveMissionReturnDestination(returningParticipant);
+                    localParticipants.Count > 0 ? missionPlanet : returnLocation;
             }
             ResolveStrandedMissionUnits(strandedUnits, missionPlanet, results);
 
@@ -1139,7 +1134,8 @@ namespace Rebellion.Simulation
         {
             List<IMovable> stranded = _movementManager.ReturnFromMission(
                 new[] { decoy },
-                Array.Empty<IMovable>()
+                Array.Empty<IMovable>(),
+                out _
             );
             ResolveStrandedMissionUnits(stranded, planet, results);
         }
