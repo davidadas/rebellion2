@@ -478,15 +478,6 @@ namespace Rebellion.Simulation
             )
             {
                 results.AddRange(betrayalResults);
-                ResolveFoiledParticipants(
-                    mission,
-                    mainParticipants,
-                    decoys,
-                    MissionQueries.GetDetectors(mission, planet, phase),
-                    planet,
-                    results
-                );
-                ApplyOfficerDeaths(results);
                 return true;
             }
 

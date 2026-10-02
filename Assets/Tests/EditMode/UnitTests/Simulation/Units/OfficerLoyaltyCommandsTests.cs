@@ -144,7 +144,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void TryResolveMissionBetrayal_ForceCapableCompanion_DoesNotRevealTraitor()
+        public void TryResolveMissionBetrayal_ForceCapableCompanion_RevealsTraitor()
         {
             GameRoot game = BuildScene(
                 out Planet planet,
@@ -152,12 +152,13 @@ namespace Rebellion.Tests.Simulation
                 canBetray: true,
                 loyalty: 0
             );
-            Officer discoverer = new Officer
-            {
-                InstanceID = "discoverer",
-                OwnerInstanceID = traitor.OwnerInstanceID,
-                ForceValue = 100,
-            };
+            Officer discoverer = EntityFactory.CreateOfficer(
+                "discoverer",
+                traitor.OwnerInstanceID,
+                canBetray: true,
+                loyalty: 100
+            );
+            discoverer.ForceValue = 100;
             game.AttachNode(discoverer, planet);
             StubMission mission = CreateMission(game, planet, traitor);
             mission.AddChild(discoverer);
@@ -167,8 +168,50 @@ namespace Rebellion.Tests.Simulation
                 new StubRNG()
             ).TryResolveMissionBetrayal(mission, out List<GameResult> results);
 
+            TraitorDiscoveredResult result = results.OfType<TraitorDiscoveredResult>().Single();
             Assert.IsTrue(betrayed);
-            Assert.IsEmpty(results);
+            Assert.AreSame(traitor, result.Officer);
+            Assert.AreSame(discoverer, result.DiscoveredBy);
+            Assert.AreSame(planet, result.Context);
+        }
+
+        [Test]
+        public void TryResolveMissionBetrayal_MultipleTraitors_RevealsLastTraitor()
+        {
+            GameRoot game = BuildScene(
+                out Planet planet,
+                out Officer firstTraitor,
+                canBetray: true,
+                loyalty: 0
+            );
+            Officer lastTraitor = EntityFactory.CreateOfficer(
+                "last-traitor",
+                firstTraitor.OwnerInstanceID,
+                canBetray: true,
+                loyalty: 0
+            );
+            Officer discoverer = EntityFactory.CreateOfficer(
+                "discoverer",
+                firstTraitor.OwnerInstanceID,
+                canBetray: true,
+                loyalty: 100
+            );
+            discoverer.ForceValue = 100;
+            game.AttachNode(lastTraitor, planet);
+            game.AttachNode(discoverer, planet);
+            StubMission mission = CreateMission(game, planet, firstTraitor);
+            mission.AddChild(lastTraitor);
+            mission.AddChild(discoverer);
+
+            bool betrayed = new OfficerLoyaltyCommands(
+                game,
+                new SequenceRNG(new[] { 0, 0, 99, 0 })
+            ).TryResolveMissionBetrayal(mission, out List<GameResult> results);
+
+            TraitorDiscoveredResult result = results.OfType<TraitorDiscoveredResult>().Single();
+            Assert.IsTrue(betrayed);
+            Assert.AreSame(lastTraitor, result.Officer);
+            Assert.AreSame(discoverer, result.DiscoveredBy);
         }
 
         [TestCase(80, 19, true)]
