@@ -326,7 +326,7 @@ namespace Rebellion.Tests.Simulation
                 Planet = planet,
                 AllianceOfficer = allianceOfficer,
                 EmpireOfficer = empireOfficer,
-                Observer = new OfficerLoyaltyObserver(commands),
+                Observer = new OfficerLoyaltyObserver(game, commands),
             };
         }
 

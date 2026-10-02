@@ -48,7 +48,7 @@ it is not duplicated. RNG consumption is a state change.
 | `MissionSystem` | `MissionCommands`: start, abort, update, teardown, execution-runtime operations | `MissionQueries`: creation previews, options and odds | Capture callback identifies affected missions and invokes interruption; membership/order gate below |
 | `MovementSystem` | `MovementCommands`: move, routes, mission returns, evacuation, custody placement | `MovementQueries`: route eligibility, travel estimates, evacuation availability, return-destination selection | Blockade callback invokes relocation; preserve overload-specific publication boundaries |
 | `NamingSystem` | `NamingCommands`: per-faction/tick naming | None | None |
-| `OfficerLoyaltySystem` | `OfficerLoyaltyCommands`: global loyalty shifts, battle-loss calculations, and mission betrayal rolls | None | `OfficerLoyaltyObserver` routes settled space combat, assault, and bombardment results; ordinary ownership changes do not alter loyalty |
+| `OfficerLoyaltySystem` | `OfficerLoyaltyCommands`: generic global loyalty shifts and mission betrayal rolls | None | `OfficerLoyaltyObserver` derives battle-loss shifts from settled space combat, assault, and bombardment results; ordinary ownership changes do not alter loyalty |
 | `PersonnelSystem` | `PersonnelCommands`: kill/retire | `PersonnelQueries.CanRetire` | None |
 | `PlanetaryAssaultSystem` | `PlanetaryAssaultCommands`: execute assault and apply outcome | `PlanetaryAssaultQueries.CanExecute`; existing resolver estimates remain with resolver initially | Publishes completed assault batch |
 | `PlanetaryControlSystem` | `PlanetaryControlCommands`: reconciliation, transfer, neutrality, support changes | `PlanetaryControlQueries`: controller selection, active regiment owners and core support resistance | Garrison/support callbacks delegate reconciliation/support operations |
@@ -448,8 +448,8 @@ publication after the bus replaces both returned-list routing and `ResultsProduc
   audit disproved the planet-support loyalty rule, so the planet-ownership subscription
   and `ApplyControlShift` were removed. Ordinary planet ownership changes no longer
   alter officer loyalty.
-- Updated `OfficerLoyaltyObserver` to route completed battle results. The loyalty
-  operations count only
+- Updated `OfficerLoyaltyObserver` to derive loyalty changes from completed battle
+  results. The observer counts only
   fully destroyed capital ships, fighter squadrons, and regiments by their authored
   `UprisingDefense` value, applies the two integer divisions in the required order, and
   delegates the resulting global faction-relative change to
