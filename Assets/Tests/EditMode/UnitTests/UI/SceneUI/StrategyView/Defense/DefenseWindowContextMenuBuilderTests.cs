@@ -71,19 +71,19 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
                 new[]
                 {
                     StrategyMenuAction.CommandNone,
-                    StrategyMenuAction.CommandCommander,
                     StrategyMenuAction.CommandAdmiral,
                     StrategyMenuAction.CommandGeneral,
+                    StrategyMenuAction.CommandCommander,
                 },
                 commandMenu.SubmenuCommands.Select(command => command.Action)
             );
             CollectionAssert.AreEqual(
-                new[] { true, true, false, false },
+                new[] { true, false, false, true },
                 commandMenu.SubmenuCommands.Select(command => command.Enabled)
             );
             Assert.AreEqual(
                 StrategyContextMenuIconKeys.CheckMark,
-                commandMenu.SubmenuCommands[1].IconKey
+                commandMenu.SubmenuCommands[3].IconKey
             );
         }
 
