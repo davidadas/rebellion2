@@ -143,7 +143,31 @@ namespace Rebellion.Game.Units
             if (ManufacturingStatus != ManufacturingStatus.Complete || Movement != null)
                 return 0;
 
-            return GetWeaponStrength() * Math.Max(0, CurrentSquadronSize);
+            return CalculateCombatValue(CurrentSquadronSize);
+        }
+
+        /// <summary>
+        /// Returns combat value using the current size of a completed squadron or the full size of
+        /// a squadron still under construction.
+        /// </summary>
+        /// <returns>The projected squadron combat value.</returns>
+        internal int GetProjectedCombatValue()
+        {
+            int squadronSize =
+                ManufacturingStatus == ManufacturingStatus.Complete
+                    ? CurrentSquadronSize
+                    : MaxSquadronSize;
+            return CalculateCombatValue(squadronSize);
+        }
+
+        /// <summary>
+        /// Returns the combined weapon strength contributed by the specified number of fighters.
+        /// </summary>
+        /// <param name="squadronSize">The number of fighters contributing weapon strength.</param>
+        /// <returns>The squadron combat value.</returns>
+        internal int CalculateCombatValue(int squadronSize)
+        {
+            return GetWeaponStrength() * Math.Max(0, squadronSize);
         }
 
         /// <summary>

@@ -808,8 +808,61 @@ namespace Rebellion.Tests.AI
 
             AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
 
-            Assert.AreEqual(200, assessment.GetReadyFleetCombatValue(fleet));
-            Assert.AreEqual(750, assessment.GetProjectedFleetCombatValue(fleet));
+            Assert.AreEqual(1100, assessment.GetReadyFleetCombatValue(fleet));
+            Assert.AreEqual(2100, assessment.GetProjectedFleetCombatValue(fleet));
+        }
+
+        [Test]
+        public void GetReadyFleetCombatValueAgainstCapitalShips_WithPartialSquadron_ReturnsSurvivingFighterStrength()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet planet = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
+            Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
+            CapitalShip carrier = AITestSceneBuilder.CreateCapitalShip(
+                "carrier",
+                empire.InstanceID,
+                combatStrength: 0
+            );
+            Starfighter fighter = AITestSceneBuilder.CreateStarfighter(
+                "fighter",
+                empire.InstanceID,
+                laserCannon: 10
+            );
+            fighter.CurrentSquadronSize = 6;
+            game.AttachNode(fleet, planet);
+            game.AttachNode(carrier, fleet);
+            game.AttachNode(fighter, carrier);
+            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+
+            Assert.AreEqual(60, assessment.GetReadyFleetCombatValueAgainstCapitalShips(fleet));
+        }
+
+        [Test]
+        public void GetProjectedFleetCombatValueAgainstCapitalShips_WithPendingSquadron_ReturnsFullFighterStrength()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet planet = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
+            Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
+            CapitalShip carrier = AITestSceneBuilder.CreateCapitalShip(
+                "carrier",
+                empire.InstanceID,
+                combatStrength: 0
+            );
+            Starfighter fighter = AITestSceneBuilder.CreateStarfighter(
+                "fighter",
+                empire.InstanceID,
+                laserCannon: 10
+            );
+            fighter.CurrentSquadronSize = 0;
+            fighter.ManufacturingStatus = ManufacturingStatus.Building;
+            game.AttachNode(fleet, planet);
+            game.AttachNode(carrier, fleet);
+            game.AttachNode(fighter, carrier);
+            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+
+            Assert.AreEqual(120, assessment.GetProjectedFleetCombatValueAgainstCapitalShips(fleet));
         }
 
         [Test]

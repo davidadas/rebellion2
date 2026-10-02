@@ -319,24 +319,9 @@ namespace Rebellion.Game.Units
 
             int capitalShipCombat = activeShips.Sum(ship => ship.GetCombatValue());
 
-            int starfighterCombat = 0;
-            foreach (
-                Starfighter f in activeShips.SelectMany(ship => ship.GetChildren<Starfighter>())
-            )
-            {
-                if (f.ManufacturingStatus != ManufacturingStatus.Complete || f.Movement != null)
-                    continue;
-
-                int weaponStrength = f.LaserCannon + f.IonCannon + f.Torpedoes;
-                if (f.MaxSquadronSize > 0)
-                {
-                    starfighterCombat += weaponStrength * f.CurrentSquadronSize / f.MaxSquadronSize;
-                }
-                else
-                {
-                    starfighterCombat += weaponStrength;
-                }
-            }
+            int starfighterCombat = activeShips
+                .SelectMany(ship => ship.GetChildren<Starfighter>())
+                .Sum(fighter => fighter.GetCombatValue());
 
             return capitalShipCombat + starfighterCombat;
         }
