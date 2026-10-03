@@ -20,7 +20,7 @@ namespace Rebellion.Tests.Simulation
     public class MissionCommandsTests
     {
         [Test]
-        public void UpdateMission_BetrayingOfficer_AbortsWithoutDetectorConfrontation()
+        public void ProcessTick_BetrayingOfficer_AbortsWithoutDetectorConfrontation()
         {
             (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
                 factionOwnsPlanet: true,
@@ -61,7 +61,7 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
             Assert.AreEqual(MissionOutcome.Foiled, completed.Outcome);
@@ -73,7 +73,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_BetrayingDecoy_DoesNotResolveDetectorConfrontation()
+        public void ProcessTick_BetrayingDecoy_DoesNotResolveDetectorConfrontation()
         {
             (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
                 factionOwnsPlanet: true
@@ -120,7 +120,7 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.IsFalse(decoy.IsCaptured);
             Assert.IsFalse(
@@ -131,7 +131,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_DiplomacyBetrayal_TerminatesRepeatingMission()
+        public void ProcessTick_DiplomacyBetrayal_TerminatesRepeatingMission()
         {
             (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
                 factionOwnsPlanet: true,
@@ -156,7 +156,7 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
             Assert.IsFalse(completed.CanContinue);
@@ -165,7 +165,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_ResearchBetrayal_TerminatesRepeatingMission()
+        public void ProcessTick_ResearchBetrayal_TerminatesRepeatingMission()
         {
             (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
                 factionOwnsPlanet: true,
@@ -192,7 +192,7 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
             Assert.IsFalse(completed.CanContinue);
@@ -201,7 +201,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_CompletedWithoutReturnDestination_CapturesOfficerAndDetachesMission()
+        public void ProcessTick_CompletedWithoutReturnDestination_CapturesOfficerAndDetachesMission()
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = TestGame.Create(config);
@@ -254,7 +254,7 @@ namespace Rebellion.Tests.Simulation
             while (!mission.IsComplete())
                 mission.IncrementProgress();
 
-            List<GameResult> results = missionSystem.UpdateMission(mission);
+            List<GameResult> results = missionSystem.ProcessMissionTick(game);
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
 
             Assert.IsNull(mission.GetParent());
@@ -275,7 +275,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_MissingOwnerFaction_DetachesMission()
+        public void ProcessTick_MissingOwnerFaction_DetachesMission()
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = TestGame.Create(config);
@@ -308,12 +308,12 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            Assert.DoesNotThrow(() => missionSystem.UpdateMission(mission));
+            Assert.DoesNotThrow(() => missionSystem.ProcessMissionTick(game));
             Assert.IsFalse(game.GetSceneNodesByType<StubMission>().Contains(mission));
         }
 
         [Test]
-        public void UpdateMission_CompletedParticipantParentedToMission_ReturnsParticipantToPlanet()
+        public void ProcessTick_CompletedParticipantParentedToMission_ReturnsParticipantToPlanet()
         {
             // Regression: officer parented to the mission (as happens after Initiate moves them
             // there) caused IsMovable() to return false and RequestMove to throw on teardown.
@@ -334,14 +334,14 @@ namespace Rebellion.Tests.Simulation
             while (!mission.IsComplete())
                 mission.IncrementProgress();
 
-            system.UpdateMission(mission);
+            system.ProcessMissionTick(game);
 
             Assert.AreSame(planet, officer.GetParent());
             Assert.IsFalse(game.GetSceneNodesByType<StubMission>().Contains(mission));
         }
 
         [Test]
-        public void UpdateMission_CompletedParticipantOnNeutralPlanet_ReturnsToNearestFriendlyPlanet()
+        public void ProcessTick_CompletedParticipantOnNeutralPlanet_ReturnsToNearestFriendlyPlanet()
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = TestGame.Create(config);
@@ -399,14 +399,14 @@ namespace Rebellion.Tests.Simulation
             while (!mission.IsComplete())
                 mission.IncrementProgress();
 
-            Assert.DoesNotThrow(() => missionSystem.UpdateMission(mission));
+            Assert.DoesNotThrow(() => missionSystem.ProcessMissionTick(game));
             Assert.AreSame(homePlanet, officer.GetParent());
             Assert.AreNotSame(planet, officer.GetParent());
             Assert.IsFalse(officer.IsCaptured);
         }
 
         [Test]
-        public void UpdateMission_FailedWithNearestFriendlyFleet_ReturnsParticipantsToFleet()
+        public void ProcessTick_FailedWithNearestFriendlyFleet_ReturnsParticipantsToFleet()
         {
             (
                 GameRoot game,
@@ -431,7 +431,7 @@ namespace Rebellion.Tests.Simulation
                 "empire"
             );
             AddMissionReturnPlanet(game, sector, "far-planet", "empire", positionX: 100);
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
             Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
@@ -442,7 +442,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_FailedWithNearestFriendlyPlanet_ReturnsParticipantsToPlanet()
+        public void ProcessTick_FailedWithNearestFriendlyPlanet_ReturnsParticipantsToPlanet()
         {
             (
                 GameRoot game,
@@ -460,7 +460,7 @@ namespace Rebellion.Tests.Simulation
                 "empire",
                 positionX: 25
             );
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
             Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
@@ -471,7 +471,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_FailedWithBlockadedNearestPlanet_ReturnsParticipantsToSafePlanet()
+        public void ProcessTick_FailedWithBlockadedNearestPlanet_ReturnsParticipantsToSafePlanet()
         {
             (
                 GameRoot game,
@@ -498,7 +498,7 @@ namespace Rebellion.Tests.Simulation
                 positionX: 100
             );
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.IsTrue(blockadedPlanet.IsBlockaded());
             Assert.AreEqual(
@@ -511,7 +511,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_FailedWithBlockadedRecordedPlanet_ReturnsParticipantsToSafePlanet()
+        public void ProcessTick_FailedWithBlockadedRecordedPlanet_ReturnsParticipantsToSafePlanet()
         {
             (
                 GameRoot game,
@@ -542,7 +542,7 @@ namespace Rebellion.Tests.Simulation
             specialForces.MissionReturnParentInstanceID = blockadedPlanet.InstanceID;
             specialForces.MissionReturnLocationInstanceID = blockadedPlanet.InstanceID;
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.IsTrue(blockadedPlanet.IsBlockaded());
             Assert.AreEqual(
@@ -555,7 +555,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_FailedWithNoSafeDestination_CapturesOfficerAndDestroysSpecialForces()
+        public void ProcessTick_FailedWithNoSafeDestination_CapturesOfficerAndDestroysSpecialForces()
         {
             (
                 GameRoot game,
@@ -575,7 +575,7 @@ namespace Rebellion.Tests.Simulation
             );
             AddMissionReturnFleet(game, blockadedPlanet, "blockading", "rebels");
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.IsTrue(blockadedPlanet.IsBlockaded());
             Assert.IsTrue(officer.IsCaptured);
@@ -592,7 +592,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_OnCompletion_DetachesMission()
+        public void ProcessTick_OnCompletion_DetachesMission()
         {
             (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
                 factionOwnsPlanet: true
@@ -607,7 +607,7 @@ namespace Rebellion.Tests.Simulation
             while (!mission.IsComplete())
                 mission.IncrementProgress();
 
-            system.UpdateMission(mission);
+            system.ProcessMissionTick(game);
 
             Assert.IsNull(
                 mission.GetParent(),
@@ -616,7 +616,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_DiploBeforeIncite_DiploAbortsOnNextLifecycleStep()
+        public void ProcessTick_DiploBeforeIncite_DiploAbortsOnNextLifecycleStep()
         {
             (
                 GameRoot game,
@@ -628,8 +628,7 @@ namespace Rebellion.Tests.Simulation
             Planet planet = inciteMission.GetParentOfType<Planet>();
             IMissionParticipant participant = inciteMission.GetMainParticipants().Single();
             int leadershipBefore = participant.GetEffectiveRating(SkillRating.Leadership);
-            missionSystem.UpdateMission(diplomacyMission);
-            List<GameResult> results = missionSystem.UpdateMission(inciteMission);
+            List<GameResult> results = missionSystem.ProcessMissionTick(game);
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Last();
             Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
@@ -641,7 +640,7 @@ namespace Rebellion.Tests.Simulation
                 participant.GetEffectiveRating(SkillRating.Leadership)
             );
 
-            List<GameResult> diplomacyResults = missionSystem.UpdateMission(diplomacyMission);
+            List<GameResult> diplomacyResults = missionSystem.ProcessMissionTick(game);
 
             Assert.AreEqual(
                 MissionCompletionReason.Failure,
@@ -651,7 +650,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_InciteBeforeDiplo_DiploAbortsWhenAdvanced()
+        public void ProcessTick_InciteBeforeDiplo_DiploAbortsWhenAdvanced()
         {
             (
                 GameRoot game,
@@ -659,13 +658,16 @@ namespace Rebellion.Tests.Simulation
                 Mission inciteMission,
                 MissionCommands missionSystem
             ) = BuildConcurrentMissionsScene();
+            Planet planet = diplomacyMission.GetParentOfType<Planet>();
+            game.DetachNode(diplomacyMission);
+            game.AttachNode(diplomacyMission, planet);
 
-            List<GameResult> results = missionSystem.UpdateMission(inciteMission);
+            List<GameResult> results = missionSystem.ProcessMissionTick(game);
 
             Assert.IsTrue(results.OfType<PlanetUprisingStartedResult>().Any());
             Assert.IsNotNull(diplomacyMission.GetParent());
 
-            List<GameResult> diplomacyResults = missionSystem.UpdateMission(diplomacyMission);
+            List<GameResult> diplomacyResults = missionSystem.ProcessMissionTick(game);
 
             Assert.AreEqual(
                 MissionCompletionReason.Failure,
@@ -675,7 +677,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_InciteRemovesOpposingControlWithoutOwnTroops_SucceedsAndImprovesAgent()
+        public void ProcessTick_InciteRemovesOpposingControlWithoutOwnTroops_SucceedsAndImprovesAgent()
         {
             (
                 GameRoot game,
@@ -686,7 +688,7 @@ namespace Rebellion.Tests.Simulation
             Officer participant = (Officer)inciteMission.GetMainParticipants().Single();
             int leadershipBefore = participant.GetBaseRating(SkillRating.Leadership);
 
-            List<GameResult> results = missionSystem.UpdateMission(inciteMission);
+            List<GameResult> results = missionSystem.ProcessMissionTick(game);
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Last();
             Assert.AreEqual(MissionOutcome.Success, completed.Outcome);
@@ -698,7 +700,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_DiplomacyCompletionFromFleet_ParticipantRemainsAtTargetPlanet()
+        public void ProcessTick_DiplomacyCompletionFromFleet_ParticipantRemainsAtTargetPlanet()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
             Faction faction = new Faction { InstanceID = "empire" };
@@ -768,7 +770,7 @@ namespace Rebellion.Tests.Simulation
             officer.Movement = null;
             mission.SetExecutionTick(0);
 
-            List<GameResult> results = missions.UpdateMission(mission);
+            List<GameResult> results = missions.ProcessMissionTick(game);
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
             Assert.AreEqual(MissionOutcome.Success, completed.Outcome);
@@ -779,7 +781,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_AnyParticipantInTransit_DoesNotProgressOrExecute()
+        public void ProcessTick_AnyParticipantInTransit_DoesNotProgressOrExecute()
         {
             (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
                 factionOwnsPlanet: true
@@ -805,7 +807,7 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.AreEqual(0, mission.CurrentProgress);
             Assert.IsFalse(results.OfType<MissionCompletedResult>().Any());
@@ -813,7 +815,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_AnyParticipantInTransit_NoDetectionOrCapture()
+        public void ProcessTick_AnyParticipantInTransit_NoDetectionOrCapture()
         {
             (
                 GameRoot game,
@@ -843,7 +845,7 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.IsFalse(spy.IsCaptured);
             Assert.IsFalse(traveler.IsCaptured);
@@ -855,7 +857,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_MainParticipantRemoved_ReturnsFailedMissionCompletedResult()
+        public void ProcessTick_MainParticipantRemoved_ReturnsFailedMissionCompletedResult()
         {
             (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
                 factionOwnsPlanet: true
@@ -869,7 +871,7 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
             Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
@@ -879,7 +881,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_DetectionRollFails_MissionContinues()
+        public void ProcessTick_DetectionRollFails_MissionContinues()
         {
             (
                 GameRoot game,
@@ -901,7 +903,7 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            system.UpdateMission(mission);
+            system.ProcessMissionTick(game);
 
             Assert.IsFalse(
                 spy.IsCaptured,
@@ -915,7 +917,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_DiplomacyWithHostileDetector_CanBeFoiled()
+        public void ProcessTick_DiplomacyWithHostileDetector_CanBeFoiled()
         {
             (
                 GameRoot game,
@@ -948,7 +950,7 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             MissionCompletedResult completed = results
                 .OfType<MissionCompletedResult>()
@@ -957,7 +959,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_DiplomacyWithoutHostileDetector_DoesNotInjureParticipant()
+        public void ProcessTick_DiplomacyWithoutHostileDetector_DoesNotInjureParticipant()
         {
             (GameRoot game, Planet planet, Officer diplomat, Officer _, MovementCommands movement) =
                 BuildDetectionScene();
@@ -987,7 +989,7 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.IsFalse(
                 results
@@ -1000,7 +1002,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_RecruitmentOnFriendlyPlanetWithHostileDetector_CanBeFoiled()
+        public void ProcessTick_RecruitmentOnFriendlyPlanetWithHostileDetector_CanBeFoiled()
         {
             (
                 GameRoot game,
@@ -1035,7 +1037,7 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.IsTrue(
                 results
@@ -1045,7 +1047,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_RecruitmentOnFriendlyPlanetWithSuccessfulDecoy_Continues()
+        public void ProcessTick_RecruitmentOnFriendlyPlanetWithSuccessfulDecoy_Continues()
         {
             (
                 GameRoot game,
@@ -1082,7 +1084,7 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.IsFalse(results.OfType<MissionCompletedResult>().Any());
             Assert.AreEqual(1, mission.CurrentProgress);
@@ -1090,7 +1092,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_FoilScore_UsesEspionageInsteadOfMissionRating()
+        public void ProcessTick_FoilScore_UsesEspionageInsteadOfMissionRating()
         {
             (
                 GameRoot game,
@@ -1120,7 +1122,7 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.IsTrue(spy.IsCaptured);
             Assert.IsTrue(
@@ -1131,7 +1133,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_DetectorRatingAndRank_SelectMatchingCommander()
+        public void ProcessTick_DetectorRatingAndRank_SelectMatchingCommander()
         {
             (
                 GameRoot game,
@@ -1162,7 +1164,7 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.IsTrue(
                 results
@@ -1172,7 +1174,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_DirectDetectorWithoutFleet_CanFoilMission()
+        public void ProcessTick_DirectDetectorWithoutFleet_CanFoilMission()
         {
             (
                 GameRoot game,
@@ -1197,7 +1199,7 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.IsTrue(spy.IsCaptured);
             Assert.IsTrue(
@@ -1239,13 +1241,18 @@ namespace Rebellion.Tests.Simulation
             game.Config.ProbabilityTables.Mission.DecoyDefenderScalingPercent = 100;
             SetDecoyTable(game, new Dictionary<int, int> { { 0, 10 }, { 100, 99 } });
 
-            double probability = mission.GetDecoyProbability(decoy, detector, game, origin);
+            double probability = new MissionQueries(game).GetDecoyProbability(
+                mission,
+                decoy,
+                detector,
+                origin
+            );
 
             Assert.AreEqual(99, probability);
         }
 
         [Test]
-        public void UpdateMission_TwoDetectors_FoilsWhenOnlySecondSucceeds()
+        public void ProcessTick_TwoDetectors_FoilsWhenOnlySecondSucceeds()
         {
             (
                 GameRoot game,
@@ -1282,7 +1289,7 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.IsTrue(
                 results
@@ -1293,7 +1300,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_CompletedBuilding_DoesNotDetectMission()
+        public void ProcessTick_CompletedBuilding_DoesNotDetectMission()
         {
             (GameRoot game, Planet planet, Officer spy, Officer _, MovementCommands movement) =
                 BuildDetectionScene();
@@ -1321,14 +1328,14 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.IsFalse(results.OfType<MissionCompletedResult>().Any());
             Assert.AreEqual(1, mission.CurrentProgress);
         }
 
         [Test]
-        public void UpdateMission_DetectionAlreadyResolved_DoesNotRollAgain()
+        public void ProcessTick_DetectionAlreadyResolved_DoesNotRollAgain()
         {
             (GameRoot game, Planet planet, Officer spy, Officer _, MovementCommands movement) =
                 BuildDetectionScene();
@@ -1344,9 +1351,9 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            system.UpdateMission(mission);
+            system.ProcessMissionTick(game);
             SetFoilTable(game, new Dictionary<int, int> { { -1000, 100 } });
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.IsFalse(results.OfType<MissionCompletedResult>().Any());
             Assert.IsFalse(spy.IsCaptured);
@@ -1354,7 +1361,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_CompletedUnitOnIncompleteCapitalShip_DoesNotDetectMission()
+        public void ProcessTick_CompletedUnitOnIncompleteCapitalShip_DoesNotDetectMission()
         {
             (GameRoot game, Planet planet, Officer spy, Officer _, MovementCommands movement) =
                 BuildDetectionScene();
@@ -1390,14 +1397,14 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.IsFalse(results.OfType<MissionCompletedResult>().Any());
             Assert.AreEqual(1, mission.CurrentProgress);
         }
 
         [Test]
-        public void UpdateMission_FleetDetector_UsesFleetDecoyTable()
+        public void ProcessTick_FleetDetector_UsesFleetDecoyTable()
         {
             (GameRoot game, Planet planet, Officer spy, Officer _, MovementCommands movement) =
                 BuildDetectionScene();
@@ -1445,14 +1452,14 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.IsFalse(results.OfType<MissionCompletedResult>().Any());
             Assert.AreEqual(1, mission.CurrentProgress);
         }
 
         [Test]
-        public void UpdateMission_UnblockedFleetDetector_FoilsMission()
+        public void ProcessTick_UnblockedFleetDetector_FoilsMission()
         {
             (GameRoot game, Planet planet, Officer spy, Officer _, MovementCommands movement) =
                 BuildDetectionScene();
@@ -1489,7 +1496,7 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.IsTrue(
                 results
@@ -1499,7 +1506,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_InTransitFleetDetector_DoesNotFoilMission()
+        public void ProcessTick_InTransitFleetDetector_DoesNotFoilMission()
         {
             (GameRoot game, Planet planet, Officer spy, Officer _, MovementCommands movement) =
                 BuildDetectionScene();
@@ -1541,14 +1548,14 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.IsFalse(results.OfType<MissionCompletedResult>().Any());
             Assert.AreEqual(1, mission.CurrentProgress);
         }
 
         [Test]
-        public void UpdateMission_FriendlyBuilding_BlocksFleetDetection()
+        public void ProcessTick_FriendlyBuilding_BlocksFleetDetection()
         {
             (GameRoot game, Planet planet, Officer spy, Officer _, MovementCommands movement) =
                 BuildDetectionScene();
@@ -1595,14 +1602,14 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.IsFalse(results.OfType<MissionCompletedResult>().Any());
             Assert.AreEqual(1, mission.CurrentProgress);
         }
 
         [Test]
-        public void UpdateMission_FriendlyBuilding_BlocksApproachPlanetaryDetection()
+        public void ProcessTick_FriendlyBuilding_BlocksApproachPlanetaryDetection()
         {
             (GameRoot game, Planet planet, Officer spy, Officer _, MovementCommands movement) =
                 BuildDetectionScene();
@@ -1629,14 +1636,14 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.IsFalse(results.OfType<MissionCompletedResult>().Any());
             Assert.AreEqual(1, mission.CurrentProgress);
         }
 
         [Test]
-        public void UpdateMission_MainSpecialForces_ReducesFoilScore()
+        public void ProcessTick_MainSpecialForces_ReducesFoilScore()
         {
             (
                 GameRoot game,
@@ -1674,7 +1681,7 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.IsTrue(spy.IsCaptured);
             Assert.IsTrue(
@@ -1685,7 +1692,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_EvasionFails_CapturesParticipant()
+        public void ProcessTick_EvasionFails_CapturesParticipant()
         {
             (
                 GameRoot game,
@@ -1708,7 +1715,7 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.IsTrue(spy.IsCaptured, "Officer should be captured when detection succeeds");
             Assert.AreEqual(
@@ -1729,7 +1736,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_CapturedByOrbitalFleetOverOwnPlanet_RecordsCapturingUnit()
+        public void ProcessTick_CapturedByOrbitalFleetOverOwnPlanet_RecordsCapturingUnit()
         {
             (
                 GameRoot game,
@@ -1754,7 +1761,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_CapturedByOrbitalFleetOverNeutralPlanet_RecordsCapturingUnit()
+        public void ProcessTick_CapturedByOrbitalFleetOverNeutralPlanet_RecordsCapturingUnit()
         {
             (
                 GameRoot game,
@@ -1775,7 +1782,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_CapturedByGarrisonOnEnemyPlanet_StaysOnCaptorPlanet()
+        public void ProcessTick_CapturedByGarrisonOnEnemyPlanet_StaysOnCaptorPlanet()
         {
             (
                 GameRoot game,
@@ -1798,7 +1805,7 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            system.UpdateMission(mission);
+            system.ProcessMissionTick(game);
 
             Assert.IsTrue(spy.IsCaptured);
             Assert.AreEqual("rebels", spy.CaptorInstanceID);
@@ -1811,7 +1818,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_EspionageDetected_AppliesFoiledParticipantConsequences()
+        public void ProcessTick_EspionageDetected_AppliesFoiledParticipantConsequences()
         {
             (
                 GameRoot game,
@@ -1843,7 +1850,7 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.IsTrue(spy.IsCaptured);
             Assert.IsFalse(spy.IsKilled);
@@ -1858,7 +1865,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_DetectionSucceedsWithoutCaptureOrKill_FoilsMission()
+        public void ProcessTick_DetectionSucceedsWithoutCaptureOrKill_FoilsMission()
         {
             (GameRoot game, Planet planet, Officer spy, Officer _, MovementCommands movement) =
                 BuildDetectionScene();
@@ -1878,7 +1885,7 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.IsFalse(results.Any(result => result is OfficerCaptureStateResult));
             Assert.IsFalse(results.Any(result => result is OfficerKilledResult));
@@ -1891,7 +1898,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_EvasionFails_MovesCaptiveToMissionPlanet()
+        public void ProcessTick_EvasionFails_MovesCaptiveToMissionPlanet()
         {
             (
                 GameRoot game,
@@ -1914,7 +1921,7 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            system.UpdateMission(mission);
+            system.ProcessMissionTick(game);
 
             Assert.AreEqual(
                 planet,
@@ -1929,7 +1936,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_EvasionSucceeds_ReturnsParticipant()
+        public void ProcessTick_EvasionSucceeds_ReturnsParticipant()
         {
             (
                 GameRoot game,
@@ -1953,7 +1960,7 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.IsFalse(spy.IsKilled);
             Assert.IsFalse(spy.IsCaptured);
@@ -1963,7 +1970,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_ParticipantInjuredAfterInitiation_DoesNotAbortMission()
+        public void ProcessTick_ParticipantInjuredAfterInitiation_DoesNotAbortMission()
         {
             (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
                 factionOwnsPlanet: true
@@ -1980,7 +1987,7 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            system.UpdateMission(mission);
+            system.ProcessMissionTick(game);
 
             Assert.AreEqual(
                 1,
@@ -1990,7 +1997,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_DetectionWithoutEvasionTable_UsesConfiguredDefault()
+        public void ProcessTick_DetectionWithoutEvasionTable_UsesConfiguredDefault()
         {
             (
                 GameRoot game,
@@ -2015,7 +2022,7 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.IsTrue(spy.IsCaptured, "Officer should use the default evasion probability");
             Assert.IsTrue(
@@ -2025,7 +2032,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_DetectionOnOwnPlanet_NeverDetected()
+        public void ProcessTick_DetectionOnOwnPlanet_NeverDetected()
         {
             (GameRoot game, Planet planet, Officer spy, MovementCommands movement) = BuildScene(
                 factionOwnsPlanet: true
@@ -2042,13 +2049,13 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            system.UpdateMission(mission);
+            system.ProcessMissionTick(game);
 
             Assert.IsFalse(spy.IsCaptured, "Missions on own planets should never be detected");
         }
 
         [Test]
-        public void UpdateMission_DetectorWithoutCommander_CanFoil()
+        public void ProcessTick_DetectorWithoutCommander_CanFoil()
         {
             (
                 GameRoot game,
@@ -2074,7 +2081,7 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.IsFalse(spy.IsKilled);
             Assert.IsTrue(spy.IsCaptured);
@@ -2087,7 +2094,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_DetectionWithDecoy_PreventsCapture()
+        public void ProcessTick_DetectionWithDecoy_PreventsCapture()
         {
             (
                 GameRoot game,
@@ -2116,13 +2123,13 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            system.UpdateMission(mission);
+            system.ProcessMissionTick(game);
 
             Assert.IsFalse(spy.IsCaptured, "Successful decoy should prevent capture");
         }
 
         [Test]
-        public void UpdateMission_HostileForceUserDetectsMainParticipant_FoilsMission()
+        public void ProcessTick_HostileForceUserDetectsMainParticipant_FoilsMission()
         {
             (
                 GameRoot game,
@@ -2158,7 +2165,7 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             MissionCompletedResult completed = results
                 .OfType<MissionCompletedResult>()
@@ -2172,7 +2179,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_ForceDetectionWithoutDetector_FoilsWithoutCapture()
+        public void ProcessTick_ForceDetectionWithoutDetector_FoilsWithoutCapture()
         {
             (
                 GameRoot game,
@@ -2202,7 +2209,7 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.IsTrue(
                 results
@@ -2214,7 +2221,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_ArrivalWithPlanetaryForceUser_DoesNotTriggerForceEncounter()
+        public void ProcessTick_ArrivalWithPlanetaryForceUser_DoesNotTriggerForceEncounter()
         {
             (
                 GameRoot game,
@@ -2241,14 +2248,14 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.IsFalse(results.OfType<MissionCompletedResult>().Any());
             Assert.AreEqual(1, mission.CurrentProgress);
         }
 
         [Test]
-        public void UpdateMission_ArrivalWithDetectionBlocker_DoesNotTriggerFleetForceEncounter()
+        public void ProcessTick_ArrivalWithDetectionBlocker_DoesNotTriggerFleetForceEncounter()
         {
             (
                 GameRoot game,
@@ -2295,14 +2302,14 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.IsFalse(results.OfType<MissionCompletedResult>().Any());
             Assert.AreEqual(1, mission.CurrentProgress);
         }
 
         [Test]
-        public void UpdateMission_ZeroForceRankParticipant_DoesNotTriggerForceEncounter()
+        public void ProcessTick_ZeroForceRankParticipant_DoesNotTriggerForceEncounter()
         {
             (
                 GameRoot game,
@@ -2337,14 +2344,14 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.IsFalse(results.OfType<MissionCompletedResult>().Any());
             Assert.AreEqual(1, mission.CurrentProgress);
         }
 
         [Test]
-        public void UpdateMission_ForceRankDefenderBelowMinimum_DoesNotTriggerForceEncounter()
+        public void ProcessTick_ForceRankDefenderBelowMinimum_DoesNotTriggerForceEncounter()
         {
             (
                 GameRoot game,
@@ -2379,14 +2386,14 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.IsFalse(results.OfType<MissionCompletedResult>().Any());
             Assert.AreEqual(1, mission.CurrentProgress);
         }
 
         [Test]
-        public void UpdateMission_ForceDefenderAssignedToAnotherMission_DoesNotTriggerForceEncounter()
+        public void ProcessTick_ForceDefenderAssignedToAnotherMission_DoesNotTriggerForceEncounter()
         {
             (
                 GameRoot game,
@@ -2414,14 +2421,14 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.IsFalse(results.OfType<MissionCompletedResult>().Any());
             Assert.AreEqual(1, mission.CurrentProgress);
         }
 
         [Test]
-        public void UpdateMission_DecoyCheck_AlwaysUsesEspionage()
+        public void ProcessTick_DecoyCheck_AlwaysUsesEspionage()
         {
             (
                 GameRoot game,
@@ -2461,13 +2468,13 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            system.UpdateMission(mission);
+            system.ProcessMissionTick(game);
 
             Assert.IsTrue(spy.IsCaptured);
         }
 
         [Test]
-        public void UpdateMission_HighDetectorRating_DecoyFails()
+        public void ProcessTick_HighDetectorRating_DecoyFails()
         {
             (
                 GameRoot game,
@@ -2509,7 +2516,7 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            system.UpdateMission(mission);
+            system.ProcessMissionTick(game);
 
             Assert.IsTrue(
                 spy.IsCaptured,
@@ -2518,7 +2525,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_DetectionPicksOneRandomDecoy_NotAll()
+        public void ProcessTick_DetectionPicksOneRandomDecoy_NotAll()
         {
             (
                 GameRoot game,
@@ -2556,7 +2563,7 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            system.UpdateMission(mission);
+            system.ProcessMissionTick(game);
 
             Assert.IsTrue(
                 spy.IsCaptured,
@@ -2565,7 +2572,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_FailedDecoyEscapes_ReturnsSeparatelyAndCannotBeReused()
+        public void ProcessTick_FailedDecoyEscapes_ReturnsSeparatelyAndCannotBeReused()
         {
             (GameRoot game, Planet planet, Officer spy, Officer _, MovementCommands movement) =
                 BuildDetectionScene();
@@ -2605,7 +2612,7 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            system.UpdateMission(mission);
+            system.ProcessMissionTick(game);
 
             Assert.AreEqual("empire-home", escapedDecoy.GetParent()?.InstanceID);
             Assert.IsNotNull(escapedDecoy.Movement);
@@ -2614,7 +2621,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_DetectorFoilsAfterSuccessfulDecoy_ResolvesDecoyConfrontation()
+        public void ProcessTick_DetectorFoilsAfterSuccessfulDecoy_ResolvesDecoyConfrontation()
         {
             (GameRoot game, Planet planet, Officer spy, Officer _, MovementCommands movement) =
                 BuildDetectionScene();
@@ -2650,7 +2657,7 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.IsTrue(failedDecoy.IsCaptured);
             Assert.IsTrue(successfulDecoy.IsCaptured);
@@ -2666,7 +2673,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_DetectionCapturesParticipant_CancelsMission()
+        public void ProcessTick_DetectionCapturesParticipant_CancelsMission()
         {
             (
                 GameRoot game,
@@ -2692,7 +2699,7 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.IsNull(
                 mission.GetParent(),
@@ -2707,7 +2714,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_DetectionWithSpecialForces_DestroysUnit()
+        public void ProcessTick_DetectionWithSpecialForces_DestroysUnit()
         {
             (
                 GameRoot game,
@@ -2734,7 +2741,7 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.IsNull(sf.GetParent(), "SpecialForces should be detached when detected");
             Assert.IsTrue(
@@ -2744,7 +2751,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_SpecialForcesEvadesDetector_IsNotDestroyed()
+        public void ProcessTick_SpecialForcesEvadesDetector_IsNotDestroyed()
         {
             (GameRoot game, Planet planet, Officer spy, Officer _, MovementCommands movement) =
                 BuildDetectionScene();
@@ -2768,7 +2775,7 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.AreSame(
                 specialForces,
@@ -2782,7 +2789,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_OfficerEvadesDetector_AppliesEscapeInjury()
+        public void ProcessTick_OfficerEvadesDetector_AppliesEscapeInjury()
         {
             (GameRoot game, Planet planet, Officer spy, Officer _, MovementCommands movement) =
                 BuildDetectionScene();
@@ -2805,7 +2812,7 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.IsFalse(spy.IsCaptured);
             Assert.Greater(spy.InjuryPoints, 0);
@@ -2816,7 +2823,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_MinorOfficerEvadesDetector_PostInjuryRollKillsOfficer()
+        public void ProcessTick_MinorOfficerEvadesDetector_PostInjuryRollKillsOfficer()
         {
             (GameRoot game, Planet planet, Officer spy, Officer _, MovementCommands movement) =
                 BuildDetectionScene();
@@ -2840,7 +2847,7 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.IsTrue(spy.IsKilled);
             Assert.IsFalse(spy.IsCaptured);
@@ -2848,7 +2855,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_OfficerFailsToEvadeDetector_CapturesWithoutInjury()
+        public void ProcessTick_OfficerFailsToEvadeDetector_CapturesWithoutInjury()
         {
             (GameRoot game, Planet planet, Officer spy, Officer _, MovementCommands movement) =
                 BuildDetectionScene();
@@ -2872,7 +2879,7 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.IsTrue(spy.IsCaptured);
             Assert.AreEqual(0, spy.InjuryPoints);
@@ -2880,7 +2887,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_FailedDecoyCapture_DoesNotReuseDecoy()
+        public void ProcessTick_FailedDecoyCapture_DoesNotReuseDecoy()
         {
             (GameRoot game, Planet planet, Officer spy, Officer _, MovementCommands movement) =
                 BuildDetectionScene();
@@ -2917,7 +2924,7 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.IsTrue(decoy.IsCaptured);
             Assert.IsFalse(decoy.IsKilled);
@@ -2934,7 +2941,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_FactionViewSabotageTargetMissingAtArrival_FailsAndTearsDown()
+        public void ProcessTick_FactionViewSabotageTargetMissingAtArrival_FailsAndTearsDown()
         {
             (
                 GameRoot game,
@@ -2960,7 +2967,7 @@ namespace Rebellion.Tests.Simulation
             participant.Movement = null;
             game.DetachNode(regiment);
 
-            List<GameResult> results = missions.UpdateMission(mission);
+            List<GameResult> results = missions.ProcessMissionTick(game);
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
             Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
@@ -2969,7 +2976,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_SabotageTargetBeginsConstructionBeforeArrival_FailsAndTearsDown()
+        public void ProcessTick_SabotageTargetBeginsConstructionBeforeArrival_FailsAndTearsDown()
         {
             (
                 GameRoot game,
@@ -2994,7 +3001,7 @@ namespace Rebellion.Tests.Simulation
             participant.Movement = null;
             regiment.ManufacturingStatus = ManufacturingStatus.Building;
 
-            List<GameResult> results = missions.UpdateMission(mission);
+            List<GameResult> results = missions.ProcessMissionTick(game);
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
             Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
@@ -3003,7 +3010,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_AbductionTargetCapturedBeforeArrival_FailsAndTearsDown()
+        public void ProcessTick_AbductionTargetCapturedBeforeArrival_FailsAndTearsDown()
         {
             (
                 GameRoot game,
@@ -3025,7 +3032,7 @@ namespace Rebellion.Tests.Simulation
             participant.Movement = null;
             target.IsCaptured = true;
 
-            List<GameResult> results = missions.UpdateMission(mission);
+            List<GameResult> results = missions.ProcessMissionTick(game);
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
             Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
@@ -3034,7 +3041,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_AbductionTargetBeginsTransitBeforeArrival_FailsAndTearsDown()
+        public void ProcessTick_AbductionTargetBeginsTransitBeforeArrival_FailsAndTearsDown()
         {
             (
                 GameRoot game,
@@ -3056,7 +3063,7 @@ namespace Rebellion.Tests.Simulation
             participant.Movement = null;
             target.Movement = new MovementState();
 
-            List<GameResult> results = missions.UpdateMission(mission);
+            List<GameResult> results = missions.ProcessMissionTick(game);
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
             Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
@@ -3065,7 +3072,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_AbductionTargetMovedAfterFactionViewSnapshot_FailsAndTearsDown()
+        public void ProcessTick_AbductionTargetMovedAfterFactionViewSnapshot_FailsAndTearsDown()
         {
             (
                 GameRoot game,
@@ -3101,7 +3108,7 @@ namespace Rebellion.Tests.Simulation
             Mission mission = game.GetSceneNodesByType<Mission>().Single();
             participant.Movement = null;
 
-            List<GameResult> results = missions.UpdateMission(mission);
+            List<GameResult> results = missions.ProcessMissionTick(game);
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
             Assert.IsTrue(created);
@@ -3111,7 +3118,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_StaleMissingViewTarget_WaitsForArrivalThenFailsAndTearsDown()
+        public void ProcessTick_StaleMissingViewTarget_WaitsForArrivalThenFailsAndTearsDown()
         {
             (
                 GameRoot game,
@@ -3136,7 +3143,7 @@ namespace Rebellion.Tests.Simulation
             );
             Mission mission = game.GetSceneNodesByType<Mission>().Single();
 
-            List<GameResult> travellingResults = missions.UpdateMission(mission);
+            List<GameResult> travellingResults = missions.ProcessMissionTick(game);
 
             Assert.IsTrue(created);
             Assert.IsTrue(participant.Movement != null);
@@ -3144,7 +3151,7 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, game.GetSceneNodesByType<Mission>().Count);
 
             participant.Movement = null;
-            List<GameResult> arrivalResults = missions.UpdateMission(mission);
+            List<GameResult> arrivalResults = missions.ProcessMissionTick(game);
 
             MissionCompletedResult completed = arrivalResults
                 .OfType<MissionCompletedResult>()
@@ -3155,7 +3162,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_TargetPlanetDestroyedDuringTravel_WaitsForArrivalThenFails()
+        public void ProcessTick_TargetPlanetDestroyedDuringTravel_WaitsForArrivalThenFails()
         {
             (
                 GameRoot game,
@@ -3176,14 +3183,14 @@ namespace Rebellion.Tests.Simulation
             Mission mission = game.GetSceneNodesByType<Mission>().Single();
             targetPlanet.IsDestroyed = true;
 
-            List<GameResult> travellingResults = missions.UpdateMission(mission);
+            List<GameResult> travellingResults = missions.ProcessMissionTick(game);
 
             Assert.IsTrue(participant.Movement != null);
             Assert.IsEmpty(travellingResults);
             Assert.AreEqual(mission, game.GetSceneNodesByType<Mission>().Single());
 
             participant.Movement = null;
-            List<GameResult> arrivalResults = missions.UpdateMission(mission);
+            List<GameResult> arrivalResults = missions.ProcessMissionTick(game);
 
             MissionCompletedResult completed = arrivalResults
                 .OfType<MissionCompletedResult>()
@@ -3194,7 +3201,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_AssassinationTargetCapturedBeforeArrival_FailsAndTearsDown()
+        public void ProcessTick_AssassinationTargetCapturedBeforeArrival_FailsAndTearsDown()
         {
             (
                 GameRoot game,
@@ -3216,7 +3223,7 @@ namespace Rebellion.Tests.Simulation
             participant.Movement = null;
             target.IsCaptured = true;
 
-            List<GameResult> results = missions.UpdateMission(mission);
+            List<GameResult> results = missions.ProcessMissionTick(game);
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
             Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
@@ -3225,7 +3232,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_RescueTargetFreedBeforeArrival_FailsAndTearsDown()
+        public void ProcessTick_RescueTargetFreedBeforeArrival_FailsAndTearsDown()
         {
             (
                 GameRoot game,
@@ -3247,7 +3254,7 @@ namespace Rebellion.Tests.Simulation
             participant.Movement = null;
             target.IsCaptured = false;
 
-            List<GameResult> results = missions.UpdateMission(mission);
+            List<GameResult> results = missions.ProcessMissionTick(game);
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
             Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
@@ -3256,7 +3263,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_CapturedParticipantWithDifferentCaptor_StaysOnMissionPlanet()
+        public void ProcessTick_CapturedParticipantWithDifferentCaptor_StaysOnMissionPlanet()
         {
             (GameRoot game, Planet missionPlanet, Officer officer, MovementCommands movement) =
                 BuildScene(factionOwnsPlanet: true);
@@ -3287,7 +3294,7 @@ namespace Rebellion.Tests.Simulation
             while (!mission.IsComplete())
                 mission.IncrementProgress();
 
-            system.UpdateMission(mission);
+            system.ProcessMissionTick(game);
 
             Assert.AreEqual(
                 missionPlanet,
@@ -3297,7 +3304,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_OfficerKilledResult_DisablesAndRetainsKilledOfficer()
+        public void ProcessTick_OfficerKilledResult_DisablesAndRetainsKilledOfficer()
         {
             (GameRoot game, Planet planet, Officer participant, MovementCommands movement) =
                 BuildScene(factionOwnsPlanet: true);
@@ -3318,7 +3325,7 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
-            system.UpdateMission(mission);
+            system.ProcessMissionTick(game);
 
             Assert.IsTrue(target.IsKilled);
             Assert.IsFalse(target.IsActive());
@@ -3329,7 +3336,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_ParticipantAttachedToMissionViaSceneGraph_DoesNotThrow()
+        public void ProcessTick_ParticipantAttachedToMissionViaSceneGraph_DoesNotThrow()
         {
             // Regression: when BeginMission reparents an officer to the mission via
             // game.AttachNode, TearDownMission previously threw "cannot attach node because
@@ -3352,7 +3359,7 @@ namespace Rebellion.Tests.Simulation
             while (!mission.IsComplete())
                 mission.IncrementProgress();
 
-            Assert.DoesNotThrow(() => system.UpdateMission(mission));
+            Assert.DoesNotThrow(() => system.ProcessMissionTick(game));
             Assert.AreEqual(
                 planet,
                 officer.GetParent(),
@@ -3361,7 +3368,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_FriendlyLocation_ParticipantsRemainAtPlanet()
+        public void ProcessTick_FriendlyLocation_ParticipantsRemainAtPlanet()
         {
             (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
                 factionOwnsPlanet: true
@@ -3396,7 +3403,7 @@ namespace Rebellion.Tests.Simulation
             while (!mission.IsComplete())
                 mission.IncrementProgress();
 
-            system.UpdateMission(mission);
+            system.ProcessMissionTick(game);
 
             Assert.AreEqual(
                 planet,
@@ -3406,7 +3413,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_FriendlyUncolonizedLocation_RetainsOfficerLocally()
+        public void ProcessTick_FriendlyUncolonizedLocation_RetainsOfficerLocally()
         {
             (GameRoot game, Planet origin, Officer officer, MovementCommands movement) = BuildScene(
                 factionOwnsPlanet: true
@@ -3431,7 +3438,7 @@ namespace Rebellion.Tests.Simulation
             while (!mission.IsComplete())
                 mission.IncrementProgress();
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.AreSame(missionPlanet, officer.GetParent());
             Assert.IsNull(officer.Movement);
@@ -3441,7 +3448,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_HostileLocation_OriginFleetMoved_ReturnsToRecordedShip()
+        public void ProcessTick_HostileLocation_OriginFleetMoved_ReturnsToRecordedShip()
         {
             (GameRoot game, Planet planetA, Officer officer, MovementCommands movement) =
                 BuildScene(factionOwnsPlanet: true);
@@ -3500,7 +3507,7 @@ namespace Rebellion.Tests.Simulation
             while (!mission.IsComplete())
                 mission.IncrementProgress();
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.AreEqual(
                 ship,
@@ -3514,7 +3521,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_DiplomacyTargetCaptured_ReturnsOfficerToNearestFriendlyPlanet()
+        public void ProcessTick_DiplomacyTargetCaptured_ReturnsOfficerToNearestFriendlyPlanet()
         {
             (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
                 factionOwnsPlanet: true
@@ -3555,7 +3562,7 @@ namespace Rebellion.Tests.Simulation
             while (!mission.IsComplete())
                 mission.IncrementProgress();
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.IsFalse(officer.IsCaptured);
             Assert.IsNull(officer.CaptorInstanceID);
@@ -3565,7 +3572,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_CapturedParticipant_SkipsMovement()
+        public void ProcessTick_CapturedParticipant_SkipsMovement()
         {
             (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
                 factionOwnsPlanet: true
@@ -3583,7 +3590,7 @@ namespace Rebellion.Tests.Simulation
             while (!mission.IsComplete())
                 mission.IncrementProgress();
 
-            system.UpdateMission(mission);
+            system.ProcessMissionTick(game);
 
             Assert.IsNull(
                 officer.Movement,
@@ -3978,7 +3985,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_WithSpecialForcesParticipant_AppearsInParticipants()
+        public void ProcessTick_WithSpecialForcesParticipant_AppearsInParticipants()
         {
             (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
                 factionOwnsPlanet: true
@@ -4003,7 +4010,7 @@ namespace Rebellion.Tests.Simulation
                 new StubRNG(),
                 movement
             );
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
             MissionCompletedResult completedResult = results
                 .OfType<MissionCompletedResult>()
                 .First();
@@ -4015,7 +4022,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_WithDecoyParticipant_DecoyAppearsInParticipants()
+        public void ProcessTick_WithDecoyParticipant_DecoyAppearsInParticipants()
         {
             // Both main and decoy participants should appear in MissionCompletedResult.Participants.
             (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
@@ -4044,7 +4051,7 @@ namespace Rebellion.Tests.Simulation
                 new StubRNG(),
                 movement
             );
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
             MissionCompletedResult completedResult = results
                 .OfType<MissionCompletedResult>()
                 .First();
@@ -4165,7 +4172,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMission_ResearchFacilityRemoved_FailsWithNoResearchFacilities()
+        public void ProcessTick_ResearchFacilityRemoved_FailsWithNoResearchFacilities()
         {
             (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
                 factionOwnsPlanet: true
@@ -4193,7 +4200,7 @@ namespace Rebellion.Tests.Simulation
                 .Single();
             game.DetachNode(constructionYard);
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
             Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
@@ -5090,7 +5097,7 @@ namespace Rebellion.Tests.Simulation
                 new FixedRNG(0.01),
                 movement
             );
-            return system.UpdateMission(mission);
+            return system.ProcessMissionTick(game);
         }
 
         /// <summary>
@@ -5256,7 +5263,7 @@ namespace Rebellion.Tests.Simulation
         /// <summary>
         /// Builds a scene with a rebels-owned planet, a rebels officer running Mission,
         /// and an empire officer running Mission. Both missions are advanced to
-        /// MaxProgress - 1 so a single UpdateMission call completes each one.
+        /// MaxProgress - 1 so a single mission tick completes each one.
         /// The InciteUprising table is seeded to guarantee success with StubRNG.
         /// </summary>
         /// <param name="ownerSupport">The owner support.</param>

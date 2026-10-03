@@ -54,49 +54,6 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void GetDecoyProbability_HardAiDetector_AppliesDetectionRatingMultiplier()
-        {
-            (
-                GameRoot game,
-                Planet empirePlanet,
-                Planet enemyPlanet,
-                Officer officer,
-                FogOfWarCommands fog
-            ) = MissionSceneBuilder.Build();
-            Officer decoy = EntityFactory.CreateOfficer("decoy", "empire");
-            decoy.SetBaseRating(SkillRating.Espionage, 100);
-            game.AttachNode(decoy, empirePlanet);
-            Regiment detector = CreateSabotageTarget(game, enemyPlanet);
-            detector.DetectionRating = 40;
-            Mission mission = CreateSabotageMission(
-                "empire",
-                enemyPlanet,
-                new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant> { decoy },
-                detector
-            );
-            game.Config.ProbabilityTables.Mission.DecoyDefenderScalingPercent = 0;
-            game.Config.ProbabilityTables.Mission.PlanetaryDecoy = new Dictionary<int, int>
-            {
-                { 20, 0 },
-                { 21, 100 },
-            };
-            game.Summary.Difficulty = GameDifficulty.Hard;
-            game.Summary.PlayerFactionID = "empire";
-            game.Config.DifficultyModifiers[GameDifficulty.Hard] = new DifficultyModifiers
-            {
-                DetectionRatingMultiplier = 2,
-            };
-
-            double aiDetectorProbability = mission.GetDecoyProbability(decoy, detector, game);
-            game.Summary.PlayerFactionID = "rebels";
-            double humanDetectorProbability = mission.GetDecoyProbability(decoy, detector, game);
-
-            Assert.AreEqual(0, aiDetectorProbability, 0.0001);
-            Assert.AreEqual(100, humanDetectorProbability, 0.0001);
-        }
-
-        [Test]
         public void GetChildren_ParticipantAssignedBeforeMissionInitiates_ReturnsParticipant()
         {
             (

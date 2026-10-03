@@ -135,7 +135,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void UpdateMission_SuccessfulRollWithInsufficientGarrison_LeavesUprisingAndFails()
+        public void ProcessTick_SuccessfulRollWithInsufficientGarrison_LeavesUprisingAndFails()
         {
             (
                 GameRoot game,
@@ -170,7 +170,7 @@ namespace Rebellion.Tests.Game.Missions
             int leadershipBefore = officer.GetBaseRating(SkillRating.Leadership);
 
             List<GameResult> results = CreateMissionCommands(game, fog, new FixedRNG(0))
-                .UpdateMission(mission);
+                .ProcessMissionTick(game);
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
             Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
@@ -181,7 +181,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void UpdateMission_MultipleParticipantsSucceed_AppliesOnlyFirstAttempt()
+        public void ProcessTick_MultipleParticipantsSucceed_AppliesOnlyFirstAttempt()
         {
             (
                 GameRoot game,
@@ -217,7 +217,7 @@ namespace Rebellion.Tests.Game.Missions
             mission.Initiate(0);
 
             List<GameResult> results = CreateMissionCommands(game, fog, new FixedRNG(0))
-                .UpdateMission(mission);
+                .ProcessMissionTick(game);
 
             Assert.AreEqual(
                 MissionOutcome.Failed,
@@ -227,7 +227,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void UpdateMission_SuccessfulRollWithSufficientGarrison_EndsUprisingAndImprovesAgent()
+        public void ProcessTick_SuccessfulRollWithSufficientGarrison_EndsUprisingAndImprovesAgent()
         {
             (
                 GameRoot game,
@@ -265,7 +265,7 @@ namespace Rebellion.Tests.Game.Missions
             int leadershipBefore = officer.GetBaseRating(SkillRating.Leadership);
 
             List<GameResult> results = CreateMissionCommands(game, fog, new FixedRNG(0))
-                .UpdateMission(mission);
+                .ProcessMissionTick(game);
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
             Assert.AreEqual(MissionOutcome.Success, completed.Outcome);

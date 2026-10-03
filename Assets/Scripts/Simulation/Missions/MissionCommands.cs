@@ -36,6 +36,11 @@ namespace Rebellion.Simulation
         private readonly List<GameResult> _pendingResults = new List<GameResult>();
 
         /// <summary>
+        /// Gets the random provider shared by mission lifecycle operations.
+        /// </summary>
+        internal IRandomNumberProvider RandomProvider => _provider;
+
+        /// <summary>
         /// Creates the mission commands with their execution dependencies.
         /// </summary>
         /// <param name="game">The active game state.</param>
@@ -377,26 +382,6 @@ namespace Rebellion.Simulation
                     result.SourceEventInstanceID = mission.SourceEventInstanceID;
                 destination.Add(result);
             }
-        }
-
-        /// <summary>
-        /// Updates a single mission's state for this tick.
-        /// </summary>
-        /// <param name="mission">The mission to update.</param>
-        /// <returns>Results produced by detection or execution this tick; empty otherwise.</returns>
-        public List<GameResult> UpdateMission(Mission mission)
-        {
-            if (mission == null || mission.GetParent() == null)
-                return new List<GameResult>();
-
-            if (mission.IsWaitingForParticipants())
-                return new List<GameResult>();
-
-            List<GameResult> results = mission.Execute(_game, _provider, this);
-            foreach (GameResult result in results)
-                mission.SetResultMissionID(result);
-
-            return results;
         }
 
         /// <summary>
@@ -1012,7 +997,7 @@ namespace Rebellion.Simulation
                 IMissionParticipant decoy = availableDecoys[
                     _provider.NextInt(0, availableDecoys.Count)
                 ];
-                if (mission.RollDecoyCheck(_provider, _game, decoy, detector, planet))
+                if (RollProbability(_queries.GetDecoyProbability(mission, decoy, detector, planet)))
                 {
                     activeDetectors.Remove(detector);
                     continue;

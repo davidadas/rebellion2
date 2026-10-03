@@ -336,7 +336,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void UpdateMission_OfficerNotCaptured_ReturnsFailed()
+        public void ProcessTick_OfficerNotCaptured_ReturnsFailed()
         {
             (
                 GameRoot game,
@@ -378,7 +378,7 @@ namespace Rebellion.Tests.Game.Missions
                 movement
             );
 
-            List<GameResult> results = missionSystem.UpdateMission(mission);
+            List<GameResult> results = missionSystem.ProcessMissionTick(game);
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
             Assert.AreEqual(
@@ -389,7 +389,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void UpdateMission_TargetOfficerAlreadyFreed_ReturnsFailed()
+        public void ProcessTick_TargetOfficerAlreadyFreed_ReturnsFailed()
         {
             (
                 GameRoot game,
@@ -430,7 +430,7 @@ namespace Rebellion.Tests.Game.Missions
                 movement
             );
 
-            List<GameResult> results = missionSystem.UpdateMission(mission);
+            List<GameResult> results = missionSystem.ProcessMissionTick(game);
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
             Assert.AreEqual(
@@ -441,7 +441,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void UpdateMission_TargetMovedToDifferentPlanet_ReturnsFailed()
+        public void ProcessTick_TargetMovedToDifferentPlanet_ReturnsFailed()
         {
             (
                 GameRoot game,
@@ -482,7 +482,7 @@ namespace Rebellion.Tests.Game.Missions
                 movement
             );
 
-            List<GameResult> results = missionSystem.UpdateMission(mission);
+            List<GameResult> results = missionSystem.ProcessMissionTick(game);
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
             Assert.AreEqual(
@@ -493,7 +493,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void UpdateMission_TargetRemovedFromScene_ReturnsFailed()
+        public void ProcessTick_TargetRemovedFromScene_ReturnsFailed()
         {
             (
                 GameRoot game,
@@ -534,7 +534,7 @@ namespace Rebellion.Tests.Game.Missions
                 movement
             );
 
-            List<GameResult> results = missionSystem.UpdateMission(mission);
+            List<GameResult> results = missionSystem.ProcessMissionTick(game);
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
             Assert.AreEqual(
@@ -545,7 +545,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void UpdateMission_SuccessfulRescue_MovesTargetToRescuerOrigin()
+        public void ProcessTick_SuccessfulRescue_MovesTargetToRescuerOrigin()
         {
             (
                 GameRoot game,
@@ -588,7 +588,7 @@ namespace Rebellion.Tests.Game.Missions
                 movement
             );
 
-            missionSystem.UpdateMission(mission);
+            missionSystem.ProcessMissionTick(game);
 
             Assert.IsFalse(captive.IsCaptured, "Rescued officer should no longer be captured");
             Assert.AreEqual(
@@ -599,7 +599,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void UpdateMission_RescuedOfficerAlreadyInTransit_ReturnsRescuerOnly()
+        public void ProcessTick_RescuedOfficerAlreadyInTransit_ReturnsRescuerOnly()
         {
             (
                 GameRoot game,
@@ -638,7 +638,7 @@ namespace Rebellion.Tests.Game.Missions
                     new MovementQueries(game)
                 )
             );
-            missionSystem.UpdateMission(mission);
+            missionSystem.ProcessMissionTick(game);
 
             Assert.AreEqual(empPlanet, officer.GetParent());
             Assert.AreEqual(enemyPlanet, captive.GetParent());

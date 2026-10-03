@@ -36,10 +36,31 @@ namespace Rebellion.Simulation
             foreach (Mission mission in game.GetSceneNodesByType<Mission>())
             {
                 if (mission.GetParent() != null)
-                    results.AddRange(_commands.UpdateMission(mission));
+                    results.AddRange(AdvanceMission(game, mission));
             }
 
             _commands.AddRecruitmentExhaustedResults(results, recruitmentAvailabilityBefore);
+            return results;
+        }
+
+        /// <summary>
+        /// Advances one attached mission through its current lifecycle step.
+        /// </summary>
+        /// <param name="game">The game state being advanced.</param>
+        /// <param name="mission">The mission to advance.</param>
+        /// <returns>The results produced while advancing the mission.</returns>
+        private List<GameResult> AdvanceMission(GameRoot game, Mission mission)
+        {
+            if (mission == null || mission.GetParent() == null)
+                return new List<GameResult>();
+
+            if (mission.IsWaitingForParticipants())
+                return new List<GameResult>();
+
+            List<GameResult> results = mission.Execute(game, _commands.RandomProvider, _commands);
+            foreach (GameResult result in results)
+                mission.SetResultMissionID(result);
+
             return results;
         }
     }

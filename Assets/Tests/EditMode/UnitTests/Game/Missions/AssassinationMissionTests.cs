@@ -502,7 +502,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void UpdateMission_TargetAlreadyKilled_ReturnsFailed()
+        public void ProcessTick_TargetAlreadyKilled_ReturnsFailed()
         {
             (
                 GameRoot game,
@@ -542,7 +542,7 @@ namespace Rebellion.Tests.Game.Missions
                 movement
             );
 
-            List<GameResult> results = missionSystem.UpdateMission(mission);
+            List<GameResult> results = missionSystem.ProcessMissionTick(game);
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
             Assert.AreEqual(
@@ -553,7 +553,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void UpdateMission_TargetMovedToDifferentPlanet_DoesNotRollOrImproveParticipant()
+        public void ProcessTick_TargetMovedToDifferentPlanet_DoesNotRollOrImproveParticipant()
         {
             (
                 GameRoot game,
@@ -606,7 +606,7 @@ namespace Rebellion.Tests.Game.Missions
                 movement
             );
 
-            List<GameResult> results = missionSystem.UpdateMission(mission);
+            List<GameResult> results = missionSystem.ProcessMissionTick(game);
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
             Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);

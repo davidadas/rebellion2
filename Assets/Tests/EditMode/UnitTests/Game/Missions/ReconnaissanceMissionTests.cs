@@ -64,7 +64,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void UpdateMission_EnemyDetectorSucceeds_FoilsReconnaissance()
+        public void ProcessTick_EnemyDetectorSucceeds_FoilsReconnaissance()
         {
             (
                 GameRoot game,
@@ -117,7 +117,7 @@ namespace Rebellion.Tests.Game.Missions
                 movement
             );
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.IsFalse(enemyPlanet.WasVisitedBy("empire"));
             Assert.IsTrue(results.OfType<GameObjectDestroyedResult>().Any());

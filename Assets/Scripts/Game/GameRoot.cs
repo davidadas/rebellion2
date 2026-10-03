@@ -177,26 +177,6 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Returns a detector's authored rating after applying its faction's difficulty modifier.
-        /// </summary>
-        /// <param name="detector">The detector whose effective rating is requested.</param>
-        /// <returns>The difficulty-adjusted detection rating.</returns>
-        public int GetEffectiveDetectionRating(ISceneNode detector)
-        {
-            int authoredRating = detector switch
-            {
-                Regiment regiment => regiment.DetectionRating,
-                Starfighter starfighter => starfighter.DetectionRating,
-                CapitalShip capitalShip => capitalShip.DetectionRating,
-                _ => 0,
-            };
-            int multiplier = GetDifficultyModifier(
-                detector?.GetOwnerInstanceID()
-            ).DetectionRatingMultiplier;
-            return authoredRating * multiplier;
-        }
-
-        /// <summary>
         /// Sets the game speed for tick processing.
         /// Affects how quickly the game state updates and events are processed.
         /// </summary>

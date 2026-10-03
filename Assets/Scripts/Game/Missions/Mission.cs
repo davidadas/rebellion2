@@ -66,8 +66,6 @@ namespace Rebellion.Game.Missions
     /// </summary>
     public abstract class Mission : ContainerNode
     {
-        private const int _ratingPercentScale = 100;
-
         /// <summary>
         /// Supplies authoritative or observed state to mission-specific objective scoring.
         /// </summary>
@@ -565,37 +563,6 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Returns the decoy participant's success probability.
-        /// </summary>
-        /// <param name="decoy">The decoy participant to evaluate.</param>
-        /// <param name="detector">The detector being diverted.</param>
-        /// <param name="game">The current game state.</param>
-        /// <param name="encounterPlanet">The planet where the encounter occurs.</param>
-        /// <returns>The decoy success probability.</returns>
-        internal double GetDecoyProbability(
-            IMissionParticipant decoy,
-            ISceneNode detector,
-            GameRoot game,
-            Planet encounterPlanet = null
-        )
-        {
-            int decoyEspionage = decoy.GetEffectiveRating(SkillRating.Espionage);
-            GameConfig.MissionProbabilityTablesConfig missionTables = GetMissionTables(game);
-            Officer commander = FindDetectorCommander(detector, encounterPlanet);
-            int scaledDefender =
-                (commander?.GetEffectiveRating(SkillRating.Espionage) ?? 0)
-                * missionTables.DecoyDefenderScalingPercent
-                / _ratingPercentScale;
-            int score =
-                decoyEspionage - game.GetEffectiveDetectionRating(detector) - scaledDefender;
-            Dictionary<int, int> table =
-                detector.GetParentOfType<Fleet>() != null
-                    ? missionTables.FleetDecoy
-                    : missionTables.PlanetaryDecoy;
-            return LookupProbability(table, score);
-        }
-
-        /// <summary>
         /// Returns the success probability for this mission's configured table.
         /// </summary>
         /// <param name="game">The current game state.</param>
@@ -632,25 +599,6 @@ namespace Rebellion.Game.Missions
         {
             return game?.Config?.ProbabilityTables?.Mission
                 ?? new GameConfig.MissionProbabilityTablesConfig();
-        }
-
-        /// <summary>
-        /// Returns the configured probability for a score.
-        /// </summary>
-        /// <param name="entries">The configured probability table entries.</param>
-        /// <param name="score">The score to look up.</param>
-        /// <param name="defaultValue">The value returned when the table is empty.</param>
-        /// <returns>The configured probability value.</returns>
-        private static int LookupProbability(
-            Dictionary<int, int> entries,
-            int score,
-            int defaultValue = 0
-        )
-        {
-            if (entries == null || entries.Count == 0)
-                return defaultValue;
-
-            return new ProbabilityTable(entries).Lookup(score);
         }
 
         /// <summary>
@@ -847,32 +795,6 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Rolls one selected decoy participant against one detector.
-        /// </summary>
-        /// <param name="decoy">The decoy participant making the attempt.</param>
-        /// <param name="provider">RNG provider for selection and probability roll.</param>
-        /// <param name="game">The current game state.</param>
-        /// <param name="detector">The detector the decoy is attempting to divert.</param>
-        /// <param name="encounterPlanet">The planet where the encounter occurs.</param>
-        /// <returns>True if the selected decoy succeeds.</returns>
-        private bool CheckDecoySuccessful(
-            IMissionParticipant decoy,
-            IRandomNumberProvider provider,
-            GameRoot game,
-            ISceneNode detector,
-            Planet encounterPlanet
-        )
-        {
-            if (decoy == null || detector == null)
-                return false;
-
-            return IsSuccessfulProbabilityRoll(
-                provider.NextDouble() * 100,
-                GetDecoyProbability(decoy, detector, game, encounterPlanet)
-            );
-        }
-
-        /// <summary>
         /// Returns whether a scene object may attempt to detect this mission.
         /// </summary>
         /// <param name="candidate">The potential hostile detector.</param>
@@ -945,26 +867,6 @@ namespace Rebellion.Game.Missions
                 && officer.CurrentRank == requiredRank
                 && IsEligibleDetectorCommander(officer)
             );
-        }
-
-        /// <summary>
-        /// Rolls the decoy response check.
-        /// </summary>
-        /// <param name="provider">RNG provider for decoy rolls.</param>
-        /// <param name="game">The current game state.</param>
-        /// <param name="decoy">The decoy selected for this attempt.</param>
-        /// <param name="detector">The detector being diverted.</param>
-        /// <param name="encounterPlanet">The planet where the encounter occurs.</param>
-        /// <returns>True if the decoy diverts the detector.</returns>
-        internal bool RollDecoyCheck(
-            IRandomNumberProvider provider,
-            GameRoot game,
-            IMissionParticipant decoy,
-            ISceneNode detector,
-            Planet encounterPlanet = null
-        )
-        {
-            return CheckDecoySuccessful(decoy, provider, game, detector, encounterPlanet);
         }
 
         /// <summary>
