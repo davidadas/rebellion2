@@ -118,7 +118,7 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
-    /// Compares a persistent, data-defined event variable with an authored value.
+    /// Compares a persistent, data-defined event variable with an authored value or another event variable.
     /// </summary>
     [PersistableObject(Name = "EvaluateEventVariable")]
     public sealed class EvaluateEventVariableConditional : GameConditional
@@ -130,7 +130,10 @@ namespace Rebellion.Game.Events
         public ComparisonOperator Comparison { get; set; }
 
         [PersistableAttribute]
-        public int CompareTo { get; set; }
+        public int? CompareTo { get; set; }
+
+        [PersistableAttribute]
+        public string CompareToVariable { get; set; }
     }
 
     /// <summary>
