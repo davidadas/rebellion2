@@ -14,6 +14,7 @@ namespace Rebellion.Simulation
     {
         private static readonly Type[] _resultObserverTypes =
         {
+            typeof(GameEventObserver),
             typeof(MovementObserver),
             typeof(HeadquartersObserver),
             typeof(MissionObserver),
@@ -109,7 +110,7 @@ namespace Rebellion.Simulation
             services.AddSingleton<MessageObserver>();
             foreach (Type observerType in _resultObserverTypes)
                 services.AddSingleton(observerType);
-            services.AddSingleton<GameEventExecutor>();
+            services.AddSingleton<GameEventCommands>();
 
             return services.BuildServiceLocator();
         }
