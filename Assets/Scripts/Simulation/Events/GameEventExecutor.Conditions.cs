@@ -188,8 +188,17 @@ namespace Rebellion.Simulation
             GameConditionContext context
         )
         {
+            bool hasLiteral = definition.CompareTo.HasValue;
+            bool hasVariable = !string.IsNullOrWhiteSpace(definition.CompareToVariable);
+            if (hasLiteral == hasVariable)
+                throw new InvalidOperationException(
+                    "EvaluateEventVariable requires exactly one CompareTo or CompareToVariable."
+                );
             int current = context.Game.EventRuntime.GetVariable(definition.Key);
-            return IntegerComparison.Evaluate(current, definition.Comparison, definition.CompareTo);
+            int expected = hasVariable
+                ? context.Game.EventRuntime.GetVariable(definition.CompareToVariable)
+                : definition.CompareTo.Value;
+            return IntegerComparison.Evaluate(current, definition.Comparison, expected);
         }
 
         /// <summary>

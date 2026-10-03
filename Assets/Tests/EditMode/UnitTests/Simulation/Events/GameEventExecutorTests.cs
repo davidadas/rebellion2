@@ -3415,6 +3415,60 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void IsMet_EvaluateEventVariableVariableTarget_UsesCurrentVariableValues()
+        {
+            GameRoot game = BuildConditionGame(out _, out _);
+            game.EventRuntime.SetVariable("bounty.roll", 42);
+            game.EventRuntime.SetVariable("bounty.chance", 50);
+            EvaluateEventVariableConditional conditional = new EvaluateEventVariableConditional
+            {
+                Key = "bounty.roll",
+                Comparison = ComparisonOperator.LessThanOrEqual,
+                CompareToVariable = "bounty.chance",
+            };
+
+            bool result = GameEventExecutor.IsMet(conditional, game);
+
+            Assert.IsTrue(result);
+        }
+
+        [Test]
+        public void IsMet_EvaluateEventVariableMultipleTargets_ThrowsInvalidOperationException()
+        {
+            GameRoot game = BuildConditionGame(out _, out _);
+            EvaluateEventVariableConditional conditional = new EvaluateEventVariableConditional
+            {
+                Key = "bounty.roll",
+                Comparison = ComparisonOperator.LessThanOrEqual,
+                CompareTo = 30,
+                CompareToVariable = "bounty.chance",
+            };
+
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+                GameEventExecutor.IsMet(conditional, game)
+            );
+
+            StringAssert.Contains("exactly one CompareTo or CompareToVariable", exception.Message);
+        }
+
+        [Test]
+        public void IsMet_EvaluateEventVariableMissingTarget_ThrowsInvalidOperationException()
+        {
+            GameRoot game = BuildConditionGame(out _, out _);
+            EvaluateEventVariableConditional conditional = new EvaluateEventVariableConditional
+            {
+                Key = "bounty.roll",
+                Comparison = ComparisonOperator.LessThanOrEqual,
+            };
+
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+                GameEventExecutor.IsMet(conditional, game)
+            );
+
+            StringAssert.Contains("exactly one CompareTo or CompareToVariable", exception.Message);
+        }
+
+        [Test]
         public void IsMet_EvaluateBindingNullBinding_ReturnsFalse()
         {
             GameRoot game = BuildConditionGame(out _, out _);

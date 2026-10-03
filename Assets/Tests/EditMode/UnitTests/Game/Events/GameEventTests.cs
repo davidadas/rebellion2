@@ -59,6 +59,33 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
+        public void EvaluateEventVariable_CompareToVariable_RoundTripsAttribute()
+        {
+            GameEvent gameEvent = new GameEvent
+            {
+                Conditionals = new List<GameConditional>
+                {
+                    new EvaluateEventVariableConditional
+                    {
+                        Key = "bounty.roll",
+                        Comparison = ComparisonOperator.LessThanOrEqual,
+                        CompareToVariable = "bounty.chance",
+                    },
+                },
+            };
+
+            string xml = SerializationHelper.Serialize(gameEvent);
+            GameEvent restored = SerializationHelper.Deserialize<GameEvent>(xml);
+
+            StringAssert.Contains("CompareToVariable=\"bounty.chance\"", xml);
+            EvaluateEventVariableConditional conditional =
+                restored.Conditionals.Single() as EvaluateEventVariableConditional;
+            Assert.IsNotNull(conditional);
+            Assert.AreEqual("bounty.chance", conditional.CompareToVariable);
+            Assert.IsFalse(conditional.CompareTo.HasValue);
+        }
+
+        [Test]
         public void CompositeConditionals_Default_RoundTripWithoutCollectionWrappers()
         {
             GameEvent gameEvent = new GameEvent
