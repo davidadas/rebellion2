@@ -9,62 +9,72 @@ using Rebellion.Game.Units;
 namespace Rebellion.Simulation
 {
     /// <summary>
-    /// Selects one executable advisor-managed garrison order without changing game state.
+    /// Queues advisor-managed garrison regiment orders.
     /// </summary>
-    public sealed class GarrisonAutomationPlanner
+    public sealed class GarrisonAutomationCommands
     {
-        private const int _garrisonSupportTarget = 60;
-        private const int _garrisonSupportStep = 10;
+        private const int _automatedOrderQuantity = 1;
         private const int _minimumGarrisonTarget = 1;
         private const int _resourceFacilitiesPerGarrison = 2;
-        private const int _uprisingGarrisonMultiplier = 2;
         private const int _tieBreakRollMinimum = 0;
         private const int _tieBreakRollMaximum = 10;
         private const int _replaceSelectionRollThreshold = 5;
 
         private readonly GameRoot _game;
         private readonly GameDataCatalog _gameData;
+        private readonly ManufacturingCommands _manufacturing;
 
         /// <summary>
-        /// Creates advisor-managed garrison planning for the active game.
+        /// Creates advisor-managed garrison commands for the active game.
         /// </summary>
         /// <param name="game">The active game.</param>
         /// <param name="gameData">Templates available to the selected content pack.</param>
-        public GarrisonAutomationPlanner(GameRoot game, GameDataCatalog gameData)
+        /// <param name="manufacturing">The manufacturing commands used to place orders.</param>
+        public GarrisonAutomationCommands(
+            GameRoot game,
+            GameDataCatalog gameData,
+            ManufacturingCommands manufacturing
+        )
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
             _gameData = gameData ?? throw new ArgumentNullException(nameof(gameData));
+            _manufacturing =
+                manufacturing ?? throw new ArgumentNullException(nameof(manufacturing));
         }
 
         /// <summary>
-        /// Selects the next advisor-managed regiment order for a faction.
+        /// Selects and queues the next advisor-managed regiment order for a faction.
         /// </summary>
         /// <param name="faction">The faction delegating garrison management.</param>
-        /// <param name="producer">The planet that should manufacture the regiment.</param>
-        /// <param name="template">The regiment template to manufacture.</param>
-        /// <param name="destination">The planet that should receive the regiment.</param>
-        /// <returns>True when a complete executable order was selected.</returns>
-        public bool TryCreateOrder(
-            Faction faction,
-            out Planet producer,
-            out Regiment template,
-            out Planet destination
-        )
+        /// <returns>True when an order was queued.</returns>
+        public bool TryQueueRegiment(Faction faction)
         {
             if (faction == null)
                 throw new ArgumentNullException(nameof(faction));
 
             List<Planet> controlledPlanets = GetControlledPlanets(faction);
-            destination = FindDestination(controlledPlanets, faction);
-            template =
+            Planet destination = FindDestination(controlledPlanets, faction);
+            Regiment template =
                 destination == null
                     ? null
                     : FindRegimentTemplate(faction, destination.IsInUprising);
-            producer = destination == null ? null : FindProducer(controlledPlanets, destination);
-            return destination != null
-                && template != null
-                && producer != null
-                && template.MaintenanceCost <= faction.ProjectedMaintenanceHeadroom;
+            Planet producer =
+                destination == null ? null : FindProducer(controlledPlanets, destination);
+            if (
+                destination == null
+                || template == null
+                || producer == null
+                || template.MaintenanceCost > faction.ProjectedMaintenanceHeadroom
+            )
+                return false;
+
+            return _manufacturing.StartManufacturing(
+                producer,
+                template,
+                destination,
+                _automatedOrderQuantity,
+                faction.InstanceID
+            );
         }
 
         /// <summary>
@@ -102,7 +112,8 @@ namespace Rebellion.Simulation
                     continue;
 
                 int deficit =
-                    GetGarrisonTarget(planet, faction) - CountFactionRegiments(planet, faction);
+                    CalculateTargetRegimentCount(planet, faction)
+                    - CountStationaryRegiments(planet, faction);
                 if (deficit <= 0)
                     continue;
 
@@ -155,21 +166,22 @@ namespace Rebellion.Simulation
         /// <param name="planet">The planet to protect.</param>
         /// <param name="faction">The controlling faction.</param>
         /// <returns>The desired regiment count.</returns>
-        private static int GetGarrisonTarget(Planet planet, Faction faction)
+        private int CalculateTargetRegimentCount(Planet planet, Faction faction)
         {
+            GameConfig.GarrisonConfig config = _game.Config.AI.Garrison;
             int support = planet.GetPopularSupport(faction.InstanceID);
             int supportTarget = _minimumGarrisonTarget;
-            if (support < _garrisonSupportTarget)
+            if (support < config.SupportThreshold)
             {
                 supportTarget =
                     (int)
                         Math.Ceiling(
-                            (_garrisonSupportTarget - support) / (double)_garrisonSupportStep
+                            (config.SupportThreshold - support) / (double)config.GarrisonDivisor
                         ) + _minimumGarrisonTarget;
             }
 
             if (planet.IsInUprising)
-                supportTarget *= _uprisingGarrisonMultiplier;
+                supportTarget *= config.UprisingMultiplier;
 
             int resourceFacilities =
                 planet.GetTotalBuildingTypeCount(BuildingType.Mine)
@@ -188,7 +200,7 @@ namespace Rebellion.Simulation
         /// <param name="planet">The planet to inspect.</param>
         /// <param name="faction">The controlling faction.</param>
         /// <returns>The regiment count.</returns>
-        private static int CountFactionRegiments(Planet planet, Faction faction)
+        private static int CountStationaryRegiments(Planet planet, Faction faction)
         {
             return planet
                 .GetAllRegiments()

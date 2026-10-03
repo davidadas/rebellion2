@@ -85,7 +85,7 @@ namespace Rebellion.Simulation
             services.AddSingleton<ResourceProductionQueries>();
             services.AddSingleton<NamingCommands>();
             services.AddSingleton<CaptiveCommands>();
-            services.AddSingleton<GarrisonAutomationPlanner>();
+            services.AddSingleton<GarrisonAutomationCommands>();
             services.AddSingleton<FactionAutomationCommands>();
             services.AddSingleton<MaintenanceCommands>();
             services.AddSingleton<SmugglingCommands>();

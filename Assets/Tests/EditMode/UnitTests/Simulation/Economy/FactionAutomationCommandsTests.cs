@@ -68,7 +68,7 @@ namespace Rebellion.Tests.Simulation
                 _game,
                 _gameData,
                 manufacturing,
-                new GarrisonAutomationPlanner(_game, _gameData)
+                new GarrisonAutomationCommands(_game, _gameData, manufacturing)
             );
         }
 
@@ -115,10 +115,13 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ProcessFaction_SupportBelowSixty_UsesSixtyPercentGarrisonTarget()
+        public void ProcessFaction_SupportBelowConfiguredThreshold_UsesConfiguredGarrisonTarget()
         {
             _faction.ManageProduction = false;
-            _destination.SetPopularSupport(_faction.InstanceID, 59);
+            _destination.SetPopularSupport(
+                _faction.InstanceID,
+                _game.Config.AI.Garrison.SupportThreshold - 1
+            );
             AddCompletedRegiment(_destination, "DESTINATION_DEFENSE");
 
             _automation.ProcessFaction(_faction);
@@ -136,10 +139,13 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ProcessFaction_SupportAtSixty_UsesOneRegimentGarrisonTarget()
+        public void ProcessFaction_SupportAtConfiguredThreshold_UsesOneRegimentGarrisonTarget()
         {
             _faction.ManageProduction = false;
-            _destination.SetPopularSupport(_faction.InstanceID, 60);
+            _destination.SetPopularSupport(
+                _faction.InstanceID,
+                _game.Config.AI.Garrison.SupportThreshold
+            );
             AddCompletedRegiment(_destination, "DESTINATION_DEFENSE");
 
             _automation.ProcessFaction(_faction);
@@ -157,6 +163,32 @@ namespace Rebellion.Tests.Simulation
             _automation.ProcessFaction(_faction);
 
             Assert.AreEqual(2, _destination.GetAllRegiments().Count);
+        }
+
+        [Test]
+        public void ProcessFaction_ConfiguredGarrisonDivisor_UsesConfiguredValue()
+        {
+            _faction.ManageProduction = false;
+            _game.Config.AI.Garrison.GarrisonDivisor = 5;
+            _destination.SetPopularSupport(_faction.InstanceID, 40);
+            AddCompletedRegiments(_destination, "DESTINATION_DEFENSE", 2);
+
+            _automation.ProcessFaction(_faction);
+
+            Assert.AreEqual(3, _destination.GetAllRegiments().Count);
+        }
+
+        [Test]
+        public void ProcessFaction_ConfiguredUprisingMultiplier_UsesConfiguredValue()
+        {
+            _faction.ManageProduction = false;
+            _game.Config.AI.Garrison.UprisingMultiplier = 3;
+            _destination.IsInUprising = true;
+            AddCompletedRegiments(_destination, "DESTINATION_DEFENSE", 2);
+
+            _automation.ProcessFaction(_faction);
+
+            Assert.AreEqual(3, _destination.GetAllRegiments().Count);
         }
 
         [Test]

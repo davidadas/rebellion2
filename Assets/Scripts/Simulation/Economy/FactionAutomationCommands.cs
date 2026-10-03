@@ -17,7 +17,7 @@ namespace Rebellion.Simulation
 
         private readonly GameRoot _game;
         private readonly GameDataCatalog _gameData;
-        private readonly GarrisonAutomationPlanner _garrisonPlanner;
+        private readonly GarrisonAutomationCommands _garrisonAutomation;
         private readonly ManufacturingCommands _manufacturing;
 
         /// <summary>
@@ -26,20 +26,20 @@ namespace Rebellion.Simulation
         /// <param name="game">The active game.</param>
         /// <param name="gameData">Templates available to the selected content pack.</param>
         /// <param name="manufacturing">The manufacturing commands used to place orders.</param>
-        /// <param name="garrisonPlanner">Selects advisor-managed regiment orders.</param>
+        /// <param name="garrisonAutomation">Queues advisor-managed garrison regiment orders.</param>
         public FactionAutomationCommands(
             GameRoot game,
             GameDataCatalog gameData,
             ManufacturingCommands manufacturing,
-            GarrisonAutomationPlanner garrisonPlanner
+            GarrisonAutomationCommands garrisonAutomation
         )
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
             _gameData = gameData ?? throw new ArgumentNullException(nameof(gameData));
             _manufacturing =
                 manufacturing ?? throw new ArgumentNullException(nameof(manufacturing));
-            _garrisonPlanner =
-                garrisonPlanner ?? throw new ArgumentNullException(nameof(garrisonPlanner));
+            _garrisonAutomation =
+                garrisonAutomation ?? throw new ArgumentNullException(nameof(garrisonAutomation));
         }
 
         /// <summary>
@@ -52,36 +52,10 @@ namespace Rebellion.Simulation
                 throw new ArgumentNullException(nameof(faction));
 
             if (faction.ManageGarrisons)
-                TryQueueGarrisonRegiment(faction);
+                _garrisonAutomation.TryQueueRegiment(faction);
 
             if (faction.ManageProduction)
                 FillProductionManufacturingCapacity(faction);
-        }
-
-        /// <summary>
-        /// Queues one regiment for the faction's highest-priority garrison shortage.
-        /// </summary>
-        /// <param name="faction">The faction delegating garrison management.</param>
-        /// <returns>True when an order was queued.</returns>
-        private bool TryQueueGarrisonRegiment(Faction faction)
-        {
-            if (
-                !_garrisonPlanner.TryCreateOrder(
-                    faction,
-                    out Planet producer,
-                    out Regiment template,
-                    out Planet destination
-                )
-            )
-                return false;
-
-            return _manufacturing.StartManufacturing(
-                producer,
-                template,
-                destination,
-                _automatedOrderQuantity,
-                faction.InstanceID
-            );
         }
 
         /// <summary>
