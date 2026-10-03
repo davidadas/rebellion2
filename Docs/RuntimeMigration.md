@@ -60,7 +60,7 @@ it is not duplicated. RNG consumption is a state change.
 | `UprisingSystem` | `UprisingCommands`: progression, garrison reconciliation, mission execution | `UprisingQueries.CalculateGarrisonRequirement` | Garrison callback invokes reconciliation |
 | `VictorySystem` | `VictoryCommands`: victory detection/effects | None | Headquarters-loss callback invokes the existing resolution |
 | `AISystem` | Move faction selection/cadence into existing `AIDirector` | AI consumes the extracted query APIs | Preserve the existing phase sequence, yields and result accumulation; no extra `AICommands` facade |
-| `GameEventSystem` | `GameEventExecutor`: validation, scheduling and activation | Authored evaluation moves out of definitions into runtime | Remains a result subscriber as well as scheduled work |
+| `GameEventSystem` | `GameEventCommands`: validation and activation, invoked for scheduled work by `GameEventTickProcessor` | Authored evaluation moves out of definitions into runtime | `GameEventObserver` routes result-triggered activations |
 | `GameResultProcessor` | `GameResultBus` | None | Replace it rather than keep two delivery mechanisms |
 | `GameRequestDispatcher` / `IGameRequestHandler` | Remove after event execution is moved | None | Preserve deferred execution and per-request failure containment; see gates |
 
@@ -1346,3 +1346,19 @@ Verification completed before this last ownership step:
 The agreed structural migration is complete. Earlier pending checkpoints above
 are historical. Behavioral changes explicitly deferred in ArchitectureDecisions,
 including capture ordering, return contracts and failure recovery, remain deferred.
+
+### Game-event boundary alignment
+
+The later event-architecture cleanup preserves the existing authored-event rules
+while assigning their two invocation paths to the same boundaries used elsewhere
+in the simulation:
+
+- `GameEventCommands` owns validation, evaluation and activation mutations.
+- `GameEventTickProcessor` invokes scheduled events at the event phase's existing
+  position between mission processing and naming/AI work.
+- `GameEventObserver` is the first registered result reaction and invokes triggered
+  events, preserving the prior event-subscription order.
+
+The historical extraction notes above retain the names used by those changes at
+the time. This cleanup changes ownership and naming, not event timing, conditions,
+actions, RNG consumption, result payloads or serialized state.

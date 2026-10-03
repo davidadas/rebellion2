@@ -20,7 +20,7 @@ namespace Rebellion.Simulation
         internal List<(
             string Name,
             string SourceEventInstanceID,
-            Func<GameEventExecutor, string, List<GameResult>> Execute
+            Func<GameEventCommands, string, List<GameResult>> Execute
         )> DeferredOperations { get; } = new();
         internal List<GameResult> Results { get; } = new List<GameResult>();
         private readonly MissionCommands _missionCommands;
@@ -53,7 +53,7 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="name">The authored operation name used in failure diagnostics.</param>
         /// <param name="execute">The command call and the resolved inputs it retains.</param>
-        internal void Defer(string name, Func<GameEventExecutor, string, List<GameResult>> execute)
+        internal void Defer(string name, Func<GameEventCommands, string, List<GameResult>> execute)
         {
             if (execute == null)
                 return;

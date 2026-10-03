@@ -19,7 +19,7 @@ namespace Rebellion.Tests
         internal static List<GameResult> Execute(this GameAction action, GameRoot game)
         {
             GameActionContext context = new GameActionContext(game, game.Random);
-            GameEventExecutor.ExecuteAction(action, context);
+            GameEventCommands.ExecuteAction(action, context);
             return context.Results;
         }
 
@@ -37,7 +37,7 @@ namespace Rebellion.Tests
         )
         {
             GameActionContext context = new GameActionContext(game, random);
-            GameEventExecutor.ExecuteAction(action, context);
+            GameEventCommands.ExecuteAction(action, context);
             return context.Results;
         }
 
@@ -57,7 +57,7 @@ namespace Rebellion.Tests
         )
         {
             GameActionContext context = new GameActionContext(game, random, evaluation);
-            GameEventExecutor.ExecuteAction(action, context);
+            GameEventCommands.ExecuteAction(action, context);
             return context.Results;
         }
 
@@ -75,7 +75,7 @@ namespace Rebellion.Tests
         )
         {
             GameActionContext context = new GameActionContext(game, game.Random, null, unitFactory);
-            GameEventExecutor.ExecuteAction(action, context);
+            GameEventCommands.ExecuteAction(action, context);
             return context.Results;
         }
     }

@@ -33,7 +33,7 @@ namespace Rebellion.Simulation
         private ITickProcessor _captive;
         private ITickProcessor _factionAutomation;
         private FogOfWarCommands _fogOfWarCommands;
-        private GameEventExecutor _gameEventExecutor;
+        private ITickProcessor _gameEvents;
         private GameRoot _game;
         private ITickProcessor _jedi;
         private ITickProcessor _maintenance;
@@ -112,7 +112,7 @@ namespace Rebellion.Simulation
             _movement = new MovementTickProcessor(_movementCommands);
             _spaceCombat = new SpaceCombatTickProcessor(_spaceCombatCommands);
             _missions = new MissionTickProcessor(services.GetService<MissionCommands>());
-            _gameEventExecutor = services.GetService<GameEventExecutor>();
+            _gameEvents = new GameEventTickProcessor(services.GetService<GameEventCommands>());
             _naming = new NamingTickProcessor(services.GetService<NamingCommands>());
             _aiDirector = services.GetService<AIDirector>();
             _blockade = new BlockadeTickProcessor(services.GetService<BlockadeCommands>());
@@ -234,7 +234,7 @@ namespace Rebellion.Simulation
         private IEnumerable<object> ProcessRemainingTickPhases()
         {
             ProcessResults(_missions.ProcessTick(_game));
-            ProcessResults(_gameEventExecutor.ProcessEvents(_game.GetEventPool()));
+            ProcessResults(_gameEvents.ProcessTick(_game));
             _naming.ProcessTick(_game);
             List<GameResult> aiResults = new List<GameResult>();
             foreach (object step in _aiDirector.ProcessTickIncrementally(aiResults))

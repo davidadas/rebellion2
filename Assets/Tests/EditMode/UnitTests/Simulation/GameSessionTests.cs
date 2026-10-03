@@ -513,9 +513,9 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void GetService_RegisteredGameEventExecutor_ReturnsConnectedInstance()
+        public void GetService_RegisteredGameEventCommands_ReturnsConnectedInstance()
         {
-            Assert.AreSame(_session.GameEventExecutor, _session.GetService<GameEventExecutor>());
+            Assert.AreSame(_session.GameEventCommands, _session.GetService<GameEventCommands>());
         }
 
         [Test]

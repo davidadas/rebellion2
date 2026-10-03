@@ -69,8 +69,11 @@ Agreed on September 20, 2026.
 - Keep serialized action and condition definitions in `Game` as data.
 - Move their execution and evaluation out of those definitions and into the
   runtime under `Simulation`.
-- `GameEventExecutor` interprets the definitions, asks query APIs questions when
-  rules must be evaluated, and calls command methods to perform operations.
+- `GameEventCommands` interprets the definitions, asks query APIs questions when
+  rules must be evaluated, and calls other command methods to perform operations.
+- `GameEventTickProcessor` owns scheduled polling in the ordered tick sequence.
+  `GameEventObserver` owns result-bus trigger routing. Neither boundary contains
+  authored-event mutation rules of its own.
 - An authored action object does not call back into the runtime. Remove that
   responsibility from `GameAction.Execute` and `GameEvent.ExecuteActions`.
 - Execution methods can be grouped; do not require a separate handler class for

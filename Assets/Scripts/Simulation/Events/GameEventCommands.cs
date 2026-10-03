@@ -11,9 +11,9 @@ using Rebellion.Util.Random;
 namespace Rebellion.Simulation
 {
     /// <summary>
-    /// Schedules authored events, executes eligible activations, and returns their factual results.
+    /// Validates authored events and applies scheduled or result-triggered activations.
     /// </summary>
-    public partial class GameEventExecutor
+    public partial class GameEventCommands
     {
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
@@ -25,7 +25,7 @@ namespace Rebellion.Simulation
         private readonly MissionCommands _missionCommands;
 
         /// <summary>
-        /// Creates a new GameEventExecutor.
+        /// Creates a new GameEventCommands.
         /// </summary>
         /// <param name="game">The game instance.</param>
         /// <param name="provider">Random number provider for stochastic event actions.</param>
@@ -35,7 +35,7 @@ namespace Rebellion.Simulation
         /// <param name="duelCommands">The officer encounter operations.</param>
         /// <param name="messageCommands">The authored message delivery operations.</param>
         /// <param name="missionCommands">The ordered mission interruption operations.</param>
-        public GameEventExecutor(
+        public GameEventCommands(
             GameRoot game,
             IRandomNumberProvider provider,
             UnitFactory unitFactory = null,
@@ -286,11 +286,11 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Processes all eligible events and returns the aggregate results.
+        /// Applies all eligible scheduled events and returns their aggregate results.
         /// </summary>
         /// <param name="gameEvents">The events to evaluate.</param>
         /// <returns>Results produced by events that activated.</returns>
-        public List<GameResult> ProcessEvents(List<GameEvent> gameEvents)
+        public List<GameResult> ProcessScheduledEvents(List<GameEvent> gameEvents)
         {
             List<GameResult> allResults = new List<GameResult>();
             List<GameEvent> eventsToRemove = new List<GameEvent>();
@@ -313,11 +313,11 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Executes events whose authored trigger type matches a newly produced simulation result.
+        /// Applies events whose authored trigger type matches a newly produced simulation result.
         /// </summary>
         /// <param name="results">The results.</param>
         /// <returns>The result of handle results.</returns>
-        public List<GameResult> HandleResults(IReadOnlyList<GameResult> results)
+        public List<GameResult> ProcessTriggeredEvents(IReadOnlyList<GameResult> results)
         {
             List<GameResult> eventResults = new List<GameResult>();
             if (results == null)
@@ -541,7 +541,7 @@ namespace Rebellion.Simulation
             state.IsComplete =
                 until?.Count > 0
                 && until.All(condition =>
-                    GameEventExecutor.IsMet(condition, new GameConditionContext(_game, context))
+                    GameEventCommands.IsMet(condition, new GameConditionContext(_game, context))
                 );
             return state.IsComplete;
         }
@@ -695,7 +695,7 @@ namespace Rebellion.Simulation
         {
             foreach (GameConditional conditional in gameEvent.Conditionals)
             {
-                if (!GameEventExecutor.IsMet(conditional, game, context))
+                if (!GameEventCommands.IsMet(conditional, game, context))
                     return false;
             }
             return true;

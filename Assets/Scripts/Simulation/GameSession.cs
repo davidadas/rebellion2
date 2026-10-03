@@ -29,7 +29,7 @@ namespace Rebellion.Simulation
 
         internal MessageObserver MessageObserver { get; private set; }
 
-        internal GameEventExecutor GameEventExecutor { get; private set; }
+        internal GameEventCommands GameEventCommands { get; private set; }
 
         internal GameResultBus Results { get; private set; }
 
@@ -136,8 +136,8 @@ namespace Rebellion.Simulation
             GetService<MovementQueries>()
                 .SetCompletedBuildingMovementPolicy(GetService<HeadquartersQueries>().CanMove);
             Tick.ConnectRuntime(_serviceScope);
-            GameEventExecutor = GetService<GameEventExecutor>();
-            GameEventExecutor.ValidateEvents(Game.GetEventPool());
+            GameEventCommands = GetService<GameEventCommands>();
+            GameEventCommands.ValidateEvents(Game.GetEventPool());
 
             Results = resultBus;
             ConnectResults();
@@ -148,7 +148,6 @@ namespace Rebellion.Simulation
         /// </summary>
         private void ConnectResults()
         {
-            _disconnect.Add(Results.Subscribe<GameResult>(GameEventExecutor.HandleResults).Dispose);
             GameServiceRegistration.ConnectObservers(_serviceScope, Results);
 
             MovementCommands movementSystem = GetService<MovementCommands>();
