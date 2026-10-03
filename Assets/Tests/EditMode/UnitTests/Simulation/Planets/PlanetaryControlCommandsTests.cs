@@ -1103,12 +1103,10 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ProcessTick_BlockadeReinforcesWeakCoreAllianceSupport_DoesNotShift()
+        public void ProcessTick_BlockadeReinforcesCoreAllianceSupport_AppliesShift()
         {
             _game.Config.SupportShift.BlockadeMatchShiftIntervalTicks = 30;
             _game.Config.SupportShift.BlockadeMatchShift = 1;
-            _game.Config.SupportShift.WeakSupportPenaltyDivisor = 2;
-            _rebels.Settings.SupportResistance = SupportChange.Increase;
             _targetPlanet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.Core;
             _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
             _targetPlanet.SetPopularSupport(_empire.InstanceID, 40);
@@ -1130,8 +1128,8 @@ namespace Rebellion.Tests.Simulation
             _game.CurrentTick = 60;
             new PlanetaryControlTickProcessor(_commands).ProcessTick(_game);
 
-            Assert.AreEqual(60, _targetPlanet.GetPopularSupport(_rebels.InstanceID));
-            Assert.AreEqual(40, _targetPlanet.GetPopularSupport(_empire.InstanceID));
+            Assert.AreEqual(61, _targetPlanet.GetPopularSupport(_rebels.InstanceID));
+            Assert.AreEqual(39, _targetPlanet.GetPopularSupport(_empire.InstanceID));
         }
 
         [Test]

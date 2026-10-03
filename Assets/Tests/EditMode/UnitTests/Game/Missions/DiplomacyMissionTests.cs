@@ -167,14 +167,11 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void ResolveObjective_CoreSectorWeakSupport_ReportsUnadjustedShift()
+        public void ResolveObjective_CoreSector_ReportsConfiguredShift()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: "empire");
             planet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.Core;
-            game.GetFactionByOwnerInstanceID("empire").Settings.SupportResistance =
-                SupportChange.Increase;
             Mission mission = CreateAndAttachMission(game, planet);
-            game.Config.SupportShift.WeakSupportPenaltyDivisor = 2;
             game.Config.SupportShift.DiplomacyOwnedPlanetSupportBase = 6;
             game.Config.SupportShift.DiplomacyOwnedPlanetSupportRange = 0;
 

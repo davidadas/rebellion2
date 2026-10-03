@@ -86,44 +86,6 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(_queries.GetPlanetController(_targetPlanet));
         }
 
-        [Test]
-        public void ApplyCoreSupportResistance_OuterRimPlanet_ReturnsUnadjustedShift()
-        {
-            _targetPlanet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.OuterRim;
-            _empire.Settings.SupportResistance = SupportChange.Increase;
-
-            Assert.AreEqual(
-                5,
-                PlanetaryControlQueries.ApplyCoreSupportResistance(_targetPlanet, _empire, 5, 2)
-            );
-        }
-
-        [TestCase(SupportChange.Increase, 5, 2, 2)]
-        [TestCase(SupportChange.Decrease, -5, 2, -2)]
-        [TestCase(SupportChange.Increase, -5, 2, -5)]
-        [TestCase(SupportChange.Decrease, 5, 2, 5)]
-        [TestCase(SupportChange.Increase, 5, 0, 5)]
-        [TestCase(SupportChange.Increase, 0, 2, 0)]
-        public void ApplyCoreSupportResistance_CorePlanet_ReturnsConfiguredAdjustment(
-            SupportChange resistance,
-            int shift,
-            int divisor,
-            int expected
-        )
-        {
-            _targetPlanet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.Core;
-            _empire.Settings.SupportResistance = resistance;
-
-            int adjusted = PlanetaryControlQueries.ApplyCoreSupportResistance(
-                _targetPlanet,
-                _empire,
-                shift,
-                divisor
-            );
-
-            Assert.AreEqual(expected, adjusted);
-        }
-
         /// <summary>Places a completed regiment after setting its planet's ownership.</summary>
         /// <param name="id">The regiment identifier.</param>
         /// <param name="owner">The regiment's faction.</param>
