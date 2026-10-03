@@ -189,7 +189,7 @@ public static class GalacticInformationFilterEvaluator
     }
 
     /// <summary>
-    /// Counts stationary or enroute fleets by owning faction.
+    /// Counts operational stationary or enroute fleets by owning faction.
     /// </summary>
     /// <param name="planet">The visible planet snapshot.</param>
     /// <param name="enroute">Whether to count enroute fleets instead of stationary fleets.</param>
@@ -199,7 +199,7 @@ public static class GalacticInformationFilterEvaluator
         Dictionary<string, int> counts = new Dictionary<string, int>(StringComparer.Ordinal);
         foreach (Fleet fleet in planet.GetChildren<Fleet>())
         {
-            if ((fleet.Movement != null) != enroute)
+            if ((fleet.Movement != null) != enroute || !fleet.HasOperationalCapitalShips())
                 continue;
 
             Increment(counts, fleet.OwnerInstanceID);
