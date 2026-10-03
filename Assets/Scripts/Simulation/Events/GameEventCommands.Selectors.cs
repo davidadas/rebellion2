@@ -11,7 +11,7 @@ using Rebellion.Util.Random;
 
 namespace Rebellion.Simulation
 {
-    public sealed partial class GameEventExecutor
+    public sealed partial class GameEventCommands
     {
         /// <summary>Resolves an authored selector without changing its evaluation timing.</summary>
         /// <param name="definition">The authored selector to interpret.</param>

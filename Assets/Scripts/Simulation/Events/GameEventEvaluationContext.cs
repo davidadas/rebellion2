@@ -39,7 +39,7 @@ namespace Rebellion.Simulation
             State = state;
             TriggerResult = triggerResult;
             if (trigger != null)
-                GameEventExecutor.Bind(trigger, this, triggerResult);
+                GameEventCommands.Bind(trigger, this, triggerResult);
         }
 
         /// <summary>
