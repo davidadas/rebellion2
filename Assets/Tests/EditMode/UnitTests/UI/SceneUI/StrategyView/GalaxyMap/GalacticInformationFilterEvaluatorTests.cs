@@ -211,6 +211,23 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         }
 
         [Test]
+        public void Evaluate_IdleFleets_ConstructionOnlyFleetReturnsLowestMarker()
+        {
+            Planet planet = CreatePlanet(_playerFactionId);
+            planet.AddTestChild(CreateFleet(_playerFactionId, false, ManufacturingStatus.Building));
+
+            GalacticInformationMarker marker = GalacticInformationFilterEvaluator.Evaluate(
+                _game,
+                planet,
+                _playerFactionId,
+                CreateFilter(GalacticInformationFilterMode.IdleFleets)
+            );
+
+            Assert.AreEqual(0, marker.Index);
+            Assert.IsFalse(marker.Mixed);
+        }
+
+        [Test]
         public void Evaluate_FleetsEnroute_OpposingFleetsReturnsOpponentIntensity()
         {
             Planet planet = CreatePlanet(_playerFactionId);
@@ -528,14 +545,23 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         /// </summary>
         /// <param name="ownerId">The owner id.</param>
         /// <param name="enroute">Whether enroute.</param>
+        /// <param name="shipStatus">The manufacturing status of the fleet's capital ship.</param>
         /// <returns>The created fleet.</returns>
-        private static GameFleet CreateFleet(string ownerId, bool enroute)
+        private static GameFleet CreateFleet(
+            string ownerId,
+            bool enroute,
+            ManufacturingStatus shipStatus = ManufacturingStatus.Complete
+        )
         {
-            return new GameFleet
+            GameFleet fleet = new GameFleet
             {
                 OwnerInstanceID = ownerId,
                 Movement = enroute ? new MovementState() : null,
             };
+            fleet.AddTestChild(
+                new CapitalShip { OwnerInstanceID = ownerId, ManufacturingStatus = shipStatus }
+            );
+            return fleet;
         }
     }
 }
