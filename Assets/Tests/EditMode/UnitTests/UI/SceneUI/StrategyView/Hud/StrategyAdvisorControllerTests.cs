@@ -615,7 +615,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         }
 
         [Test]
-        public void ProcessPending_ActivePlayback_RetainsLatestNotificationUntilViewIsIdle()
+        public void ProcessPending_ActivePlayback_QueuesNotificationForAutomaticPlayback()
         {
             GameObject rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
             StrategyAdvisorView view = rootObject.GetComponentInChildren<StrategyAdvisorView>(true);
@@ -636,7 +636,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 new StrategyAdvisorNotificationTheme
                 {
                     NotificationType = AdvisorNotificationType.NegativePopularSupport,
-                    LifetimeTicks = 20,
+                    LifetimeTicks = 1,
                     Droid = new StrategyAdvisorAnimationTheme
                     {
                         Animation = "Second",
@@ -680,8 +680,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 Assert.AreEqual(1, started.Count);
                 Assert.AreSame(firstFrame, started[0].Frames.Single());
 
+                controller.ProcessPending(20, true);
                 view.AdvanceAnimation(theme.FrameIntervalSeconds);
-                controller.ProcessPending(1, true);
 
                 Assert.AreEqual(2, started.Count);
                 Assert.AreSame(secondFrame, started[1].Frames.Single());

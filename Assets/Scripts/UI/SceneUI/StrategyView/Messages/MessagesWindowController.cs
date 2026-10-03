@@ -432,7 +432,12 @@ public sealed class MessagesWindowController
             return new List<Message>();
 
         if (tab == MessagesTab.All)
-            return faction.Messages.SelectMany(entry => entry.Value).ToList();
+        {
+            return faction
+                .Messages.SelectMany(entry => entry.Value)
+                .OrderBy(message => message.CreatedTick)
+                .ToList();
+        }
 
         MessageType? type = MessagesTabCatalog.GetMessageType(tab);
         if (!type.HasValue || !faction.Messages.TryGetValue(type.Value, out List<Message> messages))

@@ -345,17 +345,28 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
-        public void GetRows_AllMessages_ReturnsMessagesAcrossBucketsInStorageOrder()
+        public void GetRows_AllMessages_ReturnsMessagesAcrossBucketsInChronologicalOrder()
         {
-            Message fleet = new StatusMessage(MessageType.Fleet, "Fleet", "Fleet");
-            Message mission = new StatusMessage(MessageType.Mission, "Mission", "Mission");
+            Message fleet = new StatusMessage(MessageType.Fleet, "Fleet", "Fleet")
+            {
+                CreatedTick = 20,
+            };
+            Message mission = new StatusMessage(MessageType.Mission, "Mission", "Mission")
+            {
+                CreatedTick = 30,
+            };
+            Message advice = new StatusMessage(MessageType.Advice, "Advice", "Advice")
+            {
+                CreatedTick = 10,
+            };
             Faction faction = new Faction();
             faction.Messages[MessageType.Fleet] = new List<Message> { fleet };
             faction.Messages[MessageType.Mission] = new List<Message> { mission };
+            faction.Messages[MessageType.Advice] = new List<Message> { advice };
 
             List<Message> rows = MessagesWindowController.GetRows(faction, MessagesTab.All);
 
-            CollectionAssert.AreEqual(new[] { fleet, mission }, rows);
+            CollectionAssert.AreEqual(new[] { advice, fleet, mission }, rows);
         }
 
         [Test]
