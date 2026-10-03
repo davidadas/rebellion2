@@ -11,46 +11,6 @@ using Rebellion.Util.Serialization;
 namespace Rebellion.Game.Missions
 {
     /// <summary>
-    /// Provides the external operations needed while a mission executes its post-arrival lifecycle.
-    /// </summary>
-    internal interface IMissionExecutionRuntime
-    {
-        /// <summary>
-        /// Resolves one mission encounter checkpoint.
-        /// </summary>
-        /// <param name="mission">The mission executing its lifecycle.</param>
-        /// <param name="phase">The encounter checkpoint being resolved.</param>
-        /// <param name="results">The result collection receiving detection consequences.</param>
-        /// <param name="foilingFactionInstanceID">The faction whose forces foiled the mission, or null when the foil was internal.</param>
-        /// <returns>True when detection foils the mission.</returns>
-        bool ResolveEncounter(
-            Mission mission,
-            MissionEncounterPhase phase,
-            List<GameResult> results,
-            out string foilingFactionInstanceID
-        );
-
-        /// <summary>
-        /// Resolves the completed mission objective.
-        /// </summary>
-        /// <param name="mission">The mission whose progress is complete.</param>
-        /// <returns>The results produced by objective resolution.</returns>
-        List<GameResult> ResolveCompletedObjective(Mission mission);
-
-        /// <summary>
-        /// Applies repeat or teardown infrastructure after mission completion.
-        /// </summary>
-        /// <param name="mission">The mission that reached a terminal state.</param>
-        /// <param name="completedResult">The terminal result, or null for an invalid mission.</param>
-        /// <param name="results">The result collection receiving teardown consequences.</param>
-        void FinishMission(
-            Mission mission,
-            MissionCompletedResult completedResult,
-            List<GameResult> results
-        );
-    }
-
-    /// <summary>
     /// Identifies a mission encounter checkpoint.
     /// </summary>
     internal enum MissionEncounterPhase
@@ -66,8 +26,6 @@ namespace Rebellion.Game.Missions
     /// </summary>
     public abstract class Mission : ContainerNode
     {
-        private const int _ratingPercentScale = 100;
-
         /// <summary>
         /// Supplies authoritative or observed state to mission-specific objective scoring.
         /// </summary>
@@ -565,36 +523,6 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Returns the decoy participant's success probability.
-        /// </summary>
-        /// <param name="decoy">The decoy participant to evaluate.</param>
-        /// <param name="detector">The detector being diverted.</param>
-        /// <param name="game">The current game state.</param>
-        /// <param name="encounterPlanet">The planet where the encounter occurs.</param>
-        /// <returns>The decoy success probability.</returns>
-        internal double GetDecoyProbability(
-            IMissionParticipant decoy,
-            ISceneNode detector,
-            GameRoot game,
-            Planet encounterPlanet = null
-        )
-        {
-            int decoyEspionage = decoy.GetEffectiveRating(SkillRating.Espionage);
-            GameConfig.MissionProbabilityTablesConfig missionTables = GetMissionTables(game);
-            Officer commander = FindDetectorCommander(detector, encounterPlanet);
-            int scaledDefender =
-                (commander?.GetEffectiveRating(SkillRating.Espionage) ?? 0)
-                * missionTables.DecoyDefenderScalingPercent
-                / _ratingPercentScale;
-            int score = decoyEspionage - GetDetectorRating(detector) - scaledDefender;
-            Dictionary<int, int> table =
-                detector.GetParentOfType<Fleet>() != null
-                    ? missionTables.FleetDecoy
-                    : missionTables.PlanetaryDecoy;
-            return LookupProbability(table, score);
-        }
-
-        /// <summary>
         /// Returns the success probability for this mission's configured table.
         /// </summary>
         /// <param name="game">The current game state.</param>
@@ -631,25 +559,6 @@ namespace Rebellion.Game.Missions
         {
             return game?.Config?.ProbabilityTables?.Mission
                 ?? new GameConfig.MissionProbabilityTablesConfig();
-        }
-
-        /// <summary>
-        /// Returns the configured probability for a score.
-        /// </summary>
-        /// <param name="entries">The configured probability table entries.</param>
-        /// <param name="score">The score to look up.</param>
-        /// <param name="defaultValue">The value returned when the table is empty.</param>
-        /// <returns>The configured probability value.</returns>
-        private static int LookupProbability(
-            Dictionary<int, int> entries,
-            int score,
-            int defaultValue = 0
-        )
-        {
-            if (entries == null || entries.Count == 0)
-                return defaultValue;
-
-            return new ProbabilityTable(entries).Lookup(score);
         }
 
         /// <summary>
@@ -846,32 +755,6 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Rolls one selected decoy participant against one detector.
-        /// </summary>
-        /// <param name="decoy">The decoy participant making the attempt.</param>
-        /// <param name="provider">RNG provider for selection and probability roll.</param>
-        /// <param name="game">The current game state.</param>
-        /// <param name="detector">The detector the decoy is attempting to divert.</param>
-        /// <param name="encounterPlanet">The planet where the encounter occurs.</param>
-        /// <returns>True if the selected decoy succeeds.</returns>
-        private bool CheckDecoySuccessful(
-            IMissionParticipant decoy,
-            IRandomNumberProvider provider,
-            GameRoot game,
-            ISceneNode detector,
-            Planet encounterPlanet
-        )
-        {
-            if (decoy == null || detector == null)
-                return false;
-
-            return IsSuccessfulProbabilityRoll(
-                provider.NextDouble() * 100,
-                GetDecoyProbability(decoy, detector, game, encounterPlanet)
-            );
-        }
-
-        /// <summary>
         /// Returns whether a scene object may attempt to detect this mission.
         /// </summary>
         /// <param name="candidate">The potential hostile detector.</param>
@@ -910,20 +793,6 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Returns the authored detection rating for a detector unit.
-        /// </summary>
-        /// <param name="detector">The selected detector.</param>
-        /// <returns>The unit's detection rating.</returns>
-        private static int GetDetectorRating(ISceneNode detector) =>
-            detector switch
-            {
-                Regiment regiment => regiment.DetectionRating,
-                Starfighter starfighter => starfighter.DetectionRating,
-                CapitalShip capitalShip => capitalShip.DetectionRating,
-                _ => 0,
-            };
-
-        /// <summary>
         /// Finds the commander type paired with the selected detector in its local container.
         /// </summary>
         /// <param name="detector">The selected hostile detector.</param>
@@ -958,124 +827,6 @@ namespace Rebellion.Game.Missions
                 && officer.CurrentRank == requiredRank
                 && IsEligibleDetectorCommander(officer)
             );
-        }
-
-        /// <summary>
-        /// Rolls the decoy response check.
-        /// </summary>
-        /// <param name="provider">RNG provider for decoy rolls.</param>
-        /// <param name="game">The current game state.</param>
-        /// <param name="decoy">The decoy selected for this attempt.</param>
-        /// <param name="detector">The detector being diverted.</param>
-        /// <param name="encounterPlanet">The planet where the encounter occurs.</param>
-        /// <returns>True if the decoy diverts the detector.</returns>
-        internal bool RollDecoyCheck(
-            IRandomNumberProvider provider,
-            GameRoot game,
-            IMissionParticipant decoy,
-            ISceneNode detector,
-            Planet encounterPlanet = null
-        )
-        {
-            return CheckDecoySuccessful(decoy, provider, game, detector, encounterPlanet);
-        }
-
-        /// <summary>
-        /// Executes one post-arrival lifecycle step for this mission.
-        /// </summary>
-        /// <param name="game">The current game state.</param>
-        /// <param name="provider">RNG provider for all probability rolls.</param>
-        /// <param name="runtime">External mission operations supplied by the mission system.</param>
-        /// <returns>All results produced by validation, detection, or objective resolution.</returns>
-        internal List<GameResult> Execute(
-            GameRoot game,
-            IRandomNumberProvider provider,
-            IMissionExecutionRuntime runtime
-        )
-        {
-            List<GameResult> results = new List<GameResult>();
-            MissionCompletionReason? abortReason = GetAbortReason(game);
-            if (abortReason.HasValue)
-            {
-                AddMissionResults(ResolveInterruption(game, provider), results);
-                results.Add(
-                    BuildTerminatingResult(
-                        MissionOutcome.Failed,
-                        abortReason.Value,
-                        game,
-                        GetAllParticipants()
-                    )
-                );
-                runtime.FinishMission(this, null, results);
-                return results;
-            }
-
-            List<IMissionParticipant> participantsBeforeDetection = GetAllParticipants();
-            bool wasDetected = false;
-            string foilingFactionInstanceID = null;
-            if (!DetectionResolved)
-            {
-                DetectionResolved = true;
-                wasDetected = runtime.ResolveEncounter(
-                    this,
-                    MissionEncounterPhase.Arrival,
-                    results,
-                    out foilingFactionInstanceID
-                );
-            }
-            if (wasDetected)
-            {
-                AddMissionResults(ResolveInterruption(game, provider), results);
-                MissionCompletedResult completed = BuildTerminatingResult(
-                    MissionOutcome.Foiled,
-                    MissionCompletionReason.Foiled,
-                    game,
-                    participantsBeforeDetection
-                );
-                completed.FoilingFactionInstanceID = foilingFactionInstanceID;
-                results.Add(completed);
-                runtime.FinishMission(this, completed, results);
-                return results;
-            }
-
-            IncrementProgress();
-            if (!IsComplete())
-                return results;
-
-            participantsBeforeDetection = GetAllParticipants();
-            if (!PreObjectiveEncounterResolved)
-            {
-                PreObjectiveEncounterResolved = true;
-                wasDetected = runtime.ResolveEncounter(
-                    this,
-                    MissionEncounterPhase.PreObjective,
-                    results,
-                    out foilingFactionInstanceID
-                );
-            }
-            if (wasDetected)
-            {
-                AddMissionResults(ResolveInterruption(game, provider), results);
-                MissionCompletedResult completed = BuildTerminatingResult(
-                    MissionOutcome.Foiled,
-                    MissionCompletionReason.Foiled,
-                    game,
-                    participantsBeforeDetection
-                );
-                completed.FoilingFactionInstanceID = foilingFactionInstanceID;
-                results.Add(completed);
-                runtime.FinishMission(this, completed, results);
-                return results;
-            }
-
-            results.AddRange(runtime.ResolveCompletedObjective(this));
-            MissionCompletedResult completedResult = results
-                .OfType<MissionCompletedResult>()
-                .LastOrDefault();
-            if (completedResult != null)
-                runtime.FinishMission(this, completedResult, results);
-
-            return results;
         }
 
         /// <summary>
@@ -1138,28 +889,6 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Adds mission-origin metadata to interruption results before appending them.
-        /// </summary>
-        /// <param name="source">The results produced by the interruption.</param>
-        /// <param name="destination">The lifecycle result collection.</param>
-        private void AddMissionResults(
-            IEnumerable<GameResult> source,
-            ICollection<GameResult> destination
-        )
-        {
-            if (source == null)
-                return;
-
-            foreach (GameResult result in source.Where(result => result != null))
-            {
-                SetResultMissionID(result);
-                if (string.IsNullOrEmpty(result.SourceEventInstanceID))
-                    result.SourceEventInstanceID = SourceEventInstanceID;
-                destination.Add(result);
-            }
-        }
-
-        /// <summary>
         /// Returns the completion reason for a failed mission success roll.
         /// </summary>
         /// <param name="game">The current game state.</param>
@@ -1168,8 +897,7 @@ namespace Rebellion.Game.Missions
             MissionCompletionReason.Failure;
 
         /// <summary>
-        /// Builds the <see cref="MissionCompletedResult"/> that terminates an Execute call.
-        /// Shared by the base implementation and any subclass that overrides Execute.
+        /// Builds a <see cref="MissionCompletedResult"/> for the supplied outcome.
         /// </summary>
         /// <param name="outcome">The resolved mission outcome.</param>
         /// <param name="game">The current game state.</param>
@@ -1246,7 +974,7 @@ namespace Rebellion.Game.Missions
         /// <param name="game">The current game state.</param>
         /// <param name="participants">The participants captured before terminal side effects.</param>
         /// <returns>A non-continuing mission completion result.</returns>
-        private MissionCompletedResult BuildTerminatingResult(
+        internal MissionCompletedResult BuildTerminatingResult(
             MissionOutcome outcome,
             MissionCompletionReason completionReason,
             GameRoot game,

@@ -86,6 +86,25 @@ namespace Rebellion.Tests.Content
             );
         }
 
+        [Test]
+        public void Validate_FactionBucketOverride_AcceptsDocument()
+        {
+            const string bucketOverrides =
+                @"
+        <Overrides>
+          <FactionBucketOverride>
+            <Difficulty>Hard</Difficulty>
+            <ControllerType>AI</ControllerType>
+            <StrongPct>14</StrongPct>
+            <WeakPct>0</WeakPct>
+          </FactionBucketOverride>
+        </Overrides>";
+
+            Assert.DoesNotThrow(() =>
+                ValidateGenerationConfigXml(CreateGenerationXml(string.Empty, bucketOverrides))
+            );
+        }
+
         /// <summary>
         /// Validates generation config xml.
         /// </summary>
@@ -123,8 +142,12 @@ namespace Rebellion.Tests.Content
         /// Creates generation xml.
         /// </summary>
         /// <param name="startingOfficerRules">The starting officer rules.</param>
+        /// <param name="bucketOverrides">Optional faction ownership percentage overrides.</param>
         /// <returns>The created generation xml.</returns>
-        private static string CreateGenerationXml(string startingOfficerRules)
+        private static string CreateGenerationXml(
+            string startingOfficerRules,
+            string bucketOverrides = ""
+        )
         {
             return $@"
 <GameGenerationConfig>
@@ -156,6 +179,7 @@ namespace Rebellion.Tests.Content
         <FactionID>FACTION</FactionID>
         <StrongPct>0</StrongPct>
         <WeakPct>0</WeakPct>
+        {bucketOverrides}
       </FactionBucketConfig>
     </FactionBuckets>
   </GalaxyClassification>

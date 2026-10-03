@@ -525,7 +525,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void UpdateMission_BuildingRemovedBeforeExecution_ReturnsFailed()
+        public void ProcessTick_BuildingRemovedBeforeExecution_ReturnsFailed()
         {
             (
                 GameRoot game,
@@ -569,7 +569,7 @@ namespace Rebellion.Tests.Game.Missions
                 movement
             );
 
-            List<GameResult> results = missionSystem.UpdateMission(mission);
+            List<GameResult> results = missionSystem.ProcessMissionTick(game);
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
             Assert.AreEqual(

@@ -89,7 +89,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void UpdateMission_NoCandidatesRemain_DoesNotRollOrImproveRecruiter()
+        public void ProcessTick_NoCandidatesRemain_DoesNotRollOrImproveRecruiter()
         {
             (GameRoot game, Planet empirePlanet, Officer officer) = BuildScene();
 
@@ -117,7 +117,7 @@ namespace Rebellion.Tests.Game.Missions
                 movement
             );
 
-            List<GameResult> results = missionSystem.UpdateMission(mission);
+            List<GameResult> results = missionSystem.ProcessMissionTick(game);
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
             Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);

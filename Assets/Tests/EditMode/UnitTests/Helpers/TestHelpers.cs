@@ -678,6 +678,23 @@ public static class TestSystems
     }
 }
 
+/// <summary>
+/// Drives mission lifecycle tests through the tick-processing contract.
+/// </summary>
+public static class MissionTickTestExtensions
+{
+    /// <summary>
+    /// Processes one tick for all active missions.
+    /// </summary>
+    /// <param name="commands">The mission runtime used by the tick processor.</param>
+    /// <param name="game">The game state containing the mission.</param>
+    /// <returns>The mission results produced during the tick.</returns>
+    public static List<GameResult> ProcessMissionTick(this MissionCommands commands, GameRoot game)
+    {
+        return new MissionTickProcessor(commands).ProcessTick(game).ToList();
+    }
+}
+
 public static class MissionTestFactory
 {
     /// <summary>

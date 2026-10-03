@@ -5,6 +5,7 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
+using Rebellion.Util.Mathematics;
 
 namespace Rebellion.Simulation
 {
@@ -75,6 +76,7 @@ namespace Rebellion.Simulation
                 activeRefineryIDs
             );
             MaintenanceCostBreakdown maintenance = CalculateMaintenanceCosts(faction);
+            int maintenanceCapacity = CalculateMaintenanceCapacity(_game, faction);
             int deliveredMaintenanceCapacity = CalculateProjectedMaintenanceCapacity(
                 faction,
                 deliveredMines.Count,
@@ -115,7 +117,7 @@ namespace Rebellion.Simulation
                     BuildingType.Refinery,
                     maintenance.Committed
                 ),
-                faction.MaintenanceHeadroom,
+                maintenanceCapacity - maintenance.Committed,
                 deliveredMaintenanceCapacity - maintenance.Committed,
                 projectedMaintenanceCapacity - maintenance.Committed,
                 maintenance
@@ -308,7 +310,7 @@ namespace Rebellion.Simulation
         )
         {
             GameConfig.ProductionConfig config = game.Config.Production;
-            int facilityCapacity = faction.Settings.ResourceProcessingPointsPerFacility;
+            int facilityCapacity = CalculateMaintenanceCapacityPerFacility(game, faction);
             int scaledCapacity = Math.Max(
                 1,
                 facilityCapacity * config.ResourceMaintenanceLoadPercent / _percentScale
@@ -418,6 +420,7 @@ namespace Rebellion.Simulation
                 return 0;
 
             List<int> allocations = CalculateMaintenanceAllocations(
+                _game,
                 facilities,
                 maintenanceDemand,
                 faction
@@ -437,17 +440,19 @@ namespace Rebellion.Simulation
         /// <summary>
         /// Calculates the maintenance allocations produced by the resource-processing rebalance.
         /// </summary>
+        /// <param name="game">The game defining the faction's effective capacity.</param>
         /// <param name="facilities">The facilities receiving maintenance demand.</param>
         /// <param name="maintenanceDemand">The faction's committed maintenance demand.</param>
         /// <param name="faction">The faction defining per-facility capacity.</param>
         /// <returns>The rebalanced allocations in matching facility order.</returns>
         internal static List<int> CalculateMaintenanceAllocations(
+            GameRoot game,
             IReadOnlyList<Building> facilities,
             int maintenanceDemand,
             Faction faction
         )
         {
-            int facilityCapacity = faction.Settings.ResourceProcessingPointsPerFacility;
+            int facilityCapacity = CalculateMaintenanceCapacityPerFacility(game, faction);
             List<int> allocations = facilities
                 .Select(facility =>
                     Math.Clamp(facility.ResourceMaintenanceAllocation, 0, facilityCapacity)
@@ -563,7 +568,7 @@ namespace Rebellion.Simulation
         /// <param name="mineCount">The projected usable mine count.</param>
         /// <param name="refineryCount">The projected active refinery count.</param>
         /// <returns>The projected maintenance capacity.</returns>
-        private static int CalculateProjectedMaintenanceCapacity(
+        private int CalculateProjectedMaintenanceCapacity(
             Faction faction,
             int mineCount,
             int refineryCount
@@ -573,7 +578,41 @@ namespace Rebellion.Simulation
                 faction.GetTotalAvailableResourceNodes(),
                 Math.Min(mineCount, refineryCount)
             );
-            return materialCapacity * faction.Settings.ResourceProcessingPointsPerFacility;
+            return materialCapacity * CalculateMaintenanceCapacityPerFacility(_game, faction);
+        }
+
+        /// <summary>
+        /// Calculates effective maintenance capacity after applying the faction's difficulty bonus.
+        /// </summary>
+        /// <param name="game">The game defining the active difficulty and faction controller.</param>
+        /// <param name="faction">The faction whose capacity is calculated.</param>
+        /// <returns>The effective maintenance capacity.</returns>
+        internal static int CalculateMaintenanceCapacity(GameRoot game, Faction faction)
+        {
+            if (game == null || faction == null)
+                return 0;
+
+            return faction.GetTotalAvailableMaterialsRaw()
+                * CalculateMaintenanceCapacityPerFacility(game, faction);
+        }
+
+        /// <summary>
+        /// Calculates effective processing points supplied by one paired resource facility.
+        /// </summary>
+        /// <param name="game">The game defining the active difficulty and faction controller.</param>
+        /// <param name="faction">The faction receiving the processing capacity.</param>
+        /// <returns>The effective processing points per facility.</returns>
+        internal static int CalculateMaintenanceCapacityPerFacility(GameRoot game, Faction faction)
+        {
+            if (game == null || faction == null)
+                return 0;
+
+            int baseCapacity = Math.Max(0, faction.Settings.ResourceProcessingPointsPerFacility);
+            int capacityPercent = Math.Max(
+                0,
+                game.GetDifficultyModifier(faction).MaintenanceCapacityPercent
+            );
+            return IntegerMath.ScaleByPercent(baseCapacity, capacityPercent);
         }
 
         /// <summary>

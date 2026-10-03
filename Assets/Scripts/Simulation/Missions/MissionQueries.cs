@@ -383,7 +383,7 @@ namespace Rebellion.Simulation
                 foreach (int decoyIndex in encounterDecoyIndexes)
                 {
                     diversionProbabilities[decoyIndex, detectorIndex] = Math.Clamp(
-                        mission.GetDecoyProbability(allDecoys[decoyIndex], detector, _game, planet)
+                        GetDecoyProbability(mission, allDecoys[decoyIndex], detector, planet)
                             / 100d,
                         0,
                         1
@@ -739,10 +739,10 @@ namespace Rebellion.Simulation
                     {
                         double selectedProbability = probability / selectableDecoys.Count;
                         double diversionProbability = Math.Clamp(
-                            mission.GetDecoyProbability(
+                            GetDecoyProbability(
+                                mission,
                                 allDecoys[decoyIndex],
                                 detectors[detectorIndex],
-                                _game,
                                 planet
                             ) / 100d,
                             0,
@@ -1019,6 +1019,37 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
+        /// Returns the probability that one decoy diverts one detector.
+        /// </summary>
+        /// <param name="mission">The mission assigning the decoy.</param>
+        /// <param name="decoy">The decoy participant to evaluate.</param>
+        /// <param name="detector">The detector being diverted.</param>
+        /// <param name="encounterPlanet">The planet where the encounter occurs.</param>
+        /// <returns>The decoy success probability.</returns>
+        internal int GetDecoyProbability(
+            Mission mission,
+            IMissionParticipant decoy,
+            ISceneNode detector,
+            Planet encounterPlanet = null
+        )
+        {
+            if (mission == null || decoy == null || detector == null)
+                return 0;
+
+            GameConfig.MissionProbabilityTablesConfig missionTables = GetMissionTables();
+            Officer commander = mission.FindDetectorCommander(detector, encounterPlanet);
+            int score =
+                decoy.GetEffectiveRating(SkillRating.Espionage)
+                - GetEffectiveDetectionRating(detector)
+                - GetScaledCommanderEspionage(commander, missionTables.DecoyDefenderScalingPercent);
+            Dictionary<int, int> table =
+                detector.GetParentOfType<Fleet>() != null
+                    ? missionTables.FleetDecoy
+                    : missionTables.PlanetaryDecoy;
+            return LookupProbability(table, score);
+        }
+
+        /// <summary>
         /// Returns the configured foil-chance adjustment for the mission owner.
         /// </summary>
         /// <param name="mission">The mission whose owner receives the adjustment.</param>
@@ -1079,9 +1110,29 @@ namespace Rebellion.Simulation
             Officer commander = mission.FindDetectorCommander(detector, encounterPlanet);
             return GetAverageEspionage(participants)
                 - GetScaledCommanderEspionage(commander, missionTables.FoilDefenderScalingPercent)
-                - GetDetectorRating(detector)
+                - GetEffectiveDetectionRating(detector)
                 - participants.OfType<SpecialForces>().Count()
                 - missionTables.FoilFlatScoreAdjustment;
+        }
+
+        /// <summary>
+        /// Returns a detector's authored rating after applying its faction's difficulty modifier.
+        /// </summary>
+        /// <param name="detector">The detector whose effective rating is requested.</param>
+        /// <returns>The difficulty-adjusted detection rating.</returns>
+        private int GetEffectiveDetectionRating(ISceneNode detector)
+        {
+            int authoredRating = detector switch
+            {
+                Regiment regiment => regiment.DetectionRating,
+                Starfighter starfighter => starfighter.DetectionRating,
+                CapitalShip capitalShip => capitalShip.DetectionRating,
+                _ => 0,
+            };
+            int multiplier = _game
+                .GetDifficultyModifier(detector?.GetOwnerInstanceID())
+                .DetectionRatingMultiplier;
+            return authoredRating * multiplier;
         }
 
         /// <summary>
@@ -1202,20 +1253,6 @@ namespace Rebellion.Simulation
                     detectors.Add(candidate);
             }
         }
-
-        /// <summary>
-        /// Returns the authored detection rating for a detector unit.
-        /// </summary>
-        /// <param name="detector">The detector unit.</param>
-        /// <returns>The detector's authored rating.</returns>
-        private static int GetDetectorRating(ISceneNode detector) =>
-            detector switch
-            {
-                Regiment regiment => regiment.DetectionRating,
-                Starfighter starfighter => starfighter.DetectionRating,
-                CapitalShip capitalShip => capitalShip.DetectionRating,
-                _ => 0,
-            };
 
         /// <summary>
         /// Returns the configured evasion probability for a confronted participant.

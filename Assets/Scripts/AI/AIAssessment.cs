@@ -231,8 +231,9 @@ namespace Rebellion.AI
                     .ToList()
                 ?? new List<string>();
             int availableMaterials = faction?.GetTotalAvailableMaterialsRaw() ?? 0;
-            MaintenanceCapacity =
-                availableMaterials * (faction?.Settings?.ResourceProcessingPointsPerFacility ?? 0);
+            int maintenanceCapacityPerFacility =
+                ResourceProductionQueries.CalculateMaintenanceCapacityPerFacility(game, faction);
+            MaintenanceCapacity = availableMaterials * maintenanceCapacityPerFacility;
             ProjectedMaintenanceHeadroom =
                 MaintenanceCapacity - (faction?.GetTotalProjectedMaintenanceCost() ?? 0);
             int projectedMaterials = Math.Min(
@@ -243,7 +244,7 @@ namespace Rebellion.AI
                 )
             );
             ProjectedEconomyMaintenanceHeadroom =
-                projectedMaterials * (faction?.Settings?.ResourceProcessingPointsPerFacility ?? 0)
+                projectedMaterials * maintenanceCapacityPerFacility
                 - (faction?.GetTotalProjectedMaintenanceCost() ?? 0);
             RefinedMaterialSupply =
                 availableMaterials * (faction?.Settings?.RefinementMultiplier ?? 0);

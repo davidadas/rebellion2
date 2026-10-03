@@ -94,6 +94,15 @@ public sealed class GameFlowController : MonoBehaviour
     /// </summary>
     private void Update()
     {
+        if (
+            activeSession == null
+            || AppBootstrap.Instance?.GetRuntime()?.GetActiveGameSession() != activeSession
+        )
+        {
+            DisposeActiveTick();
+            return;
+        }
+
         if (activeTick != null)
         {
             AdvanceActiveTick();
