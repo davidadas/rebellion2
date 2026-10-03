@@ -75,6 +75,46 @@ namespace Rebellion.Tests.AI
         }
 
         [Test]
+        public void Constructor_HardAiMaintenanceBonus_CachesEffectiveCapacity()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Summary = new GameSummary { Difficulty = GameDifficulty.Hard };
+            game.SetFactionController(empire.InstanceID, "EMPIRE-AI", PlayerControllerType.AI);
+            game.Config.DifficultyModifiers[GameDifficulty.Hard] = new DifficultyModifiers
+            {
+                MaintenanceCapacityPercent = 150,
+            };
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "owned",
+                empire.InstanceID,
+                rawResourceNodes: 1
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "mine",
+                BuildingType.Mine,
+                ManufacturingType.Building
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "refinery",
+                BuildingType.Refinery,
+                ManufacturingType.Building
+            );
+
+            AIAssessment assessment = new AIAssessment(game, empire, game.Galaxy);
+
+            Assert.AreEqual(75, assessment.MaintenanceCapacity);
+            Assert.AreEqual(75, assessment.ProjectedMaintenanceHeadroom);
+            Assert.AreEqual(75, assessment.ProjectedEconomyMaintenanceHeadroom);
+        }
+
+        [Test]
         public void GetAvailableProductionLaneCount_WithPartiallyUsedStack_ReturnsFreeLanes()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);

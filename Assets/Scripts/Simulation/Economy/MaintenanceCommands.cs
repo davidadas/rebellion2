@@ -107,7 +107,7 @@ namespace Rebellion.Simulation
         /// <param name="results">Result list to append to.</param>
         internal void ProcessFactionMaintenance(Faction faction, List<GameResult> results)
         {
-            int capacity = faction.MaintenanceCapacity;
+            int capacity = ResourceProductionQueries.CalculateMaintenanceCapacity(_game, faction);
             int required = faction.GetTotalProjectedMaintenanceCost();
 
             if (!IsInMaintenanceShortfall(required, capacity))

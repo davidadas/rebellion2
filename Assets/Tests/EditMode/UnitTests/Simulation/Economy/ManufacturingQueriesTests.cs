@@ -144,6 +144,51 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void CanStartManufacturing_HardAiMaintenanceBonus_AllowsBonusHeadroom()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Faction empire = game.GetFactions().Single();
+            empire.Settings.ResourceProcessingPointsPerFacility = 50;
+            game.Summary = new GameSummary { Difficulty = GameDifficulty.Hard };
+            game.SetFactionController(empire.InstanceID, "EMPIRE-AI", PlayerControllerType.AI);
+            game.Config.DifficultyModifiers[GameDifficulty.Hard] = new DifficultyModifiers
+            {
+                MaintenanceCapacityPercent = 150,
+            };
+            Planet planet = CreateOrderTestShipyardPlanet(game, "p1", empire.InstanceID);
+            game.AttachNode(
+                new Building
+                {
+                    InstanceID = "mine",
+                    OwnerInstanceID = empire.InstanceID,
+                    BuildingType = BuildingType.Mine,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                planet
+            );
+            game.AttachNode(
+                new Building
+                {
+                    InstanceID = "refinery",
+                    OwnerInstanceID = empire.InstanceID,
+                    BuildingType = BuildingType.Refinery,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                planet
+            );
+
+            bool canStart = new ManufacturingQueries(game).CanStartManufacturing(
+                planet,
+                CreateOrderTestCapitalShipTemplate("ship", "Ship", maintenanceCost: 60),
+                planet,
+                1,
+                empire.InstanceID
+            );
+
+            Assert.IsTrue(canStart);
+        }
+
+        [Test]
         public void CanStartManufacturing_SpecialForcesDestinationFleetHasAvailableShip_ReturnsTrue()
         {
             GameRoot game = CreateOrderTestGame();

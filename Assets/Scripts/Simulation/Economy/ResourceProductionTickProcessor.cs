@@ -68,8 +68,8 @@ namespace Rebellion.Simulation
             );
 
             int maintenanceDemand = faction.GetTotalProjectedMaintenanceCost();
-            RebalanceResourceAllocations(mines, maintenanceDemand, faction);
-            RebalanceResourceAllocations(refineries, maintenanceDemand, faction);
+            RebalanceResourceAllocations(game, mines, maintenanceDemand, faction);
+            RebalanceResourceAllocations(game, refineries, maintenanceDemand, faction);
 
             foreach (Building mine in mines)
                 ProcessMine(game, faction, mine);
@@ -231,10 +231,12 @@ namespace Rebellion.Simulation
         /// <summary>
         /// Rebalances one resource lane toward the faction's maintenance demand.
         /// </summary>
+        /// <param name="game">The game defining the faction's effective capacity.</param>
         /// <param name="facilities">The mines or refineries to rebalance.</param>
         /// <param name="maintenanceDemand">The faction's reserved maintenance demand.</param>
         /// <param name="faction">The owning faction.</param>
         private static void RebalanceResourceAllocations(
+            GameRoot game,
             List<Building> facilities,
             int maintenanceDemand,
             Faction faction
@@ -244,6 +246,7 @@ namespace Rebellion.Simulation
                 return;
 
             List<int> allocations = ResourceProductionQueries.CalculateMaintenanceAllocations(
+                game,
                 facilities,
                 maintenanceDemand,
                 faction

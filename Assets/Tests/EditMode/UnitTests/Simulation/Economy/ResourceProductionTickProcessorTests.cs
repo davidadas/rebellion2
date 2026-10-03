@@ -430,6 +430,33 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void ProcessTick_HardAiMaintenanceBonus_IncreasesFacilityAllocationCapacity()
+        {
+            _game.Summary.Difficulty = GameDifficulty.Hard;
+            _game.Config.DifficultyModifiers[GameDifficulty.Hard] = new DifficultyModifiers
+            {
+                MaintenanceCapacityPercent = 150,
+            };
+            Building mine = AddCompleteBuilding(_planet, BuildingType.Mine, processRate: 2);
+            Building refinery = AddCompleteBuilding(_planet, BuildingType.Refinery, processRate: 2);
+            _game.AttachNode(
+                new Regiment
+                {
+                    InstanceID = "REGIMENT1",
+                    OwnerInstanceID = _faction.InstanceID,
+                    MaintenanceCost = 60,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                _planet
+            );
+
+            _system.ProcessTick(_game);
+
+            Assert.AreEqual(60, mine.ResourceMaintenanceAllocation);
+            Assert.AreEqual(60, refinery.ResourceMaintenanceAllocation);
+        }
+
+        [Test]
         public void ProcessTick_MineAndRefineryOnDifferentPlanets_ShareMaintenanceDemand()
         {
             Planet secondPlanet = CreateOwnedPlanet("PLANET2");

@@ -110,6 +110,29 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void GetSummary_HardAiMaintenanceBonus_IncreasesEffectiveCapacity()
+        {
+            _game.Summary = new GameSummary { Difficulty = GameDifficulty.Hard };
+            _game.SetFactionController(_faction.InstanceID, "FACTION1-AI", PlayerControllerType.AI);
+            _game.Config.DifficultyModifiers[GameDifficulty.Hard] = new DifficultyModifiers
+            {
+                MaintenanceCapacityPercent = 150,
+            };
+            Planet planet = AddPlanet("PLANET1", rawResourceNodes: 1);
+            AddBuilding(planet, BuildingType.Mine, processRate: 1);
+            AddBuilding(planet, BuildingType.Refinery, processRate: 1);
+
+            ResourceEconomySummary summary = new ResourceProductionQueries(_game).GetSummary(
+                _faction
+            );
+
+            Assert.AreEqual(50, _faction.MaintenanceCapacity);
+            Assert.AreEqual(75, summary.MaintenanceHeadroom);
+            Assert.AreEqual(75, summary.DeliveredMaintenanceHeadroom);
+            Assert.AreEqual(75, summary.ProjectedMaintenanceHeadroom);
+        }
+
+        [Test]
         public void GetSummary_CommittedResourceFacilities_ProjectsSteadyOutputAndCapacity()
         {
             Planet planet = AddPlanet("PLANET1", rawResourceNodes: 3);

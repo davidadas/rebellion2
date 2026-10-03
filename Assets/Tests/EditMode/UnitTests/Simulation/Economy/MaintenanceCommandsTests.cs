@@ -244,6 +244,49 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void ProcessTick_HardAiMaintenanceBonus_PreventsBaseCapacityShortfall()
+        {
+            GameRoot game = CreateGame();
+            Faction empire = CreateFaction("empire", "Empire");
+            game.GetFactions().Add(empire);
+            game.Summary = new GameSummary { Difficulty = GameDifficulty.Hard };
+            game.SetFactionController(empire.InstanceID, "EMPIRE-AI", PlayerControllerType.AI);
+            game.Config.DifficultyModifiers[GameDifficulty.Hard] = new DifficultyModifiers
+            {
+                MaintenanceCapacityPercent = 150,
+            };
+            PlanetSector sector = new PlanetSector { InstanceID = "s1" };
+            Planet planet = CreatePlanet("p1", "Coruscant", empire.InstanceID);
+            planet.NumRawResourceNodes = 1;
+            game.AttachNode(sector, game.Galaxy);
+            game.AttachNode(planet, sector);
+            game.AttachNode(CreateMine("mine", empire.InstanceID), planet);
+            game.AttachNode(CreateRefinery("refinery", empire.InstanceID), planet);
+            game.AttachNode(
+                new Regiment
+                {
+                    InstanceID = "regiment",
+                    OwnerInstanceID = empire.InstanceID,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                    MaintenanceCost = 60,
+                },
+                planet
+            );
+            MaintenanceCommands maintenance = new MaintenanceCommands(
+                game,
+                new FixedRNG(),
+                new FleetCommands(game)
+            );
+
+            IReadOnlyList<GameResult> results = new MaintenanceTickProcessor(
+                maintenance
+            ).ProcessTick(game);
+
+            Assert.IsFalse(results.OfType<MaintenanceRequiredResult>().Any());
+            Assert.IsNotNull(game.GetSceneNodeByInstanceID<Regiment>("regiment"));
+        }
+
+        [Test]
         public void ProcessTick_Shortfall_AfterAutoscrapInterval_ScrapsOneUnit()
         {
             GameRoot game = CreateGame();

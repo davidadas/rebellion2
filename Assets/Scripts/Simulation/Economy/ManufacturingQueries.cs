@@ -533,10 +533,10 @@ namespace Rebellion.Simulation
             if (maintenanceCost <= 0)
                 return true;
 
-            return faction.ProjectedMaintenanceHeadroom
-                    + releasedMaintenance
-                    - maintenanceCost * count
-                >= 0;
+            int projectedHeadroom =
+                ResourceProductionQueries.CalculateMaintenanceCapacity(_game, faction)
+                - faction.GetTotalProjectedMaintenanceCost();
+            return projectedHeadroom + releasedMaintenance - maintenanceCost * count >= 0;
         }
     }
 }

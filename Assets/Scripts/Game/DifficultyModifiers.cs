@@ -20,6 +20,8 @@ namespace Rebellion.Game
 
         public int RefineryOutputPercent { get; set; } = 100;
 
+        public int MaintenanceCapacityPercent { get; set; } = 100;
+
         public int ManufacturingSpeedPercent { get; set; } = 100;
     }
 }
