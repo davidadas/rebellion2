@@ -804,6 +804,18 @@ namespace Rebellion.Game
         [PersistableObject]
         public class GarrisonConfig
         {
+            public int AutomatedOrderQuantity { get; set; }
+
+            public int MinimumGarrisonTarget { get; set; }
+
+            public int ResourceFacilitiesPerGarrison { get; set; }
+
+            public int TieBreakRollMinimum { get; set; }
+
+            public int TieBreakRollMaximum { get; set; }
+
+            public int TieBreakReplacementThreshold { get; set; }
+
             public int SupportThreshold { get; set; }
 
             public int GarrisonDivisor { get; set; }

@@ -13,8 +13,11 @@ namespace Rebellion.Simulation
     /// </summary>
     public sealed class FactionAutomationCommands
     {
+        private const int _automatedOrderQuantity = 1;
+
         private readonly GameRoot _game;
         private readonly GameDataCatalog _gameData;
+        private readonly GarrisonAutomationCommands _garrisonAutomation;
         private readonly ManufacturingCommands _manufacturing;
 
         /// <summary>
@@ -23,16 +26,20 @@ namespace Rebellion.Simulation
         /// <param name="game">The active game.</param>
         /// <param name="gameData">Templates available to the selected content pack.</param>
         /// <param name="manufacturing">The manufacturing commands used to place orders.</param>
+        /// <param name="garrisonAutomation">Queues advisor-managed garrison regiment orders.</param>
         public FactionAutomationCommands(
             GameRoot game,
             GameDataCatalog gameData,
-            ManufacturingCommands manufacturing
+            ManufacturingCommands manufacturing,
+            GarrisonAutomationCommands garrisonAutomation
         )
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
             _gameData = gameData ?? throw new ArgumentNullException(nameof(gameData));
             _manufacturing =
                 manufacturing ?? throw new ArgumentNullException(nameof(manufacturing));
+            _garrisonAutomation =
+                garrisonAutomation ?? throw new ArgumentNullException(nameof(garrisonAutomation));
         }
 
         /// <summary>
@@ -45,66 +52,10 @@ namespace Rebellion.Simulation
                 throw new ArgumentNullException(nameof(faction));
 
             if (faction.ManageGarrisons)
-                FillGarrisonManufacturingCapacity(faction);
+                _garrisonAutomation.TryQueueRegiment(faction);
 
             if (faction.ManageProduction)
                 FillProductionManufacturingCapacity(faction);
-        }
-
-        /// <summary>
-        /// Fills the faction's currently available troop-manufacturing capacity.
-        /// </summary>
-        /// <param name="faction">The faction delegating garrison management.</param>
-        private void FillGarrisonManufacturingCapacity(Faction faction)
-        {
-            List<Planet> ownedPlanets = GetOwnedPlanets(faction);
-            int availableCapacity = ownedPlanets
-                .Where(planet => !planet.IsManufacturingReserved(ManufacturingType.Troop))
-                .Sum(planet => planet.GetAvailableManufacturingCapacity(ManufacturingType.Troop));
-
-            for (int orderIndex = 0; orderIndex < availableCapacity; orderIndex++)
-            {
-                if (!TryQueueGarrisonRegiment(faction, ownedPlanets))
-                    break;
-            }
-        }
-
-        /// <summary>
-        /// Queues one regiment for the faction's highest-priority garrison shortage.
-        /// </summary>
-        /// <param name="faction">The faction delegating garrison management.</param>
-        /// <param name="ownedPlanets">The faction's colonized planets.</param>
-        /// <returns>True when an order was queued.</returns>
-        private bool TryQueueGarrisonRegiment(Faction faction, List<Planet> ownedPlanets)
-        {
-            Planet destination = ownedPlanets
-                .Select(planet => new
-                {
-                    Planet = planet,
-                    Deficit = GetGarrisonTarget(planet, faction)
-                        - CountFactionRegiments(planet, faction),
-                })
-                .Where(candidate => candidate.Deficit > 0)
-                .OrderByDescending(candidate => candidate.Planet.IsInUprising)
-                .ThenByDescending(candidate => candidate.Deficit)
-                .ThenByDescending(candidate => HasManufacturingFacilities(candidate.Planet))
-                .ThenBy(candidate => candidate.Planet.InstanceID, StringComparer.Ordinal)
-                .Select(candidate => candidate.Planet)
-                .FirstOrDefault();
-            if (destination == null)
-                return false;
-
-            Regiment template = GetAvailableRegiment(faction);
-            Planet producer = FindProducer(ownedPlanets, ManufacturingType.Troop);
-            return template != null
-                && producer != null
-                && _manufacturing.StartManufacturing(
-                    producer,
-                    template,
-                    destination,
-                    1,
-                    faction.InstanceID
-                );
         }
 
         /// <summary>
@@ -170,7 +121,7 @@ namespace Rebellion.Simulation
                     producer,
                     template,
                     destination,
-                    1,
+                    _automatedOrderQuantity,
                     faction.InstanceID
                 );
         }
@@ -194,83 +145,6 @@ namespace Rebellion.Simulation
                 )
                 .OrderBy(planet => planet.InstanceID, StringComparer.Ordinal)
                 .ToList();
-        }
-
-        /// <summary>
-        /// Calculates the advisor's desired garrison for one planet.
-        /// </summary>
-        /// <param name="planet">The planet to protect.</param>
-        /// <param name="faction">The controlling faction.</param>
-        /// <returns>The desired regiment count.</returns>
-        private int GetGarrisonTarget(Planet planet, Faction faction)
-        {
-            int required = UprisingQueries.CalculateGarrisonRequirement(
-                planet,
-                faction,
-                _game.Config.AI.Garrison
-            );
-            int manufacturingDefense = HasManufacturingFacilities(planet) ? 1 : 0;
-            return Math.Max(1, required) + manufacturingDefense;
-        }
-
-        /// <summary>
-        /// Counts stationary regiments owned by the controlling faction, including pending orders.
-        /// </summary>
-        /// <param name="planet">The planet to inspect.</param>
-        /// <param name="faction">The controlling faction.</param>
-        /// <returns>The regiment count.</returns>
-        private static int CountFactionRegiments(Planet planet, Faction faction)
-        {
-            return planet
-                .GetAllRegiments()
-                .Count(regiment =>
-                    string.Equals(
-                        regiment.GetOwnerInstanceID(),
-                        faction.InstanceID,
-                        StringComparison.Ordinal
-                    )
-                    && regiment.Movement == null
-                );
-        }
-
-        /// <summary>
-        /// Returns whether a planet contains strategically important manufacturing capacity.
-        /// </summary>
-        /// <param name="planet">The planet to inspect.</param>
-        /// <returns>True when a manufacturing facility is present.</returns>
-        private static bool HasManufacturingFacilities(Planet planet)
-        {
-            return planet
-                .GetChildren<Building>()
-                .Any(building =>
-                    building.BuildingType
-                        is BuildingType.ConstructionFacility
-                            or BuildingType.Shipyard
-                            or BuildingType.TrainingFacility
-                );
-        }
-
-        /// <summary>
-        /// Selects an owned planet with free production capacity.
-        /// </summary>
-        /// <param name="planets">Candidate planets.</param>
-        /// <param name="manufacturingType">The required production type.</param>
-        /// <returns>The selected producer, or null.</returns>
-        private static Planet FindProducer(
-            IEnumerable<Planet> planets,
-            ManufacturingType manufacturingType
-        )
-        {
-            return planets
-                .Where(planet =>
-                    !planet.IsManufacturingReserved(manufacturingType)
-                    && planet.GetAvailableManufacturingCapacity(manufacturingType) > 0
-                )
-                .OrderByDescending(planet =>
-                    planet.GetAvailableManufacturingCapacity(manufacturingType)
-                )
-                .ThenBy(planet => planet.InstanceID, StringComparer.Ordinal)
-                .FirstOrDefault();
         }
 
         /// <summary>
@@ -362,28 +236,6 @@ namespace Rebellion.Simulation
             }
 
             return queue.OfType<Building>().All(building => building.BuildingType == buildingType);
-        }
-
-        /// <summary>
-        /// Selects the faction content's configured standard garrison regiment.
-        /// </summary>
-        /// <param name="faction">The faction placing the order.</param>
-        /// <returns>The selected regiment template, or null.</returns>
-        private Regiment GetAvailableRegiment(Faction faction)
-        {
-            Faction factionTemplate = _gameData.Factions.FirstOrDefault(template =>
-                string.Equals(template.InstanceID, faction.InstanceID, StringComparison.Ordinal)
-            );
-            string garrisonTroopTypeId = factionTemplate?.GarrisonTroopTypeID;
-            if (string.IsNullOrEmpty(garrisonTroopTypeId))
-                return null;
-
-            int unlockedOrder = faction.GetHighestUnlockedOrder(ManufacturingType.Troop);
-            return _gameData.Regiments.FirstOrDefault(template =>
-                string.Equals(template.TypeID, garrisonTroopTypeId, StringComparison.Ordinal)
-                && IManufacturable.CanBeManufacturedBy(template, faction.InstanceID)
-                && template.ResearchOrder <= unlockedOrder
-            );
         }
 
         /// <summary>
