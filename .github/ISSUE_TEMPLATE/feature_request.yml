@@ -2,43 +2,10 @@ name: Request a Feature
 description: Suggest a new feature or improvement for Rebellion 2.
 title: "[Feature] "
 body:
-  - type: markdown
-    attributes:
-      value: |
-        Thanks for suggesting an improvement to Rebellion 2. Please explain the need and the result you would like to see.
-
-  - type: textarea
-    id: problem
-    attributes:
-      label: What problem would this solve?
-      description: Describe the limitation, frustration, or opportunity behind the request.
-    validations:
-      required: true
-
   - type: textarea
     id: proposal
     attributes:
       label: Proposed feature
-      description: Describe how you would like the game or launcher to behave.
+      description: Describe the feature and how you would like the game or launcher to behave.
     validations:
       required: true
-
-  - type: textarea
-    id: alternatives
-    attributes:
-      label: Alternatives considered
-      description: Describe any alternative solutions or workarounds you considered.
-
-  - type: textarea
-    id: additional_context
-    attributes:
-      label: Additional context
-      description: Add screenshots, mockups, or anything else that may help explain the request.
-
-  - type: checkboxes
-    id: existing_issues
-    attributes:
-      label: Existing issues
-      options:
-        - label: I searched the open and closed issues and did not find an existing request for this feature.
-          required: true
