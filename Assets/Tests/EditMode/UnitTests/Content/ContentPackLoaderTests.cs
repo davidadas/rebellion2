@@ -56,20 +56,6 @@ namespace Rebellion.Tests.Content
             </xs:sequence>
           </xs:complexType>
         </xs:element>
-        <xs:element name=""AI"" minOccurs=""0"">
-          <xs:complexType>
-            <xs:all>
-              <xs:element name=""Garrison"">
-                <xs:complexType>
-                  <xs:all>
-                    <xs:element name=""TieBreakRollMinimum"" type=""xs:nonNegativeInteger""/>
-                    <xs:element name=""TieBreakRollMaximum"" type=""xs:positiveInteger""/>
-                  </xs:all>
-                </xs:complexType>
-              </xs:element>
-            </xs:all>
-          </xs:complexType>
-        </xs:element>
       </xs:all>
     </xs:complexType>
   </xs:element>
@@ -190,23 +176,6 @@ namespace Rebellion.Tests.Content
                 37,
                 config.DifficultyModifiers[GameDifficulty.Hard].MissionExecutionSpeedIncreasePercent
             );
-        }
-
-        [Test]
-        public void LoadGameConfig_GarrisonTieBreakMinimumExceedsMaximum_RejectsConfiguration()
-        {
-            const string invalidDefaultsXml =
-                "<GameConfig><Movement><DistanceDivisor>5</DistanceDivisor></Movement>"
-                + "<Research><BaseResearchPoints>1</BaseResearchPoints></Research>"
-                + "<AI><Garrison><TieBreakRollMinimum>10</TieBreakRollMinimum>"
-                + "<TieBreakRollMaximum>5</TieBreakRollMaximum></Garrison></AI></GameConfig>";
-
-            InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
-                LoadGameConfigFromFixture(invalidDefaultsXml, packOverrideXml: null)
-            );
-
-            StringAssert.Contains("TieBreakRollMinimum", exception.Message);
-            StringAssert.Contains("TieBreakRollMaximum", exception.Message);
         }
 
         /// <summary>
