@@ -969,7 +969,7 @@ public sealed class StrategyController
     /// </summary>
     private void Update()
     {
-        if (gameManager == null || !contentReady)
+        if (gameManager == null || !contentReady || runtime?.GetActiveGameSession() != session)
             return;
 
         CaptureChangedWindows();
