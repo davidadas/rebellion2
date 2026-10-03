@@ -362,6 +362,16 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             GameFleet secondFleet = CreateFleet("second-fleet", "Second Fleet", out _);
             _planet.Planet.AddChild(secondFleet);
             AttachFleetGraph(_planet.Planet, secondFleet);
+            int completedDragCount = 0;
+            _controller.Initialize(
+                _actions,
+                _actions,
+                _actions,
+                _actions,
+                (_, _) => { },
+                _ => { },
+                _ => completedDragCount++
+            );
             FleetWindowView view = OpenWindow(out UIWindow window);
             UIComponentTestHelper.InvokeLifecycle(view, "Awake");
             _controller.RenderWindow(view, window, true);
@@ -388,6 +398,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreEqual(1, _controller.GetSelectedFleetIndex(view));
             Assert.AreEqual(1, _dirtyCount);
             Assert.AreEqual(1, _selectionRouteRenderCount);
+            Assert.AreEqual(1, completedDragCount);
         }
 
         [Test]

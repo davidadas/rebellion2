@@ -249,6 +249,40 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         }
 
         [Test]
+        public void ItemRelease_DraggableOfficer_CompletesDragCandidate()
+        {
+            int completedDragCount = 0;
+            _controller.Initialize(
+                _testActions,
+                _testActions,
+                _testActions,
+                _testActions,
+                (_, _) => { },
+                _ => { },
+                _ => completedDragCount++
+            );
+            DefenseWindowView view = OpenWindow(out UIWindow window);
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            _controller.RenderWindow(view, window, true);
+            StrategyUnitCardView card = view.GetComponentsInChildren<StrategyUnitCardView>(true)
+                .Single(item => item.gameObject.activeInHierarchy);
+            UIComponentTestHelper.InvokeLifecycle(card, "Awake");
+            RectTransform entityRect = card.transform.Find("EntityImage") as RectTransform;
+            PointerEventData eventData = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Left,
+                pointerCurrentRaycast = new RaycastResult { gameObject = entityRect.gameObject },
+                pointerPressRaycast = new RaycastResult { gameObject = entityRect.gameObject },
+            };
+            UIPointerGestureRelay pointerGestures = card.GetComponent<UIPointerGestureRelay>();
+
+            pointerGestures.OnPointerDown(eventData);
+            pointerGestures.OnPointerClick(eventData);
+
+            Assert.AreEqual(1, completedDragCount);
+        }
+
+        [Test]
         public void WindowDrop_ActiveTargeting_SelectsRepresentedPlanet()
         {
             DefenseWindowView view = OpenWindow(out UIWindow window);
