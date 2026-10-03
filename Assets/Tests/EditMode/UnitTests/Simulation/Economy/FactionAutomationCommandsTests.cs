@@ -11,6 +11,7 @@ using Rebellion.Game.Messages;
 using Rebellion.Game.Units;
 using Rebellion.Generation;
 using Rebellion.Simulation;
+using Rebellion.Util.Random;
 
 namespace Rebellion.Tests.Simulation
 {
@@ -189,6 +190,44 @@ namespace Rebellion.Tests.Simulation
             _automation.ProcessFaction(_faction);
 
             Assert.AreEqual(3, _destination.GetAllRegiments().Count);
+        }
+
+        [Test]
+        public void ProcessFaction_ConfiguredOrderQuantity_QueuesConfiguredQuantity()
+        {
+            _faction.ManageProduction = false;
+            _game.Config.AI.Garrison.AutomatedOrderQuantity = 2;
+
+            _automation.ProcessFaction(_faction);
+
+            Assert.AreEqual(2, _destination.GetAllRegiments().Count);
+            Assert.AreEqual(2, GetQueueCount(_producer, ManufacturingType.Troop));
+        }
+
+        [Test]
+        public void ProcessFaction_ConfiguredMinimumGarrisonTarget_UsesConfiguredValue()
+        {
+            _faction.ManageProduction = false;
+            _game.Config.AI.Garrison.MinimumGarrisonTarget = 2;
+            AddCompletedRegiment(_destination, "DESTINATION_DEFENSE");
+
+            _automation.ProcessFaction(_faction);
+
+            Assert.AreEqual(2, _destination.GetAllRegiments().Count);
+        }
+
+        [Test]
+        public void ProcessFaction_ConfiguredResourceFacilitiesPerGarrison_UsesConfiguredValue()
+        {
+            _faction.ManageProduction = false;
+            _game.Config.AI.Garrison.ResourceFacilitiesPerGarrison = 1;
+            AddResourceFacility(_destination, "DESTINATION_MINE", BuildingType.Mine);
+            AddResourceFacility(_destination, "DESTINATION_REFINERY", BuildingType.Refinery);
+            AddCompletedRegiment(_destination, "DESTINATION_DEFENSE");
+
+            _automation.ProcessFaction(_faction);
+
+            Assert.AreEqual(2, _destination.GetAllRegiments().Count);
         }
 
         [Test]
@@ -385,6 +424,40 @@ namespace Rebellion.Tests.Simulation
 
             Assert.AreEqual(1, second.GetAllRegiments().Count);
             Assert.IsEmpty(_destination.GetAllRegiments());
+        }
+
+        [Test]
+        public void ProcessFaction_ConfiguredTieBreakRollRange_UsesConfiguredBounds()
+        {
+            _faction.ManageProduction = false;
+            RecordingMinimumRNG random = new RecordingMinimumRNG();
+            _game.Random = random;
+            _game.Config.AI.Garrison.TieBreakRollMinimum = 7;
+            _game.Config.AI.Garrison.TieBreakRollMaximum = 8;
+            _game.Config.AI.Garrison.TieBreakReplacementThreshold = 7;
+            Planet second = CreatePlanet("SECOND", 10, 0);
+            _game.AttachNode(second, _destination.GetParent());
+
+            _automation.ProcessFaction(_faction);
+
+            Assert.AreEqual(1, second.GetAllRegiments().Count);
+            Assert.AreEqual(7, random.LastMinimum);
+            Assert.AreEqual(8, random.LastMaximum);
+        }
+
+        [Test]
+        public void ProcessFaction_ConfiguredTieBreakReplacementThreshold_UsesConfiguredValue()
+        {
+            _faction.ManageProduction = false;
+            _game.Random = new MaximumRNG();
+            _game.Config.AI.Garrison.TieBreakReplacementThreshold = 10;
+            Planet second = CreatePlanet("SECOND", 10, 0);
+            _game.AttachNode(second, _destination.GetParent());
+
+            _automation.ProcessFaction(_faction);
+
+            Assert.AreEqual(1, _destination.GetAllRegiments().Count);
+            Assert.IsEmpty(second.GetAllRegiments());
         }
 
         [Test]
@@ -739,6 +812,12 @@ namespace Rebellion.Tests.Simulation
             config.AI.Garrison.SupportThreshold = 50;
             config.AI.Garrison.GarrisonDivisor = 10;
             config.AI.Garrison.UprisingMultiplier = 2;
+            config.AI.Garrison.AutomatedOrderQuantity = 1;
+            config.AI.Garrison.MinimumGarrisonTarget = 1;
+            config.AI.Garrison.ResourceFacilitiesPerGarrison = 2;
+            config.AI.Garrison.TieBreakRollMinimum = 0;
+            config.AI.Garrison.TieBreakRollMaximum = 10;
+            config.AI.Garrison.TieBreakReplacementThreshold = 5;
             return config;
         }
 
@@ -1040,6 +1119,35 @@ namespace Rebellion.Tests.Simulation
             return new[] { _producer, _destination }.Sum(planet =>
                 planet.GetTotalBuildingTypeCount(buildingType)
             );
+        }
+
+        private sealed class RecordingMinimumRNG : IRandomNumberProvider
+        {
+            public int LastMinimum { get; private set; }
+
+            public int LastMaximum { get; private set; }
+
+            /// <summary>
+            /// Rejects unexpected floating-point random requests.
+            /// </summary>
+            /// <returns>This method does not return.</returns>
+            public double NextDouble()
+            {
+                throw new InvalidOperationException("Unexpected floating-point random request.");
+            }
+
+            /// <summary>
+            /// Records the requested range and returns its minimum value.
+            /// </summary>
+            /// <param name="min">The inclusive minimum.</param>
+            /// <param name="max">The exclusive maximum.</param>
+            /// <returns>The requested minimum.</returns>
+            public int NextInt(int min, int max)
+            {
+                LastMinimum = min;
+                LastMaximum = max;
+                return min;
+            }
         }
     }
 }

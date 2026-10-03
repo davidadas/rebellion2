@@ -518,8 +518,27 @@ public static class ContentPackLoader
                 defaults,
                 LoadXmlDocument(RequirePackFile(fileResolver, packGameConfigPath))
             );
-        return gameConfig as GameConfig
+        GameConfig typedConfig =
+            gameConfig as GameConfig
             ?? throw new InvalidDataException("Failed to deserialize the merged game config.");
+        ValidateGameConfig(typedConfig);
+        return typedConfig;
+    }
+
+    /// <summary>
+    /// Validates relationships between game-config values that XML Schema cannot express.
+    /// </summary>
+    /// <param name="config">The merged game configuration.</param>
+    private static void ValidateGameConfig(GameConfig config)
+    {
+        GameConfig.GarrisonConfig garrison = config.AI.Garrison;
+        if (garrison.TieBreakRollMinimum > garrison.TieBreakRollMaximum)
+        {
+            throw new InvalidDataException(
+                "AI.Garrison.TieBreakRollMinimum must be less than or equal to "
+                    + "AI.Garrison.TieBreakRollMaximum."
+            );
+        }
     }
 
     /// <summary>

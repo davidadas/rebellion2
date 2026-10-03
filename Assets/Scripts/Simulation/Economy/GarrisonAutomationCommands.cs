@@ -13,13 +13,6 @@ namespace Rebellion.Simulation
     /// </summary>
     public sealed class GarrisonAutomationCommands
     {
-        private const int _automatedOrderQuantity = 1;
-        private const int _minimumGarrisonTarget = 1;
-        private const int _resourceFacilitiesPerGarrison = 2;
-        private const int _tieBreakRollMinimum = 0;
-        private const int _tieBreakRollMaximum = 10;
-        private const int _replaceSelectionRollThreshold = 5;
-
         private readonly GameRoot _game;
         private readonly GameDataCatalog _gameData;
         private readonly ManufacturingCommands _manufacturing;
@@ -72,7 +65,7 @@ namespace Rebellion.Simulation
                 producer,
                 template,
                 destination,
-                _automatedOrderQuantity,
+                _game.Config.AI.Garrison.AutomatedOrderQuantity,
                 faction.InstanceID
             );
         }
@@ -170,14 +163,14 @@ namespace Rebellion.Simulation
         {
             GameConfig.GarrisonConfig config = _game.Config.AI.Garrison;
             int support = planet.GetPopularSupport(faction.InstanceID);
-            int supportTarget = _minimumGarrisonTarget;
+            int supportTarget = config.MinimumGarrisonTarget;
             if (support < config.SupportThreshold)
             {
                 supportTarget =
                     (int)
                         Math.Ceiling(
                             (config.SupportThreshold - support) / (double)config.GarrisonDivisor
-                        ) + _minimumGarrisonTarget;
+                        ) + config.MinimumGarrisonTarget;
             }
 
             if (planet.IsInUprising)
@@ -187,7 +180,7 @@ namespace Rebellion.Simulation
                 planet.GetTotalBuildingTypeCount(BuildingType.Mine)
                 + planet.GetTotalBuildingTypeCount(BuildingType.Refinery);
             int facilityTarget =
-                resourceFacilities / _resourceFacilitiesPerGarrison
+                resourceFacilities / config.ResourceFacilitiesPerGarrison
                 + planet.GetTotalBuildingTypeCount(BuildingType.Shipyard)
                 + planet.GetTotalBuildingTypeCount(BuildingType.TrainingFacility)
                 + planet.GetTotalBuildingTypeCount(BuildingType.ConstructionFacility);
@@ -295,12 +288,15 @@ namespace Rebellion.Simulation
 
                 int comparison = rank.CompareTo(selectedRank);
                 bool isBetter = preferGreater ? comparison > 0 : comparison < 0;
+                GameConfig.GarrisonConfig config = _game.Config.AI.Garrison;
                 if (
                     isBetter
                     || (
                         comparison == 0
-                        && _game.Random.NextInt(_tieBreakRollMinimum, _tieBreakRollMaximum)
-                            >= _replaceSelectionRollThreshold
+                        && _game.Random.NextInt(
+                            config.TieBreakRollMinimum,
+                            config.TieBreakRollMaximum
+                        ) >= config.TieBreakReplacementThreshold
                     )
                 )
                 {
