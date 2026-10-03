@@ -191,6 +191,42 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
+        public void Select_MultiSelectModifier_TogglesRequestedMessage()
+        {
+            Message first = CreateMessage("first", "First");
+            Message second = CreateMessage("second", "Second");
+            _session.Reconcile(new[] { first, second });
+            _session.SelectOnly(first);
+
+            _session.Select(second, new SelectionModifierState(true, false));
+            _session.Select(first, new SelectionModifierState(true, false));
+
+            Assert.AreEqual(second.InstanceID, _session.SelectedMessageId);
+            CollectionAssert.AreEquivalent(
+                new[] { second.InstanceID },
+                _session.GetSelectedMessageIDs()
+            );
+        }
+
+        [Test]
+        public void Select_RangeSelectModifier_SelectsContiguousMessages()
+        {
+            Message first = CreateMessage("first", "First");
+            Message second = CreateMessage("second", "Second");
+            Message third = CreateMessage("third", "Third");
+            _session.Reconcile(new[] { first, second, third });
+            _session.SelectOnly(first);
+
+            _session.Select(third, new SelectionModifierState(false, true));
+
+            Assert.AreEqual(third.InstanceID, _session.SelectedMessageId);
+            CollectionAssert.AreEquivalent(
+                new[] { first.InstanceID, second.InstanceID, third.InstanceID },
+                _session.GetSelectedMessageIDs()
+            );
+        }
+
+        [Test]
         public void SelectAll_Messages_SelectsEveryStableIdentityAndPreservesPrimary()
         {
             Message first = CreateMessage("first", "First");
@@ -224,6 +260,33 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.IsNull(_session.SelectedMessageId);
             Assert.IsNull(_session.GetSelectedMessage());
             Assert.IsEmpty(_session.GetSelectedMessageIDs());
+        }
+
+        [Test]
+        public void SelectAdjacentMessage_MiddleSelection_SelectsDisplayedMessageAbove()
+        {
+            Message oldest = CreateMessage("oldest", "Oldest");
+            Message middle = CreateMessage("middle", "Middle");
+            Message newest = CreateMessage("newest", "Newest");
+            _session.Reconcile(new[] { oldest, middle, newest });
+            _session.SelectOnly(middle);
+
+            _session.SelectAdjacentMessage();
+
+            Assert.AreSame(newest, _session.GetSelectedMessage());
+        }
+
+        [Test]
+        public void SelectAdjacentMessage_TopSelection_SelectsDisplayedMessageBelow()
+        {
+            Message oldest = CreateMessage("oldest", "Oldest");
+            Message newest = CreateMessage("newest", "Newest");
+            _session.Reconcile(new[] { oldest, newest });
+            _session.SelectOnly(newest);
+
+            _session.SelectAdjacentMessage();
+
+            Assert.AreSame(oldest, _session.GetSelectedMessage());
         }
 
         [Test]

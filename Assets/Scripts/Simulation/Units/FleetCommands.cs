@@ -5,7 +5,6 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
-using Rebellion.Util.Logging;
 
 namespace Rebellion.Simulation
 {
@@ -110,7 +109,7 @@ namespace Rebellion.Simulation
             _game.AttachNode(fleet, planet);
 
             foreach (Fleet sourceFleet in sourceFleets.Distinct())
-                RemoveIfEmpty(sourceFleet, "merge");
+                RemoveIfEmpty(sourceFleet);
 
             return fleet;
         }
@@ -119,9 +118,8 @@ namespace Rebellion.Simulation
         /// Removes a registered fleet when it is attached and contains no capital ships.
         /// </summary>
         /// <param name="fleet">The fleet or its snapshot.</param>
-        /// <param name="reason">The diagnostic reason for removing the fleet.</param>
         /// <returns>True when the fleet was removed.</returns>
-        public bool RemoveIfEmpty(Fleet fleet, string reason = "empty")
+        public bool RemoveIfEmpty(Fleet fleet)
         {
             Fleet liveFleet = ResolveLiveFleet(fleet);
             if (
@@ -131,9 +129,6 @@ namespace Rebellion.Simulation
             )
                 return false;
 
-            GameLogger.Warning(
-                $"[fleet] removed {liveFleet.InstanceID} role={liveFleet.RoleType} owner={liveFleet.GetOwnerInstanceID()} reason={reason}"
-            );
             _game.DetachNode(liveFleet);
             return true;
         }

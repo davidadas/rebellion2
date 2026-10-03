@@ -329,10 +329,7 @@ internal sealed class DefenseWindowProjector
         }
 
         if (IsItemInTransit(item))
-        {
-            return GetPersonnelEnrouteBackgroundTexture(uiContext, item)
-                ?? uiContext.GetTexture(theme?.EnrouteBackgroundImagePath);
-        }
+            return uiContext.GetTexture(theme?.EnrouteBackgroundImagePath);
 
         return item is Officer or SpecialForces
             ? uiContext.GetTexture(theme?.PersonnelBackgroundImagePath)
@@ -340,35 +337,16 @@ internal sealed class DefenseWindowProjector
     }
 
     /// <summary>
-    /// Resolves the in-transit overlay for a non-personnel unit.
+    /// Resolves the configured in-transit effect for a unit card.
     /// </summary>
     /// <param name="uiContext">The current presentation context.</param>
     /// <param name="item">The represented scene node.</param>
     /// <returns>The optional in-transit overlay.</returns>
     private static Texture GetItemEnrouteOverlayTexture(UIContext uiContext, ISceneNode item)
     {
-        if (!IsItemInTransit(item) || item is Regiment or Officer or SpecialForces)
+        if (!IsItemInTransit(item))
             return null;
         if (item is IManufacturable { ManufacturingStatus: ManufacturingStatus.Building })
-            return null;
-
-        return uiContext.GetTexture(
-            SelectStatusPath(item.InTransitSmallImagePath, item.InTransitImagePath)
-        );
-    }
-
-    /// <summary>
-    /// Resolves the in-transit personnel background for a personnel card.
-    /// </summary>
-    /// <param name="uiContext">The current presentation context.</param>
-    /// <param name="item">The represented scene node.</param>
-    /// <returns>The optional in-transit personnel background.</returns>
-    private static Texture GetPersonnelEnrouteBackgroundTexture(
-        UIContext uiContext,
-        ISceneNode item
-    )
-    {
-        if (item is not Officer and not SpecialForces)
             return null;
 
         return uiContext.GetTexture(

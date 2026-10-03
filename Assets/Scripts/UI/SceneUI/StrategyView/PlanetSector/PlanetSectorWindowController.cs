@@ -88,6 +88,7 @@ public sealed class PlanetSectorWindowController
     private IPlanetSectorWindowActions actions;
     private IStrategyWindowCommandActions commandActions;
     private IStrategyConfirmationActions confirmationActions;
+    private Action<PointerEventData> endItemDrag;
     private IIdleBarTrackingActions idleBarTrackingActions;
     private Action<UIWindow, PointerEventData> startItemDrag;
 
@@ -147,12 +148,14 @@ public sealed class PlanetSectorWindowController
     /// <param name="windowConfirmationActions">The shared confirmation actions.</param>
     /// <param name="trackingActions">Reads and changes idle-bar tracking state.</param>
     /// <param name="beginItemDrag">Begins a strategy item-drag candidate.</param>
+    /// <param name="completeItemDrag">Completes or clears a strategy item-drag candidate.</param>
     public void Initialize(
         IPlanetSectorWindowActions windowActions,
         IStrategyWindowCommandActions windowCommandActions,
         IStrategyConfirmationActions windowConfirmationActions,
         IIdleBarTrackingActions trackingActions,
-        Action<UIWindow, PointerEventData> beginItemDrag
+        Action<UIWindow, PointerEventData> beginItemDrag,
+        Action<PointerEventData> completeItemDrag
     )
     {
         actions = windowActions ?? throw new ArgumentNullException(nameof(windowActions));
@@ -164,6 +167,7 @@ public sealed class PlanetSectorWindowController
         idleBarTrackingActions =
             trackingActions ?? throw new ArgumentNullException(nameof(trackingActions));
         startItemDrag = beginItemDrag ?? throw new ArgumentNullException(nameof(beginItemDrag));
+        endItemDrag = completeItemDrag ?? throw new ArgumentNullException(nameof(completeItemDrag));
     }
 
     /// <summary>
@@ -1102,16 +1106,18 @@ public sealed class PlanetSectorWindowController
     )
     {
         PlanetSectorWindowHit hit = ResolveHit(view, element);
-        if (!targetingController.IsTargeting || hit == null)
-            return;
+        if (targetingController.IsTargeting && hit != null)
+        {
+            StrategyMissionTarget target = CreateTargetForHit(
+                hit,
+                targetingController.ActiveRequest,
+                GetPlayerFleetTarget(hit.Planet)
+            );
+            if (target != null)
+                targetingController.TrySelectTarget(target);
+        }
 
-        StrategyMissionTarget target = CreateTargetForHit(
-            hit,
-            targetingController.ActiveRequest,
-            GetPlayerFleetTarget(hit.Planet)
-        );
-        if (target != null)
-            targetingController.TrySelectTarget(target);
+        endItemDrag(eventData);
     }
 
     /// <summary>
@@ -1364,6 +1370,7 @@ public sealed class PlanetSectorWindowController
             actions == null
             || commandActions == null
             || confirmationActions == null
+            || endItemDrag == null
             || startItemDrag == null
         )
         {

@@ -1,0 +1,45 @@
+name: Report a Bug
+description: Report a reproducible problem with Rebellion 2.
+title: "[Bug] "
+body:
+  - type: input
+    id: game_version
+    attributes:
+      label: Game version
+      description: Enter the version shown by the launcher or main menu.
+      placeholder: "For example: 0.0.22"
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - Windows
+        - macOS
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Describe the problem, what you were doing, what you expected, and any error messages.
+      placeholder: |
+        Tell us what happened and include the steps needed to reproduce it, if known.
+    validations:
+      required: true
+
+  - type: upload
+    id: evidence
+    attributes:
+      label: Save file, screenshots, or video
+      description: |
+        Please attach the `.sav` file from immediately before the problem occurs when possible, and/or screenshots or video showing the problem.
+
+        Save folders:
+        - Windows: `%USERPROFILE%\AppData\LocalLow\AdasGames\Rebellion 2\saves`
+        - macOS: `~/Library/Application Support/unity.AdasGames.Rebellion 2/saves`
+        - macOS fallback: `~/Library/Application Support/AdasGames/Rebellion 2/saves`
+
+        On Windows, paste the path into the File Explorer address bar. On macOS, select Go > Go to Folder in Finder and paste the path.

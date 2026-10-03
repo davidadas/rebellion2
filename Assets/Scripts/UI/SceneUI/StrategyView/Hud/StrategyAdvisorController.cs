@@ -271,9 +271,6 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
             return;
 
         StrategyAdvisorView targetView = GetRequiredView();
-        if (targetView.IsPlaybackActive)
-            return;
-
         for (int i = 0; i < notificationKeysByPriority.Count; i++)
         {
             string notificationKey = notificationKeysByPriority[i];

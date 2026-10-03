@@ -651,8 +651,24 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         {
             GalaxyPlanetSector planetSector = CreateSector("sector", "Corellia", 0, 0);
             Planet planet = CreatePlanet("planet", _playerFactionId, 1, 2);
-            planet.AddChild(new GameFleet(_playerFactionId, "Player Fleet"));
-            planet.AddChild(new GameFleet(_opposingFactionId, "Opposing Fleet"));
+            GameFleet playerFleet = new GameFleet(_playerFactionId, "Player Fleet");
+            playerFleet.AddChild(
+                new CapitalShip
+                {
+                    OwnerInstanceID = _playerFactionId,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                }
+            );
+            GameFleet opposingFleet = new GameFleet(_opposingFactionId, "Opposing Fleet");
+            opposingFleet.AddChild(
+                new CapitalShip
+                {
+                    OwnerInstanceID = _opposingFactionId,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                }
+            );
+            planet.AddChild(playerFleet);
+            planet.AddChild(opposingFleet);
             GalaxyMapSector sector = CreateSector(planetSector, planet);
             FactionTheme playerTheme = _uiContext.GetPlayerFactionTheme();
 

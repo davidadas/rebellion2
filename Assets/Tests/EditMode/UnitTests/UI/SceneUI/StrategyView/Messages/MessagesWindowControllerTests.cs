@@ -7,6 +7,7 @@ using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Messages;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
@@ -88,7 +89,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
                     dependencies.AddComponent<UIWindowManager>(),
                     () => Vector2Int.zero,
                     _ => { },
-                    () => { }
+                    () => { },
+                    () => default
                 );
                 Message firstMessage = new StatusMessage(MessageType.Fleet, "First", "First")
                 {
@@ -213,6 +215,97 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
+        public void MessageRemovalRequested_SelectedMiddleRow_SelectsDisplayedRowAbove()
+        {
+            Message oldest = CreateMessage("oldest");
+            Message middle = CreateMessage("middle");
+            Message newest = CreateMessage("newest");
+            (
+                GameObject root,
+                Faction faction,
+                MessagesWindowController controller,
+                MessagesWindowView view
+            ) = OpenMessagesWindow(new[] { oldest, middle, newest }, () => default);
+
+            try
+            {
+                SelectMessage(view, middle.InstanceID);
+                RemoveSelectedMessages(view);
+                controller.RenderWindows();
+
+                RemoveSelectedMessages(view);
+
+                CollectionAssert.AreEqual(new[] { oldest }, faction.Messages[MessageType.Fleet]);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(root);
+            }
+        }
+
+        [Test]
+        public void MessageRowSelected_MultiSelectModifier_RemovesToggledMessagesTogether()
+        {
+            Message oldest = CreateMessage("oldest");
+            Message middle = CreateMessage("middle");
+            Message newest = CreateMessage("newest");
+            SelectionModifierState modifiers = default;
+            (
+                GameObject root,
+                Faction faction,
+                MessagesWindowController _,
+                MessagesWindowView view
+            ) = OpenMessagesWindow(new[] { oldest, middle, newest }, () => modifiers);
+
+            try
+            {
+                SelectMessage(view, newest.InstanceID);
+                modifiers = new SelectionModifierState(true, false);
+                SelectMessage(view, oldest.InstanceID);
+                modifiers = default;
+
+                RemoveSelectedMessages(view);
+
+                CollectionAssert.AreEqual(new[] { middle }, faction.Messages[MessageType.Fleet]);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(root);
+            }
+        }
+
+        [Test]
+        public void MessageRowSelected_RangeSelectModifier_RemovesContiguousMessagesTogether()
+        {
+            Message oldest = CreateMessage("oldest");
+            Message middle = CreateMessage("middle");
+            Message newest = CreateMessage("newest");
+            SelectionModifierState modifiers = default;
+            (
+                GameObject root,
+                Faction faction,
+                MessagesWindowController _,
+                MessagesWindowView view
+            ) = OpenMessagesWindow(new[] { oldest, middle, newest }, () => modifiers);
+
+            try
+            {
+                SelectMessage(view, newest.InstanceID);
+                modifiers = new SelectionModifierState(false, true);
+                SelectMessage(view, oldest.InstanceID);
+                modifiers = default;
+
+                RemoveSelectedMessages(view);
+
+                Assert.IsEmpty(faction.Messages[MessageType.Fleet]);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(root);
+            }
+        }
+
+        [Test]
         public void MarkMessageRead_Message_SetsReadState()
         {
             Message message = new StatusMessage(MessageType.Fleet, "Fleet", "Fleet")
@@ -252,17 +345,28 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
-        public void GetRows_AllMessages_ReturnsMessagesAcrossBucketsInStorageOrder()
+        public void GetRows_AllMessages_ReturnsMessagesAcrossBucketsInChronologicalOrder()
         {
-            Message fleet = new StatusMessage(MessageType.Fleet, "Fleet", "Fleet");
-            Message mission = new StatusMessage(MessageType.Mission, "Mission", "Mission");
+            Message fleet = new StatusMessage(MessageType.Fleet, "Fleet", "Fleet")
+            {
+                CreatedTick = 20,
+            };
+            Message mission = new StatusMessage(MessageType.Mission, "Mission", "Mission")
+            {
+                CreatedTick = 30,
+            };
+            Message advice = new StatusMessage(MessageType.Advice, "Advice", "Advice")
+            {
+                CreatedTick = 10,
+            };
             Faction faction = new Faction();
             faction.Messages[MessageType.Fleet] = new List<Message> { fleet };
             faction.Messages[MessageType.Mission] = new List<Message> { mission };
+            faction.Messages[MessageType.Advice] = new List<Message> { advice };
 
             List<Message> rows = MessagesWindowController.GetRows(faction, MessagesTab.All);
 
-            CollectionAssert.AreEqual(new[] { fleet, mission }, rows);
+            CollectionAssert.AreEqual(new[] { advice, fleet, mission }, rows);
         }
 
         [Test]
@@ -319,7 +423,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
                     windowManager,
                     () => Vector2Int.zero,
                     windowManager.DestroyWindow,
-                    () => { }
+                    () => { },
+                    () => default
                 );
                 controller.Initialize(new TestActions());
 
@@ -381,7 +486,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
                     windowManager,
                     () => Vector2Int.zero,
                     windowManager.DestroyWindow,
-                    () => { }
+                    () => { },
+                    () => default
                 );
                 TestActions actions = new TestActions();
                 controller.Initialize(actions);
@@ -436,7 +542,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
                     windowManager,
                     () => Vector2Int.zero,
                     windowManager.DestroyWindow,
-                    () => { }
+                    () => { },
+                    () => default
                 );
                 controller.Initialize(new TestActions());
                 controller.OpenDetail(fleetMessage, MessagesTab.Fleet);
@@ -471,6 +578,99 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             {
                 UnityEngine.Object.DestroyImmediate(manager.gameObject);
             }
+        }
+
+        /// <summary>
+        /// Creates a message with a stable identity.
+        /// </summary>
+        /// <param name="instanceId">The message identity and title.</param>
+        /// <returns>The created message.</returns>
+        private static Message CreateMessage(string instanceId)
+        {
+            return new StatusMessage(MessageType.Fleet, instanceId, instanceId)
+            {
+                InstanceID = instanceId,
+            };
+        }
+
+        /// <summary>
+        /// Opens a rendered Messages window around a player faction and modifier source.
+        /// </summary>
+        /// <param name="messages">The messages to display in source order.</param>
+        /// <param name="getSelectionModifiers">Returns the active selection modifiers.</param>
+        /// <returns>The created view fixture.</returns>
+        private static (
+            GameObject root,
+            Faction faction,
+            MessagesWindowController controller,
+            MessagesWindowView view
+        ) OpenMessagesWindow(
+            IReadOnlyList<Message> messages,
+            Func<SelectionModifierState> getSelectionModifiers
+        )
+        {
+            Faction faction = new Faction { InstanceID = "FNALL1" };
+            faction.Messages[MessageType.Fleet] = messages.ToList();
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            game.GetFactions().Add(faction);
+            game.Summary.PlayerFactionID = faction.InstanceID;
+            game.SetFactionController(faction.InstanceID, "PLAYER1", PlayerControllerType.Human);
+            UIContext uiContext = TestContent.CreateUIContext(
+                game,
+                TestContent.CreateThemeLibrary(),
+                new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
+            );
+            GameObject root = UIComponentTestHelper.InstantiatePrefab(_strategyViewPrefabPath);
+            StrategyWindowLayerView windowLayer =
+                root.GetComponentInChildren<StrategyWindowLayerView>(true);
+            UIWindowManager windowManager = root.GetComponentInChildren<UIWindowManager>(true);
+            MessagesWindowController controller = new MessagesWindowController(
+                _ => { },
+                _ => null,
+                () => uiContext,
+                windowLayer,
+                windowManager,
+                () => Vector2Int.zero,
+                windowManager.DestroyWindow,
+                () => { },
+                getSelectionModifiers
+            );
+            controller.Initialize(new TestActions());
+            controller.Open(MessagesTab.Fleet);
+            controller.RenderWindows();
+            UIWindow window = windowManager.Windows.Single();
+            Assert.IsTrue(windowManager.TryGetWindowView(window, out MessagesWindowView view));
+            return (root, faction, controller, view);
+        }
+
+        /// <summary>
+        /// Selects one rendered message row through its pointer contract.
+        /// </summary>
+        /// <param name="view">The rendered Messages view.</param>
+        /// <param name="messageId">The message identity to select.</param>
+        private static void SelectMessage(MessagesWindowView view, string messageId)
+        {
+            MessageWindowRowView row = view.GetComponentsInChildren<MessageWindowRowView>(true)
+                .Single(candidate =>
+                    candidate.gameObject.activeSelf && candidate.MessageId == messageId
+                );
+            row.OnPointerDown(
+                new PointerEventData(EventSystem.current)
+                {
+                    button = PointerEventData.InputButton.Left,
+                }
+            );
+        }
+
+        /// <summary>
+        /// Invokes the rendered remove-selected control.
+        /// </summary>
+        /// <param name="view">The rendered Messages view.</param>
+        private static void RemoveSelectedMessages(MessagesWindowView view)
+        {
+            view.GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "RemoveSelectedButtonImage")
+                .onClick.Invoke();
         }
 
         private sealed class TestActions : IMessagesWindowActions

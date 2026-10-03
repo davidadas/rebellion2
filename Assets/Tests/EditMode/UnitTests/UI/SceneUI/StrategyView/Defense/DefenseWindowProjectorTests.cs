@@ -205,6 +205,78 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         }
 
         [Test]
+        public void Build_MovingSpecialForcesWithTransitArtwork_UsesEnrouteBackgroundAndOverlay()
+        {
+            SpecialForces definition = TestContent.Data.SpecialForces.First(specialForces =>
+                specialForces.ManufacturingFactionInstanceIDs?.Contains(_ownerId) == true
+                && !string.IsNullOrEmpty(specialForces.InTransitSmallImagePath)
+            );
+            SpecialForces specialForces = new SpecialForces
+            {
+                InstanceID = "special-forces",
+                DisplayName = "Traveling Special Forces",
+                OwnerInstanceID = _ownerId,
+                DisplayImagePath = definition.DisplayImagePath,
+                SmallDisplayImagePath = definition.SmallDisplayImagePath,
+                InTransitSmallImagePath = definition.InTransitSmallImagePath,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                Movement = new MovementState(),
+            };
+            _planet.AddTestChild(specialForces);
+            _session.Reconcile();
+
+            DefenseWindowRenderData data = _projector.Build(_session, _window, false);
+
+            StrategyUnitCardRenderData card = data.Items[0];
+            Assert.AreSame(
+                _uiContext.GetTexture(
+                    _uiContext.GetTheme(_ownerId).StrategyWindows.Defense.EnrouteBackgroundImagePath
+                ),
+                card.BackgroundTexture
+            );
+            Assert.AreSame(
+                _uiContext.GetTexture(definition.InTransitSmallImagePath),
+                card.EnrouteOverlayTexture
+            );
+            Assert.IsNotNull(card.EntityTexture);
+            Assert.IsFalse(card.CanDrag);
+        }
+
+        [Test]
+        public void Build_MovingRegimentWithoutTransitArtwork_UsesEnrouteBackgroundWithoutOverlay()
+        {
+            Regiment definition = TestContent.Data.Regiments.First(regiment =>
+                regiment.ManufacturingFactionInstanceIDs?.Contains(_ownerId) == true
+            );
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "regiment",
+                DisplayName = "Traveling Regiment",
+                OwnerInstanceID = _ownerId,
+                DisplayImagePath = definition.DisplayImagePath,
+                SmallDisplayImagePath = definition.SmallDisplayImagePath,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                Movement = new MovementState(),
+            };
+            _planet.AddTestChild(regiment);
+            _session.Reconcile();
+            _session.SelectTab(DefenseWindowTab.Regiments);
+
+            DefenseWindowRenderData data = _projector.Build(_session, _window, false);
+
+            StrategyUnitCardRenderData card = data.Items[0];
+            Assert.AreSame(
+                _uiContext.GetTexture(
+                    _uiContext.GetTheme(_ownerId).StrategyWindows.Defense.EnrouteBackgroundImagePath
+                ),
+                card.BackgroundTexture
+            );
+            Assert.IsNull(card.EnrouteOverlayTexture);
+            Assert.IsNotNull(card.EntityTexture);
+            Assert.IsFalse(card.CanDrag);
+        }
+
+        [Test]
         public void Build_StarfighterUnderConstruction_ReturnsConstructionBackground()
         {
             Starfighter starfighter = CreateStarfighter("fighter", "Fighter Squadron");

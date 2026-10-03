@@ -1,0 +1,11 @@
+name: Request a Feature
+description: Suggest a new feature or improvement for Rebellion 2.
+title: "[Feature] "
+body:
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed feature
+      description: Describe the feature and how you would like the game or launcher to behave.
+    validations:
+      required: true

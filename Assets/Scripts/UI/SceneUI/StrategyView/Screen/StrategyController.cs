@@ -575,7 +575,8 @@ public sealed class StrategyController
             strategyWindowManager,
             windowPlacementController.GetMessagesWindowPosition,
             CloseWindow,
-            MarkDirty
+            MarkDirty,
+            getSelectionModifiers
         );
         encyclopediaWindowController = new EncyclopediaWindowController(
             () => uiContext,
@@ -734,7 +735,8 @@ public sealed class StrategyController
             windowCommandController,
             windowCommandController,
             idleBarController,
-            inputController.StartItemDrag
+            inputController.StartItemDrag,
+            inputController.OnPointerUp
         );
         missionsWindowController.Initialize(this);
         missionCreateWindowController.Initialize(this);

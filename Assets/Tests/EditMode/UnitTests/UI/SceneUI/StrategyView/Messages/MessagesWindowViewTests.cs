@@ -4,6 +4,7 @@ using NUnit.Framework;
 using Rebellion.Game.Messages;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using GameMessageType = Rebellion.Game.Messages.MessageType;
 
@@ -238,6 +239,38 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.AreEqual(0, nextCount);
             Assert.AreEqual(0, selectAllCount);
             Assert.AreEqual(0, removalCount);
+        }
+
+        [Test]
+        public void Update_DestroyedSelectedObject_DoesNotThrow()
+        {
+            GameObject eventSystemObject = new GameObject(
+                "EventSystemUnderTest",
+                typeof(EventSystem)
+            );
+            EventSystem eventSystem = eventSystemObject.GetComponent<EventSystem>();
+            GameObject selectedObject = new GameObject("DestroyedSelection");
+            Keyboard addedKeyboard = null;
+
+            try
+            {
+                if (Keyboard.current == null)
+                    addedKeyboard = InputSystem.AddDevice<Keyboard>();
+
+                UIComponentTestHelper.InvokeLifecycle(eventSystem, "OnEnable");
+                eventSystem.SetSelectedGameObject(selectedObject);
+                UnityEngine.Object.DestroyImmediate(selectedObject);
+                _windowShell.SetActiveWindow(true);
+
+                Assert.DoesNotThrow(() => UIComponentTestHelper.InvokeLifecycle(_view, "Update"));
+            }
+            finally
+            {
+                UIComponentTestHelper.InvokeLifecycle(eventSystem, "OnDisable");
+                UnityEngine.Object.DestroyImmediate(eventSystemObject);
+                if (addedKeyboard != null)
+                    InputSystem.RemoveDevice(addedKeyboard);
+            }
         }
 
         [Test]
