@@ -109,6 +109,38 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void GetMissionOdds_HardAiDetector_AppliesDetectionRatingMultiplier()
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer defender) = BuildDetectionScene();
+            Regiment detector = planet.GetChildren<Regiment>().Single();
+            spy.SetBaseRating(SkillRating.Espionage, 100);
+            defender.SetBaseRating(SkillRating.Espionage, 0);
+            detector.DetectionRating = 40;
+            planet.AddVisitor("empire");
+            game.Config.ProbabilityTables.Mission.FoilDefenderScalingPercent = 0;
+            game.Config.ProbabilityTables.Mission.FoilFlatScoreAdjustment = 0;
+            SetFoilTable(game, new Dictionary<int, int> { { 20, 100 }, { 21, 0 } });
+            game.Summary.Difficulty = GameDifficulty.Hard;
+            game.Summary.PlayerFactionID = "empire";
+            game.Config.DifficultyModifiers[GameDifficulty.Hard] = new DifficultyModifiers
+            {
+                DetectionRatingMultiplier = 2,
+            };
+            MissionQueries system = new MissionQueries(game);
+
+            MissionOdds aiDetectorOdds = system.GetMissionOdds(
+                CreateContext(EspionageMission.MissionTypeID, spy, planet)
+            );
+            game.Summary.PlayerFactionID = "rebels";
+            MissionOdds humanDetectorOdds = system.GetMissionOdds(
+                CreateContext(EspionageMission.MissionTypeID, spy, planet)
+            );
+
+            Assert.AreEqual(100, aiDetectorOdds.FoilProbability, 0.001);
+            Assert.AreEqual(0, humanDetectorOdds.FoilProbability, 0.001);
+        }
+
+        [Test]
         public void GetMissionOdds_TargetDetector_CombinesArrivalAndPreObjectiveChecks()
         {
             (GameRoot game, Planet planet, Officer spy, Officer _) = BuildDetectionScene();

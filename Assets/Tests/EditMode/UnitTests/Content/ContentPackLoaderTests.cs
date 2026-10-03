@@ -44,6 +44,7 @@ namespace Rebellion.Tests.Content
                             <xs:complexType>
                               <xs:all>
                                 <xs:element name=""MissionExecutionSpeedIncreasePercent"" type=""xs:nonNegativeInteger""/>
+                                <xs:element name=""DetectionRatingMultiplier"" type=""xs:positiveInteger""/>
                               </xs:all>
                             </xs:complexType>
                           </xs:element>
@@ -70,6 +71,7 @@ namespace Rebellion.Tests.Content
             + "<Research><BaseResearchPoints>1</BaseResearchPoints></Research>"
             + "<DifficultyModifiers><Entry><Key>Hard</Key><Value><GameModifier>"
             + "<MissionExecutionSpeedIncreasePercent>37</MissionExecutionSpeedIncreasePercent>"
+            + "<DetectionRatingMultiplier>2</DetectionRatingMultiplier>"
             + "</GameModifier></Value></Entry></DifficultyModifiers></GameConfig>";
 
         [TestCase(RuntimePlatform.OSXPlayer, "Game.app/Contents/Resources/Data")]
@@ -175,6 +177,20 @@ namespace Rebellion.Tests.Content
             Assert.AreEqual(
                 37,
                 config.DifficultyModifiers[GameDifficulty.Hard].MissionExecutionSpeedIncreasePercent
+            );
+        }
+
+        [Test]
+        public void LoadGameConfig_FixtureDetectionRatingMultiplier_DeserializesValue()
+        {
+            GameConfig config = LoadGameConfigFromFixture(
+                _fixtureDifficultyDefaultsXml,
+                packOverrideXml: null
+            );
+
+            Assert.AreEqual(
+                2,
+                config.DifficultyModifiers[GameDifficulty.Hard].DetectionRatingMultiplier
             );
         }
 

@@ -14,6 +14,8 @@ namespace Rebellion.Game
 
         public int MissionExecutionSpeedIncreasePercent { get; set; }
 
+        public int DetectionRatingMultiplier { get; set; } = 1;
+
         public int MineOutputPercent { get; set; } = 100;
 
         public int RefineryOutputPercent { get; set; } = 100;

@@ -586,7 +586,8 @@ namespace Rebellion.Game.Missions
                 (commander?.GetEffectiveRating(SkillRating.Espionage) ?? 0)
                 * missionTables.DecoyDefenderScalingPercent
                 / _ratingPercentScale;
-            int score = decoyEspionage - GetDetectorRating(detector) - scaledDefender;
+            int score =
+                decoyEspionage - game.GetEffectiveDetectionRating(detector) - scaledDefender;
             Dictionary<int, int> table =
                 detector.GetParentOfType<Fleet>() != null
                     ? missionTables.FleetDecoy
@@ -908,20 +909,6 @@ namespace Rebellion.Game.Missions
 
             return candidate is Regiment or Starfighter;
         }
-
-        /// <summary>
-        /// Returns the authored detection rating for a detector unit.
-        /// </summary>
-        /// <param name="detector">The selected detector.</param>
-        /// <returns>The unit's detection rating.</returns>
-        private static int GetDetectorRating(ISceneNode detector) =>
-            detector switch
-            {
-                Regiment regiment => regiment.DetectionRating,
-                Starfighter starfighter => starfighter.DetectionRating,
-                CapitalShip capitalShip => capitalShip.DetectionRating,
-                _ => 0,
-            };
 
         /// <summary>
         /// Finds the commander type paired with the selected detector in its local container.

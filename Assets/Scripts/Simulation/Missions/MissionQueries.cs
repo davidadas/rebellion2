@@ -1079,7 +1079,7 @@ namespace Rebellion.Simulation
             Officer commander = mission.FindDetectorCommander(detector, encounterPlanet);
             return GetAverageEspionage(participants)
                 - GetScaledCommanderEspionage(commander, missionTables.FoilDefenderScalingPercent)
-                - GetDetectorRating(detector)
+                - _game.GetEffectiveDetectionRating(detector)
                 - participants.OfType<SpecialForces>().Count()
                 - missionTables.FoilFlatScoreAdjustment;
         }
@@ -1202,20 +1202,6 @@ namespace Rebellion.Simulation
                     detectors.Add(candidate);
             }
         }
-
-        /// <summary>
-        /// Returns the authored detection rating for a detector unit.
-        /// </summary>
-        /// <param name="detector">The detector unit.</param>
-        /// <returns>The detector's authored rating.</returns>
-        private static int GetDetectorRating(ISceneNode detector) =>
-            detector switch
-            {
-                Regiment regiment => regiment.DetectionRating,
-                Starfighter starfighter => starfighter.DetectionRating,
-                CapitalShip capitalShip => capitalShip.DetectionRating,
-                _ => 0,
-            };
 
         /// <summary>
         /// Returns the configured evasion probability for a confronted participant.
