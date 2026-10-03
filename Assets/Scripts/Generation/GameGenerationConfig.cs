@@ -102,6 +102,19 @@ namespace Rebellion.Generation
         public string FactionID;
         public int StrongPct;
         public int WeakPct;
+        public List<FactionBucketOverride> Overrides = new List<FactionBucketOverride>();
+    }
+
+    /// <summary>
+    /// Overrides one faction's ownership percentages for a difficulty and controller role.
+    /// </summary>
+    [PersistableObject]
+    public class FactionBucketOverride
+    {
+        public GameDifficulty Difficulty;
+        public PlayerControllerType ControllerType;
+        public int StrongPct;
+        public int WeakPct;
     }
 
     #endregion
