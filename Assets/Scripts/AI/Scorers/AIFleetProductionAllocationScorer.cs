@@ -70,7 +70,7 @@ namespace Rebellion.AI.Scorers
         }
 
         /// <summary>
-        /// Scores an idle battle fleet's need for initial assembly.
+        /// Scores an idle battle fleet's progress toward becoming deployable.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="fleet">The fleet seeking reinforcement.</param>
@@ -81,9 +81,15 @@ namespace Rebellion.AI.Scorers
             double combat = context.Assessment.GetProjectedFleetCombatValue(fleet);
             double capacity = fleet.GetRegimentCapacity();
             AIUtilityScore score = new AIUtilityScore();
-            score.Add(1 - AIUtility.Fulfillment(combat, int.MaxValue), utility.AssemblyWeakness);
             score.Add(
-                1 - AIUtility.Fulfillment(capacity, int.MaxValue),
+                AIUtility.Fulfillment(combat, context.StrategicPlan.AssemblyFleetCombatStrength),
+                utility.AssemblyCompletion
+            );
+            score.Add(
+                AIUtility.Fulfillment(
+                    capacity,
+                    context.Game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount
+                ),
                 utility.AssemblyCapacityNeed
             );
             return score.Value;

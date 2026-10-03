@@ -653,7 +653,9 @@ namespace Rebellion.Game
             public AIConsiderationConfig ColonyRegiments { get; set; } =
                 new AIConsiderationConfig();
             public AIConsiderationConfig ColonyCapacity { get; set; } = new AIConsiderationConfig();
-            public AIConsiderationConfig AssemblyWeakness { get; set; } =
+
+            [PersistableMember(Name = "AssemblyWeakness")]
+            public AIConsiderationConfig AssemblyCompletion { get; set; } =
                 new AIConsiderationConfig();
             public AIConsiderationConfig AssemblyCapacityNeed { get; set; } =
                 new AIConsiderationConfig();

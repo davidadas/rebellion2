@@ -17,7 +17,7 @@ namespace Rebellion.Tests.AI.Fleets
     public class AIFleetProductionAllocationScorerTests
     {
         [Test]
-        public void ScoreAssembly_WithDifferentCombatStrength_PrioritizesWeakerFleet()
+        public void ScoreAssembly_WithDifferentCombatStrength_PrioritizesFleetNearestCompletion()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             game.Config.AI.FleetDeployment.MinimumBattleFleetCount = 1;
@@ -37,7 +37,7 @@ namespace Rebellion.Tests.AI.Fleets
                 stronger
             );
 
-            Assert.Greater(weakerScore, strongerScore);
+            Assert.Greater(strongerScore, weakerScore);
         }
 
         [Test]

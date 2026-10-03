@@ -804,9 +804,24 @@ namespace Rebellion.AI.Demands
             AddResourceDemands(context, requirements);
             AddPlanetaryDefenseDemands(context, requirements);
             AddPlanetaryStarfighterDemands(context, requirements);
-            AddFleetSeedDemands(context, requirements);
+            Planet unguardedHeadquarters = FindUnguardedHeadquarters(context);
+            List<AIProductionDemand> fleetReinforcementDemands = new List<AIProductionDemand>();
+            AddFleetReinforcementDemands(
+                context,
+                fleetReinforcementDemands,
+                unguardedHeadquarters == null
+            );
+            AddFleetSeedDemands(
+                context,
+                requirements,
+                unguardedHeadquarters,
+                fleetReinforcementDemands.Any(demand =>
+                    demand.Kind == AIProductionDemandKind.FleetCapitalShip
+                    && demand.DestinationFleet?.RoleType == FleetRoleType.Battle
+                )
+            );
             AddColonizationFleetSeedDemands(context, requirements);
-            AddFleetReinforcementDemands(context, requirements);
+            requirements.AddRange(fleetReinforcementDemands);
             AddGarrisonDemands(context, requirements);
             AddSpecialForcesDemands(context, requirements);
             AddProductionFacilityDemands(context, requirements);
@@ -1204,13 +1219,21 @@ namespace Rebellion.AI.Demands
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demands">The demand list to update.</param>
-        private void AddFleetSeedDemands(AITurnContext context, List<AIProductionDemand> demands)
+        /// <param name="unguardedHeadquarters">An unguarded headquarters that must receive the new fleet.</param>
+        /// <param name="hasPrimaryBattleFleetDemand">Whether an existing battle fleet already won capital-ship allocation.</param>
+        private void AddFleetSeedDemands(
+            AITurnContext context,
+            List<AIProductionDemand> demands,
+            Planet unguardedHeadquarters,
+            bool hasPrimaryBattleFleetDemand
+        )
         {
             int targetCount = context.StrategicPlan.TargetBattleFleetCount;
             int committedCount = context.Assessment.OwnedFleets.Count(IsCommittedBattleFleet);
             int deficit = targetCount - committedCount;
-            Planet unguardedHeadquarters = FindUnguardedHeadquarters(context);
             if (deficit <= 0 && unguardedHeadquarters == null)
+                return;
+            if (unguardedHeadquarters == null && hasPrimaryBattleFleetDemand)
                 return;
 
             Planet destination = unguardedHeadquarters ?? FindFleetAssemblyPlanet(context);
@@ -1356,22 +1379,152 @@ namespace Rebellion.AI.Demands
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demands">The demand list to update.</param>
+        /// <param name="includeBattleCapitalShips">Whether existing battle fleets may compete for capital-ship production.</param>
         private void AddFleetReinforcementDemands(
             AITurnContext context,
-            List<AIProductionDemand> demands
+            List<AIProductionDemand> demands,
+            bool includeBattleCapitalShips
         )
         {
+            List<(
+                AIProductionDemand Demand,
+                double Score,
+                bool IsHeadquartersDefense
+            )> battleCapitalShipCandidates = new();
+
             Fleet defenseFleet = GetPriorityDefenseFleet(context);
-            AddFleetDemands(context, demands, defenseFleet);
+            if (defenseFleet != null)
+            {
+                AddFleetStarfighterDemand(context, demands, defenseFleet);
+                AddFleetRegimentDemand(context, demands, defenseFleet);
+                if (includeBattleCapitalShips)
+                {
+                    Planet defenseTarget = GetDefenseTarget(context, defenseFleet);
+                    AddBattleCapitalShipCandidate(
+                        context,
+                        battleCapitalShipCandidates,
+                        defenseFleet,
+                        AIFleetProductionAllocationScorer.ScoreDefenseNeed(
+                            context,
+                            defenseTarget,
+                            context.Assessment.GetProjectedFleetCombatValue(defenseFleet)
+                        ),
+                        context.Assessment.IsFactionHeadquarters(defenseTarget)
+                    );
+                }
+            }
 
             IReadOnlyList<Fleet> attackFleets = GetPriorityAttackFleets(context);
-            AddAttackShipDemands(context, demands, attackFleets);
+            foreach (Fleet attackFleet in attackFleets)
+            {
+                AddFleetStarfighterDemand(context, demands, attackFleet);
+                if (!includeBattleCapitalShips)
+                    continue;
+
+                Planet attackTarget = GetAttackTargetPlanet(context, attackFleet);
+                AddBattleCapitalShipCandidate(
+                    context,
+                    battleCapitalShipCandidates,
+                    attackFleet,
+                    AIFleetProductionAllocationScorer.ScoreAttack(
+                        context,
+                        attackFleet,
+                        attackTarget,
+                        GetProjectedAttackReadiness(context, attackFleet, attackTarget)
+                    ),
+                    false
+                );
+            }
             AddPriorityAttackRegimentDemand(context, demands, attackFleets);
 
             foreach (Fleet colonizationFleet in GetPriorityColonizationFleets(context))
                 AddFleetDemands(context, demands, colonizationFleet);
 
-            AddFleetDemands(context, demands, GetFleetAssemblyFleets(context).FirstOrDefault());
+            IReadOnlyList<Fleet> assemblyFleets = GetFleetAssemblyFleets(context);
+            if (includeBattleCapitalShips)
+            {
+                foreach (Fleet assemblyFleet in assemblyFleets)
+                {
+                    AddBattleCapitalShipCandidate(
+                        context,
+                        battleCapitalShipCandidates,
+                        assemblyFleet,
+                        AIFleetProductionAllocationScorer.ScoreAssembly(context, assemblyFleet),
+                        false
+                    );
+                }
+            }
+
+            AIProductionDemand primaryBattleCapitalShipDemand = null;
+            double primaryBattleCapitalShipScore = 0;
+            bool primaryBattleCapitalShipIsHeadquartersDefense = false;
+            foreach (
+                (
+                    AIProductionDemand demand,
+                    double score,
+                    bool isHeadquartersDefense
+                ) in battleCapitalShipCandidates
+            )
+            {
+                bool replacesPrimary =
+                    primaryBattleCapitalShipDemand == null
+                    || isHeadquartersDefense && !primaryBattleCapitalShipIsHeadquartersDefense
+                    || isHeadquartersDefense == primaryBattleCapitalShipIsHeadquartersDefense
+                        && (
+                            score > primaryBattleCapitalShipScore
+                            || score == primaryBattleCapitalShipScore
+                                && string.Compare(
+                                    demand.DestinationFleet.InstanceID,
+                                    primaryBattleCapitalShipDemand.DestinationFleet.InstanceID,
+                                    StringComparison.Ordinal
+                                ) < 0
+                        );
+                if (!replacesPrimary)
+                    continue;
+
+                primaryBattleCapitalShipDemand = demand;
+                primaryBattleCapitalShipScore = score;
+                primaryBattleCapitalShipIsHeadquartersDefense = isHeadquartersDefense;
+            }
+
+            if (primaryBattleCapitalShipDemand != null)
+                demands.Add(primaryBattleCapitalShipDemand);
+
+            Fleet assemblySupportFleet =
+                primaryBattleCapitalShipDemand?.DestinationFleet != null
+                && primaryBattleCapitalShipDemand.DestinationFleet.Order == null
+                    ? primaryBattleCapitalShipDemand.DestinationFleet
+                    : assemblyFleets.FirstOrDefault();
+            if (assemblySupportFleet != null)
+            {
+                AddFleetStarfighterDemand(context, demands, assemblySupportFleet);
+                AddFleetRegimentDemand(context, demands, assemblySupportFleet);
+            }
+        }
+
+        /// <summary>
+        /// Adds one eligible battle fleet to the primary capital-ship candidates.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="candidates">The candidate collection to update.</param>
+        /// <param name="fleet">The fleet seeking capital-ship production.</param>
+        /// <param name="score">The fleet's production-allocation score.</param>
+        /// <param name="isHeadquartersDefense">Whether the fleet is covering a headquarters defense deficit.</param>
+        private void AddBattleCapitalShipCandidate(
+            AITurnContext context,
+            ICollection<(
+                AIProductionDemand Demand,
+                double Score,
+                bool IsHeadquartersDefense
+            )> candidates,
+            Fleet fleet,
+            double score,
+            bool isHeadquartersDefense
+        )
+        {
+            AIProductionDemand demand = CreateFleetCapitalShipDemand(context, fleet);
+            if (demand != null)
+                candidates.Add((demand, score, isHeadquartersDefense));
         }
 
         /// <summary>
@@ -1389,28 +1542,11 @@ namespace Rebellion.AI.Demands
             if (fleet == null)
                 return;
 
-            AddFleetCapitalShipDemand(context, demands, fleet);
+            AIProductionDemand capitalShipDemand = CreateFleetCapitalShipDemand(context, fleet);
+            if (capitalShipDemand != null)
+                demands.Add(capitalShipDemand);
             AddFleetStarfighterDemand(context, demands, fleet);
             AddFleetRegimentDemand(context, demands, fleet);
-        }
-
-        /// <summary>
-        /// Adds ship demands for attack fleets in reinforcement priority order.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="demands">The demand list to update.</param>
-        /// <param name="fleets">Attack fleets in reinforcement priority order.</param>
-        private void AddAttackShipDemands(
-            AITurnContext context,
-            List<AIProductionDemand> demands,
-            IReadOnlyList<Fleet> fleets
-        )
-        {
-            foreach (Fleet fleet in fleets)
-            {
-                AddFleetCapitalShipDemand(context, demands, fleet);
-                AddFleetStarfighterDemand(context, demands, fleet);
-            }
         }
 
         /// <summary>
@@ -1557,7 +1693,7 @@ namespace Rebellion.AI.Demands
         /// Returns stationary battle fleets that can be developed for future campaigns.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <returns>The eligible assembly fleets, weakest first.</returns>
+        /// <returns>The eligible assembly fleets, closest to deployment first.</returns>
         private IReadOnlyList<Fleet> GetFleetAssemblyFleets(AITurnContext context)
         {
             return context
@@ -1575,16 +1711,12 @@ namespace Rebellion.AI.Demands
         }
 
         /// <summary>
-        /// Adds capital ship demand for a fleet.
+        /// Creates capital-ship demand for a fleet when one of its required capabilities is short.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <param name="demands">The demand list to update.</param>
         /// <param name="fleet">The fleet to inspect.</param>
-        private void AddFleetCapitalShipDemand(
-            AITurnContext context,
-            List<AIProductionDemand> demands,
-            Fleet fleet
-        )
+        /// <returns>The capital-ship demand, or null when the fleet's capital requirements are met.</returns>
+        private AIProductionDemand CreateFleetCapitalShipDemand(AITurnContext context, Fleet fleet)
         {
             Planet targetPlanet = GetAttackTargetPlanet(context, fleet);
             bool isColonizationFleet = fleet.RoleType == FleetRoleType.Colonization;
@@ -1597,7 +1729,7 @@ namespace Rebellion.AI.Demands
                 && !isColonizationOrder
                 && defenseTarget == null
             )
-                return;
+                return null;
 
             int projectedCombat =
                 targetPlanet != null
@@ -1654,22 +1786,20 @@ namespace Rebellion.AI.Demands
             }
             else
             {
-                return;
+                return null;
             }
 
-            demands.Add(
-                CreateFleetDemand(
-                    context,
-                    AIProductionDemandKind.FleetCapitalShip,
-                    ManufacturingType.Ship,
-                    fleet,
-                    deficit,
-                    target,
-                    isColonizationFleet
-                        ? context.Game.Config.AI.Infrastructure.ColonizationFleetDemandPercent
-                        : context.Game.Config.AI.Infrastructure.FleetCapitalShipDemandPercent,
-                    capitalShipRole
-                )
+            return CreateFleetDemand(
+                context,
+                AIProductionDemandKind.FleetCapitalShip,
+                ManufacturingType.Ship,
+                fleet,
+                deficit,
+                target,
+                isColonizationFleet
+                    ? context.Game.Config.AI.Infrastructure.ColonizationFleetDemandPercent
+                    : context.Game.Config.AI.Infrastructure.FleetCapitalShipDemandPercent,
+                capitalShipRole
             );
         }
 

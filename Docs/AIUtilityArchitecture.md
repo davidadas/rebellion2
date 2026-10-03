@@ -69,12 +69,16 @@ ranked first; lower-capacity planets are an explicit fallback. Within either eli
 `AllocationUtility` balances existing investment, role separation, feasible capacity, and
 strategic value.
 
-Production capacity is routed among attack, colonization, and unassigned battle fleets through
-`AIFleetProductionAllocationScorer`. `FleetAllocationUtility` owns the ordering considerations;
-the demand generator only enumerates fleets that are eligible to receive reinforcement.
-Unassigned battle-fleet assembly retains its established weak-first ordering on an explicitly
-named normalized ranking scale. That allocation preference is separate from the production
-generator's hard combat and regiment-capacity targets.
+Production capacity is routed among attack, defense, colonization, and unassigned battle fleets
+through `AIFleetProductionAllocationScorer`. `FleetAllocationUtility` owns the ordering
+considerations. The demand generator selects one primary battle fleet for capital-ship production,
+while colonization fleets and non-capital reinforcement remain separately scored demands.
+Headquarters defense preempts ordinary battle-fleet allocation only while its
+measured capital-ship requirement remains incomplete. Unassigned battle-fleet assembly favors the
+fleet closest to its configured deployment requirements so new capital ships complete one usable
+fleet instead of being spread among several incomplete fleets. A battle-fleet seed competes only
+when no existing battle fleet has an unmet capital-ship requirement; fighter and regiment demand
+does not prevent the next seed because those production lanes remain independent.
 
 Strict requirements and fallbacks are not represented by oversized weights. Put legality in
 eligibility checks, urgent work in `AIProposalPriority`, and ordered fallback groups at the shared
