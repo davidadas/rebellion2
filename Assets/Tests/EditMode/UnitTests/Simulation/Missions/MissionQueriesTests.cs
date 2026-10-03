@@ -121,7 +121,6 @@ namespace Rebellion.Tests.Simulation
             game.Config.ProbabilityTables.Mission.FoilFlatScoreAdjustment = 0;
             SetFoilTable(game, new Dictionary<int, int> { { 20, 100 }, { 21, 0 } });
             game.Summary.Difficulty = GameDifficulty.Hard;
-            game.Summary.PlayerFactionID = "empire";
             game.Config.DifficultyModifiers[GameDifficulty.Hard] = new DifficultyModifiers
             {
                 DetectionRatingMultiplier = 2,
@@ -131,7 +130,7 @@ namespace Rebellion.Tests.Simulation
             MissionOdds aiDetectorOdds = system.GetMissionOdds(
                 CreateContext(EspionageMission.MissionTypeID, spy, planet)
             );
-            game.Summary.PlayerFactionID = "rebels";
+            game.SetFactionController("rebels", "human", PlayerControllerType.Human);
             MissionOdds humanDetectorOdds = system.GetMissionOdds(
                 CreateContext(EspionageMission.MissionTypeID, spy, planet)
             );
@@ -147,13 +146,13 @@ namespace Rebellion.Tests.Simulation
             Regiment detector = planet.GetChildren<Regiment>().Single();
             Officer decoy = EntityFactory.CreateOfficer("decoy", "empire");
             decoy.SetBaseRating(SkillRating.Espionage, 100);
+            game.AttachNode(decoy, spy.GetParent());
             defender.SetBaseRating(SkillRating.Espionage, 0);
             detector.DetectionRating = 40;
             planet.AddVisitor("empire");
             game.Config.ProbabilityTables.Mission.DecoyDefenderScalingPercent = 0;
             SetDecoyTable(game, new Dictionary<int, int> { { 20, 0 }, { 21, 100 } });
             game.Summary.Difficulty = GameDifficulty.Hard;
-            game.Summary.PlayerFactionID = "empire";
             game.Config.DifficultyModifiers[GameDifficulty.Hard] = new DifficultyModifiers
             {
                 DetectionRatingMultiplier = 2,
@@ -172,7 +171,7 @@ namespace Rebellion.Tests.Simulation
             );
 
             double aiDetectorProbability = queries.GetDecoyProbability(mission, decoy, detector);
-            game.Summary.PlayerFactionID = "rebels";
+            game.SetFactionController("rebels", "human", PlayerControllerType.Human);
             double humanDetectorProbability = queries.GetDecoyProbability(mission, decoy, detector);
 
             Assert.AreEqual(0, aiDetectorProbability, 0.0001);

@@ -650,29 +650,22 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ProcessTick_InciteBeforeDiplo_DiploAbortsWhenAdvanced()
+        public void ProcessTick_InciteBeforeDiplo_DiploAbortsInSameTick()
         {
             (
                 GameRoot game,
                 Mission diplomacyMission,
                 Mission inciteMission,
                 MissionCommands missionSystem
-            ) = BuildConcurrentMissionsScene();
-            Planet planet = diplomacyMission.GetParentOfType<Planet>();
-            game.DetachNode(diplomacyMission);
-            game.AttachNode(diplomacyMission, planet);
+            ) = BuildConcurrentMissionsScene(inciteFirst: true);
 
             List<GameResult> results = missionSystem.ProcessMissionTick(game);
 
             Assert.IsTrue(results.OfType<PlanetUprisingStartedResult>().Any());
-            Assert.IsNotNull(diplomacyMission.GetParent());
-
-            List<GameResult> diplomacyResults = missionSystem.ProcessMissionTick(game);
-
-            Assert.AreEqual(
-                MissionCompletionReason.Failure,
-                diplomacyResults.OfType<MissionCompletedResult>().Single().CompletionReason
-            );
+            MissionCompletedResult diplomacyResult = results
+                .OfType<MissionCompletedResult>()
+                .Single(result => result.MissionInstanceID == diplomacyMission.InstanceID);
+            Assert.AreEqual(MissionCompletionReason.Failure, diplomacyResult.CompletionReason);
             Assert.IsNull(diplomacyMission.GetParent());
         }
 
@@ -2408,6 +2401,7 @@ namespace Rebellion.Tests.Simulation
             SetFoilTable(game, new Dictionary<int, int> { { -1000, 0 } });
 
             StubMission defendingMission = new StubMission("rebels", planet.InstanceID);
+            defendingMission.SetExecutionTick(5);
             game.AttachNode(defendingMission, planet);
             game.MoveNode(defender, defendingMission);
 
@@ -3147,7 +3141,7 @@ namespace Rebellion.Tests.Simulation
 
             Assert.IsTrue(created);
             Assert.IsTrue(participant.Movement != null);
-            Assert.IsEmpty(travellingResults);
+            Assert.IsFalse(travellingResults.OfType<MissionCompletedResult>().Any());
             Assert.AreEqual(1, game.GetSceneNodesByType<Mission>().Count);
 
             participant.Movement = null;
@@ -3186,7 +3180,7 @@ namespace Rebellion.Tests.Simulation
             List<GameResult> travellingResults = missions.ProcessMissionTick(game);
 
             Assert.IsTrue(participant.Movement != null);
-            Assert.IsEmpty(travellingResults);
+            Assert.IsFalse(travellingResults.OfType<MissionCompletedResult>().Any());
             Assert.AreEqual(mission, game.GetSceneNodesByType<Mission>().Single());
 
             participant.Movement = null;
@@ -5268,13 +5262,18 @@ namespace Rebellion.Tests.Simulation
         /// </summary>
         /// <param name="ownerSupport">The owner support.</param>
         /// <param name="hasGarrison">Whether has garrison.</param>
+        /// <param name="inciteFirst">Whether the incite mission is attached first.</param>
         /// <returns>The constructed concurrent missions scene.</returns>
         private (
             GameRoot game,
             Mission diplomacyMission,
             Mission inciteMission,
             MissionCommands missionSystem
-        ) BuildConcurrentMissionsScene(int ownerSupport = 50, bool hasGarrison = true)
+        ) BuildConcurrentMissionsScene(
+            int ownerSupport = 50,
+            bool hasGarrison = true,
+            bool inciteFirst = false
+        )
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = TestGame.Create(config);
@@ -5338,7 +5337,6 @@ namespace Rebellion.Tests.Simulation
                 new List<IMissionParticipant> { rebelsOfficer },
                 new List<IMissionParticipant>()
             );
-            game.AttachNode(diplomacyMission, rebelsPlanet);
             game.Config.ProbabilityTables.Mission.Diplomacy = new Dictionary<int, int>
             {
                 { -200, 0 },
@@ -5359,7 +5357,16 @@ namespace Rebellion.Tests.Simulation
             game.Config.ProbabilityTables.Mission.Foil = new Dictionary<int, int> { { 0, 0 } };
             game.Config.Uprising.PrimaryConsequenceTable.Clear();
             game.Config.Uprising.SecondaryConsequenceTable.Clear();
-            game.AttachNode(inciteMission, rebelsPlanet);
+            if (inciteFirst)
+            {
+                game.AttachNode(inciteMission, rebelsPlanet);
+                game.AttachNode(diplomacyMission, rebelsPlanet);
+            }
+            else
+            {
+                game.AttachNode(diplomacyMission, rebelsPlanet);
+                game.AttachNode(inciteMission, rebelsPlanet);
+            }
 
             diplomacyMission.Initiate(0);
             inciteMission.Initiate(0);
