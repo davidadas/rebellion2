@@ -1,0 +1,137 @@
+name: Report an Issue
+description: Report a reproducible problem with Rebellion 2.
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve Rebellion 2. Please include enough detail for someone else to reproduce the problem.
+
+  - type: input
+    id: game_version
+    attributes:
+      label: Game version
+      description: Enter the version shown by the launcher or main menu.
+      placeholder: "For example: 0.0.22"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - Windows
+        - macOS
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: launcher_version
+    attributes:
+      label: Launcher version
+      description: Enter the launcher version if the problem involves installing, updating, or launching the game.
+      placeholder: "For example: 0.1.0"
+
+  - type: dropdown
+    id: save_origin
+    attributes:
+      label: Save origin
+      description: Tell us whether the problem occurs in a new game or an existing save.
+      options:
+        - New game started in this version
+        - Save created in this version
+        - Save created in an earlier version
+        - Not applicable
+        - Unknown
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Describe the problem and when you first noticed it.
+      placeholder: Describe what you saw, including any error messages.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Provide the shortest sequence that reproduces the problem.
+      placeholder: |
+        1. Start or load...
+        2. Open...
+        3. Select...
+        4. Observe...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: Describe what you expected to happen instead.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: frequency
+    attributes:
+      label: Reproduction frequency
+      options:
+        - Every time
+        - Often
+        - Sometimes
+        - Once
+        - Unknown
+    validations:
+      required: true
+
+  - type: textarea
+    id: game_setup
+    attributes:
+      label: Game setup
+      description: Include the faction, difficulty, galaxy size, relevant units or planets, and any other conditions that may matter.
+
+  - type: textarea
+    id: mods
+    attributes:
+      label: Content packs and mods
+      description: List any non-default content packs or mods in use, or write "None."
+      placeholder: None.
+    validations:
+      required: true
+
+  - type: upload
+    id: evidence
+    attributes:
+      label: Save file, screenshots, or video
+      description: |
+        Please attach a save from immediately before the problem occurs when possible, and/or screenshots or video showing the problem.
+
+        Each save has a `.sav` file and a matching `.metadata.xml` file. Put both files in a ZIP before attaching them.
+
+        Save folders:
+        - Windows: `%USERPROFILE%\AppData\LocalLow\AdasGames\Rebellion 2\saves`
+        - macOS: `~/Library/Application Support/unity.AdasGames.Rebellion 2/saves`
+        - macOS fallback: `~/Library/Application Support/AdasGames/Rebellion 2/saves`
+
+        On Windows, paste the path into the File Explorer address bar. On macOS, select Go > Go to Folder in Finder and paste the path.
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional context
+      description: Add anything else that may help investigate the problem.
+
+  - type: checkboxes
+    id: existing_issues
+    attributes:
+      label: Existing issues
+      options:
+        - label: I searched the open and closed issues and did not find an existing report for this problem.
+          required: true
