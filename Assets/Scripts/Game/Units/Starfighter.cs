@@ -284,13 +284,16 @@ namespace Rebellion.Game.Units
         }
 
         /// <summary>
-        /// Returns the combined weapon strength contributed by the specified number of fighters.
+        /// Returns the squadron's weapon strength adjusted for its available fighters.
         /// </summary>
         /// <param name="squadronSize">The number of fighters contributing weapon strength.</param>
         /// <returns>The squadron combat value.</returns>
         internal int CalculateCombatValue(int squadronSize)
         {
-            return GetWeaponStrength() * Math.Max(0, squadronSize);
+            int weaponStrength = GetWeaponStrength();
+            return MaxSquadronSize > 0
+                ? weaponStrength * Math.Max(0, squadronSize) / MaxSquadronSize
+                : weaponStrength;
         }
 
         /// <summary>
