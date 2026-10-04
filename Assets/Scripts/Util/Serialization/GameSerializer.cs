@@ -1267,8 +1267,31 @@ namespace Rebellion.Util.Serialization
                     && !hasAlternativePersistableAttribute;
             }
 
-            IEnumerable<MemberInfo> fields = classType
-                .GetFields(_commonBindingFlags)
+            IEnumerable<FieldInfo> GetFieldsIncludingPrivateBaseFields()
+            {
+                foreach (FieldInfo field in classType.GetFields(_commonBindingFlags))
+                {
+                    yield return field;
+                }
+
+                for (
+                    Type currentType = classType.BaseType;
+                    currentType != null;
+                    currentType = currentType.BaseType
+                )
+                {
+                    foreach (
+                        FieldInfo field in currentType
+                            .GetFields(_commonBindingFlags | BindingFlags.DeclaredOnly)
+                            .Where(field => field.IsPrivate)
+                    )
+                    {
+                        yield return field;
+                    }
+                }
+            }
+
+            IEnumerable<MemberInfo> fields = GetFieldsIncludingPrivateBaseFields()
                 .Where(IsPersistable)
                 .Cast<MemberInfo>();
 

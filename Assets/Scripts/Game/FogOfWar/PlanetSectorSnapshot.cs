@@ -10,14 +10,22 @@ namespace Rebellion.Game.FogOfWar
     public class PlanetSectorSnapshot
     {
         // Planet snapshots keyed by planet instance ID.
-        public Dictionary<string, PlanetSnapshot> Planets;
+        [PersistableMember(Name = nameof(Planets))]
+        private Dictionary<string, PlanetSnapshot> _planets;
+
+        [PersistableIgnore]
+        public Dictionary<string, PlanetSnapshot> Planets
+        {
+            get => _planets;
+            set => _planets = value;
+        }
 
         /// <summary>
         /// Default constructor.
         /// </summary>
         public PlanetSectorSnapshot()
         {
-            Planets = new Dictionary<string, PlanetSnapshot>();
+            _planets = new Dictionary<string, PlanetSnapshot>();
         }
     }
 }
