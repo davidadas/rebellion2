@@ -400,7 +400,7 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void GetSavedGames_LegacyMetadataWithoutSaveDetails_BackfillsFromSave()
+        public void GetSavedGames_LegacyMetadataWithoutSaveDetails_LeavesDetailsUnset()
         {
             Directory.CreateDirectory(_saveDirectoryPath);
             GameRoot game = new GameRoot
@@ -410,22 +410,31 @@ namespace Rebellion.Tests.Managers
                 CurrentTick = 42,
                 Galaxy = new GalaxyMap(),
             };
-            GameSerializer serializer = new GameSerializer(typeof(GameRoot));
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameMetadata legacyMetadata = new GameMetadata
+            {
+                SaveDisplayName = "Legacy Save",
+                LastSavedUtc = DateTime.UtcNow,
+            };
+            GameSerializer serializer = new GameSerializer(
+                typeof(GameMetadata),
+                new GameSerializerSettings { RootName = "Metadata" }
+            );
             using (
                 FileStream stream = new FileStream(
-                    _saveGameManager.GetSaveFilePath(_saveFileName),
+                    _saveGameManager.GetSaveMetadataFilePath(_saveFileName),
                     FileMode.Create
                 )
             )
             {
-                serializer.Serialize(stream, game);
+                serializer.Serialize(stream, legacyMetadata);
             }
 
             SaveGameEntry entry = _saveGameManager.GetSavedGames().Single();
 
-            Assert.AreEqual(GameDifficulty.Hard, entry.Metadata.Difficulty);
-            Assert.AreEqual(42, entry.Metadata.CurrentTick);
-            Assert.IsTrue(File.Exists(_saveGameManager.GetSaveMetadataFilePath(_saveFileName)));
+            Assert.AreEqual("Legacy Save", entry.Metadata.SaveDisplayName);
+            Assert.IsNull(entry.Metadata.Difficulty);
+            Assert.IsNull(entry.Metadata.CurrentTick);
         }
 
         [Test]

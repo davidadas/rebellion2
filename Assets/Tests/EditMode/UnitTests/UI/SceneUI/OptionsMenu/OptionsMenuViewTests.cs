@@ -676,6 +676,26 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 .GetComponentsInChildren<TextMeshProUGUI>(true)
                 .Single(text => text.name == "SlotMetadata0");
             Assert.AreEqual("Hard • Turn 42", metadata.text);
+            Assert.AreEqual(FontStyles.Bold, metadata.fontStyle);
+        }
+
+        [Test]
+        public void SaveList_MissingGameDetails_RendersNoMetadata()
+        {
+            OptionsSaveSlot savedGame = new OptionsSaveSlot(
+                "Legacy Save",
+                "Today",
+                null,
+                false,
+                "legacy_save"
+            );
+
+            _view.Render(CreateRenderData(savedGame));
+
+            TextMeshProUGUI metadata = _root
+                .GetComponentsInChildren<TextMeshProUGUI>(true)
+                .Single(text => text.name == "SlotMetadata0");
+            Assert.IsEmpty(metadata.text);
         }
 
         [Test]
