@@ -848,8 +848,8 @@ namespace Rebellion.Tests.AI
 
             AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
 
-            Assert.AreEqual(1100, assessment.GetReadyFleetCombatValue(fleet));
-            Assert.AreEqual(2100, assessment.GetProjectedFleetCombatValue(fleet));
+            Assert.AreEqual(200, assessment.GetReadyFleetCombatValue(fleet));
+            Assert.AreEqual(750, assessment.GetProjectedFleetCombatValue(fleet));
         }
 
         [Test]
@@ -875,7 +875,7 @@ namespace Rebellion.Tests.AI
             game.AttachNode(fighter, carrier);
             AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
 
-            Assert.AreEqual(60, assessment.GetReadyFleetCombatValueAgainstCapitalShips(fleet));
+            Assert.AreEqual(5, assessment.GetReadyFleetCombatValueAgainstCapitalShips(fleet));
         }
 
         [Test]
@@ -902,7 +902,7 @@ namespace Rebellion.Tests.AI
             game.AttachNode(fighter, carrier);
             AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
 
-            Assert.AreEqual(120, assessment.GetProjectedFleetCombatValueAgainstCapitalShips(fleet));
+            Assert.AreEqual(10, assessment.GetProjectedFleetCombatValueAgainstCapitalShips(fleet));
         }
 
         [Test]
