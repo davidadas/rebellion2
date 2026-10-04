@@ -76,7 +76,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
                         "fleet commando",
                         "planet commando",
                         "foreign",
-                    }
+                    },
+                null,
+                typeId => typeId == "mon-calamari" ? "Mon Calamari Cruiser" : null
             );
         }
 
@@ -270,6 +272,23 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreSame(assault, rows[0].Node);
             Assert.AreSame(fleet, rows[0].Fleet);
             Assert.AreEqual(PlanetIcon.Fleet, rows[0].TargetIcon);
+        }
+
+        [Test]
+        public void GetRows_NamedShip_IncludesAssignedNameAndVesselType()
+        {
+            CapitalShip ship = CreateCapitalShip("ship", "Mon Calamari Cruiser", _playerFactionId);
+            ship.TypeID = "mon-calamari";
+            ship.AssignName("Home One");
+            _alpha.AddTestChild(CreateFleet("fleet", "Fleet", _playerFactionId, ship));
+
+            List<FinderWindowRow> rows = _builder.GetRows(
+                FinderMode.Fleets,
+                true,
+                FinderWindowTab.Faction(_playerFactionId, "Player")
+            );
+
+            Assert.AreEqual("Home One (Mon Calamari Cruiser)", rows.Single().Name);
         }
 
         [Test]
