@@ -1005,11 +1005,9 @@ public sealed class FleetWindowController
         if (eventData?.button != PointerEventData.InputButton.Left)
             return;
 
+        bool targetSelected = TrySelectTarget(session, item);
         endItemDrag(eventData);
-        if (
-            TrySelectTarget(session, item)
-            || SelectableListSelection.HasSelectionModifier(getSelectionModifiers())
-        )
+        if (targetSelected || SelectableListSelection.HasSelectionModifier(getSelectionModifiers()))
             return;
 
         session.SelectItem(item);

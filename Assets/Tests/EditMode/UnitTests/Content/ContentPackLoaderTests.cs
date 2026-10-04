@@ -44,7 +44,7 @@ namespace Rebellion.Tests.Content
                             <xs:complexType>
                               <xs:all>
                                 <xs:element name=""MissionExecutionSpeedIncreasePercent"" type=""xs:nonNegativeInteger""/>
-                                <xs:element name=""DetectionRatingMultiplier"" type=""xs:positiveInteger""/>
+                                <xs:element name=""DetectionRatingMultiplier"" type=""xs:decimal""/>
                                 <xs:element name=""MaintenanceCapacityPercent"" type=""xs:nonNegativeInteger""/>
                               </xs:all>
                             </xs:complexType>
@@ -72,7 +72,7 @@ namespace Rebellion.Tests.Content
             + "<Research><BaseResearchPoints>1</BaseResearchPoints></Research>"
             + "<DifficultyModifiers><Entry><Key>Hard</Key><Value><GameModifier>"
             + "<MissionExecutionSpeedIncreasePercent>37</MissionExecutionSpeedIncreasePercent>"
-            + "<DetectionRatingMultiplier>2</DetectionRatingMultiplier>"
+            + "<DetectionRatingMultiplier>1.375</DetectionRatingMultiplier>"
             + "<MaintenanceCapacityPercent>150</MaintenanceCapacityPercent>"
             + "</GameModifier></Value></Entry></DifficultyModifiers></GameConfig>";
 
@@ -191,7 +191,7 @@ namespace Rebellion.Tests.Content
             );
 
             Assert.AreEqual(
-                2,
+                1.375,
                 config.DifficultyModifiers[GameDifficulty.Hard].DetectionRatingMultiplier
             );
         }

@@ -109,7 +109,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void GetMissionOdds_HardAiDetector_AppliesDetectionRatingMultiplier()
+        public void GetMissionOdds_HardAiDetector_AppliesFractionalDetectionRatingMultiplier()
         {
             (GameRoot game, Planet planet, Officer spy, Officer defender) = BuildDetectionScene();
             Regiment detector = planet.GetChildren<Regiment>().Single();
@@ -119,11 +119,11 @@ namespace Rebellion.Tests.Simulation
             planet.AddVisitor("empire");
             game.Config.ProbabilityTables.Mission.FoilDefenderScalingPercent = 0;
             game.Config.ProbabilityTables.Mission.FoilFlatScoreAdjustment = 0;
-            SetFoilTable(game, new Dictionary<int, int> { { 20, 100 }, { 21, 0 } });
+            SetFoilTable(game, new Dictionary<int, int> { { 40, 100 }, { 41, 0 } });
             game.Summary.Difficulty = GameDifficulty.Hard;
             game.Config.DifficultyModifiers[GameDifficulty.Hard] = new DifficultyModifiers
             {
-                DetectionRatingMultiplier = 2,
+                DetectionRatingMultiplier = 1.5,
             };
             MissionQueries system = new MissionQueries(game);
 
@@ -140,7 +140,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void GetDecoyProbability_HardAiDetector_AppliesDetectionRatingMultiplier()
+        public void GetDecoyProbability_HardAiDetector_AppliesFractionalDetectionRatingMultiplier()
         {
             (GameRoot game, Planet planet, Officer spy, Officer defender) = BuildDetectionScene();
             Regiment detector = planet.GetChildren<Regiment>().Single();
@@ -151,11 +151,11 @@ namespace Rebellion.Tests.Simulation
             detector.DetectionRating = 40;
             planet.AddVisitor("empire");
             game.Config.ProbabilityTables.Mission.DecoyDefenderScalingPercent = 0;
-            SetDecoyTable(game, new Dictionary<int, int> { { 20, 0 }, { 21, 100 } });
+            SetDecoyTable(game, new Dictionary<int, int> { { 40, 0 }, { 41, 100 } });
             game.Summary.Difficulty = GameDifficulty.Hard;
             game.Config.DifficultyModifiers[GameDifficulty.Hard] = new DifficultyModifiers
             {
-                DetectionRatingMultiplier = 2,
+                DetectionRatingMultiplier = 1.5,
             };
             MissionQueries queries = new MissionQueries(game);
             Assert.IsTrue(

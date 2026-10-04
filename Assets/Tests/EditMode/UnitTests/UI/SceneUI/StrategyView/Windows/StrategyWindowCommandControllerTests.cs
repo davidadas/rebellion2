@@ -185,6 +185,29 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         }
 
         [Test]
+        public void TryExecuteMove_FleetTarget_MergesSourceFleetIntoExactFleet()
+        {
+            Rebellion.Game.Units.Fleet sourceFleet = CreateOperationalFleet();
+            CapitalShip sourceShip = sourceFleet.GetChildren<CapitalShip>().Single();
+            Rebellion.Game.Units.Fleet destinationFleet = new Rebellion.Game.Units.Fleet(
+                _playerFactionId,
+                "destination-fleet"
+            );
+            _game.AttachNode(destinationFleet, _destination.Planet);
+
+            bool moved = _controller.TryExecuteMove(
+                _sourceWindow,
+                new StrategyMissionTarget(_destination, destinationFleet),
+                new ISceneNode[] { sourceFleet }
+            );
+
+            Assert.IsTrue(moved);
+            Assert.AreSame(destinationFleet, sourceShip.GetParent());
+            Assert.IsNull(sourceFleet.GetParent());
+            Assert.AreSame(_sourceWindow, _clearedWindow);
+        }
+
+        [Test]
         public void TryExecuteMove_MobileHeadquarters_UsesHeadquartersRelocationRules()
         {
             Planet origin = _officer.GetParentOfType<Planet>();

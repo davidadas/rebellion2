@@ -1129,10 +1129,10 @@ namespace Rebellion.Simulation
                 CapitalShip capitalShip => capitalShip.DetectionRating,
                 _ => 0,
             };
-            int multiplier = _game
+            double multiplier = _game
                 .GetDifficultyModifier(detector?.GetOwnerInstanceID())
                 .DetectionRatingMultiplier;
-            return authoredRating * multiplier;
+            return (int)Math.Round(authoredRating * multiplier, MidpointRounding.AwayFromZero);
         }
 
         /// <summary>

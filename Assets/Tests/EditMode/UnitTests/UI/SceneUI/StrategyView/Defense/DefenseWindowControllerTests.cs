@@ -283,6 +283,49 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         }
 
         [Test]
+        public void ItemRelease_ActiveTargeting_SelectsExactItemAndCompletesDrag()
+        {
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "regiment",
+                OwnerInstanceID = _playerFactionId,
+                DisplayImagePath = "entity",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _planet.Planet.AddTestChild(regiment);
+            int completedDragCount = 0;
+            _controller.Initialize(
+                _testActions,
+                _testActions,
+                _testActions,
+                _testActions,
+                (_, _) => { },
+                _ => { },
+                _ => completedDragCount++
+            );
+            DefenseWindowView view = OpenWindow(out UIWindow window);
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            _controller.SelectFinderTab(view, DefenseWindowTab.Regiments);
+            _controller.RenderWindow(view, window, true);
+            StrategyUnitCardView card = view.GetComponentsInChildren<StrategyUnitCardView>(true)
+                .Single(item => item.gameObject.activeInHierarchy);
+            UIComponentTestHelper.InvokeLifecycle(card, "Awake");
+            RecordingTargetingReceiver receiver = new RecordingTargetingReceiver();
+            _targetingController.Begin(new TargetingRequest("Target", null, receiver));
+            PointerEventData eventData = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Left,
+            };
+
+            card.GetComponent<UIPointerGestureRelay>().OnPointerClick(eventData);
+
+            Assert.AreEqual(1, completedDragCount);
+            Assert.IsFalse(_targetingController.IsTargeting);
+            Assert.IsInstanceOf<StrategyMissionTarget>(receiver.Target);
+            Assert.AreSame(regiment, ((StrategyMissionTarget)receiver.Target).Item);
+        }
+
+        [Test]
         public void WindowDrop_ActiveTargeting_SelectsRepresentedPlanet()
         {
             DefenseWindowView view = OpenWindow(out UIWindow window);

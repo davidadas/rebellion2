@@ -719,7 +719,7 @@ public sealed class StrategyController
             idleBarController,
             inputController.StartItemDrag,
             inputController.OnDrag,
-            inputController.OnPointerUp
+            inputController.CompleteItemDrag
         );
         defenseWindowController.Initialize(
             this,
@@ -728,7 +728,7 @@ public sealed class StrategyController
             idleBarController,
             inputController.StartItemDrag,
             inputController.OnDrag,
-            inputController.OnPointerUp
+            inputController.CompleteItemDrag
         );
         planetSectorWindowController.Initialize(
             this,
