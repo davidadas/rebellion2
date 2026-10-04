@@ -70,6 +70,7 @@ namespace Rebellion.Game.Units
         public List<string> ManufacturingFactionInstanceIDs { get; set; }
         public int ResearchOrder { get; set; }
         public int ResearchDifficulty { get; set; }
+        public int UprisingDefense { get; set; }
 
         // Hull, Shield, and Repair Info.
         public int MaxHullStrength;
@@ -178,6 +179,7 @@ namespace Rebellion.Game.Units
                     : new List<string>(ManufacturingFactionInstanceIDs);
             copy.ResearchOrder = ResearchOrder;
             copy.ResearchDifficulty = ResearchDifficulty;
+            copy.UprisingDefense = UprisingDefense;
             copy.MaxHullStrength = MaxHullStrength;
             copy.CurrentHullStrength = CurrentHullStrength;
             copy.DamageControl = DamageControl;

@@ -10,7 +10,7 @@ namespace Rebellion.Generation
 {
     /// <summary>
     /// Seeds starting territory: assigns ownership and a Strong / Weak / Neutral
-    /// strength tag to every core planet based on difficulty-driven percentages,
+    /// strength tag to every core planet based on the standard ownership profile,
     /// places named starting planets, and records each faction's headquarters.
     /// </summary>
     public sealed class GalaxySeeder : IGameSeeder
@@ -37,8 +37,8 @@ namespace Rebellion.Generation
         /// </summary>
         /// <param name="sectors">All planet sectors in the galaxy.</param>
         /// <param name="factions">All factions in the game.</param>
-        /// <param name="summary">Game summary with player faction and difficulty settings.</param>
-        /// <param name="rules">Generation rules containing faction setups and difficulty profiles.</param>
+        /// <param name="summary">Selected game options and player faction.</param>
+        /// <param name="rules">Generation rules containing faction setups and ownership buckets.</param>
         /// <param name="rng">Random number provider.</param>
         /// <returns>Classification result with bucket map, faction HQs, and starting-planet loyalty.</returns>
         private GalaxyClassificationResult BuildClassification(
@@ -73,11 +73,10 @@ namespace Rebellion.Generation
                 out Dictionary<string, int> strongCountAdjustments
             );
 
-            DifficultyProfile profile = ResolveDifficultyProfile(config, summary);
-
             AssignCoreBuckets(
                 corePlanets,
-                profile,
+                config.FactionBuckets,
+                summary,
                 preassignedCoreCount,
                 strongCountAdjustments,
                 result,
@@ -259,45 +258,20 @@ namespace Rebellion.Generation
         }
 
         /// <summary>
-        /// Finds the difficulty profile matching the player's faction and difficulty level.
-        /// Falls back through progressively looser matches: exact -> faction wildcard ->
-        /// any wildcard -> "Default" name -> first entry.
-        /// </summary>
-        /// <param name="config">Galaxy classification config with difficulty profiles.</param>
-        /// <param name="summary">Game summary with player faction and difficulty.</param>
-        /// <returns>The best-matching difficulty profile.</returns>
-        private DifficultyProfile ResolveDifficultyProfile(
-            GalaxyClassificationSection config,
-            GameSummary summary
-        )
-        {
-            int difficulty = (int)summary.Difficulty;
-            return config.Profiles.FirstOrDefault(p =>
-                    p.PlayerFactionID == summary.PlayerFactionID && p.Difficulty == difficulty
-                )
-                ?? config.Profiles.FirstOrDefault(p =>
-                    p.PlayerFactionID == summary.PlayerFactionID && p.Difficulty == -1
-                )
-                ?? config.Profiles.FirstOrDefault(p =>
-                    string.IsNullOrEmpty(p.PlayerFactionID) && p.Difficulty == -1
-                )
-                ?? config.Profiles.FirstOrDefault(p => p.Name == "Default")
-                ?? config.Profiles[0];
-        }
-
-        /// <summary>
         /// Assigns the remaining core planets to faction buckets (Strong, Weak, Neutral)
         /// based on the difficulty profile's per-faction percentages.
         /// </summary>
         /// <param name="corePlanets">Unassigned core planets to classify.</param>
-        /// <param name="profile">Difficulty profile with per-faction bucket percentages.</param>
+        /// <param name="factionBuckets">Per-faction bucket percentages.</param>
+        /// <param name="summary">Selected difficulty and player faction.</param>
         /// <param name="preassignedCoreCount">Number of core planets already assigned as starting planets.</param>
         /// <param name="strongCountAdjustments">Per-faction count of pre-assigned core starting planets.</param>
         /// <param name="result">Classification result to populate with bucket assignments.</param>
         /// <param name="rng">Random number provider for shuffle.</param>
         private void AssignCoreBuckets(
             List<Planet> corePlanets,
-            DifficultyProfile profile,
+            IReadOnlyList<FactionBucketConfig> factionBuckets,
+            GameSummary summary,
             int preassignedCoreCount,
             Dictionary<string, int> strongCountAdjustments,
             GalaxyClassificationResult result,
@@ -308,10 +282,11 @@ namespace Rebellion.Generation
 
             List<(string factionID, int strongCount, int weakCount)> factionBucketCounts =
                 new List<(string factionID, int strongCount, int weakCount)>();
-            foreach (FactionBucketConfig fb in profile.FactionBuckets)
+            foreach (FactionBucketConfig fb in factionBuckets)
             {
-                int strong = totalCore * fb.StrongPct / 100;
-                int weak = totalCore * fb.WeakPct / 100;
+                (int strongPct, int weakPct) = ResolveBucketPercentages(fb, summary);
+                int strong = totalCore * strongPct / 100;
+                int weak = totalCore * weakPct / 100;
 
                 if (strongCountAdjustments.TryGetValue(fb.FactionID, out int adj))
                     strong = Math.Max(0, strong - adj);
@@ -355,6 +330,38 @@ namespace Rebellion.Generation
                 };
                 idx++;
             }
+        }
+
+        /// <summary>
+        /// Resolves a faction's ownership percentages for the selected difficulty and controller.
+        /// </summary>
+        /// <param name="config">Faction ownership bucket configuration.</param>
+        /// <param name="summary">Selected difficulty and player faction.</param>
+        /// <returns>The applicable strong and weak ownership percentages.</returns>
+        private static (int StrongPct, int WeakPct) ResolveBucketPercentages(
+            FactionBucketConfig config,
+            GameSummary summary
+        )
+        {
+            if (
+                summary == null
+                || string.IsNullOrEmpty(summary.PlayerFactionID)
+                || config.Overrides == null
+            )
+                return (config.StrongPct, config.WeakPct);
+
+            PlayerControllerType controllerType =
+                config.FactionID == summary.PlayerFactionID
+                    ? PlayerControllerType.Human
+                    : PlayerControllerType.AI;
+            FactionBucketOverride matchingOverride = config.Overrides.FirstOrDefault(candidate =>
+                candidate.Difficulty == summary.Difficulty
+                && candidate.ControllerType == controllerType
+            );
+
+            return matchingOverride == null
+                ? (config.StrongPct, config.WeakPct)
+                : (matchingOverride.StrongPct, matchingOverride.WeakPct);
         }
 
         /// <summary>

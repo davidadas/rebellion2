@@ -38,6 +38,7 @@ namespace Rebellion.Tests.Game.Units
                 TractorBeamnRange = 3,
                 HasGravityWell = false,
                 DetectionRating = 25,
+                UprisingDefense = 19,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
         }
@@ -417,6 +418,7 @@ namespace Rebellion.Tests.Game.Units
                 deserialized.ManufacturingQueueSequence,
                 "ManufacturingQueueSequence should be correctly deserialized."
             );
+            Assert.AreEqual(_capitalShip.UprisingDefense, deserialized.UprisingDefense);
             Assert.AreEqual("POOL", deserialized.ShipNamePoolID);
             Assert.AreEqual(_capitalShip.ModelPath, deserialized.ModelPath);
             Assert.AreEqual("Named Ship", deserialized.DisplayName);

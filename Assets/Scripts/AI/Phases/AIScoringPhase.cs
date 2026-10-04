@@ -1,8 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.AI.Director;
 using Rebellion.AI.Proposals;
-using Rebellion.AI.Scoring;
+using Rebellion.AI.Scorers;
 
 namespace Rebellion.AI.Phases
 {
@@ -20,7 +19,6 @@ namespace Rebellion.AI.Phases
             : this(
                 new IAIProposalScorer[]
                 {
-                    new AICleanupProposalScorer(),
                     new AIMissionProposalScorer(),
                     new AIFleetProposalScorer(),
                     new AIProductionProposalScorer(),

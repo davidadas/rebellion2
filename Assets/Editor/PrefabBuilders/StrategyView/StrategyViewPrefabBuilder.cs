@@ -67,6 +67,7 @@ public static class StrategyViewPrefabBuilder
     private const string _hudMaintenanceTextFieldName = "MaintenanceTextField";
     private const string _windowLayerName = "Windows";
     private const string _modelessWindowLayerName = "ModelessWindows";
+    private const string _hudPopoverLayerName = "HudPopovers";
     private const string _modalWindowLayerName = "ModalWindows";
     private const string _modalInputBlockerName = "ModalInputBlocker";
     private const string _modalBackgroundDimName = "ModalBackgroundDim";
@@ -210,6 +211,9 @@ public static class StrategyViewPrefabBuilder
     private const float _galaxyProjectionWidth = 315f;
     private const float _galaxyProjectionHeight = 215f;
     private const int _planetPreviewWidth = 37;
+    private const int _planetSectorGalacticInformationMarkerBottomOverhang = 4;
+    private const int _planetSectorGalacticInformationMarkerHeight = 15;
+    private const int _planetSectorGalacticInformationMarkerWidth = 15;
     private const int _planetSectorPlanetImageWidth = 37;
     private const int _planetSectorPlanetImageHeight = 37;
     private const int _planetSectorFacilityIconWidth = 27;
@@ -580,13 +584,13 @@ public static class StrategyViewPrefabBuilder
         TextMeshProUGUI label = CreateTextLabel("LabelTextField", slot.transform);
         label.text = "Corellia";
         label.color = Color.yellow;
-        label.fontSize = 12;
+        label.fontSize = 9;
         label.alignment = TextAlignmentOptions.MidlineLeft;
         SetSourceRect(
             label.rectTransform,
             layout.LabelOffsetX,
             0,
-            layout.Width - layout.LabelOffsetX,
+            Mathf.Min(layout.LabelWidth, layout.Width - layout.LabelOffsetX),
             layout.ItemHeight
         );
 
@@ -824,6 +828,12 @@ public static class StrategyViewPrefabBuilder
             hud.transform,
             PreviewTheme?.TacticalHUDLayout?.SpeedContextSourceLayout
         );
+        List<UIRaycastArea> resourceBreakdownHoverViews = new List<UIRaycastArea>
+        {
+            CreateHudButtonView("RawMaterialsHoverArea", hud.transform, (SourceRectLayout)null),
+            CreateHudButtonView("RefinedMaterialsHoverArea", hud.transform, (SourceRectLayout)null),
+            CreateHudButtonView("MaintenanceHoverArea", hud.transform, (SourceRectLayout)null),
+        };
         RawImage pressedMainButtonImage = CreateRawImage(
             "PressedMainButtonImage",
             hud.transform,
@@ -836,6 +846,11 @@ public static class StrategyViewPrefabBuilder
         pressedMainButtonImage.gameObject.SetActive(false);
 
         IdleBarView idleBar = CreateIdleBarView(root.transform);
+        List<RectTransform> resourceBreakdownPanels = new List<RectTransform>();
+        List<TextMeshProUGUI> resourceBreakdownTitles = new List<TextMeshProUGUI>();
+        List<TextMeshProUGUI> resourceBreakdownPrimaryFields = new List<TextMeshProUGUI>();
+        List<TextMeshProUGUI> resourceBreakdownForecastFields = new List<TextMeshProUGUI>();
+        List<TextMeshProUGUI> resourceBreakdownLifecycleFields = new List<TextMeshProUGUI>();
         GameObject windows = CreateLayer(_windowLayerName, root.transform);
         RectTransform windowsRect = windows.GetComponent<RectTransform>();
         SetStrategySurfaceRect(windowsRect);
@@ -849,7 +864,59 @@ public static class StrategyViewPrefabBuilder
             _modelessWindowLayerName,
             windows.transform
         );
+        RectTransform hudPopoverLayer = CreateChildLayer(_hudPopoverLayerName, windows.transform);
         RectTransform modalWindowLayer = CreateChildLayer(_modalWindowLayerName, windows.transform);
+        resourceBreakdownPanels.Add(
+            CreateResourceBreakdownPanel(
+                "RawMaterialsPanel",
+                "Mines",
+                hudPopoverLayer,
+                StrategyHudView.ResourceBreakdownPanelWidth,
+                StrategyHudView.ResourceBreakdownPanelHeight,
+                out TextMeshProUGUI rawMaterialsTitle,
+                out TextMeshProUGUI rawMaterialsPrimary,
+                out TextMeshProUGUI rawMaterialsForecast,
+                out TextMeshProUGUI rawMaterialsLifecycle
+            )
+        );
+        resourceBreakdownTitles.Add(rawMaterialsTitle);
+        resourceBreakdownPrimaryFields.Add(rawMaterialsPrimary);
+        resourceBreakdownForecastFields.Add(rawMaterialsForecast);
+        resourceBreakdownLifecycleFields.Add(rawMaterialsLifecycle);
+        resourceBreakdownPanels.Add(
+            CreateResourceBreakdownPanel(
+                "RefinedMaterialsPanel",
+                "Refineries",
+                hudPopoverLayer,
+                StrategyHudView.ResourceBreakdownPanelWidth,
+                StrategyHudView.ResourceBreakdownPanelHeight,
+                out TextMeshProUGUI refinedMaterialsTitle,
+                out TextMeshProUGUI refinedMaterialsPrimary,
+                out TextMeshProUGUI refinedMaterialsForecast,
+                out TextMeshProUGUI refinedMaterialsLifecycle
+            )
+        );
+        resourceBreakdownTitles.Add(refinedMaterialsTitle);
+        resourceBreakdownPrimaryFields.Add(refinedMaterialsPrimary);
+        resourceBreakdownForecastFields.Add(refinedMaterialsForecast);
+        resourceBreakdownLifecycleFields.Add(refinedMaterialsLifecycle);
+        resourceBreakdownPanels.Add(
+            CreateResourceBreakdownPanel(
+                "MaintenancePanel",
+                "Maintenance",
+                hudPopoverLayer,
+                StrategyHudView.ResourceBreakdownPanelWidth,
+                StrategyHudView.ResourceBreakdownPanelHeight,
+                out TextMeshProUGUI maintenanceTitle,
+                out TextMeshProUGUI maintenancePrimary,
+                out TextMeshProUGUI maintenanceForecast,
+                out TextMeshProUGUI maintenanceLifecycle
+            )
+        );
+        resourceBreakdownTitles.Add(maintenanceTitle);
+        resourceBreakdownPrimaryFields.Add(maintenancePrimary);
+        resourceBreakdownForecastFields.Add(maintenanceForecast);
+        resourceBreakdownLifecycleFields.Add(maintenanceLifecycle);
         RawImage modalInputBlocker = CreatePanelImage(
             _modalInputBlockerName,
             modalWindowLayer,
@@ -936,6 +1003,24 @@ public static class StrategyViewPrefabBuilder
         AssignReferenceArray(hudView, "messageNotificationButtons", messageNotificationButtons);
         AssignReferenceArray(hudView, "buttonViews", hudButtonViews);
         AssignReference(hudView, "speedContextView", speedContextView);
+        AssignReferenceArray(hudView, "resourceBreakdownHoverViews", resourceBreakdownHoverViews);
+        AssignReferenceArray(hudView, "resourceBreakdownPanels", resourceBreakdownPanels);
+        AssignReferenceArray(hudView, "resourceBreakdownTitleTextFields", resourceBreakdownTitles);
+        AssignReferenceArray(
+            hudView,
+            "resourceBreakdownPrimaryTextFields",
+            resourceBreakdownPrimaryFields
+        );
+        AssignReferenceArray(
+            hudView,
+            "resourceBreakdownForecastTextFields",
+            resourceBreakdownForecastFields
+        );
+        AssignReferenceArray(
+            hudView,
+            "resourceBreakdownLifecycleTextFields",
+            resourceBreakdownLifecycleFields
+        );
         AssignReference(hudView, "advisorView", advisorView);
         AssignReference(galaxyMapView, "background", background);
         AssignReference(galaxyMapView, "backgroundImage", backgroundImage);
@@ -947,6 +1032,166 @@ public static class StrategyViewPrefabBuilder
         Object.DestroyImmediate(sceneRoot);
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
+    }
+
+    /// <summary>
+    /// Authors one compact resource-counter popover.
+    /// </summary>
+    /// <param name="name">The panel object name.</param>
+    /// <param name="heading">The panel heading.</param>
+    /// <param name="parent">The HUD popover layer above modeless strategy windows.</param>
+    /// <param name="width">The source-space panel width.</param>
+    /// <param name="height">The source-space panel height.</param>
+    /// <param name="title">The authored panel title.</param>
+    /// <param name="primary">The authored dominant current value.</param>
+    /// <param name="forecast">The authored delivery and completion forecasts.</param>
+    /// <param name="lifecycle">The authored lifecycle totals.</param>
+    /// <returns>The authored panel root.</returns>
+    private static RectTransform CreateResourceBreakdownPanel(
+        string name,
+        string heading,
+        Transform parent,
+        int width,
+        int height,
+        out TextMeshProUGUI title,
+        out TextMeshProUGUI primary,
+        out TextMeshProUGUI forecast,
+        out TextMeshProUGUI lifecycle
+    )
+    {
+        RawImage background = CreatePanelImage(name, parent, new Color(0.03f, 0.03f, 0.04f, 0.96f));
+        background.raycastTarget = false;
+        SetSourceRect(background.rectTransform, 0, 0, width, height);
+
+        title = CreateResourceBreakdownText(
+            "TitleTextField",
+            heading,
+            background.transform,
+            6,
+            3,
+            width - 12,
+            9,
+            TextAlignmentOptions.Left,
+            FontStyles.Bold,
+            7.5f
+        );
+
+        RawImage headerDivider = CreatePanelImage(
+            "HeaderDivider",
+            background.transform,
+            new Color(0.25f, 0.27f, 0.3f, 0.75f)
+        );
+        headerDivider.raycastTarget = false;
+        SetSourceRect(headerDivider.rectTransform, 5, 15, width - 10, 1);
+
+        primary = CreateResourceBreakdownText(
+            "PrimaryTextField",
+            string.Empty,
+            background.transform,
+            7,
+            20,
+            76,
+            39,
+            TextAlignmentOptions.TopLeft,
+            FontStyles.Normal,
+            7
+        );
+        forecast = CreateResourceBreakdownText(
+            "ForecastTextField",
+            string.Empty,
+            background.transform,
+            94,
+            19,
+            70,
+            41,
+            TextAlignmentOptions.TopLeft,
+            FontStyles.Normal,
+            7
+        );
+        lifecycle = CreateResourceBreakdownText(
+            "LifecycleTextField",
+            string.Empty,
+            background.transform,
+            6,
+            68,
+            width - 12,
+            20,
+            TextAlignmentOptions.TopLeft,
+            FontStyles.Normal,
+            7
+        );
+
+        CreateResourceBreakdownDivider(background.transform, 86, 20, 1, 39);
+        CreateResourceBreakdownDivider(background.transform, 5, 64, width - 10, 1);
+        CreateResourceBreakdownDivider(background.transform, 126, 68, 1, 19);
+
+        CreateResourceBreakdownDivider(background.transform, 0, 0, width, 1);
+        CreateResourceBreakdownDivider(background.transform, 0, height - 1, width, 1);
+        CreateResourceBreakdownDivider(background.transform, 0, 0, 1, height);
+        CreateResourceBreakdownDivider(background.transform, width - 1, 0, 1, height);
+        background.gameObject.SetActive(false);
+        return background.rectTransform;
+    }
+
+    /// <summary>
+    /// Authors one subtle divider inside a resource summary card.
+    /// </summary>
+    /// <param name="parent">The card receiving the divider.</param>
+    /// <param name="x">The source-space horizontal position.</param>
+    /// <param name="y">The source-space vertical position.</param>
+    /// <param name="width">The source-space divider width.</param>
+    /// <param name="height">The source-space divider height.</param>
+    private static void CreateResourceBreakdownDivider(
+        Transform parent,
+        int x,
+        int y,
+        int width,
+        int height
+    )
+    {
+        RawImage divider = CreatePanelImage("Divider", parent, new Color(0.3f, 0.31f, 0.32f, 0.8f));
+        divider.raycastTarget = false;
+        SetSourceRect(divider.rectTransform, x, y, width, height);
+    }
+
+    /// <summary>
+    /// Authors one text field inside the resource-facility breakdown.
+    /// </summary>
+    /// <param name="name">The text object name.</param>
+    /// <param name="text">The preview text.</param>
+    /// <param name="parent">The panel transform.</param>
+    /// <param name="x">The source-space horizontal position.</param>
+    /// <param name="y">The source-space vertical position.</param>
+    /// <param name="width">The source-space width.</param>
+    /// <param name="height">The source-space height.</param>
+    /// <param name="alignment">The text alignment.</param>
+    /// <param name="fontStyle">The optional font style.</param>
+    /// <param name="fontSize">The authored font size.</param>
+    /// <returns>The authored text field.</returns>
+    private static TextMeshProUGUI CreateResourceBreakdownText(
+        string name,
+        string text,
+        Transform parent,
+        int x,
+        int y,
+        int width,
+        int height,
+        TextAlignmentOptions alignment,
+        FontStyles fontStyle = FontStyles.Normal,
+        float fontSize = 8
+    )
+    {
+        TextMeshProUGUI textField = CreateTextLabel(name, parent);
+        textField.text = text;
+        textField.color = Color.white;
+        textField.fontSize = fontSize;
+        textField.fontStyle = fontStyle;
+        textField.alignment = alignment;
+        textField.textWrappingMode = TextWrappingModes.NoWrap;
+        textField.overflowMode = TextOverflowModes.Overflow;
+        textField.raycastTarget = false;
+        SetSourceRect(textField.rectTransform, x, y, width, height);
+        return textField;
     }
 
     /// <summary>
@@ -7555,6 +7800,19 @@ public static class StrategyViewPrefabBuilder
             _planetSectorPlanetImageHeight
         );
         uprising.raycastTarget = false;
+        RawImage galacticInformation = CreateRawImage(
+            "GalacticInformationImage",
+            root.transform,
+            PreviewTheme?.GalaxyBackground?.PlanetIcons?.Small,
+            10,
+            1
+                + _planetSectorPlanetImageHeight
+                + _planetSectorGalacticInformationMarkerBottomOverhang
+                - _planetSectorGalacticInformationMarkerHeight,
+            _planetSectorGalacticInformationMarkerWidth,
+            _planetSectorGalacticInformationMarkerHeight
+        );
+        galacticInformation.raycastTarget = false;
         RawImage facility = CreateRawImage(
             "FacilityImage",
             root.transform,
@@ -7634,6 +7892,7 @@ public static class StrategyViewPrefabBuilder
         );
 
         AssignReference(planetView, "hitAreaImage", hitArea);
+        AssignReference(planetView, "galacticInformationImage", galacticInformation);
         AssignReference(planetView, "planetImage", planet);
         AssignReference(planetView, "uprisingImage", uprising);
         AssignReference(planetView, "facilityImage", facility);

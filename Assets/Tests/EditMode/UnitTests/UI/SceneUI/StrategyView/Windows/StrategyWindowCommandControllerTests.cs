@@ -9,7 +9,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 using UnityEngine;
 using UnityEngine.UI;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
@@ -29,7 +29,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         private int _dirtyCount;
         private GalaxyMapPlanet _destination;
         private GameRoot _game;
-        private GameManager _gameManager;
+        private GameSession _session;
         private int _invalidOrderRejectionCount;
         private GalaxyMapPlanet _missionTarget;
         private MissionCreateWindowController _missionCreateController;
@@ -75,7 +75,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             };
             _game.AttachNode(_officer, origin);
             _game.AttachNode(_specialForces, origin);
-            _gameManager = TestContent.CreateGameManager(_game);
+            _session = TestContent.CreateGameSession(_game);
             _uiContext = TestContent.CreateUIContext(
                 _game,
                 TestContent.CreateThemeLibrary(),
@@ -86,8 +86,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             _windowManager = _rootObject.GetComponentInChildren<UIWindowManager>(true);
             _sourceWindow = CreateSourceWindow();
             _missionCreateController = new MissionCreateWindowController(
-                () => _game,
-                () => _gameManager.MissionSystem,
+                _session,
                 () => _uiContext,
                 _ => { },
                 _windowLayer,
@@ -109,16 +108,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             _controller = new StrategyWindowCommandController(
                 _missionCreateController,
                 confirmController,
-                () => _gameManager.GetGame(),
-                () => _gameManager.MovementSystem,
-                () => _gameManager.MaintenanceSystem,
-                () => _gameManager.ManufacturingSystem,
-                () => _gameManager.PersonnelSystem,
+                _session,
                 _ => _playedSfxCount++,
                 window => _clearedWindow = window,
                 () => _rebuildCount++,
                 () => _dirtyCount++,
-                null,
                 () => _invalidOrderRejectionCount++,
                 () => _transitRejectionCount++,
                 () => _underConstructionRejectionCount++
@@ -151,11 +145,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
                 new StrategyWindowCommandController(
                     null,
                     confirmController,
-                    () => _gameManager.GetGame(),
-                    () => _gameManager.MovementSystem,
-                    () => _gameManager.MaintenanceSystem,
-                    () => _gameManager.ManufacturingSystem,
-                    () => _gameManager.PersonnelSystem,
+                    _session,
                     _ => { },
                     _ => { },
                     () => { },
@@ -192,6 +182,65 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.AreSame(_sourceWindow, _clearedWindow);
             Assert.AreEqual(1, _rebuildCount);
             Assert.AreEqual(1, _dirtyCount);
+        }
+
+        [Test]
+        public void TryExecuteMove_FleetTarget_MergesSourceFleetIntoExactFleet()
+        {
+            Rebellion.Game.Units.Fleet sourceFleet = CreateOperationalFleet();
+            CapitalShip sourceShip = sourceFleet.GetChildren<CapitalShip>().Single();
+            Rebellion.Game.Units.Fleet destinationFleet = new Rebellion.Game.Units.Fleet(
+                _playerFactionId,
+                "destination-fleet"
+            );
+            _game.AttachNode(destinationFleet, _destination.Planet);
+
+            bool moved = _controller.TryExecuteMove(
+                _sourceWindow,
+                new StrategyMissionTarget(_destination, destinationFleet),
+                new ISceneNode[] { sourceFleet }
+            );
+
+            Assert.IsTrue(moved);
+            Assert.AreSame(destinationFleet, sourceShip.GetParent());
+            Assert.IsNull(sourceFleet.GetParent());
+            Assert.AreSame(_sourceWindow, _clearedWindow);
+        }
+
+        [Test]
+        public void TryExecuteMove_MobileHeadquarters_UsesHeadquartersRelocationRules()
+        {
+            Planet origin = _officer.GetParentOfType<Planet>();
+            Planet destination = _destination.Planet;
+            origin.EnergyCapacity = 1;
+            destination.EnergyCapacity = 1;
+            origin.IsHeadquarters = true;
+            Faction player = _game.GetFactionByOwnerInstanceID(_playerFactionId);
+            player.HQInstanceID = origin.InstanceID;
+            player.Settings = new FactionSettings
+            {
+                Headquarters = new HeadquartersSettings { IsMobile = true },
+            };
+            Building headquarters = new Building
+            {
+                InstanceID = "headquarters",
+                OwnerInstanceID = _playerFactionId,
+                BuildingType = BuildingType.Headquarters,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(headquarters, origin);
+
+            bool moved = _controller.TryExecuteMove(
+                _sourceWindow,
+                new StrategyMissionTarget(_destination, null),
+                new ISceneNode[] { headquarters }
+            );
+
+            Assert.IsTrue(moved);
+            Assert.IsNotNull(headquarters.Movement);
+            Assert.IsFalse(origin.IsHeadquarters);
+            Assert.IsNull(player.HQInstanceID);
+            Assert.AreSame(_sourceWindow, _clearedWindow);
         }
 
         [Test]
@@ -349,6 +398,108 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         }
 
         [Test]
+        public void ExecuteItemDrop_EnemyCapitalShipOverFriendlyPlanet_OpensMissionCreateWindow()
+        {
+            CapitalShip target = new CapitalShip
+            {
+                InstanceID = "target-capital-ship",
+                OwnerInstanceID = _opponentFactionId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+
+            AssertEnemyFleetUnitDropOpensMission(target);
+        }
+
+        [Test]
+        public void ExecuteItemDrop_EnemyStarfighterOverFriendlyPlanet_OpensMissionCreateWindow()
+        {
+            Starfighter target = new Starfighter
+            {
+                InstanceID = "target-starfighter",
+                OwnerInstanceID = _opponentFactionId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+
+            AssertEnemyFleetUnitDropOpensMission(target);
+        }
+
+        [Test]
+        public void ExecuteItemDrop_EnemyRegimentOverFriendlyPlanet_OpensMissionCreateWindow()
+        {
+            Regiment target = new Regiment
+            {
+                InstanceID = "target-regiment",
+                OwnerInstanceID = _opponentFactionId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+
+            AssertEnemyFleetUnitDropOpensMission(target);
+        }
+
+        [Test]
+        public void ExecuteItemDrop_EnemyOfficerOverFriendlyPlanet_OpensMissionCreateWindow()
+        {
+            Officer target = new Officer
+            {
+                InstanceID = "target-officer",
+                OwnerInstanceID = _opponentFactionId,
+            };
+
+            AssertEnemyFleetUnitDropOpensMission(target);
+        }
+
+        [Test]
+        public void ExecuteItemDrop_EnemyFleet_DoesNotOpenMissionCreateWindow()
+        {
+            Rebellion.Game.Units.Fleet fleet = new Rebellion.Game.Units.Fleet(
+                _opponentFactionId,
+                "target-fleet"
+            )
+            {
+                InstanceID = "target-fleet",
+            };
+            _game.AttachNode(fleet, _destination.Planet);
+
+            _controller.ExecuteItemDrop(
+                _sourceWindow,
+                new StrategyMissionTarget(_destination, fleet),
+                new ISceneNode[] { _officer }
+            );
+
+            Assert.IsEmpty(_windowManager.Windows);
+        }
+
+        [Test]
+        public void ExecuteItemDrop_FriendlyCapitalShipOverEnemyPlanet_ExecutesMove()
+        {
+            Rebellion.Game.Units.Fleet fleet = new Rebellion.Game.Units.Fleet(
+                _playerFactionId,
+                "friendly-fleet"
+            )
+            {
+                InstanceID = "friendly-fleet",
+            };
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "friendly-ship",
+                OwnerInstanceID = _playerFactionId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(fleet, _missionTarget.Planet);
+            _game.AttachNode(ship, fleet);
+
+            _controller.ExecuteItemDrop(
+                _sourceWindow,
+                new StrategyMissionTarget(_missionTarget, ship),
+                new ISceneNode[] { _officer }
+            );
+
+            Assert.IsEmpty(_windowManager.Windows);
+            Assert.IsNotNull(_officer.Movement);
+            Assert.AreSame(_sourceWindow, _clearedWindow);
+        }
+
+        [Test]
         public void ExecuteTargetedCommand_CreateMissionWithoutItem_PlaysAdvisorRejection()
         {
             _controller.ExecuteTargetedCommand(
@@ -463,6 +614,38 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.AreEqual(1, _dirtyCount);
         }
 
+        [Test]
+        public void OpenRetireConfirmWindow_OfficerCapturedBeforeConfirmation_PreservesOfficer()
+        {
+            _controller.OpenRetireConfirmWindow(_sourceWindow, new ISceneNode[] { _officer });
+            _officer.IsCaptured = true;
+
+            ConfirmOpenDialog();
+
+            Assert.IsTrue(_officer.IsActive());
+            Assert.IsFalse(_officer.IsRetired);
+            Assert.AreEqual(0, _rebuildCount);
+        }
+
+        [Test]
+        public void OpenRetireConfirmWindow_GameReplacedBeforeConfirmation_RetiresReplacementOfficer()
+        {
+            _controller.OpenRetireConfirmWindow(_sourceWindow, new ISceneNode[] { _officer });
+            GameRoot replacement = CreateGame(out Planet origin, out _, out _);
+            Officer replacementOfficer = new Officer
+            {
+                InstanceID = _officer.InstanceID,
+                OwnerInstanceID = _playerFactionId,
+            };
+            replacement.AttachNode(replacementOfficer, origin);
+            _session.ReplaceGame(replacement);
+
+            ConfirmOpenDialog();
+
+            Assert.IsTrue(replacementOfficer.IsRetired);
+            Assert.IsFalse(_officer.IsRetired);
+        }
+
         /// <summary>
         /// Creates game.
         /// </summary>
@@ -476,7 +659,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             out GalaxyMapPlanet missionTarget
         )
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             game.GetFactions().Add(new Faction { InstanceID = _playerFactionId });
             game.GetFactions().Add(new Faction { InstanceID = _opponentFactionId });
             game.Summary.PlayerFactionID = _playerFactionId;
@@ -554,6 +737,47 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             _game.AttachNode(fleet, origin);
             _game.AttachNode(ship, fleet);
             return fleet;
+        }
+
+        /// <summary>
+        /// Verifies an enemy fleet unit above a friendly planet opens mission creation when dropped.
+        /// </summary>
+        /// <param name="target">The exact fleet unit receiving the drop.</param>
+        private void AssertEnemyFleetUnitDropOpensMission(ISceneNode target)
+        {
+            Rebellion.Game.Units.Fleet fleet = new Rebellion.Game.Units.Fleet(
+                _opponentFactionId,
+                "target-fleet"
+            )
+            {
+                InstanceID = "target-fleet",
+            };
+            _game.AttachNode(fleet, _destination.Planet);
+            if (target is CapitalShip)
+                _game.AttachNode(target, fleet);
+            else
+            {
+                CapitalShip carrier = new CapitalShip
+                {
+                    InstanceID = "target-carrier",
+                    OwnerInstanceID = _opponentFactionId,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                    StarfighterCapacity = 1,
+                    RegimentCapacity = 1,
+                };
+                _game.AttachNode(carrier, fleet);
+                _game.AttachNode(target, carrier);
+            }
+
+            _controller.ExecuteItemDrop(
+                _sourceWindow,
+                new StrategyMissionTarget(_destination, target),
+                new ISceneNode[] { _officer }
+            );
+
+            UIWindow window = _windowManager.Windows.Single();
+            Assert.IsTrue(window.Modal);
+            Assert.IsTrue(_windowManager.TryGetWindowView(window, out MissionCreateWindowView _));
         }
 
         /// <summary>

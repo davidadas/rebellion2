@@ -1,5 +1,6 @@
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
+using Rebellion.Simulation;
 
 internal static class TestContent
 {
@@ -9,7 +10,9 @@ internal static class TestContent
     internal static ContentPack Pack => _pack ??= ContentPackLoader.OpenActive();
 
     internal static ContentAssets Assets =>
-        _assets ??= new ContentAssets(Pack.ContentRootPath, Pack.PackRootPath);
+        _assets ??= new ContentAssets(
+            new ContentFileResolver(Pack.ContentRootPath, Pack.PackRootPath)
+        );
 
     internal static GameDataCatalog Data => Pack.GameData;
 
@@ -35,7 +38,13 @@ internal static class TestContent
         EncyclopediaCatalog encyclopediaCatalog
     )
     {
-        return new UIContext(game, themeLibrary, encyclopediaCatalog, Assets.GetTexture);
+        return new UIContext(
+            game,
+            themeLibrary,
+            encyclopediaCatalog,
+            Assets.GetTexture,
+            Assets.GetTextureContentBounds
+        );
     }
 
     /// <summary>
@@ -43,8 +52,8 @@ internal static class TestContent
     /// </summary>
     /// <param name="game">The game.</param>
     /// <returns>The created game manager.</returns>
-    internal static GameManager CreateGameManager(GameRoot game)
+    internal static GameSession CreateGameSession(GameRoot game)
     {
-        return new GameManager(game, Data);
+        return new GameSession(game, Data);
     }
 }

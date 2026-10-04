@@ -40,6 +40,7 @@ internal sealed class PlanetSectorWindowProjector
     /// <param name="waypointPlan">The active uncommitted waypoint plan, or null.</param>
     /// <param name="selectedFleetInstanceIds">The fleets selected in open strategy windows.</param>
     /// <param name="showAllWaypointRoutes">Whether every player waypoint route is visible.</param>
+    /// <param name="filterMode">The galactic-information filter applied to visible planets.</param>
     /// <returns>The immutable planet-sector presentation.</returns>
     public PlanetSectorWindowRenderData CreateRenderData(
         GalaxyMapSector mapSector,
@@ -49,10 +50,16 @@ internal sealed class PlanetSectorWindowProjector
         PlanetIcon hoveredIcon,
         StrategyWindowTargetingSource waypointPlan = null,
         IReadOnlyCollection<string> selectedFleetInstanceIds = null,
-        bool showAllWaypointRoutes = false
+        bool showAllWaypointRoutes = false,
+        GalacticInformationFilterMode filterMode = GalacticInformationFilterMode.DisplayOff
     )
     {
         UIContext uiContext = GetUIContext();
+        string playerFactionId = uiContext.GetPlayerFactionInstanceID();
+        GalacticInformationFilterTheme filter = GalacticInformationMarkerProjector.ResolveFilter(
+            uiContext.GetPlayerFactionTheme(),
+            filterMode
+        );
         PlanetSector sector = mapSector?.PlanetSector;
         IReadOnlyList<GalaxyMapPlanet> planets =
             mapSector?.Planets ?? Array.Empty<GalaxyMapPlanet>();
@@ -70,7 +77,9 @@ internal sealed class PlanetSectorWindowProjector
                     selectedPlanetInstanceId,
                     selectedIcon,
                     hoveredPlanetInstanceId,
-                    hoveredIcon
+                    hoveredIcon,
+                    playerFactionId,
+                    filter
                 )
             );
         }
@@ -203,6 +212,8 @@ internal sealed class PlanetSectorWindowProjector
     /// <param name="selectedIcon">The selected planet icon.</param>
     /// <param name="hoveredPlanetInstanceId">The hovered planet identifier.</param>
     /// <param name="hoveredIcon">The hovered planet icon.</param>
+    /// <param name="playerFactionId">The viewing player's faction identifier.</param>
+    /// <param name="filter">The active galactic-information filter, or null.</param>
     /// <returns>The immutable planet presentation.</returns>
     private static PlanetSectorPlanetRenderData CreatePlanetData(
         UIContext uiContext,
@@ -212,12 +223,15 @@ internal sealed class PlanetSectorWindowProjector
         string selectedPlanetInstanceId,
         PlanetIcon selectedIcon,
         string hoveredPlanetInstanceId,
-        PlanetIcon hoveredIcon
+        PlanetIcon hoveredIcon,
+        string playerFactionId,
+        GalacticInformationFilterTheme filter
     )
     {
         Planet planet = strategyPlanet?.Planet;
         string planetInstanceId = planet?.InstanceID;
         string ownerFactionId = planet?.OwnerInstanceID;
+        string headquartersFactionId = ResolveHeadquartersFactionId(uiContext, planet);
         bool unexplored = planet?.IsUnexploredView == true;
         string fleetFactionId = SelectPresentFactionID(
             GetFleetOwnerFactionIDs(planet),
@@ -241,6 +255,19 @@ internal sealed class PlanetSectorWindowProjector
         Texture2D missionPressedTexture = string.IsNullOrEmpty(missionFactionId)
             ? null
             : GetOverlayTexture(uiContext, missionFactionId, PlanetIcon.Mission, true);
+        Texture2D galacticInformationTexture =
+            filter == null || planet == null
+                ? null
+                : GalacticInformationMarkerProjector.ResolveTexture(
+                    uiContext,
+                    planet,
+                    GalacticInformationFilterEvaluator.Evaluate(
+                        uiContext.Game,
+                        planet,
+                        playerFactionId,
+                        filter
+                    )
+                );
 
         return new PlanetSectorPlanetRenderData(
             planetIndex,
@@ -269,10 +296,10 @@ internal sealed class PlanetSectorWindowProjector
             fleetPressedTexture,
             missionTexture,
             missionPressedTexture,
-            !unexplored && planet?.IsHeadquarters == true
+            !string.IsNullOrEmpty(headquartersFactionId)
                 ? uiContext.GetTexture(
                     uiContext
-                        .GetTheme(ownerFactionId)
+                        .GetTheme(headquartersFactionId)
                         ?.PlanetOverlayTheme?.PlanetSectorHeadquartersImagePath
                 )
                 : null,
@@ -286,8 +313,41 @@ internal sealed class PlanetSectorWindowProjector
                 : PlanetIcon.None,
             unexplored ? CreateHiddenBar() : CreateEnergyBar(planet),
             unexplored ? CreateHiddenBar() : CreateRawResourceBar(planet),
-            unexplored ? CreateHiddenBar() : CreateSupportBar(uiContext, planet, popularSupport)
+            unexplored ? CreateHiddenBar() : CreateSupportBar(uiContext, planet, popularSupport),
+            galacticInformationTexture,
+            uiContext.GetTextureContentBounds
         );
+    }
+
+    /// <summary>
+    /// Resolves the headquarters faction represented by a planet, including the player's mobile
+    /// headquarters immediately after it is reparented to its destination for transit.
+    /// </summary>
+    /// <param name="uiContext">The active UI context.</param>
+    /// <param name="planet">The projected planet.</param>
+    /// <returns>The represented headquarters faction identifier, or null when none exists.</returns>
+    private static string ResolveHeadquartersFactionId(UIContext uiContext, Planet planet)
+    {
+        if (uiContext?.Game == null || planet?.IsUnexploredView != false)
+            return null;
+        if (planet.IsHeadquarters && !string.IsNullOrEmpty(planet.OwnerInstanceID))
+            return planet.OwnerInstanceID;
+
+        string playerFactionId = uiContext.GetPlayerFactionInstanceID();
+        Planet livePlanet = uiContext.Game.GetSceneNodeByInstanceID<Planet>(planet.InstanceID);
+        bool receivesMovingHeadquarters =
+            livePlanet
+                ?.GetChildren<Building>()
+                .Any(building =>
+                    building.BuildingType == BuildingType.Headquarters
+                    && building.Movement != null
+                    && string.Equals(
+                        building.OwnerInstanceID,
+                        playerFactionId,
+                        StringComparison.Ordinal
+                    )
+                ) == true;
+        return receivesMovingHeadquarters ? playerFactionId : null;
     }
 
     /// <summary>
@@ -342,7 +402,7 @@ internal sealed class PlanetSectorWindowProjector
     /// <returns>The energy bar presentation.</returns>
     private static PlanetSectorBarRenderData CreateEnergyBar(Planet planet)
     {
-        if (planet == null || planet.EnergyCapacity <= 0)
+        if (planet == null)
         {
             return new PlanetSectorBarRenderData(
                 true,
@@ -355,14 +415,31 @@ internal sealed class PlanetSectorWindowProjector
             );
         }
 
+        int energyUsed = planet.GetEnergyUsed();
+        string tooltipText = $"Energy Consumption {energyUsed}/{planet.EnergyCapacity}";
+        if (planet.EnergyCapacity <= 0)
+        {
+            return new PlanetSectorBarRenderData(
+                true,
+                0,
+                0,
+                1f,
+                _energyEmptyColor,
+                Color.clear,
+                Color.clear,
+                tooltipText
+            );
+        }
+
         return new PlanetSectorBarRenderData(
             true,
             planet.EnergyCapacity,
-            Mathf.Min(planet.GetChildren<Building>().Count, planet.EnergyCapacity),
+            Mathf.Min(energyUsed, planet.EnergyCapacity),
             0f,
             _energyCapacityColor,
             _energyAvailableColor,
-            _barBackgroundColor
+            _barBackgroundColor,
+            tooltipText
         );
     }
 
@@ -373,7 +450,7 @@ internal sealed class PlanetSectorWindowProjector
     /// <returns>The raw-resource bar presentation.</returns>
     private static PlanetSectorBarRenderData CreateRawResourceBar(Planet planet)
     {
-        if (planet == null || planet.NumRawResourceNodes <= 0)
+        if (planet == null)
         {
             return new PlanetSectorBarRenderData(
                 true,
@@ -386,14 +463,31 @@ internal sealed class PlanetSectorWindowProjector
             );
         }
 
+        int minedResources = planet.GetRawMinedResources();
+        string tooltipText = $"Raw Materials {minedResources}/{planet.NumRawResourceNodes}";
+        if (planet.NumRawResourceNodes <= 0)
+        {
+            return new PlanetSectorBarRenderData(
+                true,
+                0,
+                0,
+                1f,
+                _rawAvailableColor,
+                Color.clear,
+                Color.clear,
+                tooltipText
+            );
+        }
+
         return new PlanetSectorBarRenderData(
             true,
             planet.NumRawResourceNodes,
-            Mathf.Min(planet.GetRawMinedResources(), planet.NumRawResourceNodes),
+            Mathf.Min(minedResources, planet.NumRawResourceNodes),
             0f,
             _rawCapacityColor,
             _rawAvailableColor,
-            _barBackgroundColor
+            _barBackgroundColor,
+            tooltipText
         );
     }
 
@@ -420,7 +514,8 @@ internal sealed class PlanetSectorWindowProjector
             support / 100f,
             uiContext.GetPlayerFactionTheme().GetPrimaryColor(),
             Color.clear,
-            GetOpposingSupportColor(uiContext, planet)
+            GetOpposingSupportColor(uiContext, planet),
+            $"Popular Support {support}/100"
         );
     }
 

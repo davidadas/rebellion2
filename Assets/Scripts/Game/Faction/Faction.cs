@@ -8,7 +8,6 @@ using Rebellion.Game.Messages;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Logging;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Factions
@@ -627,18 +626,12 @@ namespace Rebellion.Game.Factions
         }
 
         /// <summary>
-        /// Returns the projected maintenance burden of completed and in-progress manufacturables.
+        /// Returns the projected maintenance burden of all committed manufacturables.
         /// </summary>
         /// <returns>The total projected maintenance burden for the faction.</returns>
         public int GetTotalProjectedMaintenanceCost()
         {
-            return GetAllOwnedManufacturables()
-                .Where(m =>
-                    m.GetManufacturingStatus()
-                        is ManufacturingStatus.Complete
-                            or ManufacturingStatus.Building
-                )
-                .Sum(m => m.GetMaintenanceCost());
+            return GetAllOwnedManufacturables().Sum(m => m.GetMaintenanceCost());
         }
 
         /// <summary>
@@ -787,9 +780,6 @@ namespace Rebellion.Game.Factions
         {
             Fleet fleet = new Fleet(this.InstanceID, $"Fleet {_nextFleetNumber}");
             fleet.RoleType = roleType;
-            GameLogger.Warning(
-                $"[fleet] born {fleet.InstanceID} role={roleType} owner={this.InstanceID}"
-            );
 
             if (capitalShips != null)
             {

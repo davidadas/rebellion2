@@ -57,7 +57,13 @@ internal static class FleetWindowContextMenuBuilder
             .Where(item => item is Officer || item is SpecialForces)
             .ToList();
         return personnel.Count > 0
-            ? BuildPersonnelCommands(personnel, canMove, canCreateMission, canRetire)
+            ? BuildPersonnelCommands(
+                personnel,
+                playerControlsItems,
+                canMove,
+                canCreateMission,
+                canRetire
+            )
             : BuildUnavailableInformationCommands();
     }
 
@@ -180,12 +186,14 @@ internal static class FleetWindowContextMenuBuilder
     /// Builds commands for officer and special-forces selections.
     /// </summary>
     /// <param name="personnel">The selected personnel.</param>
+    /// <param name="playerControlsItems">Whether the player controls the selection.</param>
     /// <param name="canMove">Whether all selected personnel can move.</param>
     /// <param name="canCreateMission">Whether the selection can start a mission.</param>
     /// <param name="canRetire">Whether all selected personnel can retire.</param>
     /// <returns>The ordered commands.</returns>
     private static List<StrategyMenuCommand> BuildPersonnelCommands(
         IReadOnlyList<ISceneNode> personnel,
+        bool playerControlsItems,
         bool canMove,
         bool canCreateMission,
         bool canRetire
@@ -197,6 +205,9 @@ internal static class FleetWindowContextMenuBuilder
             new StrategyMenuCommand(StrategyMenuAction.MoveConfirm, "Confirmed Move", canMove),
             new StrategyMenuCommand(StrategyMenuAction.CreateMission, "Mission", canCreateMission),
         };
+        if (personnel.Count == 1 && personnel[0] is Officer officer)
+            commands.Add(OfficerCommandMenuBuilder.Build(officer, playerControlsItems));
+
         commands.Add(
             new StrategyMenuCommand(
                 StrategyMenuAction.Encyclopedia,

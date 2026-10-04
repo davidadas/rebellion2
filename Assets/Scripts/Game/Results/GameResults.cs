@@ -27,6 +27,7 @@ namespace Rebellion.Game.Results
         Failure,
         Foiled,
         TargetUnavailable,
+        TargetChangedSides,
         NoResearchFacilities,
         ResearchProgress,
         ResearchBreakthrough,
@@ -47,6 +48,7 @@ namespace Rebellion.Game.Results
         Arrival,
         Maintenance,
         Sabotage,
+        Combat,
     }
 
     public enum CombatSide
@@ -68,6 +70,7 @@ namespace Rebellion.Game.Results
     {
         None,
         PopularSupport,
+        GarrisonRemoved,
     }
 
     #endregion
@@ -258,10 +261,23 @@ namespace Rebellion.Game.Results
     #region Mission
 
     /// <summary>
+    /// A mission was created and its participants were dispatched.
+    /// </summary>
+    public class MissionStartedResult : GameResult
+    {
+        public Mission Mission { get; set; }
+        public string MissionTypeID { get; set; }
+        public Planet Location { get; set; }
+        public List<IMissionParticipant> Participants { get; set; } =
+            new List<IMissionParticipant>();
+    }
+
+    /// <summary>
     /// A mission completed with a recorded outcome.
     /// </summary>
     public class MissionCompletedResult : GameResult
     {
+        public string MissionInstanceID { get; set; }
         public Mission Mission { get; set; }
         public string MissionName { get; set; }
         public string MissionTypeID { get; set; }
@@ -272,6 +288,7 @@ namespace Rebellion.Game.Results
             new List<IMissionParticipant>();
         public MissionOutcome Outcome { get; set; }
         public MissionCompletionReason CompletionReason { get; set; }
+        public string FoilingFactionInstanceID { get; set; }
         public bool CanContinue { get; set; }
     }
 
@@ -280,6 +297,7 @@ namespace Rebellion.Game.Results
     /// </summary>
     public class PlanetsRevealedResult : GameResult
     {
+        public string MissionInstanceID { get; set; }
         public List<Planet> AdditionalPlanets { get; set; } = new List<Planet>();
     }
 
@@ -314,7 +332,9 @@ namespace Rebellion.Game.Results
     /// </summary>
     public class OfficerCaptureStateResult : GameResult
     {
+        public string MissionInstanceID { get; set; }
         public Officer TargetOfficer { get; set; }
+        public ISceneNode ParentAtCapture { get; set; }
         public bool IsCaptured { get; set; }
         public string CaptorInstanceID { get; set; }
         public ISceneNode CapturingUnit { get; set; }
@@ -354,6 +374,7 @@ namespace Rebellion.Game.Results
     /// </summary>
     public class OfficerInjuredResult : GameResult
     {
+        public string MissionInstanceID { get; set; }
         public Officer Officer { get; set; }
         public int Severity { get; set; }
         public int Detail { get; set; }

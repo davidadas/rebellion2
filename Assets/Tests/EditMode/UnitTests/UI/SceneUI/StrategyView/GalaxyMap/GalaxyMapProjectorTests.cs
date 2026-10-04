@@ -8,6 +8,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Simulation;
 using UnityEngine;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 using GameFleet = Rebellion.Game.Units.Fleet;
@@ -30,7 +31,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         [SetUp]
         public void SetUp()
         {
-            _game = new GameRoot(TestConfig.Create());
+            _game = TestGame.Create(TestConfig.Create());
             _game
                 .GetFactions()
                 .Add(new Faction { InstanceID = _playerFactionId, DisplayName = "Alliance" });
@@ -263,6 +264,61 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreSame(
                 _uiContext.GetTexture(opposingTheme.PlanetOverlayTheme.GalaxyHeadquartersImagePath),
                 star.HeadquartersTexture
+            );
+        }
+
+        [Test]
+        public void Project_RelocatedHeadquartersInTransit_ShowsOnDestinationPlanet()
+        {
+            GalaxyPlanetSector planetSector = CreateSector("sector", "Corellia", 40, 50);
+            Planet origin = CreatePlanet("origin", _playerFactionId, 47, 61);
+            Planet destination = CreatePlanet("destination", _playerFactionId, 55, 69);
+            origin.IsColonized = true;
+            destination.IsColonized = true;
+            origin.EnergyCapacity = 1;
+            destination.EnergyCapacity = 2;
+            origin.IsHeadquarters = true;
+            Faction player = _game.GetFactionByOwnerInstanceID(_playerFactionId);
+            player.HQInstanceID = origin.InstanceID;
+            player.Settings = new FactionSettings
+            {
+                Headquarters = new HeadquartersSettings { IsMobile = true },
+            };
+            _game.AttachNode(planetSector, _game.GetGalaxyMap());
+            _game.AttachNode(origin, planetSector);
+            _game.AttachNode(destination, planetSector);
+            Building headquarters = new Building
+            {
+                InstanceID = "headquarters",
+                OwnerInstanceID = _playerFactionId,
+                BuildingType = BuildingType.Headquarters,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(headquarters, origin);
+            GameSession session = TestContent.CreateGameSession(_game);
+            Assert.IsTrue(
+                session.GetService<HeadquartersCommands>().TryRelocate(headquarters, destination)
+            );
+
+            GalaxyMapRenderData data = _projector.Project(
+                new[] { CreateSector(planetSector, origin, destination) },
+                _playerFactionId,
+                GalacticInformationFilterMode.DisplayOff,
+                null
+            );
+
+            Assert.IsFalse(destination.IsHeadquarters);
+            Assert.IsNotNull(headquarters.Movement);
+            Assert.AreEqual(2, data.Clusters[0].Stars.Count);
+            GalaxyMapStarRenderData destinationStar = data.Clusters[0]
+                .Stars.Single(star => star.PlanetInstanceId == destination.InstanceID);
+            Assert.AreSame(
+                _uiContext.GetTexture(
+                    _uiContext
+                        .GetPlayerFactionTheme()
+                        .PlanetOverlayTheme.GalaxyHeadquartersImagePath
+                ),
+                destinationStar.HeadquartersTexture
             );
         }
 
@@ -595,8 +651,24 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         {
             GalaxyPlanetSector planetSector = CreateSector("sector", "Corellia", 0, 0);
             Planet planet = CreatePlanet("planet", _playerFactionId, 1, 2);
-            planet.AddChild(new GameFleet(_playerFactionId, "Player Fleet"));
-            planet.AddChild(new GameFleet(_opposingFactionId, "Opposing Fleet"));
+            GameFleet playerFleet = new GameFleet(_playerFactionId, "Player Fleet");
+            playerFleet.AddChild(
+                new CapitalShip
+                {
+                    OwnerInstanceID = _playerFactionId,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                }
+            );
+            GameFleet opposingFleet = new GameFleet(_opposingFactionId, "Opposing Fleet");
+            opposingFleet.AddChild(
+                new CapitalShip
+                {
+                    OwnerInstanceID = _opposingFactionId,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                }
+            );
+            planet.AddChild(playerFleet);
+            planet.AddChild(opposingFleet);
             GalaxyMapSector sector = CreateSector(planetSector, planet);
             FactionTheme playerTheme = _uiContext.GetPlayerFactionTheme();
 

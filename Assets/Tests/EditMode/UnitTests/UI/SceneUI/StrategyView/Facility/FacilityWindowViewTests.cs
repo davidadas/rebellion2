@@ -61,8 +61,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
                 new ManufacturingLaneCardRenderData(
                     _texture,
                     _texture,
-                    25,
-                    100,
+                    999,
+                    1000,
                     "Ship Construction",
                     "No Ships",
                     "Current Ship",
@@ -119,7 +119,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             RectInt progressRect = UILayout.GetSourceRect(
                 FindCardObject(shipCard, "ProgressFillImage").transform as RectTransform
             );
-            Assert.AreEqual(new RectInt(56, 126, 40, 4), progressRect);
+            Assert.AreEqual(new RectInt(56, 126, 160, 4), progressRect);
             ManufacturingLaneCardView troopCard = FindCard("TrainingManufacturingLaneCard");
             Assert.IsFalse(FindCardObject(troopCard, "EntityImage").activeSelf);
             Assert.IsTrue(FindCardObject(troopCard, "EmptyTextField").activeSelf);

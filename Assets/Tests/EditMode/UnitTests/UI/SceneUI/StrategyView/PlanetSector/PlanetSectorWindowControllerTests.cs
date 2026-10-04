@@ -10,7 +10,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -30,10 +30,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         private TestActions _actions;
         private PlanetSectorWindowController _controller;
         private int _dirtyCount;
+        private GalacticInformationFilterMode _filterMode;
         private GameFleet _fleet;
         private StrategyFleetCommandController _fleetCommandController;
         private GameRoot _game;
-        private GameManager _gameManager;
+        private GameSession _session;
         private GalaxyMapPlanet _planet;
         private GameObject _rootObject;
         private GalaxyMapSector _sector;
@@ -50,6 +51,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         public void SetUp()
         {
             _dirtyCount = 0;
+            _filterMode = GalacticInformationFilterMode.DisplayOff;
             _game = CreateGame();
             _uiContext = TestContent.CreateUIContext(
                 _game,
@@ -57,7 +59,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
             );
             _sector = CreateSector();
-            _gameManager = TestContent.CreateGameManager(_game);
+            _session = TestContent.CreateGameSession(_game);
             _rootObject = UIComponentTestHelper.InstantiatePrefab(_strategyViewPrefabPath);
             _windowLayer = _rootObject.GetComponentInChildren<StrategyWindowLayerView>(true);
             _windowManager = _rootObject.GetComponentInChildren<UIWindowManager>(true);
@@ -65,7 +67,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             _actions = new TestActions();
             _fleetCommandController = CreateFleetCommandController();
             _controller = CreateController();
-            _controller.Initialize(_actions, _actions, _actions, _actions, (_, _) => { });
+            _controller.Initialize(_actions, _actions, _actions, _actions, (_, _) => { }, _ => { });
         }
 
         /// <summary>
@@ -102,7 +104,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         public void Initialize_NullWindowActions_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() =>
-                _controller.Initialize(null, _actions, _actions, _actions, (_, _) => { })
+                _controller.Initialize(null, _actions, _actions, _actions, (_, _) => { }, _ => { })
             );
         }
 
@@ -153,6 +155,44 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsFalse(second);
             Assert.AreEqual(1, _windowManager.Windows.Count);
             Assert.AreEqual(1, _dirtyCount);
+        }
+
+        [Test]
+        public void RenderWindows_FilterChanges_RerendersOpenPlanetMarker()
+        {
+            Building shipyard = new Building
+            {
+                InstanceID = "shipyard",
+                OwnerInstanceID = _playerFactionId,
+                BuildingType = BuildingType.Shipyard,
+                ProductionType = ManufacturingType.Ship,
+                ProcessRate = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _planet.Planet.EnergyCapacity = 1;
+            _game.AttachNode(shipyard, _planet.Planet);
+            PlanetSectorWindowView view = OpenWindow(out UIWindow window);
+
+            _controller.RenderWindow(view, window);
+
+            PlanetSectorPlanetView planetView =
+                view.GetComponentsInChildren<PlanetSectorPlanetView>(true)
+                    .Single(item => item.name == "Planet0");
+            RawImage markerImage = planetView
+                .transform.Find("GalacticInformationImage")
+                .GetComponent<RawImage>();
+            Assert.IsFalse(markerImage.gameObject.activeSelf);
+
+            _filterMode = GalacticInformationFilterMode.IdleShipyards;
+            _controller.RenderWindows();
+
+            Assert.IsTrue(markerImage.gameObject.activeSelf);
+            Assert.AreSame(
+                _uiContext.GetTexture(
+                    _uiContext.GetPlayerFactionTheme().GalaxyBackground.PlanetIcons.XL
+                ),
+                markerImage.texture
+            );
         }
 
         [Test]
@@ -424,7 +464,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             );
             _fleetCommandController = CreateFleetCommandController();
             _controller = CreateController();
-            _controller.Initialize(_actions, _actions, _actions, _actions, (_, _) => { });
+            _controller.Initialize(_actions, _actions, _actions, _actions, (_, _) => { }, _ => { });
             PlanetSectorWindowView view = OpenWindow(out UIWindow window);
             _controller.RenderWindow(view, window);
             StrategyContextMenuProviderContext context = new StrategyContextMenuProviderContext(
@@ -477,6 +517,118 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             planetView.OnPointerDown(eventData);
 
             Assert.AreEqual(2, _dirtyCount);
+        }
+
+        [Test]
+        public void PlanetReleased_FleetIcon_ClearsSharedDragCandidate()
+        {
+            StrategyDragController dragController = new StrategyDragController(
+                _targetingController,
+                _ => new ISceneNode[] { _fleet },
+                (UIWindow _, int _, int _, out DragPreview preview) =>
+                {
+                    preview = null;
+                    return false;
+                },
+                (PointerEventData _, Vector2 _, out int x, out int y) =>
+                {
+                    x = 10;
+                    y = 20;
+                    return true;
+                },
+                _ => null,
+                _actions,
+                5
+            );
+            _controller.Initialize(
+                _actions,
+                _actions,
+                _actions,
+                _actions,
+                (window, eventData) => dragController.StartItemCandidate(window, eventData, 10, 20),
+                eventData =>
+                {
+                    dragController.TryHandleItemPointerUp(eventData);
+                }
+            );
+            PlanetSectorWindowView view = OpenWindow(out UIWindow window);
+            _controller.RenderWindow(view, window);
+            PlanetSectorPlanetView planetView =
+                view.GetComponentsInChildren<PlanetSectorPlanetView>(true)
+                    .Single(item => item.name == "Planet0");
+            PointerEventData eventData = CreateFleetPointerEvent(
+                view,
+                PointerEventData.InputButton.Left
+            );
+
+            planetView.OnPointerDown(eventData);
+            Assert.IsTrue(dragController.TryCancelItemDrag());
+            planetView.OnPointerDown(eventData);
+            planetView.OnPointerClick(eventData);
+
+            Assert.IsFalse(dragController.TryCancelItemDrag());
+        }
+
+        [Test]
+        public void PlanetPressed_MobileHeadquarters_BeginsDragWithHeadquartersSelectionAndPreview()
+        {
+            Faction player = _game.GetFactionByOwnerInstanceID(_playerFactionId);
+            player.HQInstanceID = _planet.Planet.InstanceID;
+            player.Settings = new FactionSettings
+            {
+                Headquarters = new HeadquartersSettings { IsMobile = true },
+            };
+            _planet.Planet.IsHeadquarters = true;
+            _planet.Planet.EnergyCapacity = 1;
+            Building headquarters = new Building
+            {
+                InstanceID = "headquarters",
+                OwnerInstanceID = _playerFactionId,
+                BuildingType = BuildingType.Headquarters,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(headquarters, _planet.Planet);
+            UIWindow draggedWindow = null;
+            PointerEventData draggedEvent = null;
+            _controller.Initialize(
+                _actions,
+                _actions,
+                _actions,
+                _actions,
+                (window, eventData) =>
+                {
+                    draggedWindow = window;
+                    draggedEvent = eventData;
+                },
+                _ => { }
+            );
+            PlanetSectorWindowView view = OpenWindow(out UIWindow window);
+            _controller.RenderWindow(view, window);
+            PlanetSectorPlanetView planetView =
+                view.GetComponentsInChildren<PlanetSectorPlanetView>(true)
+                    .Single(item => item.name == "Planet0");
+            PointerEventData eventData = CreateOverlayPointerEvent(view, "headquartersImage");
+            eventData.button = PointerEventData.InputButton.Left;
+
+            planetView.OnPointerDown(eventData);
+            bool hasPreview = _controller.TryGetDragPreview(
+                view,
+                window.X + 20,
+                window.Y + 20,
+                out DragPreview preview
+            );
+
+            Assert.AreSame(window, draggedWindow);
+            Assert.AreSame(eventData, draggedEvent);
+            CollectionAssert.AreEqual(
+                new ISceneNode[] { headquarters },
+                _controller.GetContextItems(view)
+            );
+            Assert.IsTrue(hasPreview);
+            Assert.AreSame(
+                GetField<RawImage>(planetView, "headquartersImage").texture,
+                preview.Texture
+            );
         }
 
         [Test]
@@ -619,7 +771,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 () => new[] { _sector },
                 GetWindowPosition,
                 CloseWindow,
-                MarkDirty
+                MarkDirty,
+                () => _filterMode
             );
         }
 
@@ -629,12 +782,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         /// <returns>The created fleet command controller.</returns>
         private StrategyFleetCommandController CreateFleetCommandController()
         {
-            return new StrategyFleetCommandController(
-                () => _gameManager.GetGame(),
-                () => _gameManager.FleetSystem,
-                () => _gameManager.BombardmentSystem,
-                () => _gameManager.PlanetaryAssaultSystem
-            );
+            return new StrategyFleetCommandController(_session);
         }
 
         /// <summary>
@@ -643,7 +791,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         /// <returns>The created game.</returns>
         private GameRoot CreateGame()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             game.GetFactions().Add(new Faction { InstanceID = _playerFactionId });
             game.GetFactions().Add(new Faction { InstanceID = _opposingFactionId });
             game.Summary.PlayerFactionID = _playerFactionId;
@@ -992,6 +1140,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 LastTargetingSource = source;
                 LastTarget = target;
             }
+
+            /// <summary>
+            /// Executes an item drop.
+            /// </summary>
+            /// <param name="sourceWindow">The source window.</param>
+            /// <param name="target">The exact drop target.</param>
+            /// <param name="items">The dragged items.</param>
+            public void ExecuteItemDrop(
+                UIWindow sourceWindow,
+                StrategyMissionTarget target,
+                IReadOnlyList<ISceneNode> items
+            ) { }
 
             /// <summary>
             /// Opens planet sector battle result.

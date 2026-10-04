@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Xml;
 using System.Xml.Schema;
 using Rebellion.Game;
@@ -16,9 +17,10 @@ using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Generation;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 using Rebellion.Util.Random;
 using Rebellion.Util.Serialization;
+using UnityEngine;
 
 /// <summary>
 /// Provides scene construction helpers for tests that exercise consumers rather than placement rules.
@@ -95,7 +97,7 @@ public static class SceneTestExtensions
 
 /// <summary>
 /// Always returns the minimum value — use when tests need every action to succeed.
-/// Replaces AlwaysSucceedRNG in MissionSystemTests and DiplomacyMissionTests.
+/// Replaces AlwaysSucceedRNG in MissionCommandsTests and DiplomacyMissionTests.
 /// </summary>
 public class StubRNG : IRandomNumberProvider
 {
@@ -189,7 +191,7 @@ public sealed class MaximumRNG : IRandomNumberProvider
 
 /// <summary>
 /// Returns a fixed sequence of doubles, then falls back to 0.5.
-/// Replaces MockRNG in SpaceCombatSystemTests and UprisingSystemTests.
+/// Replaces MockRNG in SpaceCombatCommandsTests and UprisingCommandsTests.
 /// </summary>
 public class QueueRNG : IRandomNumberProvider
 {
@@ -223,7 +225,7 @@ public class QueueRNG : IRandomNumberProvider
 /// Minimal no-op Mission for use in tests.
 /// Default constructor is for tests that only need to parent an officer to a mission.
 /// Parameterized constructor is for tests that attach the mission to the scene graph.
-/// Replaces TestMission (OfficerTests, FogOfWarSystemTests) and InstantMission (MissionSystemTests).
+/// Replaces TestMission (OfficerTests, FogOfWarQueriesTests) and InstantMission (MissionCommandsTests).
 /// </summary>
 public class StubMission : Mission
 {
@@ -384,11 +386,13 @@ public static class TestConfig
     /// <returns>The created value.</returns>
     public static GameConfig Create()
     {
-        return ContentPackLoader.LoadGameConfig(
+        GameConfig config = ContentPackLoader.LoadGameConfig(
             TestContent.Pack.ContentRootPath,
             TestContent.Pack.PackRootPath,
             TestContent.Pack.Definition.GameConfigPath
         );
+        config.DifficultyModifiers.Clear();
+        return config;
     }
 
     /// <summary>
@@ -422,6 +426,69 @@ public static class TestConfig
         schemas.Add(null, XmlReader.Create(new StringReader(File.ReadAllText(SchemaPath))));
         return new GameSerializerSettings { Schemas = schemas };
     }
+}
+
+/// <summary>
+/// Creates game roots through the same configuration injection used by runtime composition.
+/// </summary>
+public static class TestGame
+{
+    /// <summary>
+    /// Creates a configured game root.
+    /// </summary>
+    /// <param name="config">The runtime configuration.</param>
+    /// <returns>The configured game root.</returns>
+    public static GameRoot Create(GameConfig config)
+    {
+        GameRoot game = new GameRoot();
+        game.SetConfig(config);
+        return game;
+    }
+
+    /// <summary>
+    /// Creates a configured game root with the supplied summary.
+    /// </summary>
+    /// <param name="summary">The game summary.</param>
+    /// <param name="config">The runtime configuration.</param>
+    /// <returns>The configured game root.</returns>
+    public static GameRoot Create(GameSummary summary, GameConfig config)
+    {
+        GameRoot game = Create(config);
+        game.Summary = summary;
+        return game;
+    }
+}
+
+/// <summary>
+/// Builds single-layer drag previews for tests that do not exercise preview composition.
+/// </summary>
+public static class DragPreviewTestFactory
+{
+    /// <summary>
+    /// Creates a single-layer preview from dimensions and a pointer offset.
+    /// </summary>
+    /// <param name="texture">The preview texture.</param>
+    /// <param name="width">The preview width.</param>
+    /// <param name="height">The preview height.</param>
+    /// <param name="offsetX">The horizontal pointer offset.</param>
+    /// <param name="offsetY">The vertical pointer offset.</param>
+    /// <returns>The drag preview.</returns>
+    public static DragPreview Create(
+        Texture texture,
+        int width,
+        int height,
+        int offsetX,
+        int offsetY
+    ) => Create(texture, new RectInt(-offsetX, -offsetY, width, height));
+
+    /// <summary>
+    /// Creates a single-layer preview at fixed source-space bounds.
+    /// </summary>
+    /// <param name="texture">The preview texture.</param>
+    /// <param name="bounds">The preview bounds.</param>
+    /// <returns>The drag preview.</returns>
+    public static DragPreview Create(Texture texture, RectInt bounds) =>
+        new DragPreview(new[] { new DragPreviewImage(texture, bounds) }, 0, 0);
 }
 
 /// <summary>
@@ -502,10 +569,10 @@ public static class MissionSceneBuilder
         Planet empirePlanet,
         Planet enemyPlanet,
         Officer officer,
-        FogOfWarSystem fog
+        FogOfWarCommands fog
     ) Build(GameConfig config = null)
     {
-        GameRoot game = new GameRoot(config ?? TestConfig.Create());
+        GameRoot game = TestGame.Create(config ?? TestConfig.Create());
 
         Faction empire = new Faction { InstanceID = "empire" };
         Faction rebels = new Faction { InstanceID = "rebels" };
@@ -548,7 +615,7 @@ public static class MissionSceneBuilder
         officer.MissionReturnParentInstanceID = empirePlanet.InstanceID;
         officer.MissionReturnLocationInstanceID = empirePlanet.InstanceID;
 
-        FogOfWarSystem fog = new FogOfWarSystem(game);
+        FogOfWarCommands fog = new FogOfWarCommands(game);
         return (game, empirePlanet, enemyPlanet, officer, fog);
     }
 
@@ -577,23 +644,54 @@ public static class TestSystems
     /// <param name="provider">The random number provider used by missions and uprisings.</param>
     /// <param name="movement">The movement system used by mission and control behavior.</param>
     /// <returns>A mission system with all required dependencies.</returns>
-    public static MissionSystem CreateMissionSystem(
+    public static MissionCommands CreateMissionCommands(
         GameRoot game,
         IRandomNumberProvider provider,
-        MovementSystem movement
+        MovementCommands movement
     )
     {
-        FogOfWarSystem fog = new FogOfWarSystem(game);
-        FleetSystem fleet = new FleetSystem(game);
-        ManufacturingSystem manufacturing = new ManufacturingSystem(game, fleet, movement);
-        PlanetaryControlSystem control = new PlanetaryControlSystem(
+        FogOfWarCommands fog = new FogOfWarCommands(game);
+        FleetCommands fleet = new FleetCommands(game);
+        ManufacturingCommands manufacturing = new ManufacturingCommands(
+            game,
+            fleet,
+            new ManufacturingQueries(game),
+            movement
+        );
+        PlanetaryControlCommands control = new PlanetaryControlCommands(
             game,
             movement,
             manufacturing,
-            fog
+            fog,
+            new PlanetaryControlQueries(game),
+            new FogOfWarQueries(game)
         );
-        UprisingSystem uprising = new UprisingSystem(game, provider, control);
-        return new MissionSystem(game, provider, movement, uprising);
+        UprisingCommands uprising = new UprisingCommands(game, provider, control);
+        return new MissionCommands(
+            game,
+            provider,
+            movement,
+            uprising,
+            new MissionQueries(game),
+            new MovementQueries(game)
+        );
+    }
+}
+
+/// <summary>
+/// Drives mission lifecycle tests through the tick-processing contract.
+/// </summary>
+public static class MissionTickTestExtensions
+{
+    /// <summary>
+    /// Processes one tick for all active missions.
+    /// </summary>
+    /// <param name="commands">The mission runtime used by the tick processor.</param>
+    /// <param name="game">The game state containing the mission.</param>
+    /// <returns>The mission results produced during the tick.</returns>
+    public static List<GameResult> ProcessMissionTick(this MissionCommands commands, GameRoot game)
+    {
+        return new MissionTickProcessor(commands).ProcessTick(game).ToList();
     }
 }
 
@@ -664,15 +762,30 @@ public static class MissionTestFactory
 /// </summary>
 public static class EntityFactory
 {
+    private static readonly FieldInfo _officerCanBetrayField = GetPersistedOfficerField(
+        nameof(Officer.CanBetray)
+    );
+
+    private static readonly FieldInfo _officerLoyaltyField = GetPersistedOfficerField(
+        nameof(Officer.Loyalty)
+    );
+
     /// <summary>
     /// Creates officer.
     /// </summary>
     /// <param name="id">The id.</param>
     /// <param name="factionId">The faction id.</param>
+    /// <param name="canBetray">Whether the officer's loyalty can change and permit betrayal.</param>
+    /// <param name="loyalty">The officer's starting loyalty.</param>
     /// <returns>The created officer.</returns>
-    public static Officer CreateOfficer(string id, string factionId)
+    public static Officer CreateOfficer(
+        string id,
+        string factionId,
+        bool canBetray = false,
+        int loyalty = 100
+    )
     {
-        return new Officer
+        Officer officer = new Officer
         {
             InstanceID = id,
             DisplayName = id,
@@ -685,7 +798,22 @@ public static class EntityFactory
                 { SkillRating.Leadership, 50 },
             },
         };
+        _officerCanBetrayField.SetValue(officer, canBetray);
+        _officerLoyaltyField.SetValue(officer, Math.Clamp(loyalty, 0, 100));
+        return officer;
     }
+
+    /// <summary>
+    /// Finds a persisted officer field by its serialized member name.
+    /// </summary>
+    /// <param name="serializedName">The serialized member name.</param>
+    /// <returns>The matching field.</returns>
+    private static FieldInfo GetPersistedOfficerField(string serializedName) =>
+        typeof(Officer)
+            .GetFields(BindingFlags.Instance | BindingFlags.NonPublic)
+            .Single(field =>
+                field.GetCustomAttribute<PersistableMemberAttribute>()?.Name == serializedName
+            );
 
     /// <summary>
     /// Creates fleet.
@@ -799,7 +927,7 @@ public static class GenerationContextFactory
                 GalaxyClassification = new GalaxyClassificationSection
                 {
                     FactionSetups = new List<FactionSetup>(),
-                    Profiles = new List<DifficultyProfile>(),
+                    FactionBuckets = new List<FactionBucketConfig>(),
                 },
                 UnitDeployment = new UnitDeploymentSection
                 {

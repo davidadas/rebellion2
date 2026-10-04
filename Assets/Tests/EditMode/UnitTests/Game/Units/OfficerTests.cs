@@ -2,12 +2,64 @@ using System.Collections.Generic;
 using NUnit.Framework;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
+using UnityEngine;
 
 namespace Rebellion.Tests.Game.Units
 {
     [TestFixture]
     public class OfficerTests
     {
+        [TestCase(OfficerRank.None, "Han Solo")]
+        [TestCase(OfficerRank.Commander, "Commander Solo")]
+        [TestCase(OfficerRank.Admiral, "Admiral Solo")]
+        [TestCase(OfficerRank.General, "General Solo")]
+        public void GetDisplayName_CommandRank_ReturnsCommandQualifiedName(
+            OfficerRank rank,
+            string expected
+        )
+        {
+            IGameEntity officer = new Officer { DisplayName = "Han Solo", CurrentRank = rank };
+
+            Assert.AreEqual(expected, officer.GetDisplayName());
+        }
+
+        [Test]
+        public void GetDisplayName_NameAlreadyIncludesCommandTitle_DoesNotRepeatTitle()
+        {
+            Officer officer = new Officer
+            {
+                DisplayName = "Admiral Ackbar",
+                CurrentRank = OfficerRank.Admiral,
+            };
+
+            Assert.AreEqual("Admiral Ackbar", officer.GetDisplayName());
+        }
+
+        [Test]
+        public void GetDisplayName_MultipartSurname_PreservesCompleteCommandName()
+        {
+            Officer officer = new Officer
+            {
+                DisplayName = "Garm Bel Iblis",
+                CurrentRank = OfficerRank.General,
+            };
+
+            Assert.AreEqual("General Bel Iblis", officer.GetDisplayName());
+        }
+
+        [Test]
+        public void GetDisplayName_WedgeAntilles_UsesSurnameCommandName()
+        {
+            Officer officer = new Officer
+            {
+                DisplayName = "Wedge Antilles",
+                CurrentRank = OfficerRank.Commander,
+            };
+
+            Assert.AreEqual("Commander Antilles", officer.GetDisplayName());
+        }
+
         [Test]
         public void IsMovable_OnActiveMission_ReturnsFalse()
         {
@@ -166,31 +218,82 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        public void TryCapture_WhenStationary_SetsCaptureState()
+        {
+            Officer officer = new Officer();
+
+            bool captured = officer.TryCapture("captor", canEscape: false);
+
+            Assert.IsTrue(captured);
+            Assert.IsTrue(officer.IsCaptured);
+            Assert.AreEqual("captor", officer.CaptorInstanceID);
+            Assert.IsFalse(officer.CanEscape);
+        }
+
+        [Test]
+        public void TryCapture_WithDirectMovement_RejectsCapture()
+        {
+            Officer officer = new Officer
+            {
+                DisplayName = "Test Officer",
+                Movement = new MovementState(),
+            };
+            bool captured = officer.TryCapture("captor");
+
+            Assert.IsFalse(captured);
+            Assert.IsFalse(officer.IsCaptured);
+            Assert.IsNull(officer.CaptorInstanceID);
+        }
+
+        [Test]
+        public void TryCapture_AboardMovingFleet_RejectsCapture()
+        {
+            Officer officer = new Officer
+            {
+                DisplayName = "Test Officer",
+                OwnerInstanceID = "owner",
+            };
+            CapitalShip ship = new CapitalShip { OwnerInstanceID = "owner" };
+            Fleet fleet = new Fleet { OwnerInstanceID = "owner", Movement = new MovementState() };
+            officer.SetParent(ship);
+            ship.SetParent(fleet);
+            bool captured = officer.TryCapture("captor");
+
+            Assert.IsFalse(captured);
+            Assert.IsFalse(officer.IsCaptured);
+            Assert.IsNull(officer.CaptorInstanceID);
+        }
+
+        [Test]
         public void SerializeDeserialize_Officer_PreservesAllData()
         {
-            Officer originalOfficer = new Officer
+            Officer originalOfficer = EntityFactory.CreateOfficer(
+                "officer",
+                "faction",
+                canBetray: false,
+                loyalty: 75
+            );
+            originalOfficer.IsMain = true;
+            originalOfficer.CurrentRank = OfficerRank.Admiral;
+            originalOfficer.Ratings = new Dictionary<SkillRating, int>
             {
-                IsMain = true,
-                CurrentRank = OfficerRank.Admiral,
-                Ratings = new Dictionary<SkillRating, int>
-                {
-                    { SkillRating.Espionage, 15 },
-                    { SkillRating.Leadership, 25 },
-                },
-                Movement = null,
-                IsForceSensitive = true,
-                IsForceEligible = true,
-                ForceValue = 75,
-                ForceTrainingAdjustment = 10,
-                CanBetray = false,
-                NextEscapeAttemptTick = 725,
-                MissionReturnParentInstanceID = "return-parent",
-                MissionReturnLocationInstanceID = "return-location",
+                { SkillRating.Espionage, 15 },
+                { SkillRating.Leadership, 25 },
             };
+            originalOfficer.Movement = null;
+            originalOfficer.IsForceSensitive = true;
+            originalOfficer.IsForceEligible = true;
+            originalOfficer.ForceValue = 75;
+            originalOfficer.ForceTrainingAdjustment = 10;
+            originalOfficer.NextEscapeAttemptTick = 725;
+            originalOfficer.MissionReturnParentInstanceID = "return-parent";
+            originalOfficer.MissionReturnLocationInstanceID = "return-location";
 
             string xml = SerializationHelper.Serialize(originalOfficer);
             Officer deserializedOfficer = SerializationHelper.Deserialize<Officer>(xml);
 
+            StringAssert.Contains("<CanBetray>False</CanBetray>", xml);
+            StringAssert.Contains("<Loyalty>75</Loyalty>", xml);
             Assert.AreEqual(originalOfficer.IsMain, deserializedOfficer.IsMain, "IsMain mismatch");
             Assert.AreEqual(
                 originalOfficer.CurrentRank,
@@ -231,6 +334,11 @@ namespace Rebellion.Tests.Game.Units
                 originalOfficer.CanBetray,
                 deserializedOfficer.CanBetray,
                 "CanBetray mismatch"
+            );
+            Assert.AreEqual(
+                originalOfficer.Loyalty,
+                deserializedOfficer.Loyalty,
+                "Loyalty mismatch"
             );
             Assert.AreEqual(
                 originalOfficer.MissionReturnParentInstanceID,
@@ -310,26 +418,36 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
-        public void IsTraitor_SetToTrue_ReturnsTrue()
+        public void TryAdjustLoyalty_BetrayableOfficer_ChangesAndClampsLoyalty()
         {
-            Officer officer = new Officer();
-            officer.IsTraitor = true;
-            Assert.IsTrue(officer.IsTraitor);
+            Officer officer = EntityFactory.CreateOfficer(
+                "officer",
+                "faction",
+                canBetray: true,
+                loyalty: 75
+            );
+
+            Assert.IsTrue(officer.TryAdjustLoyalty(10));
+            Assert.AreEqual(85, officer.Loyalty);
+            Assert.IsTrue(officer.TryAdjustLoyalty(int.MaxValue));
+            Assert.AreEqual(100, officer.Loyalty);
+            Assert.IsTrue(officer.TryAdjustLoyalty(int.MinValue));
+            Assert.AreEqual(0, officer.Loyalty);
+            Assert.IsFalse(officer.TryAdjustLoyalty(-1));
+            Assert.AreEqual(0, officer.Loyalty);
         }
 
         [Test]
-        public void IsTraitor_SetToFalse_ReturnsFalse()
+        public void TryAdjustLoyalty_NonBetrayableOfficer_DoesNotChangeLoyalty()
         {
-            Officer officer = new Officer();
-            officer.IsTraitor = false;
-            Assert.IsFalse(officer.IsTraitor);
-        }
+            Officer officer = EntityFactory.CreateOfficer(
+                "officer",
+                "faction",
+                canBetray: false,
+                loyalty: 75
+            );
 
-        [Test]
-        public void Loyalty_SetAndGet_ReturnsCorrectValue()
-        {
-            Officer officer = new Officer();
-            officer.Loyalty = 75;
+            Assert.IsFalse(officer.TryAdjustLoyalty(-10));
             Assert.AreEqual(75, officer.Loyalty);
         }
 

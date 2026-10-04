@@ -9,7 +9,11 @@ namespace Rebellion.Tests.Game.Messages
         [Test]
         public void Constructor_WithTypeAndBody_InitializesMessage()
         {
-            StatusMessage message = new StatusMessage(MessageType.Conflict, "Test message");
+            StatusMessage message = new StatusMessage(
+                MessageType.Conflict,
+                "Test message",
+                "Test message"
+            );
 
             Assert.AreEqual(MessageType.Conflict, message.Type);
             Assert.AreEqual("Test message", message.Title);

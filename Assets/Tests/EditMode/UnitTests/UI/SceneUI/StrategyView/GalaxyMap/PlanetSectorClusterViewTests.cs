@@ -221,6 +221,28 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         }
 
         [Test]
+        public void TryGetPlanetInstanceID_BlockedRaycastTarget_ReturnsFalse()
+        {
+            _view.Render(
+                CreateCluster(
+                    "sector-1",
+                    "Corellia",
+                    true,
+                    new[] { new GalaxyMapStarRenderData("planet-1", 10, 10, _starTexture, null) }
+                )
+            );
+            PointerEventData eventData = CreatePointerEvent(new Vector2(12f, 12f));
+            GameObject blocker = new GameObject("WindowBlocker", typeof(RectTransform));
+            eventData.pointerCurrentRaycast = new RaycastResult { gameObject = blocker };
+
+            bool found = _view.TryGetPlanetInstanceID(eventData, out string planetInstanceId);
+
+            UnityEngine.Object.DestroyImmediate(blocker);
+            Assert.IsFalse(found);
+            Assert.IsNull(planetInstanceId);
+        }
+
+        [Test]
         public void TryGetPlanetInstanceID_InvalidInputs_ReturnsFalseAndNullIdentity()
         {
             _view.Render(
@@ -356,6 +378,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
                     null,
                     rect.TransformPoint(localPoint)
                 ),
+                pointerCurrentRaycast = new RaycastResult
+                {
+                    gameObject = FindComponent<RawImage>("HitAreaImage").gameObject,
+                },
             };
         }
 

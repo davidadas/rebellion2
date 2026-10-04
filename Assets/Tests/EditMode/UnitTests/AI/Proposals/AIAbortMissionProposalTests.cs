@@ -1,6 +1,10 @@
 using NUnit.Framework;
-using Rebellion.AI.Director;
+using Rebellion.AI;
+using Rebellion.AI.Demands;
+using Rebellion.AI.Planners;
 using Rebellion.AI.Proposals;
+using Rebellion.AI.Scorers;
+using Rebellion.AI.Selectors;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;

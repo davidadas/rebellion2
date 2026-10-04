@@ -9,7 +9,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Tests.Game.Missions
@@ -25,7 +25,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
 
             SpecialForces reconTeam = CreateReconTeam("empire");
@@ -55,7 +55,7 @@ namespace Rebellion.Tests.Game.Missions
             );
             Assert.IsTrue(snapshot.Planets.ContainsKey("enemy_planet"));
 
-            GalaxyMap view = fog.BuildFactionView(empire);
+            GalaxyMap view = new FogOfWarQueries(game).BuildFactionView(empire);
             Planet viewPlanet = view.GetChildren<PlanetSector>()
                 .First(sector => sector.InstanceID == "sector1")
                 .GetChildren<Planet>()
@@ -64,20 +64,22 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void UpdateMission_EnemyDetectorSucceeds_FoilsReconnaissance()
+        public void ProcessTick_EnemyDetectorSucceeds_FoilsReconnaissance()
         {
             (
                 GameRoot game,
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
 
             Regiment detector = EntityFactory.CreateRegiment("detector", "rebels");
             detector.DetectionRating = 100;
             detector.ManufacturingStatus = ManufacturingStatus.Complete;
             game.AttachNode(detector, enemyPlanet);
+            Fleet fleet = new Fleet { InstanceID = "fleet", OwnerInstanceID = "rebels" };
+            game.AttachNode(fleet, enemyPlanet);
 
             game.Config.ProbabilityTables.Mission.Foil = new Dictionary<int, int>
             {
@@ -98,18 +100,24 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant>()
             );
             game.AttachNode(mission, enemyPlanet);
-            MovementSystem movement = new MovementSystem(game, fog, new FleetSystem(game));
+            MovementCommands movement = new MovementCommands(
+                game,
+                fog,
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
             movement.SendToMission(reconTeam, mission);
             reconTeam.Movement = null;
             mission.Initiate(1);
 
-            MissionSystem system = TestSystems.CreateMissionSystem(
+            MissionCommands system = TestSystems.CreateMissionCommands(
                 game,
                 new FixedRNG(0.01),
                 movement
             );
 
-            List<GameResult> results = system.UpdateMission(mission);
+            List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.IsFalse(enemyPlanet.WasVisitedBy("empire"));
             Assert.IsTrue(results.OfType<GameObjectDestroyedResult>().Any());
@@ -128,7 +136,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
 
             Mission mission = CreateMission(
@@ -156,7 +164,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
 
             enemyPlanet.AddVisitor("empire");
@@ -182,7 +190,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
 
             Mission mission = CreateMission(
@@ -204,7 +212,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
 
             SpecialForces reconTeam = CreateReconTeam("empire");

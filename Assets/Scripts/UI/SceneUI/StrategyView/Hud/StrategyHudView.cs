@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
@@ -11,6 +12,11 @@ using UnityEngine.UI;
 /// </summary>
 public sealed class StrategyHudView : MonoBehaviour
 {
+    public const int ResourceBreakdownPanelHeight = 92;
+    public const int ResourceBreakdownPanelWidth = 170;
+
+    private const float _resourceBreakdownHoverDelay = 0.75f;
+
     [SerializeField]
     private RawImage backgroundImage;
 
@@ -43,6 +49,24 @@ public sealed class StrategyHudView : MonoBehaviour
 
     [SerializeField]
     private UIRaycastArea speedContextView;
+
+    [SerializeField]
+    private UIRaycastArea[] resourceBreakdownHoverViews = Array.Empty<UIRaycastArea>();
+
+    [SerializeField]
+    private RectTransform[] resourceBreakdownPanels = Array.Empty<RectTransform>();
+
+    [SerializeField]
+    private TextMeshProUGUI[] resourceBreakdownTitleTextFields = Array.Empty<TextMeshProUGUI>();
+
+    [SerializeField]
+    private TextMeshProUGUI[] resourceBreakdownPrimaryTextFields = Array.Empty<TextMeshProUGUI>();
+
+    [SerializeField]
+    private TextMeshProUGUI[] resourceBreakdownForecastTextFields = Array.Empty<TextMeshProUGUI>();
+
+    [SerializeField]
+    private TextMeshProUGUI[] resourceBreakdownLifecycleTextFields = Array.Empty<TextMeshProUGUI>();
 
     [SerializeField]
     private StrategyAdvisorView advisorView;
@@ -92,6 +116,8 @@ public sealed class StrategyHudView : MonoBehaviour
     private UnityAction[] messageNotificationClickHandlers = Array.Empty<UnityAction>();
     private StrategyHudAction pressedButtonAction;
     private bool eventsBound;
+    private int hoveredResourceBreakdownIndex = -1;
+    private float resourceBreakdownShowTime;
 
     /// <summary>
     /// Validates authored references and subscribes child controls when Unity creates the view.
@@ -100,6 +126,19 @@ public sealed class StrategyHudView : MonoBehaviour
     {
         VerifyReferences();
         BindEvents();
+    }
+
+    /// <summary>
+    /// Reveals the resource breakdown after the pointer has rested over the resource counters.
+    /// </summary>
+    private void Update()
+    {
+        if (
+            hoveredResourceBreakdownIndex >= 0
+            && !resourceBreakdownPanels[hoveredResourceBreakdownIndex].gameObject.activeSelf
+            && Time.unscaledTime >= resourceBreakdownShowTime
+        )
+            resourceBreakdownPanels[hoveredResourceBreakdownIndex].gameObject.SetActive(true);
     }
 
     /// <summary>
@@ -126,6 +165,7 @@ public sealed class StrategyHudView : MonoBehaviour
         SetCounter(rawMaterialsTextField, data.RawMaterialsCounter);
         SetCounter(refinedMaterialsTextField, data.RefinedMaterialsCounter);
         SetCounter(maintenanceTextField, data.MaintenanceCounter);
+        RenderResourceBreakdown(data.ResourceBreakdown);
         SetImageAtSourceRect(
             speedIndicatorImage,
             data.SpeedIndicatorTexture,
@@ -158,6 +198,11 @@ public sealed class StrategyHudView : MonoBehaviour
         }
 
         speedContextView.ContextRequested += HandleSpeedContextRequested;
+        foreach (UIRaycastArea hoverView in resourceBreakdownHoverViews)
+        {
+            hoverView.Entered += HandleResourceBreakdownEntered;
+            hoverView.Exited += HandleResourceBreakdownExited;
+        }
         BindMessageNotificationButtons();
         eventsBound = true;
     }
@@ -198,6 +243,11 @@ public sealed class StrategyHudView : MonoBehaviour
         }
 
         speedContextView.ContextRequested -= HandleSpeedContextRequested;
+        foreach (UIRaycastArea hoverView in resourceBreakdownHoverViews)
+        {
+            hoverView.Entered -= HandleResourceBreakdownEntered;
+            hoverView.Exited -= HandleResourceBreakdownExited;
+        }
         for (int i = 0; i < messageNotificationButtons.Length; i++)
         {
             if (i < messageNotificationClickHandlers.Length)
@@ -207,6 +257,187 @@ public sealed class StrategyHudView : MonoBehaviour
 
         messageNotificationClickHandlers = Array.Empty<UnityAction>();
         eventsBound = false;
+    }
+
+    /// <summary>
+    /// Applies resource-facility totals and faction-specific placement to the hover panel.
+    /// </summary>
+    /// <param name="data">The resource-breakdown presentation data.</param>
+    private void RenderResourceBreakdown(StrategyHudResourceBreakdownViewData data)
+    {
+        StrategyHudResourcePopoverViewData[] popovers =
+        {
+            data?.RawMaterials,
+            data?.RefinedMaterials,
+            data?.Maintenance,
+        };
+        for (int i = 0; i < popovers.Length; i++)
+        {
+            StrategyHudResourcePopoverViewData popover = popovers[i];
+            resourceBreakdownHoverViews[i].Render(popover?.HitArea);
+            if (popover?.PanelBounds == null)
+            {
+                resourceBreakdownPanels[i].gameObject.SetActive(false);
+                continue;
+            }
+
+            RectInt bounds = popover.PanelBounds.Value;
+            UILayout.SetSourceRect(
+                resourceBreakdownPanels[i],
+                bounds.x,
+                bounds.y,
+                bounds.width,
+                bounds.height
+            );
+            resourceBreakdownTitleTextFields[i].color = data.AccentColor;
+        }
+
+        if (data == null)
+        {
+            hoveredResourceBreakdownIndex = -1;
+            return;
+        }
+
+        resourceBreakdownPrimaryTextFields[0].text = string.Join(
+            "\n",
+            "<size=6><color=#A8A8A8>Mining per tick</color></size>",
+            $"<size=16><b>{FormatRate(data.Totals.RawOutputPerTick)}</b></size>"
+        );
+        resourceBreakdownForecastTextFields[0].text = FormatForecast(
+            data.Totals.DeliveredRawOutputPerTick,
+            data.Totals.ProjectedRawOutputPerTick
+        );
+        resourceBreakdownLifecycleTextFields[0].text = FormatLifecycle(
+            data.Totals.DeployedMines,
+            data.Totals.EnRouteMines,
+            data.Totals.BuildingMines,
+            data.Totals.TotalMines
+        );
+
+        resourceBreakdownPrimaryTextFields[1].text = string.Join(
+            "\n",
+            "<size=6><color=#A8A8A8>Refining per tick</color></size>",
+            $"<size=16><b>{FormatRate(data.Totals.RefinedOutputPerTick)}</b></size>"
+        );
+        resourceBreakdownForecastTextFields[1].text = FormatForecast(
+            data.Totals.DeliveredRefinedOutputPerTick,
+            data.Totals.ProjectedRefinedOutputPerTick
+        );
+        resourceBreakdownLifecycleTextFields[1].text = FormatLifecycle(
+            data.Totals.DeployedRefineries,
+            data.Totals.EnRouteRefineries,
+            data.Totals.BuildingRefineries,
+            data.Totals.TotalRefineries
+        );
+
+        resourceBreakdownPrimaryTextFields[2].text = string.Join(
+            "\n",
+            "<size=6><color=#A8A8A8>Free maintenance</color></size>",
+            $"<size=16><b>{FormatSigned(data.Totals.MaintenanceHeadroom)}</b></size>"
+        );
+        resourceBreakdownForecastTextFields[2].text = FormatForecast(
+            data.Totals.DeliveredMaintenanceHeadroom,
+            data.Totals.ProjectedMaintenanceHeadroom,
+            signed: true
+        );
+        resourceBreakdownLifecycleTextFields[2].text = FormatLifecycle(
+            data.Totals.Maintenance.Deployed,
+            data.Totals.Maintenance.EnRoute,
+            data.Totals.Maintenance.Building,
+            data.Totals.MaintenanceCommitted
+        );
+    }
+
+    /// <summary>
+    /// Formats a fractional resource output rate without locale-dependent punctuation.
+    /// </summary>
+    /// <param name="rate">The resource output per tick.</param>
+    /// <returns>The compact output rate.</returns>
+    private static string FormatRate(double rate)
+    {
+        return rate.ToString("0.00", CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>
+    /// Formats the two future values shown beside the dominant current value.
+    /// </summary>
+    /// <param name="afterDelivery">The value after in-transit items arrive.</param>
+    /// <param name="afterCompletion">The value after all committed items are complete.</param>
+    /// <param name="signed">Whether positive values include a plus sign.</param>
+    /// <returns>The formatted forecast column.</returns>
+    private static string FormatForecast(
+        double afterDelivery,
+        double afterCompletion,
+        bool signed = false
+    )
+    {
+        string deliveryValue = signed
+            ? FormatSigned((int)afterDelivery)
+            : FormatRate(afterDelivery);
+        string completionValue = signed
+            ? FormatSigned((int)afterCompletion)
+            : FormatRate(afterCompletion);
+        return string.Join(
+            "\n",
+            $"<size=9><b>{deliveryValue}</b></size>",
+            "<size=5.5><color=#A8A8A8>After delivery</color></size>",
+            $"<size=9><b>{completionValue}</b></size>",
+            "<size=5.5><color=#A8A8A8>Built and delivered</color></size>"
+        );
+    }
+
+    /// <summary>
+    /// Formats positive maintenance headroom with an explicit plus sign.
+    /// </summary>
+    /// <param name="value">The maintenance headroom.</param>
+    /// <returns>The signed maintenance value.</returns>
+    private static string FormatSigned(int value)
+    {
+        return value.ToString("+0;-0;0", CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>
+    /// Formats the deployed, delivering, manufacturing, and total lifecycle strip.
+    /// </summary>
+    /// <param name="deployed">The deployed count or maintenance cost.</param>
+    /// <param name="enRoute">The in-transit count or maintenance cost.</param>
+    /// <param name="building">The manufacturing count or maintenance cost.</param>
+    /// <param name="total">The committed total.</param>
+    /// <returns>The formatted lifecycle strip.</returns>
+    private static string FormatLifecycle(int deployed, int enRoute, int building, int total)
+    {
+        return string.Join(
+            "\n",
+            $"<size=9><b>{deployed}</b></size><pos=25%><size=9><b>+{enRoute}</b></size><pos=50%><size=9><b>+{building}</b></size><pos=79%><size=9><b>{total}</b></size>",
+            "<size=5.5><color=#A8A8A8>Deployed</color></size><pos=25%><size=5.5><color=#A8A8A8>In transit</color></size><pos=50%><size=5.5><color=#A8A8A8>Building</color></size><pos=79%><size=5.5><color=#A8A8A8>Total</color></size>"
+        );
+    }
+
+    /// <summary>
+    /// Starts the delayed resource-breakdown reveal.
+    /// </summary>
+    /// <param name="area">The resource-counter hit area.</param>
+    /// <param name="eventData">The pointer event.</param>
+    private void HandleResourceBreakdownEntered(UIRaycastArea area, PointerEventData eventData)
+    {
+        hoveredResourceBreakdownIndex = Array.IndexOf(resourceBreakdownHoverViews, area);
+        foreach (RectTransform panel in resourceBreakdownPanels)
+            panel.gameObject.SetActive(false);
+        resourceBreakdownShowTime = Time.unscaledTime + _resourceBreakdownHoverDelay;
+    }
+
+    /// <summary>
+    /// Hides the resource breakdown when the pointer leaves the resource counters.
+    /// </summary>
+    /// <param name="area">The resource-counter hit area.</param>
+    /// <param name="eventData">The pointer event.</param>
+    private void HandleResourceBreakdownExited(UIRaycastArea area, PointerEventData eventData)
+    {
+        int index = Array.IndexOf(resourceBreakdownHoverViews, area);
+        if (hoveredResourceBreakdownIndex == index)
+            hoveredResourceBreakdownIndex = -1;
+        if (index >= 0)
+            resourceBreakdownPanels[index].gameObject.SetActive(false);
     }
 
     /// <summary>
@@ -530,6 +761,27 @@ public sealed class StrategyHudView : MonoBehaviour
 
         if (speedContextView == null)
             throw new MissingReferenceException($"{name}/SpeedContextView is missing.");
+        if (
+            resourceBreakdownHoverViews == null
+            || resourceBreakdownPanels == null
+            || resourceBreakdownTitleTextFields == null
+            || resourceBreakdownPrimaryTextFields == null
+            || resourceBreakdownForecastTextFields == null
+            || resourceBreakdownLifecycleTextFields == null
+            || resourceBreakdownHoverViews.Length != 3
+            || resourceBreakdownPanels.Length != 3
+            || resourceBreakdownTitleTextFields.Length != 3
+            || resourceBreakdownPrimaryTextFields.Length != 3
+            || resourceBreakdownForecastTextFields.Length != 3
+            || resourceBreakdownLifecycleTextFields.Length != 3
+            || Array.Exists(resourceBreakdownHoverViews, item => item == null)
+            || Array.Exists(resourceBreakdownPanels, item => item == null)
+            || Array.Exists(resourceBreakdownTitleTextFields, item => item == null)
+            || Array.Exists(resourceBreakdownPrimaryTextFields, item => item == null)
+            || Array.Exists(resourceBreakdownForecastTextFields, item => item == null)
+            || Array.Exists(resourceBreakdownLifecycleTextFields, item => item == null)
+        )
+            throw new MissingReferenceException($"{name}/ResourceBreakdown popovers are missing.");
         if (advisorView == null)
             throw new MissingReferenceException($"{name}/AdvisorView is missing.");
     }

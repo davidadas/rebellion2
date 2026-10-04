@@ -1,6 +1,3 @@
-using System.Collections.Generic;
-using Rebellion.AI.Director;
-using Rebellion.AI.Planners.Demand;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -43,49 +40,6 @@ namespace Rebellion.AI.Proposals
             Unit = unit;
             TargetFleet = targetFleet;
             TargetPlanet = targetPlanet;
-        }
-
-        /// <summary>
-        /// Returns claims that prevent incompatible unit transfers.
-        /// </summary>
-        /// <returns>Claim keys for this proposal.</returns>
-        public override IReadOnlyList<string> GetClaimKeys()
-        {
-            List<string> claimKeys = new List<string>();
-
-            if (Unit != null)
-                claimKeys.Add($"unit:transfer:{Unit.InstanceID}");
-
-            if (SourceContainer != null)
-            {
-                claimKeys.Add($"container:transfer-source:{SourceContainer.InstanceID}");
-
-                if (SourceContainer is Fleet sourceFleet)
-                    claimKeys.Add(AIClaimKeys.FleetOrder(sourceFleet.InstanceID));
-            }
-
-            if (Destination != null)
-            {
-                claimKeys.Add($"container:transfer-target:{Destination.InstanceID}");
-
-                if (Destination is Fleet targetFleet)
-                {
-                    claimKeys.Add(AIClaimKeys.FleetTransferTarget(targetFleet.InstanceID));
-                    if (Unit is CapitalShip)
-                        claimKeys.Add(
-                            AIClaimKeys.FleetCapitalReinforcement(targetFleet.InstanceID)
-                        );
-                    else if (Unit is Regiment)
-                        claimKeys.Add(
-                            AIClaimKeys.FleetReinforcement(
-                                AIDemandKind.FleetRegiment,
-                                targetFleet.InstanceID
-                            )
-                        );
-                }
-            }
-
-            return claimKeys;
         }
 
         /// <summary>
@@ -212,7 +166,7 @@ namespace Rebellion.AI.Proposals
 
             if (order.OrderType == FleetOrderType.Defend)
                 return context.Assessment.IsOwnedPlanet(TargetPlanet)
-                    && context.Assessment.GetRequiredDefenseStrength(TargetPlanet) > 0;
+                    && context.StrategicPlan.GetDefenseStrength(TargetPlanet) > 0;
 
             string targetOwnerId = TargetPlanet.GetOwnerInstanceID();
             return order.OrderType == FleetOrderType.Attack

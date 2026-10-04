@@ -229,7 +229,7 @@ namespace Rebellion.Tests.UI.Runtime
         /// <returns>The created game.</returns>
         private static GameRoot CreateGame(string playerFactionId)
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             game.GetFactions().Add(new Faction { InstanceID = playerFactionId });
             game.Summary.PlayerFactionID = playerFactionId;
             game.SetFactionController(playerFactionId, "PLAYER1", PlayerControllerType.Human);

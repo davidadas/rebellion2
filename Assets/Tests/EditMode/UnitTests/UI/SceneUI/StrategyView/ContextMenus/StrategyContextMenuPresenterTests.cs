@@ -122,7 +122,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.AreEqual("Fast", FindCommandText(rootRows[1]).text);
             Assert.AreEqual("Checked", FindCommandText(rootRows[2]).text);
             Assert.AreEqual("Child", FindCommandText(childRow).text);
-            Assert.AreEqual(new RectInt(6, 0, 17, 20), parentIconRect);
+            Assert.AreEqual(new RectInt(6, 2, 17, 20), parentIconRect);
             Assert.AreEqual(new RectInt(4, 7, 14, 14), checkIconRect);
         }
 
@@ -241,7 +241,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
         /// <returns>The created context.</returns>
         private UIContext CreateContext()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             game.GetFactions().Add(new Faction { InstanceID = _playerFactionId });
             game.Summary.PlayerFactionID = _playerFactionId;
             game.SetFactionController(_playerFactionId, "PLAYER1", PlayerControllerType.Human);

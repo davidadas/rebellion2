@@ -121,6 +121,11 @@ public enum StrategyMenuAction
     AdvisorChatMessages,
     AdvisorAdviceMessages,
     ToggleIdleBarTracking,
+    Command,
+    CommandNone,
+    CommandCommander,
+    CommandAdmiral,
+    CommandGeneral,
 }
 
 /// <summary>
@@ -128,6 +133,34 @@ public enum StrategyMenuAction
 /// </summary>
 public static class StrategyMenuActionExtensions
 {
+    /// <summary>
+    /// Tries to resolve a command-menu action to its officer rank.
+    /// </summary>
+    /// <param name="action">The semantic action identifier.</param>
+    /// <param name="rank">Receives the matching officer rank.</param>
+    /// <returns>True when the action is a command appointment.</returns>
+    public static bool TryGetOfficerRank(this StrategyMenuAction action, out OfficerRank rank)
+    {
+        switch (action)
+        {
+            case StrategyMenuAction.CommandNone:
+                rank = OfficerRank.None;
+                return true;
+            case StrategyMenuAction.CommandCommander:
+                rank = OfficerRank.Commander;
+                return true;
+            case StrategyMenuAction.CommandAdmiral:
+                rank = OfficerRank.Admiral;
+                return true;
+            case StrategyMenuAction.CommandGeneral:
+                rank = OfficerRank.General;
+                return true;
+            default:
+                rank = default;
+                return false;
+        }
+    }
+
     /// <summary>
     /// Tries to resolve a game-speed action to its simulation speed.
     /// </summary>
@@ -402,17 +435,15 @@ public static class StrategyContextMenuAvailability
             Officer capturedOfficer in items.OfType<Officer>().Where(officer => officer.IsCaptured)
         )
         {
-            bool hasEscort = items
-                .OfType<Officer>()
-                .Any(officer =>
-                    !ReferenceEquals(officer, capturedOfficer)
-                    && !officer.IsCaptured
-                    && string.Equals(
-                        officer.GetOwnerInstanceID(),
-                        playerFactionId,
-                        System.StringComparison.Ordinal
-                    )
-                );
+            bool hasEscort = items.Any(item =>
+                !ReferenceEquals(item, capturedOfficer)
+                && string.Equals(
+                    item.GetOwnerInstanceID(),
+                    playerFactionId,
+                    System.StringComparison.Ordinal
+                )
+                && (item is SpecialForces || item is Officer { IsCaptured: false })
+            );
 
             if (!hasEscort)
                 return false;

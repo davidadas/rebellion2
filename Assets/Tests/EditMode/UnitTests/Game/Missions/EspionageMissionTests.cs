@@ -8,7 +8,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 
 namespace Rebellion.Tests.Game.Missions
 {
@@ -23,7 +23,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
 
             game.Config.Espionage.CoreSectorBonus = new GameConfig.RandomCountConfig();
@@ -60,7 +60,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
 
             enemyPlanet.VisitingFactionIDs.Add("empire");
@@ -96,7 +96,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
 
             enemyPlanet.VisitingFactionIDs.Add("empire");
@@ -133,7 +133,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
             PlanetSector targetSector = enemyPlanet.GetParentOfType<PlanetSector>();
             targetSector.SectorType = PlanetSectorType.Core;
@@ -174,7 +174,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
             enemyPlanet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.Core;
             PlanetSector corellian = AddSector(
@@ -219,7 +219,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
             enemyPlanet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.OuterRim;
             AddSector(game, "core2", "core_planet2", PlanetSectorType.Core);
@@ -279,7 +279,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
             enemyPlanet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.Core;
             AddSector(game, "core2", "core_planet2", PlanetSectorType.Core);
@@ -321,7 +321,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
             enemyPlanet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.Core;
             AddSector(game, "core2", "core_planet2", PlanetSectorType.Core);
@@ -363,7 +363,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
 
             enemyPlanet.VisitingFactionIDs.Add("empire");
@@ -391,7 +391,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
 
             enemyPlanet.VisitingFactionIDs.Add("empire");
@@ -429,7 +429,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
 
             enemyPlanet.VisitingFactionIDs.Add("empire");
@@ -462,7 +462,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
 
             enemyPlanet.VisitingFactionIDs.Add("empire");
@@ -496,14 +496,14 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void ResolveObjective_MultipleOfficersSucceed_ImprovesEverySuccessfulOfficer()
+        public void ResolveObjective_MultipleOfficersSucceed_StopsAfterFirstSuccess()
         {
             (
                 GameRoot game,
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
 
             enemyPlanet.VisitingFactionIDs.Add("empire");
@@ -533,7 +533,7 @@ namespace Rebellion.Tests.Game.Missions
 
             Assert.AreEqual(officerRatingBefore + 1, officer.GetBaseRating(SkillRating.Espionage));
             Assert.AreEqual(
-                strongerRatingBefore + 1,
+                strongerRatingBefore,
                 strongerOfficer.GetBaseRating(SkillRating.Espionage)
             );
         }
@@ -546,7 +546,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
 
             enemyPlanet.VisitingFactionIDs.Add("empire");
@@ -580,7 +580,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
 
             empirePlanet.VisitingFactionIDs.Add("empire");
@@ -635,7 +635,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
 
             // empirePlanet has no VisitingFactionIDs — empire has not visited it
@@ -658,7 +658,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
 
             empirePlanet.VisitingFactionIDs.Add("empire");
@@ -692,6 +692,7 @@ namespace Rebellion.Tests.Game.Missions
                 MaxProgress = 10,
                 CurrentProgress = 5,
                 DetectionResolved = true,
+                PreObjectiveEncounterResolved = true,
             };
 
             string xml = SerializationHelper.Serialize(mission);
@@ -705,6 +706,7 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(10, deserialized.MaxProgress);
             Assert.AreEqual(5, deserialized.CurrentProgress);
             Assert.IsTrue(deserialized.DetectionResolved);
+            Assert.IsTrue(deserialized.PreObjectiveEncounterResolved);
         }
 
         /// <summary>

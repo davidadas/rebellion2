@@ -6,8 +6,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
-using Rebellion.Systems.Combat;
+using Rebellion.Simulation;
 
 public static partial class HeadlessSimulationRunner
 {
@@ -29,12 +28,12 @@ public static partial class HeadlessSimulationRunner
             ? null
             : game.GetSceneNodeByInstanceID<Planet>(fleet.Order.TargetPlanetId);
         int groundAttackStrength = GetFleetRegimentAttackStrength(game, fleet);
-        int bombardmentStrength = BombardmentSystem.GetBombardmentStrength(
+        int bombardmentStrength = BombardmentQueries.GetBombardmentStrength(
             new[] { fleet },
             game.Config.Combat.Bombardment
         );
         int targetRegimentDefenseStrength = GetTargetRegimentDefenseStrength(game, targetPlanet);
-        int targetShieldStrength = BombardmentSystem.GetBombardmentShieldStrength(targetPlanet);
+        int targetShieldStrength = BombardmentQueries.GetBombardmentShieldStrength(targetPlanet);
         string targetOwnerId = targetPlanet?.GetOwnerInstanceID();
         int targetRegimentCount =
             targetPlanet
@@ -230,7 +229,7 @@ public static partial class HeadlessSimulationRunner
         if (game == null || faction == null || targetPlanet == null)
             return 0;
 
-        int stableGarrison = UprisingSystem.CalculateGarrisonRequirement(
+        int stableGarrison = UprisingQueries.CalculateGarrisonRequirement(
             targetPlanet,
             faction,
             game.Config.AI.Garrison
@@ -473,10 +472,13 @@ public static partial class HeadlessSimulationRunner
             if (completedFacilityCount <= 0)
                 return;
 
-            int idleCapacity = planet.GetAvailableManufacturingCapacity(type);
-            if (idleCapacity <= 0)
+            if (
+                planet.GetManufacturingQueue().TryGetValue(type, out List<IManufacturable> queue)
+                && queue.Any(item => item?.IsManufacturingComplete() == false)
+            )
                 return;
 
+            int idleCapacity = completedFacilityCount;
             PlanetIdleCounters planetCounters = counters.GetOrCreatePlanet(planet);
             IdleResourceCounters resourceCounters = counters.GetResourceCounters(type);
             resourceCounters.Record(faction, type, idleCapacity);

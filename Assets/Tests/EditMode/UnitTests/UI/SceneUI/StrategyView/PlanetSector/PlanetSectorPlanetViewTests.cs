@@ -11,9 +11,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
     [TestFixture]
     public class PlanetSectorPlanetViewTests
     {
+        private const int _galacticInformationMarkerBottomOverhang = 4;
+        private const int _galacticInformationMarkerSourceSize = 15;
+        private const int _galacticInformationTexturePixelSize = 68;
         private const string _prefabPath =
             "Assets/Prefabs/UI/StrategyView/PlanetSectorPlanet.prefab";
 
+        private Texture2D _galacticInformationTexture;
         private Texture2D _headquartersTexture;
         private Texture2D _normalTexture;
         private Texture2D _planetTexture;
@@ -33,6 +37,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             _planetTexture = new Texture2D(100, 80);
             _normalTexture = new Texture2D(24, 24);
             _pressedTexture = new Texture2D(24, 24);
+            _galacticInformationTexture = new Texture2D(
+                _galacticInformationTexturePixelSize,
+                _galacticInformationTexturePixelSize
+            );
             _headquartersTexture = new Texture2D(16, 16);
             _uprisingTexture = new Texture2D(167, 167);
             UIComponentTestHelper.InvokeLifecycle(_view, "Awake");
@@ -45,6 +53,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         [TearDown]
         public void TearDown()
         {
+            UnityEngine.Object.DestroyImmediate(_galacticInformationTexture);
             UnityEngine.Object.DestroyImmediate(_headquartersTexture);
             UnityEngine.Object.DestroyImmediate(_pressedTexture);
             UnityEngine.Object.DestroyImmediate(_normalTexture);
@@ -67,7 +76,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 PlanetIcon.Mission,
                 CreateSegmentedBar(true, 4, 2),
                 CreateSegmentedBar(false, 0, 0),
-                CreateContinuousBar(true, 0.5f)
+                CreateContinuousBar(true, 0.5f),
+                _galacticInformationTexture
             );
             RectInt planetTemplate = GetSourceRect(GetField<RawImage>("planetImage").transform);
 
@@ -80,6 +90,31 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreEqual(planetTemplate.width, planetBounds.width);
             Assert.AreEqual(planetTemplate.height, planetBounds.height);
             Assert.AreSame(_planetTexture, GetField<RawImage>("planetImage").texture);
+            RawImage galacticInformationImage = _view
+                .transform.Find("GalacticInformationImage")
+                .GetComponent<RawImage>();
+            RectInt galacticInformationBounds = GetSourceRect(galacticInformationImage.transform);
+            Assert.AreSame(_galacticInformationTexture, galacticInformationImage.texture);
+            Assert.AreEqual(
+                new Vector2Int(
+                    _galacticInformationMarkerSourceSize,
+                    _galacticInformationMarkerSourceSize
+                ),
+                galacticInformationBounds.size
+            );
+            Assert.AreEqual(planetTemplate.x, galacticInformationBounds.x);
+            Assert.AreEqual(
+                planetTemplate.y
+                    + planetTemplate.height
+                    + _galacticInformationMarkerBottomOverhang
+                    - _galacticInformationMarkerSourceSize,
+                galacticInformationBounds.y
+            );
+            Assert.IsFalse(galacticInformationImage.raycastTarget);
+            Assert.Greater(
+                galacticInformationImage.transform.GetSiblingIndex(),
+                GetField<RawImage>("uprisingImage").transform.GetSiblingIndex()
+            );
             RawImage uprisingImage = GetField<RawImage>("uprisingImage");
             Assert.AreSame(_uprisingTexture, uprisingImage.texture);
             Assert.AreEqual(planetTemplate, GetSourceRect(uprisingImage.transform));
@@ -143,6 +178,53 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsFalse(GetField<Image>("energyBarFillImage").gameObject.activeSelf);
             Assert.IsFalse(GetField<Image>("rawBarFillImage").gameObject.activeSelf);
             Assert.IsFalse(GetField<Image>("supportBarFillImage").gameObject.activeSelf);
+        }
+
+        [Test]
+        public void Render_SelectedIcon_UsesTightVisiblePixelHitBounds()
+        {
+            RawImage facilityImage = GetField<RawImage>("facilityImage");
+            RectInt authoredBounds = GetSourceRect(facilityImage.transform);
+            RectInt contentBounds = new RectInt(6, 4, 12, 16);
+            PlanetSectorPlanetRenderData data = CreateData(
+                selectedIcon: PlanetIcon.Facility,
+                getTextureContentBounds: texture =>
+                    texture == _pressedTexture
+                        ? contentBounds
+                        : new RectInt(0, 0, texture.width, texture.height)
+            );
+
+            _view.Render(data, new Vector2Int(200, 150));
+
+            bool found = _view.TryGetIconHitBounds(PlanetIcon.Facility, out RectInt hitBounds);
+
+            Assert.IsTrue(found);
+            Assert.AreEqual(
+                new RectInt(authoredBounds.x + 6, authoredBounds.y + 3, 15, 12),
+                hitBounds
+            );
+            Assert.AreEqual(authoredBounds, GetSourceRect(facilityImage.transform));
+            Assert.AreEqual(new Rect(0f, 0f, 1f, 1f), facilityImage.uvRect);
+            MethodInfo getSourceIcon = typeof(PlanetSectorPlanetView).GetMethod(
+                "GetSourceIcon",
+                BindingFlags.Instance | BindingFlags.NonPublic
+            );
+            Assert.AreEqual(
+                PlanetIcon.None,
+                getSourceIcon.Invoke(_view, new object[] { authoredBounds.x, authoredBounds.y })
+            );
+            Assert.AreEqual(
+                PlanetIcon.Facility,
+                getSourceIcon.Invoke(_view, new object[] { hitBounds.x, hitBounds.y })
+            );
+        }
+
+        [Test]
+        public void Render_MissingGalacticInformationTexture_HidesMarker()
+        {
+            _view.Render(CreateData(), new Vector2Int(200, 150));
+
+            Assert.IsFalse(_view.transform.Find("GalacticInformationImage").gameObject.activeSelf);
         }
 
         [Test]
@@ -295,6 +377,87 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreEqual(0, interactionCount);
         }
 
+        [Test]
+        public void PointerHandlers_StatusBar_RaisesHoverWithoutInteractionEvents()
+        {
+            _view.Render(
+                CreateData(energyBar: CreateSegmentedBar(true, 4, 2, "Energy Consumption 2/4")),
+                new Vector2Int(200, 150)
+            );
+            Image energyBackground = GetField<Image>("energyBarBackgroundImage");
+            PointerEventData eventData = CreatePointerEvent(
+                energyBackground.gameObject,
+                PointerEventData.InputButton.Left,
+                1
+            );
+            int statusHoverCount = 0;
+            int interactionCount = 0;
+            PlanetSectorStatusBar hoveredBar = PlanetSectorStatusBar.None;
+            _view.StatusBarHovered += (_, statusBar) =>
+            {
+                statusHoverCount++;
+                hoveredBar = statusBar;
+            };
+            _view.Pressed += (_, _, _) => interactionCount++;
+            _view.Clicked += (_, _, _) => interactionCount++;
+            _view.Released += (_, _, _) => interactionCount++;
+
+            _view.OnPointerEnter(eventData);
+            _view.OnPointerDown(eventData);
+            _view.OnPointerClick(eventData);
+            _view.OnDrop(eventData);
+
+            Assert.AreEqual(1, statusHoverCount);
+            Assert.AreEqual(PlanetSectorStatusBar.Energy, hoveredBar);
+            Assert.AreEqual(0, interactionCount);
+        }
+
+        [Test]
+        public void Render_StatusBarTooltips_CreatesOneHitAreaAcrossCompleteBarBlock()
+        {
+            _view.gameObject.SetActive(false);
+            _view.Render(
+                CreateData(
+                    energyBar: CreateSegmentedBar(true, 4, 2, "Energy Consumption 2/4"),
+                    rawBar: CreateSegmentedBar(true, 8, 3, "Raw Materials 3/8"),
+                    supportBar: CreateContinuousBar(true, 0.5f, "Popular Support")
+                ),
+                new Vector2Int(200, 150)
+            );
+            RawImage hitArea = GetField<RawImage>("hitAreaImage");
+            RectInt energyBounds = GetSourceRect(GetField<RectTransform>("energyBarRoot"));
+            RectInt supportBounds = GetSourceRect(GetField<RectTransform>("supportBarRoot"));
+            RectInt expectedBounds = new RectInt(
+                Mathf.Min(energyBounds.xMin, supportBounds.xMin),
+                energyBounds.yMin,
+                Mathf.Max(energyBounds.xMax, supportBounds.xMax)
+                    - Mathf.Min(energyBounds.xMin, supportBounds.xMin),
+                supportBounds.yMax - energyBounds.yMin
+            );
+
+            Assert.IsTrue(hitArea.enabled);
+            Assert.IsTrue(hitArea.raycastTarget);
+            Assert.AreEqual(expectedBounds, GetSourceRect(hitArea.transform));
+
+            MethodInfo getStatusBar = typeof(PlanetSectorPlanetView).GetMethod(
+                "GetSourceStatusBar",
+                BindingFlags.Instance | BindingFlags.NonPublic
+            );
+            int rightEdge = expectedBounds.xMax - 1;
+            Assert.AreEqual(
+                PlanetSectorStatusBar.Energy,
+                getStatusBar.Invoke(_view, new object[] { rightEdge, energyBounds.yMax })
+            );
+            Assert.AreEqual(
+                PlanetSectorStatusBar.RawMaterials,
+                getStatusBar.Invoke(_view, new object[] { rightEdge, energyBounds.yMax + 1 })
+            );
+            Assert.AreEqual(
+                PlanetSectorStatusBar.PopularSupport,
+                getStatusBar.Invoke(_view, new object[] { rightEdge, supportBounds.yMax - 1 })
+            );
+        }
+
         /// <summary>
         /// Creates data.
         /// </summary>
@@ -303,13 +466,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         /// <param name="energyBar">The energy bar.</param>
         /// <param name="rawBar">The raw bar.</param>
         /// <param name="supportBar">The support bar.</param>
+        /// <param name="galacticInformationTexture">The active filter marker texture.</param>
+        /// <param name="getTextureContentBounds">The optional visible-pixel bounds resolver.</param>
         /// <returns>The created data.</returns>
         private PlanetSectorPlanetRenderData CreateData(
             PlanetIcon selectedIcon = PlanetIcon.None,
             PlanetIcon hoveredIcon = PlanetIcon.None,
             PlanetSectorBarRenderData energyBar = null,
             PlanetSectorBarRenderData rawBar = null,
-            PlanetSectorBarRenderData supportBar = null
+            PlanetSectorBarRenderData supportBar = null,
+            Texture2D galacticInformationTexture = null,
+            Func<Texture2D, RectInt> getTextureContentBounds = null
         )
         {
             return new PlanetSectorPlanetRenderData(
@@ -332,7 +499,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 hoveredIcon,
                 energyBar ?? CreateSegmentedBar(true, 4, 2),
                 rawBar ?? CreateSegmentedBar(true, 4, 2),
-                supportBar ?? CreateContinuousBar(true, 0.5f)
+                supportBar ?? CreateContinuousBar(true, 0.5f),
+                galacticInformationTexture,
+                getTextureContentBounds
             );
         }
 
@@ -342,11 +511,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         /// <param name="visible">Whether visible.</param>
         /// <param name="cellCount">The cell count.</param>
         /// <param name="litCells">The lit cells.</param>
+        /// <param name="tooltipText">The optional hover label.</param>
         /// <returns>The created segmented bar.</returns>
         private static PlanetSectorBarRenderData CreateSegmentedBar(
             bool visible,
             int cellCount,
-            int litCells
+            int litCells,
+            string tooltipText = null
         )
         {
             return new PlanetSectorBarRenderData(
@@ -356,7 +527,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 0f,
                 new Color32(0, 255, 0, 255),
                 new Color32(255, 0, 0, 255),
-                new Color32(0, 0, 0, 255)
+                new Color32(0, 0, 0, 255),
+                tooltipText
             );
         }
 
@@ -365,8 +537,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         /// </summary>
         /// <param name="visible">Whether visible.</param>
         /// <param name="ratio">The ratio.</param>
+        /// <param name="tooltipText">The optional hover label.</param>
         /// <returns>The created continuous bar.</returns>
-        private static PlanetSectorBarRenderData CreateContinuousBar(bool visible, float ratio)
+        private static PlanetSectorBarRenderData CreateContinuousBar(
+            bool visible,
+            float ratio,
+            string tooltipText = null
+        )
         {
             return new PlanetSectorBarRenderData(
                 visible,
@@ -375,7 +552,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 ratio,
                 new Color32(0, 255, 0, 255),
                 default,
-                new Color32(0, 0, 0, 255)
+                new Color32(0, 0, 0, 255),
+                tooltipText
             );
         }
 

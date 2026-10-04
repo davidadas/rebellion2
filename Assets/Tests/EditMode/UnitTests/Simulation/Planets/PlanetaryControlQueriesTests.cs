@@ -1,0 +1,102 @@
+using System.Collections.Generic;
+using NUnit.Framework;
+using Rebellion.Game;
+using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
+using Rebellion.Game.Units;
+using Rebellion.Simulation;
+
+namespace Rebellion.Tests.Simulation
+{
+    [TestFixture]
+    public class PlanetaryControlQueriesTests
+    {
+        private GameRoot _game;
+        private Faction _empire;
+        private Faction _rebels;
+        private Planet _targetPlanet;
+        private PlanetaryControlQueries _queries;
+
+        /// <summary>Creates a planet and two factions for read-only control calculations.</summary>
+        [SetUp]
+        public void SetUp()
+        {
+            _game = TestGame.Create(TestConfig.Create());
+            _rebels = new Faction { InstanceID = "rebels" };
+            _empire = new Faction { InstanceID = "empire" };
+            _game.GetFactions().Add(_rebels);
+            _game.GetFactions().Add(_empire);
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            _targetPlanet = new Planet { InstanceID = "planet", IsColonized = true };
+            _game.AttachNode(sector, _game.Galaxy);
+            _game.AttachNode(_targetPlanet, sector);
+            _queries = new PlanetaryControlQueries(_game);
+        }
+
+        [Test]
+        public void GetPlanetController_EqualQualifyingSupport_ReturnsFirstFaction()
+        {
+            _game.Config.SupportShift.OwnershipTransferThreshold = 50;
+            _targetPlanet.PopularSupport = new Dictionary<string, int>
+            {
+                { _empire.InstanceID, 50 },
+                { _rebels.InstanceID, 50 },
+            };
+
+            Assert.AreSame(_rebels, _queries.GetPlanetController(_targetPlanet));
+        }
+
+        [Test]
+        public void GetPlanetController_OtherFactionHasControllingSupport_DoesNotChangeOwner()
+        {
+            _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
+            _targetPlanet.SetPopularSupport(_rebels.InstanceID, 100);
+
+            Assert.AreSame(_rebels, _queries.GetPlanetController(_targetPlanet));
+
+            Assert.AreEqual(_empire.InstanceID, _targetPlanet.OwnerInstanceID);
+        }
+
+        [Test]
+        public void GetPlanetController_ActiveGarrisonOpposesSupport_ReturnsGarrisonOwner()
+        {
+            AddRegiment("garrison", _empire);
+            _targetPlanet.SetPopularSupport(_rebels.InstanceID, 100);
+
+            Assert.AreSame(_empire, _queries.GetPlanetController(_targetPlanet));
+        }
+
+        [Test]
+        public void GetPlanetController_OnlyInactiveRegiments_ReturnsSupportController()
+        {
+            AddRegiment("unfinished", _empire).ManufacturingStatus = ManufacturingStatus.Building;
+            AddRegiment("traveling", _empire).Movement = new MovementState { TransitTicks = 2 };
+            _targetPlanet.SetPopularSupport(_rebels.InstanceID, 100);
+
+            Assert.AreSame(_rebels, _queries.GetPlanetController(_targetPlanet));
+        }
+
+        [Test]
+        public void GetPlanetController_OpposingActiveGarrisons_ReturnsNoController()
+        {
+            AddRegiment("first", _empire);
+            AddRegiment("second", _rebels);
+            _targetPlanet.SetPopularSupport(_rebels.InstanceID, 100);
+
+            Assert.IsNull(_queries.GetPlanetController(_targetPlanet));
+        }
+
+        /// <summary>Places a completed regiment after setting its planet's ownership.</summary>
+        /// <param name="id">The regiment identifier.</param>
+        /// <param name="owner">The regiment's faction.</param>
+        /// <returns>The attached regiment.</returns>
+        private Regiment AddRegiment(string id, Faction owner)
+        {
+            _game.ChangeOwnership(_targetPlanet, owner.InstanceID);
+            Regiment regiment = EntityFactory.CreateRegiment(id, owner.InstanceID);
+            regiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            _game.AttachNode(regiment, _targetPlanet);
+            return regiment;
+        }
+    }
+}

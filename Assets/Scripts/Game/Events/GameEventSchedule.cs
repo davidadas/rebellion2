@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using Rebellion.Util.Serialization;
 
@@ -17,75 +16,6 @@ namespace Rebellion.Game.Events
         public AfterEvent After { get; set; }
         public AfterEvents AfterAll { get; set; }
         public AfterEvents AfterAny { get; set; }
-
-        [PersistableIgnore]
-        public bool IsRecurring => Every != null || RandomInterval != null;
-
-        /// <summary>
-        /// Gets the conditions that permanently end the recurring schedule.
-        /// </summary>
-        [PersistableIgnore]
-        public IReadOnlyList<GameConditional> Until
-        {
-            get
-            {
-                if (Every != null)
-                    return Every.Until;
-                if (RandomInterval != null)
-                    return RandomInterval.Until;
-                return Array.Empty<GameConditional>();
-            }
-        }
-
-        /// <summary>
-        /// Gets the inclusive delay range for an event's first activation.
-        /// </summary>
-        /// <param name="minimum">Receives the minimum initial delay.</param>
-        /// <param name="maximum">Receives the maximum initial delay.</param>
-        public void GetInitialRange(out int minimum, out int maximum)
-        {
-            if (At != null)
-            {
-                minimum = maximum = At.Tick;
-                return;
-            }
-
-            if (Every != null)
-            {
-                minimum = maximum = Every.InitialDelayTicks;
-                return;
-            }
-
-            if (After != null || AfterAll != null || AfterAny != null)
-            {
-                minimum = maximum = (AfterAll ?? AfterAny)?.DelayTicks ?? After.DelayTicks;
-                return;
-            }
-
-            if (RandomDelay != null)
-            {
-                RandomDelay.GetRange(out minimum, out maximum);
-                return;
-            }
-
-            RandomInterval.GetRange(out minimum, out maximum);
-        }
-
-        /// <summary>
-        /// Gets the inclusive delay range between activations of a repeatable event.
-        /// </summary>
-        /// <param name="minimum">Receives the minimum repeat delay.</param>
-        /// <param name="maximum">Receives the maximum repeat delay.</param>
-        public void GetRepeatRange(out int minimum, out int maximum)
-        {
-            if (Every != null)
-            {
-                minimum = maximum = Every.Ticks;
-                return;
-            }
-
-            RandomInterval.GetRange(out minimum, out maximum);
-        }
     }
 
     /// <summary>
@@ -157,17 +87,6 @@ namespace Rebellion.Game.Events
 
         [PersistableAttribute]
         public int MaximumTicks { get; set; }
-
-        /// <summary>
-        /// Returns the configured inclusive delay range after load-time validation.
-        /// </summary>
-        /// <param name="minimum">Receives the minimum delay.</param>
-        /// <param name="maximum">Receives the maximum delay.</param>
-        public void GetRange(out int minimum, out int maximum)
-        {
-            minimum = MinimumTicks;
-            maximum = MaximumTicks;
-        }
     }
 
     /// <summary>
@@ -184,16 +103,5 @@ namespace Rebellion.Game.Events
 
         // Completion Conditions.
         public List<GameConditional> Until { get; set; } = new List<GameConditional>();
-
-        /// <summary>
-        /// Returns the configured inclusive interval range after load-time validation.
-        /// </summary>
-        /// <param name="minimum">Receives the minimum interval.</param>
-        /// <param name="maximum">Receives the maximum interval.</param>
-        public void GetRange(out int minimum, out int maximum)
-        {
-            minimum = MinimumTicks;
-            maximum = MaximumTicks;
-        }
     }
 }

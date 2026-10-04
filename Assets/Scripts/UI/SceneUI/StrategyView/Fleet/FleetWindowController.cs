@@ -11,7 +11,7 @@ using UnityEngine.EventSystems;
 /// <summary>
 /// Performs game-level and shared-window actions requested by the fleet feature.
 /// </summary>
-public interface IFleetWindowActions
+public interface IFleetWindowActions : IOfficerCommandActions
 {
     /// <summary>
     /// Opens Encyclopedia information for one selected fleet item.
@@ -534,6 +534,16 @@ public sealed class FleetWindowController
 
         switch (menuCommand.Action)
         {
+            case StrategyMenuAction.CommandNone:
+            case StrategyMenuAction.CommandCommander:
+            case StrategyMenuAction.CommandAdmiral:
+            case StrategyMenuAction.CommandGeneral:
+                if (
+                    menuCommand.Action.TryGetOfficerRank(out OfficerRank rank)
+                    && actions.TrySetOfficerCommand(source.Items, rank)
+                )
+                    actions.RefreshFleetState();
+                break;
             case StrategyMenuAction.ToggleIdleBarTracking:
                 if (source.Items.Count == 1)
                     idleBarTrackingActions.ToggleIdleBarTracking(source.Items[0]);
@@ -902,7 +912,7 @@ public sealed class FleetWindowController
     }
 
     /// <summary>
-    /// Handles a drop over one detail card using the pane's selected fleet destination.
+    /// Handles a drop over one detail card as a targeting selection.
     /// </summary>
     /// <param name="view">The source fleet view.</param>
     /// <param name="itemIndex">The drop detail-card index.</param>
@@ -913,8 +923,11 @@ public sealed class FleetWindowController
         PointerEventData eventData
     )
     {
-        if (TryGetSession(view, out FleetWindowSession session))
-            HandleItemDropped(session, session.SelectedFleet);
+        if (
+            TryGetSession(view, out FleetWindowSession session)
+            && session.TryGetDetailItem(itemIndex, out ISceneNode item)
+        )
+            HandleItemDropped(session, item);
     }
 
     /// <summary>
@@ -989,11 +1002,12 @@ public sealed class FleetWindowController
         PointerEventData eventData
     )
     {
-        if (
-            eventData?.button != PointerEventData.InputButton.Left
-            || TrySelectTarget(session, item)
-            || SelectableListSelection.HasSelectionModifier(getSelectionModifiers())
-        )
+        if (eventData?.button != PointerEventData.InputButton.Left)
+            return;
+
+        bool targetSelected = TrySelectTarget(session, item);
+        endItemDrag(eventData);
+        if (targetSelected || SelectableListSelection.HasSelectionModifier(getSelectionModifiers()))
             return;
 
         session.SelectItem(item);
@@ -1017,7 +1031,9 @@ public sealed class FleetWindowController
 
         view.RenderDetailSelection(
             session.SelectedDetailItems,
-            projector.GetDetailSelectionTexture(session)
+            projector.GetDetailSelectionTexture(session),
+            projector.GetDetailNameColor(session, true),
+            projector.GetDetailNameColor(session, false)
         );
     }
 

@@ -58,21 +58,6 @@ public sealed class DragPreview
     }
 
     /// <summary>
-    /// Creates immutable drag-preview presentation data.
-    /// </summary>
-    /// <param name="texture">The preview texture.</param>
-    /// <param name="width">The source-space width.</param>
-    /// <param name="height">The source-space height.</param>
-    /// <param name="offsetX">The horizontal pointer offset.</param>
-    /// <param name="offsetY">The vertical pointer offset.</param>
-    public DragPreview(Texture texture, int width, int height, int offsetX, int offsetY)
-        : this(
-            new[] { new DragPreviewImage(texture, new RectInt(-offsetX, -offsetY, width, height)) },
-            0,
-            0
-        ) { }
-
-    /// <summary>
     /// Creates immutable drag-preview presentation data from ordered image layers.
     /// </summary>
     /// <param name="images">The image layers in rendering order.</param>

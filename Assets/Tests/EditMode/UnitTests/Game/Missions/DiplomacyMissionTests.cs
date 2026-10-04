@@ -8,6 +8,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Simulation;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Tests.Game.Missions
@@ -41,7 +42,7 @@ namespace Rebellion.Tests.Game.Missions
 
             Assert.IsFalse(
                 results.OfType<PlanetOwnershipChangedResult>().Any(),
-                "Mission should not emit ownership change; PlanetaryControlSystem handles transfers"
+                "Mission should not emit ownership change; PlanetaryControlCommands handles transfers"
             );
             Assert.AreEqual(60, planet.GetPopularSupport("empire"));
             Assert.AreEqual(1, GetSupportShift(results).Shift);
@@ -101,6 +102,37 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void ResolveObjective_MultipleOfficersSucceed_ImprovesOnlyFirstSuccessfulOfficer()
+        {
+            GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: "empire");
+            Officer firstOfficer = EntityFactory.CreateOfficer("o1", "empire");
+            firstOfficer.SetBaseRating(SkillRating.Diplomacy, 100);
+            game.AttachNode(firstOfficer, planet);
+            Officer secondOfficer = EntityFactory.CreateOfficer("o2", "empire");
+            secondOfficer.SetBaseRating(SkillRating.Diplomacy, 100);
+            game.AttachNode(secondOfficer, planet);
+            int firstRating = firstOfficer.GetBaseRating(SkillRating.Diplomacy);
+            int secondRating = secondOfficer.GetBaseRating(SkillRating.Diplomacy);
+            Mission mission = CreateDiplomacyMission(
+                "empire",
+                planet,
+                new List<IMissionParticipant> { firstOfficer, secondOfficer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, planet);
+            game.Config.ProbabilityTables.Mission.Diplomacy = new Dictionary<int, int>
+            {
+                { 0, 100 },
+            };
+
+            List<GameResult> results = ExecuteDiplomacySuccess(mission, game, new FixedRNG(0.0));
+
+            Assert.AreEqual(1, results.OfType<PopularSupportShiftResult>().Count());
+            Assert.AreEqual(firstRating + 1, firstOfficer.GetBaseRating(SkillRating.Diplomacy));
+            Assert.AreEqual(secondRating, secondOfficer.GetBaseRating(SkillRating.Diplomacy));
+        }
+
+        [Test]
         public void ResolveObjective_OwnedPlanet_UsesDiplomacySupportConfig()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: "empire");
@@ -135,14 +167,11 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void ResolveObjective_CoreSectorWeakSupport_ReportsUnadjustedShift()
+        public void ResolveObjective_CoreSector_ReportsConfiguredShift()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: "empire");
             planet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.Core;
-            game.GetFactionByOwnerInstanceID("empire").Settings.SupportResistance =
-                SupportChange.Increase;
             Mission mission = CreateAndAttachMission(game, planet);
-            game.Config.SupportShift.WeakSupportPenaltyDivisor = 2;
             game.Config.SupportShift.DiplomacyOwnedPlanetSupportBase = 6;
             game.Config.SupportShift.DiplomacyOwnedPlanetSupportRange = 0;
 
@@ -227,7 +256,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void GetAbortReason_WhenPlanetTakenByThirdFaction_ReturnsFailure()
+        public void GetAbortReason_WhenPlanetTakenByThirdFaction_ReturnsTargetChangedSides()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: null);
             Mission mission = CreateAndAttachMission(game, planet);
@@ -235,10 +264,42 @@ namespace Rebellion.Tests.Game.Missions
             planet.OwnerInstanceID = "rebels";
 
             Assert.AreEqual(
-                MissionCompletionReason.Failure,
+                MissionCompletionReason.TargetChangedSides,
                 mission.GetAbortReason(game),
                 "Diplomacy mission should be canceled when target planet is taken by another faction"
             );
+        }
+
+        [Test]
+        public void GetAbortReason_WhenOwnedPlanetDeclaresNeutrality_ReturnsTargetChangedSides()
+        {
+            GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: "empire");
+            Mission mission = CreateAndAttachMission(game, planet);
+
+            planet.OwnerInstanceID = null;
+
+            Assert.AreEqual(
+                MissionCompletionReason.TargetChangedSides,
+                mission.GetAbortReason(game)
+            );
+        }
+
+        [Test]
+        public void ResolveInterruption_WhenPlanetChangedSides_RevealsPlanetToMissionOwner()
+        {
+            GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: null);
+            Mission mission = CreateAndAttachMission(game, planet);
+            planet.OwnerInstanceID = "rebels";
+            game.CurrentTick = 42;
+
+            IntelligenceRevealedResult revealed = mission
+                .ResolveInterruption(game, new FixedRNG(0.0))
+                .OfType<IntelligenceRevealedResult>()
+                .Single();
+
+            Assert.AreEqual("empire", revealed.Recipient.InstanceID);
+            Assert.AreEqual(planet, revealed.Observations.Single());
+            Assert.AreEqual(42, revealed.Tick);
         }
 
         [Test]
@@ -392,6 +453,68 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(3, deserialized.CurrentProgress);
         }
 
+        [Test]
+        public void Serialize_RoundTrip_PreservesStartingTargetOwner()
+        {
+            GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: "empire");
+            Officer diplomat = EntityFactory.CreateOfficer("diplomat", "empire");
+            Mission mission = CreateDiplomacyMission(
+                "empire",
+                planet,
+                new List<IMissionParticipant> { diplomat },
+                new List<IMissionParticipant>()
+            );
+
+            string xml = SerializationHelper.Serialize(mission);
+            StringAssert.Contains(
+                "<StartingTargetOwnerInstanceID>empire</StartingTargetOwnerInstanceID>",
+                xml
+            );
+            Mission deserialized = SerializationHelper.Deserialize<Mission>(xml);
+            string roundTripXml = SerializationHelper.Serialize(deserialized);
+            StringAssert.Contains(
+                "<StartingTargetOwnerInstanceID>empire</StartingTargetOwnerInstanceID>",
+                roundTripXml
+            );
+            game.AttachNode(deserialized, planet);
+            planet.OwnerInstanceID = null;
+
+            Assert.AreEqual(
+                MissionCompletionReason.TargetChangedSides,
+                deserialized.GetAbortReason(game)
+            );
+        }
+
+        [Test]
+        public void GetAbortReason_LegacyMissionWithoutOwnershipSnapshot_DetectsLaterNeutrality()
+        {
+            GameRoot game = BuildGame(out Planet planet, empireSupport: 50, planetOwner: "empire");
+            Officer diplomat = EntityFactory.CreateOfficer("diplomat", "empire");
+            Mission mission = CreateDiplomacyMission(
+                "empire",
+                planet,
+                new List<IMissionParticipant> { diplomat },
+                new List<IMissionParticipant>()
+            );
+            string xml = SerializationHelper
+                .Serialize(mission)
+                .Replace(
+                    "<StartingTargetOwnerInstanceID>empire</StartingTargetOwnerInstanceID>",
+                    string.Empty
+                );
+            Mission deserialized = SerializationHelper.Deserialize<Mission>(xml);
+            game.AttachNode(deserialized, planet);
+
+            Assert.IsNull(deserialized.GetAbortReason(game));
+
+            planet.OwnerInstanceID = null;
+
+            Assert.AreEqual(
+                MissionCompletionReason.TargetChangedSides,
+                deserialized.GetAbortReason(game)
+            );
+        }
+
         /// <summary>
         /// Creates diplomacy mission.
         /// </summary>
@@ -431,7 +554,7 @@ namespace Rebellion.Tests.Game.Missions
         )
         {
             GameConfig config = TestConfig.Create();
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
 

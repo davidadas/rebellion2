@@ -19,6 +19,39 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         private const string _prefabPath = "Assets/Prefabs/UI/StrategyView/StrategyViewRoot.prefab";
 
         [Test]
+        public void BeginConstruction_PlayerFaction_RoutesRequestedCategory()
+        {
+            StrategyAdvisorController controller = new StrategyAdvisorController(
+                () => new Faction(),
+                _ => null,
+                _ => { }
+            );
+            TestActions actions = new TestActions();
+            controller.Initialize(actions);
+
+            controller.BeginConstruction(ManufacturingType.Ship);
+
+            Assert.AreEqual(ManufacturingType.Ship, actions.ConstructionType);
+            Assert.AreEqual(Vector2Int.zero, actions.ConstructionSource);
+        }
+
+        [Test]
+        public void BeginConstruction_WithoutPlayerFaction_DoesNotRouteRequest()
+        {
+            StrategyAdvisorController controller = new StrategyAdvisorController(
+                () => null,
+                _ => null,
+                _ => { }
+            );
+            TestActions actions = new TestActions();
+            controller.Initialize(actions);
+
+            controller.BeginConstruction(ManufacturingType.Ship);
+
+            Assert.IsNull(actions.ConstructionType);
+        }
+
+        [Test]
         public void BuildCommandMenu_PlayerFaction_ReturnsAuthoredOrderAndDefaultChecks()
         {
             Faction faction = new Faction();
@@ -111,7 +144,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         public void BuildNotificationMenu_UnreadMessages_EnablesMarkAllRead()
         {
             Faction faction = new Faction();
-            faction.AddMessage(new StatusMessage(MessageType.Fleet, "Fleet arrived"));
+            faction.AddMessage(
+                new StatusMessage(MessageType.Fleet, "Fleet arrived", "Fleet arrived")
+            );
 
             IReadOnlyList<StrategyMenuCommand> commands =
                 StrategyAdvisorController.BuildNotificationMenu(faction);
@@ -546,7 +581,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 controller.Notify(
                     new MessageDeliveredResult
                     {
-                        Message = new StatusMessage(MessageType.Fleet, "Fleet arrived"),
+                        Message = new StatusMessage(
+                            MessageType.Fleet,
+                            "Fleet arrived",
+                            "Fleet arrived"
+                        ),
                         NotificationType = AdvisorNotificationType.PositivePopularSupport,
                     },
                     0,
@@ -571,6 +610,87 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 UnityEngine.Object.DestroyImmediate(firstFrame);
                 UnityEngine.Object.DestroyImmediate(droidIdleTexture);
                 UnityEngine.Object.DestroyImmediate(protocolIdleTexture);
+                UnityEngine.Object.DestroyImmediate(rootObject);
+            }
+        }
+
+        [Test]
+        public void ProcessPending_ActivePlayback_QueuesNotificationForAutomaticPlayback()
+        {
+            GameObject rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
+            StrategyAdvisorView view = rootObject.GetComponentInChildren<StrategyAdvisorView>(true);
+            StrategyAdvisorTheme theme = CreateTheme();
+            theme.Notifications.Add(
+                new StrategyAdvisorNotificationTheme
+                {
+                    NotificationType = AdvisorNotificationType.PositivePopularSupport,
+                    LifetimeTicks = 20,
+                    Droid = new StrategyAdvisorAnimationTheme
+                    {
+                        Animation = "First",
+                        FrameCount = 1,
+                    },
+                }
+            );
+            theme.Notifications.Add(
+                new StrategyAdvisorNotificationTheme
+                {
+                    NotificationType = AdvisorNotificationType.NegativePopularSupport,
+                    LifetimeTicks = 1,
+                    Droid = new StrategyAdvisorAnimationTheme
+                    {
+                        Animation = "Second",
+                        FrameCount = 1,
+                    },
+                }
+            );
+            Texture2D idle = new Texture2D(1, 1);
+            Texture2D firstFrame = new Texture2D(1, 1);
+            Texture2D secondFrame = new Texture2D(1, 1);
+            Dictionary<string, Texture2D> textures = new Dictionary<string, Texture2D>
+            {
+                [theme.GetFramePath(theme.ProtocolIdleAnimation, 0, false)] = idle,
+                [theme.GetFramePath(theme.DroidIdleAnimation, 0, true)] = idle,
+                [theme.GetFramePath("First", 0, true)] = firstFrame,
+                [theme.GetFramePath("Second", 0, true)] = secondFrame,
+            };
+            try
+            {
+                UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+                StrategyAdvisorController controller = CreateController(textures);
+                controller.BindView(view);
+                controller.Render(theme);
+                List<StrategyAdvisorAnimationViewData> started =
+                    new List<StrategyAdvisorAnimationViewData>();
+                view.PlaybackStarted += started.Add;
+
+                controller.Notify(
+                    CreateAdvisorDelivery(AdvisorNotificationType.PositivePopularSupport),
+                    0,
+                    true
+                );
+                controller.ProcessPending(0, true);
+                controller.Notify(
+                    CreateAdvisorDelivery(AdvisorNotificationType.NegativePopularSupport),
+                    1,
+                    true
+                );
+                controller.ProcessPending(1, true);
+
+                Assert.AreEqual(1, started.Count);
+                Assert.AreSame(firstFrame, started[0].Frames.Single());
+
+                controller.ProcessPending(20, true);
+                view.AdvanceAnimation(theme.FrameIntervalSeconds);
+
+                Assert.AreEqual(2, started.Count);
+                Assert.AreSame(secondFrame, started[1].Frames.Single());
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(secondFrame);
+                UnityEngine.Object.DestroyImmediate(firstFrame);
+                UnityEngine.Object.DestroyImmediate(idle);
                 UnityEngine.Object.DestroyImmediate(rootObject);
             }
         }
@@ -602,7 +722,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 controller.Notify(
                     new MessageDeliveredResult
                     {
-                        Message = new StatusMessage(MessageType.Advice, "Custom"),
+                        Message = new StatusMessage(MessageType.Advice, "Custom", "Custom"),
                         AdvisorNotification = new AdvisorNotification
                         {
                             LifetimeTicks = 20,
@@ -820,6 +940,22 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         }
 
         /// <summary>
+        /// Creates a delivered message carrying one advisor notification type.
+        /// </summary>
+        /// <param name="notificationType">The advisor notification type.</param>
+        /// <returns>The delivered message.</returns>
+        private static MessageDeliveredResult CreateAdvisorDelivery(
+            AdvisorNotificationType notificationType
+        )
+        {
+            return new MessageDeliveredResult
+            {
+                Message = new StatusMessage(MessageType.Advice, "Advisor", "Advisor"),
+                NotificationType = notificationType,
+            };
+        }
+
+        /// <summary>
         /// Executes destroy audio managers.
         /// </summary>
         private static void DestroyAudioManagers()
@@ -916,6 +1052,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         {
             public Faction ProcessedFaction { get; private set; }
 
+            public ManufacturingType? ConstructionType { get; private set; }
+
+            public Vector2Int ConstructionSource { get; private set; }
+
             /// <summary>
             /// Executes begin advisor construction.
             /// </summary>
@@ -926,7 +1066,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 ManufacturingType manufacturingType,
                 int sourceX,
                 int sourceY
-            ) { }
+            )
+            {
+                ConstructionType = manufacturingType;
+                ConstructionSource = new Vector2Int(sourceX, sourceY);
+            }
 
             /// <summary>
             /// Opens advisor command context menu.

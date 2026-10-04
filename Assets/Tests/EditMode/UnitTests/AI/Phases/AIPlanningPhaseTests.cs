@@ -1,10 +1,13 @@
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
-using Rebellion.AI.Director;
+using Rebellion.AI;
+using Rebellion.AI.Demands;
 using Rebellion.AI.Phases;
 using Rebellion.AI.Planners;
 using Rebellion.AI.Proposals;
+using Rebellion.AI.Scorers;
+using Rebellion.AI.Selectors;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
@@ -35,7 +38,9 @@ namespace Rebellion.Tests.AI.Phases
             game.AttachNode(officer, planet);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            new AIPlanningPhase().Execute(context);
+            new AIPlanningPhase(new IAIProposalPlanner[] { new AIMissionPlanner() }).Execute(
+                context
+            );
 
             Assert.IsTrue(
                 context
@@ -52,6 +57,9 @@ namespace Rebellion.Tests.AI.Phases
                 new IAIProposalPlanner[] { new TestPlanner(proposal) }
             );
             AITurnContext context = new AITurnContext(
+                null,
+                null,
+                null,
                 null,
                 null,
                 null,
@@ -76,6 +84,9 @@ namespace Rebellion.Tests.AI.Phases
                 new IAIProposalPlanner[] { new TestPlanner(first), new TestPlanner(second) }
             );
             AITurnContext context = new AITurnContext(
+                null,
+                null,
+                null,
                 null,
                 null,
                 null,

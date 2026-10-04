@@ -8,6 +8,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Simulation;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 using GameFleet = Rebellion.Game.Units.Fleet;
 
@@ -32,7 +33,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
         [SetUp]
         public void SetUp()
         {
-            _game = new GameRoot(TestConfig.Create()) { CurrentTick = 100 };
+            _game = TestGame.Create(TestConfig.Create());
+            _game.CurrentTick = 100;
             _game.GetFactions().Add(new Faction { InstanceID = _ownerId });
             _game.GetFactions().Add(new Faction { InstanceID = _opponentId });
             _game.Summary.PlayerFactionID = _ownerId;
@@ -115,10 +117,45 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                 {
                     "Location:|Core Sector",
                     "Status:|Active",
+                    "General:|Not Assigned",
+                    "Commander:|Not Assigned",
                     "Popular Support:|63",
                     "Energy:|12",
                 },
                 info.Rows.Select(row => row.Left + "|" + row.Right)
+            );
+        }
+
+        [Test]
+        public void Build_Planet_ReturnsSystemCommandersButExcludesOrbitingFleetCommanders()
+        {
+            Officer systemGeneral = EntityFactory.CreateOfficer("system-general", _ownerId);
+            systemGeneral.DisplayName = "Carlist Rieekan";
+            systemGeneral.CurrentRank = OfficerRank.General;
+            _game.AttachNode(systemGeneral, _planet);
+            GameFleet fleet = new GameFleet { InstanceID = "fleet", OwnerInstanceID = _ownerId };
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "ship",
+                OwnerInstanceID = _ownerId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Officer fleetCommander = EntityFactory.CreateOfficer("fleet-commander", _ownerId);
+            fleetCommander.DisplayName = "Wedge Antilles";
+            fleetCommander.CurrentRank = OfficerRank.Commander;
+            _game.AttachNode(fleet, _planet);
+            _game.AttachNode(ship, fleet);
+            _game.AttachNode(fleetCommander, ship);
+
+            StrategyStatusInfo info = _builder.Build(new StrategyStatusTarget(_mapPlanet, _planet));
+
+            Assert.AreEqual(
+                "General Rieekan",
+                info.Rows.Single(row => row.Left == "General:").Right
+            );
+            Assert.AreEqual(
+                "Not Assigned",
+                info.Rows.Single(row => row.Left == "Commander:").Right
             );
         }
 
@@ -130,6 +167,48 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             Assert.AreEqual("Planet Status", info.Header);
             Assert.AreEqual("Corellia", info.Label);
             CollectionAssert.AreEqual(new[] { _planet }, info.ImageItems);
+        }
+
+        [Test]
+        public void Build_PlanetReceivingRelocatedHeadquarters_ReturnsHeadquartersEta()
+        {
+            Faction player = _game.GetFactionByOwnerInstanceID(_ownerId);
+            player.HQInstanceID = "origin";
+            player.Settings = new FactionSettings
+            {
+                Headquarters = new HeadquartersSettings { IsMobile = true },
+            };
+            Planet origin = new Planet
+            {
+                InstanceID = "origin",
+                DisplayName = "Origin",
+                OwnerInstanceID = _ownerId,
+                IsColonized = true,
+                IsHeadquarters = true,
+                EnergyCapacity = 1,
+                PositionX = 100,
+            };
+            _game.AttachNode(origin, _planetSector);
+            Building headquarters = new Building
+            {
+                InstanceID = "headquarters",
+                OwnerInstanceID = _ownerId,
+                BuildingType = BuildingType.Headquarters,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(headquarters, origin);
+            GameSession session = TestContent.CreateGameSession(_game);
+            Assert.IsTrue(
+                session.GetService<HeadquartersCommands>().TryRelocate(headquarters, _planet)
+            );
+
+            StrategyStatusInfo info = _builder.Build(new StrategyStatusTarget(_mapPlanet, _planet));
+
+            StrategyStatusRow eta = info.Rows.Single(row => row.Left == "Headquarters ETA:");
+            Assert.AreEqual(
+                $"Day {_game.CurrentTick + headquarters.Movement.TicksRemaining()}",
+                eta.Right
+            );
         }
 
         [Test]
@@ -487,7 +566,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             StrategyStatusInfo info = _builder.Build(new StrategyStatusTarget(_mapPlanet, officer));
 
             Assert.AreEqual("Character Status", info.Header);
-            Assert.AreEqual("None", info.Rows.Single(row => row.Left == "Commanding:").Right);
+            Assert.AreEqual(
+                "Not Assigned",
+                info.Rows.Single(row => row.Left == "Commanding:").Right
+            );
             Assert.AreEqual(
                 "Awaiting Orders",
                 info.Rows.Single(row => row.Left == "Status:").Right
@@ -519,6 +601,97 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             StrategyStatusInfo info = _builder.Build(new StrategyStatusTarget(_mapPlanet, officer));
 
             Assert.IsFalse(info.Rows.Any(row => row.Left == "Attached:"));
+        }
+
+        [Test]
+        public void Build_OfficerInFleet_DerivesCommandingAssignmentFromLocation()
+        {
+            GameFleet fleet = new GameFleet
+            {
+                InstanceID = "command-fleet",
+                DisplayName = "First Fleet",
+                OwnerInstanceID = _ownerId,
+            };
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "command-ship",
+                OwnerInstanceID = _ownerId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Officer officer = new Officer
+            {
+                InstanceID = "command-officer",
+                DisplayName = "Wedge Antilles",
+                OwnerInstanceID = _ownerId,
+                CurrentRank = OfficerRank.Commander,
+            };
+            _game.AttachNode(fleet, _planet);
+            _game.AttachNode(ship, fleet);
+            _game.AttachNode(officer, ship);
+
+            StrategyStatusInfo info = _builder.Build(new StrategyStatusTarget(_mapPlanet, officer));
+
+            Assert.AreEqual("Commander Antilles", info.Label);
+            Assert.AreEqual(
+                "First Fleet",
+                info.Rows.Single(row => row.Left == "Commanding:").Right
+            );
+        }
+
+        [Test]
+        public void Build_IndependentlyMovingOfficer_DoesNotCommandDestinationBeforeArrival()
+        {
+            Officer officer = new Officer
+            {
+                InstanceID = "moving-command-officer",
+                DisplayName = "Wedge Antilles",
+                OwnerInstanceID = _ownerId,
+                CurrentRank = OfficerRank.Commander,
+                Movement = new MovementState { TransitTicks = 9, TicksElapsed = 4 },
+            };
+            _game.AttachNode(officer, _planet);
+
+            StrategyStatusInfo info = _builder.Build(new StrategyStatusTarget(_mapPlanet, officer));
+
+            Assert.AreEqual(
+                "Not Assigned",
+                info.Rows.Single(row => row.Left == "Commanding:").Right
+            );
+        }
+
+        [Test]
+        public void Build_OfficerAboardMovingFleet_StillCommandsFleet()
+        {
+            GameFleet fleet = new GameFleet
+            {
+                InstanceID = "moving-command-fleet",
+                DisplayName = "First Fleet",
+                OwnerInstanceID = _ownerId,
+                Movement = new MovementState { TransitTicks = 9, TicksElapsed = 4 },
+            };
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "moving-command-ship",
+                OwnerInstanceID = _ownerId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Officer officer = new Officer
+            {
+                InstanceID = "moving-fleet-commander",
+                DisplayName = "Wedge Antilles",
+                OwnerInstanceID = _ownerId,
+                CurrentRank = OfficerRank.Commander,
+            };
+            _game.AttachNode(fleet, _planet);
+            _game.AttachNode(ship, fleet);
+            _game.AttachNode(officer, ship);
+
+            StrategyStatusInfo info = _builder.Build(new StrategyStatusTarget(_mapPlanet, officer));
+
+            Assert.AreEqual(
+                "First Fleet",
+                info.Rows.Single(row => row.Left == "Commanding:").Right
+            );
         }
 
         [Test]
@@ -769,7 +942,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             CapitalShip ship = new CapitalShip
             {
                 InstanceID = "capital-ship",
-                DisplayName = "Assault Frigate",
+                TypeID = "assault-frigate",
+                DisplayName = "Griffin",
                 OwnerInstanceID = _ownerId,
                 ManufacturingStatus = ManufacturingStatus.Complete,
                 MaintenanceCost = 12,
@@ -1034,7 +1208,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                 instanceId => game.GetSceneNodeByInstanceID<ISceneNode>(instanceId),
                 game.GetPlayerFaction()?.InstanceID,
                 game.CurrentTick,
-                game.Config?.Jedi
+                game.Config?.Jedi,
+                typeId => typeId == "assault-frigate" ? "Assault Frigate" : null
             );
         }
     }

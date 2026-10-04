@@ -201,7 +201,6 @@ public sealed class MainMenuController : MonoBehaviour
     /// <param name="factionId">The configured faction identifier.</param>
     private void HandleStartGameRequested(string factionId)
     {
-        GameStartupTrace.Begin($"Faction button accepted for '{factionId}'.");
         SelectFaction(factionId);
         StartGame();
     }
@@ -375,7 +374,6 @@ public sealed class MainMenuController : MonoBehaviour
         AppBootstrap.Instance.GetRuntime()?.EndGame();
 
         AudioManager.EnsureExists().StopMusic();
-        GameStartupTrace.Log("Launch state prepared; requesting StrategyView scene.");
         AppBootstrap.Instance.LoadScene("StrategyView");
     }
 }

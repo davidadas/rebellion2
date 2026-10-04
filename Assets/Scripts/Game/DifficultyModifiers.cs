@@ -1,0 +1,27 @@
+using Rebellion.Util.Serialization;
+
+namespace Rebellion.Game
+{
+    /// <summary>
+    /// Configures faction-wide AI bonuses for one game difficulty.
+    /// </summary>
+    [PersistableObject]
+    public sealed class DifficultyModifiers
+    {
+        public int MissionSuccessChancePoints { get; set; }
+
+        public int MissionFoilChancePoints { get; set; }
+
+        public int MissionExecutionSpeedIncreasePercent { get; set; }
+
+        public double DetectionRatingMultiplier { get; set; } = 1;
+
+        public int MineOutputPercent { get; set; } = 100;
+
+        public int RefineryOutputPercent { get; set; } = 100;
+
+        public int MaintenanceCapacityPercent { get; set; } = 100;
+
+        public int ManufacturingSpeedPercent { get; set; } = 100;
+    }
+}

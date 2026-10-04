@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 
@@ -102,6 +103,7 @@ public static partial class HeadlessSimulationRunner
         public int TotalManufacturedTrainingFacilities;
         public int TotalManufacturedDefenseFacilities;
         public int TotalManufacturedWeapons;
+        public MineCompletionSummary[] MineCompletions;
         public int ProductionDemandCount;
         public int ProductionProposalCount;
         public int SelectedProductionProposalCount;
@@ -115,6 +117,13 @@ public static partial class HeadlessSimulationRunner
         public int BuildingProductionProposalCount;
         public int SelectedBuildingProductionProposalCount;
         public int SelectedProductionMaintenanceCost;
+        public int ProjectedEconomyMaintenanceHeadroom;
+        public int MineDemandCount;
+        public int RefineryDemandCount;
+        public int MineDestinationCount;
+        public int RefineryDestinationCount;
+        public int AvailableBuildingProducerCount;
+        public ProductionProposalDiagnostic[] ProductionProposalDiagnostics;
         public ConstructionFacilityExpansionSimulationSummary ConstructionFacilityExpansion;
         public TroopProductionSimulationSummary TroopProduction;
         public TroopReinforcementPackageSimulationSummary TroopReinforcementPackages;
@@ -125,10 +134,25 @@ public static partial class HeadlessSimulationRunner
         public PersonnelOutcomeSimulationSummary PersonnelOutcomes;
         public PlanetaryAssaultSimulationSummary PlanetaryAssaults;
         public GarrisonRemovalBombardmentSimulationSummary GarrisonRemovalBombardments;
+        public SpaceCombatCalibrationSummary SpaceCombatCalibration;
         public AttackReadinessSimulationSummary AttackReadiness;
         public ProductionFacilityPlanetSummary[] ProductionFacilityPlanets;
         public CurrentIdlePlanetSummary[] CurrentIdlePlanets;
         public FleetSimulationSummary[] Fleets;
+    }
+
+    [Serializable]
+    private sealed class ProductionProposalDiagnostic
+    {
+        public string DemandKind;
+        public string ProductTypeId;
+        public string DestinationId;
+        public string ProducerId;
+        public double Score;
+        public bool CanSelect;
+        public bool Selected;
+        public int MaintenanceCost;
+        public int MinimumMaintenanceHeadroom;
     }
 
     [Serializable]
@@ -137,11 +161,26 @@ public static partial class HeadlessSimulationRunner
         public int Succeeded;
         public int Failed;
         public int Foiled;
+        public int InternallyFoiled;
+        public int ExternallyFoiled;
         public int Injuries;
         public int Captures;
         public int FoiledMissionInjuries;
         public int FoiledMissionCaptures;
         public MissionTypeOutcomeSimulationSummary[] ByMissionType;
+        public DiplomacyOwnershipChangeSimulationRecord[] DiplomacyOwnershipChanges;
+    }
+
+    [Serializable]
+    private sealed class DiplomacyOwnershipChangeSimulationRecord
+    {
+        public int Tick;
+        public string MissionInstanceId;
+        public string FactionId;
+        public string PlanetId;
+        public string PlanetName;
+        public string CurrentOwnerFactionId;
+        public bool IntelligenceRefreshed;
     }
 
     [Serializable]
@@ -151,6 +190,8 @@ public static partial class HeadlessSimulationRunner
         public int Succeeded;
         public int Failed;
         public int Foiled;
+        public int InternallyFoiled;
+        public int ExternallyFoiled;
         public int Injuries;
         public int Captures;
         public int FoiledMissionInjuries;
@@ -162,6 +203,10 @@ public static partial class HeadlessSimulationRunner
         private readonly Dictionary<string, Dictionary<string, MissionOutcomeCounts>> _counts = new(
             StringComparer.Ordinal
         );
+        private readonly Dictionary<
+            string,
+            List<DiplomacyOwnershipChangeSimulationRecord>
+        > _diplomacyOwnershipChanges = new(StringComparer.Ordinal);
 
         /// <summary>
         /// Records authoritative mission and participant outcomes from one resolved result batch.
@@ -192,12 +237,28 @@ public static partial class HeadlessSimulationRunner
                         break;
                     case MissionOutcome.Foiled:
                         counts.Foiled++;
+                        if (string.IsNullOrEmpty(result.FoilingFactionInstanceID))
+                            counts.InternallyFoiled++;
+                        else
+                            counts.ExternallyFoiled++;
                         break;
                 }
+
+                if (
+                    result.MissionTypeID == MissionTypeIDs.Diplomacy
+                    && result.CompletionReason == MissionCompletionReason.TargetChangedSides
+                    && result.Location != null
+                )
+                    RecordDiplomacyOwnershipChange(result, factionId, results);
             }
 
             foreach (OfficerInjuredResult result in results.OfType<OfficerInjuredResult>())
-                RecordParticipantOutcome(result, result.Officer, missionsById, isCapture: false);
+                RecordParticipantOutcome(
+                    result.MissionInstanceID,
+                    result.Officer,
+                    missionsById,
+                    isCapture: false
+                );
 
             foreach (
                 OfficerCaptureStateResult result in results
@@ -205,7 +266,7 @@ public static partial class HeadlessSimulationRunner
                     .Where(result => result.IsCaptured)
             )
                 RecordParticipantOutcome(
-                    result,
+                    result.MissionInstanceID,
                     result.TargetOfficer ?? result.CapturedOfficer,
                     missionsById,
                     isCapture: true
@@ -229,6 +290,8 @@ public static partial class HeadlessSimulationRunner
                 Succeeded = total.Succeeded,
                 Failed = total.Failed,
                 Foiled = total.Foiled,
+                InternallyFoiled = total.InternallyFoiled,
+                ExternallyFoiled = total.ExternallyFoiled,
                 Injuries = total.Injuries,
                 Captures = total.Captures,
                 FoiledMissionInjuries = total.FoiledMissionInjuries,
@@ -237,28 +300,87 @@ public static partial class HeadlessSimulationRunner
                     .OrderBy(pair => pair.Key, StringComparer.Ordinal)
                     .Select(pair => pair.Value.BuildSummary(pair.Key))
                     .ToArray(),
+                DiplomacyOwnershipChanges = GetDiplomacyOwnershipChanges(factionId).ToArray(),
             };
+        }
+
+        /// <summary>
+        /// Records an authoritative ownership discovery and whether its intelligence update was emitted.
+        /// </summary>
+        /// <param name="completed">The diplomacy mission that discovered the ownership change.</param>
+        /// <param name="factionId">The faction that ran the mission.</param>
+        /// <param name="results">The resolved result batch containing the mission termination.</param>
+        private void RecordDiplomacyOwnershipChange(
+            MissionCompletedResult completed,
+            string factionId,
+            IReadOnlyList<GameResult> results
+        )
+        {
+            bool intelligenceRefreshed = results
+                .OfType<IntelligenceRevealedResult>()
+                .Any(result =>
+                    result.Recipient?.InstanceID == factionId
+                    && result.Observations.Contains(completed.Location)
+                );
+            GetDiplomacyOwnershipChanges(factionId)
+                .Add(
+                    new DiplomacyOwnershipChangeSimulationRecord
+                    {
+                        Tick = completed.Tick,
+                        MissionInstanceId = completed.MissionInstanceID,
+                        FactionId = factionId ?? string.Empty,
+                        PlanetId = completed.Location.InstanceID,
+                        PlanetName = completed.Location.GetDisplayName(),
+                        CurrentOwnerFactionId =
+                            completed.Location.GetOwnerInstanceID() ?? string.Empty,
+                        IntelligenceRefreshed = intelligenceRefreshed,
+                    }
+                );
+        }
+
+        /// <summary>
+        /// Gets the ownership-change records accumulated for one faction.
+        /// </summary>
+        /// <param name="factionId">The faction instance identifier.</param>
+        /// <returns>The mutable ownership-change record collection.</returns>
+        private List<DiplomacyOwnershipChangeSimulationRecord> GetDiplomacyOwnershipChanges(
+            string factionId
+        )
+        {
+            string key = factionId ?? string.Empty;
+            if (
+                !_diplomacyOwnershipChanges.TryGetValue(
+                    key,
+                    out List<DiplomacyOwnershipChangeSimulationRecord> records
+                )
+            )
+            {
+                records = new List<DiplomacyOwnershipChangeSimulationRecord>();
+                _diplomacyOwnershipChanges[key] = records;
+            }
+
+            return records;
         }
 
         /// <summary>
         /// Records one injury or capture and attributes it to its completing mission when present.
         /// </summary>
-        /// <param name="result">The participant result.</param>
+        /// <param name="missionInstanceID">The mission that caused the participant outcome.</param>
         /// <param name="officer">The affected officer.</param>
         /// <param name="missionsById">Completed missions in the same result batch.</param>
         /// <param name="isCapture">Whether the outcome is a capture rather than an injury.</param>
         private void RecordParticipantOutcome(
-            GameResult result,
+            string missionInstanceID,
             Officer officer,
             IReadOnlyDictionary<string, MissionCompletedResult> missionsById,
             bool isCapture
         )
         {
-            if (officer == null || string.IsNullOrEmpty(result.MissionInstanceID))
+            if (officer == null || string.IsNullOrEmpty(missionInstanceID))
                 return;
 
             missionsById.TryGetValue(
-                result.MissionInstanceID,
+                missionInstanceID,
                 out MissionCompletedResult completedMission
             );
             string missionTypeId = completedMission?.MissionTypeID ?? string.Empty;
@@ -319,6 +441,8 @@ public static partial class HeadlessSimulationRunner
             public int Succeeded;
             public int Failed;
             public int Foiled;
+            public int InternallyFoiled;
+            public int ExternallyFoiled;
             public int Injuries;
             public int Captures;
             public int FoiledMissionInjuries;
@@ -333,6 +457,8 @@ public static partial class HeadlessSimulationRunner
                 Succeeded += other.Succeeded;
                 Failed += other.Failed;
                 Foiled += other.Foiled;
+                InternallyFoiled += other.InternallyFoiled;
+                ExternallyFoiled += other.ExternallyFoiled;
                 Injuries += other.Injuries;
                 Captures += other.Captures;
                 FoiledMissionInjuries += other.FoiledMissionInjuries;
@@ -352,6 +478,8 @@ public static partial class HeadlessSimulationRunner
                     Succeeded = Succeeded,
                     Failed = Failed,
                     Foiled = Foiled,
+                    InternallyFoiled = InternallyFoiled,
+                    ExternallyFoiled = ExternallyFoiled,
                     Injuries = Injuries,
                     Captures = Captures,
                     FoiledMissionInjuries = FoiledMissionInjuries,

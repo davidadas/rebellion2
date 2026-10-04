@@ -7,6 +7,7 @@ using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Results;
 using Rebellion.Generation;
+using Rebellion.Simulation;
 using Rebellion.Util.Logging;
 using UnityEngine;
 
@@ -20,6 +21,7 @@ public sealed class GameFlowController : MonoBehaviour
     private StrategyController strategyController;
 
     private GameManager activeGameManager;
+    private GameSession activeSession;
     private GameRoot game;
     private FactionThemeLibrary themeLibrary;
     private UIContext uiContext;
@@ -57,37 +59,32 @@ public sealed class GameFlowController : MonoBehaviour
     {
         try
         {
-            GameStartupTrace.Log("GameFlowController started.");
             AppBootstrap bootstrap = AppBootstrap.EnsureExists();
             await bootstrap.InitializeMainMenuContentAsync();
-            GameStartupTrace.Log("Main Menu content dependency complete.");
             await bootstrap.InitializeStrategyContentAsync();
-            GameStartupTrace.Log("Strategy content dependency complete.");
             ContentPack contentPack = bootstrap.GetContentPack();
             themeLibrary = new FactionThemeLibrary(contentPack.GameData.FactionThemes);
-            GameStartupTrace.Log("Faction themes composed.");
             GameRuntime runtime = bootstrap.GetRuntime();
             if (runtime?.HasActiveGame == true)
             {
-                GameManager gameManager = runtime.GetActiveGameManager();
-                InitializeStrategy(gameManager);
-                ActivateGameplay(gameManager, false);
+                GameSession session = runtime.GetActiveGameSession();
+                InitializeStrategy(session);
+                ActivateGameplay(session, false);
                 return;
             }
 
             if (GameLaunchContext.IsLoadGame)
             {
                 LoadGame();
-                GameManager gameManager = StartGameSession(loadedGame: true);
-                InitializeStrategy(gameManager);
-                ActivateGameplay(gameManager, false);
+                GameSession session = StartGameSession(loadedGame: true);
+                InitializeStrategy(session);
+                ActivateGameplay(session, false);
             }
             else
                 await StartNewGameAsync();
         }
         catch (Exception exception)
         {
-            GameStartupTrace.Complete("Game flow startup failed.");
             Debug.LogException(exception);
         }
     }
@@ -97,6 +94,15 @@ public sealed class GameFlowController : MonoBehaviour
     /// </summary>
     private void Update()
     {
+        if (
+            activeSession == null
+            || AppBootstrap.Instance?.GetRuntime()?.GetActiveGameSession() != activeSession
+        )
+        {
+            DisposeActiveTick();
+            return;
+        }
+
         if (activeTick != null)
         {
             AdvanceActiveTick();
@@ -105,7 +111,7 @@ public sealed class GameFlowController : MonoBehaviour
 
         if (activeGameManager?.TryAdvanceTickTimer(Time.deltaTime) == true)
         {
-            activeTick = activeGameManager.ProcessTickIncrementally();
+            activeTick = activeSession.Tick.ProcessTickIncrementally();
             AdvanceActiveTick();
         }
     }
@@ -119,8 +125,8 @@ public sealed class GameFlowController : MonoBehaviour
 
         if (activeGameManager != null)
         {
-            activeGameManager.HeadquartersLost -= HandleHeadquartersLost;
-            activeGameManager.VictoryDeclared -= HandleVictoryDeclared;
+            activeSession.Pipeline.HeadquartersLost -= HandleHeadquartersLost;
+            activeSession.Pipeline.VictoryDeclared -= HandleVictoryDeclared;
         }
     }
 
@@ -161,23 +167,19 @@ public sealed class GameFlowController : MonoBehaviour
 
         ContentPack contentPack = AppBootstrap.Instance.GetContentPack();
         GameBuilder builder = new GameBuilder(summary, contentPack.GameData);
-        GameStartupTrace.Log("Game generation started.");
         game = builder.Build();
-        GameStartupTrace.Log("Game generation complete.");
         bool briefingsDisabled = AppBootstrap
             .Instance.GetUserSettingsManager()
             .Settings.Gameplay.DisableBriefings;
         bool playBriefing = GameLaunchContext.PlayIntroCutscene && !briefingsDisabled;
         Task intro = PlayFactionIntroAsync(game.GetPlayerFaction());
-        GameManager gameManager = StartGameSession(loadedGame: false);
-        InitializeStrategy(gameManager);
+        GameSession session = StartGameSession(loadedGame: false);
+        InitializeStrategy(session);
         Task briefingReady = playBriefing
             ? strategyController.PrepareBriefingAsync()
             : Task.CompletedTask;
-        GameStartupTrace.Log("Briefing owner preparation requested.");
         await Task.WhenAll(intro, briefingReady);
-        GameStartupTrace.Log("Introduction and briefing preparation complete.");
-        ActivateGameplay(gameManager, playBriefing);
+        ActivateGameplay(session, playBriefing);
     }
 
     /// <summary>
@@ -191,9 +193,7 @@ public sealed class GameFlowController : MonoBehaviour
             throw new InvalidOperationException("LoadGame called but SaveFileName is null.");
 
         game = SaveGameManager.Instance.LoadGameData(fileName);
-        GameStartupTrace.Log($"Save '{fileName}' deserialized.");
         AppBootstrap.Instance.GetRuntime().ValidateGameContent(game);
-        GameStartupTrace.Log("Loaded game content validated.");
     }
 
     /// <summary>
@@ -214,18 +214,10 @@ public sealed class GameFlowController : MonoBehaviour
             return Task.CompletedTask;
 
         TaskCompletionSource<bool> completion = new TaskCompletionSource<bool>();
-        GameStartupTrace.Log($"Faction introduction starting: '{theme.IntroCutscenePath}'.");
         AppBootstrap
             .EnsureExists()
             .GetCutsceneManager()
-            .Play(
-                theme.IntroCutscenePath,
-                () =>
-                {
-                    GameStartupTrace.Log("Faction introduction finished.");
-                    completion.TrySetResult(true);
-                }
-            );
+            .Play(theme.IntroCutscenePath, () => completion.TrySetResult(true));
         return completion.Task;
     }
 
@@ -233,24 +225,22 @@ public sealed class GameFlowController : MonoBehaviour
     /// Starts the built game in the active runtime.
     /// </summary>
     /// <param name="loadedGame">Whether the game was restored from persisted state.</param>
-    /// <returns>The active game manager.</returns>
-    private GameManager StartGameSession(bool loadedGame)
+    /// <returns>The active game session.</returns>
+    private GameSession StartGameSession(bool loadedGame)
     {
         AppBootstrap bootstrap = AppBootstrap.EnsureExists();
         GameRuntime runtime = bootstrap.GetRuntime();
-        GameStartupTrace.Log("Creating the active game session.");
         return loadedGame ? runtime.StartLoadedGame(game) : runtime.StartGame(game);
     }
 
     /// <summary>
-    /// Composes strategy UI for an active game manager without revealing it or starting music.
+    /// Composes strategy UI for an active game session without revealing it or starting music.
     /// </summary>
-    /// <param name="gameManager">The active game manager.</param>
-    private void InitializeStrategy(GameManager gameManager)
+    /// <param name="session">The active game session.</param>
+    private void InitializeStrategy(GameSession session)
     {
         AppBootstrap bootstrap = AppBootstrap.Instance;
         ContentPack contentPack = bootstrap.GetContentPack();
-        GameStartupTrace.Log("Building encyclopedia catalog.");
         GameDataCatalog gameData = contentPack.GameData;
         EncyclopediaCatalog encyclopediaCatalog = new EncyclopediaCatalogBuilder().Build(
             gameData.EncyclopediaEntries,
@@ -262,25 +252,29 @@ public sealed class GameFlowController : MonoBehaviour
             gameData.SpecialForces,
             gameData.Officers
         );
-        GameStartupTrace.Log("Encyclopedia catalog complete; creating UI context.");
+        ContentAssets contentAssets = bootstrap.GetContentAssets();
         uiContext = new UIContext(
-            gameManager.GetGame(),
+            session.Game,
             themeLibrary,
             encyclopediaCatalog,
-            bootstrap.GetContentAssets().GetTexture
+            contentAssets.GetTexture,
+            contentAssets.GetTextureContentBounds
         );
 
         if (activeGameManager != null)
         {
-            activeGameManager.HeadquartersLost -= HandleHeadquartersLost;
-            activeGameManager.VictoryDeclared -= HandleVictoryDeclared;
+            activeSession.Pipeline.HeadquartersLost -= HandleHeadquartersLost;
+            activeSession.Pipeline.VictoryDeclared -= HandleVictoryDeclared;
         }
-        gameManager.HeadquartersLost += HandleHeadquartersLost;
-        gameManager.VictoryDeclared += HandleVictoryDeclared;
+        session.Pipeline.HeadquartersLost += HandleHeadquartersLost;
+        session.Pipeline.VictoryDeclared += HandleVictoryDeclared;
 
-        GameStartupTrace.Log("StrategyController initialization started.");
-        strategyController.Initialize(gameManager, uiContext);
-        GameStartupTrace.Log("StrategyController initialization complete.");
+        strategyController.Initialize(
+            session,
+            bootstrap.GetRuntime().GetActiveGameManager(),
+            bootstrap.GetRuntime(),
+            uiContext
+        );
     }
 
     /// <summary>
@@ -300,12 +294,13 @@ public sealed class GameFlowController : MonoBehaviour
     /// <summary>
     /// Reveals strategy UI and optionally begins the prepared opening briefing.
     /// </summary>
-    /// <param name="gameManager">The active game manager.</param>
+    /// <param name="session">The active game session.</param>
     /// <param name="requestBriefing">Whether launch state requested the opening briefing.</param>
-    private void ActivateGameplay(GameManager gameManager, bool requestBriefing)
+    private void ActivateGameplay(GameSession session, bool requestBriefing)
     {
         strategyController.ActivatePresentation();
-        GameRoot activeGame = gameManager.GetGame();
+        GameManager clock = AppBootstrap.Instance.GetRuntime().GetActiveGameManager();
+        GameRoot activeGame = session.Game;
         GameMetadata metadata = activeGame.Metadata ??= new GameMetadata();
         bool briefingsDisabled = AppBootstrap
             .Instance.GetUserSettingsManager()
@@ -321,14 +316,15 @@ public sealed class GameFlowController : MonoBehaviour
             strategyController.PlayBriefing(() =>
             {
                 metadata.OpeningBriefingCompleted = true;
-                activeGameManager = gameManager;
+                activeSession = session;
+                activeGameManager = clock;
             });
         }
         else
-            activeGameManager = gameManager;
-        GameStartupTrace.Complete(
-            playBriefing ? "Opening briefing started." : "Strategy gameplay ready."
-        );
+        {
+            activeSession = session;
+            activeGameManager = clock;
+        }
     }
 
     /// <summary>
@@ -352,7 +348,7 @@ public sealed class GameFlowController : MonoBehaviour
         if (campaignEnding || result == null)
             return;
 
-        Faction playerFaction = activeGameManager?.GetPlayerFaction();
+        Faction playerFaction = activeSession?.Game.GetPlayerFaction();
         if (playerFaction == null)
             return;
 

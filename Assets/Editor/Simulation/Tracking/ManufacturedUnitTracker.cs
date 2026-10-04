@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -17,6 +19,8 @@ public static partial class HeadlessSimulationRunner
         private readonly HashSet<string> _seenBuildings = new HashSet<string>();
         private readonly Dictionary<string, ManufacturedUnitCounts> _manufacturedByFaction =
             new Dictionary<string, ManufacturedUnitCounts>(StringComparer.Ordinal);
+        private readonly List<MineCompletionSummary> _mineCompletions =
+            new List<MineCompletionSummary>();
 
         /// <summary>
         /// Records units present before simulation ticks are processed.
@@ -44,15 +48,28 @@ public static partial class HeadlessSimulationRunner
         /// <summary>
         /// Records completed manufactured items from resolved lifecycle results.
         /// </summary>
+        /// <param name="game">The current game state.</param>
         /// <param name="results">The resolved game results.</param>
-        public void Record(IReadOnlyList<GameResult> results)
+        public void Record(GameRoot game, IReadOnlyList<GameResult> results)
         {
-            if (results == null)
+            if (game == null || results == null)
                 return;
 
             foreach (GameObjectDeployedResult result in results.OfType<GameObjectDeployedResult>())
-                RecordNewUnit(result.GameObject as IManufacturable);
+                RecordNewUnit(game, result.GameObject as IManufacturable);
         }
+
+        /// <summary>
+        /// Gets mine completions for a faction in completion order.
+        /// </summary>
+        /// <param name="factionId">The faction instance ID.</param>
+        /// <returns>The faction's mine completion snapshots.</returns>
+        public MineCompletionSummary[] GetMineCompletions(string factionId) =>
+            _mineCompletions
+                .Where(item => item.FactionId == factionId)
+                .OrderBy(item => item.Tick)
+                .ThenBy(item => item.InstanceId, StringComparer.Ordinal)
+                .ToArray();
 
         /// <summary>
         /// Gets manufactured capital ships for a faction.
@@ -140,8 +157,9 @@ public static partial class HeadlessSimulationRunner
         /// <summary>
         /// Records a newly deployed manufactured item and increments its faction totals.
         /// </summary>
+        /// <param name="game">The current game state.</param>
         /// <param name="item">The deployed item.</param>
-        private void RecordNewUnit(IManufacturable item)
+        private void RecordNewUnit(GameRoot game, IManufacturable item)
         {
             if (!IsManufactured(item))
                 return;
@@ -175,6 +193,20 @@ public static partial class HeadlessSimulationRunner
                     counts.BuildingsByType.TryGetValue(building.BuildingType, out int count);
                     counts.BuildingsByType[building.BuildingType] = count + 1;
                     counts.RecordType("Building", item.GetTypeID(), item.GetDisplayName());
+                    if (building.BuildingType == BuildingType.Mine)
+                    {
+                        Faction faction = game.GetFactionByOwnerInstanceID(factionId);
+                        _mineCompletions.Add(
+                            new MineCompletionSummary
+                            {
+                                Tick = game.CurrentTick,
+                                FactionId = factionId,
+                                InstanceId = instanceId,
+                                PlanetId = building.GetParentOfType<Planet>()?.InstanceID,
+                                MaintenanceHeadroom = faction?.MaintenanceHeadroom ?? 0,
+                            }
+                        );
+                    }
                     break;
             }
         }
@@ -219,6 +251,16 @@ public static partial class HeadlessSimulationRunner
         /// <returns>True if counts exist for the faction.</returns>
         private bool TryGetCounts(string factionId, out ManufacturedUnitCounts counts) =>
             _manufacturedByFaction.TryGetValue(factionId, out counts);
+    }
+
+    [Serializable]
+    private sealed class MineCompletionSummary
+    {
+        public int Tick;
+        public string FactionId;
+        public string InstanceId;
+        public string PlanetId;
+        public int MaintenanceHeadroom;
     }
 
     private sealed class ManufacturedUnitCounts

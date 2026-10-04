@@ -117,30 +117,6 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Constructor that requires config at construction time.
-        /// Prevents partially initialized Game instances.
-        /// </summary>
-        /// <param name="config">The runtime configuration.</param>
-        public GameRoot(GameConfig config)
-        {
-            SetConfig(config);
-            Galaxy = new GalaxyMap();
-        }
-
-        /// <summary>
-        /// Constructor that initializes the game with a summary and config.
-        /// Used for loading saved games.
-        /// </summary>
-        /// <param name="summary">The game summary from save file.</param>
-        /// <param name="config">The runtime configuration.</param>
-        public GameRoot(GameSummary summary, GameConfig config)
-        {
-            Summary = summary;
-            SetConfig(config);
-            Galaxy = new GalaxyMap();
-        }
-
-        /// <summary>
         /// Injects runtime configuration.
         /// </summary>
         /// <param name="config">The configuration to inject.</param>
@@ -167,6 +143,41 @@ namespace Rebellion.Game
             }
 
             return Config;
+        }
+
+        /// <summary>
+        /// Returns the runtime difficulty modifier for a faction.
+        /// </summary>
+        /// <param name="faction">The faction whose modifier is requested.</param>
+        /// <returns>The configured AI modifier, or a neutral modifier.</returns>
+        public DifficultyModifiers GetDifficultyModifier(Faction faction)
+        {
+            if (
+                faction != null
+                && IsFactionAIControlled(faction)
+                && Summary != null
+                && Config?.DifficultyModifiers != null
+                && Config.DifficultyModifiers.TryGetValue(
+                    Summary.Difficulty,
+                    out DifficultyModifiers modifier
+                )
+            )
+            {
+                return modifier;
+            }
+
+            return new DifficultyModifiers();
+        }
+
+        /// <summary>
+        /// Returns the runtime difficulty modifier for an owning faction identifier.
+        /// </summary>
+        /// <param name="ownerInstanceId">The owning faction identifier.</param>
+        /// <returns>The configured AI modifier, or a neutral modifier.</returns>
+        public DifficultyModifiers GetDifficultyModifier(string ownerInstanceId)
+        {
+            Faction faction = _factions.Find(candidate => candidate.InstanceID == ownerInstanceId);
+            return GetDifficultyModifier(faction);
         }
 
         /// <summary>

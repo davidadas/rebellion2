@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Rebellion.Game.Units;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -332,7 +333,8 @@ public sealed class FinderWindowController
             uiContext.GetPlayerFactionInstanceID(),
             factionId => uiContext.GetTheme(factionId)?.StrategyWindows?.Finder?.TroopColumnTypeIDs,
             factionId =>
-                uiContext.GetTheme(factionId)?.StrategyWindows?.Finder?.SpecialForcesColumnTypeIDs
+                uiContext.GetTheme(factionId)?.StrategyWindows?.Finder?.SpecialForcesColumnTypeIDs,
+            uiContext.Game?.GetRegisteredSceneNodesByType<Officer>(includeDisabled: true)
         );
         List<FinderWindowTab> tabs = builder.GetTabs(session.Mode);
         session.ReconcileTabCount(tabs.Count);

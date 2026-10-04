@@ -182,6 +182,141 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
+        public void Seed_HardAiBucketOverride_PreservesOwnershipAsStrongPlanets()
+        {
+            PlanetSector[] sectors = CreateCoreGalaxy(10);
+            GameGenerationConfig rules = CreateRules(
+                allianceStrongPct: 0,
+                allianceWeakPct: 0,
+                empireStrongPct: 10,
+                empireWeakPct: 30
+            );
+            rules
+                .GalaxyClassification.FactionBuckets[1]
+                .Overrides.Add(
+                    new FactionBucketOverride
+                    {
+                        Difficulty = GameDifficulty.Hard,
+                        ControllerType = PlayerControllerType.AI,
+                        StrongPct = 40,
+                        WeakPct = 0,
+                    }
+                );
+            _summary.Difficulty = GameDifficulty.Hard;
+
+            GalaxyClassificationResult result = Classify(
+                sectors,
+                _factions,
+                _summary,
+                rules,
+                new StubRNG()
+            );
+
+            Assert.AreEqual(
+                4,
+                result.BucketMap.Count(kvp =>
+                    kvp.Value.FactionID == "FNEMP1" && kvp.Value.Strength == BucketStrength.Strong
+                )
+            );
+            Assert.AreEqual(
+                0,
+                result.BucketMap.Count(kvp =>
+                    kvp.Value.FactionID == "FNEMP1" && kvp.Value.Strength == BucketStrength.Weak
+                )
+            );
+        }
+
+        [Test]
+        public void Seed_HardHumanWithAiOverride_PreservesBasePercentages()
+        {
+            PlanetSector[] sectors = CreateCoreGalaxy(10);
+            GameGenerationConfig rules = CreateRules(
+                allianceStrongPct: 0,
+                allianceWeakPct: 0,
+                empireStrongPct: 10,
+                empireWeakPct: 30
+            );
+            rules
+                .GalaxyClassification.FactionBuckets[1]
+                .Overrides.Add(
+                    new FactionBucketOverride
+                    {
+                        Difficulty = GameDifficulty.Hard,
+                        ControllerType = PlayerControllerType.AI,
+                        StrongPct = 40,
+                        WeakPct = 0,
+                    }
+                );
+            _summary.PlayerFactionID = "FNEMP1";
+            _summary.Difficulty = GameDifficulty.Hard;
+
+            GalaxyClassificationResult result = Classify(
+                sectors,
+                _factions,
+                _summary,
+                rules,
+                new StubRNG()
+            );
+
+            Assert.AreEqual(
+                1,
+                result.BucketMap.Count(kvp =>
+                    kvp.Value.FactionID == "FNEMP1" && kvp.Value.Strength == BucketStrength.Strong
+                )
+            );
+            Assert.AreEqual(
+                3,
+                result.BucketMap.Count(kvp =>
+                    kvp.Value.FactionID == "FNEMP1" && kvp.Value.Strength == BucketStrength.Weak
+                )
+            );
+        }
+
+        [Test]
+        public void Seed_MediumHardBucketOverride_PreservesBasePercentages()
+        {
+            PlanetSector[] sectors = CreateCoreGalaxy(10);
+            GameGenerationConfig rules = CreateRules(
+                allianceStrongPct: 0,
+                allianceWeakPct: 0,
+                empireStrongPct: 10,
+                empireWeakPct: 30
+            );
+            rules
+                .GalaxyClassification.FactionBuckets[1]
+                .Overrides.Add(
+                    new FactionBucketOverride
+                    {
+                        Difficulty = GameDifficulty.Hard,
+                        ControllerType = PlayerControllerType.AI,
+                        StrongPct = 40,
+                        WeakPct = 0,
+                    }
+                );
+
+            GalaxyClassificationResult result = Classify(
+                sectors,
+                _factions,
+                _summary,
+                rules,
+                new StubRNG()
+            );
+
+            Assert.AreEqual(
+                1,
+                result.BucketMap.Count(kvp =>
+                    kvp.Value.FactionID == "FNEMP1" && kvp.Value.Strength == BucketStrength.Strong
+                )
+            );
+            Assert.AreEqual(
+                3,
+                result.BucketMap.Count(kvp =>
+                    kvp.Value.FactionID == "FNEMP1" && kvp.Value.Strength == BucketStrength.Weak
+                )
+            );
+        }
+
+        [Test]
         public void Seed_StartingPlanetInBucket_PreservesOriginalOwnership()
         {
             PlanetSector sector = new PlanetSector
@@ -254,27 +389,19 @@ namespace Rebellion.Tests.Generation
                             StartingPlanets = new List<StartingPlanet>(),
                         },
                     },
-                    Profiles = new List<DifficultyProfile>
+                    FactionBuckets = new List<FactionBucketConfig>
                     {
-                        new DifficultyProfile
+                        new FactionBucketConfig
                         {
-                            Name = "Default",
-                            Difficulty = -1,
-                            FactionBuckets = new List<FactionBucketConfig>
-                            {
-                                new FactionBucketConfig
-                                {
-                                    FactionID = "FNALL1",
-                                    StrongPct = allianceStrongPct,
-                                    WeakPct = allianceWeakPct,
-                                },
-                                new FactionBucketConfig
-                                {
-                                    FactionID = "FNEMP1",
-                                    StrongPct = empireStrongPct,
-                                    WeakPct = empireWeakPct,
-                                },
-                            },
+                            FactionID = "FNALL1",
+                            StrongPct = allianceStrongPct,
+                            WeakPct = allianceWeakPct,
+                        },
+                        new FactionBucketConfig
+                        {
+                            FactionID = "FNEMP1",
+                            StrongPct = empireStrongPct,
+                            WeakPct = empireWeakPct,
                         },
                     },
                 },

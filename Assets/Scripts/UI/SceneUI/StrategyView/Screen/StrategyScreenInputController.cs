@@ -135,7 +135,7 @@ public sealed class StrategyScreenInputController : ICancelable
     /// <param name="eventData">The pointer event.</param>
     public void OnPointerUp(PointerEventData eventData)
     {
-        if (ApplyDragEventResult(strategyDragController.TryHandleItemPointerUp(eventData)))
+        if (TryCompleteItemDrag(eventData))
             return;
 
         if (eventData == null)
@@ -200,6 +200,15 @@ public sealed class StrategyScreenInputController : ICancelable
         }
 
         markDirty();
+    }
+
+    /// <summary>
+    /// Completes only item-drag state for a pointer release already handled by a feature window.
+    /// </summary>
+    /// <param name="eventData">The pointer-release event.</param>
+    public void CompleteItemDrag(PointerEventData eventData)
+    {
+        TryCompleteItemDrag(eventData);
     }
 
     /// <summary>
@@ -459,6 +468,16 @@ public sealed class StrategyScreenInputController : ICancelable
             renderOverlay();
 
         return true;
+    }
+
+    /// <summary>
+    /// Completes item-drag state and applies its screen-level presentation effects.
+    /// </summary>
+    /// <param name="eventData">The pointer-release event.</param>
+    /// <returns>True when an active drag consumed the release.</returns>
+    private bool TryCompleteItemDrag(PointerEventData eventData)
+    {
+        return ApplyDragEventResult(strategyDragController.TryHandleItemPointerUp(eventData));
     }
 
     /// <summary>

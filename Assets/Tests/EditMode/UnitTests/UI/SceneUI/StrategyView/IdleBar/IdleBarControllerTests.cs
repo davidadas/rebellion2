@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.UIState;
@@ -265,6 +266,56 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
 
             Assert.IsTrue(_controller.IsIdleBarTracked(planet, ManufacturingType.Troop));
             Assert.AreEqual(2, _actions.RenderRequestCount);
+        }
+
+        [Test]
+        public void Render_UntrackedOnlyIdleManufacturingLane_RemovesPlanetEntry()
+        {
+            const string factionId = "FNALL1";
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            Faction faction = new Faction { InstanceID = factionId };
+            game.GetFactions().Add(faction);
+            game.Summary.PlayerFactionID = factionId;
+            game.SetFactionController(factionId, "PLAYER1", PlayerControllerType.Human);
+            Planet planet = new Planet
+            {
+                InstanceID = "planet",
+                DisplayName = "Planet",
+                OwnerInstanceID = factionId,
+            };
+            planet.AddTestChild(
+                new Building
+                {
+                    ProductionType = ManufacturingType.Ship,
+                    ProcessRate = 1,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                }
+            );
+            faction.AddOwnedUnit(planet);
+            UIContext uiContext = TestContent.CreateUIContext(
+                game,
+                TestContent.CreateThemeLibrary(),
+                new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
+            );
+            _controller.Dispose();
+            _controller = new IdleBarController(
+                () => faction,
+                _uiState.IgnoredItems,
+                _contextMenuController,
+                () => uiContext,
+                () => true,
+                _ => planet
+            );
+            _controller.Initialize(_actions);
+            _controller.BindView(_view);
+
+            _controller.Render();
+            Assert.AreEqual(1, _view.GetComponentsInChildren<IdleBarSlotView>(false).Length);
+
+            _controller.ToggleIdleBarTracking(planet, ManufacturingType.Ship);
+            _controller.Render();
+
+            Assert.IsEmpty(_view.GetComponentsInChildren<IdleBarSlotView>(false));
         }
 
         [Test]

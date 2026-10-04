@@ -41,7 +41,6 @@ public sealed class StrategyWindowItemDragController : ITargetingReceiver
     private readonly Func<UIWindow, IReadOnlyList<ISceneNode>> getContextItems;
     private readonly StrategyWindowDragPreviewResolver tryGetDragPreview;
     private readonly Func<PointerEventData, StrategyMissionTarget> getGalaxyMapDropTarget;
-    private readonly Func<string> getPlayerFactionID;
     private readonly IStrategyWindowCommandActions commands;
     private int candidateHotspotX;
     private int candidateHotspotY;
@@ -68,7 +67,6 @@ public sealed class StrategyWindowItemDragController : ITargetingReceiver
     /// <param name="getContextItems">Gets the semantic selection for a source window.</param>
     /// <param name="tryGetDragPreview">Builds the visual preview for a source window.</param>
     /// <param name="getGalaxyMapDropTarget">Resolves a galaxy-map target beneath a pointer.</param>
-    /// <param name="getPlayerFactionID">Returns the active player faction identifier.</param>
     /// <param name="commands">Executes move and mission commands.</param>
     public StrategyWindowItemDragController(
         TargetingController targetingController,
@@ -76,7 +74,6 @@ public sealed class StrategyWindowItemDragController : ITargetingReceiver
         Func<UIWindow, IReadOnlyList<ISceneNode>> getContextItems,
         StrategyWindowDragPreviewResolver tryGetDragPreview,
         Func<PointerEventData, StrategyMissionTarget> getGalaxyMapDropTarget,
-        Func<string> getPlayerFactionID,
         IStrategyWindowCommandActions commands
     )
     {
@@ -91,8 +88,6 @@ public sealed class StrategyWindowItemDragController : ITargetingReceiver
         this.getGalaxyMapDropTarget =
             getGalaxyMapDropTarget
             ?? throw new ArgumentNullException(nameof(getGalaxyMapDropTarget));
-        this.getPlayerFactionID =
-            getPlayerFactionID ?? throw new ArgumentNullException(nameof(getPlayerFactionID));
         this.commands = commands ?? throw new ArgumentNullException(nameof(commands));
     }
 
@@ -311,12 +306,7 @@ public sealed class StrategyWindowItemDragController : ITargetingReceiver
             return;
 
         if (source.Action == StrategyMenuAction.Move)
-        {
-            if (ShouldOpenMissionCreateWindow(source, missionTarget))
-                commands.OpenMissionCreateWindow(missionTarget, source.Items);
-            else
-                commands.TryExecuteMove(source.Window, missionTarget, source.Items);
-        }
+            commands.ExecuteItemDrop(source.Window, missionTarget, source.Items);
     }
 
     /// <summary>
@@ -387,36 +377,6 @@ public sealed class StrategyWindowItemDragController : ITargetingReceiver
 
         StrategyMissionTarget target = getGalaxyMapDropTarget(eventData);
         return target != null && targetingController.TrySelectTarget(target);
-    }
-
-    /// <summary>
-    /// Determines whether an enemy destination converts this move into mission creation.
-    /// </summary>
-    /// <param name="source">The source move-targeting state.</param>
-    /// <param name="target">The selected destination.</param>
-    /// <returns>True when the selected participants can create a mission at the destination.</returns>
-    private bool ShouldOpenMissionCreateWindow(
-        StrategyWindowTargetingSource source,
-        StrategyMissionTarget target
-    )
-    {
-        string playerFactionID = getPlayerFactionID();
-        if (
-            source == null
-            || target?.Planet?.Planet == null
-            || string.IsNullOrEmpty(playerFactionID)
-            || string.Equals(
-                target.Planet.Planet.GetOwnerInstanceID(),
-                playerFactionID,
-                StringComparison.Ordinal
-            )
-        )
-            return false;
-
-        return StrategyContextMenuAvailability.CanCreateMission(
-            source.Items?.ToList(),
-            playerFactionID
-        );
     }
 
     /// <summary>

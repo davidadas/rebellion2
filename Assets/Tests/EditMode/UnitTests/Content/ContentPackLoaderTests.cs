@@ -19,7 +19,7 @@ namespace Rebellion.Tests.Content
         <xs:element name=""Movement"">
           <xs:complexType>
             <xs:all>
-              <xs:element name=""DistanceScale"" type=""xs:decimal""/>
+              <xs:element name=""DistanceDivisor"" type=""xs:positiveInteger""/>
             </xs:all>
           </xs:complexType>
         </xs:element>
@@ -30,15 +30,51 @@ namespace Rebellion.Tests.Content
             </xs:all>
           </xs:complexType>
         </xs:element>
+        <xs:element name=""DifficultyModifiers"" minOccurs=""0"">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name=""Entry"" minOccurs=""0"" maxOccurs=""unbounded"">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name=""Key"" type=""xs:string""/>
+                    <xs:element name=""Value"">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element name=""GameModifier"">
+                            <xs:complexType>
+                              <xs:all>
+                                <xs:element name=""MissionExecutionSpeedIncreasePercent"" type=""xs:nonNegativeInteger""/>
+                                <xs:element name=""DetectionRatingMultiplier"" type=""xs:decimal""/>
+                                <xs:element name=""MaintenanceCapacityPercent"" type=""xs:nonNegativeInteger""/>
+                              </xs:all>
+                            </xs:complexType>
+                          </xs:element>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
       </xs:all>
     </xs:complexType>
   </xs:element>
 </xs:schema>";
         private const string _fixtureDefaultsXml =
-            "<GameConfig><Movement><DistanceScale>12</DistanceScale></Movement></GameConfig>";
+            "<GameConfig><Movement><DistanceDivisor>5</DistanceDivisor></Movement></GameConfig>";
         private const string _fixtureCompleteDefaultsXml =
-            "<GameConfig><Movement><DistanceScale>12</DistanceScale></Movement>"
+            "<GameConfig><Movement><DistanceDivisor>5</DistanceDivisor></Movement>"
             + "<Research><BaseResearchPoints>1</BaseResearchPoints></Research></GameConfig>";
+        private const string _fixtureDifficultyDefaultsXml =
+            "<GameConfig><Movement><DistanceDivisor>5</DistanceDivisor></Movement>"
+            + "<Research><BaseResearchPoints>1</BaseResearchPoints></Research>"
+            + "<DifficultyModifiers><Entry><Key>Hard</Key><Value><GameModifier>"
+            + "<MissionExecutionSpeedIncreasePercent>37</MissionExecutionSpeedIncreasePercent>"
+            + "<DetectionRatingMultiplier>1.375</DetectionRatingMultiplier>"
+            + "<MaintenanceCapacityPercent>150</MaintenanceCapacityPercent>"
+            + "</GameModifier></Value></Entry></DifficultyModifiers></GameConfig>";
 
         [TestCase(RuntimePlatform.OSXPlayer, "Game.app/Contents/Resources/Data")]
         [TestCase(RuntimePlatform.OSXPlayer, "Game.app/Contents")]
@@ -85,7 +121,7 @@ namespace Rebellion.Tests.Content
                 packOverrideXml: null
             );
 
-            Assert.AreEqual(12, config.Movement.DistanceScale);
+            Assert.AreEqual(5, config.Movement.DistanceDivisor);
             Assert.AreEqual(1, config.Research.BaseResearchPoints);
         }
 
@@ -94,10 +130,10 @@ namespace Rebellion.Tests.Content
         {
             GameConfig config = LoadGameConfigFromFixture(
                 _fixtureCompleteDefaultsXml,
-                "<GameConfig><Movement><DistanceScale>7</DistanceScale></Movement></GameConfig>"
+                "<GameConfig><Movement><DistanceDivisor>7</DistanceDivisor></Movement></GameConfig>"
             );
 
-            Assert.AreEqual(7, config.Movement.DistanceScale);
+            Assert.AreEqual(7, config.Movement.DistanceDivisor);
             Assert.AreEqual(1, config.Research.BaseResearchPoints);
         }
 
@@ -109,7 +145,7 @@ namespace Rebellion.Tests.Content
                 "<GameConfig><Research><BaseResearchPoints>3</BaseResearchPoints></Research></GameConfig>"
             );
 
-            Assert.AreEqual(12, config.Movement.DistanceScale);
+            Assert.AreEqual(5, config.Movement.DistanceDivisor);
             Assert.AreEqual(3, config.Research.BaseResearchPoints);
         }
 
@@ -129,6 +165,48 @@ namespace Rebellion.Tests.Content
                     _fixtureCompleteDefaultsXml,
                     "<GameConfig><Bogus>1</Bogus></GameConfig>"
                 )
+            );
+        }
+
+        [Test]
+        public void LoadGameConfig_FixtureMissionExecutionSpeedIncrease_DeserializesValue()
+        {
+            GameConfig config = LoadGameConfigFromFixture(
+                _fixtureDifficultyDefaultsXml,
+                packOverrideXml: null
+            );
+
+            Assert.AreEqual(
+                37,
+                config.DifficultyModifiers[GameDifficulty.Hard].MissionExecutionSpeedIncreasePercent
+            );
+        }
+
+        [Test]
+        public void LoadGameConfig_FixtureDetectionRatingMultiplier_DeserializesValue()
+        {
+            GameConfig config = LoadGameConfigFromFixture(
+                _fixtureDifficultyDefaultsXml,
+                packOverrideXml: null
+            );
+
+            Assert.AreEqual(
+                1.375,
+                config.DifficultyModifiers[GameDifficulty.Hard].DetectionRatingMultiplier
+            );
+        }
+
+        [Test]
+        public void LoadGameConfig_FixtureMaintenanceCapacityPercent_DeserializesValue()
+        {
+            GameConfig config = LoadGameConfigFromFixture(
+                _fixtureDifficultyDefaultsXml,
+                packOverrideXml: null
+            );
+
+            Assert.AreEqual(
+                150,
+                config.DifficultyModifiers[GameDifficulty.Hard].MaintenanceCapacityPercent
             );
         }
 

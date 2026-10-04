@@ -1,0 +1,107 @@
+using System.Collections.Immutable;
+using System.Threading.Tasks;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Diagnostics;
+using NUnit.Framework;
+using Rebellion.Analyzers;
+
+namespace Rebellion.Analyzers.Tests
+{
+    [TestFixture]
+    public sealed class GameConfigNumericDefaultAnalyzerTests
+    {
+        [Test]
+        public async Task ConfigProperty_NumericDefault_ReportsDiagnosticAsync()
+        {
+            const string source =
+                @"
+class GameConfig
+{
+    public class JediConfig
+    {
+        public int EncounterMinimum { get; set; } = 60;
+    }
+}";
+
+            ImmutableArray<Diagnostic> diagnostics = await AnalyzeAsync(source);
+
+            Assert.AreEqual(1, diagnostics.Length);
+            Assert.AreEqual(GameConfigNumericDefaultAnalyzer.DiagnosticId, diagnostics[0].Id);
+        }
+
+        [Test]
+        public async Task ConfigProperty_NoDefault_DoesNotReportDiagnosticAsync()
+        {
+            const string source =
+                @"
+class GameConfig
+{
+    public class JediConfig
+    {
+        public int EncounterMinimum { get; set; }
+    }
+}";
+
+            ImmutableArray<Diagnostic> diagnostics = await AnalyzeAsync(source);
+
+            Assert.IsEmpty(diagnostics);
+        }
+
+        [Test]
+        public async Task NonGameConfigProperty_NumericDefault_DoesNotReportDiagnosticAsync()
+        {
+            const string source =
+                @"
+class RuntimeState
+{
+    public int Attempt { get; set; } = 1;
+}";
+
+            ImmutableArray<Diagnostic> diagnostics = await AnalyzeAsync(source);
+
+            Assert.IsEmpty(diagnostics);
+        }
+
+        [Test]
+        public async Task ResponseCurveProperty_IdentityDefault_DoesNotReportDiagnosticAsync()
+        {
+            const string source =
+                @"
+class GameConfig
+{
+    public class AIResponseCurveConfig
+    {
+        public double Exponent { get; set; } = 1;
+    }
+}";
+
+            ImmutableArray<Diagnostic> diagnostics = await AnalyzeAsync(source);
+
+            Assert.IsEmpty(diagnostics);
+        }
+
+        /// <summary>
+        /// Runs the numeric-default analyzer against one source document.
+        /// </summary>
+        /// <param name="source">The C# source to analyze.</param>
+        /// <returns>The analyzer diagnostics.</returns>
+        private static async Task<ImmutableArray<Diagnostic>> AnalyzeAsync(string source)
+        {
+            SyntaxTree syntaxTree = CSharpSyntaxTree.ParseText(source);
+            MetadataReference coreLibrary = MetadataReference.CreateFromFile(
+                typeof(object).Assembly.Location
+            );
+            CSharpCompilation compilation = CSharpCompilation.Create(
+                "AnalyzerTests",
+                new[] { syntaxTree },
+                new[] { coreLibrary },
+                new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
+            );
+            ImmutableArray<DiagnosticAnalyzer> analyzers =
+                ImmutableArray.Create<DiagnosticAnalyzer>(new GameConfigNumericDefaultAnalyzer());
+
+            return await compilation.WithAnalyzers(analyzers).GetAnalyzerDiagnosticsAsync();
+        }
+    }
+}

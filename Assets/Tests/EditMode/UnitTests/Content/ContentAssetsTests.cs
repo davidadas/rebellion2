@@ -66,6 +66,26 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        public void GetTextureContentBounds_TransparentCanvas_ReturnsVisiblePixelBounds()
+        {
+            const string address = "Application/Textures/trimmed";
+            string path = Path.Combine(_contentRoot, "Application", "Textures", "trimmed.png");
+            Texture2D source = new Texture2D(4, 3, TextureFormat.RGBA32, false);
+            source.SetPixels32(new Color32[12]);
+            source.SetPixel(2, 1, Color.white);
+            source.Apply();
+            File.WriteAllBytes(path, source.EncodeToPNG());
+            UnityEngine.Object.DestroyImmediate(source);
+            using ContentAssets assets = CreateAssets();
+
+            Texture2D texture = assets.GetTexture(address);
+            RectInt bounds = assets.GetTextureContentBounds(texture);
+
+            Assert.AreEqual(new RectInt(2, 1, 1, 1), bounds);
+            Assert.IsFalse(texture.isReadable);
+        }
+
+        [Test]
         public void GetTexture_MissingAddress_ReturnsNull()
         {
             using ContentAssets assets = CreateAssets();
@@ -160,7 +180,7 @@ namespace Rebellion.Tests.Content
         /// <returns>The created assets.</returns>
         private ContentAssets CreateAssets()
         {
-            return new ContentAssets(_contentRoot, _packRoot);
+            return new ContentAssets(new ContentFileResolver(_contentRoot, _packRoot));
         }
     }
 }

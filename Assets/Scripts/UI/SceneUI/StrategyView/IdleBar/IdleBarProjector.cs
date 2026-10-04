@@ -90,7 +90,11 @@ internal sealed class IdleBarProjector
     private static bool IsHealthyParticipant(IMissionParticipant participant)
     {
         if (participant is Officer officer)
-            return officer.InjuryPoints <= 0 && !officer.IsRetired;
+        {
+            return officer.InjuryPoints <= 0
+                && !officer.IsRetired
+                && officer.CurrentRank == OfficerRank.None;
+        }
 
         return participant is not SpecialForces specialForces || !specialForces.IsRetired;
     }

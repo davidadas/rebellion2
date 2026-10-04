@@ -27,6 +27,7 @@ namespace Rebellion.Tests.Game.Units
                 BaseBuildSpeed = 8,
                 ResearchOrder = 2,
                 ResearchDifficulty = 24,
+                UprisingDefense = 7,
                 MaxSquadronSize = 12,
                 CurrentSquadronSize = 12,
                 DetectionRating = 50,
@@ -532,6 +533,7 @@ namespace Rebellion.Tests.Game.Units
                 deserialized.ResearchDifficulty,
                 "ResearchDifficulty should be correctly deserialized."
             );
+            Assert.AreEqual(_starfighter.UprisingDefense, deserialized.UprisingDefense);
             Assert.AreEqual(
                 _starfighter.CurrentSquadronSize,
                 deserialized.CurrentSquadronSize,

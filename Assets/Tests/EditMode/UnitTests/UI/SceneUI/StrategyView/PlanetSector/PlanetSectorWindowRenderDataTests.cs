@@ -24,9 +24,16 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 0.5f,
                 new Color32(1, 2, 3, 4),
                 new Color32(5, 6, 7, 8),
-                new Color32(9, 10, 11, 12)
+                new Color32(9, 10, 11, 12),
+                "Status"
             );
             _texture = new Texture2D(1, 1);
+        }
+
+        [Test]
+        public void Bar_WithTooltip_PreservesTooltipText()
+        {
+            Assert.AreEqual("Status", _bar.TooltipText);
         }
 
         /// <summary>

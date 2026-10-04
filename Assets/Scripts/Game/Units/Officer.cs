@@ -6,6 +6,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Logging;
 using Rebellion.Util.Random;
 using Rebellion.Util.Serialization;
 
@@ -184,10 +185,10 @@ namespace Rebellion.Game.Units
     /// </summary>
     public enum OfficerRank
     {
-        None,
-        Commander,
-        General,
-        Admiral,
+        None = 0,
+        Commander = 1,
+        Admiral = 2,
+        General = 3,
     }
 
     /// <summary>
@@ -224,11 +225,18 @@ namespace Rebellion.Game.Units
     /// </summary>
     public class Officer : LeafNode, IMissionParticipant, IMovable, IEncyclopediaSource
     {
+        private const int _ratingPercentScale = 100;
+
+        [PersistableMember(Name = nameof(CanBetray))]
+        private bool _canBetray;
+
+        [PersistableMember(Name = nameof(Loyalty))]
+        private int _loyalty;
+
         public string EncyclopediaImagePath { get; set; }
         public List<EncyclopediaEntryStat> EncyclopediaStats { get; set; } =
             new List<EncyclopediaEntryStat>();
         public string EncyclopediaDescription { get; set; }
-        private const int _ratingPercentScale = 100;
 
         // Research Info.
         public int ShipResearch { get; set; }
@@ -246,9 +254,16 @@ namespace Rebellion.Game.Units
         public bool CanEscape { get; set; }
         public int NextEscapeAttemptTick { get; set; }
         public bool IsKilled { get; set; }
-        public bool CanBetray { get; set; }
-        public bool IsTraitor { get; set; }
-        public int Loyalty { get; set; }
+
+        /// <summary>
+        /// Gets whether this officer's loyalty can change and permit betrayal.
+        /// </summary>
+        public bool CanBetray => _canBetray;
+
+        /// <summary>
+        /// Gets this officer's current loyalty.
+        /// </summary>
+        public int Loyalty => _loyalty;
 
         // Injury Info.
         public int InjuryPoints { get; set; }
@@ -326,6 +341,53 @@ namespace Rebellion.Game.Units
         public bool CanImproveMissionRating => true;
 
         /// <summary>
+        /// Returns the officer's current command title and display name.
+        /// </summary>
+        /// <returns>The command-qualified name, or the authored name when unassigned.</returns>
+        public override string GetDisplayName()
+        {
+            string name = base.GetDisplayName();
+            if (CurrentRank == OfficerRank.None || string.IsNullOrWhiteSpace(name))
+                return name;
+
+            string title = CurrentRank switch
+            {
+                OfficerRank.Commander => "Commander",
+                OfficerRank.Admiral => "Admiral",
+                OfficerRank.General => "General",
+                _ => string.Empty,
+            };
+            if (title.Length == 0)
+                return name;
+
+            string commandName = GetCommandName(name);
+            return string.IsNullOrWhiteSpace(commandName) ? name : $"{title} {commandName}";
+        }
+
+        /// <summary>
+        /// Converts an authored character name to the surname-style command name, such as Wedge
+        /// Antilles becoming Antilles and Garm Bel Iblis becoming Bel Iblis.
+        /// </summary>
+        /// <param name="name">The authored officer name.</param>
+        /// <returns>The name portion displayed after a command title.</returns>
+        private static string GetCommandName(string name)
+        {
+            string commandName = name.Trim();
+            string[] existingTitles = { "Commander ", "Admiral ", "General " };
+            foreach (string existingTitle in existingTitles)
+            {
+                if (!commandName.StartsWith(existingTitle, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                commandName = commandName.Substring(existingTitle.Length).TrimStart();
+                break;
+            }
+
+            int firstSpace = commandName.IndexOf(' ');
+            return firstSpace < 0 ? commandName : commandName.Substring(firstSpace + 1).TrimStart();
+        }
+
+        /// <summary>
         /// Applies authored image-set overrides to the officer's active image paths.
         /// </summary>
         public void ApplyImageSet()
@@ -349,6 +411,24 @@ namespace Rebellion.Game.Units
         /// </summary>
         public Officer() { }
 
+        /// <summary>
+        /// Applies a signed loyalty adjustment when this officer's loyalty can change.
+        /// </summary>
+        /// <param name="adjustment">The signed amount to apply.</param>
+        /// <returns>True when the stored loyalty changed; otherwise false.</returns>
+        public bool TryAdjustLoyalty(int adjustment)
+        {
+            if (!CanBetray || adjustment == 0)
+                return false;
+
+            int adjustedLoyalty = (int)Math.Clamp((long)_loyalty + adjustment, 0L, 100L);
+            if (adjustedLoyalty == _loyalty)
+                return false;
+
+            _loyalty = adjustedLoyalty;
+            return true;
+        }
+
         /// <summary>Creates an empty officer copy.</summary>
         /// <returns>The created node copy.</returns>
         protected override BaseSceneNode CreateNodeCopy() => new Officer();
@@ -371,9 +451,8 @@ namespace Rebellion.Game.Units
             copy.CanEscape = CanEscape;
             copy.NextEscapeAttemptTick = NextEscapeAttemptTick;
             copy.IsKilled = IsKilled;
-            copy.CanBetray = CanBetray;
-            copy.IsTraitor = IsTraitor;
-            copy.Loyalty = Loyalty;
+            copy._canBetray = _canBetray;
+            copy._loyalty = _loyalty;
             copy.InjuryPoints = InjuryPoints;
             copy.JediProbability = JediProbability;
             copy.JediLevel = JediLevel;
@@ -506,6 +585,28 @@ namespace Rebellion.Game.Units
         public bool IsOnMission()
         {
             return GetParent() is Mission;
+        }
+
+        /// <summary>
+        /// Attempts to place this officer in the custody of another faction.
+        /// </summary>
+        /// <param name="captorInstanceId">The instance ID of the capturing faction.</param>
+        /// <param name="canEscape">Whether the officer can attempt to escape captivity.</param>
+        /// <returns>True when the officer was captured; otherwise false.</returns>
+        public bool TryCapture(string captorInstanceId, bool canEscape = true)
+        {
+            if (((IMovable)this).GetTransitMovement() != null)
+            {
+                GameLogger.Warning(
+                    $"Capture rejected: {GetDisplayName()} is in transit and cannot be captured."
+                );
+                return false;
+            }
+
+            IsCaptured = true;
+            CaptorInstanceID = captorInstanceId;
+            CanEscape = canEscape;
+            return true;
         }
 
         /// <summary>

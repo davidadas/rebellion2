@@ -15,7 +15,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 null,
                 null,
                 null,
-                null,
                 TickSpeed.Paused,
                 null
             );
@@ -25,6 +24,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.AreEqual(string.Empty, data.RefinedMaterialsText);
             Assert.AreEqual(string.Empty, data.MaintenanceText);
             Assert.AreEqual(TickSpeed.Paused, data.Speed);
+            Assert.AreSame(StrategyHudResourceBreakdown.Empty, data.ResourceBreakdown);
             Assert.IsFalse(data.HasUnreadMessageType(MessageType.Fleet));
         }
 
@@ -42,7 +42,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 "12",
                 "34",
                 "56",
-                "78",
                 TickSpeed.Fast,
                 unreadTypes
             );
@@ -51,11 +50,55 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.AreEqual("12", data.TickText);
             Assert.AreEqual("34", data.RawMaterialsText);
             Assert.AreEqual("56", data.RefinedMaterialsText);
-            Assert.AreEqual("78", data.MaintenanceText);
+            Assert.AreEqual(string.Empty, data.MaintenanceText);
             Assert.AreEqual(TickSpeed.Fast, data.Speed);
             Assert.IsTrue(data.HasUnreadMessageType(MessageType.Fleet));
             Assert.IsTrue(data.HasUnreadMessageType(MessageType.Mission));
             Assert.IsFalse(data.HasUnreadMessageType(MessageType.Resource));
+        }
+
+        [Test]
+        public void RenderData_ResourceBreakdown_PreservesFacilityTotals()
+        {
+            StrategyHudResourceBreakdown breakdown = new StrategyHudResourceBreakdown(
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                0.25,
+                0.375,
+                0.5,
+                0.125,
+                0.1875,
+                0.25,
+                25,
+                50,
+                75,
+                new StrategyHudMaintenanceBreakdown(5, 10, 15, 20, 25, 0, 50, 10, 15)
+            );
+
+            StrategyHudRenderData data = new StrategyHudRenderData(
+                "",
+                "",
+                "",
+                TickSpeed.Paused,
+                null,
+                breakdown
+            );
+
+            Assert.AreSame(breakdown, data.ResourceBreakdown);
+            Assert.AreEqual(3, breakdown.DeployedMines);
+            Assert.AreEqual(10, breakdown.TotalMines);
+            Assert.AreEqual(11, breakdown.DeployedRefineries);
+            Assert.AreEqual(26, breakdown.TotalRefineries);
+            Assert.AreEqual("25", data.MaintenanceText);
+            Assert.AreEqual(25, breakdown.MaintenanceHeadroom);
+            Assert.AreEqual(50, breakdown.DeliveredMaintenanceHeadroom);
+            Assert.AreEqual(75, breakdown.ProjectedMaintenanceHeadroom);
         }
     }
 }

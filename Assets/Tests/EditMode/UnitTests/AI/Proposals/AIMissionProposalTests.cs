@@ -1,6 +1,10 @@
 using System.Collections.Generic;
 using NUnit.Framework;
+using Rebellion.AI.Demands;
+using Rebellion.AI.Planners;
 using Rebellion.AI.Proposals;
+using Rebellion.AI.Scorers;
+using Rebellion.AI.Selectors;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
@@ -11,23 +15,6 @@ namespace Rebellion.Tests.AI.Proposals
     public class AIMissionProposalTests
     {
         [Test]
-        public void GetClaimKeys_WithRecruitment_AddsFactionRecruitmentClaim()
-        {
-            Officer officer = EntityFactory.CreateOfficer("officer", "empire");
-            Planet planet = new Planet { InstanceID = "planet", OwnerInstanceID = "empire" };
-            AIMissionProposal proposal = new AIMissionProposal(
-                new[] { officer },
-                RecruitmentMission.MissionTypeID,
-                planet
-            );
-
-            IReadOnlyList<string> claimKeys = proposal.GetClaimKeys();
-
-            CollectionAssert.Contains(claimKeys, "mission:actor:officer");
-            CollectionAssert.Contains(claimKeys, "mission:recruitment:empire");
-        }
-
-        [Test]
         public void CanSelect_WithCapturedOfficer_ReturnsFalse()
         {
             Officer officer = EntityFactory.CreateOfficer("officer", "empire");
@@ -35,7 +22,7 @@ namespace Rebellion.Tests.AI.Proposals
             Planet planet = new Planet { InstanceID = "planet", OwnerInstanceID = "empire" };
             AIMissionProposal proposal = new AIMissionProposal(
                 new[] { officer },
-                DiplomacyMission.MissionTypeID,
+                MissionTypeIDs.Diplomacy,
                 planet
             );
 
@@ -62,66 +49,13 @@ namespace Rebellion.Tests.AI.Proposals
             Planet planet = new Planet { InstanceID = "planet", OwnerInstanceID = "empire" };
             AIMissionProposal proposal = new AIMissionProposal(
                 new[] { officer },
-                DiplomacyMission.MissionTypeID,
+                MissionTypeIDs.Diplomacy,
                 planet
             );
 
             bool canSelect = proposal.CanSelect(null);
 
             Assert.IsFalse(canSelect);
-        }
-
-        [Test]
-        public void GetClaimKeys_WithParticipantTeam_ClaimsEveryParticipant()
-        {
-            Officer trainer = EntityFactory.CreateOfficer("trainer", "empire");
-            Officer student = EntityFactory.CreateOfficer("student", "empire");
-            Planet planet = new Planet { InstanceID = "planet", OwnerInstanceID = "empire" };
-            AIMissionProposal proposal = new AIMissionProposal(
-                new[] { trainer, student },
-                JediTrainingMission.MissionTypeID,
-                planet
-            );
-
-            IReadOnlyList<string> claimKeys = proposal.GetClaimKeys();
-
-            CollectionAssert.Contains(claimKeys, "mission:actor:trainer");
-            CollectionAssert.Contains(claimKeys, "mission:actor:student");
-        }
-
-        [Test]
-        public void GetClaimKeys_WithDecoy_ClaimsMainAndDecoyParticipants()
-        {
-            Officer main = EntityFactory.CreateOfficer("main", "empire");
-            Officer decoy = EntityFactory.CreateOfficer("decoy", "empire");
-            Planet planet = new Planet { InstanceID = "planet", OwnerInstanceID = "rebels" };
-            AIMissionProposal proposal = new AIMissionProposal(
-                new[] { main },
-                EspionageMission.MissionTypeID,
-                planet,
-                decoyParticipants: new[] { decoy }
-            );
-
-            IReadOnlyList<string> claimKeys = proposal.GetClaimKeys();
-
-            CollectionAssert.Contains(claimKeys, "mission:actor:main");
-            CollectionAssert.Contains(claimKeys, "mission:actor:decoy");
-        }
-
-        [Test]
-        public void GetClaimKeys_WithHostileMission_DoesNotClaimFactionWideHostileSlot()
-        {
-            Officer officer = EntityFactory.CreateOfficer("officer", "empire");
-            Planet planet = new Planet { InstanceID = "planet", OwnerInstanceID = "rebels" };
-            AIMissionProposal proposal = new AIMissionProposal(
-                new[] { officer },
-                InciteUprisingMission.MissionTypeID,
-                planet
-            );
-
-            IReadOnlyList<string> claimKeys = proposal.GetClaimKeys();
-
-            CollectionAssert.DoesNotContain(claimKeys, "mission:hostile:empire");
         }
     }
 }

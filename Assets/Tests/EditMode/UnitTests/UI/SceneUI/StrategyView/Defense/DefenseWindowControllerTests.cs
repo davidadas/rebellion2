@@ -28,6 +28,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         private GameObject _rootObject;
         private SelectionModifierState _selectionModifiers;
         private TargetingController _targetingController;
+        private TestActions _testActions;
         private Texture2D _texture;
         private UIContext _uiContext;
         private StrategyWindowLayerView _windowLayer;
@@ -57,12 +58,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             _windowManager = _rootObject.GetComponentInChildren<UIWindowManager>(true);
             _targetingController = new TargetingController();
             _controller = CreateController();
-            TestActions actions = new TestActions();
+            _testActions = new TestActions();
             _controller.Initialize(
-                actions,
-                actions,
-                actions,
-                actions,
+                _testActions,
+                _testActions,
+                _testActions,
+                _testActions,
                 (_, _) => { },
                 _ => { },
                 _ => { }
@@ -248,6 +249,83 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         }
 
         [Test]
+        public void ItemRelease_DraggableOfficer_CompletesDragCandidate()
+        {
+            int completedDragCount = 0;
+            _controller.Initialize(
+                _testActions,
+                _testActions,
+                _testActions,
+                _testActions,
+                (_, _) => { },
+                _ => { },
+                _ => completedDragCount++
+            );
+            DefenseWindowView view = OpenWindow(out UIWindow window);
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            _controller.RenderWindow(view, window, true);
+            StrategyUnitCardView card = view.GetComponentsInChildren<StrategyUnitCardView>(true)
+                .Single(item => item.gameObject.activeInHierarchy);
+            UIComponentTestHelper.InvokeLifecycle(card, "Awake");
+            RectTransform entityRect = card.transform.Find("EntityImage") as RectTransform;
+            PointerEventData eventData = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Left,
+                pointerCurrentRaycast = new RaycastResult { gameObject = entityRect.gameObject },
+                pointerPressRaycast = new RaycastResult { gameObject = entityRect.gameObject },
+            };
+            UIPointerGestureRelay pointerGestures = card.GetComponent<UIPointerGestureRelay>();
+
+            pointerGestures.OnPointerDown(eventData);
+            pointerGestures.OnPointerClick(eventData);
+
+            Assert.AreEqual(1, completedDragCount);
+        }
+
+        [Test]
+        public void ItemRelease_ActiveTargeting_SelectsExactItemAndCompletesDrag()
+        {
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "regiment",
+                OwnerInstanceID = _playerFactionId,
+                DisplayImagePath = "entity",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _planet.Planet.AddTestChild(regiment);
+            int completedDragCount = 0;
+            _controller.Initialize(
+                _testActions,
+                _testActions,
+                _testActions,
+                _testActions,
+                (_, _) => { },
+                _ => { },
+                _ => completedDragCount++
+            );
+            DefenseWindowView view = OpenWindow(out UIWindow window);
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            _controller.SelectFinderTab(view, DefenseWindowTab.Regiments);
+            _controller.RenderWindow(view, window, true);
+            StrategyUnitCardView card = view.GetComponentsInChildren<StrategyUnitCardView>(true)
+                .Single(item => item.gameObject.activeInHierarchy);
+            UIComponentTestHelper.InvokeLifecycle(card, "Awake");
+            RecordingTargetingReceiver receiver = new RecordingTargetingReceiver();
+            _targetingController.Begin(new TargetingRequest("Target", null, receiver));
+            PointerEventData eventData = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Left,
+            };
+
+            card.GetComponent<UIPointerGestureRelay>().OnPointerClick(eventData);
+
+            Assert.AreEqual(1, completedDragCount);
+            Assert.IsFalse(_targetingController.IsTargeting);
+            Assert.IsInstanceOf<StrategyMissionTarget>(receiver.Target);
+            Assert.AreSame(regiment, ((StrategyMissionTarget)receiver.Target).Item);
+        }
+
+        [Test]
         public void WindowDrop_ActiveTargeting_SelectsRepresentedPlanet()
         {
             DefenseWindowView view = OpenWindow(out UIWindow window);
@@ -347,6 +425,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
                     StrategyMenuAction.Move,
                     StrategyMenuAction.MoveConfirm,
                     StrategyMenuAction.CreateMission,
+                    StrategyMenuAction.Command,
                     StrategyMenuAction.Encyclopedia,
                     StrategyMenuAction.Status,
                     StrategyMenuAction.Retire,
@@ -358,6 +437,29 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
                     .ToArray()
             );
             Assert.AreSame(_controller, request.Receiver);
+        }
+
+        [Test]
+        public void ContextMenu_CommandGeneral_AssignsRankAndRefreshesStrategyState()
+        {
+            _officer.AllowedRanks = new[] { OfficerRank.General };
+            _testActions.OfficerCommandChangeResult = true;
+            ContextMenuRequest request = _controller.CreateContextMenuForItem(
+                _planet,
+                _officer,
+                10,
+                20
+            );
+            StrategyMenuCommand command = request
+                .Commands.Cast<StrategyMenuCommand>()
+                .Single(item => item.Action == StrategyMenuAction.Command)
+                .SubmenuCommands.Single(item => item.Action == StrategyMenuAction.CommandGeneral);
+
+            _controller.OnContextMenuCommandSelected(request, command);
+
+            CollectionAssert.AreEqual(new ISceneNode[] { _officer }, _testActions.CommandItems);
+            Assert.AreEqual(OfficerRank.General, _testActions.CommandRank);
+            Assert.AreEqual(1, _testActions.RefreshDefenseStateCount);
         }
 
         [Test]
@@ -418,7 +520,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         /// <returns>The created game.</returns>
         private GameRoot CreateGame()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             game.GetFactions().Add(new Faction { InstanceID = _playerFactionId });
             game.Summary.PlayerFactionID = _playerFactionId;
             game.SetFactionController(_playerFactionId, "PLAYER1", PlayerControllerType.Human);
@@ -519,6 +621,35 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         {
             public bool IsIdleBarEnabled => true;
 
+            public IReadOnlyList<ISceneNode> CommandItems { get; private set; }
+
+            public OfficerRank CommandRank { get; private set; }
+
+            public bool OfficerCommandChangeResult { get; set; }
+
+            public int RefreshDefenseStateCount { get; private set; }
+
+            /// <summary>
+            /// Records a shared-state refresh after a Defense command change.
+            /// </summary>
+            public void RefreshDefenseState()
+            {
+                RefreshDefenseStateCount++;
+            }
+
+            /// <summary>
+            /// Records one requested officer command assignment.
+            /// </summary>
+            /// <param name="items">The selected Defense-window items.</param>
+            /// <param name="rank">The requested rank.</param>
+            /// <returns>The configured command result.</returns>
+            public bool TrySetOfficerCommand(IReadOnlyList<ISceneNode> items, OfficerRank rank)
+            {
+                CommandItems = items;
+                CommandRank = rank;
+                return OfficerCommandChangeResult;
+            }
+
             /// <summary>
             /// Checks whether the idle bar tracked condition is met.
             /// </summary>
@@ -547,6 +678,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             public void ExecuteTargetedCommand(
                 StrategyWindowTargetingSource source,
                 StrategyMissionTarget target
+            ) { }
+
+            /// <summary>
+            /// Executes an item drop.
+            /// </summary>
+            /// <param name="sourceWindow">The source window.</param>
+            /// <param name="target">The exact drop target.</param>
+            /// <param name="items">The dragged items.</param>
+            public void ExecuteItemDrop(
+                UIWindow sourceWindow,
+                StrategyMissionTarget target,
+                IReadOnlyList<ISceneNode> items
             ) { }
 
             /// <summary>

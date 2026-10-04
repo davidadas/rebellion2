@@ -150,12 +150,49 @@ namespace Rebellion.Tests.Game.Galaxy
         }
 
         [Test]
-        public void AddOfficer_UncolonizedPlanet_ThrowsException()
+        public void AddOfficer_OwnedUncolonizedPlanet_AddsToPlanet()
         {
             _planet.IsColonized = false;
             Officer officer = new Officer { OwnerInstanceID = "FNALL1" };
 
-            Assert.Throws<SceneAccessException>(() => _planet.AddChild(officer));
+            _planet.AddChild(officer);
+
+            Assert.Contains(officer, _planet.GetChildren<Officer>().ToList());
+        }
+
+        [Test]
+        public void AddOfficer_UncolonizedPlanetWithStationaryRegiment_AddsToPlanet()
+        {
+            _planet.IsColonized = false;
+            Regiment stationedRegiment = new Regiment
+            {
+                OwnerInstanceID = "FNALL1",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _planet.AddChild(stationedRegiment);
+            Officer officer = new Officer { OwnerInstanceID = "FNALL1" };
+
+            _planet.AddChild(officer);
+
+            Assert.Contains(officer, _planet.GetChildren<Officer>().ToList());
+        }
+
+        [Test]
+        public void AddOfficer_OwnedUncolonizedPlanetWithInTransitRegiment_AddsToPlanet()
+        {
+            _planet.IsColonized = false;
+            Regiment inboundRegiment = new Regiment
+            {
+                OwnerInstanceID = "FNALL1",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                Movement = new MovementState(),
+            };
+            _planet.AddChild(inboundRegiment);
+            Officer officer = new Officer { OwnerInstanceID = "FNALL1" };
+
+            _planet.AddChild(officer);
+
+            Assert.Contains(officer, _planet.GetChildren<Officer>().ToList());
         }
 
         [Test]
@@ -710,6 +747,16 @@ namespace Rebellion.Tests.Game.Galaxy
         }
 
         [Test]
+        public void GetManufacturingQueue_NoItems_ReturnsEmptyDictionary()
+        {
+            Dictionary<ManufacturingType, List<IManufacturable>> queue =
+                _planet.GetManufacturingQueue();
+
+            Assert.IsNotNull(queue);
+            Assert.IsEmpty(queue);
+        }
+
+        [Test]
         public void GetManufacturingQueue_EmptyQueue_ReturnsEmptyDictionary()
         {
             Dictionary<ManufacturingType, List<IManufacturable>> queue =
@@ -835,12 +882,54 @@ namespace Rebellion.Tests.Game.Galaxy
         }
 
         [Test]
+        public void AddStarfighter_UncolonizedPlanetWithStationaryRegiment_AddsToPlanet()
+        {
+            _planet.IsColonized = false;
+            Regiment stationedRegiment = new Regiment
+            {
+                OwnerInstanceID = "FNALL1",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _planet.AddChild(stationedRegiment);
+            Starfighter starfighter = new Starfighter
+            {
+                OwnerInstanceID = "FNALL1",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+
+            _planet.AddChild(starfighter);
+
+            Assert.Contains(starfighter, _planet.GetChildren<Starfighter>().ToList());
+        }
+
+        [Test]
         public void AddSpecialForces_UncolonizedPlanet_ThrowsException()
         {
             _planet.IsColonized = false;
             SpecialForces specialForces = new SpecialForces { OwnerInstanceID = "FNALL1" };
 
             Assert.Throws<SceneAccessException>(() => _planet.AddChild(specialForces));
+        }
+
+        [Test]
+        public void AddSpecialForces_UncolonizedPlanetWithStationaryRegiment_AddsToPlanet()
+        {
+            _planet.IsColonized = false;
+            Regiment stationedRegiment = new Regiment
+            {
+                OwnerInstanceID = "FNALL1",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _planet.AddChild(stationedRegiment);
+            SpecialForces specialForces = new SpecialForces
+            {
+                OwnerInstanceID = "FNALL1",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+
+            _planet.AddChild(specialForces);
+
+            Assert.Contains(specialForces, _planet.GetChildren<SpecialForces>().ToList());
         }
 
         [Test]

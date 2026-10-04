@@ -1,14 +1,18 @@
 using System.Collections.Generic;
 using NUnit.Framework;
-using Rebellion.AI.Director;
+using Rebellion.AI;
+using Rebellion.AI.Demands;
+using Rebellion.AI.Planners;
 using Rebellion.AI.Proposals;
+using Rebellion.AI.Scorers;
+using Rebellion.AI.Selectors;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.Tests.AI.Helpers;
 
-namespace Rebellion.Tests.AI.Proposals
+namespace Rebellion.Tests.AI.Fleets
 {
     [TestFixture]
     public class AITransferUnitProposalTests
@@ -106,38 +110,6 @@ namespace Rebellion.Tests.AI.Proposals
         }
 
         [Test]
-        public void GetClaimKeys_WithSourceAndTargetFleet_ReturnsTransferClaims()
-        {
-            Fleet sourceFleet = EntityFactory.CreateFleet("source", "empire");
-            Fleet targetFleet = EntityFactory.CreateFleet("targetFleet", "empire");
-            CapitalShip ship = AITestSceneBuilder.CreateCapitalShip("ship", "empire");
-            Planet target = new Planet { InstanceID = "target" };
-            AITransferUnitProposal proposal = new AITransferUnitProposal(
-                sourceFleet,
-                targetFleet,
-                ship,
-                targetFleet,
-                target
-            );
-
-            IReadOnlyList<string> claimKeys = proposal.GetClaimKeys();
-
-            Assert.Contains("unit:transfer:ship", (System.Collections.ICollection)claimKeys);
-            Assert.Contains(
-                "container:transfer-source:source",
-                (System.Collections.ICollection)claimKeys
-            );
-            Assert.Contains(
-                "container:transfer-target:targetFleet",
-                (System.Collections.ICollection)claimKeys
-            );
-            Assert.Contains(
-                "fleet:capital-reinforcement:targetFleet",
-                (System.Collections.ICollection)claimKeys
-            );
-        }
-
-        [Test]
         public void Execute_WithPlanetRegimentTransfer_LoadsRegimentIntoTargetFleet()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
@@ -173,10 +145,6 @@ namespace Rebellion.Tests.AI.Proposals
             proposal.Execute(context);
 
             Assert.AreSame(transport, regiment.GetParent());
-            CollectionAssert.Contains(
-                proposal.GetClaimKeys(),
-                "fleet:reinforcement:FleetRegiment:target-fleet"
-            );
         }
     }
 }

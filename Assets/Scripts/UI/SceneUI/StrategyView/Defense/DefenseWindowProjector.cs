@@ -4,7 +4,7 @@ using System.Linq;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 using UnityEngine;
 
 /// <summary>
@@ -126,6 +126,22 @@ internal sealed class DefenseWindowProjector
     }
 
     /// <summary>
+    /// Resolves a Defense unit-card name color for one selection state.
+    /// </summary>
+    /// <param name="session">The controller-owned Defense session.</param>
+    /// <param name="selected">Whether the card is selected.</param>
+    /// <returns>The faction color when selected; otherwise white.</returns>
+    public Color32 GetItemNameColor(DefenseWindowSession session, bool selected)
+    {
+        if (session == null)
+            throw new ArgumentNullException(nameof(session));
+
+        return selected
+            ? GetFactionColor(GetRequiredUIContext(), session.Planet?.OwnerFactionId)
+            : _white;
+    }
+
+    /// <summary>
     /// Returns the player's garrison requirement label for the regiment tab.
     /// </summary>
     /// <param name="uiContext">The current presentation context.</param>
@@ -151,7 +167,7 @@ internal sealed class DefenseWindowProjector
         )
             return string.Empty;
 
-        int requirement = UprisingSystem.CalculateGarrisonRequirement(
+        int requirement = UprisingQueries.CalculateGarrisonRequirement(
             mapPlanet.Planet,
             playerFaction,
             uiContext.Game.Config.AI.Garrison
@@ -313,10 +329,7 @@ internal sealed class DefenseWindowProjector
         }
 
         if (IsItemInTransit(item))
-        {
-            return GetPersonnelEnrouteBackgroundTexture(uiContext, item)
-                ?? uiContext.GetTexture(theme?.EnrouteBackgroundImagePath);
-        }
+            return uiContext.GetTexture(theme?.EnrouteBackgroundImagePath);
 
         return item is Officer or SpecialForces
             ? uiContext.GetTexture(theme?.PersonnelBackgroundImagePath)
@@ -324,35 +337,16 @@ internal sealed class DefenseWindowProjector
     }
 
     /// <summary>
-    /// Resolves the in-transit overlay for a non-personnel unit.
+    /// Resolves the configured in-transit effect for a unit card.
     /// </summary>
     /// <param name="uiContext">The current presentation context.</param>
     /// <param name="item">The represented scene node.</param>
     /// <returns>The optional in-transit overlay.</returns>
     private static Texture GetItemEnrouteOverlayTexture(UIContext uiContext, ISceneNode item)
     {
-        if (!IsItemInTransit(item) || item is Regiment or Officer or SpecialForces)
+        if (!IsItemInTransit(item))
             return null;
         if (item is IManufacturable { ManufacturingStatus: ManufacturingStatus.Building })
-            return null;
-
-        return uiContext.GetTexture(
-            SelectStatusPath(item.InTransitSmallImagePath, item.InTransitImagePath)
-        );
-    }
-
-    /// <summary>
-    /// Resolves the in-transit personnel background for a personnel card.
-    /// </summary>
-    /// <param name="uiContext">The current presentation context.</param>
-    /// <param name="item">The represented scene node.</param>
-    /// <returns>The optional in-transit personnel background.</returns>
-    private static Texture GetPersonnelEnrouteBackgroundTexture(
-        UIContext uiContext,
-        ISceneNode item
-    )
-    {
-        if (item is not Officer and not SpecialForces)
             return null;
 
         return uiContext.GetTexture(

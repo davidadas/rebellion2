@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -8,8 +9,13 @@ using UnityEngine.EventSystems;
 /// <summary>
 /// Performs game-level and shared-window actions requested by the Defense feature.
 /// </summary>
-public interface IDefenseWindowActions
+public interface IDefenseWindowActions : IOfficerCommandActions
 {
+    /// <summary>
+    /// Rebuilds shared strategy state after a stationed officer's command changes.
+    /// </summary>
+    void RefreshDefenseState();
+
     /// <summary>
     /// Opens status information for one Defense-window target.
     /// </summary>
@@ -528,6 +534,16 @@ public sealed class DefenseWindowController
 
         switch (strategyCommand.Action)
         {
+            case StrategyMenuAction.CommandNone:
+            case StrategyMenuAction.CommandCommander:
+            case StrategyMenuAction.CommandAdmiral:
+            case StrategyMenuAction.CommandGeneral:
+                if (
+                    strategyCommand.Action.TryGetOfficerRank(out OfficerRank rank)
+                    && actions.TrySetOfficerCommand(source.Items, rank)
+                )
+                    actions.RefreshDefenseState();
+                break;
             case StrategyMenuAction.ToggleIdleBarTracking:
                 if (source.Items.Count == 1)
                     idleBarTrackingActions.ToggleIdleBarTracking(source.Items[0]);
@@ -732,7 +748,9 @@ public sealed class DefenseWindowController
     {
         view.RenderItemSelection(
             session.SelectedItemIndexes,
-            projector.GetItemSelectionTexture(session)
+            projector.GetItemSelectionTexture(session),
+            projector.GetItemNameColor(session, true),
+            projector.GetItemNameColor(session, false)
         );
     }
 
@@ -755,8 +773,14 @@ public sealed class DefenseWindowController
             return;
 
         if (!session.TryGetItem(itemIndex, out ISceneNode item))
+        {
+            endItemDrag(eventData);
             return;
-        if (TrySelectTarget(session, item))
+        }
+
+        bool targetSelected = TrySelectTarget(session, item);
+        endItemDrag(eventData);
+        if (targetSelected)
             return;
         if (SelectableListSelection.HasSelectionModifier(getSelectionModifiers()))
             return;

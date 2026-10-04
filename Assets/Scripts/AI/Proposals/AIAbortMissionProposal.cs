@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-using Rebellion.AI.Director;
 using Rebellion.Game.Missions;
 
 namespace Rebellion.AI.Proposals
@@ -20,17 +18,6 @@ namespace Rebellion.AI.Proposals
         public AIAbortMissionProposal(Mission mission)
         {
             Mission = mission;
-        }
-
-        /// <summary>
-        /// Returns the claim that prevents another action from modifying the mission.
-        /// </summary>
-        /// <returns>The mission claim, or no claims when the mission is unavailable.</returns>
-        public override IReadOnlyList<string> GetClaimKeys()
-        {
-            return Mission == null
-                ? new List<string>()
-                : new List<string> { AIClaimKeys.Mission(Mission.InstanceID) };
         }
 
         /// <summary>

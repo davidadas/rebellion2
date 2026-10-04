@@ -7,6 +7,7 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Results;
+using Rebellion.Simulation;
 using UnityEngine;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
@@ -165,14 +166,16 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         {
             GameConfig config = new GameConfig();
             config.Smuggling.LossPercentByMinimumSupport[0] = 0;
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
             Faction player = new Faction { InstanceID = "missing-player-theme" };
             Faction opponent = new Faction { InstanceID = "opponent" };
             game.GetFactions().Add(player);
             game.GetFactions().Add(opponent);
             game.Summary.PlayerFactionID = player.InstanceID;
             game.SetFactionController(player.InstanceID, "PLAYER1", PlayerControllerType.Human);
-            GameManager manager = new GameManager(game, TestGameData.Create(config));
+            GameSession session = new GameSession(game, TestGameData.Create(config));
+            GameManager manager = new GameManager(() => session.Game, session.Tick);
+            SetField("activeSession", session);
             SetField("activeGameManager", manager);
             SetField("themeLibrary", CreateDefaultOnlyThemeLibrary());
             SetField("cutscenePlaying", true);

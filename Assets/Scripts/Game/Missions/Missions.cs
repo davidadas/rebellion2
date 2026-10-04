@@ -158,8 +158,8 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Resolves every participant attempt while applying the capture operation immediately
-        /// after each successful attempt, as in the original mission dispatcher.
+        /// Resolves the first successful main participant and immediately applies the capture
+        /// operation.
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <param name="provider">RNG provider for success, injury, and death rolls.</param>
@@ -170,25 +170,20 @@ namespace Rebellion.Game.Missions
         )
         {
             List<GameResult> results = new List<GameResult>();
-            bool targetKilled = false;
-            List<IMissionParticipant> successfulParticipants = ResolveSuccessfulParticipants(
+            IMissionParticipant successfulParticipant = RollParticipantAttempts(
                 provider,
                 game,
                 participant =>
                 {
-                    if (targetKilled)
-                        return true;
-
                     List<GameResult> attemptResults = OnSuccess(game, provider, participant);
                     results.AddRange(attemptResults);
-                    targetKilled = attemptResults.Exists(result => result is OfficerKilledResult);
                     return true;
                 }
             );
 
             MissionOutcome outcome;
             MissionCompletionReason completionReason;
-            if (successfulParticipants.Count == 0)
+            if (successfulParticipant == null)
             {
                 outcome = MissionOutcome.Failed;
                 completionReason = MissionCompletionReason.Failure;
@@ -205,7 +200,7 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Applies the original capture injury check, then captures the target if they survive.
+        /// Applies the capture injury check, then captures the target if they survive.
         /// Minor personnel can die from the injury; main characters cannot.
         /// </summary>
         /// <param name="game">The current game state.</param>
@@ -224,7 +219,7 @@ namespace Rebellion.Game.Missions
 
             List<GameResult> results = new List<GameResult>();
             if (
-                ApplyCaptureEvasionInjury(
+                ApplyEvasionInjury(
                     target,
                     successfulParticipant,
                     GetParent() as Planet,
@@ -235,15 +230,15 @@ namespace Rebellion.Game.Missions
             )
                 return results;
 
-            target.IsCaptured = true;
-            target.CaptorInstanceID = OwnerInstanceID;
-            target.CanEscape = true;
+            if (!target.TryCapture(OwnerInstanceID))
+                return results;
 
             results.Add(
                 new OfficerCaptureStateResult
                 {
                     TargetOfficer = target,
                     IsCaptured = true,
+                    ParentAtCapture = target.GetParent(),
                     CapturingUnit = successfulParticipant,
                     Context = GetParent() as Planet,
                     Tick = game.CurrentTick,
@@ -407,7 +402,10 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="participants">The participants attempting the assassination.</param>
         /// <param name="context">The authoritative or observed state used for evaluation.</param>
-        /// <returns>The probability that at least one participant both hits and kills the target.</returns>
+        /// <returns>
+        /// The probability that at least one participant hits the target and the resulting death
+        /// roll succeeds.
+        /// </returns>
         protected override double GetObjectiveSuccessProbability(
             IEnumerable<IMissionParticipant> participants,
             MissionEvaluationContext context
@@ -421,14 +419,8 @@ namespace Rebellion.Game.Missions
             if (killProbability == 0)
                 return 0;
 
-            IEnumerable<double> probabilities = (
-                participants ?? Enumerable.Empty<IMissionParticipant>()
-            )
-                .Where(participant => participant != null)
-                .Select(participant =>
-                    GetAgentProbability(participant, context) * killProbability / 100d
-                );
-            return CombineSuccessProbabilities(probabilities);
+            double hitProbability = base.GetObjectiveSuccessProbability(participants, context);
+            return hitProbability * killProbability / 100d;
         }
 
         /// <summary>
@@ -477,14 +469,11 @@ namespace Rebellion.Game.Missions
             MissionCompletionReason completionReason = MissionCompletionReason.Failure;
 
             bool targetKilled = false;
-            List<IMissionParticipant> successfulParticipants = ResolveSuccessfulParticipants(
+            IMissionParticipant successfulParticipant = RollParticipantAttempts(
                 provider,
                 game,
                 participant =>
                 {
-                    if (targetKilled)
-                        return true;
-
                     List<GameResult> attemptResults = OnSuccess(game, provider, participant);
                     results.AddRange(attemptResults);
                     if (attemptResults.Exists(result => result is OfficerKilledResult))
@@ -492,7 +481,7 @@ namespace Rebellion.Game.Missions
                     return targetKilled;
                 }
             );
-            if (successfulParticipants.Count == 0)
+            if (successfulParticipant == null)
             {
                 results.AddRange(OnFailed(game, provider));
             }
@@ -508,7 +497,7 @@ namespace Rebellion.Game.Missions
 
         /// <summary>
         /// Applies assassination injury to the target. Only minor personnel receive the
-        /// original post-injury death roll; main characters always survive the hit.
+        /// post-injury death roll; main characters always survive the hit.
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <param name="provider">RNG provider for injury dice and kill check.</param>
@@ -588,6 +577,9 @@ namespace Rebellion.Game.Missions
     {
         public const string MissionTypeID = "Diplomacy";
 
+        [PersistableMember(Name = "StartingTargetOwnerInstanceID")]
+        private string _startingTargetOwnerInstanceId;
+
         /// <summary>
         /// Returns whether successful participants remain on the target planet.
         /// </summary>
@@ -596,6 +588,17 @@ namespace Rebellion.Game.Missions
         /// <summary>Creates an empty diplomacy mission copy.</summary>
         /// <returns>An empty diplomacy mission.</returns>
         protected override BaseSceneNode CreateNodeCopy() => new DiplomacyMission();
+
+        /// <summary>
+        /// Copies the target ownership snapshot used to distinguish a declaration of neutrality.
+        /// </summary>
+        /// <param name="destination">The copied diplomacy mission.</param>
+        protected override void CopyStateTo(BaseSceneNode destination)
+        {
+            base.CopyStateTo(destination);
+            ((DiplomacyMission)destination)._startingTargetOwnerInstanceId =
+                _startingTargetOwnerInstanceId;
+        }
 
         /// <summary>
         /// Default constructor used for deserialization.
@@ -628,7 +631,10 @@ namespace Rebellion.Game.Missions
                 mainParticipants,
                 decoyParticipants,
                 SkillRating.Diplomacy
-            ) { }
+            )
+        {
+            _startingTargetOwnerInstanceId = target.GetOwnerInstanceID() ?? string.Empty;
+        }
 
         /// <summary>
         /// Returns a new DiplomacyMission if the target is a valid planet, or null.
@@ -674,13 +680,48 @@ namespace Rebellion.Game.Missions
 
             if (GetParent() is Planet planet)
             {
-                if (planet.IsInUprising)
-                    return MissionCompletionReason.Failure;
                 string owner = planet.GetOwnerInstanceID();
+                _startingTargetOwnerInstanceId ??= owner ?? string.Empty;
                 if (owner != null && owner != OwnerInstanceID)
+                    return MissionCompletionReason.TargetChangedSides;
+                if (owner == null && _startingTargetOwnerInstanceId == OwnerInstanceID)
+                    return MissionCompletionReason.TargetChangedSides;
+                if (planet.IsInUprising)
                     return MissionCompletionReason.Failure;
             }
             return null;
+        }
+
+        /// <summary>
+        /// Reveals the target's current state when diplomacy discovers that it changed sides.
+        /// </summary>
+        /// <param name="game">The authoritative game state.</param>
+        /// <param name="provider">The random provider, unused by this interruption.</param>
+        /// <returns>The intelligence observation produced by the interrupted mission.</returns>
+        internal override List<GameResult> ResolveInterruption(
+            GameRoot game,
+            IRandomNumberProvider provider
+        )
+        {
+            if (
+                GetParent() is not Planet planet
+                || string.IsNullOrEmpty(planet.GetOwnerInstanceID())
+                || planet.GetOwnerInstanceID() == OwnerInstanceID
+            )
+                return new List<GameResult>();
+
+            Faction recipient = game?.GetFactionByOwnerInstanceID(OwnerInstanceID);
+            return recipient == null
+                ? new List<GameResult>()
+                : new List<GameResult>
+                {
+                    new IntelligenceRevealedResult
+                    {
+                        Recipient = recipient,
+                        Observations = new List<ISceneNode> { planet },
+                        Tick = game.CurrentTick,
+                    },
+                };
         }
 
         /// <summary>
@@ -979,7 +1020,7 @@ namespace Rebellion.Game.Missions
         /// <summary>
         /// Returns whether the target belongs to a faction other than the mission owner.
         /// Neutral and owner-controlled planets still produce their direct intelligence snapshot,
-        /// but do not grant the original game's additional-system bonus.
+        /// but do not grant the additional-system bonus.
         /// </summary>
         /// <param name="game">The game.</param>
         /// <param name="targetPlanet">The target planet.</param>
@@ -1163,7 +1204,7 @@ namespace Rebellion.Game.Missions
         /// or the mission faction has troops present there.
         /// </summary>
         /// <param name="game">The current game state.</param>
-        /// <returns>True while the original mission executor would leave the task active.</returns>
+        /// <returns>True while the mission should remain active.</returns>
         public override bool ShouldRepeatAfterCompletion(GameRoot game)
         {
             if (GetParent() is not Planet planet)
@@ -1815,7 +1856,7 @@ namespace Rebellion.Game.Missions
         )
         {
             RecruitedOfficerInstanceID = null;
-            List<IMissionParticipant> successfulParticipants = ResolveSuccessfulParticipants(
+            IMissionParticipant successfulParticipant = RollParticipantAttempts(
                 provider,
                 game,
                 _ =>
@@ -1827,8 +1868,7 @@ namespace Rebellion.Game.Missions
                     Officer recruitedOfficer = targets.RandomElement(provider);
                     RecruitedOfficerInstanceID = recruitedOfficer.InstanceID;
                     return true;
-                },
-                stopAfterFirstSuccess: true
+                }
             );
 
             List<GameResult> results;
@@ -1838,13 +1878,13 @@ namespace Rebellion.Game.Missions
             {
                 outcome = MissionOutcome.Success;
                 completionReason = MissionCompletionReason.Success;
-                results = OnSuccess(game, provider, successfulParticipants[0]);
+                results = OnSuccess(game, provider, successfulParticipant);
             }
             else
             {
                 outcome = MissionOutcome.Failed;
                 completionReason =
-                    successfulParticipants.Count > 0
+                    successfulParticipant != null
                         ? MissionCompletionReason.TargetUnavailable
                         : MissionCompletionReason.Failure;
                 results = OnFailed(game, provider);
@@ -2209,9 +2249,7 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Resolves whether research can execute after participants arrive.
-        /// A matching facility is required to issue the mission, but the original game does not
-        /// cancel active research if that facility is subsequently destroyed.
+        /// Resolves whether research can continue while its objective timer advances.
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <returns>The failure reason, or null when research can advance.</returns>
@@ -2221,9 +2259,12 @@ namespace Rebellion.Game.Missions
             if (reason.HasValue)
                 return reason;
 
-            return GetParent() is Planet p && p.GetOwnerInstanceID() == OwnerInstanceID
+            if (GetParent() is not Planet planet || planet.GetOwnerInstanceID() != OwnerInstanceID)
+                return MissionCompletionReason.TargetUnavailable;
+
+            return HasResearchFacility(planet, Discipline)
                 ? null
-                : MissionCompletionReason.TargetUnavailable;
+                : MissionCompletionReason.NoResearchFacilities;
         }
 
         /// <summary>
@@ -2685,7 +2726,7 @@ namespace Rebellion.Game.Missions
                 && regiment.ManufacturingStatus == ManufacturingStatus.Complete
                 && regiment.Movement == null;
             Fleet targetFleet = target is CapitalShip ? target.GetParentOfType<Fleet>() : null;
-            game.DetachNode(target);
+            game.DeleteNode(target);
             if (targetFleet?.GetChildren<CapitalShip>().Count == 0)
                 game.DetachNode(targetFleet);
 

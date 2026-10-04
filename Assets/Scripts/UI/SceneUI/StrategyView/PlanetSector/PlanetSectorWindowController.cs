@@ -88,6 +88,7 @@ public sealed class PlanetSectorWindowController
     private IPlanetSectorWindowActions actions;
     private IStrategyWindowCommandActions commandActions;
     private IStrategyConfirmationActions confirmationActions;
+    private Action<PointerEventData> endItemDrag;
     private IIdleBarTrackingActions idleBarTrackingActions;
     private Action<UIWindow, PointerEventData> startItemDrag;
 
@@ -147,12 +148,14 @@ public sealed class PlanetSectorWindowController
     /// <param name="windowConfirmationActions">The shared confirmation actions.</param>
     /// <param name="trackingActions">Reads and changes idle-bar tracking state.</param>
     /// <param name="beginItemDrag">Begins a strategy item-drag candidate.</param>
+    /// <param name="completeItemDrag">Completes or clears a strategy item-drag candidate.</param>
     public void Initialize(
         IPlanetSectorWindowActions windowActions,
         IStrategyWindowCommandActions windowCommandActions,
         IStrategyConfirmationActions windowConfirmationActions,
         IIdleBarTrackingActions trackingActions,
-        Action<UIWindow, PointerEventData> beginItemDrag
+        Action<UIWindow, PointerEventData> beginItemDrag,
+        Action<PointerEventData> completeItemDrag
     )
     {
         actions = windowActions ?? throw new ArgumentNullException(nameof(windowActions));
@@ -164,6 +167,7 @@ public sealed class PlanetSectorWindowController
         idleBarTrackingActions =
             trackingActions ?? throw new ArgumentNullException(nameof(trackingActions));
         startItemDrag = beginItemDrag ?? throw new ArgumentNullException(nameof(beginItemDrag));
+        endItemDrag = completeItemDrag ?? throw new ArgumentNullException(nameof(completeItemDrag));
     }
 
     /// <summary>
@@ -426,6 +430,7 @@ public sealed class PlanetSectorWindowController
         if (session.Sector == null)
             return;
 
+        GalacticInformationFilterMode filterMode = getFilterMode();
         view.Render(
             projector.CreateRenderData(
                 session.Sector,
@@ -435,7 +440,8 @@ public sealed class PlanetSectorWindowController
                 session.HoveredIcon,
                 GetActiveWaypointPlan(),
                 getSelectedFleetInstanceIds(),
-                getFilterMode() == GalacticInformationFilterMode.FleetWaypoints
+                filterMode == GalacticInformationFilterMode.FleetWaypoints,
+                filterMode
             )
         );
     }
@@ -835,16 +841,20 @@ public sealed class PlanetSectorWindowController
     }
 
     /// <summary>
-    /// Gets the player-controlled fleet items represented by a planet-sector selection.
+    /// Gets the movable player-controlled items represented by a planet-sector selection.
     /// </summary>
     /// <param name="view">The source planet-sector view.</param>
-    /// <returns>The selected fleet items.</returns>
+    /// <returns>The selected fleet or mobile-headquarters items.</returns>
     public List<ISceneNode> GetContextItems(PlanetSectorWindowView view)
     {
         if (!sessions.TryGetValue(view, out PlanetSectorWindowSession session))
             return new List<ISceneNode>();
 
         PlanetSectorWindowHit hit = session.GetContextHit() ?? session.GetSelectedHit();
+        Building mobileHeadquarters = GetMobileHeadquarters(hit);
+        if (mobileHeadquarters != null)
+            return new List<ISceneNode> { mobileHeadquarters };
+
         return hit?.Icon == PlanetIcon.Fleet
             ? GetPlayerFleetItems(hit.Planet)
             : new List<ISceneNode>();
@@ -890,13 +900,13 @@ public sealed class PlanetSectorWindowController
     }
 
     /// <summary>
-    /// Tries to create a fleet drag preview for one planet-sector window.
+    /// Tries to create a fleet or mobile-headquarters drag preview for one planet-sector window.
     /// </summary>
     /// <param name="view">The source planet-sector view.</param>
     /// <param name="sourceX">The source-space horizontal pointer coordinate.</param>
     /// <param name="sourceY">The source-space vertical pointer coordinate.</param>
     /// <param name="preview">Receives the drag preview.</param>
-    /// <returns>True when the current fleet selection produced a preview.</returns>
+    /// <returns>True when the current movable selection produced a preview.</returns>
     public bool TryGetDragPreview(
         PlanetSectorWindowView view,
         int sourceX,
@@ -909,6 +919,18 @@ public sealed class PlanetSectorWindowController
             return false;
 
         PlanetSectorWindowHit hit = session.GetContextHit() ?? session.GetSelectedHit();
+        if (GetMobileHeadquarters(hit) != null)
+        {
+            return view.TryGetHeadquartersDragPreview(
+                hit.Element,
+                session.Window.X,
+                session.Window.Y,
+                sourceX,
+                sourceY,
+                out preview
+            );
+        }
+
         return hit?.Icon == PlanetIcon.Fleet
             && GetPlayerFleetItems(hit.Planet).Count > 0
             && view.TryGetFleetDragPreview(
@@ -1025,7 +1047,7 @@ public sealed class PlanetSectorWindowController
     }
 
     /// <summary>
-    /// Updates selection and begins a fleet drag candidate when appropriate.
+    /// Updates selection and begins a fleet or mobile-headquarters drag candidate when appropriate.
     /// </summary>
     /// <param name="view">The source planet-sector view.</param>
     /// <param name="element">The semantic presentation element.</param>
@@ -1054,6 +1076,7 @@ public sealed class PlanetSectorWindowController
 
         session.StoreContextHit(hit);
         bool selected = session.SelectHit(hit);
+        Building mobileHeadquarters = GetMobileHeadquarters(hit);
         if (eventData.button == PointerEventData.InputButton.Right)
         {
             session.Window.RequestContext(eventData);
@@ -1064,7 +1087,7 @@ public sealed class PlanetSectorWindowController
         if (eventData.button != PointerEventData.InputButton.Left)
             return;
 
-        if (selected && hit.Icon == PlanetIcon.Fleet)
+        if ((selected && hit.Icon == PlanetIcon.Fleet) || mobileHeadquarters != null)
             startItemDrag(session.Window, eventData);
 
         markDirty();
@@ -1083,16 +1106,18 @@ public sealed class PlanetSectorWindowController
     )
     {
         PlanetSectorWindowHit hit = ResolveHit(view, element);
-        if (!targetingController.IsTargeting || hit == null)
-            return;
+        if (targetingController.IsTargeting && hit != null)
+        {
+            StrategyMissionTarget target = CreateTargetForHit(
+                hit,
+                targetingController.ActiveRequest,
+                GetPlayerFleetTarget(hit.Planet)
+            );
+            if (target != null)
+                targetingController.TrySelectTarget(target);
+        }
 
-        StrategyMissionTarget target = CreateTargetForHit(
-            hit,
-            targetingController.ActiveRequest,
-            GetPlayerFleetTarget(hit.Planet)
-        );
-        if (target != null)
-            targetingController.TrySelectTarget(target);
+        endItemDrag(eventData);
     }
 
     /// <summary>
@@ -1345,6 +1370,7 @@ public sealed class PlanetSectorWindowController
             actions == null
             || commandActions == null
             || confirmationActions == null
+            || endItemDrag == null
             || startItemDrag == null
         )
         {

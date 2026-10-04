@@ -14,9 +14,6 @@ namespace Rebellion.Architecture.Tests
             .LoadAssemblies(typeof(GameRoot).Assembly)
             .Build();
 
-        /// <summary>
-        /// Verifies that game-domain code is fully contained within the game namespace.
-        /// </summary>
         [Test]
         public void GameDomain_Dependencies_ReferenceOnlyGameDomain()
         {
@@ -37,15 +34,12 @@ namespace Rebellion.Architecture.Tests
             rule.Check(_architecture);
         }
 
-        /// <summary>
-        /// Verifies that gameplay systems do not depend on presentation code.
-        /// </summary>
         [Test]
-        public void GameplaySystems_Dependencies_DoNotReferenceUserInterface()
+        public void GameplayRuntime_Dependencies_DoNotReferenceUserInterface()
         {
             IArchRule rule = Types()
                 .That()
-                .ResideInNamespaceMatching("^Rebellion\\.Systems(?:\\.|$)")
+                .ResideInNamespaceMatching("^Rebellion\\.(?:Systems|Simulation)(?:\\.|$)")
                 .Should()
                 .NotDependOnAny(
                     Types().That().ResideInNamespaceMatching("^Rebellion\\.UI(?:\\.|$)")
@@ -54,9 +48,6 @@ namespace Rebellion.Architecture.Tests
             rule.Check(_architecture);
         }
 
-        /// <summary>
-        /// Verifies that scene-graph code is self-contained except for persistence annotations.
-        /// </summary>
         [Test]
         public void SceneGraph_Dependencies_ReferenceOnlySceneGraph()
         {
@@ -70,6 +61,10 @@ namespace Rebellion.Architecture.Tests
                         .DoNotResideInNamespaceMatching("^Rebellion\\.SceneGraph(?:\\.|$)")
                         .And()
                         .DoNotHaveFullName(
+                            "Rebellion.Util.Serialization.PersistableObjectAttribute"
+                        )
+                        .And()
+                        .DoNotHaveFullName(
                             "Rebellion.Util.Serialization.PersistableIgnoreAttribute"
                         )
                 );
@@ -77,15 +72,12 @@ namespace Rebellion.Architecture.Tests
             rule.Check(_architecture);
         }
 
-        /// <summary>
-        /// Verifies that each utility area depends only on types from its own namespace.
-        /// </summary>
-        /// <param name="utilityNamespace">The utility namespace to verify.</param>
         [TestCase("Rebellion.Util.Logging")]
         [TestCase("Rebellion.Util.Mathematics")]
         [TestCase("Rebellion.Util.Random")]
         [TestCase("Rebellion.Util.Reflection")]
         [TestCase("Rebellion.Util.Serialization")]
+        [TestCase("Rebellion.Util.DependencyInjection")]
         public void UtilityArea_Dependencies_ReferenceOnlySameUtilityArea(string utilityNamespace)
         {
             string escapedNamespace = utilityNamespace.Replace(".", "\\.");

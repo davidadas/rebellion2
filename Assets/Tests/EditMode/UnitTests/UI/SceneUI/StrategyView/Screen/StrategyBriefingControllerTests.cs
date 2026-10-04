@@ -527,7 +527,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             hudController.Initialize(new TestHudActions());
             StrategyHudView hudView = rootObject.GetComponentInChildren<StrategyHudView>(true);
             hudController.BindView(hudView);
-            hudController.Render(new StrategyHudRenderData("", "", "", "", TickSpeed.Paused, null));
+            hudController.Render(new StrategyHudRenderData("", "", "", TickSpeed.Paused, null));
             GalaxyMapController mapController = new GalaxyMapController(() => null);
             mapController.Initialize(new TestGalaxyMapActions());
             return new StrategyBriefingController(
@@ -548,7 +548,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         /// <returns>The created game.</returns>
         private static GameRoot CreateGame()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             game.GetFactions().Add(new Faction { InstanceID = _playerFactionID });
             game.GetFactions().Add(new Faction { InstanceID = _opponentFactionID });
             game.Summary.PlayerFactionID = _playerFactionID;

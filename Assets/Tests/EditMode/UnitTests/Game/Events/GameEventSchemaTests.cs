@@ -72,6 +72,24 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
+        public void Validate_EventVariableComparisonTargetVariable_AcceptsDocument()
+        {
+            const string xml =
+                @"
+<GameEvents>
+  <GameEvent>
+    <InstanceID>EVENT</InstanceID>
+    <Schedule><At Tick=""1""/></Schedule>
+    <Conditionals>
+      <EvaluateEventVariable Key=""bounty.roll"" Comparison=""LessThanOrEqual"" CompareToVariable=""bounty.chance""/>
+    </Conditionals>
+  </GameEvent>
+</GameEvents>";
+
+            Assert.DoesNotThrow(() => Validate(xml));
+        }
+
+        [Test]
         public void Validate_TypedBindingsAndBindingComparison_AcceptsDocument()
         {
             const string xml =

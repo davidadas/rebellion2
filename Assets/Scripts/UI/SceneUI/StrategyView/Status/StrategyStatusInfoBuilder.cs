@@ -6,7 +6,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 
 /// <summary>
 /// Projects game entities into status-window domain information.
@@ -17,6 +17,7 @@ internal sealed class StrategyStatusInfoBuilder
     private readonly IReadOnlyList<GalaxyMapSector> sectors;
     private readonly string playerFactionId;
     private readonly Func<string, ISceneNode> findVisibleNode;
+    private readonly Func<string, string> findTypeDisplayName;
     private readonly int currentTick;
 
     /// <summary>
@@ -27,12 +28,14 @@ internal sealed class StrategyStatusInfoBuilder
     /// <param name="playerFactionId">The player faction identifier.</param>
     /// <param name="currentTick">The current game tick.</param>
     /// <param name="jediConfig">The configured Force-rank presentation.</param>
+    /// <param name="findTypeDisplayName">Resolves a class display name from a type identifier.</param>
     public StrategyStatusInfoBuilder(
         IReadOnlyList<GalaxyMapSector> sectors,
         Func<string, ISceneNode> findVisibleNode,
         string playerFactionId,
         int currentTick,
-        GameConfig.JediConfig jediConfig
+        GameConfig.JediConfig jediConfig,
+        Func<string, string> findTypeDisplayName = null
     )
     {
         this.sectors = sectors ?? throw new ArgumentNullException(nameof(sectors));
@@ -41,6 +44,7 @@ internal sealed class StrategyStatusInfoBuilder
         this.playerFactionId = playerFactionId ?? string.Empty;
         this.currentTick = currentTick;
         this.jediConfig = jediConfig;
+        this.findTypeDisplayName = findTypeDisplayName;
     }
 
     /// <summary>
@@ -136,7 +140,7 @@ internal sealed class StrategyStatusInfoBuilder
         if (queue.Count > 0)
         {
             info.Rows.Add(new StrategyStatusRow("Items to Build:", queue.Count.ToString()));
-            int? completionTicks = ManufacturingSystem.EstimateQueueCompletionTicks(
+            int? completionTicks = ManufacturingQueries.EstimateQueueCompletionTicks(
                 target.Planet.Planet,
                 type
             );
@@ -182,11 +186,48 @@ internal sealed class StrategyStatusInfoBuilder
                 string.IsNullOrEmpty(info.OwnerFactionId) ? "Neutral" : "Active"
             )
         );
+        AddHeadquartersEtaRow(info, planet);
+        info.Rows.Add(
+            new StrategyStatusRow("General:", FindPlanetOfficerByRank(planet, OfficerRank.General))
+        );
+        info.Rows.Add(
+            new StrategyStatusRow(
+                "Commander:",
+                FindPlanetOfficerByRank(planet, OfficerRank.Commander)
+            )
+        );
         info.Rows.Add(
             new StrategyStatusRow("Popular Support:", GetPlayerSupport(planet).ToString())
         );
         info.Rows.Add(new StrategyStatusRow("Energy:", planet.GetAvailableEnergy().ToString()));
         return info;
+    }
+
+    /// <summary>
+    /// Appends the arrival day of the player's mobile headquarters when this planet is its active
+    /// movement destination.
+    /// </summary>
+    /// <param name="info">The planet status information receiving the ETA row.</param>
+    /// <param name="planet">The represented destination planet.</param>
+    private void AddHeadquartersEtaRow(StrategyStatusInfo info, Planet planet)
+    {
+        MovementState movement = planet
+            ?.GetChildren<Building>()
+            .FirstOrDefault(building =>
+                building.BuildingType == BuildingType.Headquarters
+                && building.Movement != null
+                && string.Equals(
+                    building.OwnerInstanceID,
+                    playerFactionId,
+                    StringComparison.Ordinal
+                )
+            )
+            ?.Movement;
+        if (movement == null)
+            return;
+
+        long arrivalDay = (long)currentTick + Math.Max(movement.TicksRemaining(), 0);
+        info.Rows.Add(new StrategyStatusRow("Headquarters ETA:", $"Day {arrivalDay}"));
     }
 
     /// <summary>
@@ -569,7 +610,13 @@ internal sealed class StrategyStatusInfoBuilder
             capitalShip.GetDisplayName()
         );
         Fleet fleet = capitalShip.GetParentOfType<Fleet>();
-        info.Rows.Add(new StrategyStatusRow("Class:", capitalShip.GetDisplayName()));
+        string className = findTypeDisplayName?.Invoke(capitalShip.TypeID);
+        info.Rows.Add(
+            new StrategyStatusRow(
+                "Class:",
+                string.IsNullOrWhiteSpace(className) ? capitalShip.GetDisplayName() : className
+            )
+        );
         info.Rows.Add(new StrategyStatusRow("Fleet:", fleet?.GetDisplayName() ?? "None"));
         info.Rows.Add(new StrategyStatusRow("Status:", GetManufacturingStatusText(capitalShip)));
         AddEtaDestinationRow(info, capitalShip);
@@ -869,7 +916,7 @@ internal sealed class StrategyStatusInfoBuilder
             return;
 
         Planet producer = findVisibleNode(manufacturable.ProducerPlanetID) as Planet;
-        int? completionTicks = ManufacturingSystem.EstimateCompletionTicks(
+        int? completionTicks = ManufacturingQueries.EstimateCompletionTicks(
             producer,
             manufacturable
         );
@@ -929,16 +976,13 @@ internal sealed class StrategyStatusInfoBuilder
     /// </summary>
     /// <param name="officer">The officer to inspect.</param>
     /// <returns>The displayed command assignment.</returns>
-    private static string GetOfficerCommandingText(Officer officer)
+    private string GetOfficerCommandingText(Officer officer)
     {
         if (officer.CurrentRank == OfficerRank.None)
-            return "None";
+            return "Not Assigned";
 
-        ISceneNode parent = officer.GetParent();
-        if (parent is CapitalShip ship)
-            return ship.GetParentOfType<Fleet>()?.GetDisplayName() ?? ship.GetDisplayName();
-
-        return parent?.GetDisplayName() ?? "None";
+        ISceneNode commandTarget = OfficerCommandCommands.ResolveCommandTarget(officer);
+        return commandTarget?.GetDisplayName() ?? "Not Assigned";
     }
 
     /// <summary>
@@ -971,6 +1015,23 @@ internal sealed class StrategyStatusInfoBuilder
     private static string FindFleetOfficerByRank(Fleet fleet, OfficerRank rank)
     {
         Officer officer = fleet.GetOfficers().FirstOrDefault(o => o.CurrentRank == rank);
+        return officer?.GetDisplayName() ?? "Not Assigned";
+    }
+
+    /// <summary>
+    /// Finds the displayed name of a planetary officer holding one command rank.
+    /// Officers attached to orbiting fleets belong to that fleet's command instead.
+    /// </summary>
+    /// <param name="planet">The planet to inspect.</param>
+    /// <param name="rank">The command rank to find.</param>
+    /// <returns>The assigned officer name, or a not-assigned label.</returns>
+    private static string FindPlanetOfficerByRank(Planet planet, OfficerRank rank)
+    {
+        Officer officer = planet
+            .GetChildren<Officer>(recursive: true)
+            .FirstOrDefault(candidate =>
+                candidate.GetParentOfType<Fleet>() == null && candidate.CurrentRank == rank
+            );
         return officer?.GetDisplayName() ?? "Not Assigned";
     }
 

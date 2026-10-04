@@ -33,7 +33,7 @@ namespace Rebellion.Generation
             UnitDeploymentSection config = ctx.Config.UnitDeployment;
             Dictionary<string, Planet> planetsByTypeId = BuildPlanetMapByTypeID(ctx.Sectors);
 
-            SeedLowSupportGarrisons(ctx.Sectors, config, ctx.Config.GalaxyClassification, factory);
+            SeedLowSupportGarrisons(ctx.Sectors, config, ctx.Factions, factory);
             DeployFixedGarrisons(
                 config.FixedGarrisons,
                 planetsByTypeId,
@@ -66,20 +66,20 @@ namespace Rebellion.Generation
 
         /// <summary>
         /// Places garrison troops on colonized planets where owner support is below the
-        /// uprising threshold. Troop type comes from the faction's generation setup.
+        /// uprising threshold. Troop type comes from the faction's content definition.
         /// </summary>
         /// <param name="sectors">All planet sectors to scan.</param>
         /// <param name="config">Unit deployment config containing the uprising threshold.</param>
-        /// <param name="classification">Faction setups containing garrison troop types.</param>
+        /// <param name="factions">Faction definitions containing garrison troop types.</param>
         /// <param name="factory">Unit factory for creating troop instances.</param>
         private void SeedLowSupportGarrisons(
             PlanetSector[] sectors,
             UnitDeploymentSection config,
-            GalaxyClassificationSection classification,
+            Faction[] factions,
             UnitFactory factory
         )
         {
-            Dictionary<string, string> garrisonTroopMap = BuildGarrisonTroopMap(classification);
+            Dictionary<string, string> garrisonTroopMap = BuildGarrisonTroopMap(factions);
 
             foreach (PlanetSector sector in sectors)
             {
@@ -95,7 +95,7 @@ namespace Rebellion.Generation
                     if (
                         !garrisonTroopMap.TryGetValue(
                             planet.OwnerInstanceID,
-                            out string troopTypeID
+                            out string troopTypeId
                         )
                     )
                         continue;
@@ -106,7 +106,7 @@ namespace Rebellion.Generation
 
                     for (int i = 0; i < troopsNeeded; i++)
                     {
-                        ISceneNode unit = factory.Create(troopTypeID, planet.OwnerInstanceID);
+                        ISceneNode unit = factory.Create(troopTypeId, planet.OwnerInstanceID);
                         if (unit != null)
                             planet.AddChild(unit);
                     }
@@ -115,19 +115,17 @@ namespace Rebellion.Generation
         }
 
         /// <summary>
-        /// Builds a faction-to-garrison-troop lookup from generation data.
+        /// Builds a faction-to-garrison-troop lookup from faction content.
         /// </summary>
-        /// <param name="classification">Faction setups containing garrison troop types.</param>
+        /// <param name="factions">Faction definitions containing garrison troop types.</param>
         /// <returns>Garrison troop TypeIDs keyed by faction ID.</returns>
-        private Dictionary<string, string> BuildGarrisonTroopMap(
-            GalaxyClassificationSection classification
-        )
+        private Dictionary<string, string> BuildGarrisonTroopMap(Faction[] factions)
         {
             Dictionary<string, string> garrisonTroopMap = new Dictionary<string, string>();
-            foreach (FactionSetup setup in classification.FactionSetups)
+            foreach (Faction faction in factions)
             {
-                if (!string.IsNullOrEmpty(setup.GarrisonTroopTypeID))
-                    garrisonTroopMap[setup.FactionID] = setup.GarrisonTroopTypeID;
+                if (!string.IsNullOrEmpty(faction.GarrisonTroopTypeID))
+                    garrisonTroopMap[faction.InstanceID] = faction.GarrisonTroopTypeID;
             }
 
             return garrisonTroopMap;
@@ -213,7 +211,7 @@ namespace Rebellion.Generation
                     continue;
 
                 Faction faction = factions.First(f => f.InstanceID == fleetConfig.FactionID);
-                Fleet fleet = faction.CreateFleet(capitalShips.ToArray(), FleetRoleType.Battle);
+                Fleet fleet = faction.CreateFleet(capitalShips.ToArray());
                 planet.AddChild(fleet);
             }
         }
@@ -359,10 +357,9 @@ namespace Rebellion.Generation
         }
 
         /// <summary>
-        /// Deploys units for each faction using a maintenance-budget loop.
-        /// Budget is calculated from available maintenance capacity, then units are
-        /// rolled from a weighted table and placed on random owned core planets
-        /// until the budget is exhausted.
+        /// Deploys each faction's normal starting allocation before applying conditional bonus
+        /// allocations. Capturing every faction's available capacity first keeps a bonus from
+        /// changing another faction's normal random-roll sequence or budget.
         /// </summary>
         /// <param name="ctx">The generation context.</param>
         /// <param name="factory">Unit factory for creating and costing unit instances.</param>
@@ -373,6 +370,13 @@ namespace Rebellion.Generation
             UnitDeploymentSection config
         )
         {
+            List<(
+                FactionBudget Budget,
+                Faction Faction,
+                List<Planet> Planets,
+                int AvailableCapacity
+            )> allocations = new();
+
             foreach (FactionBudget budget in config.FactionBudgets)
             {
                 Faction faction = ctx.Factions.FirstOrDefault(f =>
@@ -381,29 +385,152 @@ namespace Rebellion.Generation
                 if (faction == null)
                     continue;
 
-                int deployBudget = CalculateDeployBudget(ctx, faction, budget, config);
-                if (deployBudget <= 0)
-                    continue;
-
                 List<Planet> ownedCorePlanets = GetOwnedCorePlanets(ctx.Sectors, faction);
-
                 if (ownedCorePlanets.Count == 0)
                     continue;
 
-                while (deployBudget > 0)
+                int availableCapacity = CalculateAvailableMaintenanceCapacity(ctx, faction);
+                allocations.Add((budget, faction, ownedCorePlanets, availableCapacity));
+            }
+
+            foreach (var allocation in allocations)
+            {
+                DeployBudgetAllocation(
+                    ctx,
+                    allocation.Budget.UnitTable,
+                    allocation.Planets,
+                    allocation.Faction,
+                    factory,
+                    CalculateDeployBudget(
+                        allocation.AvailableCapacity,
+                        allocation.Budget.BudgetLevels,
+                        (int)ctx.Summary.GalaxySize
+                    )
+                );
+            }
+
+            foreach (var allocation in allocations)
+            {
+                foreach (
+                    StartingUnitBudgetBonus bonus in allocation.Budget.Bonuses
+                        ?? Enumerable.Empty<StartingUnitBudgetBonus>()
+                )
                 {
-                    bool deployed = TryDeployBudgetRoll(
+                    if (!IsBudgetBonusApplicable(ctx, allocation.Faction, bonus))
+                        continue;
+
+                    DeployBudgetAllocation(
                         ctx,
-                        budget.UnitTable,
-                        ownedCorePlanets,
-                        faction,
+                        FilterUnitTable(allocation.Budget.UnitTable, bonus.Category, factory),
+                        allocation.Planets,
+                        allocation.Faction,
                         factory,
-                        ref deployBudget
+                        CalculateDeployBudget(
+                            allocation.AvailableCapacity,
+                            bonus.BudgetLevels,
+                            (int)ctx.Summary.GalaxySize
+                        )
                     );
-                    if (!deployed)
-                        break;
                 }
             }
+        }
+
+        /// <summary>
+        /// Selects entries made entirely from the category funded by an additional budget.
+        /// </summary>
+        /// <param name="unitTable">The faction's normal weighted unit table.</param>
+        /// <param name="category">The category eligible for the additional budget.</param>
+        /// <param name="factory">The unit factory used to identify authored unit types.</param>
+        /// <returns>Eligible entries retaining their normal configured weights.</returns>
+        private List<WeightedUnitEntry> FilterUnitTable(
+            List<WeightedUnitEntry> unitTable,
+            StartingUnitBudgetCategory category,
+            UnitFactory factory
+        )
+        {
+            return unitTable
+                .Where(entry =>
+                    entry.Units?.Count > 0
+                    && entry.Units.All(unit => IsUnitInCategory(unit.TypeID, category, factory))
+                )
+                .ToList();
+        }
+
+        /// <summary>
+        /// Determines whether a unit definition belongs to a starting-budget category.
+        /// </summary>
+        /// <param name="typeID">The unit type identifier.</param>
+        /// <param name="category">The configured category.</param>
+        /// <param name="factory">The unit factory containing the authored definitions.</param>
+        /// <returns>True when the unit belongs to the category.</returns>
+        private bool IsUnitInCategory(
+            string typeID,
+            StartingUnitBudgetCategory category,
+            UnitFactory factory
+        )
+        {
+            return category switch
+            {
+                StartingUnitBudgetCategory.Starfighter => factory.IsType<Starfighter>(typeID),
+                StartingUnitBudgetCategory.Regiment => factory.IsType<Regiment>(typeID),
+                _ => false,
+            };
+        }
+
+        /// <summary>
+        /// Deploys one configured allocation until its maintenance budget is exhausted.
+        /// </summary>
+        /// <param name="ctx">The generation context.</param>
+        /// <param name="unitTable">Weighted unit bundles eligible for this allocation.</param>
+        /// <param name="ownedCorePlanets">Owned core planets eligible to receive units.</param>
+        /// <param name="faction">The faction receiving the units.</param>
+        /// <param name="factory">Unit factory for creating and costing units.</param>
+        /// <param name="deployBudget">Maintenance budget assigned to this allocation.</param>
+        private void DeployBudgetAllocation(
+            GenerationContext ctx,
+            List<WeightedUnitEntry> unitTable,
+            List<Planet> ownedCorePlanets,
+            Faction faction,
+            UnitFactory factory,
+            int deployBudget
+        )
+        {
+            while (deployBudget > 0)
+            {
+                bool deployed = TryDeployBudgetRoll(
+                    ctx,
+                    unitTable,
+                    ownedCorePlanets,
+                    faction,
+                    factory,
+                    ref deployBudget
+                );
+                if (!deployed)
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Determines whether an additional starting-unit allocation applies to a faction.
+        /// </summary>
+        /// <param name="ctx">The generation context.</param>
+        /// <param name="faction">The candidate faction.</param>
+        /// <param name="bonus">The configured allocation.</param>
+        /// <returns>True when the difficulty and controller role match.</returns>
+        private bool IsBudgetBonusApplicable(
+            GenerationContext ctx,
+            Faction faction,
+            StartingUnitBudgetBonus bonus
+        )
+        {
+            if (bonus.Difficulty != ctx.Summary.Difficulty)
+                return false;
+
+            if (!bonus.AIOnly)
+                return true;
+
+            return !string.IsNullOrEmpty(ctx.Summary.PlayerFactionID)
+                && faction.InstanceID != ctx.Summary.PlayerFactionID;
         }
 
         /// <summary>
@@ -457,17 +584,20 @@ namespace Rebellion.Generation
             if (unitTable == null || unitTable.Count == 0)
                 return null;
 
-            int roll = rng.NextInt(1, 101);
-            WeightedUnitEntry selected = unitTable[0];
+            int totalWeight = unitTable.Sum(entry => entry.Weight);
+            if (totalWeight <= 0)
+                return null;
+
+            int roll = rng.NextInt(0, totalWeight);
             foreach (WeightedUnitEntry entry in unitTable)
             {
-                if (roll < entry.CumulativeWeight)
-                    return selected.Units;
+                if (roll < entry.Weight)
+                    return entry.Units;
 
-                selected = entry;
+                roll -= entry.Weight;
             }
 
-            return selected.Units;
+            return null;
         }
 
         /// <summary>
@@ -511,77 +641,45 @@ namespace Rebellion.Generation
         }
 
         /// <summary>
-        /// Calculates the deployment budget for a faction based on available maintenance
-        /// capacity. Selects the appropriate budget level from config using galaxy size,
-        /// difficulty, and whether the faction is AI-controlled.
+        /// Calculates the maintenance capacity available for starting-unit allocations.
         /// </summary>
         /// <param name="ctx">The generation context.</param>
-        /// <param name="faction">The faction to calculate budget for.</param>
-        /// <param name="budget">The faction's budget config with level entries.</param>
-        /// <param name="config">Unit deployment config.</param>
-        /// <returns>The deployment budget in maintenance cost units.</returns>
-        private int CalculateDeployBudget(
-            GenerationContext ctx,
-            Faction faction,
-            FactionBudget budget,
-            UnitDeploymentSection config
-        )
+        /// <param name="faction">The faction whose available capacity is calculated.</param>
+        /// <returns>Maintenance capacity remaining after fixed starting units.</returns>
+        private int CalculateAvailableMaintenanceCapacity(GenerationContext ctx, Faction faction)
         {
-            bool isAI =
-                ctx.Summary.PlayerFactionID != null
-                && faction.InstanceID != ctx.Summary.PlayerFactionID;
-            int effectiveDifficulty = ResolveBudgetDifficulty(config, (int)ctx.Summary.Difficulty);
-            BudgetLevel level = ResolveBudgetLevel(
-                budget,
-                (int)ctx.Summary.GalaxySize,
-                effectiveDifficulty,
-                isAI
-            );
             int maintenanceCapacity = CalculateMaintenanceCapacity(ctx.Sectors, faction);
             int maintenanceUsed = CalculateDeployedMaintenanceCost(ctx.Sectors, faction.InstanceID);
-            int availableCapacity = Math.Max(0, maintenanceCapacity - maintenanceUsed);
-
-            return availableCapacity * level.Percentage / 100;
+            return Math.Max(0, maintenanceCapacity - maintenanceUsed);
         }
 
         /// <summary>
-        /// Resolves the budget difficulty used by unit deployment.
+        /// Calculates one starting-unit allocation from available maintenance capacity.
         /// </summary>
-        /// <param name="config">Unit deployment config.</param>
-        /// <param name="difficulty">Requested game difficulty.</param>
-        /// <returns>The mapped budget difficulty.</returns>
-        private int ResolveBudgetDifficulty(UnitDeploymentSection config, int difficulty)
+        /// <param name="availableCapacity">Maintenance capacity available after fixed units.</param>
+        /// <param name="budgetLevels">Configured percentages by galaxy size.</param>
+        /// <param name="galaxySize">Galaxy size index.</param>
+        /// <returns>The allocation in maintenance cost units.</returns>
+        private int CalculateDeployBudget(
+            int availableCapacity,
+            List<BudgetLevel> budgetLevels,
+            int galaxySize
+        )
         {
-            BudgetDifficultyMapping mapping = config.BudgetDifficultyMappings?.FirstOrDefault(m =>
-                m.Difficulty == difficulty
-            );
-
-            return mapping?.BudgetDifficulty ?? difficulty;
+            BudgetLevel level = ResolveBudgetLevel(budgetLevels, galaxySize);
+            return availableCapacity * level.Percentage / 100;
         }
 
         /// <summary>
         /// Resolves the budget level that best matches the generation parameters.
         /// </summary>
-        /// <param name="budget">The faction budget configuration.</param>
+        /// <param name="budgetLevels">Configured percentages by galaxy size.</param>
         /// <param name="galaxySize">Galaxy size index.</param>
-        /// <param name="difficulty">Difficulty index.</param>
-        /// <param name="isAI">Whether the faction is AI-controlled.</param>
         /// <returns>The selected budget level.</returns>
-        private BudgetLevel ResolveBudgetLevel(
-            FactionBudget budget,
-            int galaxySize,
-            int difficulty,
-            bool isAI
-        )
+        private BudgetLevel ResolveBudgetLevel(List<BudgetLevel> budgetLevels, int galaxySize)
         {
-            return budget.BudgetLevels.FirstOrDefault(b =>
-                    b.GalaxySize == galaxySize && b.Difficulty == difficulty && b.IsAI == isAI
-                )
-                ?? budget.BudgetLevels.FirstOrDefault(b =>
-                    b.GalaxySize == galaxySize && b.Difficulty == -1
-                )
-                ?? budget.BudgetLevels.FirstOrDefault(b => b.GalaxySize == galaxySize)
-                ?? budget.BudgetLevels[0];
+            return budgetLevels.FirstOrDefault(level => level.GalaxySize == galaxySize)
+                ?? budgetLevels[0];
         }
 
         /// <summary>
@@ -701,7 +799,7 @@ namespace Rebellion.Generation
                 return;
             }
 
-            Fleet newFleet = faction.CreateFleet(capitalShips.ToArray(), FleetRoleType.Battle);
+            Fleet newFleet = faction.CreateFleet(capitalShips.ToArray());
             planet.AddChild(newFleet);
         }
 

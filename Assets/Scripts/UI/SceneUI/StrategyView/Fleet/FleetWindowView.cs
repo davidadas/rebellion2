@@ -253,9 +253,13 @@ public sealed class FleetWindowView : MonoBehaviour, IPointerClickHandler, IDrop
     /// </summary>
     /// <param name="selectedIndexes">The selected detail-card indexes.</param>
     /// <param name="selectionTexture">The selected-card frame.</param>
+    /// <param name="selectedNameColor">The selected-card name color.</param>
+    /// <param name="unselectedNameColor">The unselected-card name color.</param>
     internal void RenderDetailSelection(
         IReadOnlyCollection<int> selectedIndexes,
-        Texture selectionTexture
+        Texture selectionTexture,
+        Color32 selectedNameColor,
+        Color32 unselectedNameColor
     )
     {
         if (selectedIndexes == null)
@@ -265,9 +269,13 @@ public sealed class FleetWindowView : MonoBehaviour, IPointerClickHandler, IDrop
         {
             StrategyUnitCardView item = detailItemViews[i];
             if (item.gameObject.activeInHierarchy)
+            {
+                bool selected = selectedIndexes.Contains(item.Index);
                 item.RenderSelection(
-                    selectedIndexes.Contains(item.Index) ? selectionTexture : null
+                    selected ? selectionTexture : null,
+                    selected ? selectedNameColor : unselectedNameColor
                 );
+            }
         }
     }
 

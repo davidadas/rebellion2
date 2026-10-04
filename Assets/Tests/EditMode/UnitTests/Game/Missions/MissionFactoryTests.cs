@@ -729,7 +729,7 @@ namespace Rebellion.Tests.Game.Missions
         private (GameRoot game, Planet planet, Officer officer, MissionFactory factory) BuildScene()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
 
             Faction empire = new Faction { InstanceID = "empire" };
             game.GetFactions().Add(empire);

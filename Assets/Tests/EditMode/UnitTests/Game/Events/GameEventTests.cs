@@ -10,28 +10,6 @@ namespace Rebellion.Tests.Game.Events
     public sealed class GameEventTests
     {
         [Test]
-        public void CanActivate_MaximumActivationsReached_ReturnsFalse()
-        {
-            GameEvent gameEvent = new GameEvent { MaximumActivations = 3 };
-            GameEventState state = new GameEventState { ActivationCount = 3 };
-
-            bool result = gameEvent.CanActivate(state);
-
-            Assert.IsFalse(result);
-        }
-
-        [Test]
-        public void CanActivate_UnlimitedEvent_ReturnsTrue()
-        {
-            GameEvent gameEvent = new GameEvent();
-            GameEventState state = new GameEventState { ActivationCount = 100 };
-
-            bool result = gameEvent.CanActivate(state);
-
-            Assert.IsTrue(result);
-        }
-
-        [Test]
         public void Conditionals_AuthoredAliases_RoundTripConcreteTypes()
         {
             GameEvent gameEvent = new GameEvent
@@ -78,6 +56,33 @@ namespace Rebellion.Tests.Game.Events
             IsActiveConditional conditional = restored.Conditionals.Single() as IsActiveConditional;
             Assert.IsNotNull(conditional);
             Assert.AreEqual("DARTH_VADER", conditional.NodeInstanceID);
+        }
+
+        [Test]
+        public void EvaluateEventVariable_CompareToVariable_RoundTripsAttribute()
+        {
+            GameEvent gameEvent = new GameEvent
+            {
+                Conditionals = new List<GameConditional>
+                {
+                    new EvaluateEventVariableConditional
+                    {
+                        Key = "bounty.roll",
+                        Comparison = ComparisonOperator.LessThanOrEqual,
+                        CompareToVariable = "bounty.chance",
+                    },
+                },
+            };
+
+            string xml = SerializationHelper.Serialize(gameEvent);
+            GameEvent restored = SerializationHelper.Deserialize<GameEvent>(xml);
+
+            StringAssert.Contains("CompareToVariable=\"bounty.chance\"", xml);
+            EvaluateEventVariableConditional conditional =
+                restored.Conditionals.Single() as EvaluateEventVariableConditional;
+            Assert.IsNotNull(conditional);
+            Assert.AreEqual("bounty.chance", conditional.CompareToVariable);
+            Assert.IsFalse(conditional.CompareTo.HasValue);
         }
 
         [Test]

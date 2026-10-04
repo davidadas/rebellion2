@@ -9,7 +9,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -31,7 +31,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         private int _dirtyCount;
         private int _selectionRouteRenderCount;
         private GameRoot _game;
-        private GameManager _gameManager;
+        private GameSession _session;
         private GameFleet _fleet;
         private Officer _officer;
         private GalaxyMapPlanet _planet;
@@ -60,7 +60,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             _fleet = CreateFleet("fleet", "First Fleet", out _officer);
             _planet.Planet.AddChild(_fleet);
             AttachFleetGraph(_planet.Planet, _fleet);
-            _gameManager = TestContent.CreateGameManager(_game);
+            _session = TestContent.CreateGameSession(_game);
             _rootObject = UIComponentTestHelper.InstantiatePrefab(_strategyViewPrefabPath);
             _windowLayer = _rootObject.GetComponentInChildren<StrategyWindowLayerView>(true);
             _windowManager = _rootObject.GetComponentInChildren<UIWindowManager>(true);
@@ -281,7 +281,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         [Test]
-        public void DetailItemDrop_ActiveTargeting_SelectsCurrentFleet()
+        public void DetailItemDrop_ActiveTargeting_SelectsDroppedItem()
         {
             FleetWindowView view = OpenWindow(out UIWindow window);
             UIComponentTestHelper.InvokeLifecycle(view, "Awake");
@@ -297,9 +297,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsFalse(_targetingController.IsTargeting);
             Assert.IsInstanceOf<StrategyMissionTarget>(receiver.Target);
             StrategyMissionTarget target = (StrategyMissionTarget)receiver.Target;
+            CapitalShip ship = _fleet.GetChildren<CapitalShip>().Single();
             Assert.AreSame(_planet, target.Planet);
-            Assert.AreSame(_fleet, target.Item);
-            Assert.AreSame(_fleet, target.GetMoveDestination());
+            Assert.AreSame(ship, target.Item);
+            Assert.AreSame(ship, target.GetMoveDestination());
         }
 
         [Test]
@@ -361,6 +362,16 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             GameFleet secondFleet = CreateFleet("second-fleet", "Second Fleet", out _);
             _planet.Planet.AddChild(secondFleet);
             AttachFleetGraph(_planet.Planet, secondFleet);
+            int completedDragCount = 0;
+            _controller.Initialize(
+                _actions,
+                _actions,
+                _actions,
+                _actions,
+                (_, _) => { },
+                _ => { },
+                _ => completedDragCount++
+            );
             FleetWindowView view = OpenWindow(out UIWindow window);
             UIComponentTestHelper.InvokeLifecycle(view, "Awake");
             _controller.RenderWindow(view, window, true);
@@ -387,6 +398,79 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreEqual(1, _controller.GetSelectedFleetIndex(view));
             Assert.AreEqual(1, _dirtyCount);
             Assert.AreEqual(1, _selectionRouteRenderCount);
+            Assert.AreEqual(1, completedDragCount);
+        }
+
+        [Test]
+        public void DetailItemRelease_ActiveTargeting_SelectsExactItemAndCompletesDrag()
+        {
+            int completedDragCount = 0;
+            _controller.Initialize(
+                _actions,
+                _actions,
+                _actions,
+                _actions,
+                (_, _) => { },
+                _ => { },
+                _ => completedDragCount++
+            );
+            FleetWindowView view = OpenWindow(out UIWindow window);
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            _controller.RenderWindow(view, window, true);
+            CapitalShip ship = _fleet.GetChildren<CapitalShip>().Single();
+            StrategyUnitCardView card = view.GetComponentsInChildren<StrategyUnitCardView>(true)
+                .Single(item => item.gameObject.activeInHierarchy);
+            UIComponentTestHelper.InvokeLifecycle(card, "Awake");
+            RecordingTargetingReceiver receiver = new RecordingTargetingReceiver();
+            _targetingController.Begin(new TargetingRequest("Target", null, receiver));
+            PointerEventData eventData = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Left,
+            };
+
+            card.GetComponent<UIPointerGestureRelay>().OnPointerClick(eventData);
+
+            Assert.AreEqual(1, completedDragCount);
+            Assert.IsFalse(_targetingController.IsTargeting);
+            Assert.IsInstanceOf<StrategyMissionTarget>(receiver.Target);
+            Assert.AreSame(ship, ((StrategyMissionTarget)receiver.Target).Item);
+        }
+
+        [Test]
+        public void FleetRowRelease_RepeatingTargeting_SelectsFleetOnceAndCompletesDrag()
+        {
+            int completedDragCount = 0;
+            _controller.Initialize(
+                _actions,
+                _actions,
+                _actions,
+                _actions,
+                (_, _) => { },
+                _ => { },
+                _ => completedDragCount++
+            );
+            FleetWindowView view = OpenWindow(out UIWindow window);
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            _controller.RenderWindow(view, window, true);
+            FleetListRowView row = view.GetComponentsInChildren<FleetListRowView>(true)
+                .Single(item => item.gameObject.activeInHierarchy);
+            UIComponentTestHelper.InvokeLifecycle(row, "Awake");
+            RecordingTargetingReceiver receiver = new RecordingTargetingReceiver();
+            _targetingController.Begin(
+                new TargetingRequest("Target", null, receiver, remainsActiveAfterSelection: true)
+            );
+            PointerEventData eventData = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Left,
+            };
+
+            row.GetComponent<UIPointerGestureRelay>().OnPointerClick(eventData);
+
+            Assert.AreEqual(1, completedDragCount);
+            Assert.IsTrue(_targetingController.IsTargeting);
+            Assert.AreEqual(1, receiver.SelectedCount);
+            Assert.IsInstanceOf<StrategyMissionTarget>(receiver.Target);
+            Assert.AreSame(_fleet, ((StrategyMissionTarget)receiver.Target).Item);
         }
 
         [Test]
@@ -542,6 +626,54 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         [Test]
+        public void OnContextMenuCommandSelected_OfficerRank_RoutesAppointmentAndRefreshes()
+        {
+            _officer.AllowedRanks = new[] { OfficerRank.Admiral };
+            _actions.OfficerCommandResult = true;
+            FleetWindowView view = OpenWindow(out UIWindow window);
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            Assert.IsTrue(_controller.SelectTarget(view, _officer));
+            _controller.RenderWindow(view, window, true);
+            StrategyUnitCardView card = view.GetComponentsInChildren<StrategyUnitCardView>(true)
+                .Single(item => item.gameObject.activeInHierarchy);
+            PointerEventData eventData = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Right,
+                pointerCurrentRaycast = new RaycastResult
+                {
+                    gameObject = card.NameTextField.gameObject,
+                },
+                pointerPressRaycast = new RaycastResult
+                {
+                    gameObject = card.NameTextField.gameObject,
+                },
+            };
+            StrategyContextMenuProviderContext context = new StrategyContextMenuProviderContext(
+                window,
+                new StrategyContextMenuLayout(1, 177, 188, 4, 5, 6, 7),
+                eventData,
+                10,
+                20
+            );
+            _controller.TryCreateContextMenu(context, out ContextMenuRequest request, out _);
+            StrategyMenuCommand parent = request
+                .Commands.Cast<StrategyMenuCommand>()
+                .Single(item => item.Action == StrategyMenuAction.Command);
+            StrategyMenuCommand command = parent.SubmenuCommands.Single(item =>
+                item.Action == StrategyMenuAction.CommandAdmiral
+            );
+            ContextMenuController contextMenuController = new ContextMenuController();
+            contextMenuController.Open(request);
+
+            bool selected = contextMenuController.TrySelectCommand(command);
+
+            Assert.IsTrue(selected);
+            Assert.AreEqual(1, _actions.OfficerCommandCount);
+            Assert.AreEqual(OfficerRank.Admiral, _actions.LastOfficerRank);
+            Assert.AreEqual(1, _actions.RefreshCount);
+        }
+
+        [Test]
         public void ViewDestroyed_InitializedSession_ReleasesPlanetAssociation()
         {
             FleetWindowView view = OpenWindow(out UIWindow _);
@@ -575,12 +707,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         /// <returns>The created fleet command controller.</returns>
         private StrategyFleetCommandController CreateFleetCommandController()
         {
-            return new StrategyFleetCommandController(
-                () => _gameManager.GetGame(),
-                () => _gameManager.FleetSystem,
-                () => _gameManager.BombardmentSystem,
-                () => _gameManager.PlanetaryAssaultSystem
-            );
+            return new StrategyFleetCommandController(_session);
         }
 
         /// <summary>
@@ -589,7 +716,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         /// <returns>The created game.</returns>
         private GameRoot CreateGame()
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             game.GetFactions().Add(new Faction { InstanceID = _playerFactionId });
             game.GetFactions().Add(new Faction { InstanceID = _opposingFactionId });
             game.Summary.PlayerFactionID = _playerFactionId;
@@ -705,6 +832,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
 
         private sealed class RecordingTargetingReceiver : ITargetingReceiver
         {
+            public int SelectedCount { get; private set; }
+
             public object Target { get; private set; }
 
             /// <summary>
@@ -714,6 +843,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             /// <param name="target">The target.</param>
             public void OnTargetSelected(TargetingRequest request, object target)
             {
+                SelectedCount++;
                 Target = target;
             }
 
@@ -731,6 +861,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 IStrategyConfirmationActions
         {
             public GameResult LastBattleResult { get; private set; }
+
+            public OfficerRank LastOfficerRank { get; private set; }
+
+            public int OfficerCommandCount { get; private set; }
+
+            public bool OfficerCommandResult { get; set; }
 
             public int RefreshCount { get; private set; }
 
@@ -764,6 +900,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             public void ExecuteTargetedCommand(
                 StrategyWindowTargetingSource source,
                 StrategyMissionTarget target
+            ) { }
+
+            /// <summary>
+            /// Executes an item drop.
+            /// </summary>
+            /// <param name="sourceWindow">The source window.</param>
+            /// <param name="target">The exact drop target.</param>
+            /// <param name="items">The dragged items.</param>
+            public void ExecuteItemDrop(
+                UIWindow sourceWindow,
+                StrategyMissionTarget target,
+                IReadOnlyList<ISceneNode> items
             ) { }
 
             /// <summary>
@@ -827,6 +975,19 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             public void RefreshFleetState()
             {
                 RefreshCount++;
+            }
+
+            /// <summary>
+            /// Attempts to assign the selected officer to a command post.
+            /// </summary>
+            /// <param name="items">The selected items.</param>
+            /// <param name="rank">The requested command rank.</param>
+            /// <returns>True when the appointment changed.</returns>
+            public bool TrySetOfficerCommand(IReadOnlyList<ISceneNode> items, OfficerRank rank)
+            {
+                OfficerCommandCount++;
+                LastOfficerRank = rank;
+                return OfficerCommandResult;
             }
 
             /// <summary>

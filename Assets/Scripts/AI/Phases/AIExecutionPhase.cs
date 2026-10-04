@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using Rebellion.AI.Director;
 using Rebellion.AI.Proposals;
 
 namespace Rebellion.AI.Phases
@@ -32,7 +31,7 @@ namespace Rebellion.AI.Phases
             {
                 if (proposal?.CanExecute(context) == true)
                     proposal.Execute(context);
-                yield return null;
+                yield return proposal;
             }
         }
     }

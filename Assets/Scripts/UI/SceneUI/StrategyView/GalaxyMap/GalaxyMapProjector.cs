@@ -52,7 +52,10 @@ public sealed class GalaxyMapProjector
         UIContext context = GetRequiredContext();
         hoveredSectorInstanceId = briefing?.TargetSectorInstanceID ?? hoveredSectorInstanceId;
         FactionTheme playerTheme = context.GetPlayerFactionTheme();
-        GalacticInformationFilterTheme filter = ResolveFilter(playerTheme, filterMode);
+        GalacticInformationFilterTheme filter = GalacticInformationMarkerProjector.ResolveFilter(
+            playerTheme,
+            filterMode
+        );
         List<GalaxyMapClusterRenderData> clusters = ProjectClusters(
             sectors,
             playerFactionId,
@@ -230,13 +233,7 @@ public sealed class GalaxyMapProjector
     /// <returns>The best configured marker path for the requested intensity.</returns>
     internal static string GetPlanetIconPath(PlanetIcons icons, int markerIndex)
     {
-        return markerIndex switch
-        {
-            0 => icons?.Small,
-            1 => icons?.Medium ?? icons?.Small,
-            2 => icons?.Large ?? icons?.Medium ?? icons?.Small,
-            _ => icons?.XL ?? icons?.Large ?? icons?.Medium ?? icons?.Small,
-        };
+        return GalacticInformationMarkerProjector.GetPlanetIconPath(icons, markerIndex);
     }
 
     /// <summary>
@@ -519,22 +516,6 @@ public sealed class GalaxyMapProjector
     }
 
     /// <summary>
-    /// Resolves the active filter configuration for the current display mode.
-    /// </summary>
-    /// <param name="playerTheme">The current player faction theme.</param>
-    /// <param name="filterMode">The requested galactic-information filter.</param>
-    /// <returns>The configured filter, or null when the display is off.</returns>
-    private static GalacticInformationFilterTheme ResolveFilter(
-        FactionTheme playerTheme,
-        GalacticInformationFilterMode filterMode
-    )
-    {
-        return filterMode == GalacticInformationFilterMode.DisplayOff
-            ? null
-            : playerTheme?.GalacticInformationDisplay?.GetFilter(filterMode);
-    }
-
-    /// <summary>
     /// Resolves the marker texture for one visible planet and evaluated filter result.
     /// </summary>
     /// <param name="context">The current strategy UI context.</param>
@@ -549,24 +530,12 @@ public sealed class GalaxyMapProjector
         bool highlightUnexplored
     )
     {
-        if (planet.IsUnexploredView && !highlightUnexplored)
-        {
-            return context.GetTexture(
-                context.GetPlayerFactionTheme()?.GalaxyBackground?.UnexploredPlanetIconPath
-            );
-        }
-
-        if (marker.Mixed)
-        {
-            return context.GetTexture(
-                context.GetPlayerFactionTheme()?.GalaxyBackground?.PlanetIcons?.Mixed
-            );
-        }
-
-        PlanetIcons icons = context
-            .GetTheme(marker.FactionInstanceId)
-            ?.GalaxyBackground?.PlanetIcons;
-        return context.GetTexture(GetPlanetIconPath(icons, marker.Index));
+        return GalacticInformationMarkerProjector.ResolveTexture(
+            context,
+            planet,
+            marker,
+            highlightUnexplored
+        );
     }
 
     /// <summary>
@@ -577,18 +546,44 @@ public sealed class GalaxyMapProjector
     /// <returns>The resolved overlay texture, or null when no overlay is visible.</returns>
     private static Texture2D ResolveHeadquartersTexture(UIContext context, Planet planet)
     {
-        if (
-            planet.IsUnexploredView
-            || !planet.IsHeadquarters
-            || string.IsNullOrEmpty(planet.OwnerInstanceID)
-        )
+        string factionInstanceId = ResolveHeadquartersFactionId(context, planet);
+        if (string.IsNullOrEmpty(factionInstanceId))
             return null;
 
         return context.GetTexture(
-            context
-                .GetTheme(planet.OwnerInstanceID)
-                ?.PlanetOverlayTheme?.GalaxyHeadquartersImagePath
+            context.GetTheme(factionInstanceId)?.PlanetOverlayTheme?.GalaxyHeadquartersImagePath
         );
+    }
+
+    /// <summary>
+    /// Resolves the headquarters faction represented by a planet, including the player's mobile
+    /// headquarters immediately after it is reparented to its destination for transit.
+    /// </summary>
+    /// <param name="context">The active UI context.</param>
+    /// <param name="planet">The projected planet.</param>
+    /// <returns>The represented headquarters faction identifier, or null when none exists.</returns>
+    private static string ResolveHeadquartersFactionId(UIContext context, Planet planet)
+    {
+        if (context?.Game == null || planet?.IsUnexploredView != false)
+            return null;
+        if (planet.IsHeadquarters && !string.IsNullOrEmpty(planet.OwnerInstanceID))
+            return planet.OwnerInstanceID;
+
+        string playerFactionId = context.GetPlayerFactionInstanceID();
+        Planet livePlanet = context.Game.GetSceneNodeByInstanceID<Planet>(planet.InstanceID);
+        bool receivesMovingHeadquarters =
+            livePlanet
+                ?.GetChildren<Building>()
+                .Any(building =>
+                    building.BuildingType == BuildingType.Headquarters
+                    && building.Movement != null
+                    && string.Equals(
+                        building.OwnerInstanceID,
+                        playerFactionId,
+                        StringComparison.Ordinal
+                    )
+                ) == true;
+        return receivesMovingHeadquarters ? playerFactionId : null;
     }
 
     /// <summary>

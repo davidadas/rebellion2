@@ -61,10 +61,32 @@ namespace Rebellion.Tests.Game
 
             // Initialize the _game.
             GameConfig config = new GameConfig();
-            _game = new GameRoot(_summary, config);
+            _game = TestGame.Create(_summary, config);
             _game.GetFactions().Add(_faction1);
             _game.GetFactions().Add(_faction2);
             _game.SetFactionController(_faction1.InstanceID, "PLAYER1", PlayerControllerType.Human);
+        }
+
+        [Test]
+        public void AttachNode_DifferentOwner_ThrowsException()
+        {
+            _game.AttachNode(_planetSector, _game.Galaxy);
+            _planet.EnergyCapacity = 10;
+            _game.AttachNode(_planet, _planetSector);
+
+            // Scene graph must reject a building whose owner doesn't match the planet's owner.
+            Building rebelBuilding = new Building
+            {
+                InstanceID = "REBEL_BUILDING",
+                OwnerInstanceID = "REBELS",
+                BuildingType = BuildingType.Mine,
+                ManufacturingFactionInstanceIDs = new List<string> { "REBELS" },
+            };
+
+            Assert.Throws<SceneAccessException>(
+                () => _game.AttachNode(rebelBuilding, _planet),
+                "Attaching a building to a planet owned by a different faction must throw SceneAccessException"
+            );
         }
 
         [Test]
@@ -80,9 +102,80 @@ namespace Rebellion.Tests.Game
         {
             GameConfig config = new GameConfig();
 
-            GameRoot game = new GameRoot(config);
+            GameRoot game = TestGame.Create(config);
 
             Assert.AreSame(config, game.Config);
+        }
+
+        [Test]
+        public void GetDifficultyModifier_AIControlledFaction_ReturnsSelectedDifficultyModifier()
+        {
+            DifficultyModifiers expected = new DifficultyModifiers
+            {
+                MissionSuccessChancePoints = 15,
+            };
+            _game.Config.DifficultyModifiers[GameDifficulty.Medium] = expected;
+
+            DifficultyModifiers actual = _game.GetDifficultyModifier(_faction2);
+
+            Assert.AreSame(expected, actual);
+        }
+
+        [Test]
+        public void GetDifficultyModifier_PlayerControlledFaction_ReturnsNeutralModifier()
+        {
+            _game.SetFactionController(_faction1.InstanceID, "PLAYER1", PlayerControllerType.Human);
+            _game.Config.DifficultyModifiers[GameDifficulty.Medium] = new DifficultyModifiers
+            {
+                MissionSuccessChancePoints = 15,
+            };
+
+            DifficultyModifiers actual = _game.GetDifficultyModifier(_faction1);
+
+            Assert.AreEqual(0, actual.MissionSuccessChancePoints);
+            Assert.AreEqual(0, actual.MissionExecutionSpeedIncreasePercent);
+            Assert.AreEqual(100, actual.MaintenanceCapacityPercent);
+            Assert.AreEqual(100, actual.ManufacturingSpeedPercent);
+        }
+
+        [Test]
+        public void GetDifficultyModifier_AutomatedPlayerFaction_ReturnsSelectedDifficultyModifier()
+        {
+            _game.SetFactionController(_faction1.InstanceID, "PLAYER1", PlayerControllerType.AI);
+            DifficultyModifiers expected = new DifficultyModifiers
+            {
+                MissionSuccessChancePoints = 15,
+            };
+            _game.Config.DifficultyModifiers[GameDifficulty.Medium] = expected;
+
+            DifficultyModifiers actual = _game.GetDifficultyModifier(_faction1);
+
+            Assert.AreSame(expected, actual);
+        }
+
+        [Test]
+        public void GetDifficultyModifier_MissingDifficulty_ReturnsNeutralModifier()
+        {
+            DifficultyModifiers actual = _game.GetDifficultyModifier(_faction2);
+
+            Assert.AreEqual(0, actual.MissionSuccessChancePoints);
+            Assert.AreEqual(0, actual.MissionExecutionSpeedIncreasePercent);
+            Assert.AreEqual(100, actual.MaintenanceCapacityPercent);
+            Assert.AreEqual(100, actual.ManufacturingSpeedPercent);
+        }
+
+        [Test]
+        public void Serialize_RuntimeDifficultyModifiers_DoesNotPersistConfiguration()
+        {
+            _game.Config.DifficultyModifiers[GameDifficulty.Medium] = new DifficultyModifiers
+            {
+                MissionSuccessChancePoints = 15,
+            };
+
+            string xml = SerializationHelper.Serialize(_game);
+
+            StringAssert.DoesNotContain("DifficultyModifiers", xml);
+            StringAssert.DoesNotContain("MissionSuccessChancePoints", xml);
         }
 
         [Test]
@@ -611,7 +704,7 @@ namespace Rebellion.Tests.Game
         [Test]
         public void GetPlayerFaction_NoHumanPlayer_DoesNotUseSummaryFaction()
         {
-            GameRoot game = new GameRoot(
+            GameRoot game = TestGame.Create(
                 new GameSummary { PlayerFactionID = _faction1.InstanceID },
                 TestContent.Data.GameConfig
             );

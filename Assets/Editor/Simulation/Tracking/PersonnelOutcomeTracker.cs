@@ -70,6 +70,10 @@ public static partial class HeadlessSimulationRunner
         public int RemainingAttackerRegimentCount;
         public int InitialDefenderRegimentCount;
         public int RemainingDefenderRegimentCount;
+        public int LandedRegimentCount;
+        public int AttackingCombatValue;
+        public int AttackingCapitalShipCount;
+        public int AttackingStarfighterCount;
         public bool ImmediateUprising;
         public int RequiredGarrisonCount;
         public int GarrisonDeficit;

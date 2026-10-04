@@ -1,13 +1,13 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.AI.Director;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 
 namespace Rebellion.AI.Proposals
 {
     /// <summary>
-    /// Removes production facilities outside a planet's sector allocation.
+    /// Removes an explicitly planned quantity of faction-wide surplus production facilities.
     /// </summary>
     public sealed class AIFacilityRemovalProposal : AIProposal
     {
@@ -19,29 +19,28 @@ namespace Rebellion.AI.Proposals
 
         public BuildingType BuildingType { get; }
 
+        public int MaximumRemovalCount { get; }
+
+        public int MinimumFactionFacilityCount { get; }
+
         /// <summary>
         /// Creates a facility-removal proposal.
         /// </summary>
         /// <param name="planet">The planet whose surplus facilities should be removed.</param>
         /// <param name="buildingType">The production-facility type to evaluate.</param>
-        public AIFacilityRemovalProposal(Planet planet, BuildingType buildingType)
+        /// <param name="maximumRemovalCount">Maximum facilities this proposal may remove.</param>
+        /// <param name="minimumFactionFacilityCount">Minimum faction-wide facilities to preserve.</param>
+        public AIFacilityRemovalProposal(
+            Planet planet,
+            BuildingType buildingType,
+            int maximumRemovalCount,
+            int minimumFactionFacilityCount
+        )
         {
             Planet = planet;
             BuildingType = buildingType;
-        }
-
-        /// <summary>
-        /// Returns the claim that prevents simultaneous construction of this facility type.
-        /// </summary>
-        /// <returns>The facility-allocation claim.</returns>
-        public override IReadOnlyList<string> GetClaimKeys()
-        {
-            return Planet == null
-                ? new List<string>()
-                : new List<string>
-                {
-                    AIClaimKeys.FacilityAllocation(Planet.InstanceID, BuildingType),
-                };
+            MaximumRemovalCount = Math.Max(0, maximumRemovalCount);
+            MinimumFactionFacilityCount = Math.Max(0, minimumFactionFacilityCount);
         }
 
         /// <summary>
@@ -113,7 +112,7 @@ namespace Rebellion.AI.Proposals
         /// <param name="planet">The planet.</param>
         /// <param name="buildingType">The building type.</param>
         /// <returns>The requested surplus.</returns>
-        private static List<Building> GetSurplus(
+        private List<Building> GetSurplus(
             AITurnContext context,
             Planet planet,
             BuildingType buildingType
@@ -122,19 +121,41 @@ namespace Rebellion.AI.Proposals
             if (context?.Assessment == null || planet == null)
                 return new List<Building>();
 
-            int cap = context.FacilityAllocation.GetCap(planet, buildingType);
-            return context
-                .Assessment.GetPlanetBuildings(planet)
+            return GetFacilities(context, planet)
                 .Where(building =>
                     building.GetOwnerInstanceID() == context.Faction.InstanceID
                     && building.GetBuildingType() == buildingType
                 )
-                .OrderByDescending(building => building.GetProcessRate())
+                .OrderBy(building => building.GetProcessRate())
                 .ThenByDescending(building =>
                     building.ManufacturingStatus == ManufacturingStatus.Complete
                 )
                 .ThenBy(building => building.InstanceID)
-                .Skip(cap)
+                .Take(MaximumRemovalCount)
+                .ToList();
+        }
+
+        /// <summary>
+        /// Returns the turn snapshot plus facilities queued after the assessment was built.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="planet">The planet whose facilities are requested.</param>
+        /// <returns>The distinct completed and queued facilities.</returns>
+        internal static IReadOnlyList<Building> GetFacilities(AITurnContext context, Planet planet)
+        {
+            if (context?.Assessment == null || planet == null)
+                return new List<Building>();
+
+            IEnumerable<Building> queued = planet
+                .GetManufacturingQueue()
+                .Values.SelectMany(items => items)
+                .OfType<Building>()
+                .Where(building => building.GetParentOfType<Planet>() == planet);
+            return context
+                .Assessment.GetPlanetBuildings(planet)
+                .Concat(queued)
+                .GroupBy(building => building.InstanceID, StringComparer.Ordinal)
+                .Select(group => group.First())
                 .ToList();
         }
 
@@ -150,7 +171,7 @@ namespace Rebellion.AI.Proposals
                 && context.Manufacturing != null
                 && IsOwnedBy(context, Planet)
                 && context.Game.GetSceneNodeByInstanceID<Planet>(Planet.InstanceID) == Planet
-                && BuildingType is BuildingType.Shipyard or BuildingType.ConstructionFacility;
+                && BuildingType == BuildingType.Shipyard;
         }
     }
 }

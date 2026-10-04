@@ -6,35 +6,23 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
+using Rebellion.Simulation;
+using Rebellion.Util.DependencyInjection;
 
 /// <summary>
 /// Evaluates and starts construction orders against the current game state.
 /// </summary>
 public sealed class ConstructionOrderController
 {
-    private readonly Func<GameRoot> getGame;
-    private readonly Func<ManufacturingSystem> getManufacturingSystem;
-    private readonly Func<MovementSystem> getMovementSystem;
+    private readonly IServiceLocator services;
 
     /// <summary>
     /// Creates a construction order controller.
     /// </summary>
-    /// <param name="getGame">Returns the active game.</param>
-    /// <param name="getManufacturingSystem">Returns the active manufacturing system.</param>
-    /// <param name="getMovementSystem">Returns the active movement system.</param>
-    public ConstructionOrderController(
-        Func<GameRoot> getGame,
-        Func<ManufacturingSystem> getManufacturingSystem,
-        Func<MovementSystem> getMovementSystem
-    )
+    /// <param name="services">Resolves the active game's commands and queries.</param>
+    public ConstructionOrderController(IServiceLocator services)
     {
-        this.getGame = getGame ?? throw new ArgumentNullException(nameof(getGame));
-        this.getManufacturingSystem =
-            getManufacturingSystem
-            ?? throw new ArgumentNullException(nameof(getManufacturingSystem));
-        this.getMovementSystem =
-            getMovementSystem ?? throw new ArgumentNullException(nameof(getMovementSystem));
+        this.services = services ?? throw new ArgumentNullException(nameof(services));
     }
 
     /// <summary>
@@ -89,7 +77,8 @@ public sealed class ConstructionOrderController
         for (int index = 0; index < items.Count; index++)
         {
             if (
-                getManufacturingSystem()
+                services
+                    .GetService<ManufacturingQueries>()
                     .CanStartManufacturing(
                         producer,
                         items[index],
@@ -156,7 +145,8 @@ public sealed class ConstructionOrderController
         string playerFactionId
     )
     {
-        return getManufacturingSystem()
+        return services
+            .GetService<ManufacturingCommands>()
             .StartManufacturing(producer, selected, destination, buildCount, playerFactionId);
     }
 
@@ -195,7 +185,7 @@ public sealed class ConstructionOrderController
         int buildCount
     )
     {
-        return ManufacturingSystem.EstimateManufacturingTicks(producer, selected, buildCount);
+        return ManufacturingQueries.EstimateManufacturingTicks(producer, selected, buildCount);
     }
 
     /// <summary>
@@ -217,7 +207,8 @@ public sealed class ConstructionOrderController
         if (destination is not ContainerNode destinationContainer)
             return null;
 
-        return getMovementSystem()
+        return services
+            .GetService<MovementQueries>()
             .TryEstimateManufacturedTransitTicks(
                 movable,
                 producer,
@@ -255,7 +246,8 @@ public sealed class ConstructionOrderController
     /// <returns>The matching faction, or null.</returns>
     private Faction GetFaction(string factionId)
     {
-        return getGame()
+        return services
+            .GetService<GameRoot>()
             ?.GetFactions()
             .FirstOrDefault(faction =>
                 string.Equals(faction.InstanceID, factionId, StringComparison.Ordinal)

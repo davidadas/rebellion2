@@ -367,6 +367,61 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         }
 
         [Test]
+        public void CompleteItemDrag_ActiveTargeting_ClearsCandidateWithoutCancellingTargeting()
+        {
+            BeginTargeting();
+            _contextItems = new ISceneNode[] { new Officer() };
+            PointerEventData eventData = CreatePointerEvent(_window.gameObject);
+            _controller.StartItemDrag(_window, eventData);
+
+            _controller.CompleteItemDrag(eventData);
+
+            Assert.IsTrue(_targetingController.IsTargeting);
+            Assert.IsFalse(_dragController.TryCancelItemDrag());
+            Assert.AreEqual(0, _receiver.CancelledCount);
+        }
+
+        [Test]
+        public void CompleteItemDrag_ClearedCandidate_AllowsSingleCancelToCloseActiveWindow()
+        {
+            _windowManager.Focus(_window);
+            _contextItems = new ISceneNode[] { new Officer() };
+            PointerEventData eventData = CreatePointerEvent(_window.gameObject);
+            _controller.StartItemDrag(_window, eventData);
+            UIWindow closedWindow = null;
+            _windowManager.WindowCloseRequested += window => closedWindow = window;
+            CancelStack cancelStack = new CancelStack();
+            cancelStack.Register(_windowManager);
+            cancelStack.Register(_controller);
+
+            _controller.CompleteItemDrag(eventData);
+            bool cancelled = cancelStack.TryCancel();
+
+            Assert.IsTrue(cancelled);
+            Assert.AreSame(_window, closedWindow);
+        }
+
+        [Test]
+        public void TryCancel_UndoableTargeting_ConsumesCancelBeforeActiveWindow()
+        {
+            _windowManager.Focus(_window);
+            RecordingUndoTargetingReceiver receiver = new RecordingUndoTargetingReceiver();
+            _targetingController.Begin(new TargetingRequest("Target", null, receiver));
+            UIWindow closedWindow = null;
+            _windowManager.WindowCloseRequested += window => closedWindow = window;
+            CancelStack cancelStack = new CancelStack();
+            cancelStack.Register(_windowManager);
+            cancelStack.Register(_controller);
+
+            bool cancelled = cancelStack.TryCancel();
+
+            Assert.IsTrue(cancelled);
+            Assert.IsTrue(_targetingController.IsTargeting);
+            Assert.AreEqual(1, receiver.UndoCount);
+            Assert.IsNull(closedWindow);
+        }
+
+        [Test]
         public void CancelTargeting_ActiveThenInactive_ReturnsMatchingState()
         {
             BeginTargeting();
@@ -538,7 +593,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
                 ResolveDragPreview,
                 ResolvePosition,
                 _ => null,
-                () => "player",
                 new WindowCommandActions(),
                 5
             );
@@ -645,7 +699,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             out DragPreview preview
         )
         {
-            preview = new DragPreview(_dragTexture, 20, 30, 2, 3);
+            preview = DragPreviewTestFactory.Create(_dragTexture, 20, 30, 2, 3);
             return _hasDragPreview;
         }
 
@@ -739,6 +793,37 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             }
         }
 
+        private sealed class RecordingUndoTargetingReceiver
+            : ITargetingReceiver,
+                ITargetingUndoReceiver
+        {
+            public int UndoCount { get; private set; }
+
+            /// <summary>
+            /// Handles a selected target without ending the repeating request.
+            /// </summary>
+            /// <param name="request">The active request.</param>
+            /// <param name="target">The selected target.</param>
+            public void OnTargetSelected(TargetingRequest request, object target) { }
+
+            /// <summary>
+            /// Handles cancellation after the receiver declines to keep targeting active.
+            /// </summary>
+            /// <param name="request">The canceled request.</param>
+            public void OnTargetingCancelled(TargetingRequest request) { }
+
+            /// <summary>
+            /// Records one targeting undo and keeps the request active.
+            /// </summary>
+            /// <param name="request">The active request.</param>
+            /// <returns>True so the current cancellation is consumed by targeting.</returns>
+            public bool TryUndoTargeting(TargetingRequest request)
+            {
+                UndoCount++;
+                return true;
+            }
+        }
+
         private sealed class WindowCommandActions : IStrategyWindowCommandActions
         {
             /// <summary>
@@ -749,6 +834,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             public void ExecuteTargetedCommand(
                 StrategyWindowTargetingSource source,
                 StrategyMissionTarget target
+            ) { }
+
+            /// <summary>
+            /// Executes an item drop.
+            /// </summary>
+            /// <param name="sourceWindow">The source window.</param>
+            /// <param name="target">The exact drop target.</param>
+            /// <param name="items">The dragged items.</param>
+            public void ExecuteItemDrop(
+                UIWindow sourceWindow,
+                StrategyMissionTarget target,
+                IReadOnlyList<ISceneNode> items
             ) { }
 
             /// <summary>

@@ -96,23 +96,33 @@ public readonly struct PlanetSectorWaypointRenderData
 /// </summary>
 public sealed class PlanetSectorPlanetRenderData
 {
+    public PlanetSectorIconRenderData DefenseIcon { get; }
+
     public Texture2D DefensePressedTexture { get; }
 
     public Texture2D DefenseTexture { get; }
 
     public PlanetSectorBarRenderData EnergyBar { get; }
 
+    public PlanetSectorIconRenderData FacilityIcon { get; }
+
     public Texture2D FacilityPressedTexture { get; }
 
     public Texture2D FacilityTexture { get; }
+
+    public PlanetSectorIconRenderData FleetIcon { get; }
 
     public Texture2D FleetPressedTexture { get; }
 
     public Texture2D FleetTexture { get; }
 
+    public Texture2D GalacticInformationTexture { get; }
+
     public Texture2D HeadquartersTexture { get; }
 
     public PlanetIcon HoveredIcon { get; }
+
+    public PlanetSectorIconRenderData MissionIcon { get; }
 
     public Texture2D MissionPressedTexture { get; }
 
@@ -159,6 +169,8 @@ public sealed class PlanetSectorPlanetRenderData
     /// <param name="energyBar">The energy status bar.</param>
     /// <param name="rawResourceBar">The raw-resource status bar.</param>
     /// <param name="supportBar">The popular-support status bar.</param>
+    /// <param name="galacticInformationTexture">The active filter's star-marker artwork.</param>
+    /// <param name="getTextureContentBounds">The optional visible-pixel bounds resolver.</param>
     public PlanetSectorPlanetRenderData(
         int planetIndex,
         Vector2Int galaxyOffset,
@@ -179,7 +191,9 @@ public sealed class PlanetSectorPlanetRenderData
         PlanetIcon hoveredIcon,
         PlanetSectorBarRenderData energyBar,
         PlanetSectorBarRenderData rawResourceBar,
-        PlanetSectorBarRenderData supportBar
+        PlanetSectorBarRenderData supportBar,
+        Texture2D galacticInformationTexture = null,
+        Func<Texture2D, RectInt> getTextureContentBounds = null
     )
     {
         PlanetIndex = planetIndex;
@@ -188,12 +202,32 @@ public sealed class PlanetSectorPlanetRenderData
         UprisingTexture = uprisingTexture;
         FacilityTexture = facilityTexture;
         FacilityPressedTexture = facilityPressedTexture;
+        FacilityIcon = new PlanetSectorIconRenderData(
+            facilityTexture,
+            facilityPressedTexture,
+            getTextureContentBounds
+        );
         DefenseTexture = defenseTexture;
         DefensePressedTexture = defensePressedTexture;
+        DefenseIcon = new PlanetSectorIconRenderData(
+            defenseTexture,
+            defensePressedTexture,
+            getTextureContentBounds
+        );
         FleetTexture = fleetTexture;
         FleetPressedTexture = fleetPressedTexture;
+        FleetIcon = new PlanetSectorIconRenderData(
+            fleetTexture,
+            fleetPressedTexture,
+            getTextureContentBounds
+        );
         MissionTexture = missionTexture;
         MissionPressedTexture = missionPressedTexture;
+        MissionIcon = new PlanetSectorIconRenderData(
+            missionTexture,
+            missionPressedTexture,
+            getTextureContentBounds
+        );
         HeadquartersTexture = headquartersTexture;
         Name = name ?? string.Empty;
         NameColor = nameColor;
@@ -202,7 +236,102 @@ public sealed class PlanetSectorPlanetRenderData
         EnergyBar = energyBar ?? throw new ArgumentNullException(nameof(energyBar));
         RawResourceBar = rawResourceBar ?? throw new ArgumentNullException(nameof(rawResourceBar));
         SupportBar = supportBar ?? throw new ArgumentNullException(nameof(supportBar));
+        GalacticInformationTexture = galacticInformationTexture;
     }
+}
+
+/// <summary>
+/// Describes one planet overlay icon and the visible bounds of its interaction states.
+/// </summary>
+public sealed class PlanetSectorIconRenderData
+{
+    public RectInt NormalContentBounds { get; }
+
+    public Texture2D NormalTexture { get; }
+
+    public RectInt PressedContentBounds { get; }
+
+    public Texture2D PressedTexture { get; }
+
+    /// <summary>
+    /// Creates an icon presentation from its normal and pressed textures.
+    /// </summary>
+    /// <param name="normalTexture">The normal icon texture.</param>
+    /// <param name="pressedTexture">The selected or hovered icon texture.</param>
+    /// <param name="getTextureContentBounds">The optional visible-pixel bounds resolver.</param>
+    public PlanetSectorIconRenderData(
+        Texture2D normalTexture,
+        Texture2D pressedTexture,
+        Func<Texture2D, RectInt> getTextureContentBounds = null
+    )
+    {
+        NormalTexture = normalTexture;
+        PressedTexture = pressedTexture;
+        NormalContentBounds = ResolveContentBounds(normalTexture, getTextureContentBounds);
+        PressedContentBounds = ResolveContentBounds(pressedTexture, getTextureContentBounds);
+    }
+
+    /// <summary>
+    /// Gets the texture for one interaction state.
+    /// </summary>
+    /// <param name="pressed">Whether the icon is selected or hovered.</param>
+    /// <returns>The matching texture.</returns>
+    public Texture2D GetTexture(bool pressed)
+    {
+        return pressed ? PressedTexture : NormalTexture;
+    }
+
+    /// <summary>
+    /// Gets the visible-pixel bounds for one interaction state.
+    /// </summary>
+    /// <param name="pressed">Whether the icon is selected or hovered.</param>
+    /// <returns>The matching visible-pixel bounds.</returns>
+    public RectInt GetContentBounds(bool pressed)
+    {
+        return pressed ? PressedContentBounds : NormalContentBounds;
+    }
+
+    /// <summary>
+    /// Resolves and validates visible bounds for one texture.
+    /// </summary>
+    /// <param name="texture">The texture to measure.</param>
+    /// <param name="getTextureContentBounds">The optional visible-pixel bounds resolver.</param>
+    /// <returns>The validated visible-pixel bounds.</returns>
+    private static RectInt ResolveContentBounds(
+        Texture2D texture,
+        Func<Texture2D, RectInt> getTextureContentBounds
+    )
+    {
+        if (texture == null)
+            return default;
+
+        RectInt fullBounds = new RectInt(0, 0, texture.width, texture.height);
+        if (getTextureContentBounds == null)
+            return fullBounds;
+
+        RectInt bounds = getTextureContentBounds(texture);
+        int minimumX = Mathf.Clamp(bounds.xMin, 0, texture.width);
+        int minimumY = Mathf.Clamp(bounds.yMin, 0, texture.height);
+        int maximumX = Mathf.Clamp(bounds.xMax, 0, texture.width);
+        int maximumY = Mathf.Clamp(bounds.yMax, 0, texture.height);
+        return maximumX <= minimumX || maximumY <= minimumY
+            ? fullBounds
+            : new RectInt(minimumX, minimumY, maximumX - minimumX, maximumY - minimumY);
+    }
+}
+
+/// <summary>
+/// Identifies one status bar rendered beneath a planet.
+/// </summary>
+public enum PlanetSectorStatusBar
+{
+    None,
+
+    Energy,
+
+    RawMaterials,
+
+    PopularSupport,
 }
 
 /// <summary>
@@ -222,6 +351,8 @@ public sealed class PlanetSectorBarRenderData
 
     public int LitCells { get; }
 
+    public string TooltipText { get; }
+
     public bool Visible { get; }
 
     /// <summary>
@@ -234,6 +365,7 @@ public sealed class PlanetSectorBarRenderData
     /// <param name="fillColor">The occupied or continuous fill color.</param>
     /// <param name="emptyColor">The unoccupied segmented cell color.</param>
     /// <param name="backgroundColor">The bar background color.</param>
+    /// <param name="tooltipText">The hover label displayed for the bar.</param>
     public PlanetSectorBarRenderData(
         bool visible,
         int cellCount,
@@ -241,7 +373,8 @@ public sealed class PlanetSectorBarRenderData
         float fillRatio,
         Color32 fillColor,
         Color32 emptyColor,
-        Color32 backgroundColor
+        Color32 backgroundColor,
+        string tooltipText = null
     )
     {
         Visible = visible;
@@ -251,6 +384,7 @@ public sealed class PlanetSectorBarRenderData
         FillColor = fillColor;
         EmptyColor = emptyColor;
         BackgroundColor = backgroundColor;
+        TooltipText = tooltipText ?? string.Empty;
     }
 }
 

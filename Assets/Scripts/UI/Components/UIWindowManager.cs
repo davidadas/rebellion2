@@ -508,7 +508,10 @@ public sealed class UIWindowManager : MonoBehaviour, ICancelable
         {
             window = GetInteractableRegisteredWindow(result.gameObject);
             if (window != null)
+            {
+                eventData.pointerCurrentRaycast = result;
                 break;
+            }
         }
 
         raycastResults.Clear();

@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.AI.Director;
 using Rebellion.AI.Planners;
 
 namespace Rebellion.AI.Phases
@@ -11,22 +10,6 @@ namespace Rebellion.AI.Phases
     public sealed class AIPlanningPhase : IAIIncrementalTurnPhase
     {
         private readonly List<IAIProposalPlanner> _planners;
-
-        /// <summary>
-        /// Creates a planning phase with the default proposal planners.
-        /// </summary>
-        public AIPlanningPhase()
-            : this(
-                new IAIProposalPlanner[]
-                {
-                    new AIAbortMissionPlanner(),
-                    new AIFacilityRemovalPlanner(),
-                    new AIMissionPlanner(),
-                    new AIOrbitalEngagementPlanner(),
-                    new AIFleetPlanner(),
-                    new AIProductionPlanner(),
-                }
-            ) { }
 
         /// <summary>
         /// Creates a planning phase with the supplied proposal planners.
@@ -67,7 +50,7 @@ namespace Rebellion.AI.Phases
             foreach (IAIProposalPlanner planner in _planners)
             {
                 context.AddProposals(planner.Plan(context));
-                yield return null;
+                yield return planner;
             }
         }
     }

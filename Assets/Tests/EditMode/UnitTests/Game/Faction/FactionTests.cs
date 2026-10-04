@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using NUnit.Framework;
+using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
@@ -507,7 +508,7 @@ namespace Rebellion.Tests.Game.Factions
                 MessageType messageType in Enum.GetValues(typeof(MessageType)).Cast<MessageType>()
             )
             {
-                Message message = new StatusMessage(messageType, "Message text");
+                Message message = new StatusMessage(messageType, "Message text", "Message text");
 
                 _faction.AddMessage(message);
 
@@ -523,7 +524,11 @@ namespace Rebellion.Tests.Game.Factions
         public void AddMessage_MissingMessageBucket_CreatesBucketAndAddsMessage()
         {
             _faction.Messages.Remove(MessageType.Manufacturing);
-            Message message = new StatusMessage(MessageType.Manufacturing, "Manufacturing idle");
+            Message message = new StatusMessage(
+                MessageType.Manufacturing,
+                "Manufacturing idle",
+                "Manufacturing idle"
+            );
 
             _faction.AddMessage(message);
 
@@ -534,7 +539,11 @@ namespace Rebellion.Tests.Game.Factions
         public void AddMessage_NullMessageDictionary_CreatesDictionaryAndAddsMessage()
         {
             _faction.Messages = null;
-            Message message = new StatusMessage(MessageType.Manufacturing, "Manufacturing idle");
+            Message message = new StatusMessage(
+                MessageType.Manufacturing,
+                "Manufacturing idle",
+                "Manufacturing idle"
+            );
 
             _faction.AddMessage(message);
 
@@ -544,12 +553,24 @@ namespace Rebellion.Tests.Game.Factions
         [Test]
         public void MarkAllMessagesRead_MixedMessageState_MarksEveryMessageRead()
         {
-            Message unreadFleet = new StatusMessage(MessageType.Fleet, "Fleet arrived");
-            Message readMission = new StatusMessage(MessageType.Mission, "Mission completed")
+            Message unreadFleet = new StatusMessage(
+                MessageType.Fleet,
+                "Fleet arrived",
+                "Fleet arrived"
+            );
+            Message readMission = new StatusMessage(
+                MessageType.Mission,
+                "Mission completed",
+                "Mission completed"
+            )
             {
                 Read = true,
             };
-            Message unreadResource = new StatusMessage(MessageType.Resource, "Resource report");
+            Message unreadResource = new StatusMessage(
+                MessageType.Resource,
+                "Resource report",
+                "Resource report"
+            );
             _faction.AddMessage(unreadFleet);
             _faction.AddMessage(readMission);
             _faction.AddMessage(unreadResource);
@@ -564,7 +585,9 @@ namespace Rebellion.Tests.Game.Factions
         [Test]
         public void HasUnreadMessages_UnreadMessage_ReturnsTrue()
         {
-            _faction.AddMessage(new StatusMessage(MessageType.Fleet, "Fleet arrived"));
+            _faction.AddMessage(
+                new StatusMessage(MessageType.Fleet, "Fleet arrived", "Fleet arrived")
+            );
 
             Assert.IsTrue(_faction.HasUnreadMessages());
         }
@@ -573,7 +596,10 @@ namespace Rebellion.Tests.Game.Factions
         public void HasUnreadMessages_OnlyReadMessages_ReturnsFalse()
         {
             _faction.AddMessage(
-                new StatusMessage(MessageType.Mission, "Mission completed") { Read = true }
+                new StatusMessage(MessageType.Mission, "Mission completed", "Mission completed")
+                {
+                    Read = true,
+                }
             );
 
             Assert.IsFalse(_faction.HasUnreadMessages());
@@ -582,7 +608,11 @@ namespace Rebellion.Tests.Game.Factions
         [Test]
         public void RemoveMessage_ExistingMessage_RemovesFromList()
         {
-            Message message = new StatusMessage(MessageType.Mission, "Mission completed");
+            Message message = new StatusMessage(
+                MessageType.Mission,
+                "Mission completed",
+                "Mission completed"
+            );
             _faction.AddMessage(message);
 
             _faction.RemoveMessage(message);
@@ -597,7 +627,11 @@ namespace Rebellion.Tests.Game.Factions
         public void RemoveMessage_MissingMessageBucket_RemainsAbsent()
         {
             _faction.Messages.Remove(MessageType.Manufacturing);
-            Message message = new StatusMessage(MessageType.Manufacturing, "Manufacturing idle");
+            Message message = new StatusMessage(
+                MessageType.Manufacturing,
+                "Manufacturing idle",
+                "Manufacturing idle"
+            );
 
             _faction.RemoveMessage(message);
 
@@ -608,7 +642,11 @@ namespace Rebellion.Tests.Game.Factions
         public void RemoveMessage_NullMessageDictionary_RemainsNull()
         {
             _faction.Messages = null;
-            Message message = new StatusMessage(MessageType.Manufacturing, "Manufacturing idle");
+            Message message = new StatusMessage(
+                MessageType.Manufacturing,
+                "Manufacturing idle",
+                "Manufacturing idle"
+            );
 
             _faction.RemoveMessage(message);
 
@@ -745,7 +783,9 @@ namespace Rebellion.Tests.Game.Factions
         {
             _faction.SetHighestUnlockedOrder(ResearchDiscipline.ShipDesign, 3);
             _faction.AddOwnedUnit(_planet1);
-            _faction.AddMessage(new StatusMessage(MessageType.Resource, "Test message"));
+            _faction.AddMessage(
+                new StatusMessage(MessageType.Resource, "Test message", "Test message")
+            );
             _faction.ToggleAdvisorMessageNotification(MessageType.Fleet);
             _faction.TranslateCounterpart = false;
             _faction.AgentAdvice = false;
@@ -1320,6 +1360,31 @@ namespace Rebellion.Tests.Game.Factions
         }
 
         [Test]
+        public void GetTotalProjectedMaintenanceCost_AllCommittedStatuses_SumsEveryUnit()
+        {
+            foreach (
+                (ManufacturingStatus status, int maintenanceCost) in new[]
+                {
+                    (ManufacturingStatus.Building, 7),
+                    (ManufacturingStatus.Delivering, 11),
+                    (ManufacturingStatus.Complete, 13),
+                }
+            )
+            {
+                _faction.AddOwnedUnit(
+                    new Regiment
+                    {
+                        OwnerInstanceID = "FACTION1",
+                        MaintenanceCost = maintenanceCost,
+                        ManufacturingStatus = status,
+                    }
+                );
+            }
+
+            Assert.AreEqual(31, _faction.GetTotalProjectedMaintenanceCost());
+        }
+
+        [Test]
         public void GetTotalInProgressConstructionCost_MixedCompleteAndBuilding_SumsBuildingOnly()
         {
             Regiment completeUnit = new Regiment
@@ -1340,6 +1405,64 @@ namespace Rebellion.Tests.Game.Factions
             _faction.AddOwnedUnit(buildingUnit);
 
             Assert.AreEqual(70, _faction.GetTotalInProgressConstructionCost());
+        }
+
+        [Test]
+        public void MaintenanceCapacity_FactionWithPlanets_CalculatesCorrectly()
+        {
+            GameRoot game = CreateGame();
+            Faction empire = CreateFaction("empire", "Empire");
+            game.GetFactions().Add(empire);
+
+            PlanetSector sector = new PlanetSector { InstanceID = "s1", DisplayName = "Sector" };
+            Planet planet = CreatePlanet("p1", "Coruscant", "empire");
+            game.AttachNode(sector, game.GetGalaxyMap());
+            game.AttachNode(planet, sector);
+            game.AttachNode(CreateMine("mine1", "empire"), planet);
+            game.AttachNode(CreateMine("mine2", "empire"), planet);
+            game.AttachNode(CreateRefinery("ref1", "empire"), planet);
+
+            int capacity = empire.MaintenanceCapacity;
+
+            Assert.AreEqual(50, capacity);
+        }
+
+        [Test]
+        public void MaintenanceCapacity_RefinementMultiplier_DoesNotChangeCapacity()
+        {
+            GameRoot game = CreateGame();
+            Faction empire = CreateFaction("empire", "Empire");
+            empire.Settings.RefinementMultiplier = 1;
+            game.GetFactions().Add(empire);
+
+            PlanetSector sector = new PlanetSector { InstanceID = "s1", DisplayName = "Sector" };
+            Planet planet = CreatePlanet("p1", "Coruscant", "empire");
+            game.AttachNode(sector, game.GetGalaxyMap());
+            game.AttachNode(planet, sector);
+            game.AttachNode(CreateMine("mine1", "empire"), planet);
+            game.AttachNode(CreateRefinery("ref1", "empire"), planet);
+
+            Assert.AreEqual(50, empire.MaintenanceCapacity);
+        }
+
+        [Test]
+        public void MaintenanceCapacity_MineAndRefineryOnDifferentPlanets_CalculatesGlobalPair()
+        {
+            GameRoot game = CreateGame();
+            Faction empire = CreateFaction("empire", "Empire");
+            game.GetFactions().Add(empire);
+            PlanetSector sector = new PlanetSector { InstanceID = "s1", DisplayName = "Sector" };
+            Planet minePlanet = CreatePlanet("p1", "Coruscant", empire.InstanceID);
+            Planet refineryPlanet = CreatePlanet("p2", "Kessel", empire.InstanceID);
+            game.AttachNode(sector, game.GetGalaxyMap());
+            game.AttachNode(minePlanet, sector);
+            game.AttachNode(refineryPlanet, sector);
+            game.AttachNode(CreateMine("mine1", empire.InstanceID), minePlanet);
+            game.AttachNode(CreateRefinery("ref1", empire.InstanceID), refineryPlanet);
+
+            int capacity = empire.MaintenanceCapacity;
+
+            Assert.AreEqual(50, capacity);
         }
 
         /// <summary>
@@ -1380,6 +1503,88 @@ namespace Rebellion.Tests.Game.Factions
                 )
                 .ToArray();
             _faction.RebuildResearchCatalog(templates);
+        }
+
+        /// <summary>
+        /// Creates game.
+        /// </summary>
+        /// <returns>The created game.</returns>
+        private GameRoot CreateGame()
+        {
+            return TestGame.Create(TestConfig.Create());
+        }
+
+        /// <summary>
+        /// Creates faction.
+        /// </summary>
+        /// <param name="id">The id.</param>
+        /// <param name="name">The name.</param>
+        /// <returns>The created faction.</returns>
+        private Faction CreateFaction(string id, string name)
+        {
+            Faction faction = new Faction { InstanceID = id, DisplayName = name };
+            faction.Settings.ResourceProcessingPointsPerFacility = 50;
+            return faction;
+        }
+
+        /// <summary>
+        /// Creates planet.
+        /// </summary>
+        /// <param name="id">The id.</param>
+        /// <param name="name">The name.</param>
+        /// <param name="ownerId">The owner id.</param>
+        /// <returns>The created planet.</returns>
+        private Planet CreatePlanet(string id, string name, string ownerId)
+        {
+            return new Planet
+            {
+                InstanceID = id,
+                DisplayName = name,
+                OwnerInstanceID = ownerId,
+                IsColonized = true,
+                EnergyCapacity = 10,
+                NumRawResourceNodes = 5,
+            };
+        }
+
+        /// <summary>
+        /// Creates mine.
+        /// </summary>
+        /// <param name="id">The id.</param>
+        /// <param name="ownerId">The owner id.</param>
+        /// <returns>The created mine.</returns>
+        private Building CreateMine(string id, string ownerId)
+        {
+            return new Building
+            {
+                InstanceID = id,
+                DisplayName = "Mine",
+                OwnerInstanceID = ownerId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaintenanceCost = 0,
+                ConstructionCost = 1,
+                BuildingType = BuildingType.Mine,
+            };
+        }
+
+        /// <summary>
+        /// Creates refinery.
+        /// </summary>
+        /// <param name="id">The id.</param>
+        /// <param name="ownerId">The owner id.</param>
+        /// <returns>The created refinery.</returns>
+        private Building CreateRefinery(string id, string ownerId)
+        {
+            return new Building
+            {
+                InstanceID = id,
+                DisplayName = "Refinery",
+                OwnerInstanceID = ownerId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaintenanceCost = 0,
+                ConstructionCost = 1,
+                BuildingType = BuildingType.Refinery,
+            };
         }
     }
 }

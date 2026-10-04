@@ -18,7 +18,10 @@ namespace Rebellion.Tests.Generation
         public void Seed_UprisingThresholdNotMet_AddsGarrisonTroops()
         {
             Planet planet = OwnedPlanet("p1", "FNEMP1", ownerSupport: 30);
-            Faction[] factions = { new Faction { InstanceID = "FNEMP1" } };
+            Faction[] factions =
+            {
+                new Faction { InstanceID = "FNEMP1", GarrisonTroopTypeID = "REEM002" },
+            };
             Regiment[] regimentTemplates =
             {
                 new Regiment { TypeID = "REEM002", MaintenanceCost = 1 },
@@ -28,10 +31,7 @@ namespace Rebellion.Tests.Generation
             {
                 GalaxyClassification = new GalaxyClassificationSection
                 {
-                    FactionSetups = new List<FactionSetup>
-                    {
-                        new FactionSetup { FactionID = "FNEMP1", GarrisonTroopTypeID = "REEM002" },
-                    },
+                    FactionSetups = new List<FactionSetup>(),
                 },
                 UnitDeployment = new UnitDeploymentSection
                 {
@@ -61,7 +61,10 @@ namespace Rebellion.Tests.Generation
         public void Seed_OwnerSupportAtThreshold_NoGarrisonTroops()
         {
             Planet planet = OwnedPlanet("p1", "FNEMP1", ownerSupport: 60);
-            Faction[] factions = { new Faction { InstanceID = "FNEMP1" } };
+            Faction[] factions =
+            {
+                new Faction { InstanceID = "FNEMP1", GarrisonTroopTypeID = "REEM002" },
+            };
             Regiment[] regimentTemplates =
             {
                 new Regiment { TypeID = "REEM002", MaintenanceCost = 1 },
@@ -71,10 +74,7 @@ namespace Rebellion.Tests.Generation
             {
                 GalaxyClassification = new GalaxyClassificationSection
                 {
-                    FactionSetups = new List<FactionSetup>
-                    {
-                        new FactionSetup { FactionID = "FNEMP1", GarrisonTroopTypeID = "REEM002" },
-                    },
+                    FactionSetups = new List<FactionSetup>(),
                 },
                 UnitDeployment = new UnitDeploymentSection
                 {
@@ -411,7 +411,7 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void Seed_BudgetUnitTable_UsesPreviousThresholdRow()
+        public void Seed_BudgetUnitTable_UsesConfiguredWeights()
         {
             Planet planet = OwnedPlanet("CORUSCANT", "FNEMP1", ownerSupport: 100);
             planet.EnergyCapacity = 2;
@@ -448,19 +448,13 @@ namespace Rebellion.Tests.Generation
                             FactionID = "FNEMP1",
                             BudgetLevels = new List<BudgetLevel>
                             {
-                                new BudgetLevel
-                                {
-                                    GalaxySize = 0,
-                                    Difficulty = 0,
-                                    IsAI = true,
-                                    Percentage = 100,
-                                },
+                                new BudgetLevel { GalaxySize = 0, Percentage = 100 },
                             },
                             UnitTable = new List<WeightedUnitEntry>
                             {
                                 new WeightedUnitEntry
                                 {
-                                    CumulativeWeight = 1,
+                                    Weight = 1,
                                     Units = new List<UnitEntry>
                                     {
                                         new UnitEntry { TypeID = "FIRST", Count = 1 },
@@ -468,7 +462,7 @@ namespace Rebellion.Tests.Generation
                                 },
                                 new WeightedUnitEntry
                                 {
-                                    CumulativeWeight = 9,
+                                    Weight = 8,
                                     Units = new List<UnitEntry>
                                     {
                                         new UnitEntry { TypeID = "SECOND", Count = 1 },
@@ -486,7 +480,7 @@ namespace Rebellion.Tests.Generation
                 config,
                 new GalaxyClassificationResult(),
                 regimentTemplates: regimentTemplates,
-                rng: new SequenceRNG(intValues: new[] { 1 })
+                rng: new SequenceRNG(intValues: new[] { 0 })
             );
             context.Summary.GalaxySize = GameSize.Small;
             context.Summary.Difficulty = GameDifficulty.Easy;
@@ -495,96 +489,6 @@ namespace Rebellion.Tests.Generation
 
             Assert.AreEqual(1, planet.GetChildren<Regiment>().Count(r => r.TypeID == "FIRST"));
             Assert.AreEqual(0, planet.GetChildren<Regiment>().Count(r => r.TypeID == "SECOND"));
-        }
-
-        [Test]
-        public void Seed_BudgetDifficultyMapping_UsesMappedDifficulty()
-        {
-            Planet planet = OwnedPlanet("CORUSCANT", "FNEMP1", ownerSupport: 100);
-            planet.EnergyCapacity = 8;
-            planet.NumRawResourceNodes = 4;
-            for (int i = 0; i < 4; i++)
-            {
-                planet.AddChild(CompleteBuilding($"mine{i}", BuildingType.Mine, "FNEMP1"));
-                planet.AddChild(CompleteBuilding($"refinery{i}", BuildingType.Refinery, "FNEMP1"));
-            }
-
-            Faction empire = new Faction { InstanceID = "FNEMP1" };
-            empire.Settings.RefinementMultiplier = 1;
-            empire.Settings.ResourceProcessingPointsPerFacility = 1;
-            Faction[] factions = { empire };
-            Regiment[] regimentTemplates =
-            {
-                new Regiment { TypeID = "REEM002", MaintenanceCost = 1 },
-            };
-
-            GameGenerationConfig config = new GameGenerationConfig
-            {
-                GalaxyClassification = new GalaxyClassificationSection
-                {
-                    FactionSetups = new List<FactionSetup>(),
-                },
-                UnitDeployment = new UnitDeploymentSection
-                {
-                    UprisingPreventionThreshold = 0,
-                    SupportDeficitPerGarrisonTroop = 10,
-                    FixedGarrisons = new List<FixedGarrison>(),
-                    FixedFleets = new List<FixedFleet>(),
-                    BudgetDifficultyMappings = new List<BudgetDifficultyMapping>
-                    {
-                        new BudgetDifficultyMapping { Difficulty = 2, BudgetDifficulty = 1 },
-                    },
-                    FactionBudgets = new List<FactionBudget>
-                    {
-                        new FactionBudget
-                        {
-                            FactionID = "FNEMP1",
-                            BudgetLevels = new List<BudgetLevel>
-                            {
-                                new BudgetLevel
-                                {
-                                    GalaxySize = 0,
-                                    Difficulty = 1,
-                                    IsAI = true,
-                                    Percentage = 100,
-                                },
-                                new BudgetLevel
-                                {
-                                    GalaxySize = 0,
-                                    Difficulty = 2,
-                                    IsAI = true,
-                                    Percentage = 0,
-                                },
-                            },
-                            UnitTable = new List<WeightedUnitEntry>
-                            {
-                                new WeightedUnitEntry
-                                {
-                                    CumulativeWeight = 100,
-                                    Units = new List<UnitEntry>
-                                    {
-                                        new UnitEntry { TypeID = "REEM002", Count = 1 },
-                                    },
-                                },
-                            },
-                        },
-                    },
-                },
-            };
-
-            GenerationContext context = BuildContext(
-                new[] { WrapSector(planet) },
-                factions,
-                config,
-                new GalaxyClassificationResult(),
-                regimentTemplates: regimentTemplates
-            );
-            context.Summary.GalaxySize = GameSize.Small;
-            context.Summary.Difficulty = GameDifficulty.Hard;
-
-            new UnitSeeder().Seed(context);
-
-            Assert.AreEqual(4, planet.GetRegimentCount());
         }
 
         [Test]
@@ -627,19 +531,13 @@ namespace Rebellion.Tests.Generation
                             FactionID = "FNEMP1",
                             BudgetLevels = new List<BudgetLevel>
                             {
-                                new BudgetLevel
-                                {
-                                    GalaxySize = 0,
-                                    Difficulty = 0,
-                                    IsAI = true,
-                                    Percentage = 100,
-                                },
+                                new BudgetLevel { GalaxySize = 0, Percentage = 100 },
                             },
                             UnitTable = new List<WeightedUnitEntry>
                             {
                                 new WeightedUnitEntry
                                 {
-                                    CumulativeWeight = 100,
+                                    Weight = 100,
                                     Units = new List<UnitEntry>
                                     {
                                         new UnitEntry { TypeID = "SPAL004", Count = 1 },
@@ -675,19 +573,203 @@ namespace Rebellion.Tests.Generation
             );
         }
 
+        [Test]
+        public void Seed_HardAiBonusBudget_DeploysBaseFleetAndBonusRegiments()
+        {
+            (GenerationContext context, Planet planet) = CreateStartingUnitBonusContext(
+                StartingUnitBudgetCategory.Regiment
+            );
+            context.Summary.Difficulty = GameDifficulty.Hard;
+
+            new UnitSeeder().Seed(context);
+
+            Assert.AreEqual(
+                1,
+                planet.GetChildren<Fleet>().Single().GetChildren<CapitalShip>().Count
+            );
+            Assert.AreEqual(3, planet.GetChildren<Regiment>().Count);
+        }
+
+        [Test]
+        public void Seed_HardAiStarfighterBonusBudget_DeploysOnlyBonusStarfighters()
+        {
+            (GenerationContext context, Planet planet) = CreateStartingUnitBonusContext(
+                StartingUnitBudgetCategory.Starfighter
+            );
+            context.Summary.Difficulty = GameDifficulty.Hard;
+
+            new UnitSeeder().Seed(context);
+
+            Assert.AreEqual(3, planet.GetChildren<Starfighter>().Count);
+            Assert.AreEqual(0, planet.GetChildren<Regiment>().Count);
+        }
+
+        [Test]
+        public void Seed_HardHumanBonusBudget_DoesNotDeployBonusRegiments()
+        {
+            (GenerationContext context, Planet planet) = CreateStartingUnitBonusContext(
+                StartingUnitBudgetCategory.Regiment
+            );
+            context.Summary.PlayerFactionID = "FNEMP1";
+            context.Summary.Difficulty = GameDifficulty.Hard;
+
+            new UnitSeeder().Seed(context);
+
+            Assert.AreEqual(
+                1,
+                planet.GetChildren<Fleet>().Single().GetChildren<CapitalShip>().Count
+            );
+            Assert.AreEqual(0, planet.GetChildren<Regiment>().Count);
+        }
+
+        [Test]
+        public void Seed_MediumAiBonusBudget_DoesNotDeployBonusRegiments()
+        {
+            (GenerationContext context, Planet planet) = CreateStartingUnitBonusContext(
+                StartingUnitBudgetCategory.Regiment
+            );
+            context.Summary.Difficulty = GameDifficulty.Medium;
+
+            new UnitSeeder().Seed(context);
+
+            Assert.AreEqual(
+                1,
+                planet.GetChildren<Fleet>().Single().GetChildren<CapitalShip>().Count
+            );
+            Assert.AreEqual(0, planet.GetChildren<Regiment>().Count);
+        }
+
         /// <summary>
-        /// Builds context.
+        /// Creates a seeded planet and context for starting-unit bonus tests.
         /// </summary>
-        /// <param name="sectors">The sectors.</param>
-        /// <param name="factions">The factions.</param>
-        /// <param name="config">The config.</param>
-        /// <param name="classification">The classification.</param>
-        /// <param name="regimentTemplates">The regiment templates.</param>
-        /// <param name="shipTemplates">The ship templates.</param>
-        /// <param name="fighterTemplates">The fighter templates.</param>
-        /// <param name="specialForcesTemplates">The special forces templates.</param>
-        /// <param name="rng">The rng.</param>
-        /// <returns>The constructed context.</returns>
+        /// <param name="category">The category receiving the test bonus.</param>
+        /// <returns>The generation context and its owned planet.</returns>
+        private static (GenerationContext Context, Planet Planet) CreateStartingUnitBonusContext(
+            StartingUnitBudgetCategory category
+        )
+        {
+            Planet planet = OwnedPlanet("CORUSCANT", "FNEMP1", ownerSupport: 100);
+            planet.EnergyCapacity = 8;
+            planet.NumRawResourceNodes = 4;
+            for (int i = 0; i < 4; i++)
+            {
+                planet.AddChild(CompleteBuilding($"mine{i}", BuildingType.Mine, "FNEMP1"));
+                planet.AddChild(CompleteBuilding($"refinery{i}", BuildingType.Refinery, "FNEMP1"));
+            }
+
+            Faction empire = new Faction { InstanceID = "FNEMP1" };
+            empire.Settings.RefinementMultiplier = 1;
+            empire.Settings.ResourceProcessingPointsPerFacility = 1;
+            GenerationContext context = BuildContext(
+                new[] { WrapSector(planet) },
+                new[] { empire },
+                CreateStartingUnitBonusConfig(category),
+                new GalaxyClassificationResult(),
+                regimentTemplates: new[]
+                {
+                    new Regiment { TypeID = "REGIMENT", MaintenanceCost = 1 },
+                },
+                shipTemplates: new[]
+                {
+                    new CapitalShip { TypeID = "SHIP", MaintenanceCost = 1 },
+                },
+                fighterTemplates: new[]
+                {
+                    new Starfighter { TypeID = "FIGHTER", MaintenanceCost = 1 },
+                }
+            );
+            return (context, planet);
+        }
+
+        /// <summary>
+        /// Creates a starting-unit budget with a base fleet allocation and one Hard AI category bonus.
+        /// </summary>
+        /// <param name="category">The category receiving the test bonus.</param>
+        /// <returns>The generation configuration.</returns>
+        private static GameGenerationConfig CreateStartingUnitBonusConfig(
+            StartingUnitBudgetCategory category
+        )
+        {
+            return new GameGenerationConfig
+            {
+                GalaxyClassification = new GalaxyClassificationSection
+                {
+                    FactionSetups = new List<FactionSetup>(),
+                },
+                UnitDeployment = new UnitDeploymentSection
+                {
+                    UprisingPreventionThreshold = 0,
+                    SupportDeficitPerGarrisonTroop = 10,
+                    FixedGarrisons = new List<FixedGarrison>(),
+                    FixedFleets = new List<FixedFleet>(),
+                    FactionBudgets = new List<FactionBudget>
+                    {
+                        new FactionBudget
+                        {
+                            FactionID = "FNEMP1",
+                            BudgetLevels = new List<BudgetLevel>
+                            {
+                                new BudgetLevel { GalaxySize = 0, Percentage = 25 },
+                            },
+                            UnitTable = new List<WeightedUnitEntry>
+                            {
+                                new WeightedUnitEntry
+                                {
+                                    Weight = 1,
+                                    Units = new List<UnitEntry>
+                                    {
+                                        new UnitEntry { TypeID = "SHIP", Count = 1 },
+                                    },
+                                },
+                                new WeightedUnitEntry
+                                {
+                                    Weight = 1,
+                                    Units = new List<UnitEntry>
+                                    {
+                                        new UnitEntry { TypeID = "REGIMENT", Count = 1 },
+                                    },
+                                },
+                                new WeightedUnitEntry
+                                {
+                                    Weight = 1,
+                                    Units = new List<UnitEntry>
+                                    {
+                                        new UnitEntry { TypeID = "FIGHTER", Count = 1 },
+                                    },
+                                },
+                            },
+                            Bonuses = new List<StartingUnitBudgetBonus>
+                            {
+                                new StartingUnitBudgetBonus
+                                {
+                                    Difficulty = GameDifficulty.Hard,
+                                    AIOnly = true,
+                                    Category = category,
+                                    BudgetLevels = new List<BudgetLevel>
+                                    {
+                                        new BudgetLevel { GalaxySize = 0, Percentage = 75 },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            };
+        }
+
+        /// <summary>
+        /// Builds a unit-seeding test context.
+        /// </summary>
+        /// <param name="sectors">The sectors value.</param>
+        /// <param name="factions">The factions value.</param>
+        /// <param name="config">The config value.</param>
+        /// <param name="classification">The classification value.</param>
+        /// <param name="regimentTemplates">The regimentTemplates value.</param>
+        /// <param name="shipTemplates">The shipTemplates value.</param>
+        /// <param name="fighterTemplates">The fighterTemplates value.</param>
+        /// <param name="specialForcesTemplates">The specialForcesTemplates value.</param>
+        /// <param name="rng">The rng value.</param>
+        /// <returns>The operation result.</returns>
         private static GenerationContext BuildContext(
             PlanetSector[] sectors,
             Faction[] factions,
@@ -720,13 +802,13 @@ namespace Rebellion.Tests.Generation
         }
 
         /// <summary>
-        /// Executes owned planet.
+        /// Creates an owned planet for a unit-seeding test.
         /// </summary>
-        /// <param name="id">The id.</param>
-        /// <param name="owner">The owner.</param>
-        /// <param name="ownerSupport">The owner support.</param>
-        /// <param name="typeId">The type id.</param>
-        /// <returns>The result of owned planet.</returns>
+        /// <param name="id">The id value.</param>
+        /// <param name="owner">The owner value.</param>
+        /// <param name="ownerSupport">The ownerSupport value.</param>
+        /// <param name="typeId">The typeId value.</param>
+        /// <returns>The operation result.</returns>
         private static Planet OwnedPlanet(
             string id,
             string owner,
@@ -746,10 +828,10 @@ namespace Rebellion.Tests.Generation
         }
 
         /// <summary>
-        /// Executes wrap sector.
+        /// Wraps a planet in a sector for a unit-seeding test.
         /// </summary>
-        /// <param name="planet">The planet.</param>
-        /// <returns>The result of wrap sector.</returns>
+        /// <param name="planet">The planet value.</param>
+        /// <returns>The operation result.</returns>
         private static PlanetSector WrapSector(Planet planet)
         {
             PlanetSector sector = new PlanetSector
@@ -762,9 +844,9 @@ namespace Rebellion.Tests.Generation
         }
 
         /// <summary>
-        /// Creates fixed fleet target config.
+        /// Creates fixed-fleet target configuration for a test.
         /// </summary>
-        /// <returns>The created fixed fleet target config.</returns>
+        /// <returns>The operation result.</returns>
         private static GameGenerationConfig CreateFixedFleetTargetConfig()
         {
             return new GameGenerationConfig
@@ -809,12 +891,12 @@ namespace Rebellion.Tests.Generation
         }
 
         /// <summary>
-        /// Executes complete building.
+        /// Creates a completed building for a test.
         /// </summary>
-        /// <param name="id">The id.</param>
-        /// <param name="buildingType">The building type.</param>
-        /// <param name="owner">The owner.</param>
-        /// <returns>The result of complete building.</returns>
+        /// <param name="id">The id value.</param>
+        /// <param name="buildingType">The buildingType value.</param>
+        /// <param name="owner">The owner value.</param>
+        /// <returns>The operation result.</returns>
         private static Building CompleteBuilding(string id, BuildingType buildingType, string owner)
         {
             return new Building

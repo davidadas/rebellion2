@@ -61,13 +61,13 @@ namespace Rebellion.Generation
     #region GALAXY CLASSIFICATION
 
     /// <summary>
-    /// Defines faction setup and difficulty-specific ownership profiles.
+    /// Defines faction setup and starting ownership distribution.
     /// </summary>
     [PersistableObject]
     public class GalaxyClassificationSection
     {
         public List<FactionSetup> FactionSetups;
-        public List<DifficultyProfile> Profiles;
+        public List<FactionBucketConfig> FactionBuckets;
     }
 
     /// <summary>
@@ -77,7 +77,6 @@ namespace Rebellion.Generation
     public class FactionSetup
     {
         public string FactionID;
-        public string GarrisonTroopTypeID;
         public List<StartingPlanet> StartingPlanets;
     }
 
@@ -95,27 +94,25 @@ namespace Rebellion.Generation
     }
 
     /// <summary>
-    /// Defines ownership distribution for a difficulty profile.
-    /// </summary>
-    [PersistableObject]
-    public class DifficultyProfile
-    {
-        public string Name;
-
-        public string PlayerFactionID;
-
-        public int Difficulty = -1;
-
-        public List<FactionBucketConfig> FactionBuckets;
-    }
-
-    /// <summary>
     /// Defines how strongly one faction is represented in generated core sectors.
     /// </summary>
     [PersistableObject]
     public class FactionBucketConfig
     {
         public string FactionID;
+        public int StrongPct;
+        public int WeakPct;
+        public List<FactionBucketOverride> Overrides = new List<FactionBucketOverride>();
+    }
+
+    /// <summary>
+    /// Overrides one faction's ownership percentages for a difficulty and controller role.
+    /// </summary>
+    [PersistableObject]
+    public class FactionBucketOverride
+    {
+        public GameDifficulty Difficulty;
+        public PlayerControllerType ControllerType;
         public int StrongPct;
         public int WeakPct;
     }
@@ -242,20 +239,9 @@ namespace Rebellion.Generation
         public int UprisingPreventionThreshold;
 
         public int SupportDeficitPerGarrisonTroop = 10;
-        public List<BudgetDifficultyMapping> BudgetDifficultyMappings;
         public List<FixedGarrison> FixedGarrisons;
         public List<FixedFleet> FixedFleets;
         public List<FactionBudget> FactionBudgets;
-    }
-
-    /// <summary>
-    /// Maps a game difficulty to a unit deployment budget difficulty.
-    /// </summary>
-    [PersistableObject]
-    public class BudgetDifficultyMapping
-    {
-        public int Difficulty;
-        public int BudgetDifficulty;
     }
 
     /// <summary>
@@ -312,19 +298,37 @@ namespace Rebellion.Generation
         public string FactionID;
         public List<BudgetLevel> BudgetLevels;
         public List<WeightedUnitEntry> UnitTable;
+        public List<StartingUnitBudgetBonus> Bonuses;
     }
 
     /// <summary>
-    /// Defines the budget percentage used for one galaxy size, difficulty, and controller type.
+    /// Identifies the unit category eligible for an additional starting budget.
+    /// </summary>
+    public enum StartingUnitBudgetCategory
+    {
+        Starfighter,
+        Regiment,
+    }
+
+    /// <summary>
+    /// Defines an additional starting-unit allocation for one difficulty and controller role.
+    /// </summary>
+    [PersistableObject]
+    public class StartingUnitBudgetBonus
+    {
+        public GameDifficulty Difficulty;
+        public bool AIOnly;
+        public StartingUnitBudgetCategory Category;
+        public List<BudgetLevel> BudgetLevels;
+    }
+
+    /// <summary>
+    /// Defines the budget percentage used for one galaxy size.
     /// </summary>
     [PersistableObject]
     public class BudgetLevel
     {
         public int GalaxySize;
-
-        public int Difficulty = -1;
-
-        public bool IsAI;
         public int Percentage;
     }
 
@@ -334,7 +338,7 @@ namespace Rebellion.Generation
     [PersistableObject]
     public class WeightedUnitEntry
     {
-        public int CumulativeWeight;
+        public int Weight;
         public List<UnitEntry> Units;
     }
 

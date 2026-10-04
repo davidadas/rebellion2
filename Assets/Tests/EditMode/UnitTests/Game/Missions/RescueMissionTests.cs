@@ -7,7 +7,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 
 namespace Rebellion.Tests.Game.Missions
 {
@@ -22,7 +22,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
             Officer target = EntityFactory.CreateOfficer("target", "empire");
             target.IsCaptured = true;
@@ -49,7 +49,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
 
             Mission mission = CreateRescueMission(
@@ -72,7 +72,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
 
             Mission mission = CreateRescueMission(
@@ -95,7 +95,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
             Mission mission = CreateRescueMission(
                 game,
@@ -120,7 +120,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
 
             Officer enemy = EntityFactory.CreateOfficer("enemy", "rebels");
@@ -150,7 +150,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
 
             Officer captive = EntityFactory.CreateOfficer("captive", "empire");
@@ -176,7 +176,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
 
             Officer captive = EntityFactory.CreateOfficer("captive", "empire");
@@ -206,7 +206,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
 
             Officer captive = EntityFactory.CreateOfficer("captive", "empire");
@@ -237,7 +237,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
 
             Officer captive = EntityFactory.CreateOfficer("captive", "empire");
@@ -268,7 +268,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
 
             Officer captive = EntityFactory.CreateOfficer("captive", "empire");
@@ -305,7 +305,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
 
             Officer captive = EntityFactory.CreateOfficer("captive", "empire");
@@ -336,14 +336,14 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void UpdateMission_OfficerNotCaptured_ReturnsFailed()
+        public void ProcessTick_OfficerNotCaptured_ReturnsFailed()
         {
             (
                 GameRoot game,
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
 
             // Set up a captured officer so TryCreate succeeds
@@ -365,14 +365,20 @@ namespace Rebellion.Tests.Game.Missions
             // Officer is freed after mission creation but before execution
             captive.IsCaptured = false;
 
-            MovementSystem movement = new MovementSystem(game, fog, new FleetSystem(game));
-            MissionSystem missionSystem = TestSystems.CreateMissionSystem(
+            MovementCommands movement = new MovementCommands(
+                game,
+                fog,
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
+            MissionCommands missionSystem = TestSystems.CreateMissionCommands(
                 game,
                 new FixedRNG(0.0),
                 movement
             );
 
-            List<GameResult> results = missionSystem.UpdateMission(mission);
+            List<GameResult> results = missionSystem.ProcessMissionTick(game);
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
             Assert.AreEqual(
@@ -383,14 +389,14 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void UpdateMission_TargetOfficerAlreadyFreed_ReturnsFailed()
+        public void ProcessTick_TargetOfficerAlreadyFreed_ReturnsFailed()
         {
             (
                 GameRoot game,
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
 
             Officer captive = EntityFactory.CreateOfficer("captive", "empire");
@@ -411,14 +417,20 @@ namespace Rebellion.Tests.Game.Missions
             // Captive is freed before mission executes
             captive.IsCaptured = false;
 
-            MovementSystem movement = new MovementSystem(game, fog, new FleetSystem(game));
-            MissionSystem missionSystem = TestSystems.CreateMissionSystem(
+            MovementCommands movement = new MovementCommands(
+                game,
+                fog,
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
+            MissionCommands missionSystem = TestSystems.CreateMissionCommands(
                 game,
                 new FixedRNG(0.0),
                 movement
             );
 
-            List<GameResult> results = missionSystem.UpdateMission(mission);
+            List<GameResult> results = missionSystem.ProcessMissionTick(game);
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
             Assert.AreEqual(
@@ -429,14 +441,14 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void UpdateMission_TargetMovedToDifferentPlanet_ReturnsFailed()
+        public void ProcessTick_TargetMovedToDifferentPlanet_ReturnsFailed()
         {
             (
                 GameRoot game,
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
 
             Officer captive = EntityFactory.CreateOfficer("captive", "empire");
@@ -457,14 +469,20 @@ namespace Rebellion.Tests.Game.Missions
             // Captive is moved to a different planet before mission executes
             game.MoveNode(captive, empirePlanet);
 
-            MovementSystem movement = new MovementSystem(game, fog, new FleetSystem(game));
-            MissionSystem missionSystem = TestSystems.CreateMissionSystem(
+            MovementCommands movement = new MovementCommands(
+                game,
+                fog,
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
+            MissionCommands missionSystem = TestSystems.CreateMissionCommands(
                 game,
                 new FixedRNG(0.0),
                 movement
             );
 
-            List<GameResult> results = missionSystem.UpdateMission(mission);
+            List<GameResult> results = missionSystem.ProcessMissionTick(game);
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
             Assert.AreEqual(
@@ -475,14 +493,14 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void UpdateMission_TargetRemovedFromScene_ReturnsFailed()
+        public void ProcessTick_TargetRemovedFromScene_ReturnsFailed()
         {
             (
                 GameRoot game,
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
 
             Officer captive = EntityFactory.CreateOfficer("captive", "empire");
@@ -503,14 +521,20 @@ namespace Rebellion.Tests.Game.Missions
             // Captive removed from scene before mission executes
             game.DetachNode(captive);
 
-            MovementSystem movement = new MovementSystem(game, fog, new FleetSystem(game));
-            MissionSystem missionSystem = TestSystems.CreateMissionSystem(
+            MovementCommands movement = new MovementCommands(
+                game,
+                fog,
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
+            MissionCommands missionSystem = TestSystems.CreateMissionCommands(
                 game,
                 new FixedRNG(0.0),
                 movement
             );
 
-            List<GameResult> results = missionSystem.UpdateMission(mission);
+            List<GameResult> results = missionSystem.ProcessMissionTick(game);
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
             Assert.AreEqual(
@@ -521,14 +545,14 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void UpdateMission_SuccessfulRescue_MovesTargetToRescuerOrigin()
+        public void ProcessTick_SuccessfulRescue_MovesTargetToRescuerOrigin()
         {
             (
                 GameRoot game,
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
 
             Officer captive = EntityFactory.CreateOfficer("captive", "empire");
@@ -551,14 +575,20 @@ namespace Rebellion.Tests.Game.Missions
             while (!mission.IsComplete())
                 mission.IncrementProgress();
 
-            MovementSystem movement = new MovementSystem(game, fog, new FleetSystem(game));
-            MissionSystem missionSystem = TestSystems.CreateMissionSystem(
+            MovementCommands movement = new MovementCommands(
+                game,
+                fog,
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
+            MissionCommands missionSystem = TestSystems.CreateMissionCommands(
                 game,
                 new FixedRNG(0.0),
                 movement
             );
 
-            missionSystem.UpdateMission(mission);
+            missionSystem.ProcessMissionTick(game);
 
             Assert.IsFalse(captive.IsCaptured, "Rescued officer should no longer be captured");
             Assert.AreEqual(
@@ -569,14 +599,14 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void UpdateMission_RescuedOfficerAlreadyInTransit_ReturnsRescuerOnly()
+        public void ProcessTick_RescuedOfficerAlreadyInTransit_ReturnsRescuerOnly()
         {
             (
                 GameRoot game,
                 Planet empPlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
 
             Officer captive = EntityFactory.CreateOfficer("captive", "empire");
@@ -597,12 +627,18 @@ namespace Rebellion.Tests.Game.Missions
             mission.Initiate(0);
             captive.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 1 };
 
-            MissionSystem missionSystem = TestSystems.CreateMissionSystem(
+            MissionCommands missionSystem = TestSystems.CreateMissionCommands(
                 game,
                 new FixedRNG(0.0),
-                new MovementSystem(game, fog, new FleetSystem(game))
+                new MovementCommands(
+                    game,
+                    fog,
+                    new FleetCommands(game),
+                    new FogOfWarQueries(game),
+                    new MovementQueries(game)
+                )
             );
-            missionSystem.UpdateMission(mission);
+            missionSystem.ProcessMissionTick(game);
 
             Assert.AreEqual(empPlanet, officer.GetParent());
             Assert.AreEqual(enemyPlanet, captive.GetParent());

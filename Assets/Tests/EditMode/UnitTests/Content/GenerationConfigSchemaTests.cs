@@ -86,6 +86,25 @@ namespace Rebellion.Tests.Content
             );
         }
 
+        [Test]
+        public void Validate_FactionBucketOverride_AcceptsDocument()
+        {
+            const string bucketOverrides =
+                @"
+        <Overrides>
+          <FactionBucketOverride>
+            <Difficulty>Hard</Difficulty>
+            <ControllerType>AI</ControllerType>
+            <StrongPct>14</StrongPct>
+            <WeakPct>0</WeakPct>
+          </FactionBucketOverride>
+        </Overrides>";
+
+            Assert.DoesNotThrow(() =>
+                ValidateGenerationConfigXml(CreateGenerationXml(string.Empty, bucketOverrides))
+            );
+        }
+
         /// <summary>
         /// Validates generation config xml.
         /// </summary>
@@ -123,8 +142,12 @@ namespace Rebellion.Tests.Content
         /// Creates generation xml.
         /// </summary>
         /// <param name="startingOfficerRules">The starting officer rules.</param>
+        /// <param name="bucketOverrides">Optional faction ownership percentage overrides.</param>
         /// <returns>The created generation xml.</returns>
-        private static string CreateGenerationXml(string startingOfficerRules)
+        private static string CreateGenerationXml(
+            string startingOfficerRules,
+            string bucketOverrides = ""
+        )
         {
             return $@"
 <GameGenerationConfig>
@@ -141,7 +164,6 @@ namespace Rebellion.Tests.Content
     <FactionSetups>
       <FactionSetup>
         <FactionID>FACTION</FactionID>
-        <GarrisonTroopTypeID>REGIMENT_TYPE</GarrisonTroopTypeID>
         <StartingPlanets>
           <StartingPlanet>
             <PlanetTypeID>PLANET_TYPE</PlanetTypeID>
@@ -152,19 +174,14 @@ namespace Rebellion.Tests.Content
         </StartingPlanets>
       </FactionSetup>
     </FactionSetups>
-    <Profiles>
-      <DifficultyProfile>
-        <Name>Default</Name>
-        <Difficulty>-1</Difficulty>
-        <FactionBuckets>
-          <FactionBucketConfig>
-            <FactionID>FACTION</FactionID>
-            <StrongPct>0</StrongPct>
-            <WeakPct>0</WeakPct>
-          </FactionBucketConfig>
-        </FactionBuckets>
-      </DifficultyProfile>
-    </Profiles>
+    <FactionBuckets>
+      <FactionBucketConfig>
+        <FactionID>FACTION</FactionID>
+        <StrongPct>0</StrongPct>
+        <WeakPct>0</WeakPct>
+        {bucketOverrides}
+      </FactionBucketConfig>
+    </FactionBuckets>
   </GalaxyClassification>
   <PlanetResources>
     <Profiles>
@@ -206,7 +223,6 @@ namespace Rebellion.Tests.Content
   <UnitDeployment>
     <UprisingPreventionThreshold>0</UprisingPreventionThreshold>
     <SupportDeficitPerGarrisonTroop>1</SupportDeficitPerGarrisonTroop>
-    <BudgetDifficultyMappings/>
     <FixedGarrisons/>
     <FixedFleets/>
     <FactionBudgets>
@@ -215,16 +231,28 @@ namespace Rebellion.Tests.Content
         <BudgetLevels>
           <BudgetLevel>
             <GalaxySize>0</GalaxySize>
-            <Difficulty>-1</Difficulty>
             <Percentage>0</Percentage>
           </BudgetLevel>
         </BudgetLevels>
         <UnitTable>
           <WeightedUnitEntry>
-            <CumulativeWeight>0</CumulativeWeight>
+            <Weight>1</Weight>
             <Units><UnitEntry><TypeID>UNIT_TYPE</TypeID><Count>1</Count></UnitEntry></Units>
           </WeightedUnitEntry>
         </UnitTable>
+        <Bonuses>
+          <StartingUnitBudgetBonus>
+            <Difficulty>Hard</Difficulty>
+            <AIOnly>true</AIOnly>
+            <Category>Regiment</Category>
+            <BudgetLevels>
+              <BudgetLevel>
+                <GalaxySize>0</GalaxySize>
+                <Percentage>0</Percentage>
+              </BudgetLevel>
+            </BudgetLevels>
+          </StartingUnitBudgetBonus>
+        </Bonuses>
       </FactionBudget>
     </FactionBudgets>
   </UnitDeployment>

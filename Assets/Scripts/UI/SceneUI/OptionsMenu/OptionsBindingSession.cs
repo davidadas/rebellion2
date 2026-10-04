@@ -4,7 +4,7 @@ using System.Text;
 using UnityEngine.InputSystem;
 
 /// <summary>
-/// Manages the controls list and keyboard rebinding against authored binding slots.
+/// Manages the controls list and input rebinding against authored binding slots.
 /// </summary>
 internal sealed class OptionsBindingSession : IDisposable
 {
@@ -254,8 +254,10 @@ internal sealed class OptionsBindingSession : IDisposable
             .PerformInteractiveRebinding()
             .WithRebindAddingNewBinding()
             .WithCancelingThrough("<Keyboard>/escape")
-            .WithControlsExcluding("<Mouse>")
-            .WithControlsExcluding("<Keyboard>/anyKey");
+            .WithControlsExcluding("<Keyboard>/anyKey")
+            .WithControlsExcluding("<Mouse>/leftButton")
+            .WithControlsExcluding("<Mouse>/rightButton")
+            .WithControlsExcluding("<Pointer>/press");
         if (!IsModifierAction(action.name))
         {
             foreach (string path in _modifierControlPaths)
@@ -811,6 +813,9 @@ internal sealed class OptionsBindingSession : IDisposable
             "CancelOrSettings" => "Cancel",
             "MultiSelectModifier" => "Toggle Selection Modifier",
             "RangeSelectModifier" => "Range Selection Modifier",
+            "AdvisorBuildShips" => "Build Ships",
+            "AdvisorBuildTroops" => "Build Troops",
+            "AdvisorBuildFacilities" => "Build Facilities",
             _ => Humanize(actionName),
         };
     }

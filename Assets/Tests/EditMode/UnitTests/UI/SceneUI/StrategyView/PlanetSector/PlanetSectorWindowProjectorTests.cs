@@ -7,6 +7,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
+using Rebellion.Simulation;
 using UnityEngine;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 using GameFleet = Rebellion.Game.Units.Fleet;
@@ -30,7 +31,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         [SetUp]
         public void SetUp()
         {
-            _game = new GameRoot(TestConfig.Create());
+            _game = TestGame.Create(TestConfig.Create());
             _game
                 .GetFactions()
                 .Add(new Faction { InstanceID = _playerFactionId, DisplayName = "Alliance" });
@@ -316,10 +317,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 new Color32(160, 160, 160, 255),
                 presentation.EnergyBar.BackgroundColor
             );
+            Assert.AreEqual("Energy Consumption 2/3", presentation.EnergyBar.TooltipText);
             Assert.AreEqual(4, presentation.RawResourceBar.CellCount);
             Assert.AreEqual(1, presentation.RawResourceBar.LitCells);
             Assert.AreEqual(new Color32(255, 255, 84, 255), presentation.RawResourceBar.FillColor);
             Assert.AreEqual(new Color32(236, 106, 46, 255), presentation.RawResourceBar.EmptyColor);
+            Assert.AreEqual("Raw Materials 1/4", presentation.RawResourceBar.TooltipText);
             Assert.IsTrue(presentation.SupportBar.Visible);
             Assert.AreEqual(0.75f, presentation.SupportBar.FillRatio);
             Assert.AreEqual(
@@ -329,6 +332,96 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreEqual(
                 (Color32)opposingTheme.GetPrimaryColor(),
                 presentation.SupportBar.BackgroundColor
+            );
+            Assert.AreEqual("Popular Support 75/100", presentation.SupportBar.TooltipText);
+            Assert.IsNull(presentation.GalacticInformationTexture);
+        }
+
+        [Test]
+        public void CreateRenderData_IdleShipyardFilter_ReturnsEvaluatedMarkerTexture()
+        {
+            Planet planet = CreatePlanet("planet", _playerFactionId, 13, 25);
+            planet.AddTestChild(
+                new Building
+                {
+                    OwnerInstanceID = _playerFactionId,
+                    BuildingType = BuildingType.Shipyard,
+                    ProductionType = ManufacturingType.Ship,
+                    ProcessRate = 1,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                }
+            );
+            FactionTheme playerTheme = _uiContext.GetPlayerFactionTheme();
+
+            PlanetSectorWindowRenderData data = _projector.CreateRenderData(
+                CreateSector(new GalaxyMapPlanet(_planetSector, planet, string.Empty)),
+                null,
+                PlanetIcon.None,
+                null,
+                PlanetIcon.None,
+                filterMode: GalacticInformationFilterMode.IdleShipyards
+            );
+
+            Assert.AreSame(
+                _uiContext.GetTexture(playerTheme.GalaxyBackground.PlanetIcons.XL),
+                data.Planets[0].GalacticInformationTexture
+            );
+        }
+
+        [Test]
+        public void CreateRenderData_RelocatedHeadquartersInTransit_ShowsOnDestinationPlanet()
+        {
+            Planet origin = CreatePlanet("origin", _playerFactionId, 13, 25);
+            Planet destination = CreatePlanet("destination", _playerFactionId, 21, 34);
+            origin.IsColonized = true;
+            destination.IsColonized = true;
+            origin.EnergyCapacity = 1;
+            destination.EnergyCapacity = 2;
+            origin.IsHeadquarters = true;
+            Faction player = _game.GetFactionByOwnerInstanceID(_playerFactionId);
+            player.HQInstanceID = origin.InstanceID;
+            player.Settings = new FactionSettings
+            {
+                Headquarters = new HeadquartersSettings { IsMobile = true },
+            };
+            _game.AttachNode(_planetSector, _game.GetGalaxyMap());
+            _game.AttachNode(origin, _planetSector);
+            _game.AttachNode(destination, _planetSector);
+            Building headquarters = new Building
+            {
+                InstanceID = "headquarters",
+                OwnerInstanceID = _playerFactionId,
+                BuildingType = BuildingType.Headquarters,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(headquarters, origin);
+            GameSession session = TestContent.CreateGameSession(_game);
+            Assert.IsTrue(
+                session.GetService<HeadquartersCommands>().TryRelocate(headquarters, destination)
+            );
+            GalaxyMapSector sector = CreateSector(
+                new GalaxyMapPlanet(_planetSector, origin, string.Empty),
+                new GalaxyMapPlanet(_planetSector, destination, string.Empty)
+            );
+
+            PlanetSectorWindowRenderData data = _projector.CreateRenderData(
+                sector,
+                null,
+                PlanetIcon.None,
+                null,
+                PlanetIcon.None
+            );
+
+            Assert.IsFalse(destination.IsHeadquarters);
+            Assert.IsNotNull(headquarters.Movement);
+            Assert.IsNull(data.Planets[0].HeadquartersTexture);
+            Assert.AreSame(
+                _uiContext.GetTexture(
+                    _uiContext
+                        .GetPlayerFactionTheme()
+                        .PlanetOverlayTheme.PlanetSectorHeadquartersImagePath
+                ),
+                data.Planets[1].HeadquartersTexture
             );
         }
 
@@ -567,6 +660,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsFalse(presentation.EnergyBar.Visible);
             Assert.IsFalse(presentation.RawResourceBar.Visible);
             Assert.IsFalse(presentation.SupportBar.Visible);
+            Assert.IsEmpty(presentation.EnergyBar.TooltipText);
+            Assert.IsEmpty(presentation.RawResourceBar.TooltipText);
+            Assert.IsEmpty(presentation.SupportBar.TooltipText);
         }
 
         [Test]
@@ -590,11 +686,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreEqual(0, presentation.EnergyBar.CellCount);
             Assert.AreEqual(1f, presentation.EnergyBar.FillRatio);
             Assert.AreEqual(new Color32(0, 0, 255, 255), presentation.EnergyBar.FillColor);
+            Assert.AreEqual("Energy Consumption 0/0", presentation.EnergyBar.TooltipText);
             Assert.IsTrue(presentation.RawResourceBar.Visible);
             Assert.AreEqual(0, presentation.RawResourceBar.CellCount);
             Assert.AreEqual(1f, presentation.RawResourceBar.FillRatio);
             Assert.AreEqual(new Color32(236, 106, 46, 255), presentation.RawResourceBar.FillColor);
+            Assert.AreEqual("Raw Materials 0/0", presentation.RawResourceBar.TooltipText);
             Assert.IsFalse(presentation.SupportBar.Visible);
+            Assert.IsEmpty(presentation.SupportBar.TooltipText);
         }
 
         [Test]
@@ -694,11 +793,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         /// <summary>
         /// Creates sector.
         /// </summary>
-        /// <param name="planet">The planet.</param>
+        /// <param name="planets">The planets.</param>
         /// <returns>The created sector.</returns>
-        private GalaxyMapSector CreateSector(GalaxyMapPlanet planet)
+        private GalaxyMapSector CreateSector(params GalaxyMapPlanet[] planets)
         {
-            return new GalaxyMapSector(_planetSector, new[] { planet });
+            return new GalaxyMapSector(_planetSector, planets);
         }
 
         private sealed class TestMission : Mission

@@ -2,9 +2,11 @@ using System;
 using System.IO;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
+using Rebellion.Simulation;
 
 namespace Rebellion.Tests.App
 {
@@ -45,22 +47,111 @@ namespace Rebellion.Tests.App
         }
 
         [Test]
+        public void StartGame_InvalidContent_EndsPreviousSession()
+        {
+            _runtime.StartGame(CreateGame());
+            GameRoot replacement = CreateGame();
+            replacement.Summary.PackID = "different-pack";
+
+            Assert.Throws<InvalidOperationException>(() => _runtime.StartGame(replacement));
+
+            Assert.IsFalse(_runtime.HasActiveGame);
+        }
+
+        [Test]
+        public void LoadGame_InvalidContent_KeepsActiveManager()
+        {
+            GameSession session = _runtime.StartGame(CreateGame());
+            GameManager manager = _runtime.GetActiveGameManager();
+            GameRoot replacement = CreateGame();
+            replacement.Summary.PackID = "different-pack";
+            _saveGameManager.SaveGameData(replacement, "invalid-content", "Invalid Content");
+
+            Assert.Throws<InvalidOperationException>(() => _runtime.LoadGame("invalid-content"));
+
+            Assert.AreSame(manager, _runtime.GetActiveGameManager());
+        }
+
+        [Test]
+        public void LoadGame_ValidSave_KeepsManagerIdentity()
+        {
+            GameSession session = _runtime.StartGame(CreateGame());
+            GameManager manager = _runtime.GetActiveGameManager();
+            _saveGameManager.SaveGameData(CreateGame(), "replacement", "Replacement");
+
+            _runtime.LoadGame("replacement");
+
+            Assert.AreSame(manager, _runtime.GetActiveGameManager());
+        }
+
+        [Test]
+        public void EndGame_SpeedObserverThrows_KeepsActiveManager()
+        {
+            GameSession session = _runtime.StartGame(CreateGame());
+            GameManager manager = _runtime.GetActiveGameManager();
+            Action fail = () => throw new InvalidOperationException("Pause observer failed.");
+            manager.GameSpeedChanged += fail;
+
+            try
+            {
+                Assert.Throws<InvalidOperationException>(_runtime.EndGame);
+                Assert.AreSame(manager, _runtime.GetActiveGameManager());
+            }
+            finally
+            {
+                manager.GameSpeedChanged -= fail;
+            }
+        }
+
+        [Test]
+        public void EndGame_SpeedObserverThrows_DetachesAutosave()
+        {
+            GameRoot game = CreateGame();
+            game.CurrentTick = 39;
+            _gameplaySettings.AutosaveIntervalTicks = 40;
+            GameSession session = _runtime.StartGame(game);
+            GameManager manager = _runtime.GetActiveGameManager();
+            Action fail = () => throw new InvalidOperationException("Pause observer failed.");
+            manager.GameSpeedChanged += fail;
+
+            try
+            {
+                Assert.Throws<InvalidOperationException>(_runtime.EndGame);
+            }
+            finally
+            {
+                manager.GameSpeedChanged -= fail;
+            }
+            manager.SetGameSpeed(TickSpeed.Fast);
+            session.Tick.ProcessTick();
+
+            Assert.IsFalse(
+                File.Exists(
+                    _saveGameManager.GetSaveFilePath(
+                        SaveGameManager.AutosaveFilePrefix + "0000000040"
+                    )
+                )
+            );
+        }
+
+        [Test]
         public void StartGame_PendingCombat_DefersAutosaveUntilResolution()
         {
             GameRoot game = CreateContestedGame();
             game.CurrentTick = 39;
             _gameplaySettings.AutosaveIntervalTicks = 40;
-            GameManager manager = _runtime.StartGame(game);
+            GameSession session = _runtime.StartGame(game);
+            GameManager manager = _runtime.GetActiveGameManager();
             string autosavePath = _saveGameManager.GetSaveFilePath(
                 SaveGameManager.AutosaveFilePrefix + "0000000040"
             );
 
-            manager.ProcessTick();
+            session.Tick.ProcessTick();
 
             Assert.IsFalse(File.Exists(autosavePath));
             Assert.IsFalse(_runtime.CanSave);
 
-            manager.ResolveCombat(true);
+            session.Tick.ResolveCombat(true);
 
             Assert.IsTrue(File.Exists(autosavePath));
             Assert.IsTrue(_runtime.CanSave);
@@ -85,11 +176,12 @@ namespace Rebellion.Tests.App
         {
             GameRoot game = CreateContestedGame();
             game.CurrentTick = 40;
-            GameManager manager = _runtime.StartLoadedGame(game);
+            GameSession session = _runtime.StartLoadedGame(game);
+            GameManager manager = _runtime.GetActiveGameManager();
 
             bool saved = _runtime.SaveGame("pending_combat", "Pending Combat");
 
-            Assert.IsTrue(manager.SpaceCombatSystem.HasPendingDecision);
+            Assert.IsTrue(session.GetService<SpaceCombatCommands>().HasPendingDecision);
             Assert.IsFalse(_runtime.CanSave);
             Assert.IsFalse(saved);
             Assert.IsFalse(File.Exists(_saveGameManager.GetSaveFilePath("pending_combat")));
@@ -101,9 +193,10 @@ namespace Rebellion.Tests.App
         {
             GameRoot game = CreateGame();
             game.CurrentTick = 123;
-            GameManager manager = _runtime.StartGame(game);
+            GameSession session = _runtime.StartGame(game);
+            GameManager manager = _runtime.GetActiveGameManager();
             GameRoot replacement = null;
-            manager.GameReplaced += loadedGame => replacement = loadedGame;
+            _runtime.GameReplaced += loadedGame => replacement = loadedGame;
 
             _runtime.QuickSave();
             game.CurrentTick = 999;
@@ -170,6 +263,66 @@ namespace Rebellion.Tests.App
             );
             StringAssert.Contains("mods [missing-mod@1.0.0]", exception.Message);
             StringAssert.Contains("mods [] is active", exception.Message);
+        }
+
+        [Test]
+        public void LoadGame_InvalidEvent_DoesNotNotifyPresentation()
+        {
+            _runtime.StartGame(CreateGame());
+            GameRoot replacement = CreateGame();
+            replacement
+                .GetEventPool()
+                .Add(new GameEvent { InstanceID = "INVALID", MaximumActivations = 0 });
+            _saveGameManager.SaveGameData(replacement, "invalid-event", "Invalid Event");
+            int announcements = 0;
+            _runtime.GameReplaced += _ => announcements++;
+
+            Assert.Throws<InvalidOperationException>(() => _runtime.LoadGame("invalid-event"));
+
+            Assert.AreEqual(0, announcements);
+        }
+
+        [Test]
+        public void LoadGame_ValidSave_KeepsSessionIdentity()
+        {
+            GameSession session = _runtime.StartGame(CreateGame());
+            _saveGameManager.SaveGameData(CreateGame(), "replacement", "Replacement");
+
+            _runtime.LoadGame("replacement");
+
+            Assert.AreSame(session, _runtime.GetActiveGameSession());
+        }
+
+        [Test]
+        public void LoadGame_ValidSave_ResetsClockBeforeNotification()
+        {
+            _runtime.StartGame(CreateGame());
+            GameManager clock = _runtime.GetActiveGameManager();
+            clock.SetGameSpeed(TickSpeed.Fast);
+            float interval = _runtime.GetActiveGame().Config.GameSpeed.FastTickIntervalSeconds;
+            clock.TryAdvanceTickTimer(interval / 2f);
+            GameRoot replacement = CreateGame();
+            replacement.SetGameSpeed(TickSpeed.Fast);
+            _saveGameManager.SaveGameData(replacement, "replacement", "Replacement");
+            bool? ready = null;
+            _runtime.GameReplaced += _ => ready = clock.TryAdvanceTickTimer(interval / 2f);
+
+            _runtime.LoadGame("replacement");
+
+            Assert.IsFalse(ready);
+        }
+
+        [Test]
+        public void LoadGame_PresentationThrows_LeavesReconciliationPending()
+        {
+            GameSession session = _runtime.StartGame(CreateGame());
+            _saveGameManager.SaveGameData(CreateContestedGame(), "contested", "Contested");
+            _runtime.GameReplaced += _ =>
+                throw new InvalidOperationException("Presentation failed.");
+
+            Assert.Throws<InvalidOperationException>(() => _runtime.LoadGame("contested"));
+
+            Assert.IsFalse(session.GetService<SpaceCombatCommands>().HasPendingDecision);
         }
 
         /// <summary>

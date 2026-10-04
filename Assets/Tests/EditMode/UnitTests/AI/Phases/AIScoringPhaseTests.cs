@@ -1,9 +1,12 @@
 using System;
 using NUnit.Framework;
-using Rebellion.AI.Director;
+using Rebellion.AI;
+using Rebellion.AI.Demands;
 using Rebellion.AI.Phases;
+using Rebellion.AI.Planners;
 using Rebellion.AI.Proposals;
-using Rebellion.AI.Scoring;
+using Rebellion.AI.Scorers;
+using Rebellion.AI.Selectors;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
@@ -49,6 +52,9 @@ namespace Rebellion.Tests.AI.Phases
                 null,
                 null,
                 null,
+                null,
+                null,
+                null,
                 null
             );
             context.AddProposal(proposal);
@@ -66,6 +72,9 @@ namespace Rebellion.Tests.AI.Phases
         public void Execute_WithUnsupportedProposal_ThrowsInvalidOperationException()
         {
             AITurnContext context = new AITurnContext(
+                null,
+                null,
+                null,
                 null,
                 null,
                 null,

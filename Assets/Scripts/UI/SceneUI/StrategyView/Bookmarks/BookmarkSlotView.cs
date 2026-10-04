@@ -54,7 +54,7 @@ public sealed class BookmarkSlotView : MonoBehaviour, IPointerClickHandler
         );
 
         int labelOffsetX = GetLabelOffsetX(layout, iconWidth);
-        int labelWidth = Mathf.Max(0, slot.width - labelOffsetX);
+        int labelWidth = Mathf.Min(layout.LabelWidth, Mathf.Max(0, slot.width - labelOffsetX));
         UILayout.SetTemplateText(
             labelTextField,
             labelTextField,
@@ -64,7 +64,7 @@ public sealed class BookmarkSlotView : MonoBehaviour, IPointerClickHandler
         );
         labelTextField.alignment = TextAlignmentOptions.MidlineLeft;
         labelTextField.textWrappingMode = TextWrappingModes.NoWrap;
-        labelTextField.overflowMode = TextOverflowModes.Ellipsis;
+        labelTextField.overflowMode = TextOverflowModes.Truncate;
         labelTextField.enabled = true;
         labelTextField.canvasRenderer.SetAlpha(1f);
         labelTextField.ForceMeshUpdate();

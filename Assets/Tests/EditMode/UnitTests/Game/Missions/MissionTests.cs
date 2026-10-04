@@ -7,13 +7,52 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
+using Rebellion.Simulation;
 
 namespace Rebellion.Tests.Game.Missions
 {
     [TestFixture]
     public class MissionTests
     {
+        [Test]
+        public void GetMissionOdds_AIControlledFaction_AppliesDifficultyModifier()
+        {
+            (
+                GameRoot game,
+                Planet empirePlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarCommands fog
+            ) = MissionSceneBuilder.Build();
+            Regiment target = CreateSabotageTarget(game, enemyPlanet);
+            Mission mission = CreateSabotageMission(
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                target
+            );
+            game.AttachNode(mission, enemyPlanet);
+            game.Summary.Difficulty = GameDifficulty.Hard;
+            game.Summary.PlayerFactionID = "rebels";
+            game.Config.DifficultyModifiers[GameDifficulty.Hard] = new DifficultyModifiers
+            {
+                MissionSuccessChancePoints = 15,
+            };
+
+            double modifiedProbability = mission.GetObjectiveSuccessProbability(
+                new[] { officer },
+                game
+            );
+            game.Config.DifficultyModifiers.Clear();
+            double neutralProbability = mission.GetObjectiveSuccessProbability(
+                new[] { officer },
+                game
+            );
+
+            Assert.AreEqual(neutralProbability + 15, modifiedProbability, 0.0001);
+        }
+
         [Test]
         public void GetChildren_ParticipantAssignedBeforeMissionInitiates_ReturnsParticipant()
         {
@@ -22,7 +61,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
             Regiment target = CreateSabotageTarget(game, enemyPlanet);
             Mission mission = CreateSabotageMission(
@@ -52,7 +91,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
             Officer decoy = EntityFactory.CreateOfficer("decoy", "empire");
             Regiment target = CreateSabotageTarget(game, enemyPlanet);
@@ -81,7 +120,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
 
             Building building = new Building
@@ -120,7 +159,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
 
             Building building = new Building
@@ -156,7 +195,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
 
             Officer decoy = EntityFactory.CreateOfficer("decoy", "empire");
@@ -186,7 +225,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
             Regiment target = CreateSabotageTarget(game, enemyPlanet);
 
@@ -216,7 +255,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
             Regiment target = CreateSabotageTarget(game, enemyPlanet);
 
@@ -248,7 +287,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
 
             int ratingBefore = officer.GetBaseRating(SkillRating.Diplomacy);
@@ -285,7 +324,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
             Regiment target = CreateSabotageTarget(game, enemyPlanet);
 
@@ -321,7 +360,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
             Regiment target = CreateSabotageTarget(game, enemyPlanet);
             officer.SetBaseRating(SkillRating.Espionage, 0);
@@ -369,7 +408,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer weakOfficer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
             Regiment target = CreateSabotageTarget(game, enemyPlanet);
             weakOfficer.SetBaseRating(SkillRating.Espionage, 0);
@@ -414,7 +453,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer lowScoreOfficer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
             Regiment target = CreateSabotageTarget(game, enemyPlanet);
             lowScoreOfficer.SetBaseRating(SkillRating.Espionage, 20);
@@ -454,7 +493,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
             Regiment target = CreateSabotageTarget(game, enemyPlanet);
 
@@ -480,7 +519,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
             Regiment target = CreateSabotageTarget(game, enemyPlanet);
 
@@ -511,7 +550,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empirePlanet,
                 Planet enemyPlanet,
                 Officer officer,
-                FogOfWarSystem fog
+                FogOfWarCommands fog
             ) = MissionSceneBuilder.Build();
             Officer decoy = EntityFactory.CreateOfficer("o2", "empire");
             game.AttachNode(decoy, empirePlanet);
@@ -527,7 +566,13 @@ namespace Rebellion.Tests.Game.Missions
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(3);
 
-            MovementSystem movement = new MovementSystem(game, fog, new FleetSystem(game));
+            MovementCommands movement = new MovementCommands(
+                game,
+                fog,
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
             movement.RequestMove(officer, mission);
             movement.RequestMove(decoy, mission);
 

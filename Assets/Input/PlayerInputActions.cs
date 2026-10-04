@@ -689,6 +689,33 @@ namespace Rebellion.Input
                     ""initialStateCheck"": false
                 },
                 {
+                    ""name"": ""AdvisorBuildShips"",
+                    ""type"": ""Button"",
+                    ""id"": ""864d65b9-6974-4657-b65f-caae883d976b"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""AdvisorBuildTroops"",
+                    ""type"": ""Button"",
+                    ""id"": ""1265863d-765b-4e8a-a695-d13fc9d08b03"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""AdvisorBuildFacilities"",
+                    ""type"": ""Button"",
+                    ""id"": ""4c5d5180-3658-471d-bdf7-8917be093a4b"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
                     ""name"": ""DestroySelectedUnits"",
                     ""type"": ""Button"",
                     ""id"": ""00000000-0000-0000-0000-000000000237"",
@@ -2848,6 +2875,270 @@ namespace Rebellion.Input
                     ""processors"": """",
                     ""groups"": ""Keyboard&Mouse"",
                     ""action"": ""OpenAllMessages"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": ""Primary"",
+                    ""id"": ""e4135230-650f-4f89-838c-a37a6d61c1b5"",
+                    ""path"": """",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""AdvisorBuildShips"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": ""PrimaryChord"",
+                    ""id"": ""cc5df496-fdbb-4bbc-acbf-769e791c9ba9"",
+                    ""path"": ""OneModifier(modifiersOrder=1)"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""AdvisorBuildShips"",
+                    ""isComposite"": true,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": ""Modifier"",
+                    ""id"": ""fa19b06c-48bb-4d05-9c7b-7c12be1e2410"",
+                    ""path"": ""<Keyboard>/alt"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""AdvisorBuildShips"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": ""Binding"",
+                    ""id"": ""249103d5-66f0-4a72-ac22-e3222be446e1"",
+                    ""path"": ""<Keyboard>/b"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""AdvisorBuildShips"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": ""Secondary"",
+                    ""id"": ""d1850693-3151-4681-8d56-57fc67cbda1e"",
+                    ""path"": """",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""AdvisorBuildShips"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": ""SecondaryChord"",
+                    ""id"": ""e49748a2-c8a8-4028-8c7c-e04897f7600c"",
+                    ""path"": ""OneModifier(modifiersOrder=1)"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""AdvisorBuildShips"",
+                    ""isComposite"": true,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": ""Modifier"",
+                    ""id"": ""e1cbe7ba-d749-4704-8134-3022a1c20014"",
+                    ""path"": """",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""AdvisorBuildShips"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": ""Binding"",
+                    ""id"": ""2c0bc1f4-6800-4f14-82ce-56c5a71cad0b"",
+                    ""path"": """",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""AdvisorBuildShips"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": ""Primary"",
+                    ""id"": ""64dc436f-2013-438b-817a-7699cbd4acd1"",
+                    ""path"": """",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""AdvisorBuildTroops"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": ""PrimaryChord"",
+                    ""id"": ""8cefdf5e-aec7-4e6e-8615-75fc1c867d26"",
+                    ""path"": ""OneModifier(modifiersOrder=1)"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""AdvisorBuildTroops"",
+                    ""isComposite"": true,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": ""Modifier"",
+                    ""id"": ""0ac70bfa-adef-4310-816d-fc4f77bb48ca"",
+                    ""path"": ""<Keyboard>/alt"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""AdvisorBuildTroops"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": ""Binding"",
+                    ""id"": ""ba47a93c-d43d-4b91-a81b-d50f5a31ff4b"",
+                    ""path"": ""<Keyboard>/t"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""AdvisorBuildTroops"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": ""Secondary"",
+                    ""id"": ""18eee7e8-12fb-4314-959a-55e51eddf900"",
+                    ""path"": """",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""AdvisorBuildTroops"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": ""SecondaryChord"",
+                    ""id"": ""f6f76fa6-8361-49fb-b099-481cd31fc316"",
+                    ""path"": ""OneModifier(modifiersOrder=1)"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""AdvisorBuildTroops"",
+                    ""isComposite"": true,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": ""Modifier"",
+                    ""id"": ""562e0621-5bc9-49b4-ad86-75dc124e0f7e"",
+                    ""path"": """",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""AdvisorBuildTroops"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": ""Binding"",
+                    ""id"": ""5a8886c5-c916-4c5e-bbfc-acb4492c339d"",
+                    ""path"": """",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""AdvisorBuildTroops"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": ""Primary"",
+                    ""id"": ""963d0b05-bf23-40d1-b186-d5579eed96cc"",
+                    ""path"": """",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""AdvisorBuildFacilities"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": ""PrimaryChord"",
+                    ""id"": ""932c096d-06a1-4a00-87ec-effa8ddf0300"",
+                    ""path"": ""OneModifier(modifiersOrder=1)"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""AdvisorBuildFacilities"",
+                    ""isComposite"": true,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": ""Modifier"",
+                    ""id"": ""fdeae9c8-d4bb-4137-97d3-c47e91b222ec"",
+                    ""path"": ""<Keyboard>/alt"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""AdvisorBuildFacilities"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": ""Binding"",
+                    ""id"": ""17d95f1e-4a05-4002-a6a6-256e6a4da11a"",
+                    ""path"": ""<Keyboard>/f"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""AdvisorBuildFacilities"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": ""Secondary"",
+                    ""id"": ""a08a096d-e6b6-47ee-891c-5d78711e2c37"",
+                    ""path"": """",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""AdvisorBuildFacilities"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": ""SecondaryChord"",
+                    ""id"": ""b101f250-b141-4730-ae62-ea4833b7cf60"",
+                    ""path"": ""OneModifier(modifiersOrder=1)"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""AdvisorBuildFacilities"",
+                    ""isComposite"": true,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": ""Modifier"",
+                    ""id"": ""2b4493a2-ec9c-495e-90b7-e27d68b5d529"",
+                    ""path"": """",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""AdvisorBuildFacilities"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": ""Binding"",
+                    ""id"": ""c3882c8e-edfe-469a-93c5-62240d930a64"",
+                    ""path"": """",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""AdvisorBuildFacilities"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": true
                 },
@@ -5479,6 +5770,9 @@ namespace Rebellion.Input
             m_Strategy_OpenPlanetFinder = m_Strategy.FindAction("OpenPlanetFinder", throwIfNotFound: true);
             m_Strategy_OpenEncyclopedia = m_Strategy.FindAction("OpenEncyclopedia", throwIfNotFound: true);
             m_Strategy_OpenAllMessages = m_Strategy.FindAction("OpenAllMessages", throwIfNotFound: true);
+            m_Strategy_AdvisorBuildShips = m_Strategy.FindAction("AdvisorBuildShips", throwIfNotFound: true);
+            m_Strategy_AdvisorBuildTroops = m_Strategy.FindAction("AdvisorBuildTroops", throwIfNotFound: true);
+            m_Strategy_AdvisorBuildFacilities = m_Strategy.FindAction("AdvisorBuildFacilities", throwIfNotFound: true);
             m_Strategy_DestroySelectedUnits = m_Strategy.FindAction("DestroySelectedUnits", throwIfNotFound: true);
             m_Strategy_OpenMissionSetup = m_Strategy.FindAction("OpenMissionSetup", throwIfNotFound: true);
             m_Strategy_IssueMoveOrder = m_Strategy.FindAction("IssueMoveOrder", throwIfNotFound: true);
@@ -5756,6 +6050,9 @@ namespace Rebellion.Input
         private readonly InputAction m_Strategy_OpenPlanetFinder;
         private readonly InputAction m_Strategy_OpenEncyclopedia;
         private readonly InputAction m_Strategy_OpenAllMessages;
+        private readonly InputAction m_Strategy_AdvisorBuildShips;
+        private readonly InputAction m_Strategy_AdvisorBuildTroops;
+        private readonly InputAction m_Strategy_AdvisorBuildFacilities;
         private readonly InputAction m_Strategy_DestroySelectedUnits;
         private readonly InputAction m_Strategy_OpenMissionSetup;
         private readonly InputAction m_Strategy_IssueMoveOrder;
@@ -5880,6 +6177,18 @@ namespace Rebellion.Input
             /// Provides access to the underlying input action "Strategy/OpenAllMessages".
             /// </summary>
             public InputAction @OpenAllMessages => m_Wrapper.m_Strategy_OpenAllMessages;
+            /// <summary>
+            /// Provides access to the underlying input action "Strategy/AdvisorBuildShips".
+            /// </summary>
+            public InputAction @AdvisorBuildShips => m_Wrapper.m_Strategy_AdvisorBuildShips;
+            /// <summary>
+            /// Provides access to the underlying input action "Strategy/AdvisorBuildTroops".
+            /// </summary>
+            public InputAction @AdvisorBuildTroops => m_Wrapper.m_Strategy_AdvisorBuildTroops;
+            /// <summary>
+            /// Provides access to the underlying input action "Strategy/AdvisorBuildFacilities".
+            /// </summary>
+            public InputAction @AdvisorBuildFacilities => m_Wrapper.m_Strategy_AdvisorBuildFacilities;
             /// <summary>
             /// Provides access to the underlying input action "Strategy/DestroySelectedUnits".
             /// </summary>
@@ -6072,6 +6381,15 @@ namespace Rebellion.Input
                 @OpenAllMessages.started += instance.OnOpenAllMessages;
                 @OpenAllMessages.performed += instance.OnOpenAllMessages;
                 @OpenAllMessages.canceled += instance.OnOpenAllMessages;
+                @AdvisorBuildShips.started += instance.OnAdvisorBuildShips;
+                @AdvisorBuildShips.performed += instance.OnAdvisorBuildShips;
+                @AdvisorBuildShips.canceled += instance.OnAdvisorBuildShips;
+                @AdvisorBuildTroops.started += instance.OnAdvisorBuildTroops;
+                @AdvisorBuildTroops.performed += instance.OnAdvisorBuildTroops;
+                @AdvisorBuildTroops.canceled += instance.OnAdvisorBuildTroops;
+                @AdvisorBuildFacilities.started += instance.OnAdvisorBuildFacilities;
+                @AdvisorBuildFacilities.performed += instance.OnAdvisorBuildFacilities;
+                @AdvisorBuildFacilities.canceled += instance.OnAdvisorBuildFacilities;
                 @DestroySelectedUnits.started += instance.OnDestroySelectedUnits;
                 @DestroySelectedUnits.performed += instance.OnDestroySelectedUnits;
                 @DestroySelectedUnits.canceled += instance.OnDestroySelectedUnits;
@@ -6224,6 +6542,15 @@ namespace Rebellion.Input
                 @OpenAllMessages.started -= instance.OnOpenAllMessages;
                 @OpenAllMessages.performed -= instance.OnOpenAllMessages;
                 @OpenAllMessages.canceled -= instance.OnOpenAllMessages;
+                @AdvisorBuildShips.started -= instance.OnAdvisorBuildShips;
+                @AdvisorBuildShips.performed -= instance.OnAdvisorBuildShips;
+                @AdvisorBuildShips.canceled -= instance.OnAdvisorBuildShips;
+                @AdvisorBuildTroops.started -= instance.OnAdvisorBuildTroops;
+                @AdvisorBuildTroops.performed -= instance.OnAdvisorBuildTroops;
+                @AdvisorBuildTroops.canceled -= instance.OnAdvisorBuildTroops;
+                @AdvisorBuildFacilities.started -= instance.OnAdvisorBuildFacilities;
+                @AdvisorBuildFacilities.performed -= instance.OnAdvisorBuildFacilities;
+                @AdvisorBuildFacilities.canceled -= instance.OnAdvisorBuildFacilities;
                 @DestroySelectedUnits.started -= instance.OnDestroySelectedUnits;
                 @DestroySelectedUnits.performed -= instance.OnDestroySelectedUnits;
                 @DestroySelectedUnits.canceled -= instance.OnDestroySelectedUnits;
@@ -6918,6 +7245,27 @@ namespace Rebellion.Input
             /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
             /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
             void OnOpenAllMessages(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "AdvisorBuildShips" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnAdvisorBuildShips(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "AdvisorBuildTroops" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnAdvisorBuildTroops(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "AdvisorBuildFacilities" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnAdvisorBuildFacilities(InputAction.CallbackContext context);
             /// <summary>
             /// Method invoked when associated input action "DestroySelectedUnits" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
             /// </summary>

@@ -47,12 +47,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Overlay
         [Test]
         public void Render_NullPresentation_HidesDragFeedback()
         {
+            DragPreview preview = DragPreviewTestFactory.Create(
+                _itemTexture,
+                new RectInt(30, 40, 24, 18)
+            );
             _view.Render(
-                new StrategyOverlayRenderData(
-                    new RectInt(10, 20, 100, 80),
-                    _itemTexture,
-                    new RectInt(30, 40, 24, 18)
-                )
+                new StrategyOverlayRenderData(new RectInt(10, 20, 100, 80), preview, 0, 0)
             );
 
             _view.Render(null);
@@ -69,8 +69,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Overlay
         {
             RectInt frameBounds = new RectInt(10, 20, 100, 80);
             RectInt imageBounds = new RectInt(30, 40, 24, 18);
+            DragPreview preview = DragPreviewTestFactory.Create(_itemTexture, imageBounds);
 
-            _view.Render(new StrategyOverlayRenderData(frameBounds, _itemTexture, imageBounds));
+            _view.Render(new StrategyOverlayRenderData(frameBounds, preview, 0, 0));
 
             Image top = GetField<Image>("dragFrameTopImage");
             Assert.AreEqual(new RectInt(10, 20, 100, 1), GetSourceRect(top.transform));
@@ -106,7 +107,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Overlay
         [Test]
         public void Render_FrameWithoutImage_HidesSharedImageWhenTargetingInactive()
         {
-            _view.Render(new StrategyOverlayRenderData(new RectInt(10, 20, 100, 80), null, null));
+            _view.Render(new StrategyOverlayRenderData(new RectInt(10, 20, 100, 80), null, 0, 0));
 
             Assert.IsTrue(GetField<Image>("dragFrameTopImage").gameObject.activeSelf);
             Assert.IsFalse(GetField<RawImage>("destinationCursorImage").gameObject.activeSelf);

@@ -401,7 +401,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             out GameFleet opponentFleet
         )
         {
-            GameRoot game = new GameRoot(TestConfig.Create());
+            GameRoot game = TestGame.Create(TestConfig.Create());
             game.GetFactions().Add(new Faction { InstanceID = _playerFactionId });
             game.GetFactions().Add(new Faction { InstanceID = _opponentFactionId });
             game.Summary.PlayerFactionID = _playerFactionId;

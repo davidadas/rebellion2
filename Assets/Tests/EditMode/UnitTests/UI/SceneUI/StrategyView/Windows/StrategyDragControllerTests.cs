@@ -69,7 +69,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
                     ResolvePreview,
                     null,
                     _ => null,
-                    () => "player",
                     _commands,
                     5
                 )
@@ -81,7 +80,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
                     ResolvePreview,
                     ResolvePointer,
                     _ => null,
-                    () => "player",
                     _commands,
                     -1
                 )
@@ -220,7 +218,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         public void TryStartItemCandidate_DirectEntity_UsesSharedDragFlow()
         {
             Officer officer = new Officer();
-            DragPreview preview = new DragPreview(_texture, 20, 30, 2, 3);
+            DragPreview preview = DragPreviewTestFactory.Create(_texture, 20, 30, 2, 3);
             StrategyDragController controller = CreateController();
 
             bool accepted = controller.TryStartItemCandidate(
@@ -249,7 +247,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             StrategyDragController controller = CreateController();
             controller.TryStartItemCandidate(
                 new Officer(),
-                new DragPreview(_texture, 20, 30, 2, 3),
+                DragPreviewTestFactory.Create(_texture, 20, 30, 2, 3),
                 _pointerEvent,
                 10,
                 20
@@ -420,7 +418,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
                 ResolvePreview,
                 ResolvePointer,
                 _ => null,
-                () => "player",
                 _commands,
                 5
             );
@@ -441,7 +438,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             out DragPreview preview
         )
         {
-            preview = new DragPreview(_texture, 20, 30, 2, 3);
+            preview = DragPreviewTestFactory.Create(_texture, 20, 30, 2, 3);
             return _hasPreview;
         }
 
@@ -492,6 +489,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             public void ExecuteTargetedCommand(
                 StrategyWindowTargetingSource source,
                 StrategyMissionTarget target
+            ) { }
+
+            /// <summary>
+            /// Executes an item drop.
+            /// </summary>
+            /// <param name="sourceWindow">The source window.</param>
+            /// <param name="target">The exact drop target.</param>
+            /// <param name="items">The dragged items.</param>
+            public void ExecuteItemDrop(
+                UIWindow sourceWindow,
+                StrategyMissionTarget target,
+                IReadOnlyList<ISceneNode> items
             ) { }
 
             /// <summary>

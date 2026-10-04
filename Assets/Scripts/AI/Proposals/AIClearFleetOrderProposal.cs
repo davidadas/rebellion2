@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-using Rebellion.AI.Director;
 using Rebellion.Game.Units;
 
 namespace Rebellion.AI.Proposals
@@ -13,6 +11,8 @@ namespace Rebellion.AI.Proposals
 
         public Fleet Fleet { get; }
 
+        internal override AIProposalPriority Priority => AIProposalPriority.Mandatory;
+
         /// <summary>
         /// Creates a proposal for the supplied fleet and current order.
         /// </summary>
@@ -22,17 +22,6 @@ namespace Rebellion.AI.Proposals
         {
             Fleet = fleet;
             _expectedOrder = expectedOrder;
-        }
-
-        /// <summary>
-        /// Returns the claim that prevents another action from modifying the fleet order.
-        /// </summary>
-        /// <returns>The fleet-order claim.</returns>
-        public override IReadOnlyList<string> GetClaimKeys()
-        {
-            return Fleet == null
-                ? new List<string>()
-                : new List<string> { AIClaimKeys.FleetOrder(Fleet.InstanceID) };
         }
 
         /// <summary>
