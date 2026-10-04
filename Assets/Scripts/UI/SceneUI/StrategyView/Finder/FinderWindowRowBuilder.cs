@@ -108,7 +108,7 @@ public sealed class FinderWindowRowBuilder
                 planet
                     .Planet.GetChildren<Fleet>()
                     .Select(fleet => new FinderWindowRow(
-                        fleet.GetDisplayName(),
+                        GetFleetDisplayName(fleet, planet.Planet),
                         planet,
                         PlanetIcon.Fleet,
                         fleet
@@ -117,6 +117,33 @@ public sealed class FinderWindowRowBuilder
             .Where(row => MatchesFactionTab(row.OwnerFactionId, tab))
             .OrderBy(row => row.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
+    }
+
+    /// <summary>
+    /// Formats a fleet name with its current relationship to the represented planet.
+    /// </summary>
+    /// <param name="fleet">The fleet to label.</param>
+    /// <param name="planet">The fleet's current destination or stationary location.</param>
+    /// <returns>The fleet name followed by its location status.</returns>
+    private static string GetFleetDisplayName(Fleet fleet, Planet planet)
+    {
+        string fleetName = fleet?.GetDisplayName() ?? string.Empty;
+        string planetName = planet?.GetDisplayName() ?? string.Empty;
+        string fleetOwnerId = fleet?.GetOwnerInstanceID();
+        string planetOwnerId = planet?.GetOwnerInstanceID();
+        bool isEnemyPlanet =
+            !string.IsNullOrEmpty(planetOwnerId)
+            && !string.Equals(fleetOwnerId, planetOwnerId, StringComparison.Ordinal);
+
+        string status;
+        if (fleet?.Movement != null)
+            status = isEnemyPlanet ? $"Attacking {planetName}" : $"En Route to {planetName}";
+        else if (string.IsNullOrEmpty(planetOwnerId))
+            status = $"Orbiting {planetName}";
+        else
+            status = isEnemyPlanet ? $"Blockading {planetName}" : $"Defending {planetName}";
+
+        return $"{fleetName} ({status})";
     }
 
     /// <summary>
