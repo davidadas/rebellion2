@@ -140,7 +140,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void HandleResults_ResistanceEliminatesShift_DoesNotReconcileOwnership()
+        public void HandleResults_CoreSinglePointSupportShift_AppliesShiftAndReconcilesOwnership()
         {
             _targetPlanet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.Core;
             _game.ChangeOwnership(_targetPlanet, _rebels.InstanceID);
@@ -149,9 +149,6 @@ namespace Rebellion.Tests.Simulation
                 { _empire.InstanceID, 60 },
                 { _rebels.InstanceID, 40 },
             };
-            _empire.Settings.SupportResistance = SupportChange.Increase;
-            _game.Config.SupportShift.WeakSupportPenaltyDivisor = 2;
-
             List<GameResult> results = _observer.HandleResults(
                 new[]
                 {
@@ -164,8 +161,9 @@ namespace Rebellion.Tests.Simulation
                 }
             );
 
-            Assert.IsEmpty(results);
-            Assert.AreEqual(_rebels.InstanceID, _targetPlanet.OwnerInstanceID);
+            Assert.AreEqual(61, _targetPlanet.GetPopularSupport(_empire.InstanceID));
+            Assert.AreEqual(_empire.InstanceID, _targetPlanet.OwnerInstanceID);
+            Assert.AreEqual(2, results.Count);
         }
 
         [Test]
@@ -463,7 +461,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void HandleResults_CorePopularSupportShift_AppliesResistanceAndReportsChange()
+        public void HandleResults_CorePopularSupportShift_AppliesFullShiftAndReportsChange()
         {
             _targetPlanet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.Core;
             _targetPlanet.PopularSupport = new Dictionary<string, int>
@@ -471,9 +469,6 @@ namespace Rebellion.Tests.Simulation
                 { _empire.InstanceID, 50 },
                 { _rebels.InstanceID, 50 },
             };
-            _empire.Settings.SupportResistance = SupportChange.Increase;
-            _game.Config.SupportShift.WeakSupportPenaltyDivisor = 2;
-
             List<GameResult> reactions = _observer.HandleResults(
                 new[]
                 {
@@ -487,11 +482,11 @@ namespace Rebellion.Tests.Simulation
                 }
             );
 
-            Assert.AreEqual(53, _targetPlanet.GetPopularSupport(_empire.InstanceID));
+            Assert.AreEqual(56, _targetPlanet.GetPopularSupport(_empire.InstanceID));
             PlanetStatChangedResult change = reactions.OfType<PlanetStatChangedResult>().Single();
             Assert.AreEqual(PlanetChangeCategory.Loyalty, change.Category);
             Assert.AreEqual(50, change.OldValue);
-            Assert.AreEqual(53, change.NewValue);
+            Assert.AreEqual(56, change.NewValue);
             Assert.AreEqual(14, change.Tick);
         }
 
@@ -756,7 +751,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void Connect_CoreGarrisonRemoved_AppliesResistedSectorShift()
+        public void Connect_CoreGarrisonRemoved_AppliesFullSectorShift()
         {
             _targetPlanet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.Core;
             _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
@@ -770,8 +765,6 @@ namespace Rebellion.Tests.Simulation
                 { _rebels.InstanceID, 0 },
                 { _empire.InstanceID, 100 },
             };
-            _rebels.Settings.SupportResistance = SupportChange.Increase;
-            _game.Config.SupportShift.WeakSupportPenaltyDivisor = 2;
             Regiment regiment = EntityFactory.CreateRegiment("garrison", _empire.InstanceID);
             regiment.ManufacturingStatus = ManufacturingStatus.Complete;
             _game.AttachNode(regiment, _targetPlanet);
@@ -781,8 +774,8 @@ namespace Rebellion.Tests.Simulation
 
             bus.Publish(new PlanetGarrisonChangedResult { Planet = _targetPlanet, Tick = 10 });
 
-            Assert.AreEqual(65, _targetPlanet.GetPopularSupport(_rebels.InstanceID));
-            Assert.AreEqual(5, _empirePlanet.GetPopularSupport(_rebels.InstanceID));
+            Assert.AreEqual(70, _targetPlanet.GetPopularSupport(_rebels.InstanceID));
+            Assert.AreEqual(10, _empirePlanet.GetPopularSupport(_rebels.InstanceID));
         }
 
         [Test]

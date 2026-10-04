@@ -338,15 +338,6 @@ namespace Rebellion.Simulation
             if (planet == null || faction == null || shift == 0 || !planet.IsPopulated())
                 return;
 
-            shift = PlanetaryControlQueries.ApplyCoreSupportResistance(
-                planet,
-                faction,
-                shift,
-                _game.Config.SupportShift.WeakSupportPenaltyDivisor
-            );
-            if (shift == 0)
-                return;
-
             int currentSupport = planet.GetPopularSupport(faction.InstanceID);
             int newSupport = System.Math.Clamp(currentSupport + shift, 0, 100);
             if (newSupport == currentSupport)
