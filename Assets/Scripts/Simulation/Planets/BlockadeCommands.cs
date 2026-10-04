@@ -34,11 +34,16 @@ namespace Rebellion.Simulation
         /// <summary>
         /// Rolls to determine if a regiment is destroyed while evacuating through a blockade.
         /// </summary>
+        /// <param name="originPlanet">The planet whose blockade strength determines survival.</param>
         /// <returns>True if the regiment is destroyed.</returns>
-        public bool RollEvacuationLoss()
+        public bool RollEvacuationLoss(Planet originPlanet)
         {
-            int threshold = _game.Config.Blockade.EvacuationLossPercent;
-            return _provider.NextInt(0, 100) < threshold;
+            GameConfig.BlockadeConfig config = _game.Config.Blockade;
+            int survivalPercent = originPlanet.GetBlockadeModifier(
+                config.CapitalShipProductionPenaltyPercent,
+                config.FighterProductionPenaltyPercent
+            );
+            return _provider.NextInt(0, 100) >= survivalPercent;
         }
 
         /// <summary>
@@ -50,13 +55,10 @@ namespace Rebellion.Simulation
         /// <returns>Result describing the loss, or null if the unit survived.</returns>
         public EvacuationLossesResult ApplyEvacuationLosses(IMovable unit, Planet originPlanet)
         {
-            if (
-                !originPlanet.IsBlockadedFor(unit.GetOwnerInstanceID())
-                || originPlanet.HasOperationalIonCannon()
-            )
+            if (!originPlanet.IsBlockadedFor(unit.GetOwnerInstanceID()))
                 return null;
 
-            if (unit is Regiment regiment && RollEvacuationLoss())
+            if (unit is Regiment regiment && RollEvacuationLoss(originPlanet))
             {
                 Faction faction = _game
                     .GetFactions()
@@ -68,6 +70,8 @@ namespace Rebellion.Simulation
                 return new EvacuationLossesResult
                 {
                     Faction = faction,
+                    DestroyedObject = regiment,
+                    Context = originPlanet,
                     Location = originPlanet,
                     LostRegiments = new List<Regiment> { regiment },
                     Tick = _game.CurrentTick,

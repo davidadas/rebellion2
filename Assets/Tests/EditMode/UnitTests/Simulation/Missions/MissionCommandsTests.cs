@@ -961,6 +961,8 @@ namespace Rebellion.Tests.Simulation
             planet.AddVisitor("empire");
             foreach (Regiment regiment in planet.GetChildren<Regiment>().ToList())
                 game.DeleteNode(regiment);
+            foreach (Fleet fleet in planet.GetChildren<Fleet>().ToList())
+                game.DeleteNode(fleet);
 
             Mission mission = MissionTestFactory.TryCreate(
                 DiplomacyMission.MissionTypeID,
@@ -1298,6 +1300,7 @@ namespace Rebellion.Tests.Simulation
             (GameRoot game, Planet planet, Officer spy, Officer _, MovementCommands movement) =
                 BuildDetectionScene();
             game.DeleteNode(planet.GetChildren<Regiment>().Single());
+            game.DeleteNode(planet.GetChildren<Fleet>().Single());
             planet.EnergyCapacity = 1;
             game.AttachNode(
                 new Building
@@ -1359,6 +1362,7 @@ namespace Rebellion.Tests.Simulation
             (GameRoot game, Planet planet, Officer spy, Officer _, MovementCommands movement) =
                 BuildDetectionScene();
             game.DeleteNode(planet.GetChildren<Regiment>().Single());
+            game.DeleteNode(planet.GetChildren<Fleet>().Single());
             Fleet fleet = new Fleet { InstanceID = "fleet", OwnerInstanceID = "rebels" };
             CapitalShip capitalShip = new CapitalShip
             {
@@ -1504,6 +1508,7 @@ namespace Rebellion.Tests.Simulation
             (GameRoot game, Planet planet, Officer spy, Officer _, MovementCommands movement) =
                 BuildDetectionScene();
             game.DeleteNode(planet.GetChildren<Regiment>().Single());
+            game.DeleteNode(planet.GetChildren<Fleet>().Single());
             Fleet fleet = new Fleet
             {
                 InstanceID = "fleet",
@@ -1735,7 +1740,7 @@ namespace Rebellion.Tests.Simulation
                 GameRoot game,
                 Planet planet,
                 Officer spy,
-                Starfighter capturingUnit,
+                CapitalShip capturingUnit,
                 MovementCommands movement
             ) = BuildOrbitalDetectionScene(planetOwnerId: "empire");
 
@@ -1760,7 +1765,7 @@ namespace Rebellion.Tests.Simulation
                 GameRoot game,
                 Planet planet,
                 Officer spy,
-                Starfighter capturingUnit,
+                CapitalShip capturingUnit,
                 MovementCommands movement
             ) = BuildOrbitalDetectionScene(planetOwnerId: null);
 
@@ -1858,7 +1863,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ProcessTick_DetectionSucceedsWithoutCaptureOrKill_FoilsMission()
+        public void ProcessTick_NoFreeMainParticipant_SkipsDetection()
         {
             (GameRoot game, Planet planet, Officer spy, Officer _, MovementCommands movement) =
                 BuildDetectionScene();
@@ -1882,12 +1887,11 @@ namespace Rebellion.Tests.Simulation
 
             Assert.IsFalse(results.Any(result => result is OfficerCaptureStateResult));
             Assert.IsFalse(results.Any(result => result is OfficerKilledResult));
-            Assert.IsTrue(
+            Assert.IsFalse(
                 results
                     .OfType<MissionCompletedResult>()
                     .Any(result => result.Outcome == MissionOutcome.Foiled)
             );
-            Assert.IsNull(mission.GetParent());
         }
 
         [Test]
@@ -2189,6 +2193,8 @@ namespace Rebellion.Tests.Simulation
             defender.ForceValue = 80;
             foreach (Regiment detector in planet.GetChildren<Regiment>().ToList())
                 game.DetachNode(detector);
+            foreach (Fleet fleet in planet.GetChildren<Fleet>().ToList())
+                game.DetachNode(fleet);
             game.Config.Jedi.EncounterProbabilityOffset = -100;
             SetFoilTable(game, new Dictionary<int, int> { { -1000, 0 } });
             StubMission mission = new StubMission("empire", planet.InstanceID);
@@ -2848,7 +2854,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ProcessTick_OfficerFailsToEvadeDetector_CapturesWithoutInjury()
+        public void ProcessTick_OfficerFailsToEvadeDetector_AppliesInjuryBeforeCapture()
         {
             (GameRoot game, Planet planet, Officer spy, Officer _, MovementCommands movement) =
                 BuildDetectionScene();
@@ -2875,12 +2881,12 @@ namespace Rebellion.Tests.Simulation
             List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.IsTrue(spy.IsCaptured);
-            Assert.AreEqual(0, spy.InjuryPoints);
-            Assert.IsEmpty(results.OfType<OfficerInjuredResult>());
+            Assert.Greater(spy.InjuryPoints, 0);
+            Assert.AreSame(spy, results.OfType<OfficerInjuredResult>().Single().Officer);
         }
 
         [Test]
-        public void ProcessTick_FailedDecoyCapture_DoesNotReuseDecoy()
+        public void ProcessTick_FailedDecoyEvasionDeath_DoesNotReuseDecoy()
         {
             (GameRoot game, Planet planet, Officer spy, Officer _, MovementCommands movement) =
                 BuildDetectionScene();
@@ -2919,18 +2925,19 @@ namespace Rebellion.Tests.Simulation
 
             List<GameResult> results = system.ProcessMissionTick(game);
 
-            Assert.IsTrue(decoy.IsCaptured);
-            Assert.IsFalse(decoy.IsKilled);
-            Assert.AreSame(planet, decoy.GetParent());
-            Assert.AreEqual(0, decoy.InjuryPoints);
-            Assert.IsEmpty(results.OfType<OfficerInjuredResult>());
+            Assert.IsFalse(decoy.IsCaptured);
+            Assert.IsTrue(decoy.IsKilled);
+            Assert.Greater(decoy.InjuryPoints, 0);
             Assert.AreEqual(
-                1,
+                0,
                 results
                     .OfType<OfficerCaptureStateResult>()
                     .Count(result => result.TargetOfficer == decoy && result.IsCaptured)
             );
-            Assert.IsEmpty(results.OfType<OfficerAssassinatedResult>());
+            Assert.AreEqual(
+                1,
+                results.OfType<OfficerKilledResult>().Count(result => result.TargetOfficer == decoy)
+            );
         }
 
         [Test]
@@ -4986,7 +4993,7 @@ namespace Rebellion.Tests.Simulation
             GameRoot game,
             Planet planet,
             Officer spy,
-            Starfighter capturingUnit,
+            CapitalShip capturingUnit,
             MovementCommands movement
         ) BuildOrbitalDetectionScene(string planetOwnerId = "empire")
         {
@@ -5031,7 +5038,7 @@ namespace Rebellion.Tests.Simulation
             spy.MissionReturnLocationInstanceID = homePlanet.InstanceID;
             game.AttachNode(spy, homePlanet);
 
-            // The hostile detector rides an orbiting fleet: a capital ship carries the capture.
+            // The hostile detector is an orbiting capital ship.
             Fleet fleet = new Fleet { InstanceID = "f1", OwnerInstanceID = "rebels" };
             game.AttachNode(fleet, planet);
 
@@ -5044,14 +5051,6 @@ namespace Rebellion.Tests.Simulation
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             game.AttachNode(captorShip, fleet);
-            Starfighter capturingUnit = new Starfighter
-            {
-                InstanceID = "detector",
-                OwnerInstanceID = "rebels",
-                DetectionRating = 100,
-                ManufacturingStatus = ManufacturingStatus.Complete,
-            };
-            game.AttachNode(capturingUnit, captorShip);
 
             MovementCommands movement = new MovementCommands(
                 game,
@@ -5060,7 +5059,7 @@ namespace Rebellion.Tests.Simulation
                 new FogOfWarQueries(game),
                 new MovementQueries(game)
             );
-            return (game, planet, spy, capturingUnit, movement);
+            return (game, planet, spy, captorShip, movement);
         }
 
         /// <summary>

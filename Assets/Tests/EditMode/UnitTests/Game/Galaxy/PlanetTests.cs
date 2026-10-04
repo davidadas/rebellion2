@@ -1033,7 +1033,7 @@ namespace Rebellion.Tests.Game.Galaxy
         }
 
         [Test]
-        public void GetBlockadeProductionModifier_ActiveShipsAndFighters_ReducesProduction()
+        public void GetBlockadeModifier_ActiveShipsAndFighters_ReducesAvailablePercentage()
         {
             Fleet enemyFleet = CreateOperationalFleet("ENEMY");
             CapitalShip activeShip = enemyFleet.GetChildren<CapitalShip>().Single();
@@ -1075,13 +1075,13 @@ namespace Rebellion.Tests.Game.Galaxy
                 }
             );
 
-            int modifier = _planet.GetBlockadeProductionModifier(5, 2);
+            int modifier = _planet.GetBlockadeModifier(5, 2);
 
             Assert.AreEqual(89, modifier);
         }
 
         [Test]
-        public void GetBlockadeProductionModifier_OperationalKdy_ReturnsFullProduction()
+        public void GetBlockadeModifier_OperationalKdy_ReturnsFullPercentage()
         {
             _planet.AddChild(CreateOperationalFleet("ENEMY"));
             _planet.AddChild(
@@ -1094,15 +1094,15 @@ namespace Rebellion.Tests.Game.Galaxy
                 }
             );
 
-            Assert.AreEqual(100, _planet.GetBlockadeProductionModifier(5, 2));
+            Assert.AreEqual(100, _planet.GetBlockadeModifier(5, 2));
         }
 
         [Test]
-        public void GetBlockadeProductionModifier_HeavyBlockade_DoesNotReturnNegativeProduction()
+        public void GetBlockadeModifier_HeavyBlockade_DoesNotReturnNegativePercentage()
         {
             _planet.AddChild(CreateOperationalFleet("ENEMY"));
 
-            Assert.AreEqual(0, _planet.GetBlockadeProductionModifier(100, 2));
+            Assert.AreEqual(0, _planet.GetBlockadeModifier(100, 2));
         }
 
         [Test]

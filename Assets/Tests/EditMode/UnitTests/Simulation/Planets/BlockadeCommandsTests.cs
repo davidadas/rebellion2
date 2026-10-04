@@ -51,7 +51,7 @@ namespace Rebellion.Tests.Simulation
             (GameRoot game, Planet planet, _) = BuildScene();
             Regiment regiment = EntityFactory.CreateRegiment("evacuating", "empire");
             game.AttachNode(regiment, planet);
-            game.Config.Blockade.EvacuationLossPercent = 100;
+            game.Config.Blockade.CapitalShipProductionPenaltyPercent = 100;
             game.CurrentTick = 42;
             BlockadeCommands system = new BlockadeCommands(game, new FixedRNG());
 
@@ -59,8 +59,11 @@ namespace Rebellion.Tests.Simulation
 
             Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
             Assert.AreSame(regiment, result.LostRegiments.Single());
+            Assert.AreSame(regiment, result.DestroyedObject);
+            Assert.AreSame(planet, result.Context);
             Assert.AreSame(planet, result.Location);
             Assert.AreEqual("empire", result.Faction.InstanceID);
+            Assert.AreEqual(UnitDestructionReason.Blockade, result.Reason);
             Assert.AreEqual(42, result.Tick);
         }
 
@@ -252,53 +255,46 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void RollEvacuationLoss_RollBelowThreshold_ReturnsTrue()
+        public void RollEvacuationLoss_RollBelowSurvivalThreshold_ReturnsFalse()
         {
-            GameConfig config = TestConfig.Create();
-            config.Blockade.EvacuationLossPercent = 25;
-            GameRoot game = TestGame.Create(config);
-
-            // FixedRNG returns 0 from NextInt -> 0 < 25 -> loss
+            (GameRoot game, Planet planet, _) = BuildScene();
+            game.Config.Blockade.CapitalShipProductionPenaltyPercent = 25;
             BlockadeCommands system = new BlockadeCommands(game, new FixedRNG());
 
-            Assert.IsTrue(system.RollEvacuationLoss());
+            Assert.IsFalse(system.RollEvacuationLoss(planet));
         }
 
         [Test]
-        public void RollEvacuationLoss_RollAboveThreshold_ReturnsFalse()
+        public void RollEvacuationLoss_RollAboveSurvivalThreshold_ReturnsTrue()
         {
-            GameConfig config = TestConfig.Create();
-            config.Blockade.EvacuationLossPercent = 25;
-            GameRoot game = TestGame.Create(config);
-
-            // MaximumRNG returns 99 from NextInt(0,100) -> 99 >= 25 -> survives
+            (GameRoot game, Planet planet, _) = BuildScene();
+            game.Config.Blockade.CapitalShipProductionPenaltyPercent = 25;
             BlockadeCommands system = new BlockadeCommands(game, new MaximumRNG());
 
-            Assert.IsFalse(system.RollEvacuationLoss());
+            Assert.IsTrue(system.RollEvacuationLoss(planet));
         }
 
         [Test]
-        public void RollEvacuationLoss_ZeroPercent_NeverDestroys()
+        public void RollEvacuationLoss_NoBlockade_NeverDestroys()
         {
             GameConfig config = TestConfig.Create();
-            config.Blockade.EvacuationLossPercent = 0;
             GameRoot game = TestGame.Create(config);
-
-            BlockadeCommands system = new BlockadeCommands(game, new FixedRNG());
-
-            Assert.IsFalse(system.RollEvacuationLoss());
-        }
-
-        [Test]
-        public void RollEvacuationLoss_HundredPercent_AlwaysDestroys()
-        {
-            GameConfig config = TestConfig.Create();
-            config.Blockade.EvacuationLossPercent = 100;
-            GameRoot game = TestGame.Create(config);
+            Planet planet = new Planet { InstanceID = "planet", OwnerInstanceID = "empire" };
 
             BlockadeCommands system = new BlockadeCommands(game, new MaximumRNG());
 
-            Assert.IsTrue(system.RollEvacuationLoss());
+            Assert.IsFalse(system.RollEvacuationLoss(planet));
+        }
+
+        [Test]
+        public void RollEvacuationLoss_OverwhelmingBlockade_AlwaysDestroys()
+        {
+            (GameRoot game, Planet planet, _) = BuildScene();
+            game.Config.Blockade.CapitalShipProductionPenaltyPercent = 100;
+
+            BlockadeCommands system = new BlockadeCommands(game, new FixedRNG());
+
+            Assert.IsTrue(system.RollEvacuationLoss(planet));
         }
 
         [Test]

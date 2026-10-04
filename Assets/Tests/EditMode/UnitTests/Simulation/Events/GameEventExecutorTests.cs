@@ -4969,6 +4969,10 @@ namespace Rebellion.Tests.Simulation
                 new GameObjectSabotagedResult { DestroyedObject = unit },
                 UnitDestructionReason.Sabotage
             );
+            yield return new TestCaseData(
+                new EvacuationLossesResult { DestroyedObject = unit },
+                UnitDestructionReason.Blockade
+            );
         }
 
         private sealed class RecordingRandom : IRandomNumberProvider

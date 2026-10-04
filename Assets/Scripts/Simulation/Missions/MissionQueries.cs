@@ -938,6 +938,7 @@ namespace Rebellion.Simulation
             {
                 foreach (CapitalShip capitalShip in fleet.GetChildren<CapitalShip>())
                 {
+                    candidates.Add(capitalShip);
                     candidates.AddRange(capitalShip.GetChildren<Starfighter>());
                     candidates.AddRange(capitalShip.GetChildren<Regiment>());
                 }
@@ -1081,12 +1082,12 @@ namespace Rebellion.Simulation
             if (mission == null || detector == null)
                 return 0;
 
-            int score = CalculateFoilScore(
-                mission,
-                detector,
-                participants ?? mission.GetMainParticipants(),
-                encounterPlanet
-            );
+            IReadOnlyList<IMissionParticipant> activeParticipants =
+                participants ?? mission.GetMainParticipants();
+            if (activeParticipants.Count == 0)
+                return 0;
+
+            int score = CalculateFoilScore(mission, detector, activeParticipants, encounterPlanet);
             int probability = LookupProbability(GetMissionTables().Foil, score);
             return Math.Clamp(probability + foilChanceModifier, 0, 100);
         }
@@ -1204,6 +1205,8 @@ namespace Rebellion.Simulation
             {
                 foreach (CapitalShip capitalShip in fleet.GetChildren<CapitalShip>())
                 {
+                    if (mission.IsEligibleDetector(capitalShip))
+                        detectors.Add(capitalShip);
                     AddEligibleDetectors(
                         mission,
                         capitalShip.GetChildren<Starfighter>(),

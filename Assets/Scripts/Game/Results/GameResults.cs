@@ -49,6 +49,7 @@ namespace Rebellion.Game.Results
         Maintenance,
         Sabotage,
         Combat,
+        Blockade,
     }
 
     public enum CombatSide
@@ -864,13 +865,19 @@ namespace Rebellion.Game.Results
     /// <summary>
     /// Units were lost during an evacuation.
     /// </summary>
-    public class EvacuationLossesResult : GameResult
+    public class EvacuationLossesResult : GameObjectDestroyedResult
     {
         public Faction Faction { get; set; }
         public Planet Location { get; set; }
         public List<CapitalShip> LostShips { get; set; } = new List<CapitalShip>();
         public List<Starfighter> LostStarfighters { get; set; } = new List<Starfighter>();
         public List<Regiment> LostRegiments { get; set; } = new List<Regiment>();
+
+        /// <summary>Creates an evacuation loss attributed to blockade passage.</summary>
+        public EvacuationLossesResult()
+        {
+            Reason = UnitDestructionReason.Blockade;
+        }
     }
 
     #endregion

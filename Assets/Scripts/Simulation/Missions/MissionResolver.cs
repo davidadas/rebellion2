@@ -710,6 +710,12 @@ namespace Rebellion.Simulation
             if (mission == null || planet == null || mainParticipants == null || decoys == null)
                 return false;
 
+            List<IMissionParticipant> activeMainParticipants = mainParticipants
+                .Where(participant => participant.IsActive() && IsFreeParticipant(participant))
+                .ToList();
+            if (activeMainParticipants.Count == 0)
+                return false;
+
             List<ISceneNode> activeDetectors = MissionQueries.GetDetectors(mission, planet, phase);
             if (activeDetectors.Count == 0)
                 return false;
@@ -723,7 +729,7 @@ namespace Rebellion.Simulation
                     mission,
                     detector,
                     foilChanceModifier,
-                    mainParticipants,
+                    activeMainParticipants,
                     planet
                 )
             );
@@ -734,7 +740,7 @@ namespace Rebellion.Simulation
 
             ResolveFoiledParticipants(
                 mission,
-                mainParticipants,
+                activeMainParticipants,
                 availableDecoys,
                 activeDetectors,
                 planet,
@@ -911,6 +917,12 @@ namespace Rebellion.Simulation
 
             if (participant is not Officer officer || officer.IsCaptured || officer.IsKilled)
                 return false;
+
+            if (Mission.ApplyEvasionInjury(officer, detector, planet, _game, _provider, results))
+            {
+                _personnelCommands.KillOfficer(officer);
+                return false;
+            }
 
             CaptureOfficer(officer, detector.GetOwnerInstanceID(), planet, results, detector);
             return false;

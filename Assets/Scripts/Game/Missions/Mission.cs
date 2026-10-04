@@ -789,7 +789,7 @@ namespace Rebellion.Game.Missions
             )
                 return false;
 
-            return candidate is Regiment or Starfighter;
+            return candidate is CapitalShip or Regiment or Starfighter;
         }
 
         /// <summary>
