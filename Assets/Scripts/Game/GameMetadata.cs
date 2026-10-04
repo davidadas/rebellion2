@@ -15,6 +15,10 @@ namespace Rebellion.Game
 
         public string PlayerFactionID;
 
+        public GameDifficulty? Difficulty;
+
+        public int? CurrentTick;
+
         public string PackID;
 
         public string PackVersion;

@@ -658,6 +658,48 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
+        public void SaveList_GameDetails_RendersOrderedMetadata()
+        {
+            OptionsSaveSlot savedGame = new OptionsSaveSlot(
+                "Test Save",
+                "Today",
+                null,
+                false,
+                "test_save",
+                "Hard",
+                42
+            );
+
+            _view.Render(CreateRenderData(savedGame));
+
+            TextMeshProUGUI metadata = _root
+                .GetComponentsInChildren<TextMeshProUGUI>(true)
+                .Single(text => text.name == "SlotMetadata0");
+            Assert.AreEqual("Hard • Turn 42", metadata.text);
+        }
+
+        [Test]
+        public void SaveList_Date_RightAlignsTimestamp()
+        {
+            OptionsSaveSlot savedGame = new OptionsSaveSlot(
+                "Test Save",
+                "Today",
+                null,
+                false,
+                "test_save",
+                "Hard",
+                42
+            );
+
+            _view.Render(CreateRenderData(savedGame));
+
+            TextMeshProUGUI date = _root
+                .GetComponentsInChildren<TextMeshProUGUI>(true)
+                .Single(text => text.name == "SlotDate0");
+            Assert.AreEqual(TextAlignmentOptions.TopRight, date.alignment);
+        }
+
+        [Test]
         public void SaveList_LongName_LabelEndsBeforeDeleteControl()
         {
             OptionsSaveSlot savedGame = new OptionsSaveSlot(
