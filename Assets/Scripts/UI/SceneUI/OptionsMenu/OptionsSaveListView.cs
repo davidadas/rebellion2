@@ -249,13 +249,20 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
                 : $"{slot.Difficulty} • {turn}";
             int availableMetadataWidth = rowRect.width - metaRect.x - 32;
             int metadataWidth = Mathf.RoundToInt(availableMetadataWidth * 0.58f);
+            TextMeshProUGUI metadataField = GetField(
+                _metaFields,
+                _metaTemplate,
+                "SlotMetadata",
+                index
+            );
             UILayout.SetTemplateText(
-                GetField(_metaFields, _metaTemplate, "SlotMetadata", index),
+                metadataField,
                 _metaTemplate,
                 slot.IsCreateNew ? string.Empty : metadata,
                 _metaColor,
                 new RectInt(metaRect.x, top + metaRect.y, metadataWidth, metaRect.height)
             );
+            metadataField.fontStyle = FontStyles.Bold;
             TextMeshProUGUI date = GetField(_dateFields, _metaTemplate, "SlotDate", index);
             UILayout.SetTemplateText(
                 date,
