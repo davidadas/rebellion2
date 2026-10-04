@@ -736,7 +736,7 @@ public sealed class StrategyController
             windowCommandController,
             idleBarController,
             inputController.StartItemDrag,
-            inputController.OnPointerUp
+            inputController.CompleteItemDrag
         );
         missionsWindowController.Initialize(this);
         missionCreateWindowController.Initialize(this);
