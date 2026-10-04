@@ -249,7 +249,13 @@ namespace Rebellion.AI.Proposals
 
             if (Destination is Fleet fleet)
             {
-                if (!context.Manufacturing.Enqueue(ProducerPlanet, manufacturable, fleet, true))
+                if (
+                    !context.Manufacturing.EnqueuePrevalidated(
+                        ProducerPlanet,
+                        manufacturable,
+                        fleet
+                    )
+                )
                     LogEnqueueFailure();
                 else
                     CommitMaintenance(context);
@@ -450,7 +456,7 @@ namespace Rebellion.AI.Proposals
             Fleet fleet = context.Faction.CreateFleet(roleType: roleType);
             context.Game.AttachNode(fleet, destinationPlanet);
 
-            if (context.Manufacturing.Enqueue(ProducerPlanet, capitalShip, fleet, true))
+            if (context.Manufacturing.EnqueuePrevalidated(ProducerPlanet, capitalShip, fleet))
                 return true;
 
             context.Game.DetachNode(fleet);
@@ -612,11 +618,10 @@ namespace Rebellion.AI.Proposals
             IManufacturable manufacturable
         )
         {
-            return context.Manufacturing.Enqueue(
+            return context.Manufacturing.EnqueuePrevalidated(
                 ProducerPlanet,
                 manufacturable,
-                destinationPlanet,
-                true
+                destinationPlanet
             );
         }
 

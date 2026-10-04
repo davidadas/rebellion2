@@ -104,6 +104,36 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void ProcessResults_ReleasedOfficer_RemovesOwnerAndCaptorObservations()
+        {
+            Officer captive = CreateOfficer("CAPTIVE", _alliance);
+            captive.IsCaptured = true;
+            captive.CaptorInstanceID = _empire.InstanceID;
+            _game.AttachNode(captive, _coruscant);
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordPlanetSnapshot(_alliance, _coruscant, _coreSector, 10);
+            recorder.RecordPlanetSnapshot(_empire, _coruscant, _coreSector, 10);
+            captive.IsCaptured = false;
+            captive.CaptorInstanceID = null;
+
+            _observer.ProcessResults(
+                new GameResult[]
+                {
+                    new OfficerCaptureStateResult
+                    {
+                        TargetOfficer = captive,
+                        IsCaptured = false,
+                        CaptorInstanceID = _empire.InstanceID,
+                        Tick = 12,
+                    },
+                }
+            );
+
+            Assert.IsFalse(_alliance.Fog.EntityLastSeenAt.ContainsKey(captive.InstanceID));
+            Assert.IsFalse(_empire.Fog.EntityLastSeenAt.ContainsKey(captive.InstanceID));
+        }
+
+        [Test]
         public void HandleResults_NullResultAfterValidObservation_KeepsEarlierSnapshotAndThrows()
         {
             Assert.Throws<System.NullReferenceException>(() =>

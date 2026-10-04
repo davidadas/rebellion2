@@ -14,6 +14,23 @@ namespace Rebellion.Tests.Simulation
     public class VictoryCommandsTests
     {
         [Test]
+        public void TryDeclareVictory_RegisteredFactions_PublishesOutcome()
+        {
+            (GameRoot game, Faction loser, Faction winner, _, VictoryCommands commands) =
+                BuildScene();
+            IReadOnlyList<VictoryResult> published = null;
+            commands.ResultsProduced += results => published = results;
+
+            VictoryResult result = commands.TryDeclareVictory(winner, loser);
+
+            Assert.IsNotNull(result);
+            Assert.AreSame(winner, result.Winner);
+            Assert.AreSame(loser, result.Loser);
+            Assert.AreSame(result, published.Single());
+            Assert.AreEqual(game.CurrentTick, result.Tick);
+        }
+
+        [Test]
         public void ProcessTick_HQNotConfigured_ReturnsEmpty()
         {
             (GameRoot game, Faction empire, _, _, VictoryCommands system) = BuildScene();

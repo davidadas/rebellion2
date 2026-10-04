@@ -70,10 +70,21 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Delays retargeted inbound fleet units so they arrive with the moving fleet.
+        /// Moves a fleet and keeps units already joining it synchronized with its arrival.
+        /// </summary>
+        /// <param name="fleet">The fleet receiving the movement order.</param>
+        /// <param name="destination">The requested destination.</param>
+        internal void RequestCoordinatedMove(Fleet fleet, ContainerNode destination)
+        {
+            RequestMove(fleet, destination);
+            AlignInboundUnits(fleet);
+        }
+
+        /// <summary>
+        /// Delays units already joining a moving fleet so they arrive with it.
         /// </summary>
         /// <param name="fleet">The moving destination fleet.</param>
-        public void SynchronizeInTransitFleetJoiners(Fleet fleet)
+        private static void AlignInboundUnits(Fleet fleet)
         {
             if (fleet?.Movement == null)
                 return;
@@ -97,7 +108,7 @@ namespace Rebellion.Simulation
         /// <param name="sourceEventInstanceID">The event requesting movement, when applicable.</param>
         /// <param name="reactions">The result collection receiving accepted movement outcomes.</param>
         /// <returns>True when a destination accepted and received the movement request.</returns>
-        public bool TryRequestMove(
+        internal bool TryRequestMove(
             IReadOnlyList<IMovable> units,
             IReadOnlyList<ContainerNode> destinations,
             string sourceEventInstanceID,
@@ -131,7 +142,7 @@ namespace Rebellion.Simulation
         /// <param name="units">The units that must be placed together.</param>
         /// <param name="destinations">Candidate destinations in preference order.</param>
         /// <returns>True when a destination accepts the complete group.</returns>
-        public bool TryPlaceUnits(List<IMovable> units, IReadOnlyList<ContainerNode> destinations)
+        internal bool TryPlaceUnits(List<IMovable> units, IReadOnlyList<ContainerNode> destinations)
         {
             if (units == null || destinations == null)
                 return false;
@@ -152,7 +163,7 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="unit">The unit to move.</param>
         /// <param name="destination">The target container to move toward.</param>
-        public void RequestMove(IMovable unit, ContainerNode destination)
+        internal void RequestMove(IMovable unit, ContainerNode destination)
         {
             TryRequestMove(unit, destination);
         }
@@ -304,7 +315,7 @@ namespace Rebellion.Simulation
         /// <param name="unit">The unit to set in transit.</param>
         /// <param name="destination">The pre-assigned destination container.</param>
         /// <param name="origin">The production planet the unit departs from visually.</param>
-        public void RequestMove(IMovable unit, ContainerNode destination, Planet origin)
+        internal void RequestMove(IMovable unit, ContainerNode destination, Planet origin)
         {
             if (unit == null)
                 throw new ArgumentNullException(nameof(unit));
@@ -354,7 +365,7 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="units">The units to move as a group.</param>
         /// <param name="destination">The shared target container.</param>
-        public void RequestMove(List<IMovable> units, ContainerNode destination)
+        internal void RequestMove(List<IMovable> units, ContainerNode destination)
         {
             RequestMove(units, destination, null);
         }
@@ -1537,7 +1548,7 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="unit">The unit to destroy.</param>
         /// <param name="planet">The planet responsible for the destruction.</param>
-        public void DestroyEvictedUnit(IMovable unit, Planet planet)
+        private void DestroyEvictedUnit(IMovable unit, Planet planet)
         {
             GameLogger.Log(
                 $"{unit.GetDisplayName()} was destroyed when {planet.GetDisplayName()} changed hands."
@@ -1562,7 +1573,7 @@ namespace Rebellion.Simulation
         /// <param name="unit">The unit to evacuate.</param>
         /// <param name="evictingOwnerInstanceID">The faction claiming the planet, when evicting.</param>
         /// <param name="force">Whether a planet ownership change is forcing the relocation.</param>
-        public void EvacuateToNearestFriendlyPlanet(
+        internal void EvacuateToNearestFriendlyPlanet(
             IMovable unit,
             string evictingOwnerInstanceID = null,
             bool force = false
@@ -1714,7 +1725,7 @@ namespace Rebellion.Simulation
         /// them, sends them toward the nearest eligible planet owned by their movement controller.
         /// </summary>
         /// <param name="units">The units to relocate from their current containers.</param>
-        public void RelocateUnits(IEnumerable<IMovable> units)
+        internal void RelocateUnits(IEnumerable<IMovable> units)
         {
             if (units == null)
                 throw new ArgumentNullException(nameof(units));

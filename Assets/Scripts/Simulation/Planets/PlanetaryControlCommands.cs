@@ -229,7 +229,7 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="planet">The planet to evaluate.</param>
         /// <returns>Any ownership-change results produced.</returns>
-        public List<GameResult> ReconcilePlanet(Planet planet)
+        internal List<GameResult> ReconcilePlanet(Planet planet)
         {
             List<GameResult> results = new List<GameResult>();
             if (planet == null || !_controlChangesInProgress.Add(planet.InstanceID))

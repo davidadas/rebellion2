@@ -68,7 +68,7 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="planet">The planet whose garrison changed.</param>
         /// <returns>The uprising results produced by reconciliation.</returns>
-        public List<GameResult> ReconcileGarrison(Planet planet)
+        internal List<GameResult> ReconcileGarrison(Planet planet)
         {
             List<GameResult> results = new List<GameResult>();
             Faction faction = GetControllingFaction(planet);

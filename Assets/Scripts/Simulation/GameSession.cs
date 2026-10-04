@@ -159,6 +159,9 @@ namespace Rebellion.Simulation
             OfficerCommandCommands officerCommandSystem = GetService<OfficerCommandCommands>();
             officerCommandSystem.ResultsProduced += ProcessImmediateResults;
             _disconnect.Add(() => officerCommandSystem.ResultsProduced -= ProcessImmediateResults);
+            CaptiveCommands captiveSystem = GetService<CaptiveCommands>();
+            captiveSystem.ResultsProduced += ProcessImmediateResults;
+            _disconnect.Add(() => captiveSystem.ResultsProduced -= ProcessImmediateResults);
             BombardmentCommands bombardmentSystem = GetService<BombardmentCommands>();
             bombardmentSystem.ResultsProduced += ProcessImmediateResults;
             _disconnect.Add(() => bombardmentSystem.ResultsProduced -= ProcessImmediateResults);
@@ -168,6 +171,9 @@ namespace Rebellion.Simulation
             _disconnect.Add(() =>
                 planetaryAssaultSystem.ResultsProduced -= ProcessImmediateResults
             );
+            VictoryCommands victorySystem = GetService<VictoryCommands>();
+            victorySystem.ResultsProduced += ProcessImmediateResults;
+            _disconnect.Add(() => victorySystem.ResultsProduced -= ProcessImmediateResults);
         }
 
         /// <summary>

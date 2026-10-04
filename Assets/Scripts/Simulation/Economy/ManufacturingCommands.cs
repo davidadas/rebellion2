@@ -24,6 +24,12 @@ namespace Rebellion.Simulation
         private readonly FleetCommands _fleetSystem;
         private readonly List<GameResult> _pendingResults = new List<GameResult>();
 
+        private enum MaintenanceAdmission
+        {
+            Validate,
+            Prevalidated,
+        }
+
         /// <summary>
         /// Creates a new ManufacturingCommands.
         /// </summary>
@@ -312,13 +318,37 @@ namespace Rebellion.Simulation
         /// <param name="planet">The planet where production occurs.</param>
         /// <param name="item">The item to manufacture.</param>
         /// <param name="destination">The planet receiving the completed item.</param>
-        /// <param name="ignoreCost">Whether to queue the item without charging resources.</param>
         /// <returns>True when the item was queued; otherwise, false.</returns>
-        public bool Enqueue(
+        public bool Enqueue(Planet planet, IManufacturable item, Planet destination)
+        {
+            return Enqueue(planet, item, destination, MaintenanceAdmission.Validate);
+        }
+
+        /// <summary>
+        /// Enqueues an item after its maintenance budget has been reserved by the caller.
+        /// </summary>
+        /// <param name="planet">The planet where production occurs.</param>
+        /// <param name="item">The item to manufacture.</param>
+        /// <param name="destination">The planet receiving the completed item.</param>
+        /// <returns>True when the item was queued; otherwise false.</returns>
+        internal bool EnqueuePrevalidated(Planet planet, IManufacturable item, Planet destination)
+        {
+            return Enqueue(planet, item, destination, MaintenanceAdmission.Prevalidated);
+        }
+
+        /// <summary>
+        /// Enqueues a planet-bound item under the supplied maintenance admission policy.
+        /// </summary>
+        /// <param name="planet">The planet where production occurs.</param>
+        /// <param name="item">The item to manufacture.</param>
+        /// <param name="destination">The planet receiving the completed item.</param>
+        /// <param name="admission">The maintenance admission established for the order.</param>
+        /// <returns>True when the item was queued; otherwise false.</returns>
+        private bool Enqueue(
             Planet planet,
             IManufacturable item,
             Planet destination,
-            bool ignoreCost = false
+            MaintenanceAdmission admission
         )
         {
             Faction faction = GetValidatedFaction(planet, item);
@@ -334,7 +364,10 @@ namespace Rebellion.Simulation
             if (!destination.CanAcceptChild(item))
                 return false;
 
-            if (!HasMaintenanceHeadroom(faction, item, ignoreCost))
+            if (
+                admission == MaintenanceAdmission.Validate
+                && !HasMaintenanceHeadroom(faction, item)
+            )
                 return false;
 
             _game.AttachNode(item, destination);
@@ -349,7 +382,7 @@ namespace Rebellion.Simulation
                 }
             );
 
-            CommitToQueue(planet, item, ignoreCost);
+            CommitToQueue(planet, item);
             return true;
         }
 
@@ -361,13 +394,37 @@ namespace Rebellion.Simulation
         /// <param name="planet">The planet where production occurs.</param>
         /// <param name="item">The item to manufacture.</param>
         /// <param name="destination">The fleet receiving the completed item.</param>
-        /// <param name="ignoreCost">Whether to queue the item without charging resources.</param>
         /// <returns>True when the item was queued; otherwise, false.</returns>
-        public bool Enqueue(
+        public bool Enqueue(Planet planet, IManufacturable item, Fleet destination)
+        {
+            return Enqueue(planet, item, destination, MaintenanceAdmission.Validate);
+        }
+
+        /// <summary>
+        /// Enqueues a fleet-bound item after its maintenance budget has been reserved.
+        /// </summary>
+        /// <param name="planet">The planet where production occurs.</param>
+        /// <param name="item">The item to manufacture.</param>
+        /// <param name="destination">The fleet receiving the completed item.</param>
+        /// <returns>True when the item was queued; otherwise false.</returns>
+        internal bool EnqueuePrevalidated(Planet planet, IManufacturable item, Fleet destination)
+        {
+            return Enqueue(planet, item, destination, MaintenanceAdmission.Prevalidated);
+        }
+
+        /// <summary>
+        /// Enqueues a fleet-bound item under the supplied maintenance admission policy.
+        /// </summary>
+        /// <param name="planet">The planet where production occurs.</param>
+        /// <param name="item">The item to manufacture.</param>
+        /// <param name="destination">The fleet receiving the completed item.</param>
+        /// <param name="admission">The maintenance admission established for the order.</param>
+        /// <returns>True when the item was queued; otherwise false.</returns>
+        private bool Enqueue(
             Planet planet,
             IManufacturable item,
             Fleet destination,
-            bool ignoreCost = false
+            MaintenanceAdmission admission
         )
         {
             Faction faction = GetValidatedFaction(planet, item);
@@ -413,7 +470,10 @@ namespace Rebellion.Simulation
             if (!parent.CanAcceptChild(item))
                 return false;
 
-            if (!HasMaintenanceHeadroom(faction, item, ignoreCost))
+            if (
+                admission == MaintenanceAdmission.Validate
+                && !HasMaintenanceHeadroom(faction, item)
+            )
                 return false;
 
             _game.AttachNode(item, parent);
@@ -428,7 +488,7 @@ namespace Rebellion.Simulation
                 }
             );
 
-            CommitToQueue(planet, item, ignoreCost);
+            CommitToQueue(planet, item);
             return true;
         }
 
@@ -438,13 +498,41 @@ namespace Rebellion.Simulation
         /// <param name="planet">The planet where production is queued.</param>
         /// <param name="item">The item to produce.</param>
         /// <param name="destination">The capital ship receiving the completed item.</param>
-        /// <param name="ignoreCost">Whether to queue the item without checking maintenance headroom.</param>
         /// <returns>True when the item was queued; otherwise false.</returns>
-        public bool Enqueue(
+        public bool Enqueue(Planet planet, IManufacturable item, CapitalShip destination)
+        {
+            return Enqueue(planet, item, destination, MaintenanceAdmission.Validate);
+        }
+
+        /// <summary>
+        /// Enqueues a ship-bound item after its maintenance budget has been reserved.
+        /// </summary>
+        /// <param name="planet">The planet where production occurs.</param>
+        /// <param name="item">The item to manufacture.</param>
+        /// <param name="destination">The capital ship receiving the completed item.</param>
+        /// <returns>True when the item was queued; otherwise false.</returns>
+        internal bool EnqueuePrevalidated(
+            Planet planet,
+            IManufacturable item,
+            CapitalShip destination
+        )
+        {
+            return Enqueue(planet, item, destination, MaintenanceAdmission.Prevalidated);
+        }
+
+        /// <summary>
+        /// Enqueues a ship-bound item under the supplied maintenance admission policy.
+        /// </summary>
+        /// <param name="planet">The planet where production occurs.</param>
+        /// <param name="item">The item to manufacture.</param>
+        /// <param name="destination">The capital ship receiving the completed item.</param>
+        /// <param name="admission">The maintenance admission established for the order.</param>
+        /// <returns>True when the item was queued; otherwise false.</returns>
+        private bool Enqueue(
             Planet planet,
             IManufacturable item,
             CapitalShip destination,
-            bool ignoreCost = false
+            MaintenanceAdmission admission
         )
         {
             Faction faction = GetValidatedFaction(planet, item);
@@ -469,7 +557,10 @@ namespace Rebellion.Simulation
             if (!destination.CanAcceptChild(item))
                 return false;
 
-            if (!HasMaintenanceHeadroom(faction, item, ignoreCost))
+            if (
+                admission == MaintenanceAdmission.Validate
+                && !HasMaintenanceHeadroom(faction, item)
+            )
                 return false;
 
             _game.AttachNode(item, destination);
@@ -484,7 +575,7 @@ namespace Rebellion.Simulation
                 }
             );
 
-            CommitToQueue(planet, item, ignoreCost);
+            CommitToQueue(planet, item);
             return true;
         }
 
@@ -534,11 +625,10 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="faction">The faction producing the item.</param>
         /// <param name="item">The item being produced.</param>
-        /// <param name="ignoreCost">Whether maintenance checks should be skipped.</param>
         /// <returns>True when the item can be queued.</returns>
-        private bool HasMaintenanceHeadroom(Faction faction, IManufacturable item, bool ignoreCost)
+        private bool HasMaintenanceHeadroom(Faction faction, IManufacturable item)
         {
-            if (ignoreCost || item.GetMaintenanceCost() <= 0)
+            if (item.GetMaintenanceCost() <= 0)
                 return true;
 
             int projectedHeadroom =
@@ -553,10 +643,8 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="planet">The planet producing the item.</param>
         /// <param name="item">The item to enqueue for production.</param>
-        /// <param name="ignoreCost">Reserved for callers that bypass external production costs.</param>
-        private void CommitToQueue(Planet planet, IManufacturable item, bool ignoreCost)
+        private void CommitToQueue(Planet planet, IManufacturable item)
         {
-            _ = ignoreCost;
             item.ManufacturingStatus = ManufacturingStatus.Building;
             item.ManufacturingProgress = 0;
             item.ProducerOwnerID = planet.GetOwnerInstanceID();
@@ -1313,7 +1401,7 @@ namespace Rebellion.Simulation
         /// Called when planet ownership changes (capture, uprising, diplomacy).
         /// </summary>
         /// <param name="planet">The planet whose queues should be cleared.</param>
-        public void ClearQueuesOnOwnershipChange(Planet planet)
+        internal void ClearQueuesOnOwnershipChange(Planet planet)
         {
             if (planet == null)
             {
@@ -1348,7 +1436,10 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="destination">The planet whose ownership is changing.</param>
         /// <param name="newOwnerInstanceId">The planet's incoming owner.</param>
-        public void InvalidatePlanetDestinationOrders(Planet destination, string newOwnerInstanceId)
+        internal void InvalidatePlanetDestinationOrders(
+            Planet destination,
+            string newOwnerInstanceId
+        )
         {
             if (destination == null)
                 return;
@@ -1398,7 +1489,7 @@ namespace Rebellion.Simulation
         /// Rebuilds manufacturing queues for all planets from scene graph state.
         /// Called after loading a saved game to reconstruct queue state from serialized items.
         /// </summary>
-        public void RebuildQueues()
+        internal void RebuildQueues()
         {
             List<Planet> planets = _game.GetSceneNodesByType<Planet>().ToList();
             Dictionary<Planet, Dictionary<ManufacturingType, List<IManufacturable>>> candidates =

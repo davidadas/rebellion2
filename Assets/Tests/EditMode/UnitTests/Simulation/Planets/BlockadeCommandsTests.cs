@@ -252,53 +252,63 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void RollEvacuationLoss_RollBelowThreshold_ReturnsTrue()
+        public void ApplyEvacuationLosses_RollBelowThreshold_RemovesRegiment()
         {
-            GameConfig config = TestConfig.Create();
-            config.Blockade.EvacuationLossPercent = 25;
-            GameRoot game = TestGame.Create(config);
-
-            // FixedRNG returns 0 from NextInt -> 0 < 25 -> loss
+            (GameRoot game, Planet planet, _) = BuildScene();
+            game.Config.Blockade.EvacuationLossPercent = 25;
+            Regiment regiment = EntityFactory.CreateRegiment("evacuating", "empire");
+            game.AttachNode(regiment, planet);
             BlockadeCommands system = new BlockadeCommands(game, new FixedRNG());
 
-            Assert.IsTrue(system.RollEvacuationLoss());
+            EvacuationLossesResult result = system.ApplyEvacuationLosses(regiment, planet);
+
+            Assert.IsNotNull(result);
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
         }
 
         [Test]
-        public void RollEvacuationLoss_RollAboveThreshold_ReturnsFalse()
+        public void ApplyEvacuationLosses_RollAboveThreshold_PreservesRegiment()
         {
-            GameConfig config = TestConfig.Create();
-            config.Blockade.EvacuationLossPercent = 25;
-            GameRoot game = TestGame.Create(config);
-
-            // MaximumRNG returns 99 from NextInt(0,100) -> 99 >= 25 -> survives
+            (GameRoot game, Planet planet, _) = BuildScene();
+            game.Config.Blockade.EvacuationLossPercent = 25;
+            Regiment regiment = EntityFactory.CreateRegiment("evacuating", "empire");
+            game.AttachNode(regiment, planet);
             BlockadeCommands system = new BlockadeCommands(game, new MaximumRNG());
 
-            Assert.IsFalse(system.RollEvacuationLoss());
+            EvacuationLossesResult result = system.ApplyEvacuationLosses(regiment, planet);
+
+            Assert.IsNull(result);
+            Assert.AreSame(regiment, game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
         }
 
         [Test]
-        public void RollEvacuationLoss_ZeroPercent_NeverDestroys()
+        public void ApplyEvacuationLosses_ZeroPercent_PreservesRegiment()
         {
-            GameConfig config = TestConfig.Create();
-            config.Blockade.EvacuationLossPercent = 0;
-            GameRoot game = TestGame.Create(config);
-
+            (GameRoot game, Planet planet, _) = BuildScene();
+            game.Config.Blockade.EvacuationLossPercent = 0;
+            Regiment regiment = EntityFactory.CreateRegiment("evacuating", "empire");
+            game.AttachNode(regiment, planet);
             BlockadeCommands system = new BlockadeCommands(game, new FixedRNG());
 
-            Assert.IsFalse(system.RollEvacuationLoss());
+            EvacuationLossesResult result = system.ApplyEvacuationLosses(regiment, planet);
+
+            Assert.IsNull(result);
+            Assert.AreSame(regiment, game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
         }
 
         [Test]
-        public void RollEvacuationLoss_HundredPercent_AlwaysDestroys()
+        public void ApplyEvacuationLosses_HundredPercent_RemovesRegiment()
         {
-            GameConfig config = TestConfig.Create();
-            config.Blockade.EvacuationLossPercent = 100;
-            GameRoot game = TestGame.Create(config);
-
+            (GameRoot game, Planet planet, _) = BuildScene();
+            game.Config.Blockade.EvacuationLossPercent = 100;
+            Regiment regiment = EntityFactory.CreateRegiment("evacuating", "empire");
+            game.AttachNode(regiment, planet);
             BlockadeCommands system = new BlockadeCommands(game, new MaximumRNG());
 
-            Assert.IsTrue(system.RollEvacuationLoss());
+            EvacuationLossesResult result = system.ApplyEvacuationLosses(regiment, planet);
+
+            Assert.IsNotNull(result);
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
         }
 
         [Test]

@@ -101,6 +101,16 @@ namespace Rebellion.Simulation
                 );
             foreach (EvacuationLossesResult result in results.OfType<EvacuationLossesResult>())
                 RecordEvacuationLosses(result);
+            foreach (
+                OfficerCaptureStateResult result in results
+                    .OfType<OfficerCaptureStateResult>()
+                    .Where(result => result?.IsCaptured == false)
+            )
+                _commands.RecordCaptureState(
+                    result.TargetOfficer,
+                    result.CaptorInstanceID,
+                    result.Tick
+                );
         }
 
         /// <summary>

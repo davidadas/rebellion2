@@ -68,7 +68,7 @@ namespace Rebellion.Simulation
 
                 if (result.IsCaptured == false)
                 {
-                    _commands.ClearReleaseTracking(officer, result.CaptorInstanceID, result.Tick);
+                    officer.NextEscapeAttemptTick = 0;
                     continue;
                 }
 

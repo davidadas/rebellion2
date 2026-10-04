@@ -26,6 +26,9 @@ namespace Rebellion.Simulation
         private readonly ProbabilityTable _escapeTable;
         private readonly GameConfig.TickRangeConfig _escapeAttemptInterval;
 
+        /// <summary>Raised when an immediate capture or release produces a result.</summary>
+        public event Action<IReadOnlyList<GameResult>> ResultsProduced;
+
         /// <summary>
         /// Creates the custody and escape operations for the active game.
         /// </summary>
@@ -50,13 +53,74 @@ namespace Rebellion.Simulation
             _escapeTable = new ProbabilityTable(game.Config.Captive.EscapeTable);
         }
 
+        /// <summary>
+        /// Attempts to capture a registered officer and publishes the resulting custody change.
+        /// </summary>
+        /// <param name="officer">The officer to capture.</param>
+        /// <param name="captor">The faction taking custody.</param>
+        /// <param name="capturingUnit">The unit responsible for the capture, when present.</param>
+        /// <param name="canEscape">Whether the officer may attempt to escape.</param>
+        /// <returns>True when the officer was captured.</returns>
+        public bool TryCaptureOfficer(
+            Officer officer,
+            Faction captor,
+            ISceneNode capturingUnit = null,
+            bool canEscape = true
+        )
+        {
+            Officer liveOfficer = ResolveOfficer(officer);
+            Faction liveCaptor = ResolveFaction(captor);
+            if (
+                liveOfficer == null
+                || liveCaptor == null
+                || !liveOfficer.TryCapture(liveCaptor.InstanceID, canEscape)
+            )
+                return false;
+
+            OfficerCaptureStateResult result = new OfficerCaptureStateResult
+            {
+                TargetOfficer = liveOfficer,
+                IsCaptured = true,
+                CaptorInstanceID = liveCaptor.InstanceID,
+                ParentAtCapture = liveOfficer.GetParent(),
+                CapturingUnit = capturingUnit,
+                Context =
+                    capturingUnit?.GetParentOfType<Planet>()
+                    ?? liveOfficer.GetParentOfType<Planet>(),
+                Tick = _game.CurrentTick,
+            };
+            ResultsProduced?.Invoke(new GameResult[] { result });
+            return true;
+        }
+
+        /// <summary>
+        /// Releases a registered captive officer and publishes the custody change.
+        /// </summary>
+        /// <param name="officer">The officer to release.</param>
+        /// <returns>True when the officer was released.</returns>
+        public bool TryReleaseOfficer(Officer officer)
+        {
+            Officer liveOfficer = ResolveOfficer(officer);
+            if (liveOfficer?.IsCaptured != true)
+                return false;
+
+            OfficerCaptureStateResult result = ReleaseOfficer(
+                liveOfficer,
+                liveOfficer.GetParentOfType<Planet>(),
+                _game.CurrentTick,
+                liveOfficer.CaptorInstanceID
+            );
+            ResultsProduced?.Invoke(new GameResult[] { result });
+            return true;
+        }
+
         /// <summary>Establishes custody and records the location revealed at capture time.</summary>
         /// <param name="officer">The captured officer requiring custody.</param>
         /// <param name="context">The location where the capture occurred.</param>
         /// <param name="capturingUnit">The unit responsible for the capture, if present.</param>
         /// <param name="tick">The capture observation tick.</param>
         /// <param name="reactions">The collection receiving custody-transfer results.</param>
-        public void EstablishCustody(
+        internal void EstablishCustody(
             Officer officer,
             IGameEntity context,
             ISceneNode capturingUnit,
@@ -85,17 +149,6 @@ namespace Rebellion.Simulation
             _fogOfWarCommands.RecordCaptureState(officer, null, tick);
             if (officer.CanEscape && officer.NextEscapeAttemptTick <= 0)
                 ScheduleEscapeAttempt(officer);
-        }
-
-        /// <summary>Clears escape scheduling and removes observations of a released officer.</summary>
-        /// <param name="officer">The officer whose release is being processed.</param>
-        /// <param name="previousCaptorId">The faction that held the officer before release.</param>
-        /// <param name="tick">The release tick.</param>
-        public void ClearReleaseTracking(Officer officer, string previousCaptorId, int tick)
-        {
-            officer.NextEscapeAttemptTick = 0;
-            if (!officer.IsCaptured)
-                _fogOfWarCommands.RecordCaptureState(officer, previousCaptorId, tick);
         }
 
         /// <summary>
@@ -133,7 +186,7 @@ namespace Rebellion.Simulation
 
             if (RollEscapeAttempt(officer, custodyContext))
             {
-                OfficerCaptureStateResult result = TryReleaseOfficer(officer, planet);
+                OfficerCaptureStateResult result = TryEscapeCustody(officer, planet);
                 if (result != null)
                     results.Add(result);
             }
@@ -345,7 +398,7 @@ namespace Rebellion.Simulation
         /// <param name="officer">The officer to release.</param>
         /// <param name="planet">The planet the officer escaped from.</param>
         /// <returns>A release result when movement succeeds; otherwise null.</returns>
-        private OfficerCaptureStateResult TryReleaseOfficer(Officer officer, Planet planet)
+        private OfficerCaptureStateResult TryEscapeCustody(Officer officer, Planet planet)
         {
             string captorInstanceID = officer.CaptorInstanceID;
             officer.IsCaptured = false;
@@ -379,7 +432,7 @@ namespace Rebellion.Simulation
         /// <param name="tick">The tick when the release occurred.</param>
         /// <param name="captorInstanceID">The faction that held the officer.</param>
         /// <returns>The resulting capture-state change.</returns>
-        public OfficerCaptureStateResult ReleaseOfficer(
+        internal OfficerCaptureStateResult ReleaseOfficer(
             Officer officer,
             Planet context,
             int tick,
@@ -399,6 +452,35 @@ namespace Rebellion.Simulation
                 Context = context,
                 Tick = tick,
             };
+        }
+
+        /// <summary>
+        /// Resolves an officer argument to the officer registered with the active game.
+        /// </summary>
+        /// <param name="officer">The officer or snapshot to resolve.</param>
+        /// <returns>The registered officer, or null when it cannot be resolved.</returns>
+        private Officer ResolveOfficer(Officer officer)
+        {
+            return string.IsNullOrEmpty(officer?.InstanceID)
+                ? null
+                : _game.GetSceneNodeByInstanceID<Officer>(
+                    officer.InstanceID,
+                    includeDisabled: true
+                );
+        }
+
+        /// <summary>
+        /// Resolves a faction argument to the faction registered with the active game.
+        /// </summary>
+        /// <param name="faction">The faction to resolve.</param>
+        /// <returns>The registered faction, or null when it cannot be resolved.</returns>
+        private Faction ResolveFaction(Faction faction)
+        {
+            return string.IsNullOrEmpty(faction?.InstanceID)
+                ? null
+                : _game
+                    .GetFactions()
+                    .FirstOrDefault(candidate => candidate.InstanceID == faction.InstanceID);
         }
 
         /// <summary>

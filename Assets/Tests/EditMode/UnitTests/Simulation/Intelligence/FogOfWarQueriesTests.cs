@@ -983,11 +983,10 @@ namespace Rebellion.Tests.Simulation
                 new FleetCommands(_game),
                 new ManufacturingQueries(_game)
             );
-            bool enqueued = manufacturing.Enqueue(
+            bool enqueued = manufacturing.EnqueuePrevalidated(
                 _coruscant,
                 queuedBuilding,
-                _coruscant,
-                ignoreCost: true
+                _coruscant
             );
 
             Assert.IsTrue(enqueued);
@@ -1025,7 +1024,7 @@ namespace Rebellion.Tests.Simulation
                 new ManufacturingQueries(_game)
             );
             Assert.IsTrue(
-                manufacturing.Enqueue(_coruscant, queuedBuilding, _coruscant, ignoreCost: true)
+                manufacturing.EnqueuePrevalidated(_coruscant, queuedBuilding, _coruscant)
             );
             new FogOfWarRecorder().RecordPlanetSnapshot(_alliance, _coruscant, _coreSector, 10);
 

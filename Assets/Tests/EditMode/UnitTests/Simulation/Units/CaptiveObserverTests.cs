@@ -422,33 +422,6 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void HandleResults_ReleasedOfficer_RemovesCaptureSnapshot()
-        {
-            (GameRoot game, Planet planet, Officer captive, MovementCommands movement) =
-                BuildScene();
-            CaptiveObserver system = CreateObserver(game, new FixedRNG(0.0), movement);
-            system.HandleResults(new[] { CaptureResult(captive, planet) });
-            captive.IsCaptured = false;
-            captive.CaptorInstanceID = null;
-
-            system.HandleResults(
-                new[]
-                {
-                    new OfficerCaptureStateResult { TargetOfficer = captive, IsCaptured = false },
-                }
-            );
-
-            Faction owner = game.GetFactionByOwnerInstanceID(captive.OwnerInstanceID);
-            Assert.IsFalse(owner.Fog.EntityLastSeenAt.ContainsKey(captive.InstanceID));
-            Assert.IsFalse(
-                owner
-                    .Fog.Snapshots.Values.SelectMany(snapshot => snapshot.Planets.Values)
-                    .SelectMany(snapshot => snapshot.Officers)
-                    .Any(officer => officer.InstanceID == captive.InstanceID)
-            );
-        }
-
-        [Test]
         public void HandleResults_OwnerRecapturesCaptivePlanet_ReleasesOfficer()
         {
             (GameRoot game, Planet planet, Officer captive, MovementCommands movement) =

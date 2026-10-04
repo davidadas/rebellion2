@@ -35,7 +35,7 @@ namespace Rebellion.Simulation
         /// Rolls to determine if a regiment is destroyed while evacuating through a blockade.
         /// </summary>
         /// <returns>True if the regiment is destroyed.</returns>
-        public bool RollEvacuationLoss()
+        private bool RollEvacuationLoss()
         {
             int threshold = _game.Config.Blockade.EvacuationLossPercent;
             return _provider.NextInt(0, 100) < threshold;
@@ -48,7 +48,7 @@ namespace Rebellion.Simulation
         /// <param name="unit">The unit attempting to leave.</param>
         /// <param name="originPlanet">The planet the unit is departing from.</param>
         /// <returns>Result describing the loss, or null if the unit survived.</returns>
-        public EvacuationLossesResult ApplyEvacuationLosses(IMovable unit, Planet originPlanet)
+        internal EvacuationLossesResult ApplyEvacuationLosses(IMovable unit, Planet originPlanet)
         {
             if (
                 !originPlanet.IsBlockadedFor(unit.GetOwnerInstanceID())

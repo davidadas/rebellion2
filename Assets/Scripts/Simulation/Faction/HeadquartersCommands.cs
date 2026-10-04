@@ -67,7 +67,7 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="headquarters">The arriving headquarters building.</param>
         /// <param name="destination">The arrival planet.</param>
-        public void Arrive(Building headquarters, Planet destination)
+        internal void Arrive(Building headquarters, Planet destination)
         {
             if (headquarters?.BuildingType != BuildingType.Headquarters)
                 return;
@@ -91,7 +91,7 @@ namespace Rebellion.Simulation
         /// <param name="previousOwner">The faction that previously controlled the planet.</param>
         /// <param name="newOwner">The faction now controlling the planet, or null for neutrality.</param>
         /// <returns>The headquarters consequences of this ownership change.</returns>
-        public List<GameResult> UpdateOwnership(
+        internal List<GameResult> UpdateOwnership(
             Planet planet,
             Faction previousOwner,
             Faction newOwner

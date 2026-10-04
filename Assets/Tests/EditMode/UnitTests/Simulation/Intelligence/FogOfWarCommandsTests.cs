@@ -27,6 +27,34 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void ObservePlanet_RegisteredPlanet_RecordsCurrentState()
+        {
+            _game.CurrentTick = 42;
+            Officer vader = CreateOfficer("VADER", _empire);
+            _game.AttachNode(vader, _coruscant);
+
+            bool observed = _commands.ObservePlanet(_alliance, _coruscant);
+
+            Assert.IsTrue(observed);
+            PlanetSnapshot snapshot = _alliance.Fog.Snapshots["CORE_SECTOR"].Planets["CORUSCANT"];
+            Assert.AreEqual(42, snapshot.TickCaptured);
+            Assert.AreEqual("VADER", snapshot.Officers.Single().InstanceID);
+        }
+
+        [Test]
+        public void ForgetEntity_RememberedOfficer_RemovesObservation()
+        {
+            Officer vader = CreateOfficer("VADER", _empire);
+            _game.AttachNode(vader, _coruscant);
+            _commands.ObservePlanet(_alliance, _coruscant);
+
+            bool forgotten = _commands.ForgetEntity(_alliance, vader.InstanceID);
+
+            Assert.IsTrue(forgotten);
+            Assert.IsEmpty(_alliance.Fog.Snapshots["CORE_SECTOR"].Planets["CORUSCANT"].Officers);
+        }
+
+        [Test]
         public void CaptureSnapshot_PlanetWithAllEntities_CreatesAccurateSnapshot()
         {
             _coruscant.NumRawResourceNodes = 5;

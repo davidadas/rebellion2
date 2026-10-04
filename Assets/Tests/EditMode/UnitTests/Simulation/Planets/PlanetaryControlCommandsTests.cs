@@ -748,12 +748,7 @@ namespace Rebellion.Tests.Simulation
                 BuildingType = BuildingType.Mine,
                 ConstructionCost = 100,
             };
-            bool enqueued = manufacturing.Enqueue(
-                _targetPlanet,
-                mine,
-                _targetPlanet,
-                ignoreCost: true
-            );
+            bool enqueued = manufacturing.EnqueuePrevalidated(_targetPlanet, mine, _targetPlanet);
             Assert.IsTrue(enqueued, "Setup: building should enqueue successfully");
             Assert.IsNotNull(mine.GetParent(), "Setup: building should be attached to planet");
 
@@ -797,10 +792,10 @@ namespace Rebellion.Tests.Simulation
                 ConstructionCost = 100,
             };
             Assert.IsTrue(
-                manufacturing.Enqueue(_empirePlanet, remoteMine, _targetPlanet, ignoreCost: true)
+                manufacturing.EnqueuePrevalidated(_empirePlanet, remoteMine, _targetPlanet)
             );
             Assert.IsTrue(
-                manufacturing.Enqueue(_empirePlanet, localMine, _empirePlanet, ignoreCost: true)
+                manufacturing.EnqueuePrevalidated(_empirePlanet, localMine, _empirePlanet)
             );
 
             _commands.TransferPlanet(_targetPlanet, _rebels);
@@ -840,7 +835,7 @@ namespace Rebellion.Tests.Simulation
                 OwnerInstanceID = _empire.InstanceID,
                 ConstructionCost = 100,
             };
-            Assert.IsTrue(manufacturing.Enqueue(_empirePlanet, regiment, fleet, ignoreCost: true));
+            Assert.IsTrue(manufacturing.EnqueuePrevalidated(_empirePlanet, regiment, fleet));
 
             _commands.TransferPlanet(_targetPlanet, _rebels);
 

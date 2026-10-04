@@ -593,7 +593,7 @@ namespace Rebellion.Game.Units
         /// <param name="captorInstanceId">The instance ID of the capturing faction.</param>
         /// <param name="canEscape">Whether the officer can attempt to escape captivity.</param>
         /// <returns>True when the officer was captured; otherwise false.</returns>
-        public bool TryCapture(string captorInstanceId, bool canEscape = true)
+        internal bool TryCapture(string captorInstanceId, bool canEscape = true)
         {
             if (((IMovable)this).GetTransitMovement() != null)
             {

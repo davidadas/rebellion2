@@ -925,7 +925,7 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(
                 manager
                     .GetService<ManufacturingCommands>()
-                    .Enqueue(producer, completingOrder, destination, ignoreCost: true)
+                    .EnqueuePrevalidated(producer, completingOrder, destination)
             );
 
             manager.Tick.ProcessTick();
@@ -1161,6 +1161,41 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void CaptiveCommands_TryCaptureOfficer_CompletesCustodyLifecycle()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            Faction owner = new Faction { InstanceID = "OWNER" };
+            Faction captor = new Faction { InstanceID = "CAPTOR" };
+            game.GetFactions().Add(owner);
+            game.GetFactions().Add(captor);
+            PlanetSector sector = new PlanetSector { InstanceID = "SECTOR" };
+            Planet capturePlanet = CreatePlanet("CAPTURE", owner.InstanceID, 0);
+            Planet custodyPlanet = CreatePlanet("CUSTODY", captor.InstanceID, 100);
+            game.AttachNode(sector, game.Galaxy);
+            game.AttachNode(capturePlanet, sector);
+            game.AttachNode(custodyPlanet, sector);
+            Officer officer = EntityFactory.CreateOfficer("OFFICER", owner.InstanceID);
+            game.AttachNode(officer, capturePlanet);
+            GameSession manager = TestContent.CreateGameSession(game);
+            IReadOnlyList<GameResult> resolved = null;
+            manager.Pipeline.ResultsResolved += results => resolved = results;
+
+            bool captured = manager
+                .GetService<CaptiveCommands>()
+                .TryCaptureOfficer(officer, captor);
+
+            Assert.IsTrue(captured);
+            Assert.IsTrue(officer.IsCaptured);
+            Assert.AreEqual(captor.InstanceID, officer.CaptorInstanceID);
+            Assert.AreSame(custodyPlanet, officer.GetParent());
+            Assert.IsTrue(
+                resolved
+                    .OfType<OfficerCaptureStateResult>()
+                    .Any(result => result.TargetOfficer == officer && result.IsCaptured == true)
+            );
+        }
+
+        [Test]
         public void Tick_VictoryConditionMet_RaisesVictoryDeclaredOnce()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -1193,6 +1228,27 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, declarations.Count);
             Assert.AreSame(alliance, declarations[0].Winner);
             Assert.AreSame(empire, declarations[0].Loser);
+        }
+
+        [Test]
+        public void VictoryCommands_TryDeclareVictory_RaisesVictoryDeclared()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            Faction winner = new Faction { InstanceID = "WINNER" };
+            Faction loser = new Faction { InstanceID = "LOSER" };
+            game.GetFactions().Add(winner);
+            game.GetFactions().Add(loser);
+            GameSession manager = TestContent.CreateGameSession(game);
+            VictoryResult declared = null;
+            manager.Pipeline.VictoryDeclared += result => declared = result;
+
+            VictoryResult result = manager
+                .GetService<VictoryCommands>()
+                .TryDeclareVictory(winner, loser);
+
+            Assert.AreSame(result, declared);
+            Assert.AreSame(winner, declared.Winner);
+            Assert.AreSame(loser, declared.Loser);
         }
 
         [Test]

@@ -39,13 +39,49 @@ namespace Rebellion.Simulation
             : this(game, new FogOfWarQueries(game)) { }
 
         /// <summary>
+        /// Records the current state of a registered planet for a registered faction.
+        /// </summary>
+        /// <param name="faction">The faction receiving the observation.</param>
+        /// <param name="planet">The planet being observed.</param>
+        /// <returns>True when the observation was recorded.</returns>
+        public bool ObservePlanet(Faction faction, Planet planet)
+        {
+            Faction liveFaction = FindFaction(faction?.InstanceID);
+            Planet livePlanet = string.IsNullOrEmpty(planet?.InstanceID)
+                ? null
+                : _game.GetSceneNodeByInstanceID<Planet>(planet.InstanceID);
+            PlanetSector sector = livePlanet?.GetParentOfType<PlanetSector>();
+            if (liveFaction == null || livePlanet == null || sector == null)
+                return false;
+
+            CaptureSnapshot(liveFaction, livePlanet, sector, _game.CurrentTick);
+            return true;
+        }
+
+        /// <summary>
+        /// Removes a registered entity from one faction's remembered observations.
+        /// </summary>
+        /// <param name="faction">The faction whose observations are updated.</param>
+        /// <param name="entityId">The registered entity identifier to forget.</param>
+        /// <returns>True when the request identified a registered faction and entity.</returns>
+        public bool ForgetEntity(Faction faction, string entityId)
+        {
+            Faction liveFaction = FindFaction(faction?.InstanceID);
+            if (liveFaction == null || string.IsNullOrEmpty(entityId))
+                return false;
+
+            RemoveEntityFromSnapshots(liveFaction, entityId);
+            return true;
+        }
+
+        /// <summary>
         /// Captures a snapshot of a planet for a faction.
         /// </summary>
         /// <param name="faction">The faction receiving the snapshot.</param>
         /// <param name="planet">The planet being observed.</param>
         /// <param name="sector">The sector containing the planet.</param>
         /// <param name="currentTick">The tick when the snapshot is captured.</param>
-        public void CaptureSnapshot(
+        internal void CaptureSnapshot(
             Faction faction,
             Planet planet,
             PlanetSector sector,
@@ -107,7 +143,7 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="faction">The faction whose snapshots are updated.</param>
         /// <param name="entityId">The entity instance ID to remove.</param>
-        public void RemoveEntityFromSnapshots(Faction faction, string entityId)
+        internal void RemoveEntityFromSnapshots(Faction faction, string entityId)
         {
             _recorder.RemoveEntityFromSnapshots(faction, entityId);
         }
@@ -144,7 +180,7 @@ namespace Rebellion.Simulation
         /// <summary>
         /// Refreshes visible planet snapshots and repairs the one-location-per-entity index.
         /// </summary>
-        public void ReconcileKnowledge()
+        internal void ReconcileKnowledge()
         {
             RefreshVisibleKnowledge();
             foreach (Faction faction in _game.GetFactions())

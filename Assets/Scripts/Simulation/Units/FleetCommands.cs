@@ -30,7 +30,7 @@ namespace Rebellion.Simulation
         /// <param name="destination">The destination planet or its snapshot.</param>
         /// <param name="ownerInstanceId">The owning faction identifier.</param>
         /// <returns>The attached fleet, or null when the request is invalid.</returns>
-        public Fleet CreateAtPlanet(Planet destination, string ownerInstanceId)
+        internal Fleet CreateAtPlanet(Planet destination, string ownerInstanceId)
         {
             Planet liveDestination = ResolveLivePlanet(destination);
             if (liveDestination == null || string.IsNullOrEmpty(ownerInstanceId))
@@ -119,7 +119,7 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="fleet">The fleet or its snapshot.</param>
         /// <returns>True when the fleet was removed.</returns>
-        public bool RemoveIfEmpty(Fleet fleet)
+        internal bool RemoveIfEmpty(Fleet fleet)
         {
             Fleet liveFleet = ResolveLiveFleet(fleet);
             if (
