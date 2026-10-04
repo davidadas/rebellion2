@@ -66,7 +66,8 @@ namespace Rebellion.Game.Factions
         public string GarrisonTroopTypeID { get; set; }
 
         // Messages and Notifications.
-        public Dictionary<MessageType, List<Message>> Messages = new Dictionary<
+        [PersistableMember(Name = nameof(Messages))]
+        private Dictionary<MessageType, List<Message>> _messages = new Dictionary<
             MessageType,
             List<Message>
         >()
@@ -81,6 +82,14 @@ namespace Rebellion.Game.Factions
             { MessageType.Chat, new List<Message>() },
             { MessageType.Advice, new List<Message>() },
         };
+
+        [PersistableIgnore]
+        public Dictionary<MessageType, List<Message>> Messages
+        {
+            get => _messages;
+            set => _messages = value;
+        }
+
         public bool AdvisorMessageNotificationsEnabled { get; set; } = true;
         public Dictionary<MessageType, bool> AdvisorMessageNotifications { get; set; } =
             new Dictionary<MessageType, bool>();

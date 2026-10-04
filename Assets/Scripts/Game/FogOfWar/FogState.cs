@@ -12,22 +12,46 @@ namespace Rebellion.Game.FogOfWar
         // Snapshots.
 
         // Planet-sector snapshots keyed by sector instance ID.
-        public Dictionary<string, PlanetSectorSnapshot> Snapshots;
+        [PersistableMember(Name = nameof(Snapshots))]
+        private Dictionary<string, PlanetSectorSnapshot> _snapshots;
 
         // Last observed planet for each visible entity instance ID.
-        public Dictionary<string, string> EntityLastSeenAt;
+        [PersistableMember(Name = nameof(EntityLastSeenAt))]
+        private Dictionary<string, string> _entityLastSeenAt;
 
         // Sector instance ID for each observed planet instance ID.
-        public Dictionary<string, string> PlanetToSector;
+        [PersistableMember(Name = nameof(PlanetToSector))]
+        private Dictionary<string, string> _planetToSector;
+
+        [PersistableIgnore]
+        public Dictionary<string, PlanetSectorSnapshot> Snapshots
+        {
+            get => _snapshots;
+            set => _snapshots = value;
+        }
+
+        [PersistableIgnore]
+        public Dictionary<string, string> EntityLastSeenAt
+        {
+            get => _entityLastSeenAt;
+            set => _entityLastSeenAt = value;
+        }
+
+        [PersistableIgnore]
+        public Dictionary<string, string> PlanetToSector
+        {
+            get => _planetToSector;
+            set => _planetToSector = value;
+        }
 
         /// <summary>
         /// Default constructor.
         /// </summary>
         public FogState()
         {
-            Snapshots = new Dictionary<string, PlanetSectorSnapshot>();
-            EntityLastSeenAt = new Dictionary<string, string>();
-            PlanetToSector = new Dictionary<string, string>();
+            _snapshots = new Dictionary<string, PlanetSectorSnapshot>();
+            _entityLastSeenAt = new Dictionary<string, string>();
+            _planetToSector = new Dictionary<string, string>();
         }
     }
 }

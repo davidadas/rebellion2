@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Events;
@@ -859,27 +860,32 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
-        public void PersistedState_GameRootMembers_UsesExplicitNonPublicMembers()
+        public void PersistedState_GameModelFields_UseExplicitNonPublicMembers()
         {
-            IReadOnlyList<MemberInfo> members = ReflectionHelper.GetPersistableMembers(
-                typeof(GameRoot),
-                ReflectionHelper.OperationType.Write
-            );
+            string[] publicFields = typeof(GameRoot)
+                .Assembly.GetTypes()
+                .Where(type =>
+                    type.IsClass
+                    && type.Namespace?.StartsWith("Rebellion.Game") == true
+                    && !type.IsDefined(typeof(CompilerGeneratedAttribute), false)
+                    && type.GetCustomAttribute<PersistableObjectAttribute>(true) != null
+                )
+                .SelectMany(type =>
+                    ReflectionHelper.GetPersistableMembers(
+                        type,
+                        ReflectionHelper.OperationType.Write
+                    )
+                )
+                .OfType<FieldInfo>()
+                .Where(field => field.IsPublic)
+                .Select(field => $"{field.DeclaringType?.FullName}.{field.Name}")
+                .Distinct()
+                .OrderBy(name => name)
+                .ToArray();
 
-            Assert.IsTrue(
-                members.All(member =>
-                    member.GetCustomAttribute<PersistableMemberAttribute>() != null
-                )
-            );
-            Assert.IsTrue(
-                members.All(member =>
-                    member switch
-                    {
-                        FieldInfo field => !field.IsPublic,
-                        PropertyInfo property => property.GetMethod?.IsPublic != true,
-                        _ => false,
-                    }
-                )
+            Assert.IsEmpty(
+                publicFields,
+                "Persisted game-model fields must be private and explicitly attributed."
             );
         }
 

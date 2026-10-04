@@ -22,21 +22,145 @@ namespace Rebellion.Game.Messages
     [PersistableObject]
     public abstract class Message : BaseGameEntity
     {
-        public MessageType Type;
-        public MessageResultType ResultType;
-        public string Title;
-        public string Body;
-        public string BackgroundImageKey;
-        public string OverlayImagePath;
-        public string BackgroundAudioPath;
-        public string OfficerVoicePath;
-        public string EventLocationInstanceID;
-        public string NavigationTargetInstanceID;
-        public string NavigationSecondaryTargetInstanceID;
-        public string MissionInstanceID;
+        [PersistableMember(Name = nameof(Type))]
+        private MessageType _type;
 
-        public int CreatedTick;
-        public bool Read;
+        [PersistableMember(Name = nameof(ResultType))]
+        private MessageResultType _resultType;
+
+        [PersistableMember(Name = nameof(Title))]
+        private string _title;
+
+        [PersistableMember(Name = nameof(Body))]
+        private string _body;
+
+        [PersistableMember(Name = nameof(BackgroundImageKey))]
+        private string _backgroundImageKey;
+
+        [PersistableMember(Name = nameof(OverlayImagePath))]
+        private string _overlayImagePath;
+
+        [PersistableMember(Name = nameof(BackgroundAudioPath))]
+        private string _backgroundAudioPath;
+
+        [PersistableMember(Name = nameof(OfficerVoicePath))]
+        private string _officerVoicePath;
+
+        [PersistableMember(Name = nameof(EventLocationInstanceID))]
+        private string _eventLocationInstanceId;
+
+        [PersistableMember(Name = nameof(NavigationTargetInstanceID))]
+        private string _navigationTargetInstanceId;
+
+        [PersistableMember(Name = nameof(NavigationSecondaryTargetInstanceID))]
+        private string _navigationSecondaryTargetInstanceId;
+
+        [PersistableMember(Name = nameof(MissionInstanceID))]
+        private string _missionInstanceId;
+
+        [PersistableMember(Name = nameof(CreatedTick))]
+        private int _createdTick;
+
+        [PersistableMember(Name = nameof(Read))]
+        private bool _read;
+
+        [PersistableIgnore]
+        public MessageType Type
+        {
+            get => _type;
+            set => _type = value;
+        }
+
+        [PersistableIgnore]
+        public MessageResultType ResultType
+        {
+            get => _resultType;
+            set => _resultType = value;
+        }
+
+        [PersistableIgnore]
+        public string Title
+        {
+            get => _title;
+            set => _title = value;
+        }
+
+        [PersistableIgnore]
+        public string Body
+        {
+            get => _body;
+            set => _body = value;
+        }
+
+        [PersistableIgnore]
+        public string BackgroundImageKey
+        {
+            get => _backgroundImageKey;
+            set => _backgroundImageKey = value;
+        }
+
+        [PersistableIgnore]
+        public string OverlayImagePath
+        {
+            get => _overlayImagePath;
+            set => _overlayImagePath = value;
+        }
+
+        [PersistableIgnore]
+        public string BackgroundAudioPath
+        {
+            get => _backgroundAudioPath;
+            set => _backgroundAudioPath = value;
+        }
+
+        [PersistableIgnore]
+        public string OfficerVoicePath
+        {
+            get => _officerVoicePath;
+            set => _officerVoicePath = value;
+        }
+
+        [PersistableIgnore]
+        public string EventLocationInstanceID
+        {
+            get => _eventLocationInstanceId;
+            set => _eventLocationInstanceId = value;
+        }
+
+        [PersistableIgnore]
+        public string NavigationTargetInstanceID
+        {
+            get => _navigationTargetInstanceId;
+            set => _navigationTargetInstanceId = value;
+        }
+
+        [PersistableIgnore]
+        public string NavigationSecondaryTargetInstanceID
+        {
+            get => _navigationSecondaryTargetInstanceId;
+            set => _navigationSecondaryTargetInstanceId = value;
+        }
+
+        [PersistableIgnore]
+        public string MissionInstanceID
+        {
+            get => _missionInstanceId;
+            set => _missionInstanceId = value;
+        }
+
+        [PersistableIgnore]
+        public int CreatedTick
+        {
+            get => _createdTick;
+            set => _createdTick = value;
+        }
+
+        [PersistableIgnore]
+        public bool Read
+        {
+            get => _read;
+            set => _read = value;
+        }
 
         /// <summary>
         /// Initializes shared message state during deserialization.

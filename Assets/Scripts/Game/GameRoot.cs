@@ -45,14 +45,14 @@ namespace Rebellion.Game
         public GameSummary Summary
         {
             get => _summary;
-            internal set => _summary = value;
+            set => _summary = value;
         }
 
         [PersistableIgnore]
         public GameMetadata Metadata
         {
             get => _metadata;
-            internal set => _metadata = value;
+            set => _metadata = value;
         }
 
         // Configuration.
@@ -89,7 +89,7 @@ namespace Rebellion.Game
         public long RandomIndex
         {
             get => PersistedRandomIndex;
-            internal set => PersistedRandomIndex = value;
+            set => PersistedRandomIndex = value;
         }
 
         // Game state.
@@ -103,14 +103,14 @@ namespace Rebellion.Game
         public int CurrentTick
         {
             get => _currentTick;
-            internal set => _currentTick = value;
+            set => _currentTick = value;
         }
 
         [PersistableIgnore]
         public TickSpeed GameSpeed
         {
             get => _gameSpeed;
-            internal set => _gameSpeed = value;
+            set => _gameSpeed = value;
         }
 
         // Game events.
@@ -124,7 +124,7 @@ namespace Rebellion.Game
         public GameEventRuntimeState EventRuntime
         {
             get => _eventRuntime;
-            internal set => _eventRuntime = value;
+            set => _eventRuntime = value;
         }
 
         // Scene nodes.
@@ -161,7 +161,7 @@ namespace Rebellion.Game
         public GalaxyMap Galaxy
         {
             get => _galaxy;
-            internal set => PersistedGalaxy = value;
+            set => PersistedGalaxy = value;
         }
 
         /// <summary>

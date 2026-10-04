@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Units
 {
@@ -28,26 +29,148 @@ namespace Rebellion.Game.Units
         public int UprisingDefense { get; set; }
 
         // General Info.
-        public int MaxSquadronSize;
-        public int CurrentSquadronSize;
-        public int DetectionRating;
-        public int Bombardment;
-        public int ShieldStrength;
+        [PersistableMember(Name = nameof(MaxSquadronSize))]
+        private int _maxSquadronSize;
+
+        [PersistableMember(Name = nameof(CurrentSquadronSize))]
+        private int _currentSquadronSize;
+
+        [PersistableMember(Name = nameof(DetectionRating))]
+        private int _detectionRating;
+
+        [PersistableMember(Name = nameof(Bombardment))]
+        private int _bombardment;
+
+        [PersistableMember(Name = nameof(ShieldStrength))]
+        private int _shieldStrength;
 
         // Maneuverability Info.
-        public int Hyperdrive;
-        public int SublightSpeed;
-        public int Agility;
+        [PersistableMember(Name = nameof(Hyperdrive))]
+        private int _hyperdrive;
+
+        [PersistableMember(Name = nameof(SublightSpeed))]
+        private int _sublightSpeed;
+
+        [PersistableMember(Name = nameof(Agility))]
+        private int _agility;
 
         // Weapon Info.
-        public int LaserCannon;
-        public int IonCannon;
-        public int Torpedoes;
+        [PersistableMember(Name = nameof(LaserCannon))]
+        private int _laserCannon;
+
+        [PersistableMember(Name = nameof(IonCannon))]
+        private int _ionCannon;
+
+        [PersistableMember(Name = nameof(Torpedoes))]
+        private int _torpedoes;
 
         // Weapon Range Info.
-        public int LaserRange;
-        public int IonRange;
-        public int TorpedoRange;
+        [PersistableMember(Name = nameof(LaserRange))]
+        private int _laserRange;
+
+        [PersistableMember(Name = nameof(IonRange))]
+        private int _ionRange;
+
+        [PersistableMember(Name = nameof(TorpedoRange))]
+        private int _torpedoRange;
+
+        [PersistableIgnore]
+        public int MaxSquadronSize
+        {
+            get => _maxSquadronSize;
+            set => _maxSquadronSize = value;
+        }
+
+        [PersistableIgnore]
+        public int CurrentSquadronSize
+        {
+            get => _currentSquadronSize;
+            set => _currentSquadronSize = value;
+        }
+
+        [PersistableIgnore]
+        public int DetectionRating
+        {
+            get => _detectionRating;
+            set => _detectionRating = value;
+        }
+
+        [PersistableIgnore]
+        public int Bombardment
+        {
+            get => _bombardment;
+            set => _bombardment = value;
+        }
+
+        [PersistableIgnore]
+        public int ShieldStrength
+        {
+            get => _shieldStrength;
+            set => _shieldStrength = value;
+        }
+
+        [PersistableIgnore]
+        public int Hyperdrive
+        {
+            get => _hyperdrive;
+            set => _hyperdrive = value;
+        }
+
+        [PersistableIgnore]
+        public int SublightSpeed
+        {
+            get => _sublightSpeed;
+            set => _sublightSpeed = value;
+        }
+
+        [PersistableIgnore]
+        public int Agility
+        {
+            get => _agility;
+            set => _agility = value;
+        }
+
+        [PersistableIgnore]
+        public int LaserCannon
+        {
+            get => _laserCannon;
+            set => _laserCannon = value;
+        }
+
+        [PersistableIgnore]
+        public int IonCannon
+        {
+            get => _ionCannon;
+            set => _ionCannon = value;
+        }
+
+        [PersistableIgnore]
+        public int Torpedoes
+        {
+            get => _torpedoes;
+            set => _torpedoes = value;
+        }
+
+        [PersistableIgnore]
+        public int LaserRange
+        {
+            get => _laserRange;
+            set => _laserRange = value;
+        }
+
+        [PersistableIgnore]
+        public int IonRange
+        {
+            get => _ionRange;
+            set => _ionRange = value;
+        }
+
+        [PersistableIgnore]
+        public int TorpedoRange
+        {
+            get => _torpedoRange;
+            set => _torpedoRange = value;
+        }
 
         // Manufacturing Info.
         public string ProducerOwnerID { get; set; }

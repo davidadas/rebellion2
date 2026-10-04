@@ -11,8 +11,16 @@ namespace Rebellion.Game.Events
     [PersistableObject(Name = "All")]
     public sealed class AllConditional : GameConditional
     {
+        [PersistableMember(Name = nameof(Conditionals))]
         [PersistableInlineCollection]
-        public List<GameConditional> Conditionals = new List<GameConditional>();
+        private List<GameConditional> _conditionals = new List<GameConditional>();
+
+        [PersistableIgnore]
+        public List<GameConditional> Conditionals
+        {
+            get => _conditionals;
+            set => _conditionals = value;
+        }
 
         /// <summary>
         /// Initializes a new instance of the AllConditional class.
@@ -27,8 +35,16 @@ namespace Rebellion.Game.Events
     [PersistableObject(Name = "Any")]
     public sealed class AnyConditional : GameConditional
     {
+        [PersistableMember(Name = nameof(Conditionals))]
         [PersistableInlineCollection]
-        public List<GameConditional> Conditionals = new List<GameConditional>();
+        private List<GameConditional> _conditionals = new List<GameConditional>();
+
+        [PersistableIgnore]
+        public List<GameConditional> Conditionals
+        {
+            get => _conditionals;
+            set => _conditionals = value;
+        }
 
         /// <summary>
         /// Initializes a new instance of the AnyConditional class.
@@ -43,8 +59,16 @@ namespace Rebellion.Game.Events
     [PersistableObject(Name = "Not")]
     public sealed class NotConditional : GameConditional
     {
+        [PersistableMember(Name = nameof(Conditionals))]
         [PersistableInlineCollection]
-        public List<GameConditional> Conditionals = new List<GameConditional>();
+        private List<GameConditional> _conditionals = new List<GameConditional>();
+
+        [PersistableIgnore]
+        public List<GameConditional> Conditionals
+        {
+            get => _conditionals;
+            set => _conditionals = value;
+        }
 
         /// <summary>
         /// Initializes a new instance of the NotConditional class.
@@ -59,8 +83,16 @@ namespace Rebellion.Game.Events
     [PersistableObject(Name = "Xor")]
     public sealed class XorConditional : GameConditional
     {
+        [PersistableMember(Name = nameof(Conditionals))]
         [PersistableInlineCollection]
-        public List<GameConditional> Conditionals = new List<GameConditional>();
+        private List<GameConditional> _conditionals = new List<GameConditional>();
+
+        [PersistableIgnore]
+        public List<GameConditional> Conditionals
+        {
+            get => _conditionals;
+            set => _conditionals = value;
+        }
 
         /// <summary>
         /// Initializes a new instance of the XorConditional class.
