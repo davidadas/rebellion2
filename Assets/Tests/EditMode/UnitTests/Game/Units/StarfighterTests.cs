@@ -477,9 +477,6 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(_starfighter.ModelPath, copy.ModelPath);
         }
 
-        /// <summary>
-        /// Verifies that copying a starfighter preserves independent model dimensions.
-        /// </summary>
         [Test]
         public void CreateCopy_WithModelSize_CreatesIndependentSize()
         {
