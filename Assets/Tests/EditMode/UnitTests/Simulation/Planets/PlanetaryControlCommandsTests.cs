@@ -83,11 +83,6 @@ namespace Rebellion.Tests.Simulation
             _commands = new PlanetaryControlCommands(
                 _game,
                 _movementSystem,
-                new ManufacturingCommands(
-                    _game,
-                    new FleetCommands(_game),
-                    new ManufacturingQueries(_game)
-                ),
                 new FogOfWarCommands(_game),
                 new PlanetaryControlQueries(_game),
                 new FogOfWarQueries(_game)
@@ -708,142 +703,6 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void TransferPlanet_PlanetWithManufacturingQueues_ClearsQueues()
-        {
-            _game.ChangeOwnership(_targetPlanet, "empire");
-            _targetPlanet.EnergyCapacity = 1;
-
-            ManufacturingCommands manufacturing = new ManufacturingCommands(
-                _game,
-                new FleetCommands(_game),
-                new ManufacturingQueries(_game)
-            );
-            Regiment regiment = EntityFactory.CreateRegiment("reg1", "empire");
-            bool enqueued = manufacturing.Enqueue(_targetPlanet, regiment, _targetPlanet);
-            Assert.IsTrue(enqueued, "Setup: regiment should enqueue successfully");
-
-            _commands.TransferPlanet(_targetPlanet, _rebels);
-
-            Dictionary<ManufacturingType, List<IManufacturable>> queue =
-                _targetPlanet.GetManufacturingQueue();
-            bool anyItems = queue.Values.Any(list => list.Count > 0);
-            Assert.IsFalse(anyItems, "Manufacturing queue must be empty after ownership transfer");
-        }
-
-        [Test]
-        public void TransferPlanet_PlanetWithInProgressBuilding_ClearsInProgressBuilding()
-        {
-            _game.ChangeOwnership(_targetPlanet, "empire");
-            _targetPlanet.EnergyCapacity = 1;
-
-            ManufacturingCommands manufacturing = new ManufacturingCommands(
-                _game,
-                new FleetCommands(_game),
-                new ManufacturingQueries(_game)
-            );
-            Building mine = new Building
-            {
-                InstanceID = "mine1",
-                OwnerInstanceID = "empire",
-                BuildingType = BuildingType.Mine,
-                ConstructionCost = 100,
-            };
-            bool enqueued = manufacturing.Enqueue(_targetPlanet, mine, _targetPlanet);
-            Assert.IsTrue(enqueued, "Setup: building should enqueue successfully");
-            Assert.IsNotNull(mine.GetParent(), "Setup: building should be attached to planet");
-
-            _commands.TransferPlanet(_targetPlanet, _rebels);
-
-            Dictionary<ManufacturingType, List<IManufacturable>> queue =
-                _targetPlanet.GetManufacturingQueue();
-            bool anyItems = queue.Values.Any(list => list.Count > 0);
-            Assert.IsFalse(anyItems, "In-progress building must be cleared from queue on transfer");
-            Assert.IsNull(
-                mine.GetParent(),
-                "In-progress building must be detached from planet on transfer"
-            );
-        }
-
-        [Test]
-        public void TransferPlanet_MixedRemoteOrders_CancelsDestinationAndPreservesOthers()
-        {
-            _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
-            _targetPlanet.EnergyCapacity = 2;
-            _empirePlanet.IsColonized = true;
-            _empirePlanet.EnergyCapacity = 3;
-
-            ManufacturingCommands manufacturing = new ManufacturingCommands(
-                _game,
-                new FleetCommands(_game),
-                new ManufacturingQueries(_game)
-            );
-            Building remoteMine = new Building
-            {
-                InstanceID = "remote-mine",
-                OwnerInstanceID = _empire.InstanceID,
-                BuildingType = BuildingType.Mine,
-                ConstructionCost = 100,
-            };
-            Building localMine = new Building
-            {
-                InstanceID = "local-mine",
-                OwnerInstanceID = _empire.InstanceID,
-                BuildingType = BuildingType.Mine,
-                ConstructionCost = 100,
-            };
-            Assert.IsTrue(manufacturing.Enqueue(_empirePlanet, remoteMine, _targetPlanet));
-            Assert.IsTrue(manufacturing.Enqueue(_empirePlanet, localMine, _empirePlanet));
-
-            _commands.TransferPlanet(_targetPlanet, _rebels);
-
-            List<IManufacturable> queue = _empirePlanet.GetManufacturingQueue()[
-                ManufacturingType.Building
-            ];
-            Assert.AreEqual(1, queue.Count);
-            Assert.AreSame(localMine, queue[0]);
-            Assert.IsNull(remoteMine.GetParent());
-            Assert.IsNull(_game.GetSceneNodeByInstanceID<Building>(remoteMine.InstanceID));
-        }
-
-        [Test]
-        public void TransferPlanet_Default_PreservesRegimentOrderAssignedToFriendlyFleet()
-        {
-            _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
-            Fleet fleet = new Fleet(_empire.InstanceID, "Empire Fleet");
-            CapitalShip transport = new CapitalShip
-            {
-                InstanceID = "transport",
-                OwnerInstanceID = _empire.InstanceID,
-                RegimentCapacity = 1,
-                ManufacturingStatus = ManufacturingStatus.Complete,
-            };
-            _game.AttachNode(fleet, _targetPlanet);
-            _game.AttachNode(transport, fleet);
-
-            ManufacturingCommands manufacturing = new ManufacturingCommands(
-                _game,
-                new FleetCommands(_game),
-                new ManufacturingQueries(_game)
-            );
-            Regiment regiment = new Regiment
-            {
-                InstanceID = "fleet-regiment",
-                OwnerInstanceID = _empire.InstanceID,
-                ConstructionCost = 100,
-            };
-            Assert.IsTrue(manufacturing.Enqueue(_empirePlanet, regiment, fleet));
-
-            _commands.TransferPlanet(_targetPlanet, _rebels);
-
-            CollectionAssert.Contains(
-                _empirePlanet.GetManufacturingQueue()[ManufacturingType.Troop],
-                regiment
-            );
-            Assert.AreSame(fleet, regiment.GetParentOfType<Fleet>());
-            Assert.AreSame(regiment, _game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
-        }
-
-        [Test]
         public void ClearPlanetOwnership_ActiveDiplomacyMission_PreservesMission()
         {
             _game.ChangeOwnership(_targetPlanet, _rebels.InstanceID);
@@ -870,27 +729,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(_targetPlanet, diplomacyMission.GetParent());
             Assert.IsNull(officer.Movement);
             Assert.AreSame(diplomacyMission, officer.GetParent());
-        }
-
-        [Test]
-        public void ClearPlanetOwnership_PlanetWithManufacturingQueue_DestroysQueuedUnit()
-        {
-            _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
-
-            ManufacturingCommands manufacturing = new ManufacturingCommands(
-                _game,
-                new FleetCommands(_game),
-                new ManufacturingQueries(_game)
-            );
-            Regiment regiment = EntityFactory.CreateRegiment("neutralized-regiment", "empire");
-            bool enqueued = manufacturing.Enqueue(_targetPlanet, regiment, _targetPlanet);
-            Assert.IsTrue(enqueued);
-
-            _commands.ClearPlanetOwnership(_targetPlanet);
-
-            Assert.IsEmpty(_targetPlanet.GetManufacturingQueue());
-            Assert.IsNull(regiment.GetParent());
-            Assert.IsNull(regiment.Movement);
         }
 
         [Test]
@@ -1347,7 +1185,6 @@ namespace Rebellion.Tests.Simulation
             PlanetaryControlCommands controlSystem = new PlanetaryControlCommands(
                 game,
                 movementSystem,
-                new ManufacturingCommands(game, fleetSystem, new ManufacturingQueries(game)),
                 fogOfWarSystem,
                 new PlanetaryControlQueries(game),
                 new FogOfWarQueries(game)

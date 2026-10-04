@@ -1157,61 +1157,14 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Cancels queued work for each destroyed production type that no surviving facility can
-        /// manufacture on the same planet.
-        /// </summary>
-        /// <param name="planet">The planet where the facilities were destroyed.</param>
-        /// <param name="destroyedBuildings">The buildings destroyed by the completed action.</param>
-        internal void CancelUnsupportedProduction(
-            Planet planet,
-            IEnumerable<Building> destroyedBuildings
-        )
-        {
-            if (planet == null || destroyedBuildings == null)
-                return;
-
-            Dictionary<ManufacturingType, List<IManufacturable>> queues =
-                planet.GetManufacturingQueue();
-            foreach (
-                ManufacturingType type in destroyedBuildings
-                    .Where(building =>
-                        building != null
-                        && building.ManufacturingStatus == ManufacturingStatus.Complete
-                        && building.Movement == null
-                        && building.ProcessRate > 0
-                    )
-                    .Select(building => building.ProductionType)
-                    .Where(type => type != ManufacturingType.None)
-                    .Distinct()
-                    .ToList()
-            )
-            {
-                bool hasProducer = planet
-                    .GetChildren<Building>()
-                    .Any(facility =>
-                        facility.ProductionType == type
-                        && facility.ManufacturingStatus == ManufacturingStatus.Complete
-                        && facility.Movement == null
-                        && facility.ProcessRate > 0
-                    );
-                if (
-                    hasProducer
-                    || !queues.TryGetValue(type, out List<IManufacturable> items)
-                    || items == null
-                )
-                    continue;
-
-                ClearQueueItems(planet, items);
-                queues.Remove(type);
-            }
-        }
-
-        /// <summary>
         /// Detaches one queued item and removes an empty destination fleet.
         /// </summary>
         /// <param name="item">The queued item to detach.</param>
         private void DetachQueuedItem(IManufacturable item)
         {
+            if (item is IMovable movable)
+                movable.Movement = null;
+
             ISceneNode sceneNode = item;
             ISceneNode parent = sceneNode.GetParent();
             if (parent != null)
@@ -1219,95 +1172,6 @@ namespace Rebellion.Simulation
 
             if (parent is Fleet fleet)
                 _fleetSystem.RemoveIfEmpty(fleet);
-        }
-
-        /// <summary>
-        /// Clears all manufacturing queues for a planet and destroys items being built.
-        /// Called when planet ownership changes (capture, uprising, diplomacy).
-        /// </summary>
-        /// <param name="planet">The planet whose queues should be cleared.</param>
-        internal void ClearQueuesOnOwnershipChange(Planet planet)
-        {
-            if (planet == null)
-            {
-                return;
-            }
-
-            Dictionary<ManufacturingType, List<IManufacturable>> queue =
-                planet.GetManufacturingQueue();
-            if (queue == null || queue.Count == 0)
-            {
-                return;
-            }
-
-            foreach (KeyValuePair<ManufacturingType, List<IManufacturable>> kvp in queue.ToList())
-            {
-                ManufacturingType type = kvp.Key;
-                List<IManufacturable> items = kvp.Value;
-
-                if (items == null || items.Count == 0)
-                {
-                    continue;
-                }
-
-                ClearQueueItems(planet, items);
-                queue.Remove(type);
-            }
-        }
-
-        /// <summary>
-        /// Cancels unfinished building and troop orders assigned directly to a planet that is
-        /// changing to an incompatible owner. Orders assigned to fleets or capital ships remain.
-        /// </summary>
-        /// <param name="destination">The planet whose ownership is changing.</param>
-        /// <param name="newOwnerInstanceId">The planet's incoming owner.</param>
-        internal void InvalidatePlanetDestinationOrders(
-            Planet destination,
-            string newOwnerInstanceId
-        )
-        {
-            if (destination == null)
-                return;
-
-            foreach (Planet producer in _game.GetSceneNodesByType<Planet>())
-            {
-                string producerOwnerId = producer.GetOwnerInstanceID();
-                Dictionary<ManufacturingType, List<IManufacturable>> queues =
-                    producer.GetManufacturingQueue();
-                foreach (
-                    KeyValuePair<ManufacturingType, List<IManufacturable>> entry in queues.ToList()
-                )
-                {
-                    List<IManufacturable> items = entry.Value;
-                    if (items == null)
-                        continue;
-
-                    foreach (IManufacturable item in items.ToList())
-                    {
-                        if (
-                            item is not ISceneNode sceneNode
-                            || item is CapitalShip
-                            || item is Starfighter
-                            || !ReferenceEquals(sceneNode.GetParent(), destination)
-                            || string.Equals(
-                                producerOwnerId,
-                                newOwnerInstanceId,
-                                StringComparison.Ordinal
-                            )
-                        )
-                        {
-                            continue;
-                        }
-
-                        item.ManufacturingQueueSequence = 0;
-                        DetachQueuedItem(item);
-                        items.Remove(item);
-                    }
-
-                    if (items.Count == 0)
-                        queues.Remove(entry.Key);
-                }
-            }
         }
 
         /// <summary>

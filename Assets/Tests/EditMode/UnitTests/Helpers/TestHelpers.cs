@@ -661,7 +661,6 @@ public static class TestSystems
         PlanetaryControlCommands control = new PlanetaryControlCommands(
             game,
             movement,
-            manufacturing,
             fog,
             new PlanetaryControlQueries(game),
             new FogOfWarQueries(game)

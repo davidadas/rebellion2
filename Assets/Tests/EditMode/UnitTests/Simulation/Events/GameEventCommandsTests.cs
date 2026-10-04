@@ -309,11 +309,6 @@ namespace Rebellion.Tests.Simulation
             PlanetaryControlCommands control = new PlanetaryControlCommands(
                 game,
                 movement,
-                new ManufacturingCommands(
-                    game,
-                    new FleetCommands(game),
-                    new ManufacturingQueries(game)
-                ),
                 new FogOfWarCommands(game),
                 new PlanetaryControlQueries(game),
                 new FogOfWarQueries(game)
@@ -4624,11 +4619,6 @@ namespace Rebellion.Tests.Simulation
             PlanetaryControlCommands control = new PlanetaryControlCommands(
                 game,
                 movement,
-                new ManufacturingCommands(
-                    game,
-                    new FleetCommands(game),
-                    new ManufacturingQueries(game)
-                ),
                 new FogOfWarCommands(game),
                 new PlanetaryControlQueries(game),
                 new FogOfWarQueries(game)

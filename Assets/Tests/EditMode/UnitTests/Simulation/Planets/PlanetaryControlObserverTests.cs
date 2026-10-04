@@ -79,11 +79,6 @@ namespace Rebellion.Tests.Simulation
             _commands = new PlanetaryControlCommands(
                 _game,
                 _movementSystem,
-                new ManufacturingCommands(
-                    _game,
-                    new FleetCommands(_game),
-                    new ManufacturingQueries(_game)
-                ),
                 new FogOfWarCommands(_game),
                 new PlanetaryControlQueries(_game),
                 new FogOfWarQueries(_game)

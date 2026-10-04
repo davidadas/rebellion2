@@ -18,7 +18,6 @@ namespace Rebellion.Simulation
         private readonly GameRoot _game;
         private readonly PlanetaryControlQueries _queries;
         private readonly MovementCommands _movementSystem;
-        private readonly ManufacturingCommands _manufacturingSystem;
         private readonly FogOfWarCommands _fogOfWarSystem;
         private readonly FogOfWarQueries _fogOfWarQueries;
         private readonly HashSet<string> _controlChangesInProgress = new HashSet<string>();
@@ -28,14 +27,12 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="game">The game instance.</param>
         /// <param name="movementSystem">Used to evacuate enemy units on ownership change.</param>
-        /// <param name="manufacturingSystem">Used to clear queues on ownership change.</param>
         /// <param name="fogOfWarSystem">Used to refresh faction snapshots on ownership change.</param>
         /// <param name="fogOfWarQueries">The visibility rules for ownership-change observers.</param>
         /// <param name="queries">The read-only planetary control rules.</param>
         public PlanetaryControlCommands(
             GameRoot game,
             MovementCommands movementSystem,
-            ManufacturingCommands manufacturingSystem,
             FogOfWarCommands fogOfWarSystem,
             PlanetaryControlQueries queries,
             FogOfWarQueries fogOfWarQueries
@@ -43,7 +40,6 @@ namespace Rebellion.Simulation
         {
             _game = game;
             _movementSystem = movementSystem;
-            _manufacturingSystem = manufacturingSystem;
             _fogOfWarSystem = fogOfWarSystem;
             _queries = queries;
             _fogOfWarQueries = fogOfWarQueries;
@@ -400,12 +396,9 @@ namespace Rebellion.Simulation
                     newOwner
                 );
 
-                _manufacturingSystem.InvalidatePlanetDestinationOrders(planet, newOwnerId);
-
                 if (newOwner != null)
                     TransferBuildings(planet, newOwner);
 
-                _manufacturingSystem.ClearQueuesOnOwnershipChange(planet);
                 EvictEnemyUnits(planet, newOwnerId);
                 planet.EndUprising();
                 if (newOwner == null)
