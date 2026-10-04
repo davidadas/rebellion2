@@ -39,6 +39,8 @@ public class SaveGameManager
     private const string _saveSlotFilePrefix = "save_slot_";
     private const string _saveSlotDisplayPrefix = "Save Slot ";
     private const string _metadataElementName = "Metadata";
+    private const string _summaryElementName = "Summary";
+    private const string _currentTickElementName = "CurrentTick";
     private const string _metadataFileExtension = ".metadata.xml";
 
     // Singleton instance.
@@ -266,6 +268,8 @@ public class SaveGameManager
         game.Metadata.SaveVersion = GameMetadata.CurrentSaveVersion;
         game.Metadata.LastSavedUtc = DateTime.UtcNow;
         game.Metadata.PlayerFactionID = game.Summary?.PlayerFactionID;
+        game.Metadata.Difficulty = game.Summary?.Difficulty;
+        game.Metadata.CurrentTick = game.CurrentTick;
         game.Metadata.PackID = game.Summary?.PackID;
         game.Metadata.PackVersion = game.Summary?.PackVersion;
         game.Metadata.ScenarioID = game.Summary?.ScenarioID;
@@ -460,13 +464,57 @@ public class SaveGameManager
     {
         string saveFilePath = GetSaveFilePath(fileName);
         string metadataFilePath = GetSaveMetadataFilePath(fileName);
+        GameMetadata metadata;
+        bool shouldWriteSidecar;
         if (
             File.Exists(metadataFilePath)
             && File.GetLastWriteTimeUtc(metadataFilePath) >= File.GetLastWriteTimeUtc(saveFilePath)
             && TryDeserializeMetadataFile(metadataFilePath, out GameMetadata sidecarMetadata)
         )
-            return sidecarMetadata;
+        {
+            metadata = sidecarMetadata;
+            shouldWriteSidecar = false;
+        }
+        else
+        {
+            GameSerializer serializer = CreateSaveDeserializer(typeof(GameRoot));
+            using FileStream stream = new FileStream(
+                saveFilePath,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.Read
+            );
+            metadata = serializer.DeserializeNode<GameMetadata>(stream, _metadataElementName);
+            if (metadata == null)
+                throw new InvalidOperationException("Save metadata is missing.");
+            shouldWriteSidecar = true;
+        }
 
+        if (!metadata.Difficulty.HasValue)
+        {
+            metadata.Difficulty = ReadSaveDifficulty(saveFilePath);
+            shouldWriteSidecar = metadata.Difficulty.HasValue || shouldWriteSidecar;
+        }
+
+        if (!metadata.CurrentTick.HasValue)
+        {
+            metadata.CurrentTick = ReadSaveCurrentTick(saveFilePath);
+            shouldWriteSidecar = metadata.CurrentTick.HasValue || shouldWriteSidecar;
+        }
+
+        if (shouldWriteSidecar)
+            TryWriteSaveMetadata(fileName, metadata);
+        return metadata;
+    }
+
+    /// <summary>
+    /// Reads the difficulty from a full save so metadata created by earlier versions can be
+    /// completed without loading the entire game.
+    /// </summary>
+    /// <param name="saveFilePath">The full save file path.</param>
+    /// <returns>The saved difficulty, or null when the summary is missing.</returns>
+    private static GameDifficulty? ReadSaveDifficulty(string saveFilePath)
+    {
         GameSerializer serializer = CreateSaveDeserializer(typeof(GameRoot));
         using FileStream stream = new FileStream(
             saveFilePath,
@@ -474,15 +522,25 @@ public class SaveGameManager
             FileAccess.Read,
             FileShare.Read
         );
-        GameMetadata metadata = serializer.DeserializeNode<GameMetadata>(
-            stream,
-            _metadataElementName
-        );
-        if (metadata == null)
-            throw new InvalidOperationException("Save metadata is missing.");
+        return serializer.DeserializeNode<GameSummary>(stream, _summaryElementName)?.Difficulty;
+    }
 
-        TryWriteSaveMetadata(fileName, metadata);
-        return metadata;
+    /// <summary>
+    /// Reads the current tick from a full save so metadata created by earlier versions can be
+    /// completed without loading the entire game.
+    /// </summary>
+    /// <param name="saveFilePath">The full save file path.</param>
+    /// <returns>The saved current tick.</returns>
+    private static int? ReadSaveCurrentTick(string saveFilePath)
+    {
+        GameSerializer serializer = CreateSaveDeserializer(typeof(GameRoot));
+        using FileStream stream = new FileStream(
+            saveFilePath,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.Read
+        );
+        return serializer.DeserializeNode<int>(stream, _currentTickElementName);
     }
 
     /// <summary>

@@ -92,6 +92,8 @@ public sealed class OptionsSaveSlot
 {
     public string Name { get; }
     public string Date { get; }
+    public string Difficulty { get; }
+    public int? Turn { get; }
     public Texture2D FactionIcon { get; }
     public bool IsCreateNew { get; }
     public string FileName { get; }
@@ -104,16 +106,22 @@ public sealed class OptionsSaveSlot
     /// <param name="factionIcon">The saved faction's icon, or null.</param>
     /// <param name="isCreateNew">Whether this row creates a new save.</param>
     /// <param name="fileName">The save file name, or null for the create-new row.</param>
+    /// <param name="difficulty">The saved game difficulty, or an empty string.</param>
+    /// <param name="turn">The saved turn number, or null.</param>
     public OptionsSaveSlot(
         string name,
         string date,
         Texture2D factionIcon,
         bool isCreateNew,
-        string fileName
+        string fileName,
+        string difficulty = "",
+        int? turn = null
     )
     {
         Name = name ?? string.Empty;
         Date = date ?? string.Empty;
+        Difficulty = difficulty ?? string.Empty;
+        Turn = turn;
         FactionIcon = factionIcon;
         IsCreateNew = isCreateNew;
         FileName = fileName ?? string.Empty;

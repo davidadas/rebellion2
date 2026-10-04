@@ -64,6 +64,7 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
     private readonly List<RawImage> _iconImages = new List<RawImage>();
     private readonly List<TextMeshProUGUI> _nameFields = new List<TextMeshProUGUI>();
     private readonly List<TextMeshProUGUI> _metaFields = new List<TextMeshProUGUI>();
+    private readonly List<TextMeshProUGUI> _dateFields = new List<TextMeshProUGUI>();
     private readonly List<Button> _deleteButtons = new List<Button>();
     private readonly Dictionary<Button, float> _lastClickTimes = new Dictionary<Button, float>();
     private readonly List<int> _rowTops = new List<int>();
@@ -241,13 +242,34 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
             if (slot.IsCreateNew)
                 name.alignment = TextAlignmentOptions.Midline;
 
+            string turn = slot.Turn.HasValue ? $"Turn {slot.Turn.Value}" : string.Empty;
+            string metadata =
+                string.IsNullOrEmpty(slot.Difficulty) ? turn
+                : string.IsNullOrEmpty(turn) ? slot.Difficulty
+                : $"{slot.Difficulty} • {turn}";
+            int availableMetadataWidth = rowRect.width - metaRect.x - 32;
+            int metadataWidth = Mathf.RoundToInt(availableMetadataWidth * 0.58f);
             UILayout.SetTemplateText(
-                GetField(_metaFields, _metaTemplate, "SlotDate", index),
+                GetField(_metaFields, _metaTemplate, "SlotMetadata", index),
+                _metaTemplate,
+                slot.IsCreateNew ? string.Empty : metadata,
+                _metaColor,
+                new RectInt(metaRect.x, top + metaRect.y, metadataWidth, metaRect.height)
+            );
+            TextMeshProUGUI date = GetField(_dateFields, _metaTemplate, "SlotDate", index);
+            UILayout.SetTemplateText(
+                date,
                 _metaTemplate,
                 slot.IsCreateNew ? string.Empty : slot.Date,
                 _metaColor,
-                new RectInt(metaRect.x, top + metaRect.y, metaRect.width, metaRect.height)
+                new RectInt(
+                    metaRect.x + metadataWidth,
+                    top + metaRect.y,
+                    availableMetadataWidth - metadataWidth,
+                    metaRect.height
+                )
             );
+            date.alignment = TextAlignmentOptions.TopRight;
 
             Button delete = GetDelete(index);
             delete.gameObject.SetActive(!slot.IsCreateNew);
@@ -266,6 +288,7 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
         HideFrom(_iconImages, data.SaveSlots.Count);
         HideFrom(_nameFields, data.SaveSlots.Count);
         HideFrom(_metaFields, data.SaveSlots.Count);
+        HideFrom(_dateFields, data.SaveSlots.Count);
         HideFrom(_deleteButtons, data.SaveSlots.Count);
         SetRowNameVisible(_renameRow, false);
     }
