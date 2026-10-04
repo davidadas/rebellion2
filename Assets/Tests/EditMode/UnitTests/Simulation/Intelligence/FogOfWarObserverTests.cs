@@ -25,7 +25,13 @@ namespace Rebellion.Tests.Simulation
         {
             _results = new GameResultBus();
             FogOfWarQueries queries = new FogOfWarQueries(_game);
-            _observer = new FogOfWarObserver(_game, new FogOfWarCommands(_game, queries), queries);
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            _observer = new FogOfWarObserver(
+                _game,
+                new FogOfWarCommands(_game, recorder),
+                queries,
+                recorder
+            );
         }
 
         [Test]

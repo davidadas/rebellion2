@@ -183,7 +183,7 @@ namespace Rebellion.Simulation
         private void ProcessImmediateResults(IReadOnlyList<GameResult> results)
         {
             Pipeline.ProcessImmediate(results);
-            GetService<FogOfWarCommands>().RefreshVisibleKnowledge();
+            GetService<FogOfWarObserver>().RefreshVisibleKnowledge();
         }
 
         /// <summary>
@@ -202,8 +202,8 @@ namespace Rebellion.Simulation
             foreach (Faction faction in Game.GetFactions())
                 faction.RebuildResearchCatalog(templates);
 
-            GetService<ManufacturingCommands>().RebuildQueues();
-            GetService<FogOfWarCommands>().ReconcileKnowledge();
+            GetService<ManufacturingObserver>().RebuildQueues();
+            GetService<FogOfWarObserver>().ReconcileKnowledge();
         }
 
         /// <summary>

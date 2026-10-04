@@ -7,7 +7,6 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Logging;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Simulation
@@ -22,7 +21,6 @@ namespace Rebellion.Simulation
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
         private readonly MovementCommands _movementCommands;
-        private readonly FogOfWarCommands _fogOfWarCommands;
         private readonly ProbabilityTable _escapeTable;
         private readonly GameConfig.TickRangeConfig _escapeAttemptInterval;
 
@@ -35,20 +33,16 @@ namespace Rebellion.Simulation
         /// <param name="game">The active game state.</param>
         /// <param name="provider">RNG provider for escape rolls.</param>
         /// <param name="movementCommands">Moves officers into and out of custody.</param>
-        /// <param name="fogOfWarCommands">Records the custody destination known at capture time.</param>
         public CaptiveCommands(
             GameRoot game,
             IRandomNumberProvider provider,
-            MovementCommands movementCommands,
-            FogOfWarCommands fogOfWarCommands
+            MovementCommands movementCommands
         )
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
             _provider = provider ?? throw new ArgumentNullException(nameof(provider));
             _movementCommands =
                 movementCommands ?? throw new ArgumentNullException(nameof(movementCommands));
-            _fogOfWarCommands =
-                fogOfWarCommands ?? throw new ArgumentNullException(nameof(fogOfWarCommands));
             _escapeAttemptInterval = game.Config.Captive.EscapeAttemptInterval;
             _escapeTable = new ProbabilityTable(game.Config.Captive.EscapeTable);
         }
@@ -104,7 +98,7 @@ namespace Rebellion.Simulation
             if (liveOfficer?.IsCaptured != true)
                 return false;
 
-            OfficerCaptureStateResult result = ReleaseOfficer(
+            OfficerCaptureStateResult result = CaptiveStateTransition.Release(
                 liveOfficer,
                 liveOfficer.GetParentOfType<Planet>(),
                 _game.CurrentTick,
@@ -112,43 +106,6 @@ namespace Rebellion.Simulation
             );
             ResultsProduced?.Invoke(new GameResult[] { result });
             return true;
-        }
-
-        /// <summary>Establishes custody and records the location revealed at capture time.</summary>
-        /// <param name="officer">The captured officer requiring custody.</param>
-        /// <param name="context">The location where the capture occurred.</param>
-        /// <param name="capturingUnit">The unit responsible for the capture, if present.</param>
-        /// <param name="tick">The capture observation tick.</param>
-        /// <param name="reactions">The collection receiving custody-transfer results.</param>
-        internal void EstablishCustody(
-            Officer officer,
-            IGameEntity context,
-            ISceneNode capturingUnit,
-            int tick,
-            ICollection<GameResult> reactions
-        )
-        {
-            ContainerNode destination = ResolveCustodyDestination(context, capturingUnit, officer);
-            if (
-                destination == null
-                || !_movementCommands.TryEstablishCapturedOfficerCustody(
-                    officer,
-                    destination,
-                    GetCustodyEscort(capturingUnit),
-                    reactions
-                )
-            )
-            {
-                GameLogger.Log(
-                    $"Captured officer {officer.GetDisplayName()} has no valid custody destination for {officer.CaptorInstanceID}.",
-                    GameLogger.LogLevel.Error
-                );
-                return;
-            }
-
-            _fogOfWarCommands.RecordCaptureState(officer, null, tick);
-            if (officer.CanEscape && officer.NextEscapeAttemptTick <= 0)
-                ScheduleEscapeAttempt(officer);
         }
 
         /// <summary>
@@ -206,168 +163,6 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Resolves an established custody container, the capturing unit's container, or a
-        /// captor-controlled fallback planet.
-        /// </summary>
-        /// <param name="context">The location where the capture occurred.</param>
-        /// <param name="capturingUnit">The unit responsible for the capture.</param>
-        /// <param name="officer">The captured officer requiring custody.</param>
-        /// <returns>The selected custody container, or null when none can hold the officer.</returns>
-        private ContainerNode ResolveCustodyDestination(
-            IGameEntity context,
-            ISceneNode capturingUnit,
-            Officer officer
-        )
-        {
-            string captorInstanceId = officer.CaptorInstanceID;
-            ContainerNode establishedCustody = GetCaptorControlledContainer(
-                officer.GetParent() as ContainerNode,
-                captorInstanceId,
-                officer
-            );
-            if (establishedCustody != null)
-                return establishedCustody;
-
-            Planet capturePlanet = GetCapturePlanet(context);
-            ContainerNode capturePlanetCustody = GetCaptorControlledContainer(
-                capturePlanet,
-                captorInstanceId,
-                officer
-            );
-            if (capturePlanetCustody != null)
-                return capturePlanetCustody;
-
-            ContainerNode capturingUnitCustody = GetCapturingUnitCustody(
-                capturingUnit,
-                captorInstanceId,
-                officer
-            );
-            if (capturingUnitCustody != null)
-                return capturingUnitCustody;
-
-            Faction captor = _game.GetFactionByOwnerInstanceID(captorInstanceId);
-            return captor
-                ?.GetOwnedColonizedPlanets()
-                .Where(planet =>
-                    !planet.IsDestroyed
-                    && string.Equals(
-                        planet.GetOwnerInstanceID(),
-                        captorInstanceId,
-                        StringComparison.Ordinal
-                    )
-                    && planet.CanAcceptChild(officer)
-                )
-                .OrderBy(planet => planet.GetRawDistanceTo(((IMovable)officer).GetPosition()))
-                .ThenBy(planet => planet.InstanceID, StringComparer.Ordinal)
-                .FirstOrDefault();
-        }
-
-        /// <summary>
-        /// Returns the planet where a capture occurred.
-        /// </summary>
-        /// <param name="context">The capture location to inspect.</param>
-        /// <returns>The capture planet, or null when the result has no planetary context.</returns>
-        private static Planet GetCapturePlanet(IGameEntity context)
-        {
-            return context as Planet ?? (context as ISceneNode)?.GetParentOfType<Planet>();
-        }
-
-        /// <summary>
-        /// Returns the captor-controlled ship or planet currently containing a capturing unit.
-        /// </summary>
-        /// <param name="capturingUnit">The unit responsible for the capture.</param>
-        /// <param name="captorInstanceId">The capturing faction identifier.</param>
-        /// <param name="officer">The captured officer requiring custody.</param>
-        /// <returns>The capturing unit's custody container, or null when it has none.</returns>
-        private static ContainerNode GetCapturingUnitCustody(
-            ISceneNode capturingUnit,
-            string captorInstanceId,
-            Officer officer
-        )
-        {
-            if (capturingUnit == null)
-                return null;
-
-            CapitalShip ship =
-                capturingUnit as CapitalShip ?? capturingUnit.GetParentOfType<CapitalShip>();
-            ContainerNode shipCustody = GetCaptorControlledContainer(
-                ship,
-                captorInstanceId,
-                officer
-            );
-            if (shipCustody != null)
-                return shipCustody;
-
-            return GetCaptorControlledContainer(
-                capturingUnit.GetParent() as ContainerNode,
-                captorInstanceId,
-                officer
-            );
-        }
-
-        /// <summary>
-        /// Returns a capturing officer or special-forces unit that can escort the captive.
-        /// </summary>
-        /// <param name="capturingUnit">The unit responsible for the capture.</param>
-        /// <returns>The movable escort, or null when the capture has no physical escort.</returns>
-        private static IMovable GetCustodyEscort(ISceneNode capturingUnit)
-        {
-            return capturingUnit switch
-            {
-                Officer officer => officer,
-                SpecialForces specialForces => specialForces,
-                _ => null,
-            };
-        }
-
-        /// <summary>
-        /// Returns a ship or planet when the supplied container belongs to the capturing faction.
-        /// </summary>
-        /// <param name="container">The possible custody container.</param>
-        /// <param name="captorInstanceId">The capturing faction identifier.</param>
-        /// <param name="officer">The captured officer requiring custody.</param>
-        /// <returns>The controlled custody container, or null when ownership does not match.</returns>
-        private static ContainerNode GetCaptorControlledContainer(
-            ContainerNode container,
-            string captorInstanceId,
-            Officer officer
-        )
-        {
-            return
-                container is Planet or CapitalShip
-                && IsControlledBy(container, captorInstanceId)
-                && container.CanAcceptChild(officer)
-                ? container
-                : null;
-        }
-
-        /// <summary>
-        /// Returns whether a scene node belongs to the capturing faction and remains usable.
-        /// </summary>
-        /// <param name="node">The node to inspect.</param>
-        /// <param name="captorInstanceId">The capturing faction identifier.</param>
-        /// <returns>True when the node is a valid captor-controlled custody location.</returns>
-        private static bool IsControlledBy(ISceneNode node, string captorInstanceId)
-        {
-            if (node == null || string.IsNullOrEmpty(captorInstanceId))
-                return false;
-
-            if (node is Planet { IsDestroyed: true })
-                return false;
-            if (
-                node is CapitalShip capitalShip
-                && capitalShip.ManufacturingStatus != ManufacturingStatus.Complete
-            )
-                return false;
-
-            return string.Equals(
-                node.GetOwnerInstanceID(),
-                captorInstanceId,
-                StringComparison.Ordinal
-            );
-        }
-
-        /// <summary>
         /// Returns the local container whose forces guard a captive.
         /// </summary>
         /// <param name="officer">The captive officer.</param>
@@ -421,37 +216,12 @@ namespace Rebellion.Simulation
                 return null;
             }
 
-            return ReleaseOfficer(officer, planet, _game.CurrentTick, captorInstanceID);
-        }
-
-        /// <summary>
-        /// Clears an officer's custody state and describes the release.
-        /// </summary>
-        /// <param name="officer">The officer being released.</param>
-        /// <param name="context">The planet where the release occurred.</param>
-        /// <param name="tick">The tick when the release occurred.</param>
-        /// <param name="captorInstanceID">The faction that held the officer.</param>
-        /// <returns>The resulting capture-state change.</returns>
-        internal OfficerCaptureStateResult ReleaseOfficer(
-            Officer officer,
-            Planet context,
-            int tick,
-            string captorInstanceID
-        )
-        {
-            officer.IsCaptured = false;
-            officer.CaptorInstanceID = null;
-            officer.CanEscape = false;
-            officer.NextEscapeAttemptTick = 0;
-
-            return new OfficerCaptureStateResult
-            {
-                TargetOfficer = officer,
-                IsCaptured = false,
-                CaptorInstanceID = captorInstanceID,
-                Context = context,
-                Tick = tick,
-            };
+            return CaptiveStateTransition.Release(
+                officer,
+                planet,
+                _game.CurrentTick,
+                captorInstanceID
+            );
         }
 
         /// <summary>

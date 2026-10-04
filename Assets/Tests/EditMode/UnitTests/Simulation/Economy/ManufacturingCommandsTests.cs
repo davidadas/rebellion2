@@ -3879,7 +3879,7 @@ namespace Rebellion.Tests.Simulation
                 new FleetCommands(_game),
                 new ManufacturingQueries(_game)
             );
-            _manager.RebuildQueues();
+            new ManufacturingObserver(_game, _manager).RebuildQueues();
 
             Dictionary<ManufacturingType, List<IManufacturable>> queue =
                 planet.GetManufacturingQueue();
@@ -3909,7 +3909,7 @@ namespace Rebellion.Tests.Simulation
                 new FleetCommands(game),
                 new ManufacturingQueries(game)
             );
-            manager.RebuildQueues();
+            new ManufacturingObserver(game, manager).RebuildQueues();
 
             CollectionAssert.AreEqual(
                 new IManufacturable[] { second, first },
@@ -3984,7 +3984,7 @@ namespace Rebellion.Tests.Simulation
                 new FleetCommands(_game),
                 new ManufacturingQueries(_game)
             );
-            _manager.RebuildQueues();
+            new ManufacturingObserver(_game, _manager).RebuildQueues();
 
             Dictionary<ManufacturingType, List<IManufacturable>> queue1 =
                 planet1.GetManufacturingQueue();
@@ -4036,8 +4036,8 @@ namespace Rebellion.Tests.Simulation
                 new FleetCommands(_game),
                 new ManufacturingQueries(_game)
             );
-            _manager.RebuildQueues();
-            _manager.RebuildQueues();
+            new ManufacturingObserver(_game, _manager).RebuildQueues();
+            new ManufacturingObserver(_game, _manager).RebuildQueues();
 
             Dictionary<ManufacturingType, List<IManufacturable>> queue =
                 planet.GetManufacturingQueue();
@@ -4094,7 +4094,7 @@ namespace Rebellion.Tests.Simulation
                 new FleetCommands(_game),
                 new ManufacturingQueries(_game)
             );
-            _manager.RebuildQueues();
+            new ManufacturingObserver(_game, _manager).RebuildQueues();
 
             Dictionary<ManufacturingType, List<IManufacturable>> queue =
                 planet.GetManufacturingQueue();
@@ -4140,7 +4140,7 @@ namespace Rebellion.Tests.Simulation
                 new FleetCommands(_game),
                 new ManufacturingQueries(_game)
             );
-            _manager.RebuildQueues();
+            new ManufacturingObserver(_game, _manager).RebuildQueues();
 
             Dictionary<ManufacturingType, List<IManufacturable>> queue =
                 planet.GetManufacturingQueue();
@@ -4184,7 +4184,7 @@ namespace Rebellion.Tests.Simulation
                 new FleetCommands(_game),
                 new ManufacturingQueries(_game)
             );
-            _manager.RebuildQueues();
+            new ManufacturingObserver(_game, _manager).RebuildQueues();
 
             Dictionary<ManufacturingType, List<IManufacturable>> queue =
                 planet.GetManufacturingQueue();

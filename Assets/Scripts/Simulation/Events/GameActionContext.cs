@@ -23,7 +23,7 @@ namespace Rebellion.Simulation
             Func<GameEventCommands, string, List<GameResult>> Execute
         )> DeferredOperations { get; } = new();
         internal List<GameResult> Results { get; } = new List<GameResult>();
-        private readonly MissionCommands _missionCommands;
+        private readonly MissionResolver _missionResolver;
 
         /// <summary>
         /// Initializes a new instance of the GameActionContext class.
@@ -32,20 +32,33 @@ namespace Rebellion.Simulation
         /// <param name="random">The random.</param>
         /// <param name="evaluation">The evaluation.</param>
         /// <param name="unitFactory">The unit factory.</param>
-        /// <param name="missionCommands">The mission operations required by ordered capture actions.</param>
         public GameActionContext(
             GameRoot game,
             IRandomNumberProvider random,
             GameEventEvaluationContext evaluation = null,
-            UnitFactory unitFactory = null,
-            MissionCommands missionCommands = null
+            UnitFactory unitFactory = null
+        )
+            : this(game, random, evaluation, unitFactory, missionResolver: null) { }
+
+        /// <summary>Creates an event action context with mission lifecycle handling.</summary>
+        /// <param name="game">The game.</param>
+        /// <param name="random">The random source.</param>
+        /// <param name="evaluation">The event evaluation context.</param>
+        /// <param name="unitFactory">The runtime unit factory.</param>
+        /// <param name="missionResolver">The mission lifecycle resolver.</param>
+        internal GameActionContext(
+            GameRoot game,
+            IRandomNumberProvider random,
+            GameEventEvaluationContext evaluation,
+            UnitFactory unitFactory,
+            MissionResolver missionResolver
         )
         {
             Game = game ?? throw new ArgumentNullException(nameof(game));
             Random = random ?? throw new ArgumentNullException(nameof(random));
             Evaluation = evaluation;
             UnitFactory = unitFactory;
-            _missionCommands = missionCommands;
+            _missionResolver = missionResolver;
         }
 
         /// <summary>
@@ -90,13 +103,13 @@ namespace Rebellion.Simulation
         /// <param name="officers">The newly captured officers.</param>
         internal void InterruptMissionsForCapture(IReadOnlyList<Officer> officers)
         {
-            if (_missionCommands == null)
+            if (_missionResolver == null)
                 return;
 
             try
             {
                 Results.AddRange(
-                    _missionCommands
+                    _missionResolver
                         .InterruptMissionsForCapturedOfficers(officers)
                         .Where(result => result != null)
                 );

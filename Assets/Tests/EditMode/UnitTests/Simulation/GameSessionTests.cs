@@ -145,6 +145,7 @@ namespace Rebellion.Tests.Simulation
                 loyalty: 50
             );
             _game.AttachNode(officer, _planet);
+            _game.ChangeOwnership(_planet, opponent.InstanceID);
 
             _session.Results.Publish(
                 new PlanetOwnershipChangedResult
@@ -777,7 +778,7 @@ namespace Rebellion.Tests.Simulation
             GameSession manager = new GameSession(game, TestGameData.Create(config));
             FogOfWarCommands fogCommands = manager.GetService<FogOfWarCommands>();
             FogOfWarQueries fogQueries = manager.GetService<FogOfWarQueries>();
-            fogCommands.CaptureSnapshot(alliance, battlePlanet, sector, game.CurrentTick);
+            fogCommands.ObservePlanet(alliance, battlePlanet);
             PlanetSnapshot arrivalSnapshot = alliance.Fog.Snapshots[sector.InstanceID].Planets[
                 battlePlanet.InstanceID
             ];
@@ -1540,7 +1541,7 @@ namespace Rebellion.Tests.Simulation
 
             Officer han = EntityFactory.CreateOfficer("HAN", alliance.InstanceID);
             FogOfWarCommands fog = new FogOfWarCommands(game);
-            fog.CaptureSnapshot(alliance, planet, sector, 0);
+            fog.ObservePlanet(alliance, planet);
             Assert.IsTrue(
                 alliance
                     .Fog.Snapshots["SECTOR1"]
@@ -2180,7 +2181,8 @@ namespace Rebellion.Tests.Simulation
 
             diplomat.Movement = null;
             IReadOnlyList<GameResult> missionResults = new MissionTickProcessor(
-                manager.GetService<MissionCommands>()
+                manager.GetService<MissionCommands>(),
+                manager.GetService<MissionResolver>()
             ).ProcessTick(game);
 
             Assert.AreEqual(

@@ -21,11 +21,12 @@ namespace Rebellion.Simulation
         /// <summary>
         /// Creates mission tick processing.
         /// </summary>
-        /// <param name="commands">The mission commands and their shared resolver.</param>
-        public MissionTickProcessor(MissionCommands commands)
+        /// <param name="commands">The mission commands containing queued immediate results.</param>
+        /// <param name="resolver">The mission lifecycle resolver.</param>
+        public MissionTickProcessor(MissionCommands commands, MissionResolver resolver)
         {
             _commands = commands ?? throw new ArgumentNullException(nameof(commands));
-            _resolver = commands.Resolver;
+            _resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
         }
 
         /// <summary>

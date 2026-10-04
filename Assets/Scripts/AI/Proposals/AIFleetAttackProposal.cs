@@ -220,13 +220,7 @@ namespace Rebellion.AI.Proposals
             if (context.PlanetaryAssault == null)
                 return;
 
-            PlanetaryAssaultResult assaultResult = context.PlanetaryAssault.Execute(
-                new List<Fleet> { Fleet },
-                liveTarget
-            );
-            context.AddResult(assaultResult);
-            context.AddResults(assaultResult.Events);
-            context.AddResult(assaultResult.OwnershipChange);
+            context.PlanetaryAssault.TryExecute(new List<Fleet> { Fleet }, liveTarget);
             TryClearCompletedAttackOrder(context, liveTarget);
         }
 

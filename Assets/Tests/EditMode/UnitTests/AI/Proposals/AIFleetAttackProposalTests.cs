@@ -464,17 +464,14 @@ namespace Rebellion.Tests.AI.Fleets
                 FleetOrderStatus.Ready,
                 target
             );
+            List<GameResult> published = new List<GameResult>();
+            context.PlanetaryAssault.ResultsProduced += results => published.AddRange(results);
 
             proposal.Execute(context);
 
-            PlanetaryAssaultResult assault = context
-                .Results.OfType<PlanetaryAssaultResult>()
-                .Single();
+            PlanetaryAssaultResult assault = published.OfType<PlanetaryAssaultResult>().Single();
             Assert.IsTrue(assault.Success);
-            Assert.AreSame(
-                target,
-                context.Results.OfType<PlanetGarrisonChangedResult>().Single().Planet
-            );
+            Assert.AreSame(target, published.OfType<PlanetGarrisonChangedResult>().Single().Planet);
         }
 
         /// <summary>

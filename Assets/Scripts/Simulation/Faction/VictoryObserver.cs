@@ -1,20 +1,26 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game;
+using Rebellion.Game.Factions;
 using Rebellion.Game.Results;
+using Rebellion.Game.Units;
 
 namespace Rebellion.Simulation
 {
     /// <summary>Routes headquarters losses to victory resolution in batch order.</summary>
     public sealed class VictoryObserver : IResultObserver, IDisposable
     {
+        private readonly GameRoot _game;
         private readonly VictoryCommands _commands;
         private IDisposable _subscription;
 
         /// <summary>Creates the victory result listener.</summary>
-        /// <param name="commands">The victory operations for this game.</param>
-        public VictoryObserver(VictoryCommands commands)
+        /// <param name="game">The active game containing the configured victory condition.</param>
+        /// <param name="commands">The general victory declaration operation.</param>
+        public VictoryObserver(GameRoot game, VictoryCommands commands)
         {
+            _game = game ?? throw new ArgumentNullException(nameof(game));
             _commands = commands ?? throw new ArgumentNullException(nameof(commands));
         }
 
@@ -42,14 +48,37 @@ namespace Rebellion.Simulation
             if (_commands.IsDeclared)
                 return new List<GameResult>();
 
-            return (results ?? Array.Empty<HeadquartersLostResult>())
-                .Where(result => result?.Attacker != null && result.Defender != null)
-                .Select(result =>
-                    _commands.ResolveHeadquartersLoss(result.Attacker, result.Defender)
+            foreach (
+                HeadquartersLostResult result in results ?? Array.Empty<HeadquartersLostResult>()
+            )
+            {
+                if (
+                    result?.Attacker == null
+                    || result.Defender == null
+                    || !MeetsConfiguredVictoryCondition(result.Defender)
                 )
-                .Where(result => result != null)
-                .Cast<GameResult>()
-                .ToList();
+                    continue;
+
+                _commands.TryDeclareVictory(result.Attacker, result.Defender);
+                if (_commands.IsDeclared)
+                    break;
+            }
+
+            return new List<GameResult>();
+        }
+
+        /// <summary>Determines whether an headquarters loss satisfies the selected game mode.</summary>
+        /// <param name="defender">The faction that lost its headquarters.</param>
+        /// <returns>True when the loss may declare victory.</returns>
+        private bool MeetsConfiguredVictoryCondition(Faction defender)
+        {
+            return _game.Summary.VictoryCondition != GameVictoryCondition.Conquest
+                || _game
+                    .GetSceneNodesByType<Officer>()
+                    .Where(officer =>
+                        officer.GetOwnerInstanceID() == defender.InstanceID && officer.IsMain
+                    )
+                    .All(officer => officer.IsCaptured);
         }
     }
 }

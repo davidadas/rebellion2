@@ -10,15 +10,15 @@ namespace Rebellion.Simulation
     /// </summary>
     internal sealed class BlockadeTickProcessor : ITickProcessor
     {
-        private readonly BlockadeCommands _commands;
+        private readonly BlockadeTracker _tracker;
 
         /// <summary>
         /// Creates blockade tick processing.
         /// </summary>
-        /// <param name="commands">The blockade operations and tracked blockade state.</param>
-        public BlockadeTickProcessor(BlockadeCommands commands)
+        /// <param name="tracker">The blockade transition tracker.</param>
+        public BlockadeTickProcessor(BlockadeTracker tracker)
         {
-            _commands = commands ?? throw new ArgumentNullException(nameof(commands));
+            _tracker = tracker ?? throw new ArgumentNullException(nameof(tracker));
         }
 
         /// <summary>
@@ -29,10 +29,10 @@ namespace Rebellion.Simulation
         public IReadOnlyList<GameResult> ProcessTick(GameRoot game)
         {
             List<GameResult> results = new List<GameResult>();
-            HashSet<string> currentBlockades = _commands.DetectBlockadedPlanets();
-            _commands.ApplyBlockadeStatus(currentBlockades, results);
-            _commands.ClearBlockadeStatus(currentBlockades, results);
-            _commands.RememberBlockades(currentBlockades);
+            HashSet<string> currentBlockades = _tracker.DetectBlockadedPlanets();
+            _tracker.ApplyBlockadeStatus(currentBlockades, results);
+            _tracker.ClearBlockadeStatus(currentBlockades, results);
+            _tracker.RememberBlockades(currentBlockades);
             return results;
         }
     }

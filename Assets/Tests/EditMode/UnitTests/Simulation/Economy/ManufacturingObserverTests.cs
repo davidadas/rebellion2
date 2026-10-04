@@ -429,8 +429,6 @@ namespace Rebellion.Tests.Simulation
             Faction alliance = CreateFaction("ALLIANCE");
             PlanetaryControlCommands control = new PlanetaryControlCommands(
                 _game,
-                _movement,
-                new FogOfWarCommands(_game),
                 new PlanetaryControlQueries(_game),
                 new FogOfWarQueries(_game)
             );

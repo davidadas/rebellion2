@@ -1,6 +1,7 @@
 using System;
 using Rebellion.AI;
 using Rebellion.Game;
+using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Units;
 using Rebellion.Util.DependencyInjection;
 using Rebellion.Util.Random;
@@ -70,9 +71,13 @@ namespace Rebellion.Simulation
             });
 
             services.AddSingleton<MessageCommands>();
-            services.AddSingleton<FogOfWarCommands>();
+            services.AddSingleton<FogOfWarRecorder>();
+            services.AddSingleton<FogOfWarCommands>(locator => new FogOfWarCommands(
+                locator.GetService<GameRoot>(),
+                locator.GetService<FogOfWarRecorder>()
+            ));
             services.AddSingleton<FogOfWarQueries>();
-            services.AddSingleton<BlockadeCommands>();
+            services.AddSingleton<BlockadeTracker>();
             services.AddSingleton<FleetCommands>();
             services.AddSingleton<PersonnelQueries>();
             services.AddSingleton<PersonnelCommands>();
@@ -92,13 +97,28 @@ namespace Rebellion.Simulation
             services.AddSingleton<SmugglingCommands>();
             services.AddSingleton<PlanetaryControlQueries>();
             services.AddSingleton<PlanetaryControlCommands>();
-            services.AddSingleton<UprisingCommands>();
+            services.AddSingleton<UprisingResolver>();
             services.AddSingleton<JediCommands>();
             services.AddSingleton<OfficerCommandCommands>();
             services.AddSingleton<OfficerLoyaltyCommands>();
             services.AddSingleton<MissionQueries>();
             services.AddSingleton<MissionBetrayalResolver>();
-            services.AddSingleton<MissionCommands>();
+            services.AddSingleton<MissionResolver>(locator => new MissionResolver(
+                locator.GetService<GameRoot>(),
+                locator.GetService<IRandomNumberProvider>(),
+                locator.GetService<MovementCommands>(),
+                locator.GetService<UprisingResolver>(),
+                locator.GetService<MissionQueries>(),
+                locator.GetService<MovementQueries>(),
+                locator.GetService<MissionBetrayalResolver>(),
+                locator.GetService<PersonnelCommands>()
+            ));
+            services.AddSingleton<MissionCommands>(locator => new MissionCommands(
+                locator.GetService<GameRoot>(),
+                locator.GetService<MissionQueries>(),
+                locator.GetService<MissionResolver>(),
+                locator.GetService<OfficerCommandCommands>()
+            ));
             services.AddSingleton<SpaceCombatQueries>();
             services.AddSingleton<SpaceCombatCommands>();
             services.AddSingleton<BombardmentQueries>();
@@ -110,7 +130,16 @@ namespace Rebellion.Simulation
             services.AddSingleton<MessageObserver>();
             foreach (Type observerType in _resultObserverTypes)
                 services.AddSingleton(observerType);
-            services.AddSingleton<GameEventCommands>();
+            services.AddSingleton<GameEventCommands>(locator => new GameEventCommands(
+                locator.GetService<GameRoot>(),
+                locator.GetService<IRandomNumberProvider>(),
+                locator.GetService<UnitFactory>(),
+                locator.GetService<MovementCommands>(),
+                locator.GetService<PlanetaryControlCommands>(),
+                locator.GetService<DuelCommands>(),
+                locator.GetService<MessageCommands>(),
+                locator.GetService<MissionResolver>()
+            ));
 
             return services.BuildServiceLocator();
         }

@@ -9,14 +9,14 @@ namespace Rebellion.Simulation
     /// <summary>Routes garrison changes to uprising reconciliation in incoming planet order.</summary>
     public sealed class UprisingObserver : IResultObserver, IDisposable
     {
-        private readonly UprisingCommands _commands;
+        private readonly UprisingResolver _resolver;
         private IDisposable _subscription;
 
         /// <summary>Creates the uprising garrison listener.</summary>
-        /// <param name="commands">The uprising operations for this game.</param>
-        public UprisingObserver(UprisingCommands commands)
+        /// <param name="resolver">The uprising lifecycle resolver for this game.</param>
+        public UprisingObserver(UprisingResolver resolver)
         {
-            _commands = commands ?? throw new ArgumentNullException(nameof(commands));
+            _resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
         }
 
         /// <summary>Registers the garrison-change callback with the result bus.</summary>
@@ -49,7 +49,7 @@ namespace Rebellion.Simulation
                 .Where(planet => planet != null)
                 .Distinct();
             foreach (Planet planet in affectedPlanets)
-                uprisingResults.AddRange(_commands.ReconcileGarrison(planet));
+                uprisingResults.AddRange(_resolver.ReconcileGarrison(planet));
 
             return uprisingResults;
         }

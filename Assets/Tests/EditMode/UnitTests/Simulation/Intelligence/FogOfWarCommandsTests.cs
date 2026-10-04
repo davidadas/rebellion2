@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
+using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
@@ -14,6 +15,7 @@ namespace Rebellion.Tests.Simulation
     public class FogOfWarCommandsTests : FogOfWarTestBase
     {
         private FogOfWarCommands _commands;
+        private FogOfWarObserver _observer;
         private FogOfWarQueries _queries;
 
         /// <summary>
@@ -22,8 +24,10 @@ namespace Rebellion.Tests.Simulation
         [SetUp]
         public void SetUp()
         {
-            _commands = new FogOfWarCommands(_game);
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            _commands = new FogOfWarCommands(_game, recorder);
             _queries = new FogOfWarQueries(_game);
+            _observer = new FogOfWarObserver(_game, _commands, _queries, recorder);
         }
 
         [Test]
@@ -55,7 +59,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void CaptureSnapshot_PlanetWithAllEntities_CreatesAccurateSnapshot()
+        public void ObservePlanet_PlanetWithAllEntities_CreatesAccurateSnapshot()
         {
             _coruscant.NumRawResourceNodes = 5;
             _coruscant.EnergyCapacity = 1;
@@ -78,7 +82,7 @@ namespace Rebellion.Tests.Simulation
             _coruscant.AddChild(starport);
             _coruscant.AddChild(tieFighter);
 
-            _commands.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
+            ObservePlanet(_alliance, _coruscant, _coreSector, 10);
 
             PlanetSectorSnapshot sectorSnapshot = _alliance.Fog.Snapshots["CORE_SECTOR"];
             PlanetSnapshot snapshot = sectorSnapshot.Planets["CORUSCANT"];
@@ -93,13 +97,13 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void CaptureSnapshot_DeepCopy_ModifyingGameDoesNotAffectSnapshot()
+        public void ObservePlanet_DeepCopy_ModifyingGameDoesNotAffectSnapshot()
         {
             Officer vader = CreateOfficer("VADER", _empire);
             vader.SetBaseRating(SkillRating.Diplomacy, 50);
             _game.AttachNode(vader, _coruscant);
 
-            _commands.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
+            ObservePlanet(_alliance, _coruscant, _coreSector, 10);
 
             vader.SetBaseRating(SkillRating.Diplomacy, 99);
             _coruscant.RemoveChild(vader);
@@ -112,12 +116,12 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void CaptureSnapshot_SingleEntity_CopiesEntityWithSameInstanceID()
+        public void ObservePlanet_SingleEntity_CopiesEntityWithSameInstanceID()
         {
             Officer vader = CreateOfficer("VADER", _empire);
             _game.AttachNode(vader, _coruscant);
 
-            _commands.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
+            ObservePlanet(_alliance, _coruscant, _coreSector, 10);
 
             PlanetSectorSnapshot sectorSnapshot = _alliance.Fog.Snapshots["CORE_SECTOR"];
             PlanetSnapshot snapshot = sectorSnapshot.Planets["CORUSCANT"];
@@ -127,27 +131,27 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void CaptureSnapshot_UnvisitedPlanet_MarksPlanetVisited()
+        public void ObservePlanet_UnvisitedPlanet_MarksPlanetVisited()
         {
             Assert.IsFalse(_coruscant.WasVisitedBy(_alliance.InstanceID));
 
-            _commands.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
+            ObservePlanet(_alliance, _coruscant, _coreSector, 10);
 
             Assert.IsTrue(_coruscant.WasVisitedBy(_alliance.InstanceID));
         }
 
         [Test]
-        public void CaptureSnapshot_EntityMoves_RemovedFromOldPlanetSnapshot()
+        public void ObservePlanet_EntityMoves_RemovedFromOldPlanetSnapshot()
         {
             Officer vader = CreateOfficer("VADER", _empire);
             _game.AttachNode(vader, _coruscant);
 
-            _commands.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
+            ObservePlanet(_alliance, _coruscant, _coreSector, 10);
 
             MakeTatooineImperial();
             _game.MoveNode(vader, _tatooine);
 
-            _commands.CaptureSnapshot(_alliance, _tatooine, _outerRim, 20);
+            ObservePlanet(_alliance, _tatooine, _outerRim, 20);
 
             PlanetSectorSnapshot coreSnapshot = _alliance.Fog.Snapshots["CORE_SECTOR"];
             PlanetSnapshot coruscantSnapshot = coreSnapshot.Planets["CORUSCANT"];
@@ -162,7 +166,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void CaptureSnapshot_MultipleEntitiesMove_InvalidationIndependentPerEntity()
+        public void ObservePlanet_MultipleEntitiesMove_InvalidationIndependentPerEntity()
         {
             Officer vader = CreateOfficer("VADER", _empire);
             Fleet fleet = CreateFleet("FLEET1", _empire);
@@ -170,15 +174,15 @@ namespace Rebellion.Tests.Simulation
             _game.AttachNode(fleet, _coruscant);
             AddCapitalShip(fleet, _empire, "CS1");
 
-            _commands.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
+            ObservePlanet(_alliance, _coruscant, _coreSector, 10);
 
             MakeTatooineImperial();
             _game.MoveNode(vader, _tatooine);
-            _commands.CaptureSnapshot(_alliance, _tatooine, _outerRim, 20);
+            ObservePlanet(_alliance, _tatooine, _outerRim, 20);
 
             _hoth.OwnerInstanceID = _empire.InstanceID; // Set owner so fleet can move here
             _game.MoveNode(fleet, _hoth);
-            _commands.CaptureSnapshot(_alliance, _hoth, _outerRim, 30);
+            ObservePlanet(_alliance, _hoth, _outerRim, 30);
 
             PlanetSectorSnapshot coreSnapshot = _alliance.Fog.Snapshots["CORE_SECTOR"];
             PlanetSnapshot coruscantSnapshot = coreSnapshot.Planets["CORUSCANT"];
@@ -188,13 +192,13 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void CaptureSnapshot_EntitySeenTwiceSamePlanet_DoesNotDuplicate()
+        public void ObservePlanet_EntitySeenTwiceSamePlanet_DoesNotDuplicate()
         {
             Officer vader = CreateOfficer("VADER", _empire);
             _game.AttachNode(vader, _coruscant);
 
-            _commands.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
-            _commands.CaptureSnapshot(_alliance, _coruscant, _coreSector, 20);
+            ObservePlanet(_alliance, _coruscant, _coreSector, 10);
+            ObservePlanet(_alliance, _coruscant, _coreSector, 20);
 
             PlanetSectorSnapshot sectorSnapshot = _alliance.Fog.Snapshots["CORE_SECTOR"];
             PlanetSnapshot snapshot = sectorSnapshot.Planets["CORUSCANT"];
@@ -203,19 +207,19 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void CaptureSnapshot_EntityMovesBackToOriginalPlanet_HandledCorrectly()
+        public void ObservePlanet_EntityMovesBackToOriginalPlanet_HandledCorrectly()
         {
             Officer vader = CreateOfficer("VADER", _empire);
             _game.AttachNode(vader, _coruscant);
 
-            _commands.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
+            ObservePlanet(_alliance, _coruscant, _coreSector, 10);
 
             MakeTatooineImperial();
             _game.MoveNode(vader, _tatooine);
-            _commands.CaptureSnapshot(_alliance, _tatooine, _outerRim, 20);
+            ObservePlanet(_alliance, _tatooine, _outerRim, 20);
 
             _game.MoveNode(vader, _coruscant);
-            _commands.CaptureSnapshot(_alliance, _coruscant, _coreSector, 30);
+            ObservePlanet(_alliance, _coruscant, _coreSector, 30);
 
             PlanetSectorSnapshot coreSnapshot = _alliance.Fog.Snapshots["CORE_SECTOR"];
             PlanetSnapshot coruscantSnapshot = coreSnapshot.Planets["CORUSCANT"];
@@ -229,17 +233,17 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void CaptureSnapshot_VaderRediscovered_RemovesFromOldPlanet()
+        public void ObservePlanet_VaderRediscovered_RemovesFromOldPlanet()
         {
             Officer vader = CreateOfficer("VADER", _empire);
             _game.AttachNode(vader, _coruscant);
 
-            _commands.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
+            ObservePlanet(_alliance, _coruscant, _coreSector, 10);
 
             MakeTatooineImperial();
             _game.MoveNode(vader, _tatooine);
 
-            _commands.CaptureSnapshot(_alliance, _tatooine, _outerRim, 20);
+            ObservePlanet(_alliance, _tatooine, _outerRim, 20);
 
             GalaxyMap view = _queries.BuildFactionView(_alliance);
 
@@ -258,9 +262,9 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void CaptureSnapshot_EmptyPlanet_CreatesPlanetSnapshot()
+        public void ObservePlanet_EmptyPlanet_CreatesPlanetSnapshot()
         {
-            _commands.CaptureSnapshot(_alliance, _tatooine, _outerRim, 10);
+            ObservePlanet(_alliance, _tatooine, _outerRim, 10);
 
             PlanetSectorSnapshot sectorSnapshot = _alliance.Fog.Snapshots["OUTERRIM"];
             PlanetSnapshot snapshot = sectorSnapshot.Planets["TATOOINE"];
@@ -269,7 +273,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void CaptureSnapshot_NestedEntityObservedElsewhere_RemovesOldFleetManifestEntry()
+        public void ObservePlanet_NestedEntityObservedElsewhere_RemovesOldFleetManifestEntry()
         {
             Fleet fleet = CreateFleet("FLEET", _empire);
             CapitalShip ship = new CapitalShip
@@ -283,11 +287,11 @@ namespace Rebellion.Tests.Simulation
             _game.AttachNode(fleet, _coruscant);
             _game.AttachNode(ship, fleet);
             _game.AttachNode(regiment, ship);
-            _commands.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
+            ObservePlanet(_alliance, _coruscant, _coreSector, 10);
 
             MakeTatooineImperial();
             _game.MoveNode(regiment, _tatooine);
-            _commands.CaptureSnapshot(_alliance, _tatooine, _outerRim, 20);
+            ObservePlanet(_alliance, _tatooine, _outerRim, 20);
 
             PlanetSnapshot oldSnapshot = _alliance.Fog.Snapshots[_coreSector.InstanceID].Planets[
                 _coruscant.InstanceID
@@ -306,42 +310,42 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void CaptureSnapshot_EntityOnPlanet_UpdatesLastSeenIndex()
+        public void ObservePlanet_EntityOnPlanet_UpdatesLastSeenIndex()
         {
             Officer vader = CreateOfficer("VADER", _empire);
             _game.AttachNode(vader, _coruscant);
 
-            _commands.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
+            ObservePlanet(_alliance, _coruscant, _coreSector, 10);
 
             Assert.AreEqual("CORUSCANT", _alliance.Fog.EntityLastSeenAt["VADER"]);
 
             MakeTatooineImperial();
             _game.MoveNode(vader, _tatooine);
-            _commands.CaptureSnapshot(_alliance, _tatooine, _outerRim, 20);
+            ObservePlanet(_alliance, _tatooine, _outerRim, 20);
 
             Assert.AreEqual("TATOOINE", _alliance.Fog.EntityLastSeenAt["VADER"]);
         }
 
         [Test]
-        public void CaptureSnapshot_PlanetInPlanetSector_MapsPlanetToSector()
+        public void ObservePlanet_PlanetInPlanetSector_MapsPlanetToSector()
         {
-            _commands.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
+            ObservePlanet(_alliance, _coruscant, _coreSector, 10);
 
             Assert.AreEqual("CORE_SECTOR", _alliance.Fog.PlanetToSector["CORUSCANT"]);
 
-            _commands.CaptureSnapshot(_alliance, _tatooine, _outerRim, 20);
+            ObservePlanet(_alliance, _tatooine, _outerRim, 20);
 
             Assert.AreEqual("OUTERRIM", _alliance.Fog.PlanetToSector["TATOOINE"]);
         }
 
         [Test]
-        public void CaptureSnapshot_PlanetVisible_SnapshotNotOverwrittenWithoutExplicitCall()
+        public void ObservePlanet_PlanetVisible_SnapshotNotOverwrittenWithoutExplicitCall()
         {
             Officer vader = CreateOfficer("VADER", _empire);
             vader.SetBaseRating(SkillRating.Diplomacy, 50);
             _game.AttachNode(vader, _coruscant);
 
-            _commands.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
+            ObservePlanet(_alliance, _coruscant, _coreSector, 10);
 
             PlanetSectorSnapshot sectorSnapshot = _alliance.Fog.Snapshots["CORE_SECTOR"];
             PlanetSnapshot snapshot = sectorSnapshot.Planets["CORUSCANT"];
@@ -367,7 +371,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void CaptureSnapshot_Invalidation_RemovesOnlyTargetEntity()
+        public void ObservePlanet_Invalidation_RemovesOnlyTargetEntity()
         {
             Officer vader = CreateOfficer("VADER", _empire);
             Officer tarkin = CreateOfficer("PALPATINE", _empire);
@@ -383,11 +387,11 @@ namespace Rebellion.Tests.Simulation
             _game.AttachNode(fleet, _coruscant);
             _game.AttachNode(destroyer, fleet);
 
-            _commands.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
+            ObservePlanet(_alliance, _coruscant, _coreSector, 10);
 
             MakeTatooineImperial();
             _game.MoveNode(vader, _tatooine);
-            _commands.CaptureSnapshot(_alliance, _tatooine, _outerRim, 20);
+            ObservePlanet(_alliance, _tatooine, _outerRim, 20);
 
             PlanetSectorSnapshot coreSnapshot = _alliance.Fog.Snapshots["CORE_SECTOR"];
             PlanetSnapshot coruscantSnapshot = coreSnapshot.Planets["CORUSCANT"];
@@ -419,14 +423,14 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void CaptureSnapshot_CapturedFriendlyOfficer_IncludesDetachedOfficer()
+        public void ObservePlanet_CapturedFriendlyOfficer_IncludesDetachedOfficer()
         {
             Officer leia = CreateOfficer("LEIA", _alliance);
             leia.IsCaptured = true;
             leia.CaptorInstanceID = _empire.InstanceID;
             _game.AttachNode(leia, _coruscant);
 
-            _commands.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
+            ObservePlanet(_alliance, _coruscant, _coreSector, 10);
 
             PlanetSnapshot snapshot = _alliance.Fog.Snapshots["CORE_SECTOR"].Planets["CORUSCANT"];
 
@@ -437,11 +441,11 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void CaptureSnapshot_OrdinaryObservation_ManufacturingRemainsHidden()
+        public void ObservePlanet_OrdinaryObservation_ManufacturingRemainsHidden()
         {
             AddQueuedBuilding(_coruscant, _empire, "HIDDEN_BUILDING", 25);
 
-            _commands.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
+            ObservePlanet(_alliance, _coruscant, _coreSector, 10);
 
             PlanetSnapshot snapshot = _alliance.Fog.Snapshots["CORE_SECTOR"].Planets["CORUSCANT"];
             Assert.IsFalse(snapshot.HasManufacturingIntelligence);
@@ -452,7 +456,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void CaptureSnapshot_ParticipantSeenElsewhere_RemovesStaleMission()
+        public void ObservePlanet_ParticipantSeenElsewhere_RemovesStaleMission()
         {
             Officer vader = CreateOfficer("VADER", _empire);
             vader.DisplayName = "Darth Vader";
@@ -467,7 +471,7 @@ namespace Rebellion.Tests.Simulation
             MakeTatooineImperial();
             _game.MoveNode(vader, _tatooine);
             vader.DisplayName = "Vader observed elsewhere";
-            _commands.CaptureSnapshot(_alliance, _tatooine, _outerRim, 20);
+            ObservePlanet(_alliance, _tatooine, _outerRim, 20);
 
             PlanetSnapshot coruscantSnapshot = _alliance
                 .Fog
@@ -479,7 +483,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void CaptureSnapshot_AfterEspionage_PreservesIncomingEnemyFleet()
+        public void ObservePlanet_AfterEspionage_PreservesIncomingEnemyFleet()
         {
             Fleet empireFleet = CreateFleet("INCOMING_FLEET", _empire);
             _game.AttachNode(empireFleet, _coruscant);
@@ -488,7 +492,7 @@ namespace Rebellion.Tests.Simulation
             FogOfWarRecorder recorder = new FogOfWarRecorder();
             recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
 
-            _commands.CaptureSnapshot(_alliance, _coruscant, _coreSector, 20);
+            ObservePlanet(_alliance, _coruscant, _coreSector, 20);
 
             GalaxyMap view = _queries.BuildFactionView(_alliance);
             Planet viewCoruscant = view.GetChildren<PlanetSector>()
@@ -502,14 +506,14 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void CaptureSnapshot_AfterEspionage_PreservesMissionIntelligence()
+        public void ObservePlanet_AfterEspionage_PreservesMissionIntelligence()
         {
             Mission empireMission = CreateMission("M1", _empire, _coruscant);
             _game.AttachNode(empireMission, _coruscant);
             FogOfWarRecorder recorder = new FogOfWarRecorder();
             recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
 
-            _commands.CaptureSnapshot(_alliance, _coruscant, _coreSector, 20);
+            ObservePlanet(_alliance, _coruscant, _coreSector, 20);
 
             PlanetSnapshot snapshot = _alliance.Fog.Snapshots[_coreSector.InstanceID].Planets[
                 _coruscant.InstanceID
@@ -519,7 +523,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void CaptureSnapshot_AfterEspionage_PreservesStaleManufacturingIntel()
+        public void ObservePlanet_AfterEspionage_PreservesStaleManufacturingIntel()
         {
             Building knownBuilding = AddQueuedBuilding(_coruscant, _empire, "KNOWN_BUILDING", 25);
             FogOfWarRecorder recorder = new FogOfWarRecorder();
@@ -527,7 +531,7 @@ namespace Rebellion.Tests.Simulation
 
             knownBuilding.ManufacturingProgress = 75;
             AddQueuedBuilding(_coruscant, _empire, "UNKNOWN_BUILDING", 10);
-            _commands.CaptureSnapshot(_alliance, _coruscant, _coreSector, 20);
+            ObservePlanet(_alliance, _coruscant, _coreSector, 20);
 
             GalaxyMap view = _queries.BuildFactionView(_alliance);
             Planet viewCoruscant = view.GetChildren<PlanetSector>()
@@ -544,7 +548,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void CaptureSnapshot_AfterEspionage_RemovesAbsentManufacturingIntel()
+        public void ObservePlanet_AfterEspionage_RemovesAbsentManufacturingIntel()
         {
             Building knownBuilding = AddQueuedBuilding(_coruscant, _empire, "KNOWN_BUILDING", 25);
             FogOfWarRecorder recorder = new FogOfWarRecorder();
@@ -552,7 +556,7 @@ namespace Rebellion.Tests.Simulation
 
             _coruscant.ManufacturingQueue[ManufacturingType.Building].Remove(knownBuilding);
             _game.DetachNode(knownBuilding);
-            _commands.CaptureSnapshot(_alliance, _coruscant, _coreSector, 20);
+            ObservePlanet(_alliance, _coruscant, _coreSector, 20);
 
             PlanetSnapshot snapshot = _alliance.Fog.Snapshots[_coreSector.InstanceID].Planets[
                 _coruscant.InstanceID
@@ -568,7 +572,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void CaptureSnapshot_AfterEspionage_RemovesAbsentCargoFromPreservedShip()
+        public void ObservePlanet_AfterEspionage_RemovesAbsentCargoFromPreservedShip()
         {
             Fleet fleet = CreateFleet("KNOWN_FLEET", _empire);
             _game.AttachNode(fleet, _coruscant);
@@ -587,7 +591,7 @@ namespace Rebellion.Tests.Simulation
             recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             _game.DetachNode(departedRegiment);
-            _commands.CaptureSnapshot(_alliance, _coruscant, _coreSector, 20);
+            ObservePlanet(_alliance, _coruscant, _coreSector, 20);
 
             PlanetSnapshot snapshot = _alliance.Fog.Snapshots[_coreSector.InstanceID].Planets[
                 _coruscant.InstanceID
@@ -600,7 +604,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void CaptureSnapshot_AfterEspionage_PreservesFleetContainingOnlyManufacturingShip()
+        public void ObservePlanet_AfterEspionage_PreservesFleetContainingOnlyManufacturingShip()
         {
             Fleet fleet = CreateFleet("KNOWN_FLEET", _empire);
             CapitalShip knownShip = new CapitalShip
@@ -616,7 +620,7 @@ namespace Rebellion.Tests.Simulation
             recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             knownShip.ManufacturingProgress = 75;
-            _commands.CaptureSnapshot(_alliance, _coruscant, _coreSector, 20);
+            ObservePlanet(_alliance, _coruscant, _coreSector, 20);
 
             PlanetSnapshot snapshot = _alliance.Fog.Snapshots[_coreSector.InstanceID].Planets[
                 _coruscant.InstanceID
@@ -638,7 +642,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void CaptureSnapshot_AfterEspionage_RemovesAbsentFleetContainingOnlyManufacturingShip()
+        public void ObservePlanet_AfterEspionage_RemovesAbsentFleetContainingOnlyManufacturingShip()
         {
             Fleet fleet = CreateFleet("KNOWN_FLEET", _empire);
             CapitalShip knownShip = new CapitalShip
@@ -653,7 +657,7 @@ namespace Rebellion.Tests.Simulation
             recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
 
             _game.DetachNode(knownShip);
-            _commands.CaptureSnapshot(_alliance, _coruscant, _coreSector, 20);
+            ObservePlanet(_alliance, _coruscant, _coreSector, 20);
 
             PlanetSnapshot snapshot = _alliance.Fog.Snapshots[_coreSector.InstanceID].Planets[
                 _coruscant.InstanceID
@@ -666,7 +670,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void CaptureSnapshot_EnemyUnitsInTransit_NotRecorded()
+        public void ObservePlanet_EnemyUnitsInTransit_NotRecorded()
         {
             Officer officer = CreateOfficer("MOVING_OFFICER", _empire);
             officer.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 };
@@ -685,7 +689,7 @@ namespace Rebellion.Tests.Simulation
             _game.AttachNode(fleet, _coruscant);
             AddCapitalShip(fleet, _empire, "MOVING_FLEET_SHIP");
 
-            _commands.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
+            ObservePlanet(_alliance, _coruscant, _coreSector, 10);
 
             PlanetSnapshot snapshot = _alliance.Fog.Snapshots[_coreSector.InstanceID].Planets[
                 _coruscant.InstanceID
@@ -697,7 +701,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void CaptureSnapshot_EmptyFleet_ExcludedFromSnapshot()
+        public void ObservePlanet_EmptyFleet_ExcludedFromSnapshot()
         {
             // An empty fleet (no capital ships) should not appear in snapshots
             Fleet emptyFleet = new Fleet
@@ -707,7 +711,7 @@ namespace Rebellion.Tests.Simulation
             };
             _game.AttachNode(emptyFleet, _coruscant);
 
-            _commands.CaptureSnapshot(_empire, _coruscant, _coreSector, _game.CurrentTick);
+            ObservePlanet(_empire, _coruscant, _coreSector, _game.CurrentTick);
 
             GalaxyMap view = _queries.BuildFactionView(_empire);
             Planet viewCoruscant = view.GetChildren<PlanetSector>()
@@ -722,7 +726,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void CaptureSnapshot_FleetWithShips_IncludedInSnapshot()
+        public void ObservePlanet_FleetWithShips_IncludedInSnapshot()
         {
             Fleet fleet = new Fleet
             {
@@ -738,7 +742,7 @@ namespace Rebellion.Tests.Simulation
             };
             _game.AttachNode(ship, fleet);
 
-            _commands.CaptureSnapshot(_empire, _coruscant, _coreSector, _game.CurrentTick);
+            ObservePlanet(_empire, _coruscant, _coreSector, _game.CurrentTick);
 
             GalaxyMap view = _queries.BuildFactionView(_empire);
             Planet viewCoruscant = view.GetChildren<PlanetSector>()
@@ -758,12 +762,12 @@ namespace Rebellion.Tests.Simulation
             Fleet fleet = CreateFleet("FLEET", _empire);
             _game.AttachNode(fleet, _coruscant);
             CapitalShip ship = AddCapitalShip(fleet, _empire, "SHIP");
-            _commands.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
+            ObservePlanet(_alliance, _coruscant, _coreSector, 10);
 
             _game.MoveNode(fleet, _hoth);
             _game.CurrentTick = 20;
 
-            _commands.RefreshVisibleKnowledge();
+            _observer.RefreshVisibleKnowledge();
 
             PlanetSnapshot oldSnapshot = _alliance.Fog.Snapshots[_coreSector.InstanceID].Planets[
                 _coruscant.InstanceID
@@ -793,7 +797,7 @@ namespace Rebellion.Tests.Simulation
             Fleet fleet = CreateFleet("FLEET", _empire);
             _game.AttachNode(fleet, _coruscant);
             CapitalShip ship = AddCapitalShip(fleet, _empire, "SHIP");
-            _commands.CaptureSnapshot(_alliance, _coruscant, _coreSector, 10);
+            ObservePlanet(_alliance, _coruscant, _coreSector, 10);
             PlanetSnapshot duplicateSnapshot = new PlanetSnapshot { TickCaptured = 20 };
             duplicateSnapshot.Fleets.Add(FogOfWarRecorder.CopyFleetForSnapshot(fleet));
             PlanetSectorSnapshot outerRimSnapshot = new PlanetSectorSnapshot();
@@ -803,7 +807,7 @@ namespace Rebellion.Tests.Simulation
             _alliance.Fog.EntityLastSeenAt[fleet.InstanceID] = _tatooine.InstanceID;
             _alliance.Fog.EntityLastSeenAt[ship.InstanceID] = _tatooine.InstanceID;
 
-            _commands.ReconcileKnowledge();
+            _observer.ReconcileKnowledge();
 
             PlanetSnapshot oldSnapshot = _alliance.Fog.Snapshots[_coreSector.InstanceID].Planets[
                 _coruscant.InstanceID
@@ -841,6 +845,18 @@ namespace Rebellion.Tests.Simulation
                     )
                     .InstanceID
             );
+        }
+
+        /// <summary>Observes a planet at a selected simulation tick through the public command.</summary>
+        /// <param name="faction">The observing faction.</param>
+        /// <param name="planet">The observed planet.</param>
+        /// <param name="sector">The expected containing sector.</param>
+        /// <param name="tick">The observation tick.</param>
+        private void ObservePlanet(Faction faction, Planet planet, PlanetSector sector, int tick)
+        {
+            Assert.AreSame(sector, planet.GetParentOfType<PlanetSector>());
+            _game.CurrentTick = tick;
+            Assert.IsTrue(_commands.ObservePlanet(faction, planet));
         }
     }
 }

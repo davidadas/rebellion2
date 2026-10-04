@@ -11,18 +11,18 @@ using Rebellion.Simulation;
 namespace Rebellion.Tests.Simulation
 {
     /// <summary>
-    /// Tests for BlockadeCommands.
-    /// Tests transition detection (start/end) and evacuation loss rolls.
+    /// Tests for BlockadeTracker.
+    /// Tests transition detection for blockade starts and endings.
     /// Does NOT test blockade detection logic (that's Planet.IsBlockaded(), tested in PlanetTests).
     /// </summary>
     [TestFixture]
-    public class BlockadeCommandsTests
+    public class BlockadeTrackerTests
     {
         [Test]
         public void ProcessTick_StartedAndEndedBlockades_ReportsStartBeforeEnd()
         {
             (GameRoot game, Planet firstPlanet, Fleet fleet) = BuildScene();
-            BlockadeCommands system = new BlockadeCommands(game, new ThrowingRNG());
+            BlockadeTracker system = new BlockadeTracker(game);
             new BlockadeTickProcessor(system).ProcessTick(game);
             Planet secondPlanet = new Planet { InstanceID = "p2", OwnerInstanceID = "empire" };
             game.AttachNode(secondPlanet, firstPlanet.GetParent());
@@ -46,44 +46,10 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ApplyEvacuationLosses_HostileBlockade_RemovesRegimentAndReportsLoss()
-        {
-            (GameRoot game, Planet planet, _) = BuildScene();
-            Regiment regiment = EntityFactory.CreateRegiment("evacuating", "empire");
-            game.AttachNode(regiment, planet);
-            game.Config.Blockade.EvacuationLossPercent = 100;
-            game.CurrentTick = 42;
-            BlockadeCommands system = new BlockadeCommands(game, new FixedRNG());
-
-            EvacuationLossesResult result = system.ApplyEvacuationLosses(regiment, planet);
-
-            Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
-            Assert.AreSame(regiment, result.LostRegiments.Single());
-            Assert.AreSame(planet, result.Location);
-            Assert.AreEqual("empire", result.Faction.InstanceID);
-            Assert.AreEqual(42, result.Tick);
-        }
-
-        [Test]
-        public void ApplyEvacuationLosses_OfficerUnderBlockade_DoesNotConsumeRandomValues()
-        {
-            (GameRoot game, Planet planet, _) = BuildScene();
-            planet.IsColonized = true;
-            Officer officer = new Officer { InstanceID = "officer", OwnerInstanceID = "empire" };
-            game.AttachNode(officer, planet);
-            BlockadeCommands system = new BlockadeCommands(game, new ThrowingRNG());
-
-            EvacuationLossesResult result = system.ApplyEvacuationLosses(officer, planet);
-
-            Assert.IsNull(result);
-            Assert.AreSame(planet, officer.GetParent());
-        }
-
-        [Test]
         public void ProcessTick_NewBlockade_EmitsBlockadeStarted()
         {
             (GameRoot game, Planet planet, Fleet hostileFleet) = BuildScene();
-            BlockadeCommands manager = new BlockadeCommands(game, new StubRNG());
+            BlockadeTracker manager = new BlockadeTracker(game);
 
             IReadOnlyList<GameResult> results = new BlockadeTickProcessor(manager).ProcessTick(
                 game
@@ -101,7 +67,7 @@ namespace Rebellion.Tests.Simulation
         {
             (GameRoot game, Planet planet, Fleet blockadingFleet) = BuildScene();
             planet.OwnerInstanceID = null;
-            BlockadeCommands manager = new BlockadeCommands(game, new StubRNG());
+            BlockadeTracker manager = new BlockadeTracker(game);
 
             BlockadeChangedResult result = new BlockadeTickProcessor(manager)
                 .ProcessTick(game)
@@ -118,7 +84,7 @@ namespace Rebellion.Tests.Simulation
         {
             (GameRoot game, _, Fleet hostileFleet) = BuildScene();
             hostileFleet.Movement = new MovementState { TransitTicks = 10 };
-            BlockadeCommands manager = new BlockadeCommands(game, new StubRNG());
+            BlockadeTracker manager = new BlockadeTracker(game);
 
             IReadOnlyList<GameResult> inTransitResults = new BlockadeTickProcessor(
                 manager
@@ -138,7 +104,7 @@ namespace Rebellion.Tests.Simulation
         public void ProcessTick_AlreadyBlockaded_NoRepeatedEvent()
         {
             (GameRoot game, _, _) = BuildScene();
-            BlockadeCommands manager = new BlockadeCommands(game, new StubRNG());
+            BlockadeTracker manager = new BlockadeTracker(game);
 
             new BlockadeTickProcessor(manager).ProcessTick(game);
             IReadOnlyList<GameResult> results = new BlockadeTickProcessor(manager).ProcessTick(
@@ -152,7 +118,7 @@ namespace Rebellion.Tests.Simulation
         public void ProcessTick_BlockadeEnds_EmitsBlockadeCleared()
         {
             (GameRoot game, Planet planet, _) = BuildScene();
-            BlockadeCommands manager = new BlockadeCommands(game, new StubRNG());
+            BlockadeTracker manager = new BlockadeTracker(game);
 
             new BlockadeTickProcessor(manager).ProcessTick(game);
 
@@ -187,7 +153,7 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(sector, game.GetGalaxyMap());
             game.AttachNode(planet, sector);
 
-            BlockadeCommands manager = new BlockadeCommands(game, new StubRNG());
+            BlockadeTracker manager = new BlockadeTracker(game);
             IReadOnlyList<GameResult> results = new BlockadeTickProcessor(manager).ProcessTick(
                 game
             );
@@ -208,7 +174,7 @@ namespace Rebellion.Tests.Simulation
             };
             game.AttachNode(inTransit, planet);
 
-            BlockadeCommands manager = new BlockadeCommands(game, new StubRNG());
+            BlockadeTracker manager = new BlockadeTracker(game);
             new BlockadeTickProcessor(manager).ProcessTick(game);
 
             Assert.IsNotNull(
@@ -242,123 +208,13 @@ namespace Rebellion.Tests.Simulation
             AttachOperationalCapitalShip(game, hostile, "hostile-ship");
             AttachOperationalCapitalShip(game, defender, "defender-ship");
 
-            BlockadeCommands manager = new BlockadeCommands(game, new StubRNG());
+            BlockadeTracker manager = new BlockadeTracker(game);
             IReadOnlyList<GameResult> results = new BlockadeTickProcessor(manager).ProcessTick(
                 game
             );
 
             Assert.AreEqual(1, results.OfType<BlockadeChangedResult>().Count());
             Assert.AreEqual(blockaded, results.OfType<BlockadeChangedResult>().First().Planet);
-        }
-
-        [Test]
-        public void ApplyEvacuationLosses_RollBelowThreshold_RemovesRegiment()
-        {
-            (GameRoot game, Planet planet, _) = BuildScene();
-            game.Config.Blockade.EvacuationLossPercent = 25;
-            Regiment regiment = EntityFactory.CreateRegiment("evacuating", "empire");
-            game.AttachNode(regiment, planet);
-            BlockadeCommands system = new BlockadeCommands(game, new FixedRNG());
-
-            EvacuationLossesResult result = system.ApplyEvacuationLosses(regiment, planet);
-
-            Assert.IsNotNull(result);
-            Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
-        }
-
-        [Test]
-        public void ApplyEvacuationLosses_RollAboveThreshold_PreservesRegiment()
-        {
-            (GameRoot game, Planet planet, _) = BuildScene();
-            game.Config.Blockade.EvacuationLossPercent = 25;
-            Regiment regiment = EntityFactory.CreateRegiment("evacuating", "empire");
-            game.AttachNode(regiment, planet);
-            BlockadeCommands system = new BlockadeCommands(game, new MaximumRNG());
-
-            EvacuationLossesResult result = system.ApplyEvacuationLosses(regiment, planet);
-
-            Assert.IsNull(result);
-            Assert.AreSame(regiment, game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
-        }
-
-        [Test]
-        public void ApplyEvacuationLosses_ZeroPercent_PreservesRegiment()
-        {
-            (GameRoot game, Planet planet, _) = BuildScene();
-            game.Config.Blockade.EvacuationLossPercent = 0;
-            Regiment regiment = EntityFactory.CreateRegiment("evacuating", "empire");
-            game.AttachNode(regiment, planet);
-            BlockadeCommands system = new BlockadeCommands(game, new FixedRNG());
-
-            EvacuationLossesResult result = system.ApplyEvacuationLosses(regiment, planet);
-
-            Assert.IsNull(result);
-            Assert.AreSame(regiment, game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
-        }
-
-        [Test]
-        public void ApplyEvacuationLosses_HundredPercent_RemovesRegiment()
-        {
-            (GameRoot game, Planet planet, _) = BuildScene();
-            game.Config.Blockade.EvacuationLossPercent = 100;
-            Regiment regiment = EntityFactory.CreateRegiment("evacuating", "empire");
-            game.AttachNode(regiment, planet);
-            BlockadeCommands system = new BlockadeCommands(game, new MaximumRNG());
-
-            EvacuationLossesResult result = system.ApplyEvacuationLosses(regiment, planet);
-
-            Assert.IsNotNull(result);
-            Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
-        }
-
-        [Test]
-        public void ApplyEvacuationLosses_NeutralPlanetBlockadingFaction_ReturnsNoLoss()
-        {
-            (GameRoot game, Planet planet, _) = BuildScene();
-            planet.OwnerInstanceID = null;
-            Regiment regiment = new Regiment
-            {
-                InstanceID = "r1",
-                OwnerInstanceID = "alliance",
-                ManufacturingStatus = ManufacturingStatus.Complete,
-            };
-            game.AttachNode(regiment, planet);
-            BlockadeCommands system = new BlockadeCommands(game, new FixedRNG());
-
-            EvacuationLossesResult result = system.ApplyEvacuationLosses(regiment, planet);
-
-            Assert.IsNull(result);
-            Assert.AreEqual(regiment, game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
-        }
-
-        [Test]
-        public void ApplyEvacuationLosses_OperationalIonCannon_PreventsLoss()
-        {
-            (GameRoot game, Planet planet, _) = BuildScene();
-            planet.IsColonized = true;
-            planet.EnergyCapacity = 1;
-            Regiment regiment = new Regiment
-            {
-                InstanceID = "r1",
-                OwnerInstanceID = "empire",
-                ManufacturingStatus = ManufacturingStatus.Complete,
-            };
-            Building ionCannon = new Building
-            {
-                InstanceID = "ion-cannon",
-                BuildingType = BuildingType.Weapon,
-                DefenseWeaponEffect = DefenseWeaponEffect.ShieldDamage,
-                ManufacturingStatus = ManufacturingStatus.Complete,
-                OwnerInstanceID = "empire",
-            };
-            game.AttachNode(ionCannon, planet);
-            game.AttachNode(regiment, planet);
-            BlockadeCommands system = new BlockadeCommands(game, new FixedRNG());
-
-            EvacuationLossesResult result = system.ApplyEvacuationLosses(regiment, planet);
-
-            Assert.IsNull(result);
-            Assert.AreSame(regiment, game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
         }
 
         /// <summary>

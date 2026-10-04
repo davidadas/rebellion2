@@ -435,20 +435,11 @@ namespace Rebellion.Tests.Game.Missions
             );
             PlanetaryControlCommands control = new PlanetaryControlCommands(
                 game,
-                movement,
-                fog,
                 new PlanetaryControlQueries(game),
                 new FogOfWarQueries(game)
             );
-            UprisingCommands uprising = new UprisingCommands(game, rng, control);
-            return new MissionCommands(
-                game,
-                rng,
-                movement,
-                uprising,
-                new MissionQueries(game),
-                new MovementQueries(game)
-            );
+            UprisingResolver uprising = new UprisingResolver(game, rng, control);
+            return TestSystems.CreateMissionCommands(game, rng, movement, uprising);
         }
     }
 }

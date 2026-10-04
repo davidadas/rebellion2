@@ -308,8 +308,6 @@ namespace Rebellion.Tests.Simulation
             MovementCommands movement = CreateMovementCommands(game);
             PlanetaryControlCommands control = new PlanetaryControlCommands(
                 game,
-                movement,
-                new FogOfWarCommands(game),
                 new PlanetaryControlQueries(game),
                 new FogOfWarQueries(game)
             );
@@ -4618,8 +4616,6 @@ namespace Rebellion.Tests.Simulation
             MovementCommands movement = CreateMovementCommands(game);
             PlanetaryControlCommands control = new PlanetaryControlCommands(
                 game,
-                movement,
-                new FogOfWarCommands(game),
                 new PlanetaryControlQueries(game),
                 new FogOfWarQueries(game)
             );

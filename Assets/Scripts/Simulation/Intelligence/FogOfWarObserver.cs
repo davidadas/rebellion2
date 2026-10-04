@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
+using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 
 namespace Rebellion.Simulation
@@ -17,6 +19,7 @@ namespace Rebellion.Simulation
         private readonly GameRoot _game;
         private readonly FogOfWarCommands _commands;
         private readonly FogOfWarQueries _queries;
+        private readonly FogOfWarRecorder _recorder;
         private IDisposable[] _subscriptions;
 
         /// <summary>
@@ -25,11 +28,18 @@ namespace Rebellion.Simulation
         /// <param name="game">The game containing the observing factions.</param>
         /// <param name="commands">The commands that record and invalidate observations.</param>
         /// <param name="queries">The visibility rules used to identify informed factions.</param>
-        public FogOfWarObserver(GameRoot game, FogOfWarCommands commands, FogOfWarQueries queries)
+        /// <param name="recorder">The recorder used to repair saved intelligence indexes.</param>
+        public FogOfWarObserver(
+            GameRoot game,
+            FogOfWarCommands commands,
+            FogOfWarQueries queries,
+            FogOfWarRecorder recorder
+        )
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
             _commands = commands ?? throw new ArgumentNullException(nameof(commands));
             _queries = queries ?? throw new ArgumentNullException(nameof(queries));
+            _recorder = recorder ?? throw new ArgumentNullException(nameof(recorder));
         }
 
         /// <summary>Registers the settled-result callback with the result bus.</summary>
@@ -52,14 +62,14 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Applies category-limited planet intelligence emitted by a simulation event.
+        /// Applies selected entity intelligence emitted by a simulation event.
         /// </summary>
         /// <param name="results">The intelligence results to record.</param>
         /// <returns>No reactions; snapshots are updated directly.</returns>
         public List<GameResult> HandleResults(IReadOnlyList<IntelligenceRevealedResult> results)
         {
             foreach (IntelligenceRevealedResult result in results)
-                _commands.RecordObservations(result.Recipient, result.Observations, result.Tick);
+                _commands.ObserveEntities(result.Recipient, result.Observations, result.Tick);
 
             return new List<GameResult>();
         }
@@ -102,15 +112,40 @@ namespace Rebellion.Simulation
             foreach (EvacuationLossesResult result in results.OfType<EvacuationLossesResult>())
                 RecordEvacuationLosses(result);
             foreach (
-                OfficerCaptureStateResult result in results
-                    .OfType<OfficerCaptureStateResult>()
-                    .Where(result => result?.IsCaptured == false)
+                OfficerCaptureStateResult result in results.OfType<OfficerCaptureStateResult>()
             )
-                _commands.RecordCaptureState(
-                    result.TargetOfficer,
-                    result.CaptorInstanceID,
-                    result.Tick
-                );
+                RecordCaptureState(result);
+            foreach (
+                PlanetOwnershipChangedResult result in results.OfType<PlanetOwnershipChangedResult>()
+            )
+                RecordOwnershipChange(result);
+        }
+
+        /// <summary>Refreshes visible intelligence and repairs saved entity locations.</summary>
+        internal void ReconcileKnowledge()
+        {
+            RefreshVisibleKnowledge();
+            foreach (Faction faction in _game.GetFactions())
+                _recorder.ReconcileEntityLocations(faction);
+        }
+
+        /// <summary>Replaces remembered state for every currently visible planet.</summary>
+        internal void RefreshVisibleKnowledge()
+        {
+            foreach (Faction faction in _game.GetFactions())
+            {
+                foreach (PlanetSector sector in _game.Galaxy.GetChildren<PlanetSector>())
+                {
+                    foreach (
+                        Planet planet in sector
+                            .GetChildren<Planet>()
+                            .Where(planet => _queries.IsPlanetVisible(planet, faction))
+                    )
+                    {
+                        _commands.ObservePlanet(faction, planet);
+                    }
+                }
+            }
         }
 
         /// <summary>
@@ -134,7 +169,7 @@ namespace Rebellion.Simulation
                 )
             )
             {
-                _commands.RemoveEntityFromSnapshots(faction, entityId);
+                _commands.ForgetEntity(faction, entityId);
             }
         }
 
@@ -155,7 +190,7 @@ namespace Rebellion.Simulation
                 )
             )
             {
-                _commands.RemoveEntityFromSnapshots(faction, result.TargetOfficer.InstanceID);
+                _commands.ForgetEntity(faction, result.TargetOfficer.InstanceID);
             }
         }
 
@@ -188,7 +223,7 @@ namespace Rebellion.Simulation
             )
             {
                 foreach (Faction faction in informedFactions)
-                    _commands.RemoveEntityFromSnapshots(faction, entityId);
+                    _commands.ForgetEntity(faction, entityId);
             }
         }
 
@@ -206,7 +241,44 @@ namespace Rebellion.Simulation
                 .Concat(result.LostStarfighters)
                 .Concat(result.LostRegiments);
             foreach (ISceneNode lostUnit in lostUnits.Where(unit => unit != null))
-                _commands.RemoveEntityFromSnapshots(result.Faction, lostUnit.InstanceID);
+                _commands.ForgetEntity(result.Faction, lostUnit.InstanceID);
+        }
+
+        /// <summary>Records or removes knowledge after an officer's custody state changes.</summary>
+        /// <param name="result">The completed custody-state change.</param>
+        private void RecordCaptureState(OfficerCaptureStateResult result)
+        {
+            Officer officer = result?.TargetOfficer;
+            if (officer == null || string.IsNullOrEmpty(officer.InstanceID))
+                return;
+
+            if (result.IsCaptured == true)
+                return;
+
+            Faction owner = FindFaction(officer.OwnerInstanceID);
+            Faction captor = FindFaction(result.CaptorInstanceID);
+
+            _commands.ForgetEntity(owner, officer.InstanceID);
+            if (captor != owner)
+                _commands.ForgetEntity(captor, officer.InstanceID);
+        }
+
+        /// <summary>Updates planet knowledge after a completed ownership change.</summary>
+        /// <param name="result">The ownership change being observed.</param>
+        private void RecordOwnershipChange(PlanetOwnershipChangedResult result)
+        {
+            if (result?.Planet == null)
+                return;
+
+            if (result.PreviousOwner != null)
+                _commands.ObservePlanet(result.PreviousOwner, result.Planet, result.Tick);
+
+            IEnumerable<Faction> observers = (
+                result.ObserverFactionInstanceIDs ?? new List<string>()
+            )
+                .Select(FindFaction)
+                .Where(faction => faction != null);
+            _commands.ObservePlanetOwnership(result.Planet, observers, result.Tick);
         }
 
         /// <summary>

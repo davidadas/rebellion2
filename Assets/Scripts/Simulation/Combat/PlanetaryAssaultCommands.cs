@@ -81,7 +81,7 @@ namespace Rebellion.Simulation
         /// <param name="attackingFleets">The fleets performing the assault.</param>
         /// <param name="defendingPlanet">The planet being assaulted.</param>
         /// <returns>The assault outcome and applied game-state changes.</returns>
-        internal PlanetaryAssaultResult Execute(List<Fleet> attackingFleets, Planet defendingPlanet)
+        private PlanetaryAssaultResult Execute(List<Fleet> attackingFleets, Planet defendingPlanet)
         {
             PlanetaryAssaultResult result = new PlanetaryAssaultResult
             {

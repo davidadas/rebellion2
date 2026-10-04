@@ -3914,7 +3914,10 @@ namespace Rebellion.Tests.Simulation
             while (!mission.IsComplete())
                 mission.IncrementProgress();
 
-            IReadOnlyList<GameResult> results = new MissionTickProcessor(system).ProcessTick(game);
+            IReadOnlyList<GameResult> results = new MissionTickProcessor(
+                system,
+                TestSystems.GetMissionResolver(system)
+            ).ProcessTick(game);
 
             Assert.IsTrue(
                 results.Any(r => r is MissionCompletedResult),
@@ -3968,7 +3971,10 @@ namespace Rebellion.Tests.Simulation
                 new FixedRNG(0.0),
                 movement
             );
-            IReadOnlyList<GameResult> results = new MissionTickProcessor(system).ProcessTick(game);
+            IReadOnlyList<GameResult> results = new MissionTickProcessor(
+                system,
+                TestSystems.GetMissionResolver(system)
+            ).ProcessTick(game);
 
             RecruitmentExhaustedResult exhausted = results
                 .OfType<RecruitmentExhaustedResult>()
@@ -4120,7 +4126,10 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(officer.IsCaptured);
             Assert.IsNull(mission.GetParent());
             game.CurrentTick = 43;
-            IReadOnlyList<GameResult> results = new MissionTickProcessor(system).ProcessTick(game);
+            IReadOnlyList<GameResult> results = new MissionTickProcessor(
+                system,
+                TestSystems.GetMissionResolver(system)
+            ).ProcessTick(game);
 
             OfficerCaptureStateResult capture = results
                 .OfType<OfficerCaptureStateResult>()
@@ -4128,7 +4137,12 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(officer, capture.TargetOfficer);
             Assert.AreEqual(42, capture.Tick);
             Assert.AreEqual(mission.InstanceID, capture.MissionInstanceID);
-            Assert.IsEmpty(new MissionTickProcessor(system).ProcessTick(game));
+            Assert.IsEmpty(
+                new MissionTickProcessor(
+                    system,
+                    TestSystems.GetMissionResolver(system)
+                ).ProcessTick(game)
+            );
         }
 
         [Test]
@@ -4217,7 +4231,6 @@ namespace Rebellion.Tests.Simulation
                 new StubRNG(),
                 movement
             );
-
             bool initiated = commands.InitiateMission(
                 CreateContext(
                     ResearchMission.MissionTypeID,
@@ -4226,9 +4239,10 @@ namespace Rebellion.Tests.Simulation
                     discipline: ResearchDiscipline.FacilityDesign
                 )
             );
-            IReadOnlyList<GameResult> results = new MissionTickProcessor(commands).ProcessTick(
-                game
-            );
+            IReadOnlyList<GameResult> results = new MissionTickProcessor(
+                commands,
+                TestSystems.GetMissionResolver(commands)
+            ).ProcessTick(game);
 
             Assert.IsTrue(initiated);
             MissionStartedResult started = results.OfType<MissionStartedResult>().Single();
@@ -4252,6 +4266,9 @@ namespace Rebellion.Tests.Simulation
                 new StubRNG(),
                 movement
             );
+            List<GameResult> rankResults = new List<GameResult>();
+            TestSystems.GetOfficerCommands(commands).ResultsProduced += results =>
+                rankResults.AddRange(results);
 
             bool initiated = commands.InitiateMission(
                 CreateContext(
@@ -4261,16 +4278,15 @@ namespace Rebellion.Tests.Simulation
                     discipline: ResearchDiscipline.FacilityDesign
                 )
             );
-            List<GameResult> results = commands.TakePendingResults();
 
             Assert.IsTrue(initiated);
             Assert.AreEqual(OfficerRank.None, officer.CurrentRank);
-            CommandKindChangedResult rankChanged = results
+            CommandKindChangedResult rankChanged = rankResults
                 .OfType<CommandKindChangedResult>()
                 .Single();
             Assert.AreEqual((int)OfficerRank.None, rankChanged.CommandKind);
             Assert.AreEqual((int)OfficerRank.Commander, rankChanged.Detail);
-            Assert.IsNull(results.OfType<OfficerCommandingResult>().Single().CommandTarget);
+            Assert.IsNull(rankResults.OfType<OfficerCommandingResult>().Single().CommandTarget);
         }
 
         [Test]
@@ -5393,19 +5409,15 @@ namespace Rebellion.Tests.Simulation
             );
             PlanetaryControlCommands control = new PlanetaryControlCommands(
                 game,
-                movement,
-                fog,
                 new PlanetaryControlQueries(game),
                 new FogOfWarQueries(game)
             );
-            UprisingCommands uprising = new UprisingCommands(game, rng, control);
-            MissionCommands missionSystem = new MissionCommands(
+            UprisingResolver uprising = new UprisingResolver(game, rng, control);
+            MissionCommands missionSystem = TestSystems.CreateMissionCommands(
                 game,
                 rng,
                 movement,
-                uprising,
-                new MissionQueries(game),
-                new MovementQueries(game)
+                uprising
             );
 
             return (game, diplomacyMission, inciteMission, missionSystem);

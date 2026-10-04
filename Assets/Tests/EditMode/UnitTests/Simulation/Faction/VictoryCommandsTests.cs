@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
@@ -54,16 +55,17 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ProcessTick_HQCapturedHeadquartersMode_ReturnsVictoryResult()
+        public void ProcessTick_HQCapturedHeadquartersMode_PublishesVictoryResult()
         {
             (GameRoot game, Faction empire, Faction rebels, _, VictoryCommands system) = BuildScene(
                 GameVictoryCondition.Headquarters
             );
 
-            IReadOnlyList<GameResult> results = new VictoryTickProcessor(system).ProcessTick(game);
+            VictoryResult victory = CaptureVictory(
+                system,
+                () => new VictoryTickProcessor(system).ProcessTick(game)
+            );
 
-            Assert.AreEqual(1, results.Count);
-            VictoryResult victory = results[0] as VictoryResult;
             Assert.IsNotNull(victory);
             Assert.AreEqual(rebels, victory.Winner);
             Assert.AreEqual(empire, victory.Loser);
@@ -74,14 +76,15 @@ namespace Rebellion.Tests.Simulation
         {
             (GameRoot game, _, _, _, VictoryCommands system) = BuildScene();
 
-            IReadOnlyList<GameResult> firstResults = new VictoryTickProcessor(system).ProcessTick(
-                game
-            );
+            int publications = 0;
+            system.ResultsProduced += results => publications += results.Count;
+
+            new VictoryTickProcessor(system).ProcessTick(game);
             IReadOnlyList<GameResult> secondResults = new VictoryTickProcessor(system).ProcessTick(
                 game
             );
 
-            Assert.AreEqual(1, firstResults.OfType<VictoryResult>().Count());
+            Assert.AreEqual(1, publications);
             Assert.IsEmpty(secondResults);
         }
 
@@ -122,7 +125,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ProcessTick_HQCapturedConquestMode_AllLeadersCaptured_ReturnsVictoryResult()
+        public void ProcessTick_HQCapturedConquestMode_AllLeadersCaptured_PublishesVictoryResult()
         {
             (GameRoot game, Faction empire, Faction rebels, _, VictoryCommands system) = BuildScene(
                 GameVictoryCondition.Conquest
@@ -137,26 +140,28 @@ namespace Rebellion.Tests.Simulation
             };
             game.AttachNode(leader, game.GetSceneNodeByInstanceID<Planet>("hq_empire"));
 
-            IReadOnlyList<GameResult> results = new VictoryTickProcessor(system).ProcessTick(game);
+            VictoryResult victory = CaptureVictory(
+                system,
+                () => new VictoryTickProcessor(system).ProcessTick(game)
+            );
 
-            Assert.AreEqual(1, results.Count);
-            VictoryResult victory = results[0] as VictoryResult;
             Assert.IsNotNull(victory);
             Assert.AreEqual(rebels, victory.Winner);
             Assert.AreEqual(empire, victory.Loser);
         }
 
         [Test]
-        public void ProcessTick_HQCapturedConquestMode_NoMainCharacters_ReturnsVictoryResult()
+        public void ProcessTick_HQCapturedConquestMode_NoMainCharacters_PublishesVictoryResult()
         {
             (GameRoot game, _, Faction rebels, _, VictoryCommands system) = BuildScene(
                 GameVictoryCondition.Conquest
             );
 
-            IReadOnlyList<GameResult> results = new VictoryTickProcessor(system).ProcessTick(game);
+            VictoryResult victory = CaptureVictory(
+                system,
+                () => new VictoryTickProcessor(system).ProcessTick(game)
+            );
 
-            Assert.AreEqual(1, results.Count);
-            VictoryResult victory = results[0] as VictoryResult;
             Assert.IsNotNull(victory);
             Assert.AreEqual(rebels, victory.Winner);
         }
@@ -212,7 +217,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ProcessTick_MobileHeadquartersCaptured_ReturnsVictoryResult()
+        public void ProcessTick_MobileHeadquartersCaptured_PublishesVictoryResult()
         {
             (
                 GameRoot game,
@@ -240,10 +245,11 @@ namespace Rebellion.Tests.Simulation
             };
             game.AttachNode(headquarters, empireHQ);
 
-            IReadOnlyList<GameResult> results = new VictoryTickProcessor(system).ProcessTick(game);
+            VictoryResult victory = CaptureVictory(
+                system,
+                () => new VictoryTickProcessor(system).ProcessTick(game)
+            );
 
-            Assert.AreEqual(1, results.Count);
-            VictoryResult victory = results[0] as VictoryResult;
             Assert.IsNotNull(victory);
             Assert.AreEqual(rebels, victory.Winner);
             Assert.AreEqual(empire, victory.Loser);
@@ -316,13 +322,28 @@ namespace Rebellion.Tests.Simulation
                 thirdHeadquartersPlanet
             );
 
-            IReadOnlyList<GameResult> results = new VictoryTickProcessor(system).ProcessTick(game);
+            VictoryResult victory = CaptureVictory(
+                system,
+                () => new VictoryTickProcessor(system).ProcessTick(game)
+            );
 
-            Assert.AreEqual(1, results.Count);
-            VictoryResult victory = results[0] as VictoryResult;
             Assert.IsNotNull(victory);
             Assert.AreSame(rebels, victory.Winner);
             Assert.AreSame(empire, victory.Loser);
+        }
+
+        /// <summary>Captures the single victory published by an operation.</summary>
+        /// <param name="commands">The victory commands publishing the outcome.</param>
+        /// <param name="operation">The operation expected to declare victory.</param>
+        /// <returns>The published victory.</returns>
+        private static VictoryResult CaptureVictory(VictoryCommands commands, Action operation)
+        {
+            List<VictoryResult> published = new List<VictoryResult>();
+            commands.ResultsProduced += results => published.AddRange(results);
+
+            operation();
+
+            return published.Single();
         }
 
         /// <summary>

@@ -32,7 +32,7 @@ namespace Rebellion.Simulation
         private ITickProcessor _blockade;
         private ITickProcessor _captive;
         private ITickProcessor _factionAutomation;
-        private FogOfWarCommands _fogOfWarCommands;
+        private FogOfWarObserver _fogOfWarObserver;
         private ITickProcessor _gameEvents;
         private GameRoot _game;
         private ITickProcessor _jedi;
@@ -94,7 +94,7 @@ namespace Rebellion.Simulation
             _research = research;
 
             _movementCommands = services.GetService<MovementCommands>();
-            _fogOfWarCommands = services.GetService<FogOfWarCommands>();
+            _fogOfWarObserver = services.GetService<FogOfWarObserver>();
             _spaceCombatCommands = services.GetService<SpaceCombatCommands>();
             _messages = new MessageTickProcessor();
             _factionAutomation = new FactionAutomationTickProcessor(
@@ -111,15 +111,18 @@ namespace Rebellion.Simulation
             _captive = new CaptiveTickProcessor(services.GetService<CaptiveCommands>());
             _movement = new MovementTickProcessor(_movementCommands);
             _spaceCombat = new SpaceCombatTickProcessor(_spaceCombatCommands);
-            _missions = new MissionTickProcessor(services.GetService<MissionCommands>());
+            _missions = new MissionTickProcessor(
+                services.GetService<MissionCommands>(),
+                services.GetService<MissionResolver>()
+            );
             _gameEvents = new GameEventTickProcessor(services.GetService<GameEventCommands>());
             _naming = new NamingTickProcessor(services.GetService<NamingCommands>());
             _aiDirector = services.GetService<AIDirector>();
-            _blockade = new BlockadeTickProcessor(services.GetService<BlockadeCommands>());
+            _blockade = new BlockadeTickProcessor(services.GetService<BlockadeTracker>());
             _planetaryControl = new PlanetaryControlTickProcessor(
                 services.GetService<PlanetaryControlCommands>()
             );
-            _uprising = new UprisingTickProcessor(services.GetService<UprisingCommands>());
+            _uprising = new UprisingTickProcessor(services.GetService<UprisingResolver>());
             _jedi = new JediTickProcessor(services.GetService<JediCommands>());
             _victory = new VictoryTickProcessor(services.GetService<VictoryCommands>());
         }
@@ -207,7 +210,7 @@ namespace Rebellion.Simulation
             );
 
             List<GameResult> waypointResults = ProcessAvailableWaypointContinuations();
-            _fogOfWarCommands.RefreshVisibleKnowledge();
+            _fogOfWarObserver.RefreshVisibleKnowledge();
 
             List<GameResult> movementPhaseResults = CombineResults(
                 movementResults,
@@ -248,7 +251,7 @@ namespace Rebellion.Simulation
             ProcessResults(_research.ProcessTick(_game));
             ProcessResults(_jedi.ProcessTick(_game));
             ProcessResults(_victory.ProcessTick(_game));
-            _fogOfWarCommands.RefreshVisibleKnowledge();
+            _fogOfWarObserver.RefreshVisibleKnowledge();
             _tickState = TickExecutionState.Idle;
             TickCompleted?.Invoke();
         }
@@ -301,7 +304,7 @@ namespace Rebellion.Simulation
                     _spaceCombat.ProcessTick(_game),
                     processMessages: false
                 );
-                _fogOfWarCommands.RefreshVisibleKnowledge();
+                _fogOfWarObserver.RefreshVisibleKnowledge();
                 _deferredMessageResults.AddRange(combatResults);
                 _deferredMessageResults.AddRange(waypointResults);
                 _deferredMessageResults.AddRange(additionalCombatResults);
@@ -344,7 +347,7 @@ namespace Rebellion.Simulation
                 _spaceCombat.ProcessTick(_game),
                 processMessages: false
             );
-            _fogOfWarCommands.RefreshVisibleKnowledge();
+            _fogOfWarObserver.RefreshVisibleKnowledge();
             if (_spaceCombatCommands.HasPendingDecision)
             {
                 StoreDeferredMessageResults(combatResults);

@@ -5,6 +5,7 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
+using Rebellion.Game.Units;
 
 namespace Rebellion.Simulation
 {
@@ -13,6 +14,8 @@ namespace Rebellion.Simulation
     {
         private readonly GameRoot _game;
         private readonly PlanetaryControlCommands _commands;
+        private readonly CaptiveCommands _captives;
+        private readonly MovementCommands _movement;
         private readonly PlanetaryControlQueries _queries;
         private readonly HashSet<string> _controlShiftedOwners = new HashSet<string>();
         private IDisposable[] _subscriptions;
@@ -21,15 +24,21 @@ namespace Rebellion.Simulation
         /// <summary>Creates the planetary control listener.</summary>
         /// <param name="game">The active game state and planetary-control configuration.</param>
         /// <param name="commands">The ownership and support operations.</param>
+        /// <param name="captives">The officer capture operations.</param>
+        /// <param name="movement">The movement operations used to evacuate displaced units.</param>
         /// <param name="queries">The planetary-control state queries.</param>
         public PlanetaryControlObserver(
             GameRoot game,
             PlanetaryControlCommands commands,
+            CaptiveCommands captives,
+            MovementCommands movement,
             PlanetaryControlQueries queries
         )
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
             _commands = commands ?? throw new ArgumentNullException(nameof(commands));
+            _captives = captives ?? throw new ArgumentNullException(nameof(captives));
+            _movement = movement ?? throw new ArgumentNullException(nameof(movement));
             _queries = queries ?? throw new ArgumentNullException(nameof(queries));
         }
 
@@ -419,6 +428,8 @@ namespace Rebellion.Simulation
             if (change?.Planet == null)
                 return results;
 
+            EvictDisplacedUnits(change, results);
+
             int shift;
             switch (change.Reason)
             {
@@ -480,6 +491,50 @@ namespace Rebellion.Simulation
             }
 
             return results;
+        }
+
+        /// <summary>Evacuates units that cannot remain after a planet changes ownership.</summary>
+        /// <param name="change">The completed ownership change.</param>
+        /// <param name="results">The collection receiving destruction facts.</param>
+        private void EvictDisplacedUnits(
+            PlanetOwnershipChangedResult change,
+            ICollection<GameResult> results
+        )
+        {
+            string newOwnerInstanceId = change.NewOwner?.InstanceID;
+            List<IMovable> displacedUnits = change
+                .Planet.GetChildren<IMovable>()
+                .Where(unit =>
+                    unit.GetOwnerInstanceID() != newOwnerInstanceId
+                    && unit is not Fleet
+                    && unit is not Building
+                )
+                .ToList();
+
+            foreach (IMovable unit in displacedUnits)
+            {
+                if (_movement.TryEvacuateToNearestFriendlyPlanet(unit, results, force: true))
+                    continue;
+
+                if (unit is Officer officer && change.NewOwner != null)
+                {
+                    _captives.TryCaptureOfficer(officer, change.NewOwner);
+                    continue;
+                }
+
+                if (unit is not (Starfighter or Regiment) || change.NewOwner == null)
+                    continue;
+
+                _game.DeleteNode(unit);
+                results.Add(
+                    new GameObjectDestroyedResult
+                    {
+                        DestroyedObject = unit,
+                        Context = change.Planet,
+                        Tick = change.Tick,
+                    }
+                );
+            }
         }
 
         /// <summary>

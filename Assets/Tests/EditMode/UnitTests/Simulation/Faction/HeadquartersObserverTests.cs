@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
@@ -16,7 +17,7 @@ namespace Rebellion.Tests.Simulation
         public void HandleResults_NullArrivals_ReturnsNoResults()
         {
             (GameRoot game, _, _, _, _) = CreateGame(isMobile: true);
-            HeadquartersObserver observer = new HeadquartersObserver(CreateCommands(game));
+            HeadquartersObserver observer = new HeadquartersObserver(game);
 
             Assert.IsEmpty(observer.HandleResults((IReadOnlyList<UnitArrivedResult>)null));
         }
@@ -25,7 +26,7 @@ namespace Rebellion.Tests.Simulation
         public void HandleResults_NullOwnershipChanges_ReturnsNoResults()
         {
             (GameRoot game, _, _, _, _) = CreateGame(isMobile: true);
-            HeadquartersObserver observer = new HeadquartersObserver(CreateCommands(game));
+            HeadquartersObserver observer = new HeadquartersObserver(game);
 
             Assert.IsEmpty(
                 observer.HandleResults((IReadOnlyList<PlanetOwnershipChangedResult>)null)
@@ -37,7 +38,7 @@ namespace Rebellion.Tests.Simulation
         {
             (GameRoot game, Faction faction, Planet origin, Planet destination, Building hq) =
                 CreateGame(isMobile: true);
-            HeadquartersObserver observer = new HeadquartersObserver(CreateCommands(game));
+            HeadquartersObserver observer = new HeadquartersObserver(game);
 
             List<GameResult> results = observer.HandleResults(
                 new List<UnitArrivedResult>
@@ -63,7 +64,7 @@ namespace Rebellion.Tests.Simulation
             game.GetFactions().Add(firstAttacker);
             game.GetFactions().Add(secondAttacker);
             game.CurrentTick = 42;
-            HeadquartersObserver observer = new HeadquartersObserver(CreateCommands(game));
+            HeadquartersObserver observer = new HeadquartersObserver(game);
 
             List<GameResult> results = observer.HandleResults(
                 new List<PlanetOwnershipChangedResult>
@@ -102,22 +103,37 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(origin.InstanceID, faction.HQInstanceID);
         }
 
-        /// <summary>Creates headquarters operations with the game's movement dependencies.</summary>
-        /// <param name="game">The active game graph.</param>
-        /// <returns>The headquarters command implementation.</returns>
-        private static HeadquartersCommands CreateCommands(GameRoot game)
+        [Test]
+        public void HandleResults_HostilePlanetCapture_DestroysMobileHeadquarters()
         {
-            MovementQueries movementQueries = new MovementQueries(game);
-            MovementCommands movement = new MovementCommands(
-                game,
-                new FogOfWarCommands(game),
-                new FleetCommands(game),
-                new FogOfWarQueries(game),
-                movementQueries
+            (GameRoot game, Faction faction, Planet origin, _, Building headquarters) = CreateGame(
+                isMobile: true
             );
-            HeadquartersQueries queries = new HeadquartersQueries(game);
-            movementQueries.SetCompletedBuildingMovementPolicy(queries.CanMove);
-            return new HeadquartersCommands(game, movement, queries);
+            Faction attacker = new Faction { InstanceID = "empire" };
+            game.GetFactions().Add(attacker);
+
+            List<GameResult> results = new HeadquartersObserver(game).HandleResults(
+                new[]
+                {
+                    new PlanetOwnershipChangedResult
+                    {
+                        Planet = origin,
+                        PreviousOwner = faction,
+                        NewOwner = attacker,
+                        Tick = 12,
+                    },
+                }
+            );
+
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Building>(headquarters.InstanceID));
+            Assert.IsFalse(origin.IsHeadquarters);
+            Assert.IsNull(faction.HQInstanceID);
+            HeadquartersDestroyedResult destroyed = results
+                .OfType<HeadquartersDestroyedResult>()
+                .Single();
+            Assert.AreSame(headquarters, destroyed.Headquarters);
+            Assert.AreSame(faction, destroyed.Defender);
+            Assert.AreSame(attacker, destroyed.Attacker);
         }
 
         /// <summary>Creates a faction with headquarters and two registered planets.</summary>

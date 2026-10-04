@@ -472,7 +472,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ReleaseOfficer_OfficerAlreadyMoving_PreservesMovement()
+        public void TryReleaseOfficer_OfficerAlreadyMoving_PreservesMovement()
         {
             (GameRoot game, Planet planet, Officer captive, MovementCommands movement) =
                 BuildScene();
@@ -480,19 +480,19 @@ namespace Rebellion.Tests.Simulation
             captive.Movement = transfer;
             CaptiveCommands commands = CreateCommands(game, new ThrowingRNG(), movement);
 
-            commands.ReleaseOfficer(captive, planet, game.CurrentTick, captive.CaptorInstanceID);
+            commands.TryReleaseOfficer(captive);
 
             Assert.AreSame(transfer, captive.Movement);
         }
 
         [Test]
-        public void ReleaseOfficer_CaptiveReleased_PreservesLoyalty()
+        public void TryReleaseOfficer_CaptiveReleased_PreservesLoyalty()
         {
             (GameRoot game, Planet planet, Officer captive, MovementCommands movement) =
                 BuildScene();
             CaptiveCommands commands = CreateCommands(game, new ThrowingRNG(), movement);
 
-            commands.ReleaseOfficer(captive, planet, game.CurrentTick, captive.CaptorInstanceID);
+            commands.TryReleaseOfficer(captive);
 
             Assert.AreEqual(80, captive.Loyalty);
         }
@@ -510,7 +510,7 @@ namespace Rebellion.Tests.Simulation
             MovementCommands movement
         )
         {
-            return new CaptiveCommands(game, provider, movement, new FogOfWarCommands(game));
+            return new CaptiveCommands(game, provider, movement);
         }
 
         /// <summary>

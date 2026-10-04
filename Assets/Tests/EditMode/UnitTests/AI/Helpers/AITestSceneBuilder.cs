@@ -332,8 +332,6 @@ namespace Rebellion.Tests.AI.Helpers
                 );
             PlanetaryControlCommands planetaryControl = new PlanetaryControlCommands(
                 game,
-                movementSystem,
-                fog,
                 new PlanetaryControlQueries(game),
                 fogQueries
             );

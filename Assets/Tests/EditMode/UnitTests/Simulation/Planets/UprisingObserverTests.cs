@@ -126,12 +126,10 @@ namespace Rebellion.Tests.Simulation
             );
             PlanetaryControlCommands planetaryControl = new PlanetaryControlCommands(
                 game,
-                movementSystem,
-                new FogOfWarCommands(game),
                 new PlanetaryControlQueries(game),
                 new FogOfWarQueries(game)
             );
-            UprisingCommands uprisingSystem = new UprisingCommands(
+            UprisingResolver uprisingSystem = new UprisingResolver(
                 game,
                 rng ?? new StubRNG(),
                 planetaryControl

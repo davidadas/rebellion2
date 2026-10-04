@@ -43,10 +43,13 @@ namespace Rebellion.Tests.Simulation
         /// <param name="results">The result bus receiving combat outcomes.</param>
         protected void ConnectPlanetaryControl(GameRoot game, GameResultBus results)
         {
-            (_, PlanetaryControlCommands planetaryControl) = CreatePlanetaryCombatSystems(game);
+            (MovementCommands movement, PlanetaryControlCommands planetaryControl) =
+                CreatePlanetaryCombatSystems(game);
             new PlanetaryControlObserver(
                 game,
                 planetaryControl,
+                new CaptiveCommands(game, new FixedRNG(0), movement),
+                movement,
                 new PlanetaryControlQueries(game)
             ).Connect(results);
         }
@@ -107,8 +110,6 @@ namespace Rebellion.Tests.Simulation
             );
             PlanetaryControlCommands planetaryControl = new PlanetaryControlCommands(
                 game,
-                movement,
-                fogOfWar,
                 new PlanetaryControlQueries(game),
                 new FogOfWarQueries(game)
             );

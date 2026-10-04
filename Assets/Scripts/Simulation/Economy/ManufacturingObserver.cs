@@ -51,6 +51,79 @@ namespace Rebellion.Simulation
                 subscription.Dispose();
         }
 
+        /// <summary>Rebuilds all manufacturing queues from persisted scene-graph items.</summary>
+        internal void RebuildQueues()
+        {
+            List<Planet> planets = _game.GetSceneNodesByType<Planet>().ToList();
+            Dictionary<Planet, Dictionary<ManufacturingType, List<IManufacturable>>> candidates =
+                planets.ToDictionary(
+                    planet => planet,
+                    _ => new Dictionary<ManufacturingType, List<IManufacturable>>()
+                );
+
+            _game
+                .GetGalaxyMap()
+                .Traverse(node =>
+                {
+                    if (
+                        node
+                            is not IManufacturable
+                            {
+                                ManufacturingStatus: ManufacturingStatus.Building
+                            } manufacturable
+                        || string.IsNullOrEmpty(manufacturable.ProducerPlanetID)
+                    )
+                    {
+                        return;
+                    }
+
+                    Planet producer = _game.GetSceneNodeByInstanceID<Planet>(
+                        manufacturable.ProducerPlanetID
+                    );
+                    if (producer == null)
+                        return;
+
+                    ManufacturingType type = manufacturable.GetManufacturingType();
+                    if (!candidates[producer].TryGetValue(type, out List<IManufacturable> lane))
+                    {
+                        lane = new List<IManufacturable>();
+                        candidates[producer][type] = lane;
+                    }
+
+                    lane.Add(manufacturable);
+                });
+
+            foreach (Planet planet in planets)
+            {
+                Dictionary<ManufacturingType, List<IManufacturable>> queue =
+                    planet.GetManufacturingQueue();
+                queue.Clear();
+                foreach (
+                    KeyValuePair<ManufacturingType, List<IManufacturable>> entry in candidates[
+                        planet
+                    ]
+                )
+                {
+                    queue[entry.Key] = RestoreQueueOrder(entry.Value);
+                }
+            }
+        }
+
+        /// <summary>Restores persisted queue order and normalizes its sequence values.</summary>
+        /// <param name="candidates">The queued items discovered in the scene graph.</param>
+        /// <returns>The items in manufacturing order.</returns>
+        private static List<IManufacturable> RestoreQueueOrder(
+            IReadOnlyList<IManufacturable> candidates
+        )
+        {
+            List<IManufacturable> ordered = candidates
+                .OrderBy(item => item.ManufacturingQueueSequence)
+                .ToList();
+            for (int index = 0; index < ordered.Count; index++)
+                ordered[index].ManufacturingQueueSequence = index + 1;
+            return ordered;
+        }
+
         /// <summary>
         /// Cancels affected production lanes after individually reported buildings are destroyed.
         /// </summary>

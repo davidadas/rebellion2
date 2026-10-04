@@ -9,6 +9,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Simulation;
+using Rebellion.Util.Random;
 
 namespace Rebellion.Tests.Simulation
 {
@@ -69,24 +70,26 @@ namespace Rebellion.Tests.Simulation
             };
             _game.AttachNode(_empirePlanet, planetSector);
 
+            MovementQueries movementQueries = new MovementQueries(_game);
             _movementSystem = new MovementCommands(
                 _game,
                 new FogOfWarCommands(_game),
                 new FleetCommands(_game),
                 new FogOfWarQueries(_game),
-                new MovementQueries(_game)
+                movementQueries
             );
+            PlanetaryControlQueries controlQueries = new PlanetaryControlQueries(_game);
             _commands = new PlanetaryControlCommands(
                 _game,
-                _movementSystem,
-                new FogOfWarCommands(_game),
-                new PlanetaryControlQueries(_game),
+                controlQueries,
                 new FogOfWarQueries(_game)
             );
             _observer = new PlanetaryControlObserver(
                 _game,
                 _commands,
-                new PlanetaryControlQueries(_game)
+                new CaptiveCommands(_game, new FixedRNG(0), _movementSystem),
+                _movementSystem,
+                controlQueries
             );
         }
 
@@ -992,7 +995,7 @@ namespace Rebellion.Tests.Simulation
         private void RemoveGarrisonAndReconcile(Regiment garrison)
         {
             _game.DeleteNode(garrison);
-            _observer.HandleResults(
+            List<GameResult> results = _observer.HandleResults(
                 new[]
                 {
                     new PlanetGarrisonChangedResult
@@ -1002,6 +1005,7 @@ namespace Rebellion.Tests.Simulation
                     },
                 }
             );
+            _observer.HandleResults(results.OfType<PlanetOwnershipChangedResult>().ToList());
         }
     }
 }

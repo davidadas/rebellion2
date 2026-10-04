@@ -137,7 +137,7 @@ namespace Rebellion.Simulation
 
                 if (!enqueued)
                 {
-                    _fleetSystem.RemoveIfEmpty(capitalShipDestination);
+                    FleetLifecycle.RemoveEmptyFleet(_game, capitalShipDestination);
                     return started;
                 }
 
@@ -1171,94 +1171,7 @@ namespace Rebellion.Simulation
                 _game.DetachNode(sceneNode);
 
             if (parent is Fleet fleet)
-                _fleetSystem.RemoveIfEmpty(fleet);
-        }
-
-        /// <summary>
-        /// Rebuilds manufacturing queues for all planets from scene graph state.
-        /// Called after loading a saved game to reconstruct queue state from serialized items.
-        /// </summary>
-        internal void RebuildQueues()
-        {
-            List<Planet> planets = _game.GetSceneNodesByType<Planet>().ToList();
-            Dictionary<Planet, Dictionary<ManufacturingType, List<IManufacturable>>> candidates =
-                planets.ToDictionary(
-                    planet => planet,
-                    _ => new Dictionary<ManufacturingType, List<IManufacturable>>()
-                );
-
-            _game
-                .GetGalaxyMap()
-                .Traverse(node =>
-                {
-                    if (node is IManufacturable manufacturable)
-                    {
-                        if (manufacturable.ManufacturingStatus != ManufacturingStatus.Building)
-                        {
-                            return;
-                        }
-
-                        if (string.IsNullOrEmpty(manufacturable.ProducerPlanetID))
-                        {
-                            return;
-                        }
-
-                        Planet producerPlanet = _game.GetSceneNodeByInstanceID<Planet>(
-                            manufacturable.ProducerPlanetID
-                        );
-                        if (producerPlanet == null)
-                        {
-                            return;
-                        }
-
-                        ManufacturingType type = manufacturable.GetManufacturingType();
-                        if (
-                            !candidates[producerPlanet]
-                                .TryGetValue(type, out List<IManufacturable> lane)
-                        )
-                        {
-                            lane = new List<IManufacturable>();
-                            candidates[producerPlanet][type] = lane;
-                        }
-
-                        lane.Add(manufacturable);
-                    }
-                });
-
-            foreach (Planet planet in planets)
-            {
-                Dictionary<ManufacturingType, List<IManufacturable>> queue =
-                    planet.GetManufacturingQueue();
-                queue.Clear();
-                foreach (
-                    KeyValuePair<ManufacturingType, List<IManufacturable>> entry in candidates[
-                        planet
-                    ]
-                )
-                {
-                    List<IManufacturable> ordered = RestoreQueueOrder(entry.Value);
-                    queue[entry.Key] = ordered;
-                }
-            }
-        }
-
-        /// <summary>
-        /// Restores a queue from persisted item sequences.
-        /// </summary>
-        /// <param name="candidates">The live queued items discovered in the scene graph.</param>
-        /// <returns>The rebuilt queue in manufacturing order.</returns>
-        private static List<IManufacturable> RestoreQueueOrder(
-            IReadOnlyList<IManufacturable> candidates
-        )
-        {
-            List<IManufacturable> ordered = candidates
-                .OrderBy(item => item.ManufacturingQueueSequence)
-                .ToList();
-
-            for (int index = 0; index < ordered.Count; index++)
-                ordered[index].ManufacturingQueueSequence = index + 1;
-
-            return ordered;
+                FleetLifecycle.RemoveEmptyFleet(_game, fleet);
         }
     }
 }

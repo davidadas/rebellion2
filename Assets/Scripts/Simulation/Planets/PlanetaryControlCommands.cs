@@ -17,8 +17,6 @@ namespace Rebellion.Simulation
     {
         private readonly GameRoot _game;
         private readonly PlanetaryControlQueries _queries;
-        private readonly MovementCommands _movementSystem;
-        private readonly FogOfWarCommands _fogOfWarSystem;
         private readonly FogOfWarQueries _fogOfWarQueries;
         private readonly HashSet<string> _controlChangesInProgress = new HashSet<string>();
 
@@ -26,21 +24,15 @@ namespace Rebellion.Simulation
         /// Creates a new PlanetaryControlCommands.
         /// </summary>
         /// <param name="game">The game instance.</param>
-        /// <param name="movementSystem">Used to evacuate enemy units on ownership change.</param>
-        /// <param name="fogOfWarSystem">Used to refresh faction snapshots on ownership change.</param>
         /// <param name="fogOfWarQueries">The visibility rules for ownership-change observers.</param>
         /// <param name="queries">The read-only planetary control rules.</param>
         public PlanetaryControlCommands(
             GameRoot game,
-            MovementCommands movementSystem,
-            FogOfWarCommands fogOfWarSystem,
             PlanetaryControlQueries queries,
             FogOfWarQueries fogOfWarQueries
         )
         {
             _game = game;
-            _movementSystem = movementSystem;
-            _fogOfWarSystem = fogOfWarSystem;
             _queries = queries;
             _fogOfWarQueries = fogOfWarQueries;
         }
@@ -399,7 +391,6 @@ namespace Rebellion.Simulation
                 if (newOwner != null)
                     TransferBuildings(planet, newOwner);
 
-                EvictEnemyUnits(planet, newOwnerId);
                 planet.EndUprising();
                 if (newOwner == null)
                 {
@@ -410,10 +401,6 @@ namespace Rebellion.Simulation
                 {
                     _game.ChangeOwnership(planet, newOwnerId);
                 }
-
-                if (previousOwner?.InstanceID != newOwnerId)
-                    CaptureSnapshotForFaction(planet, previousOwner);
-                CaptureOwnershipChange(planet, observers);
 
                 return CreateOwnershipChangedResult(planet, previousOwner, newOwner, observers);
             }
@@ -514,9 +501,7 @@ namespace Rebellion.Simulation
                 .GetFactions()
                 .Where(faction =>
                     sector?.SectorType == PlanetSectorType.Core
-                    || (
-                        _fogOfWarSystem != null && _fogOfWarQueries.IsPlanetVisible(planet, faction)
-                    )
+                    || _fogOfWarQueries.IsPlanetVisible(planet, faction)
                 )
                 .ToList();
 
@@ -529,37 +514,6 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Records the new owner for every faction that observed a control change.
-        /// </summary>
-        /// <param name="planet">The planet whose owner changed.</param>
-        /// <param name="observers">The factions that observed the change.</param>
-        private void CaptureOwnershipChange(Planet planet, IEnumerable<Faction> observers)
-        {
-            PlanetSector sector = planet.GetParentOfType<PlanetSector>();
-            if (_fogOfWarSystem == null || sector == null)
-                return;
-
-            _fogOfWarSystem.CaptureOwnershipChange(observers, planet, sector, _game.CurrentTick);
-        }
-
-        /// <summary>
-        /// Captures the current planet state for one faction when that faction loses direct ownership.
-        /// </summary>
-        /// <param name="planet">The planet being snapshotted.</param>
-        /// <param name="faction">The faction receiving the snapshot.</param>
-        private void CaptureSnapshotForFaction(Planet planet, Faction faction)
-        {
-            if (_fogOfWarSystem == null || faction == null)
-                return;
-
-            PlanetSector sector = planet.GetParentOfType<PlanetSector>();
-            if (sector == null)
-                return;
-
-            _fogOfWarSystem.CaptureSnapshot(faction, planet, sector, _game.CurrentTick);
-        }
-
-        /// <summary>
         /// Transfers all buildings on the planet to the new owner.
         /// </summary>
         /// <param name="planet">The planet whose buildings are transferred.</param>
@@ -569,32 +523,6 @@ namespace Rebellion.Simulation
             foreach (Building building in planet.GetChildren<Building>(includeDisabled: true))
             {
                 _game.ChangeOwnership(building, newOwner.InstanceID);
-            }
-        }
-
-        /// <summary>
-        /// Evacuates non-owner units to the nearest friendly planet that accepts them. Regiments
-        /// and starfighters with no reachable destination are destroyed; officers with no
-        /// reachable destination are captured by the new owner.
-        /// </summary>
-        /// <param name="planet">The planet to evict enemy units from.</param>
-        /// <param name="newOwnerID">The instance ID of the new owning faction.</param>
-        private void EvictEnemyUnits(Planet planet, string newOwnerID)
-        {
-            List<IMovable> enemies = planet
-                .GetChildren<IMovable>()
-                .Where(m =>
-                    m.GetOwnerInstanceID() != newOwnerID && m is not Fleet && m is not Building
-                )
-                .ToList();
-
-            foreach (IMovable unit in enemies)
-            {
-                _movementSystem.EvacuateToNearestFriendlyPlanet(
-                    unit,
-                    evictingOwnerInstanceID: newOwnerID,
-                    force: true
-                );
             }
         }
     }
