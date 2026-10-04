@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Events;
@@ -9,6 +10,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Random;
+using Rebellion.Util.Serialization;
 
 namespace Rebellion.Tests.Game
 {
@@ -854,6 +856,31 @@ namespace Rebellion.Tests.Game
             // Next roll should match what a fresh provider at position 7 would yield.
             int expected = new SystemRandomProvider(12345, advanceTo: 7).NextInt(0, int.MaxValue);
             Assert.AreEqual(expected, game.Random.NextInt(0, int.MaxValue));
+        }
+
+        [Test]
+        public void PersistedState_GameRootMembers_UsesExplicitNonPublicMembers()
+        {
+            IReadOnlyList<MemberInfo> members = ReflectionHelper.GetPersistableMembers(
+                typeof(GameRoot),
+                ReflectionHelper.OperationType.Write
+            );
+
+            Assert.IsTrue(
+                members.All(member =>
+                    member.GetCustomAttribute<PersistableMemberAttribute>() != null
+                )
+            );
+            Assert.IsTrue(
+                members.All(member =>
+                    member switch
+                    {
+                        FieldInfo field => !field.IsPublic,
+                        PropertyInfo property => property.GetMethod?.IsPublic != true,
+                        _ => false,
+                    }
+                )
+            );
         }
 
         [Test]
