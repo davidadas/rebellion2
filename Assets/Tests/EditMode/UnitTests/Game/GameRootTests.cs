@@ -198,20 +198,46 @@ namespace Rebellion.Tests.Game
         [TestCase(BattleKind.Ground)]
         public void ActiveBattle_WhenPresent_RoundTripsDirectlyUnderGame(BattleKind kind)
         {
-            _game.SetActiveBattle(new ActiveBattle { Kind = kind, PlanetInstanceId = "PLANET1" });
+            ActiveBattle activeBattle = new ActiveBattle
+            {
+                Map = new BattleMap { Kind = kind },
+                AttackerOwnerInstanceID = "FACTION1",
+                DefenderOwnerInstanceID = "FACTION2",
+                PlanetInstanceID = "PLANET1",
+            };
+            activeBattle
+                .Map.GetDeploymentRegions()
+                .Add(
+                    new BattleMapDeploymentRegion
+                    {
+                        Side = DeploymentSide.Attacker,
+                        Bounds = new BattleMapBounds { MinimumX = -100f, MaximumX = 0f },
+                    }
+                );
+            _game.SetActiveBattle(activeBattle);
 
             string xml = SerializationHelper.Serialize(_game);
             XElement gameElement = XDocument.Parse(xml).Root;
             Assert.IsNotNull(gameElement);
             XElement battleElement = gameElement.Element("ActiveBattle");
             Assert.IsNotNull(battleElement);
-            Assert.AreEqual(kind.ToString(), battleElement.Element("Kind")?.Value);
-            Assert.AreEqual("PLANET1", battleElement.Element("PlanetInstanceId")?.Value);
+            Assert.AreEqual(kind.ToString(), battleElement.Element("Map")?.Element("Kind")?.Value);
+            Assert.AreEqual("PLANET1", battleElement.Element("PlanetInstanceID")?.Value);
 
             GameRoot restored = SerializationHelper.Deserialize<GameRoot>(xml);
             Assert.IsNotNull(restored.GetActiveBattle());
-            Assert.AreEqual(kind, restored.GetActiveBattle().Kind);
-            Assert.AreEqual("PLANET1", restored.GetActiveBattle().PlanetInstanceId);
+            Assert.AreEqual(kind, restored.GetActiveBattle().Map.Kind);
+            Assert.AreEqual("FACTION1", restored.GetActiveBattle().AttackerOwnerInstanceID);
+            Assert.AreEqual("FACTION2", restored.GetActiveBattle().DefenderOwnerInstanceID);
+            Assert.AreEqual("PLANET1", restored.GetActiveBattle().PlanetInstanceID);
+            Assert.AreEqual(
+                DeploymentSide.Attacker,
+                restored.GetActiveBattle().Map.GetDeploymentRegions()[0].Side
+            );
+            Assert.AreEqual(
+                -100f,
+                restored.GetActiveBattle().Map.GetDeploymentRegions()[0].Bounds.MinimumX
+            );
         }
 
         [Test]

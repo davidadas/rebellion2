@@ -10,6 +10,9 @@ namespace Rebellion.SceneGraph
     /// </summary>
     public abstract class BaseSceneNode : BaseGameEntity, ISceneNode
     {
+        public string ModelPath { get; set; }
+        public ModelDimensions ModelSize { get; set; }
+
         // Parent Info.
         public string ParentInstanceID { get; set; }
 
@@ -282,6 +285,8 @@ namespace Rebellion.SceneGraph
             copy.CapturedOverlayImagePath = CapturedOverlayImagePath;
             copy.InjuredImagePath = InjuredImagePath;
             copy.Description = Description;
+            copy.ModelPath = ModelPath;
+            copy.ModelSize = ModelSize?.CreateCopy();
             copy.OwnerInstanceID = OwnerInstanceID;
             copy.IsEnabled = IsEnabled;
         }

@@ -15,12 +15,10 @@ namespace Rebellion.Game.ShipComponents
         {
             Engine copy = new Engine
             {
-                Health = Health,
-                Targetable = Targetable,
                 SublightSpeed = SublightSpeed,
                 Maneuverability = Maneuverability,
             };
-            CopyEntityStateTo(copy);
+            CopyComponentStateTo(copy);
             return copy;
         }
     }

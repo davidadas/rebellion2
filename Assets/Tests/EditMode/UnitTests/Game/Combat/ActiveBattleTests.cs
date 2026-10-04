@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using NUnit.Framework;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Tests.Game.Combat
@@ -45,7 +46,7 @@ namespace Rebellion.Tests.Game.Combat
             Assert.AreEqual(3, battle.GetCombatants()["FACTION_1"].Count);
             foreach (CombatUnit combatUnit in addedCombatants)
             {
-                Assert.AreEqual(source.InstanceID, combatUnit.SourceUnitId);
+                Assert.AreEqual(source.InstanceID, combatUnit.SourceUnitInstanceID);
                 Starfighter fighter = combatUnit.GetUnit() as Starfighter;
                 Assert.IsNotNull(fighter);
                 Assert.AreEqual(1, fighter.CurrentSquadronSize);
@@ -60,22 +61,55 @@ namespace Rebellion.Tests.Game.Combat
                 InstanceID = "CAPITAL_SHIP_1",
                 OwnerInstanceID = "FACTION_1",
                 CurrentHullStrength = 75,
+                ModelPath = "Pack/Units/TestCapitalShip/Models/model",
+                ModelSize = new ModelDimensions
+                {
+                    Width = 100f,
+                    Height = 40f,
+                    Depth = 250f,
+                },
             };
             ActiveBattle battle = new ActiveBattle
             {
-                Kind = BattleKind.Space,
-                PlanetInstanceId = "PLANET_1",
+                Map = new BattleMap { Kind = BattleKind.Space },
+                AttackerOwnerInstanceID = "FACTION_1",
+                DefenderOwnerInstanceID = "FACTION_2",
+                PlanetInstanceID = "PLANET_1",
             };
-            battle.AddCombatants(source);
+            CombatUnit combatUnit = battle.AddCombatants(source)[0];
+            combatUnit.Position = new BattleVector3
+            {
+                X = 10f,
+                Y = 20f,
+                Z = 30f,
+            };
+            combatUnit.Forward = new BattleVector3
+            {
+                X = 0f,
+                Y = 1f,
+                Z = 0f,
+            };
 
             string xml = SerializationHelper.Serialize(battle);
             ActiveBattle restored = SerializationHelper.Deserialize<ActiveBattle>(xml);
             CombatUnit restoredCombatUnit = restored.GetCombatants()["FACTION_1"][0];
             CapitalShip restoredShip = restoredCombatUnit.GetUnit() as CapitalShip;
 
-            Assert.AreEqual(source.InstanceID, restoredCombatUnit.SourceUnitId);
+            Assert.AreEqual(source.InstanceID, restoredCombatUnit.SourceUnitInstanceID);
             Assert.IsNotNull(restoredShip);
             Assert.AreEqual(75, restoredShip.CurrentHullStrength);
+            Assert.AreEqual(10f, restoredCombatUnit.Position.X);
+            Assert.AreEqual(20f, restoredCombatUnit.Position.Y);
+            Assert.AreEqual(30f, restoredCombatUnit.Position.Z);
+            Assert.AreEqual(0f, restoredCombatUnit.Forward.X);
+            Assert.AreEqual(1f, restoredCombatUnit.Forward.Y);
+            Assert.AreEqual(0f, restoredCombatUnit.Forward.Z);
+            Assert.AreEqual(source.ModelPath, restoredShip.ModelPath);
+            Assert.AreEqual(100f, restoredShip.ModelSize.Width);
+            Assert.AreEqual(40f, restoredShip.ModelSize.Height);
+            Assert.AreEqual(250f, restoredShip.ModelSize.Depth);
+            Assert.AreEqual("FACTION_1", restored.AttackerOwnerInstanceID);
+            Assert.AreEqual("FACTION_2", restored.DefenderOwnerInstanceID);
         }
     }
 }

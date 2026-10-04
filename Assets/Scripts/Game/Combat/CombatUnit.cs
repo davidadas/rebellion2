@@ -6,6 +6,17 @@ using Rebellion.Util.Serialization;
 namespace Rebellion.Game.Combat
 {
     /// <summary>
+    /// Stores a three-dimensional value in battle coordinates.
+    /// </summary>
+    [PersistableObject]
+    public sealed class BattleVector3
+    {
+        public float X { get; set; }
+        public float Y { get; set; }
+        public float Z { get; set; }
+    }
+
+    /// <summary>
     /// An independent copy of one strategic unit participating in an active battle.
     /// </summary>
     [PersistableObject]
@@ -16,8 +27,10 @@ namespace Rebellion.Game.Combat
         [PersistableInclude(typeof(Starfighter))]
         private BaseSceneNode _unit;
 
-        public string SourceUnitId { get; set; }
+        public string SourceUnitInstanceID { get; set; }
         public bool HasRetreated { get; set; }
+        public BattleVector3 Position { get; set; } = new BattleVector3();
+        public BattleVector3 Forward { get; set; } = new BattleVector3 { Z = 1f };
 
         /// <summary>
         /// Returns the independently mutable battle copy of the strategic unit.
@@ -50,7 +63,11 @@ namespace Rebellion.Game.Combat
                 starfighter.CurrentSquadronSize = 1;
             }
 
-            return new CombatUnit { SourceUnitId = sourceUnit.InstanceID, _unit = battleCopy };
+            return new CombatUnit
+            {
+                SourceUnitInstanceID = sourceUnit.InstanceID,
+                _unit = battleCopy,
+            };
         }
     }
 }

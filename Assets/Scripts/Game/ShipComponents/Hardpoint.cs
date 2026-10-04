@@ -19,12 +19,10 @@ namespace Rebellion.Game.ShipComponents
         {
             Hardpoint copy = new Hardpoint
             {
-                Health = Health,
-                Targetable = Targetable,
                 FiringArcDegrees = FiringArcDegrees,
                 Weapon = Weapon?.CreateCopy(),
             };
-            CopyEntityStateTo(copy);
+            CopyComponentStateTo(copy);
             return copy;
         }
     }

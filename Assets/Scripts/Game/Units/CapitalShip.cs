@@ -54,7 +54,6 @@ namespace Rebellion.Game.Units
         public string BattleResultImagePath { get; set; }
         public string BattleResultInTransitImagePath { get; set; }
         public string BattleResultDamagedImagePath { get; set; }
-        public string ModelPath { get; set; }
 
         // Naming Info.
         public string ShipNamePoolID { get; set; }
@@ -164,7 +163,6 @@ namespace Rebellion.Game.Units
             copy.BattleResultImagePath = BattleResultImagePath;
             copy.BattleResultInTransitImagePath = BattleResultInTransitImagePath;
             copy.BattleResultDamagedImagePath = BattleResultDamagedImagePath;
-            copy.ModelPath = ModelPath;
             copy.ShipNamePoolID = ShipNamePoolID;
             copy._hasAssignedName = _hasAssignedName;
             copy.ProducerOwnerID = ProducerOwnerID;

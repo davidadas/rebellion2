@@ -353,6 +353,12 @@ namespace Rebellion.Tests.Game.Units
         {
             _capitalShip.ManufacturingQueueSequence = 7;
             _capitalShip.ModelPath = "Pack/Units/TestCapitalShip/Models/model";
+            _capitalShip.ModelSize = new ModelDimensions
+            {
+                Width = 100f,
+                Height = 40f,
+                Depth = 250f,
+            };
             _capitalShip.ShipNamePoolID = "POOL";
             _capitalShip.AssignName("Named Ship");
             Officer officer = new Officer { OwnerInstanceID = "FNALL1" };
@@ -400,6 +406,7 @@ namespace Rebellion.Tests.Game.Units
                         TypeID = "LASER",
                         DisplayName = "Forward laser",
                         Health = 15,
+                        ModelNodePath = "Hull/Weapons/ForwardLaser",
                         FiringArcDegrees = 45f,
                         Weapon = new WeaponData
                         {
@@ -441,6 +448,9 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(_capitalShip.UprisingDefense, deserialized.UprisingDefense);
             Assert.AreEqual("POOL", deserialized.ShipNamePoolID);
             Assert.AreEqual(_capitalShip.ModelPath, deserialized.ModelPath);
+            Assert.AreEqual(100f, deserialized.ModelSize.Width);
+            Assert.AreEqual(40f, deserialized.ModelSize.Height);
+            Assert.AreEqual(250f, deserialized.ModelSize.Depth);
             Assert.AreEqual("Named Ship", deserialized.DisplayName);
             Assert.IsTrue(deserialized.HasAssignedName);
             Assert.AreEqual(
@@ -474,6 +484,10 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual("LASER", deserialized.GetComponents()[0].TypeID);
             Assert.AreEqual("Forward laser", deserialized.GetComponents()[0].DisplayName);
             Assert.AreEqual(15, deserialized.GetComponents()[0].Health);
+            Assert.AreEqual(
+                "Hull/Weapons/ForwardLaser",
+                ((Hardpoint)deserialized.GetComponents()[0]).ModelNodePath
+            );
             Assert.AreEqual(
                 HardpointWeaponType.Turbolaser,
                 ((Hardpoint)deserialized.GetComponents()[0]).Weapon.WeaponType
@@ -514,6 +528,8 @@ namespace Rebellion.Tests.Game.Units
                         new ShieldGenerator
                         {
                             Health = 80,
+                            Targetable = true,
+                            ModelNodePath = "Hull/Systems/ShieldGenerator",
                             Capacity = 300,
                             RechargeRate = 12,
                         },
@@ -533,6 +549,11 @@ namespace Rebellion.Tests.Game.Units
             CapitalShip deserialized = SerializationHelper.Deserialize<CapitalShip>(serialized);
 
             Assert.AreEqual(5, deserialized.GetComponents().Count);
+            Assert.IsTrue(deserialized.GetComponents()[0].Targetable);
+            Assert.AreEqual(
+                "Hull/Systems/ShieldGenerator",
+                deserialized.GetComponents()[0].ModelNodePath
+            );
             Assert.AreEqual(300, ((ShieldGenerator)deserialized.GetComponents()[0]).Capacity);
             Assert.AreEqual(12, ((ShieldGenerator)deserialized.GetComponents()[0]).RechargeRate);
             Assert.AreEqual(5, ((Engine)deserialized.GetComponents()[1]).SublightSpeed);
@@ -546,6 +567,12 @@ namespace Rebellion.Tests.Game.Units
         public void CreateCopy_WithComponentsAndHardpointGroups_CreatesIndependentCopies()
         {
             _capitalShip.ModelPath = "Pack/Units/TestCapitalShip/Models/model";
+            _capitalShip.ModelSize = new ModelDimensions
+            {
+                Width = 100f,
+                Height = 40f,
+                Depth = 250f,
+            };
             HardpointGroup originalGroup = new HardpointGroup();
             originalGroup.GetHardpoints().Add(new Hardpoint { Health = 25 });
             Hardpoint originalComponent = new Hardpoint
@@ -554,6 +581,7 @@ namespace Rebellion.Tests.Game.Units
                 TypeID = "LASER",
                 DisplayName = "Forward laser",
                 Health = 15,
+                ModelNodePath = "Hull/Weapons/ForwardLaser",
                 FiringArcDegrees = 45f,
                 Weapon = new WeaponData
                 {
@@ -575,11 +603,16 @@ namespace Rebellion.Tests.Game.Units
 
             Assert.AreNotSame(originalComponent, copiedComponent);
             Assert.AreEqual(_capitalShip.ModelPath, copy.ModelPath);
+            Assert.AreNotSame(_capitalShip.ModelSize, copy.ModelSize);
+            Assert.AreEqual(100f, copy.ModelSize.Width);
+            Assert.AreEqual(40f, copy.ModelSize.Height);
+            Assert.AreEqual(250f, copy.ModelSize.Depth);
             Assert.AreNotSame(originalGroup, copiedGroup);
             Assert.AreNotSame(originalGroup.GetHardpoints()[0], copiedGroup.GetHardpoints()[0]);
             Assert.AreEqual(originalComponent.InstanceID, copiedComponent.InstanceID);
             Assert.AreEqual(originalComponent.TypeID, copiedComponent.TypeID);
             Assert.AreEqual(originalComponent.DisplayName, copiedComponent.DisplayName);
+            Assert.AreEqual(originalComponent.ModelNodePath, copiedComponent.ModelNodePath);
             Assert.AreNotSame(originalComponent.Weapon, copiedComponent.Weapon);
             Assert.AreEqual(originalComponent.Weapon.WeaponType, copiedComponent.Weapon.WeaponType);
             Assert.AreEqual(15, originalComponent.Health);
@@ -599,6 +632,8 @@ namespace Rebellion.Tests.Game.Units
                         new ShieldGenerator
                         {
                             Health = 80,
+                            Targetable = true,
+                            ModelNodePath = "Hull/Systems/ShieldGenerator",
                             Capacity = 300,
                             RechargeRate = 12,
                         },
@@ -634,6 +669,14 @@ namespace Rebellion.Tests.Game.Units
                 Assert.AreEqual(
                     _capitalShip.GetComponents()[componentIndex].Health,
                     copy.GetComponents()[componentIndex].Health
+                );
+                Assert.AreEqual(
+                    _capitalShip.GetComponents()[componentIndex].Targetable,
+                    copy.GetComponents()[componentIndex].Targetable
+                );
+                Assert.AreEqual(
+                    _capitalShip.GetComponents()[componentIndex].ModelNodePath,
+                    copy.GetComponents()[componentIndex].ModelNodePath
                 );
             }
 

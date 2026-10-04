@@ -15,12 +15,10 @@ namespace Rebellion.Game.ShipComponents
         {
             ShieldGenerator copy = new ShieldGenerator
             {
-                Health = Health,
-                Targetable = Targetable,
                 Capacity = Capacity,
                 RechargeRate = RechargeRate,
             };
-            CopyEntityStateTo(copy);
+            CopyComponentStateTo(copy);
             return copy;
         }
     }

@@ -5,6 +5,31 @@ using Rebellion.Util.Serialization;
 namespace Rebellion.SceneGraph
 {
     /// <summary>
+    /// Stores the local-space dimensions of a scene node's three-dimensional model.
+    /// </summary>
+    [PersistableObject]
+    public sealed class ModelDimensions
+    {
+        public float Width { get; set; }
+        public float Height { get; set; }
+        public float Depth { get; set; }
+
+        /// <summary>
+        /// Creates an independent copy of these dimensions.
+        /// </summary>
+        /// <returns>The copied dimensions.</returns>
+        public ModelDimensions CreateCopy()
+        {
+            return new ModelDimensions
+            {
+                Width = Width,
+                Height = Height,
+                Depth = Depth,
+            };
+        }
+    }
+
+    /// <summary>
     /// The ISceneNode interface serves as the foundational contract for all scene nodes in the game.
     /// It defines essential properties and methods that enable objects to interact within the game's
     /// hierarchical scene graph structure. Implementing this interface allows entities to define
@@ -20,6 +45,9 @@ namespace Rebellion.SceneGraph
     /// </remarks>
     public interface ISceneNode : IGameEntity
     {
+        public string ModelPath { get; set; }
+        public ModelDimensions ModelSize { get; set; }
+
         // Parent Info.
         public string ParentInstanceID { get; set; }
 

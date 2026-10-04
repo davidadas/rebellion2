@@ -16,8 +16,10 @@ namespace Rebellion.Game.Combat
         private Dictionary<string, List<CombatUnit>> _combatants =
             new Dictionary<string, List<CombatUnit>>();
 
-        public BattleKind Kind { get; set; }
-        public string PlanetInstanceId { get; set; }
+        public BattleMap Map { get; set; } = new BattleMap();
+        public string AttackerOwnerInstanceID { get; set; }
+        public string DefenderOwnerInstanceID { get; set; }
+        public string PlanetInstanceID { get; set; }
 
         /// <summary>
         /// Returns the battle units grouped by owning faction.

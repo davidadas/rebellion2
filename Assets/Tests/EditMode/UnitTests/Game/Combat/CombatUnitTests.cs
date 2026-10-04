@@ -23,7 +23,7 @@ namespace Rebellion.Tests.Game.Combat
             CapitalShip copy = combatUnit.GetUnit() as CapitalShip;
 
             Assert.IsNotNull(copy);
-            Assert.AreEqual(source.InstanceID, combatUnit.SourceUnitId);
+            Assert.AreEqual(source.InstanceID, combatUnit.SourceUnitInstanceID);
             Assert.AreNotSame(source, copy);
             Assert.AreEqual(source.InstanceID, copy.InstanceID);
             Assert.AreNotSame(source.GetComponents(), copy.GetComponents());
@@ -50,7 +50,7 @@ namespace Rebellion.Tests.Game.Combat
             Starfighter copy = combatUnit.GetUnit() as Starfighter;
 
             Assert.IsNotNull(copy);
-            Assert.AreEqual(source.InstanceID, combatUnit.SourceUnitId);
+            Assert.AreEqual(source.InstanceID, combatUnit.SourceUnitInstanceID);
             Assert.AreNotSame(source, copy);
             Assert.AreEqual(1, copy.MaxSquadronSize);
             Assert.AreEqual(1, copy.CurrentSquadronSize);
