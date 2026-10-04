@@ -1789,7 +1789,6 @@ namespace Rebellion.Simulation
             private readonly double _durabilityPerFighter;
             private readonly double _commandBonus;
             private readonly double _maximumWeaponCharge;
-            private readonly double _weaponRecharge;
             private readonly double[] _weaponTargetDamage = new double[3];
             private readonly TacticalUnit[] _weaponTargets = new TacticalUnit[3];
             private double _currentDurability;
@@ -1839,9 +1838,6 @@ namespace Rebellion.Simulation
                     + Math.Max(fighter.IonCannon, 0)
                     + Math.Max(fighter.Torpedoes, 0);
                 _currentWeaponCharge = _maximumWeaponCharge;
-                _weaponRecharge =
-                    Math.Max(fighter.ShieldStrength, 1)
-                    * Math.Max(config.AutoResolveFighterWeaponRechargeMultiplier, 0);
             }
 
             /// <summary>
@@ -1977,9 +1973,12 @@ namespace Rebellion.Simulation
                 IRandomNumberProvider random
             )
             {
+                double recharge =
+                    GetRemainingSquadronStrength()
+                    * Math.Max(config.AutoResolveFighterWeaponRechargeMultiplier, 0);
                 _currentWeaponCharge = Math.Min(
                     _maximumWeaponCharge,
-                    _currentWeaponCharge + _weaponRecharge
+                    _currentWeaponCharge + recharge
                 );
             }
 

@@ -555,6 +555,75 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void Resolve_FighterWeaponCharge_WithDifferentShieldStrength_RechargesAtSameRate()
+        {
+            Starfighter unshieldedAttacker = CreateFighter(
+                "unshielded-attacker",
+                squadronSize: 1,
+                weaponStrength: 10
+            );
+            unshieldedAttacker.ShieldStrength = 0;
+            Starfighter shieldedAttacker = CreateFighter(
+                "shielded-attacker",
+                squadronSize: 1,
+                weaponStrength: 10
+            );
+            shieldedAttacker.ShieldStrength = 5;
+            CapitalShip firstDefender = CreatePassiveTarget("first-defender", hull: 100);
+            CapitalShip secondDefender = CreatePassiveTarget("second-defender", hull: 100);
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveMaximumIterations = 4;
+            config.AutoResolveTargetScanDivisor = 1;
+            config.AutoResolveStartingDistance = 0;
+
+            SpaceCombatResult unshieldedResult = Resolve(
+                config,
+                new List<CapitalShip>(),
+                new[] { unshieldedAttacker },
+                new[] { firstDefender },
+                new List<Starfighter>(),
+                defenderCanWithdraw: true
+            );
+            SpaceCombatResult shieldedResult = Resolve(
+                config,
+                new List<CapitalShip>(),
+                new[] { shieldedAttacker },
+                new[] { secondDefender },
+                new List<Starfighter>(),
+                defenderCanWithdraw: true
+            );
+
+            Assert.AreEqual(
+                GetShipOutcome(unshieldedResult, firstDefender).HullAfter,
+                GetShipOutcome(shieldedResult, secondDefender).HullAfter
+            );
+        }
+
+        [Test]
+        public void Resolve_FighterWeaponCharge_AfterSquadronLoss_RechargesAtReducedRate()
+        {
+            Starfighter attacker = CreateFighter("attacker", squadronSize: 12, weaponStrength: 10);
+            attacker.ShieldStrength = 0;
+            CapitalShip defender = CreateShip("defender", hull: 1000, weaponStrength: 6);
+            defender.WeaponRecharge = 0;
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveMaximumIterations = 7;
+            config.AutoResolveTargetScanDivisor = 1;
+            config.AutoResolveStartingDistance = 0;
+
+            SpaceCombatResult result = Resolve(
+                config,
+                new List<CapitalShip>(),
+                new[] { attacker },
+                new[] { defender },
+                new List<Starfighter>(),
+                defenderCanWithdraw: true
+            );
+
+            Assert.AreEqual(985, GetShipOutcome(result, defender).HullAfter);
+        }
+
+        [Test]
         public void Resolve_IonDamageWithoutShields_DoesNotDamageCapitalShipHull()
         {
             Starfighter attacker = CreateFighter("attacker", squadronSize: 1, weaponStrength: 0);
