@@ -12,7 +12,12 @@ namespace Rebellion.Game.ShipComponents
         /// <returns>The copied hyperdrive.</returns>
         public override ShipComponent CreateCopy()
         {
-            Hyperdrive copy = new Hyperdrive { Health = Health, Rating = Rating };
+            Hyperdrive copy = new Hyperdrive
+            {
+                Health = Health,
+                Targetable = Targetable,
+                Rating = Rating,
+            };
             CopyEntityStateTo(copy);
             return copy;
         }

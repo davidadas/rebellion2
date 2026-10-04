@@ -371,7 +371,17 @@ namespace Rebellion.Tests.Game.Units
                             TypeID = "LASER",
                             DisplayName = "Port laser",
                             Health = 25,
-                            WeaponType = HardpointWeaponType.LaserCannon,
+                            FiringArcDegrees = 90f,
+                            Weapon = new WeaponData
+                            {
+                                WeaponType = HardpointWeaponType.LaserCannon,
+                                DeliveryMode = WeaponDeliveryMode.Projectile,
+                                Damage = 12,
+                                Range = 250f,
+                                FireIntervalSeconds = 0.5f,
+                                ProjectileSpeed = 400f,
+                                EffectDurationSeconds = 0.1f,
+                            },
                         },
                         new Hardpoint { Health = 25 },
                     }
@@ -390,7 +400,17 @@ namespace Rebellion.Tests.Game.Units
                         TypeID = "LASER",
                         DisplayName = "Forward laser",
                         Health = 15,
-                        WeaponType = HardpointWeaponType.Turbolaser,
+                        FiringArcDegrees = 45f,
+                        Weapon = new WeaponData
+                        {
+                            WeaponType = HardpointWeaponType.Turbolaser,
+                            DeliveryMode = WeaponDeliveryMode.Hitscan,
+                            Damage = 24,
+                            Range = 500f,
+                            FireIntervalSeconds = 1.5f,
+                            ProjectileSpeed = 0f,
+                            EffectDurationSeconds = 0.25f,
+                        },
                     }
                 );
             _capitalShip.GetHardpointGroups().Add(hardpointGroup);
@@ -456,8 +476,15 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(15, deserialized.GetComponents()[0].Health);
             Assert.AreEqual(
                 HardpointWeaponType.Turbolaser,
-                ((Hardpoint)deserialized.GetComponents()[0]).WeaponType
+                ((Hardpoint)deserialized.GetComponents()[0]).Weapon.WeaponType
             );
+            Assert.AreEqual(
+                WeaponDeliveryMode.Hitscan,
+                ((Hardpoint)deserialized.GetComponents()[0]).Weapon.DeliveryMode
+            );
+            Assert.AreEqual(45f, ((Hardpoint)deserialized.GetComponents()[0]).FiringArcDegrees);
+            Assert.AreEqual(24, ((Hardpoint)deserialized.GetComponents()[0]).Weapon.Damage);
+            Assert.AreEqual(500f, ((Hardpoint)deserialized.GetComponents()[0]).Weapon.Range);
             Assert.AreEqual(1, deserialized.GetHardpointGroups().Count);
             HardpointGroup deserializedGroup = deserialized.GetHardpointGroups()[0];
             Assert.AreEqual(2, deserializedGroup.GetHardpoints().Count);
@@ -467,8 +494,13 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(25, deserializedGroup.GetHardpoints()[0].Health);
             Assert.AreEqual(
                 HardpointWeaponType.LaserCannon,
-                deserializedGroup.GetHardpoints()[0].WeaponType
+                deserializedGroup.GetHardpoints()[0].Weapon.WeaponType
             );
+            Assert.AreEqual(
+                WeaponDeliveryMode.Projectile,
+                deserializedGroup.GetHardpoints()[0].Weapon.DeliveryMode
+            );
+            Assert.AreEqual(90f, deserializedGroup.GetHardpoints()[0].FiringArcDegrees);
         }
 
         [Test]
@@ -522,7 +554,13 @@ namespace Rebellion.Tests.Game.Units
                 TypeID = "LASER",
                 DisplayName = "Forward laser",
                 Health = 15,
-                WeaponType = HardpointWeaponType.LaserCannon,
+                FiringArcDegrees = 45f,
+                Weapon = new WeaponData
+                {
+                    WeaponType = HardpointWeaponType.LaserCannon,
+                    DeliveryMode = WeaponDeliveryMode.Projectile,
+                    Damage = 12,
+                },
             };
             _capitalShip.GetComponents().Add(originalComponent);
             _capitalShip.GetHardpointGroups().Add(originalGroup);
@@ -531,6 +569,8 @@ namespace Rebellion.Tests.Game.Units
             Hardpoint copiedComponent = (Hardpoint)copy.GetComponents().Single();
             HardpointGroup copiedGroup = copy.GetHardpointGroups().Single();
             copiedComponent.Health = 5;
+            copiedComponent.FiringArcDegrees = 30f;
+            copiedComponent.Weapon.Damage = 6;
             copiedGroup.GetHardpoints()[0].Health = 10;
 
             Assert.AreNotSame(originalComponent, copiedComponent);
@@ -540,8 +580,11 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(originalComponent.InstanceID, copiedComponent.InstanceID);
             Assert.AreEqual(originalComponent.TypeID, copiedComponent.TypeID);
             Assert.AreEqual(originalComponent.DisplayName, copiedComponent.DisplayName);
-            Assert.AreEqual(originalComponent.WeaponType, copiedComponent.WeaponType);
+            Assert.AreNotSame(originalComponent.Weapon, copiedComponent.Weapon);
+            Assert.AreEqual(originalComponent.Weapon.WeaponType, copiedComponent.Weapon.WeaponType);
             Assert.AreEqual(15, originalComponent.Health);
+            Assert.AreEqual(45f, originalComponent.FiringArcDegrees);
+            Assert.AreEqual(12, originalComponent.Weapon.Damage);
             Assert.AreEqual(25, originalGroup.GetHardpoints()[0].Health);
         }
 

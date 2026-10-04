@@ -10,7 +10,11 @@ namespace Rebellion.Game.ShipComponents
         /// <returns>The copied gravity-well generator.</returns>
         public override ShipComponent CreateCopy()
         {
-            GravityWellGenerator copy = new GravityWellGenerator { Health = Health };
+            GravityWellGenerator copy = new GravityWellGenerator
+            {
+                Health = Health,
+                Targetable = Targetable,
+            };
             CopyEntityStateTo(copy);
             return copy;
         }

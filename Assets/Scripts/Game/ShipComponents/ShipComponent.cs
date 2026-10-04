@@ -8,6 +8,7 @@ namespace Rebellion.Game.ShipComponents
     public abstract class ShipComponent : BaseGameEntity
     {
         public int Health { get; set; }
+        public bool Targetable { get; set; }
 
         /// <summary>Creates an independent copy of the component.</summary>
         /// <returns>The copied component.</returns>

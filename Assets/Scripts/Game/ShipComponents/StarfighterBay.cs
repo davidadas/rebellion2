@@ -12,7 +12,12 @@ namespace Rebellion.Game.ShipComponents
         /// <returns>The copied starfighter bay.</returns>
         public override ShipComponent CreateCopy()
         {
-            StarfighterBay copy = new StarfighterBay { Health = Health, Capacity = Capacity };
+            StarfighterBay copy = new StarfighterBay
+            {
+                Health = Health,
+                Targetable = Targetable,
+                Capacity = Capacity,
+            };
             CopyEntityStateTo(copy);
             return copy;
         }

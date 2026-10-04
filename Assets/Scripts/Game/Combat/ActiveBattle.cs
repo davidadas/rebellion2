@@ -6,12 +6,6 @@ using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Combat
 {
-    public enum BattleKind
-    {
-        Space,
-        Ground,
-    }
-
     /// <summary>
     /// Persistent state of the tactical battle currently in progress.
     /// </summary>

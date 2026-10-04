@@ -2,24 +2,14 @@ using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.ShipComponents
 {
-    public enum HardpointWeaponType
-    {
-        None,
-        LaserCannon,
-        Turbolaser,
-        IonCannon,
-        MissileLauncher,
-        TorpedoLauncher,
-        TractorBeam,
-    }
-
     /// <summary>
     /// Represents a weapon mount installed on a ship.
     /// </summary>
     [PersistableObject]
     public sealed class Hardpoint : ShipComponent
     {
-        public HardpointWeaponType WeaponType { get; set; }
+        public float FiringArcDegrees { get; set; }
+        public WeaponData Weapon { get; set; }
 
         /// <summary>
         /// Creates an independent copy of the hardpoint.
@@ -27,7 +17,13 @@ namespace Rebellion.Game.ShipComponents
         /// <returns>The copied hardpoint.</returns>
         public override ShipComponent CreateCopy()
         {
-            Hardpoint copy = new Hardpoint { Health = Health, WeaponType = WeaponType };
+            Hardpoint copy = new Hardpoint
+            {
+                Health = Health,
+                Targetable = Targetable,
+                FiringArcDegrees = FiringArcDegrees,
+                Weapon = Weapon?.CreateCopy(),
+            };
             CopyEntityStateTo(copy);
             return copy;
         }
