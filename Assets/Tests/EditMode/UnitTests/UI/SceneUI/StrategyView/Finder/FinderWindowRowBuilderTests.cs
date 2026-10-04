@@ -268,6 +268,48 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
         }
 
         [Test]
+        public void GetRows_MovingFleetToEnemyPlanetHiddenByProjection_LabelsFleetAsAttacking()
+        {
+            Planet liveDestination = CreatePlanet(
+                "hidden-enemy",
+                "Hidden Enemy",
+                _opponentFactionId,
+                _opponentFactionId
+            );
+            Planet projectedDestination = CreatePlanet(
+                "hidden-enemy",
+                "Hidden Enemy",
+                null,
+                _playerFactionId
+            );
+            GameFleet fleet = CreateFleet("fleet", "Fleet", _playerFactionId);
+            fleet.Movement = new MovementState();
+            fleet.SetParent(liveDestination);
+            projectedDestination.AddTestChild(fleet);
+
+            GalaxyPlanetSector sector = new GalaxyPlanetSector();
+            FinderWindowRowBuilder builder = new FinderWindowRowBuilder(
+                new[]
+                {
+                    new GalaxyMapSector(
+                        sector,
+                        new[] { new GalaxyMapPlanet(sector, projectedDestination, string.Empty) }
+                    ),
+                },
+                new[] { _playerFaction, _opponentFaction },
+                _playerFactionId
+            );
+
+            List<FinderWindowRow> rows = builder.GetRows(
+                FinderMode.Fleets,
+                false,
+                FinderWindowTab.Faction(_playerFactionId, "Player")
+            );
+
+            Assert.AreEqual("Fleet (Attacking Hidden Enemy)", rows.Single().Name);
+        }
+
+        [Test]
         public void GetRows_MovingFleetToFriendlyOrNeutralPlanet_LabelsFleetAsEnRoute()
         {
             GameFleet friendlyFleet = CreateFleet("friendly", "Friendly Fleet", _playerFactionId);

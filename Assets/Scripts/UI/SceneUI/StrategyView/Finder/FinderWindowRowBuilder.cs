@@ -130,7 +130,9 @@ public sealed class FinderWindowRowBuilder
         string fleetName = fleet?.GetDisplayName() ?? string.Empty;
         string planetName = planet?.GetDisplayName() ?? string.Empty;
         string fleetOwnerId = fleet?.GetOwnerInstanceID();
-        string planetOwnerId = planet?.GetOwnerInstanceID();
+        Planet liveDestination = fleet?.GetParentOfType<Planet>();
+        string planetOwnerId =
+            liveDestination?.GetOwnerInstanceID() ?? planet?.GetOwnerInstanceID();
         bool isEnemyPlanet =
             !string.IsNullOrEmpty(planetOwnerId)
             && !string.Equals(fleetOwnerId, planetOwnerId, StringComparison.Ordinal);
