@@ -2783,7 +2783,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ProcessTick_OfficerEvadesDetector_AppliesEscapeInjury()
+        public void ProcessTick_OfficerEvadesDetector_EscapesWithoutInjury()
         {
             (GameRoot game, Planet planet, Officer spy, Officer _, MovementCommands movement) =
                 BuildDetectionScene();
@@ -2809,15 +2809,12 @@ namespace Rebellion.Tests.Simulation
             List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.IsFalse(spy.IsCaptured);
-            Assert.Greater(spy.InjuryPoints, 0);
-            Assert.AreEqual(
-                mission.InstanceID,
-                results.OfType<OfficerInjuredResult>().Single().MissionInstanceID
-            );
+            Assert.AreEqual(0, spy.InjuryPoints);
+            Assert.IsEmpty(results.OfType<OfficerInjuredResult>());
         }
 
         [Test]
-        public void ProcessTick_MinorOfficerEvadesDetector_PostInjuryRollKillsOfficer()
+        public void ProcessTick_MinorOfficerEvadesDetector_DoesNotRollPostInjuryDeath()
         {
             (GameRoot game, Planet planet, Officer spy, Officer _, MovementCommands movement) =
                 BuildDetectionScene();
@@ -2843,9 +2840,11 @@ namespace Rebellion.Tests.Simulation
 
             List<GameResult> results = system.ProcessMissionTick(game);
 
-            Assert.IsTrue(spy.IsKilled);
+            Assert.IsFalse(spy.IsKilled);
             Assert.IsFalse(spy.IsCaptured);
-            Assert.AreSame(spy, results.OfType<OfficerKilledResult>().Single().TargetOfficer);
+            Assert.AreEqual(0, spy.InjuryPoints);
+            Assert.IsEmpty(results.OfType<OfficerInjuredResult>());
+            Assert.IsEmpty(results.OfType<OfficerKilledResult>());
         }
 
         [Test]
