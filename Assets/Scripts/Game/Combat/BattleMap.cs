@@ -13,15 +13,6 @@ namespace Rebellion.Game.Combat
     }
 
     /// <summary>
-    /// Identifies the participant assigned to a deployment region.
-    /// </summary>
-    public enum DeploymentSide
-    {
-        Attacker,
-        Defender,
-    }
-
-    /// <summary>
     /// Defines an axis-aligned region of battle space.
     /// </summary>
     [PersistableObject]
@@ -36,12 +27,12 @@ namespace Rebellion.Game.Combat
     }
 
     /// <summary>
-    /// Assigns a bounded deployment region to one side of a battle.
+    /// Assigns a bounded deployment region to one battle participant.
     /// </summary>
     [PersistableObject]
     public sealed class BattleMapDeploymentRegion
     {
-        public DeploymentSide Side { get; set; }
+        public string ParticipantFactionInstanceID { get; set; }
         public BattleMapBounds Bounds { get; set; } = new BattleMapBounds();
     }
 

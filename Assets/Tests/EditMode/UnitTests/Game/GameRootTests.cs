@@ -201,16 +201,20 @@ namespace Rebellion.Tests.Game
             ActiveBattle activeBattle = new ActiveBattle
             {
                 Map = new BattleMap { Kind = kind },
-                AttackerOwnerInstanceID = "FACTION1",
-                DefenderOwnerInstanceID = "FACTION2",
                 PlanetInstanceID = "PLANET1",
             };
+            activeBattle
+                .GetParticipants()
+                .Add(new BattleParticipant { FactionInstanceID = "FACTION1" });
+            activeBattle
+                .GetParticipants()
+                .Add(new BattleParticipant { FactionInstanceID = "FACTION2" });
             activeBattle
                 .Map.GetDeploymentRegions()
                 .Add(
                     new BattleMapDeploymentRegion
                     {
-                        Side = DeploymentSide.Attacker,
+                        ParticipantFactionInstanceID = "FACTION1",
                         Bounds = new BattleMapBounds { MinimumX = -100f, MaximumX = 0f },
                     }
                 );
@@ -227,12 +231,22 @@ namespace Rebellion.Tests.Game
             GameRoot restored = SerializationHelper.Deserialize<GameRoot>(xml);
             Assert.IsNotNull(restored.GetActiveBattle());
             Assert.AreEqual(kind, restored.GetActiveBattle().Map.Kind);
-            Assert.AreEqual("FACTION1", restored.GetActiveBattle().AttackerOwnerInstanceID);
-            Assert.AreEqual("FACTION2", restored.GetActiveBattle().DefenderOwnerInstanceID);
+            Assert.AreEqual(2, restored.GetActiveBattle().GetParticipants().Count);
+            Assert.AreEqual(
+                "FACTION1",
+                restored.GetActiveBattle().GetParticipants()[0].FactionInstanceID
+            );
+            Assert.AreEqual(
+                "FACTION2",
+                restored.GetActiveBattle().GetParticipants()[1].FactionInstanceID
+            );
             Assert.AreEqual("PLANET1", restored.GetActiveBattle().PlanetInstanceID);
             Assert.AreEqual(
-                DeploymentSide.Attacker,
-                restored.GetActiveBattle().Map.GetDeploymentRegions()[0].Side
+                "FACTION1",
+                restored
+                    .GetActiveBattle()
+                    .Map.GetDeploymentRegions()[0]
+                    .ParticipantFactionInstanceID
             );
             Assert.AreEqual(
                 -100f,

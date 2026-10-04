@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Units;
@@ -11,7 +12,7 @@ namespace Rebellion.Tests.Game.Combat
     public sealed class ActiveBattleTests
     {
         [Test]
-        public void AddCombatants_CapitalShip_AddsOneIndependentCopyUnderOwner()
+        public void AddCombatants_CapitalShip_AddsOneIndependentCopyToOwnerParticipant()
         {
             CapitalShip source = new CapitalShip
             {
@@ -22,9 +23,11 @@ namespace Rebellion.Tests.Game.Combat
             ActiveBattle battle = new ActiveBattle();
 
             IReadOnlyList<CombatUnit> addedCombatants = battle.AddCombatants(source);
+            BattleParticipant participant = battle.GetParticipants().Single();
 
             Assert.AreEqual(1, addedCombatants.Count);
-            Assert.AreSame(addedCombatants[0], battle.GetCombatants()["FACTION_1"][0]);
+            Assert.AreEqual("FACTION_1", participant.FactionInstanceID);
+            Assert.AreSame(addedCombatants[0], participant.GetCombatants()[0]);
             Assert.AreNotSame(source, addedCombatants[0].GetUnit());
         }
 
@@ -41,9 +44,10 @@ namespace Rebellion.Tests.Game.Combat
             ActiveBattle battle = new ActiveBattle();
 
             IReadOnlyList<CombatUnit> addedCombatants = battle.AddCombatants(source);
+            BattleParticipant participant = battle.GetParticipants().Single();
 
             Assert.AreEqual(3, addedCombatants.Count);
-            Assert.AreEqual(3, battle.GetCombatants()["FACTION_1"].Count);
+            Assert.AreEqual(3, participant.GetCombatants().Count);
             foreach (CombatUnit combatUnit in addedCombatants)
             {
                 Assert.AreEqual(source.InstanceID, combatUnit.SourceUnitInstanceID);
@@ -51,6 +55,43 @@ namespace Rebellion.Tests.Game.Combat
                 Assert.IsNotNull(fighter);
                 Assert.AreEqual(1, fighter.CurrentSquadronSize);
             }
+        }
+
+        [Test]
+        public void AddCombatants_DifferentFactionOwners_CreatesSeparateParticipants()
+        {
+            CapitalShip firstSource = new CapitalShip
+            {
+                InstanceID = "CAPITAL_SHIP_1",
+                OwnerInstanceID = "FACTION_1",
+            };
+            CapitalShip secondSource = new CapitalShip
+            {
+                InstanceID = "CAPITAL_SHIP_2",
+                OwnerInstanceID = "FACTION_2",
+            };
+            ActiveBattle battle = new ActiveBattle();
+
+            battle.AddCombatants(firstSource);
+            battle.AddCombatants(secondSource);
+
+            Assert.AreEqual(2, battle.GetParticipants().Count);
+            Assert.AreEqual(
+                1,
+                battle
+                    .GetParticipants()
+                    .Single(participant => participant.FactionInstanceID == "FACTION_1")
+                    .GetCombatants()
+                    .Count
+            );
+            Assert.AreEqual(
+                1,
+                battle
+                    .GetParticipants()
+                    .Single(participant => participant.FactionInstanceID == "FACTION_2")
+                    .GetCombatants()
+                    .Count
+            );
         }
 
         [Test]
@@ -72,10 +113,18 @@ namespace Rebellion.Tests.Game.Combat
             ActiveBattle battle = new ActiveBattle
             {
                 Map = new BattleMap { Kind = BattleKind.Space },
-                AttackerOwnerInstanceID = "FACTION_1",
-                DefenderOwnerInstanceID = "FACTION_2",
                 PlanetInstanceID = "PLANET_1",
             };
+            battle.GetParticipants().Add(new BattleParticipant { FactionInstanceID = "FACTION_2" });
+            battle
+                .Map.GetDeploymentRegions()
+                .Add(
+                    new BattleMapDeploymentRegion
+                    {
+                        ParticipantFactionInstanceID = "FACTION_2",
+                        Bounds = new BattleMapBounds { MinimumX = -100f, MaximumX = 100f },
+                    }
+                );
             CombatUnit combatUnit = battle.AddCombatants(source)[0];
             combatUnit.Position = new BattleVector3
             {
@@ -92,7 +141,10 @@ namespace Rebellion.Tests.Game.Combat
 
             string xml = SerializationHelper.Serialize(battle);
             ActiveBattle restored = SerializationHelper.Deserialize<ActiveBattle>(xml);
-            CombatUnit restoredCombatUnit = restored.GetCombatants()["FACTION_1"][0];
+            CombatUnit restoredCombatUnit = restored
+                .GetParticipants()
+                .Single(participant => participant.FactionInstanceID == "FACTION_1")
+                .GetCombatants()[0];
             CapitalShip restoredShip = restoredCombatUnit.GetUnit() as CapitalShip;
 
             Assert.AreEqual(source.InstanceID, restoredCombatUnit.SourceUnitInstanceID);
@@ -108,8 +160,13 @@ namespace Rebellion.Tests.Game.Combat
             Assert.AreEqual(100f, restoredShip.ModelSize.Width);
             Assert.AreEqual(40f, restoredShip.ModelSize.Height);
             Assert.AreEqual(250f, restoredShip.ModelSize.Depth);
-            Assert.AreEqual("FACTION_1", restored.AttackerOwnerInstanceID);
-            Assert.AreEqual("FACTION_2", restored.DefenderOwnerInstanceID);
+            Assert.AreEqual(2, restored.GetParticipants().Count);
+            Assert.AreEqual(
+                "FACTION_2",
+                restored.Map.GetDeploymentRegions()[0].ParticipantFactionInstanceID
+            );
+            Assert.AreEqual(-100f, restored.Map.GetDeploymentRegions()[0].Bounds.MinimumX);
+            Assert.AreEqual(100f, restored.Map.GetDeploymentRegions()[0].Bounds.MaximumX);
         }
     }
 }

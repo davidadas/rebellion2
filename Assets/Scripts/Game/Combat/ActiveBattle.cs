@@ -7,27 +7,45 @@ using Rebellion.Util.Serialization;
 namespace Rebellion.Game.Combat
 {
     /// <summary>
+    /// Stores one faction's units participating in an active battle.
+    /// </summary>
+    [PersistableObject]
+    public sealed class BattleParticipant
+    {
+        [PersistableMember(Name = "Combatants")]
+        private List<CombatUnit> _combatants = new List<CombatUnit>();
+
+        public string FactionInstanceID { get; set; }
+
+        /// <summary>
+        /// Returns the battle units controlled by this participant.
+        /// </summary>
+        /// <returns>The participant's combatants.</returns>
+        public List<CombatUnit> GetCombatants()
+        {
+            return _combatants;
+        }
+    }
+
+    /// <summary>
     /// Persistent state of the tactical battle currently in progress.
     /// </summary>
     [PersistableObject]
     public sealed class ActiveBattle
     {
-        [PersistableMember(Name = "Combatants")]
-        private Dictionary<string, List<CombatUnit>> _combatants =
-            new Dictionary<string, List<CombatUnit>>();
+        [PersistableMember(Name = "Participants")]
+        private List<BattleParticipant> _participants = new List<BattleParticipant>();
 
         public BattleMap Map { get; set; } = new BattleMap();
-        public string AttackerOwnerInstanceID { get; set; }
-        public string DefenderOwnerInstanceID { get; set; }
         public string PlanetInstanceID { get; set; }
 
         /// <summary>
-        /// Returns the battle units grouped by owning faction.
+        /// Returns the factions participating in the battle.
         /// </summary>
-        /// <returns>The combatants grouped by faction identifier.</returns>
-        public Dictionary<string, List<CombatUnit>> GetCombatants()
+        /// <returns>The battle participants.</returns>
+        public List<BattleParticipant> GetParticipants()
         {
-            return _combatants;
+            return _participants;
         }
 
         /// <summary>
@@ -54,21 +72,22 @@ namespace Rebellion.Game.Combat
             if (combatantCount == 0)
                 return addedCombatants.AsReadOnly();
 
-            if (
-                !_combatants.TryGetValue(
-                    sourceUnit.OwnerInstanceID,
-                    out List<CombatUnit> factionCombatants
-                )
-            )
+            BattleParticipant participant = _participants.Find(candidate =>
+                candidate.FactionInstanceID == sourceUnit.OwnerInstanceID
+            );
+            if (participant == null)
             {
-                factionCombatants = new List<CombatUnit>();
-                _combatants.Add(sourceUnit.OwnerInstanceID, factionCombatants);
+                participant = new BattleParticipant
+                {
+                    FactionInstanceID = sourceUnit.OwnerInstanceID,
+                };
+                _participants.Add(participant);
             }
 
             for (int combatantIndex = 0; combatantIndex < combatantCount; combatantIndex++)
             {
                 CombatUnit combatUnit = CombatUnit.Create(sourceUnit);
-                factionCombatants.Add(combatUnit);
+                participant.GetCombatants().Add(combatUnit);
                 addedCombatants.Add(combatUnit);
             }
 
