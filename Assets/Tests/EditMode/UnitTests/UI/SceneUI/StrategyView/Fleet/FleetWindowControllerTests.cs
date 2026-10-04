@@ -402,6 +402,78 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         [Test]
+        public void DetailItemRelease_ActiveTargeting_SelectsExactItemAndCompletesDrag()
+        {
+            int completedDragCount = 0;
+            _controller.Initialize(
+                _actions,
+                _actions,
+                _actions,
+                _actions,
+                (_, _) => { },
+                _ => { },
+                _ => completedDragCount++
+            );
+            FleetWindowView view = OpenWindow(out UIWindow window);
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            _controller.RenderWindow(view, window, true);
+            CapitalShip ship = _fleet.GetChildren<CapitalShip>().Single();
+            StrategyUnitCardView card = view.GetComponentsInChildren<StrategyUnitCardView>(true)
+                .Single(item => item.gameObject.activeInHierarchy);
+            UIComponentTestHelper.InvokeLifecycle(card, "Awake");
+            RecordingTargetingReceiver receiver = new RecordingTargetingReceiver();
+            _targetingController.Begin(new TargetingRequest("Target", null, receiver));
+            PointerEventData eventData = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Left,
+            };
+
+            card.GetComponent<UIPointerGestureRelay>().OnPointerClick(eventData);
+
+            Assert.AreEqual(1, completedDragCount);
+            Assert.IsFalse(_targetingController.IsTargeting);
+            Assert.IsInstanceOf<StrategyMissionTarget>(receiver.Target);
+            Assert.AreSame(ship, ((StrategyMissionTarget)receiver.Target).Item);
+        }
+
+        [Test]
+        public void FleetRowRelease_RepeatingTargeting_SelectsFleetOnceAndCompletesDrag()
+        {
+            int completedDragCount = 0;
+            _controller.Initialize(
+                _actions,
+                _actions,
+                _actions,
+                _actions,
+                (_, _) => { },
+                _ => { },
+                _ => completedDragCount++
+            );
+            FleetWindowView view = OpenWindow(out UIWindow window);
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            _controller.RenderWindow(view, window, true);
+            FleetListRowView row = view.GetComponentsInChildren<FleetListRowView>(true)
+                .Single(item => item.gameObject.activeInHierarchy);
+            UIComponentTestHelper.InvokeLifecycle(row, "Awake");
+            RecordingTargetingReceiver receiver = new RecordingTargetingReceiver();
+            _targetingController.Begin(
+                new TargetingRequest("Target", null, receiver, remainsActiveAfterSelection: true)
+            );
+            PointerEventData eventData = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Left,
+            };
+
+            row.GetComponent<UIPointerGestureRelay>().OnPointerClick(eventData);
+
+            Assert.AreEqual(1, completedDragCount);
+            Assert.IsTrue(_targetingController.IsTargeting);
+            Assert.AreEqual(1, receiver.SelectedCount);
+            Assert.IsInstanceOf<StrategyMissionTarget>(receiver.Target);
+            Assert.AreSame(_fleet, ((StrategyMissionTarget)receiver.Target).Item);
+        }
+
+        [Test]
         public void ReconcileWindow_FreshProjection_RebindsPlanetAndTargetByIdentity()
         {
             FleetWindowView view = OpenWindow(out UIWindow _);
@@ -760,6 +832,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
 
         private sealed class RecordingTargetingReceiver : ITargetingReceiver
         {
+            public int SelectedCount { get; private set; }
+
             public object Target { get; private set; }
 
             /// <summary>
@@ -769,6 +843,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             /// <param name="target">The target.</param>
             public void OnTargetSelected(TargetingRequest request, object target)
             {
+                SelectedCount++;
                 Target = target;
             }
 

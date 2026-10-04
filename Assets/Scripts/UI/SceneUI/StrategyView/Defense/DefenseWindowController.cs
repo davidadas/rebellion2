@@ -772,10 +772,15 @@ public sealed class DefenseWindowController
         )
             return;
 
-        endItemDrag(eventData);
         if (!session.TryGetItem(itemIndex, out ISceneNode item))
+        {
+            endItemDrag(eventData);
             return;
-        if (TrySelectTarget(session, item))
+        }
+
+        bool targetSelected = TrySelectTarget(session, item);
+        endItemDrag(eventData);
+        if (targetSelected)
             return;
         if (SelectableListSelection.HasSelectionModifier(getSelectionModifiers()))
             return;
