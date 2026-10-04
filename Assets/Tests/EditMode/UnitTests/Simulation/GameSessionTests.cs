@@ -925,7 +925,7 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(
                 manager
                     .GetService<ManufacturingCommands>()
-                    .EnqueuePrevalidated(producer, completingOrder, destination)
+                    .Enqueue(producer, completingOrder, destination)
             );
 
             manager.Tick.ProcessTick();

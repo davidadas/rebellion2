@@ -116,7 +116,7 @@ namespace Rebellion.Tests.Simulation
         {
             Building item = CreateOrderTestBuildingTemplate("mine");
             item.OwnerInstanceID = "EMPIRE";
-            Assert.IsTrue(_manager.EnqueuePrevalidated(_coruscant, item, _coruscant));
+            Assert.IsTrue(_manager.Enqueue(_coruscant, item, _coruscant));
             _game.DetachNode(_shipyard);
 
             List<GameResult> reactions = _observer.HandleResults(
@@ -149,7 +149,7 @@ namespace Rebellion.Tests.Simulation
                 BaseBuildSpeed = 10,
                 BuildingType = BuildingType.Mine,
             };
-            _manager.EnqueuePrevalidated(_coruscant, mine, _coruscant);
+            _manager.Enqueue(_coruscant, mine, _coruscant);
             _game.DetachNode(_shipyard);
 
             _observer.HandleResults(
@@ -180,7 +180,7 @@ namespace Rebellion.Tests.Simulation
                 BaseBuildSpeed = 10,
                 BuildingType = BuildingType.Mine,
             };
-            _manager.EnqueuePrevalidated(_coruscant, mine, _coruscant);
+            _manager.Enqueue(_coruscant, mine, _coruscant);
             _game.DetachNode(_shipyard);
 
             _observer.HandleResults(
@@ -221,7 +221,7 @@ namespace Rebellion.Tests.Simulation
                 BaseBuildSpeed = 10,
                 BuildingType = BuildingType.Mine,
             };
-            _manager.EnqueuePrevalidated(_coruscant, mine, _coruscant);
+            _manager.Enqueue(_coruscant, mine, _coruscant);
             _game.DetachNode(_shipyard);
 
             _observer.HandleResults(
@@ -253,7 +253,7 @@ namespace Rebellion.Tests.Simulation
                 BaseBuildSpeed = 10,
                 BuildingType = BuildingType.Mine,
             };
-            _manager.EnqueuePrevalidated(_coruscant, mine, _coruscant);
+            _manager.Enqueue(_coruscant, mine, _coruscant);
             _game.DetachNode(_shipyard);
 
             _observer.HandleResults(

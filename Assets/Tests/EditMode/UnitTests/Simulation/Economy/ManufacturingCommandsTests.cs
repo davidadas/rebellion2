@@ -115,7 +115,7 @@ namespace Rebellion.Tests.Simulation
             Building item = CreateOrderTestBuildingTemplate("mine");
             item.OwnerInstanceID = "EMPIRE";
             _game.CurrentTick = 42;
-            Assert.IsTrue(_manager.EnqueuePrevalidated(_coruscant, item, _coruscant));
+            Assert.IsTrue(_manager.Enqueue(_coruscant, item, _coruscant));
             Assert.IsTrue(_manager.CancelManufacturing(item, "EMPIRE"));
             _game.CurrentTick = 43;
 
@@ -202,7 +202,7 @@ namespace Rebellion.Tests.Simulation
                 BuildingType = BuildingType.Mine,
             };
 
-            _manager.EnqueuePrevalidated(_coruscant, mine, _coruscant);
+            _manager.Enqueue(_coruscant, mine, _coruscant);
             IReadOnlyList<GameResult> results = new ManufacturingTickProcessor(
                 _manager
             ).ProcessTick(_game);
@@ -232,7 +232,7 @@ namespace Rebellion.Tests.Simulation
                 BuildingType = BuildingType.Mine,
             };
 
-            _manager.EnqueuePrevalidated(_coruscant, mine, _coruscant);
+            _manager.Enqueue(_coruscant, mine, _coruscant);
             IReadOnlyList<GameResult> results = new ManufacturingTickProcessor(
                 _manager
             ).ProcessTick(_game);
@@ -267,7 +267,7 @@ namespace Rebellion.Tests.Simulation
                 BuildingType = BuildingType.Mine,
             };
 
-            _manager.EnqueuePrevalidated(_coruscant, mine, _coruscant);
+            _manager.Enqueue(_coruscant, mine, _coruscant);
             new ManufacturingTickProcessor(_manager).ProcessTick(_game);
 
             Assert.AreEqual(47, _coruscant.GetPopularSupport(_empire.InstanceID));
@@ -287,7 +287,7 @@ namespace Rebellion.Tests.Simulation
                 BuildingType = BuildingType.Mine,
             };
 
-            _manager.EnqueuePrevalidated(_coruscant, mine, _coruscant);
+            _manager.Enqueue(_coruscant, mine, _coruscant);
             Assert.AreEqual(ManufacturingStatus.Building, mine.ManufacturingStatus);
 
             new ManufacturingTickProcessor(_manager).ProcessTick(_game);
@@ -309,7 +309,7 @@ namespace Rebellion.Tests.Simulation
                 BuildingType = BuildingType.Mine,
             };
 
-            _manager.EnqueuePrevalidated(_coruscant, mine, _coruscant);
+            _manager.Enqueue(_coruscant, mine, _coruscant);
             new ManufacturingTickProcessor(_manager).ProcessTick(_game);
 
             // Building should still be attached to planet after completion
@@ -355,8 +355,8 @@ namespace Rebellion.Tests.Simulation
                 BuildingType = BuildingType.Mine,
             };
 
-            _manager.EnqueuePrevalidated(_coruscant, mine1, _coruscant);
-            _manager.EnqueuePrevalidated(_coruscant, mine2, _coruscant);
+            _manager.Enqueue(_coruscant, mine1, _coruscant);
+            _manager.Enqueue(_coruscant, mine2, _coruscant);
 
             new ManufacturingTickProcessor(_manager).ProcessTick(_game);
 
@@ -391,8 +391,8 @@ namespace Rebellion.Tests.Simulation
                 BuildingType = BuildingType.Mine,
             };
 
-            _manager.EnqueuePrevalidated(_coruscant, mine1, _coruscant);
-            _manager.EnqueuePrevalidated(_coruscant, mine2, _coruscant);
+            _manager.Enqueue(_coruscant, mine1, _coruscant);
+            _manager.Enqueue(_coruscant, mine2, _coruscant);
 
             new ManufacturingTickProcessor(_manager).ProcessTick(_game);
 
@@ -435,8 +435,8 @@ namespace Rebellion.Tests.Simulation
                 BuildingType = BuildingType.Mine,
             };
 
-            _manager.EnqueuePrevalidated(_coruscant, mine1, _coruscant);
-            _manager.EnqueuePrevalidated(_coruscant, mine2, _coruscant);
+            _manager.Enqueue(_coruscant, mine1, _coruscant);
+            _manager.Enqueue(_coruscant, mine2, _coruscant);
 
             new ManufacturingTickProcessor(_manager).ProcessTick(_game);
 
@@ -483,9 +483,9 @@ namespace Rebellion.Tests.Simulation
                 BuildingType = BuildingType.Mine,
             };
 
-            _manager.EnqueuePrevalidated(_coruscant, mine1, _coruscant);
-            _manager.EnqueuePrevalidated(_coruscant, mine2, _coruscant);
-            _manager.EnqueuePrevalidated(_coruscant, mine3, _coruscant);
+            _manager.Enqueue(_coruscant, mine1, _coruscant);
+            _manager.Enqueue(_coruscant, mine2, _coruscant);
+            _manager.Enqueue(_coruscant, mine3, _coruscant);
 
             // Tick 1: mine1 completes
             new ManufacturingTickProcessor(_manager).ProcessTick(_game);
@@ -549,9 +549,9 @@ namespace Rebellion.Tests.Simulation
                 BuildingType = BuildingType.Mine,
             };
 
-            _manager.EnqueuePrevalidated(_coruscant, mine1, _coruscant);
-            _manager.EnqueuePrevalidated(_coruscant, mine2, _coruscant);
-            _manager.EnqueuePrevalidated(_coruscant, mine3, _coruscant);
+            _manager.Enqueue(_coruscant, mine1, _coruscant);
+            _manager.Enqueue(_coruscant, mine2, _coruscant);
+            _manager.Enqueue(_coruscant, mine3, _coruscant);
 
             // Tick 1: mine1 completes and is removed - mine2 should still process next tick
             new ManufacturingTickProcessor(_manager).ProcessTick(_game);
@@ -585,7 +585,7 @@ namespace Rebellion.Tests.Simulation
                 BuildingType = BuildingType.Mine,
             };
 
-            _manager.EnqueuePrevalidated(_coruscant, mine, _coruscant);
+            _manager.Enqueue(_coruscant, mine, _coruscant);
 
             // First tick advances progress
             new ManufacturingTickProcessor(_manager).ProcessTick(_game);
@@ -636,7 +636,7 @@ namespace Rebellion.Tests.Simulation
                 BuildingType = BuildingType.Mine,
             };
 
-            _manager.EnqueuePrevalidated(_coruscant, mine, _coruscant);
+            _manager.Enqueue(_coruscant, mine, _coruscant);
 
             new ManufacturingTickProcessor(_manager).ProcessTick(_game);
             Assert.AreEqual(0, mine.ManufacturingProgress);
@@ -685,7 +685,7 @@ namespace Rebellion.Tests.Simulation
                 BuildingType = BuildingType.Mine,
             };
 
-            _manager.EnqueuePrevalidated(_coruscant, mine, _coruscant);
+            _manager.Enqueue(_coruscant, mine, _coruscant);
 
             new ManufacturingTickProcessor(_manager).ProcessTick(_game);
             Assert.AreEqual(0, mine.ManufacturingProgress);
@@ -707,7 +707,7 @@ namespace Rebellion.Tests.Simulation
         {
             ConfigureManufacturingSpeed(50);
             Building mine = CreateManufacturingSpeedTestItem();
-            _manager.EnqueuePrevalidated(_coruscant, mine, _coruscant);
+            _manager.Enqueue(_coruscant, mine, _coruscant);
 
             new ManufacturingTickProcessor(_manager).ProcessTick(_game);
 
@@ -725,7 +725,7 @@ namespace Rebellion.Tests.Simulation
         {
             ConfigureManufacturingSpeed(150);
             Building mine = CreateManufacturingSpeedTestItem();
-            _manager.EnqueuePrevalidated(_coruscant, mine, _coruscant);
+            _manager.Enqueue(_coruscant, mine, _coruscant);
 
             new ManufacturingTickProcessor(_manager).ProcessTick(_game);
 
@@ -753,7 +753,7 @@ namespace Rebellion.Tests.Simulation
                 BuildingType = BuildingType.Mine,
             };
 
-            _manager.EnqueuePrevalidated(_coruscant, mine, _coruscant);
+            _manager.Enqueue(_coruscant, mine, _coruscant);
 
             new ManufacturingTickProcessor(_manager).ProcessTick(_game);
 
@@ -780,7 +780,7 @@ namespace Rebellion.Tests.Simulation
                 * _game.Config.AI.Selection.RefinedMaterialReservePercent
                 / 100;
             _empire.RefinedMaterialStockpile = reserve;
-            _manager.EnqueuePrevalidated(_coruscant, defense, _coruscant);
+            _manager.Enqueue(_coruscant, defense, _coruscant);
 
             new ManufacturingTickProcessor(_manager).ProcessTick(_game);
 
@@ -817,7 +817,7 @@ namespace Rebellion.Tests.Simulation
                 * _game.Config.AI.Selection.RefinedMaterialReservePercent
                 / 100;
             _empire.RefinedMaterialStockpile = reserve;
-            _manager.EnqueuePrevalidated(_coruscant, defense, _coruscant);
+            _manager.Enqueue(_coruscant, defense, _coruscant);
 
             new ManufacturingTickProcessor(_manager).ProcessTick(_game);
 
@@ -840,7 +840,7 @@ namespace Rebellion.Tests.Simulation
                 BuildingType = BuildingType.Mine,
             };
 
-            _manager.EnqueuePrevalidated(_coruscant, mine, _coruscant);
+            _manager.Enqueue(_coruscant, mine, _coruscant);
 
             new ManufacturingTickProcessor(_manager).ProcessTick(_game);
 
@@ -865,7 +865,7 @@ namespace Rebellion.Tests.Simulation
                 BuildingType = BuildingType.Mine,
             };
 
-            _manager.EnqueuePrevalidated(_coruscant, mine, _coruscant);
+            _manager.Enqueue(_coruscant, mine, _coruscant);
             new ManufacturingTickProcessor(_manager).ProcessTick(_game);
 
             // Verify only one instance in scene graph
@@ -897,7 +897,7 @@ namespace Rebellion.Tests.Simulation
                 BuildingType = BuildingType.Mine,
             };
 
-            _manager.EnqueuePrevalidated(_coruscant, mine, _coruscant);
+            _manager.Enqueue(_coruscant, mine, _coruscant);
             new ManufacturingTickProcessor(_manager).ProcessTick(_game);
 
             // Verify bidirectional relationship
@@ -919,7 +919,7 @@ namespace Rebellion.Tests.Simulation
                 BuildingType = BuildingType.Mine,
             };
 
-            _manager.EnqueuePrevalidated(_coruscant, mine, _coruscant);
+            _manager.Enqueue(_coruscant, mine, _coruscant);
             new ManufacturingTickProcessor(_manager).ProcessTick(_game);
 
             // Planet captured mid-construction
@@ -950,7 +950,7 @@ namespace Rebellion.Tests.Simulation
                 BuildingType = BuildingType.Mine,
             };
 
-            _manager.EnqueuePrevalidated(_coruscant, mine, _coruscant);
+            _manager.Enqueue(_coruscant, mine, _coruscant);
             int initialProgress = mine.ManufacturingProgress;
 
             new ManufacturingTickProcessor(_manager).ProcessTick(_game);
@@ -992,7 +992,7 @@ namespace Rebellion.Tests.Simulation
                 new ManufacturingQueries(_game),
                 _movement
             );
-            mfg.EnqueuePrevalidated(planet, ship, fleet);
+            mfg.Enqueue(planet, ship, fleet);
             new ManufacturingTickProcessor(mfg).ProcessTick(_game);
             new ManufacturingTickProcessor(mfg).ProcessTick(_game);
 
@@ -1053,7 +1053,7 @@ namespace Rebellion.Tests.Simulation
                     new MovementQueries(game)
                 )
             );
-            manufacturing.EnqueuePrevalidated(planet, ship, fleet);
+            manufacturing.Enqueue(planet, ship, fleet);
 
             new ManufacturingTickProcessor(manufacturing).ProcessTick(game);
 
@@ -1095,7 +1095,7 @@ namespace Rebellion.Tests.Simulation
                 new ManufacturingQueries(_game),
                 _movement
             );
-            mfg.EnqueuePrevalidated(planet, ship, fleet);
+            mfg.Enqueue(planet, ship, fleet);
             new ManufacturingTickProcessor(mfg).ProcessTick(_game);
 
             Assert.AreEqual(ManufacturingStatus.Complete, ship.ManufacturingStatus);
@@ -1138,7 +1138,7 @@ namespace Rebellion.Tests.Simulation
                 new ManufacturingQueries(_game),
                 _movement
             );
-            mfg.EnqueuePrevalidated(planet, ship, fleet);
+            mfg.Enqueue(planet, ship, fleet);
             new ManufacturingTickProcessor(mfg).ProcessTick(_game);
 
             Assert.IsNotNull(ship.GetParentOfType<Fleet>(), "Ship should be in a fleet.");
@@ -1182,7 +1182,7 @@ namespace Rebellion.Tests.Simulation
                 new ManufacturingQueries(_game),
                 _movement
             );
-            mfg.EnqueuePrevalidated(originPlanet, ship, fleet);
+            mfg.Enqueue(originPlanet, ship, fleet);
             new ManufacturingTickProcessor(mfg).ProcessTick(_game);
 
             Assert.AreEqual(ManufacturingStatus.Delivering, ship.ManufacturingStatus);
@@ -1240,7 +1240,7 @@ namespace Rebellion.Tests.Simulation
                 new ManufacturingQueries(_game),
                 localMovement
             );
-            mfg.EnqueuePrevalidated(originPlanet, ship, fleet);
+            mfg.Enqueue(originPlanet, ship, fleet);
 
             destPlanet.OwnerInstanceID = "rebels";
 
@@ -1295,7 +1295,7 @@ namespace Rebellion.Tests.Simulation
                 new ManufacturingQueries(_game),
                 _movement
             );
-            mfg.EnqueuePrevalidated(originPlanet, fighter, destFleet);
+            mfg.Enqueue(originPlanet, fighter, destFleet);
             new ManufacturingTickProcessor(mfg).ProcessTick(_game);
 
             Assert.AreEqual(ManufacturingStatus.Delivering, fighter.ManufacturingStatus);
@@ -1342,7 +1342,7 @@ namespace Rebellion.Tests.Simulation
                 new ManufacturingQueries(_game),
                 _movement
             );
-            mfg.EnqueuePrevalidated(originPlanet, fighter, destFleet);
+            mfg.Enqueue(originPlanet, fighter, destFleet);
             new ManufacturingTickProcessor(mfg).ProcessTick(_game);
 
             Assert.AreEqual(
@@ -1379,7 +1379,7 @@ namespace Rebellion.Tests.Simulation
                 new ManufacturingQueries(_game),
                 _movement
             );
-            mfg.EnqueuePrevalidated(originPlanet, regiment, destPlanet);
+            mfg.Enqueue(originPlanet, regiment, destPlanet);
             IReadOnlyList<GameResult> results = new ManufacturingTickProcessor(mfg).ProcessTick(
                 _game
             );
@@ -1417,7 +1417,7 @@ namespace Rebellion.Tests.Simulation
                 new ManufacturingQueries(_game),
                 _movement
             );
-            mfg.EnqueuePrevalidated(planet, regiment, planet);
+            mfg.Enqueue(planet, regiment, planet);
             new ManufacturingTickProcessor(mfg).ProcessTick(_game);
 
             Assert.AreEqual(ManufacturingStatus.Complete, regiment.ManufacturingStatus);
@@ -1470,7 +1470,7 @@ namespace Rebellion.Tests.Simulation
                 new ManufacturingQueries(_game),
                 _movement
             );
-            mfg.EnqueuePrevalidated(planet, fighter, destFleet);
+            mfg.Enqueue(planet, fighter, destFleet);
 
             // Destroy the destination fleet mid-production — fighter is a child so it is deregistered too
             _game.DetachNode(destFleet);
@@ -1521,7 +1521,7 @@ namespace Rebellion.Tests.Simulation
                 new ManufacturingQueries(_game),
                 _movement
             );
-            mfg.EnqueuePrevalidated(originPlanet, mine, destPlanet);
+            mfg.Enqueue(originPlanet, mine, destPlanet);
             new ManufacturingTickProcessor(mfg).ProcessTick(_game);
 
             Assert.AreEqual(ManufacturingStatus.Delivering, mine.ManufacturingStatus);
@@ -1554,7 +1554,7 @@ namespace Rebellion.Tests.Simulation
                 BuildingType = BuildingType.Mine,
             };
 
-            bool enqueued = _manager.EnqueuePrevalidated(_coruscant, mine, destination);
+            bool enqueued = _manager.Enqueue(_coruscant, mine, destination);
             new ManufacturingTickProcessor(_manager).ProcessTick(_game);
 
             Assert.IsTrue(enqueued);
@@ -1645,7 +1645,7 @@ namespace Rebellion.Tests.Simulation
                 new ManufacturingQueries(_game),
                 localMovement
             );
-            mfg.EnqueuePrevalidated(planetA, mine, planetB);
+            mfg.Enqueue(planetA, mine, planetB);
 
             planetB.OwnerInstanceID = "rebels";
 
@@ -1738,7 +1738,7 @@ namespace Rebellion.Tests.Simulation
                 new ManufacturingQueries(_game),
                 localMovement
             );
-            mfg.EnqueuePrevalidated(planetA, mine, planetB);
+            mfg.Enqueue(planetA, mine, planetB);
 
             planetB.OwnerInstanceID = "rebels";
 
@@ -1810,7 +1810,7 @@ namespace Rebellion.Tests.Simulation
                     new MovementQueries(game)
                 )
             );
-            manufacturing.EnqueuePrevalidated(planet, mine, planet);
+            manufacturing.Enqueue(planet, mine, planet);
 
             new ManufacturingTickProcessor(manufacturing).ProcessTick(game);
 
@@ -1902,7 +1902,7 @@ namespace Rebellion.Tests.Simulation
                     new MovementQueries(game)
                 )
             );
-            manufacturing.EnqueuePrevalidated(planet, mine, planet);
+            manufacturing.Enqueue(planet, mine, planet);
 
             new ManufacturingTickProcessor(manufacturing).ProcessTick(game);
 
@@ -1954,7 +1954,7 @@ namespace Rebellion.Tests.Simulation
                     new MovementQueries(game)
                 )
             );
-            manufacturing.EnqueuePrevalidated(planet, mine, planet);
+            manufacturing.Enqueue(planet, mine, planet);
 
             new ManufacturingTickProcessor(manufacturing).ProcessTick(game);
 
@@ -2037,9 +2037,9 @@ namespace Rebellion.Tests.Simulation
                 new ManufacturingQueries(_game),
                 localMovement
             );
-            mfg.EnqueuePrevalidated(planet, mine, planet);
-            mfg.EnqueuePrevalidated(planet, ship, fleet);
-            mfg.EnqueuePrevalidated(planet, regiment, fleet);
+            mfg.Enqueue(planet, mine, planet);
+            mfg.Enqueue(planet, ship, fleet);
+            mfg.Enqueue(planet, regiment, fleet);
 
             new ManufacturingTickProcessor(mfg).ProcessTick(_game);
 
@@ -2103,7 +2103,7 @@ namespace Rebellion.Tests.Simulation
                 new ManufacturingQueries(_game),
                 _movement
             );
-            mfg.EnqueuePrevalidated(planet, ship, planet);
+            mfg.Enqueue(planet, ship, planet);
 
             // Tick many times — should never advance
             for (int i = 0; i < 20; i++)
@@ -2169,7 +2169,7 @@ namespace Rebellion.Tests.Simulation
                 new ManufacturingQueries(_game),
                 _movement
             );
-            mfg.EnqueuePrevalidated(planet, regiment, planet);
+            mfg.Enqueue(planet, regiment, planet);
 
             for (int i = 0; i < 20; i++)
                 new ManufacturingTickProcessor(mfg).ProcessTick(_game);
@@ -2224,7 +2224,7 @@ namespace Rebellion.Tests.Simulation
                 new ManufacturingQueries(_game),
                 _movement
             );
-            mfg.EnqueuePrevalidated(planet, mine, planet);
+            mfg.Enqueue(planet, mine, planet);
 
             for (int i = 0; i < 20; i++)
                 new ManufacturingTickProcessor(mfg).ProcessTick(_game);
@@ -2277,7 +2277,7 @@ namespace Rebellion.Tests.Simulation
                 new ManufacturingQueries(_game),
                 localMovement
             );
-            mfg.EnqueuePrevalidated(productionPlanet, capitalShip, destFleet);
+            mfg.Enqueue(productionPlanet, capitalShip, destFleet);
 
             Assert.IsNotNull(
                 capitalShip.GetParentOfType<Fleet>(),
@@ -2341,7 +2341,7 @@ namespace Rebellion.Tests.Simulation
                 new ManufacturingQueries(_game),
                 localMovement
             );
-            mfg.EnqueuePrevalidated(productionPlanet, fighter, destFleet);
+            mfg.Enqueue(productionPlanet, fighter, destFleet);
 
             destPlanet.OwnerInstanceID = "rebels";
 
@@ -2402,7 +2402,7 @@ namespace Rebellion.Tests.Simulation
                 new ManufacturingQueries(_game),
                 localMovement
             );
-            mfg.EnqueuePrevalidated(productionPlanet, regiment, destFleet);
+            mfg.Enqueue(productionPlanet, regiment, destFleet);
 
             destPlanet.OwnerInstanceID = "rebels";
 
@@ -2439,7 +2439,7 @@ namespace Rebellion.Tests.Simulation
                 ConstructionCost = 100,
             };
 
-            Assert.IsTrue(_manager.EnqueuePrevalidated(_coruscant, regiment, destination));
+            Assert.IsTrue(_manager.Enqueue(_coruscant, regiment, destination));
             destination.OwnerInstanceID = "REBELS";
 
             new ManufacturingTickProcessor(_manager).ProcessTick(_game);
@@ -2457,7 +2457,7 @@ namespace Rebellion.Tests.Simulation
             mine.InstanceID = "LOCAL_MINE";
             mine.OwnerInstanceID = _empire.InstanceID;
             mine.ConstructionCost = 100;
-            Assert.IsTrue(_manager.EnqueuePrevalidated(_coruscant, mine, _coruscant));
+            Assert.IsTrue(_manager.Enqueue(_coruscant, mine, _coruscant));
 
             _coruscant.OwnerInstanceID = "REBELS";
 
@@ -2487,13 +2487,13 @@ namespace Rebellion.Tests.Simulation
                 })
                 .ToList();
             foreach (Building invalidOrder in invalidOrders)
-                Assert.IsTrue(_manager.EnqueuePrevalidated(_coruscant, invalidOrder, captured));
+                Assert.IsTrue(_manager.Enqueue(_coruscant, invalidOrder, captured));
 
             Building validOrder = CreateOrderTestBuildingTemplate("VALID");
             validOrder.InstanceID = "VALID";
             validOrder.OwnerInstanceID = _empire.InstanceID;
             validOrder.ConstructionCost = 100;
-            Assert.IsTrue(_manager.EnqueuePrevalidated(_coruscant, validOrder, _coruscant));
+            Assert.IsTrue(_manager.Enqueue(_coruscant, validOrder, _coruscant));
             captured.OwnerInstanceID = "REBELS";
 
             new ManufacturingTickProcessor(_manager).ProcessTick(_game);
@@ -2528,7 +2528,7 @@ namespace Rebellion.Tests.Simulation
                 order.InstanceID = $"ORDER_{index}";
                 order.OwnerInstanceID = _empire.InstanceID;
                 order.ConstructionCost = 100;
-                Assert.IsTrue(_manager.EnqueuePrevalidated(_coruscant, order, destinations[index]));
+                Assert.IsTrue(_manager.Enqueue(_coruscant, order, destinations[index]));
                 orders.Add(order);
             }
 
@@ -2642,9 +2642,9 @@ namespace Rebellion.Tests.Simulation
                 localMovement
             );
 
-            mfg.EnqueuePrevalidated(planetA, mine1, planetB);
-            mfg.EnqueuePrevalidated(planetA, mine2, planetB);
-            mfg.EnqueuePrevalidated(planetA, mine3, planetB);
+            mfg.Enqueue(planetA, mine1, planetB);
+            mfg.Enqueue(planetA, mine2, planetB);
+            mfg.Enqueue(planetA, mine3, planetB);
 
             // Destination captured before mines complete.
             planetB.OwnerInstanceID = "rebels";
@@ -2771,9 +2771,9 @@ namespace Rebellion.Tests.Simulation
                 localMovement
             );
 
-            mfg.EnqueuePrevalidated(planetA, mine1, planetB);
-            mfg.EnqueuePrevalidated(planetA, mine2, planetB);
-            mfg.EnqueuePrevalidated(planetA, mine3, planetB);
+            mfg.Enqueue(planetA, mine1, planetB);
+            mfg.Enqueue(planetA, mine2, planetB);
+            mfg.Enqueue(planetA, mine3, planetB);
 
             // Destination captured before mines complete.
             planetB.OwnerInstanceID = "rebels";
@@ -2800,7 +2800,7 @@ namespace Rebellion.Tests.Simulation
                 BuildingType = BuildingType.Mine,
             };
 
-            _manager.EnqueuePrevalidated(_coruscant, mine, _coruscant);
+            _manager.Enqueue(_coruscant, mine, _coruscant);
             IReadOnlyList<GameResult> results = new ManufacturingTickProcessor(
                 _manager
             ).ProcessTick(_game);
@@ -2822,7 +2822,7 @@ namespace Rebellion.Tests.Simulation
                 BuildingType = BuildingType.Mine,
             };
 
-            _manager.EnqueuePrevalidated(_coruscant, mine, _coruscant);
+            _manager.Enqueue(_coruscant, mine, _coruscant);
             IReadOnlyList<GameResult> results = new ManufacturingTickProcessor(
                 _manager
             ).ProcessTick(_game);
@@ -2848,7 +2848,7 @@ namespace Rebellion.Tests.Simulation
                 BuildingType = BuildingType.Mine,
             };
 
-            _manager.EnqueuePrevalidated(_coruscant, mine, _coruscant);
+            _manager.Enqueue(_coruscant, mine, _coruscant);
             IReadOnlyList<GameResult> results = new ManufacturingTickProcessor(
                 _manager
             ).ProcessTick(_game);
@@ -2883,8 +2883,8 @@ namespace Rebellion.Tests.Simulation
                 BuildingType = BuildingType.Mine,
             };
 
-            _manager.EnqueuePrevalidated(_coruscant, mine1, _coruscant);
-            _manager.EnqueuePrevalidated(_coruscant, mine2, _coruscant);
+            _manager.Enqueue(_coruscant, mine1, _coruscant);
+            _manager.Enqueue(_coruscant, mine2, _coruscant);
             IReadOnlyList<GameResult> results = new ManufacturingTickProcessor(
                 _manager
             ).ProcessTick(_game);
@@ -2913,7 +2913,7 @@ namespace Rebellion.Tests.Simulation
                 BuildingType = BuildingType.Mine,
             };
 
-            _manager.EnqueuePrevalidated(_coruscant, mine, _coruscant);
+            _manager.Enqueue(_coruscant, mine, _coruscant);
             IReadOnlyList<GameResult> results = new ManufacturingTickProcessor(
                 _manager
             ).ProcessTick(_game);
@@ -2945,8 +2945,8 @@ namespace Rebellion.Tests.Simulation
                 BuildingType = BuildingType.Mine,
             };
 
-            _manager.EnqueuePrevalidated(_coruscant, mine1, _coruscant);
-            _manager.EnqueuePrevalidated(_coruscant, mine2, _coruscant);
+            _manager.Enqueue(_coruscant, mine1, _coruscant);
+            _manager.Enqueue(_coruscant, mine2, _coruscant);
             IReadOnlyList<GameResult> results = new ManufacturingTickProcessor(
                 _manager
             ).ProcessTick(_game);
@@ -2971,7 +2971,7 @@ namespace Rebellion.Tests.Simulation
                 BuildingType = BuildingType.Mine,
             };
 
-            _manager.EnqueuePrevalidated(_coruscant, mine, _coruscant);
+            _manager.Enqueue(_coruscant, mine, _coruscant);
             IReadOnlyList<GameResult> results = new ManufacturingTickProcessor(
                 _manager
             ).ProcessTick(_game);
@@ -3003,8 +3003,8 @@ namespace Rebellion.Tests.Simulation
                 BuildingType = BuildingType.Mine,
             };
 
-            _manager.EnqueuePrevalidated(_coruscant, mine1, _coruscant);
-            _manager.EnqueuePrevalidated(_coruscant, mine2, _coruscant);
+            _manager.Enqueue(_coruscant, mine1, _coruscant);
+            _manager.Enqueue(_coruscant, mine2, _coruscant);
             IReadOnlyList<GameResult> results = new ManufacturingTickProcessor(
                 _manager
             ).ProcessTick(_game);
@@ -3027,7 +3027,7 @@ namespace Rebellion.Tests.Simulation
                 BuildingType = BuildingType.Mine,
             };
 
-            bool result = _manager.EnqueuePrevalidated(_coruscant, mine, _coruscant);
+            bool result = _manager.Enqueue(_coruscant, mine, _coruscant);
 
             Assert.IsTrue(result);
             Dictionary<ManufacturingType, List<IManufacturable>> queue =
@@ -3056,7 +3056,7 @@ namespace Rebellion.Tests.Simulation
                 ConstructionCost = 1,
             };
 
-            bool result = _manager.EnqueuePrevalidated(_coruscant, regiment, destination);
+            bool result = _manager.Enqueue(_coruscant, regiment, destination);
 
             Assert.IsFalse(result);
             Assert.IsNull(regiment.GetParent());
@@ -3091,9 +3091,9 @@ namespace Rebellion.Tests.Simulation
                 BuildingType = BuildingType.Defense,
             };
 
-            _manager.EnqueuePrevalidated(_coruscant, building1, _coruscant);
-            _manager.EnqueuePrevalidated(_coruscant, building2, _coruscant);
-            _manager.EnqueuePrevalidated(_coruscant, building3, _coruscant);
+            _manager.Enqueue(_coruscant, building1, _coruscant);
+            _manager.Enqueue(_coruscant, building2, _coruscant);
+            _manager.Enqueue(_coruscant, building3, _coruscant);
 
             List<IManufacturable> queue = _coruscant.GetManufacturingQueue()[
                 ManufacturingType.Building
@@ -3135,7 +3135,7 @@ namespace Rebellion.Tests.Simulation
                 BuildingType = BuildingType.Mine,
             };
 
-            _manager.EnqueuePrevalidated(_coruscant, mine, _coruscant);
+            _manager.Enqueue(_coruscant, mine, _coruscant);
 
             // Building should be in the _game's node registry
             Building retrievedBuilding = _game.GetSceneNodeByInstanceID<Building>("MINE1");
@@ -3171,8 +3171,8 @@ namespace Rebellion.Tests.Simulation
             };
 
             // Both should enqueue successfully
-            bool firstResult = _manager.EnqueuePrevalidated(_coruscant, mine1, _coruscant);
-            bool secondResult = _manager.EnqueuePrevalidated(_coruscant, mine2, _coruscant);
+            bool firstResult = _manager.Enqueue(_coruscant, mine1, _coruscant);
+            bool secondResult = _manager.Enqueue(_coruscant, mine2, _coruscant);
 
             Assert.IsTrue(firstResult);
             Assert.IsTrue(secondResult);
@@ -3215,7 +3215,7 @@ namespace Rebellion.Tests.Simulation
             // Attempt to enqueue on different planet should throw
             Assert.Throws<InvalidOperationException>(() =>
             {
-                _manager.EnqueuePrevalidated(tatooine, mine, tatooine);
+                _manager.Enqueue(tatooine, mine, tatooine);
             });
         }
 
@@ -3231,12 +3231,12 @@ namespace Rebellion.Tests.Simulation
                 BuildingType = BuildingType.Mine,
             };
 
-            _manager.EnqueuePrevalidated(_coruscant, mine, _coruscant);
+            _manager.Enqueue(_coruscant, mine, _coruscant);
 
             // Second enqueue should throw - same instance already has a parent
             Assert.Throws<InvalidOperationException>(() =>
             {
-                _manager.EnqueuePrevalidated(_coruscant, mine, _coruscant);
+                _manager.Enqueue(_coruscant, mine, _coruscant);
             });
         }
 
@@ -3261,8 +3261,8 @@ namespace Rebellion.Tests.Simulation
                 BuildingType = BuildingType.Mine,
             };
 
-            _manager.EnqueuePrevalidated(_coruscant, mine1, _coruscant);
-            _manager.EnqueuePrevalidated(_coruscant, mine2, _coruscant);
+            _manager.Enqueue(_coruscant, mine1, _coruscant);
+            _manager.Enqueue(_coruscant, mine2, _coruscant);
 
             Dictionary<ManufacturingType, List<IManufacturable>> queue =
                 _coruscant.GetManufacturingQueue();
@@ -3283,7 +3283,7 @@ namespace Rebellion.Tests.Simulation
                 ManufacturingFactionInstanceIDs = new List<string> { "REBELS" },
             };
 
-            bool result = _manager.EnqueuePrevalidated(_coruscant, rebelBuilding, _coruscant);
+            bool result = _manager.Enqueue(_coruscant, rebelBuilding, _coruscant);
             Assert.IsFalse(
                 result,
                 "Enqueueing a building owned by a different faction must return false"
@@ -3316,27 +3316,6 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void EnqueuePrevalidated_InsufficientMaintenanceHeadroom_QueuesItem()
-        {
-            Building expensive = new Building
-            {
-                InstanceID = "EXPENSIVE1",
-                OwnerInstanceID = "EMPIRE",
-                ConstructionCost = 100,
-                MaintenanceCost = _empire.ProjectedMaintenanceHeadroom + 1,
-                BaseBuildSpeed = 10,
-                BuildingType = BuildingType.Mine,
-            };
-
-            bool result = _manager.EnqueuePrevalidated(_coruscant, expensive, _coruscant);
-
-            Assert.IsTrue(result);
-            Dictionary<ManufacturingType, List<IManufacturable>> queue =
-                _coruscant.GetManufacturingQueue();
-            Assert.AreEqual(1, queue[ManufacturingType.Building].Count);
-        }
-
-        [Test]
         public void Enqueue_WithSufficientStockpile_DoesNotDeductConstructionCost()
         {
             _empire.RefinedMaterialStockpile = 500;
@@ -3358,6 +3337,25 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void Enqueue_InsufficientMaintenanceHeadroom_ReturnsFalse()
         {
+            Building defense = new Building
+            {
+                InstanceID = "DEFENSE1",
+                OwnerInstanceID = "EMPIRE",
+                ConstructionCost = 100,
+                MaintenanceCost = _empire.ProjectedMaintenanceHeadroom + 1,
+                BaseBuildSpeed = 10,
+                BuildingType = BuildingType.Defense,
+            };
+
+            bool result = _manager.Enqueue(_coruscant, defense, _coruscant);
+
+            Assert.IsFalse(result);
+            Assert.IsNull(defense.GetParent());
+        }
+
+        [Test]
+        public void Enqueue_ResourceFacilityWithoutMaintenanceHeadroom_QueuesItem()
+        {
             Building mine = new Building
             {
                 InstanceID = "MINE1",
@@ -3370,8 +3368,8 @@ namespace Rebellion.Tests.Simulation
 
             bool result = _manager.Enqueue(_coruscant, mine, _coruscant);
 
-            Assert.IsFalse(result);
-            Assert.IsNull(mine.GetParent());
+            Assert.IsTrue(result);
+            Assert.AreSame(_coruscant, mine.GetParent());
         }
 
         [Test]
@@ -3388,7 +3386,7 @@ namespace Rebellion.Tests.Simulation
                 BuildingType = BuildingType.Mine,
             };
 
-            bool result = _manager.EnqueuePrevalidated(_coruscant, free, _coruscant);
+            bool result = _manager.Enqueue(_coruscant, free, _coruscant);
             Assert.IsTrue(result);
 
             Dictionary<ManufacturingType, List<IManufacturable>> queue =
@@ -3441,7 +3439,7 @@ namespace Rebellion.Tests.Simulation
                 _movement
             );
 
-            Assert.IsFalse(mfg.EnqueuePrevalidated(planet, fighter, fleet));
+            Assert.IsFalse(mfg.Enqueue(planet, fighter, fleet));
             Assert.IsNull(fighter.GetParent());
         }
 
@@ -3479,7 +3477,7 @@ namespace Rebellion.Tests.Simulation
                 _movement
             );
 
-            Assert.IsTrue(mfg.EnqueuePrevalidated(planet, fighter, carrier));
+            Assert.IsTrue(mfg.Enqueue(planet, fighter, carrier));
             Assert.AreEqual(carrier, fighter.GetParent());
             Assert.Contains(fighter, carrier.GetChildren<Starfighter>().ToList());
         }
@@ -3519,7 +3517,7 @@ namespace Rebellion.Tests.Simulation
                 _movement
             );
 
-            Assert.IsFalse(mfg.EnqueuePrevalidated(planet, fighter, carrier));
+            Assert.IsFalse(mfg.Enqueue(planet, fighter, carrier));
             Assert.IsNull(fighter.GetParent());
         }
 
@@ -3557,7 +3555,7 @@ namespace Rebellion.Tests.Simulation
                 _movement
             );
 
-            Assert.IsFalse(mfg.EnqueuePrevalidated(planet, fighter, carrier));
+            Assert.IsFalse(mfg.Enqueue(planet, fighter, carrier));
             Assert.IsNull(fighter.GetParent());
         }
 
@@ -3595,7 +3593,7 @@ namespace Rebellion.Tests.Simulation
                 _movement
             );
 
-            Assert.IsFalse(manufacturing.EnqueuePrevalidated(planet, fighter, fleet));
+            Assert.IsFalse(manufacturing.Enqueue(planet, fighter, fleet));
             Assert.IsNull(fighter.GetParent());
         }
 
@@ -3610,7 +3608,7 @@ namespace Rebellion.Tests.Simulation
                 BaseBuildSpeed = 10,
                 BuildingType = BuildingType.Mine,
             };
-            _manager.EnqueuePrevalidated(_coruscant, mine, _coruscant);
+            _manager.Enqueue(_coruscant, mine, _coruscant);
 
             bool cleared = _manager.ClearQueue(_coruscant, ManufacturingType.Building);
             Dictionary<ManufacturingType, List<IManufacturable>> queue =
@@ -3681,7 +3679,7 @@ namespace Rebellion.Tests.Simulation
                 ManufacturingStatus = ManufacturingStatus.Building,
                 BuildingType = BuildingType.Mine,
             };
-            _manager.EnqueuePrevalidated(_coruscant, mine, _coruscant);
+            _manager.Enqueue(_coruscant, mine, _coruscant);
 
             new ManufacturingTickProcessor(_manager).ProcessTick(_game);
             bool cancelled = _manager.CancelManufacturing(mine, _empire.InstanceID);
@@ -3698,6 +3696,7 @@ namespace Rebellion.Tests.Simulation
         public void CancelManufacturing_QueuedItem_RestoresMaintenanceHeadroom()
         {
             const int maintenanceCost = 12;
+            _empire.Settings.ResourceProcessingPointsPerFacility = maintenanceCost;
             int initialHeadroom = _empire.ProjectedMaintenanceHeadroom;
             Building mine = new Building
             {
@@ -3708,7 +3707,7 @@ namespace Rebellion.Tests.Simulation
                 BaseBuildSpeed = 10,
                 BuildingType = BuildingType.Mine,
             };
-            _manager.EnqueuePrevalidated(_coruscant, mine, _coruscant);
+            _manager.Enqueue(_coruscant, mine, _coruscant);
             Assert.AreEqual(
                 initialHeadroom - maintenanceCost,
                 _empire.ProjectedMaintenanceHeadroom
@@ -3846,8 +3845,8 @@ namespace Rebellion.Tests.Simulation
                 BuildingType = BuildingType.Mine,
             };
 
-            _manager.EnqueuePrevalidated(_coruscant, mine1, _coruscant);
-            _manager.EnqueuePrevalidated(_coruscant, mine2, _coruscant);
+            _manager.Enqueue(_coruscant, mine1, _coruscant);
+            _manager.Enqueue(_coruscant, mine2, _coruscant);
 
             Dictionary<ManufacturingType, List<IManufacturable>> queue =
                 _coruscant.GetManufacturingQueue();
@@ -4225,7 +4224,7 @@ namespace Rebellion.Tests.Simulation
                 new ManufacturingQueries(_game),
                 _movement
             );
-            mfg.EnqueuePrevalidated(planet, ship, fleet);
+            mfg.Enqueue(planet, ship, fleet);
 
             Assert.AreEqual(2, fleet.GetChildren<CapitalShip>().Count, "Ship should be in fleet.");
             Assert.AreEqual("cs1", fleet.GetChildren<CapitalShip>()[1].InstanceID);
@@ -4258,7 +4257,7 @@ namespace Rebellion.Tests.Simulation
                 new ManufacturingQueries(_game),
                 _movement
             );
-            bool result = mfg.EnqueuePrevalidated(planet, ship, planet);
+            bool result = mfg.Enqueue(planet, ship, planet);
 
             Assert.IsFalse(
                 result,
@@ -4299,7 +4298,7 @@ namespace Rebellion.Tests.Simulation
                 new ManufacturingQueries(_game),
                 _movement
             );
-            mfg.EnqueuePrevalidated(planet, newShip, existingFleet);
+            mfg.Enqueue(planet, newShip, existingFleet);
 
             List<Fleet> fleets = planet.GetChildren<Fleet>().ToList();
             Assert.AreEqual(1, fleets.Count, "Ship should join the explicitly specified fleet.");
@@ -4340,7 +4339,7 @@ namespace Rebellion.Tests.Simulation
                 new ManufacturingQueries(_game),
                 _movement
             );
-            bool result = mfg.EnqueuePrevalidated(planet, newShip, planet);
+            bool result = mfg.Enqueue(planet, newShip, planet);
 
             Assert.IsFalse(
                 result,
@@ -4386,7 +4385,7 @@ namespace Rebellion.Tests.Simulation
                 new ManufacturingQueries(_game),
                 _movement
             );
-            bool result = mfg.EnqueuePrevalidated(planet, ship, fleet);
+            bool result = mfg.Enqueue(planet, ship, fleet);
 
             Assert.IsFalse(result, "Enqueueing a capital ship with no owner should fail.");
         }
@@ -4431,8 +4430,8 @@ namespace Rebellion.Tests.Simulation
                 new ManufacturingQueries(_game),
                 _movement
             );
-            mfg.EnqueuePrevalidated(planet, ship1, fleet);
-            mfg.EnqueuePrevalidated(planet, ship2, fleet);
+            mfg.Enqueue(planet, ship1, fleet);
+            mfg.Enqueue(planet, ship2, fleet);
 
             Assert.AreEqual(
                 3,
@@ -4474,8 +4473,8 @@ namespace Rebellion.Tests.Simulation
                 new ManufacturingQueries(_game),
                 _movement
             );
-            mfg.EnqueuePrevalidated(planet, ship1, targetFleet);
-            mfg.EnqueuePrevalidated(planet, ship2, targetFleet);
+            mfg.Enqueue(planet, ship1, targetFleet);
+            mfg.Enqueue(planet, ship2, targetFleet);
 
             List<Fleet> fleets = planet.GetChildren<Fleet>().ToList();
             Assert.AreEqual(1, fleets.Count, "Both ships explicitly target the same fleet.");
@@ -4519,7 +4518,7 @@ namespace Rebellion.Tests.Simulation
                 new ManufacturingQueries(_game),
                 _movement
             );
-            mfg.EnqueuePrevalidated(planet, mine, destPlanet);
+            mfg.Enqueue(planet, mine, destPlanet);
 
             Assert.AreEqual(
                 destPlanet,
@@ -4564,7 +4563,7 @@ namespace Rebellion.Tests.Simulation
                 new ManufacturingQueries(_game),
                 _movement
             );
-            mfg.EnqueuePrevalidated(planet, fighter, destFleet);
+            mfg.Enqueue(planet, fighter, destFleet);
 
             Assert.AreEqual(
                 destShip,
@@ -4599,7 +4598,7 @@ namespace Rebellion.Tests.Simulation
                 new ManufacturingQueries(_game),
                 _movement
             );
-            mfg.EnqueuePrevalidated(planet, regiment, destPlanet);
+            mfg.Enqueue(planet, regiment, destPlanet);
 
             Assert.AreEqual(
                 destPlanet,
