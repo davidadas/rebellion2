@@ -901,25 +901,7 @@ namespace Rebellion.Simulation
             int score = participant.GetEffectiveRating(SkillRating.Combat) - defenderCombat;
             bool evaded = _provider.NextDouble() * 100 < _queries.GetEvasionProbability(score);
             if (evaded)
-            {
-                if (
-                    participant is Officer escapingOfficer
-                    && Mission.ApplyEvasionInjury(
-                        escapingOfficer,
-                        detector,
-                        planet,
-                        _game,
-                        _provider,
-                        results
-                    )
-                )
-                {
-                    _personnelCommands.KillOfficer(escapingOfficer);
-                    return false;
-                }
-
                 return true;
-            }
 
             if (participant is SpecialForces specialForces)
             {

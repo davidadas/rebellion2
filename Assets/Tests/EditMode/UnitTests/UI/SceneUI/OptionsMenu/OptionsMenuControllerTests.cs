@@ -120,7 +120,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void ClosedController_CloseAndRender_AreNoOps()
+        public void RenderWindows_ClosedController_DoesNotCreateWindow()
         {
             _controller.Close();
             _controller.RenderWindows();
@@ -130,7 +130,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void Navigation_CleanSettings_SwitchesAllTabs()
+        public void HandleTabSelected_CleanSettings_SwitchesAllTabs()
         {
             OptionsMenuView view = OpenAndRender();
             Button[] tabs = GetField<Button[]>(view, "_tabButtons");
@@ -159,7 +159,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void ModsPage_ToggleMod_PreservesDisabledModsForOtherPacks()
+        public void HandleModToggle_CompatibleMod_PreservesDisabledModsForOtherPacks()
         {
             const string compatibleModID = "compatible-mod";
             const string otherPackModID = "other-pack-mod";
@@ -167,7 +167,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             _testModDirectoryPath = Path.Combine(
                 Directory.GetParent(contentPack.ContentRootPath).FullName,
                 "Mods",
-                nameof(ModsPage_ToggleMod_PreservesDisabledModsForOtherPacks)
+                nameof(HandleModToggle_CompatibleMod_PreservesDisabledModsForOtherPacks)
                     + "-"
                     + Guid.NewGuid().ToString("N")
             );
@@ -198,9 +198,12 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void GameplayActions_Default_ToggleAutomaticPausingOption()
+        public void HandleGameplayToggle_SavedAutomaticPausingState_TogglesOption()
         {
             OptionsMenuView view = OpenAndRender();
+            bool initiallyPaused = _bootstrap
+                .GetUserSettingsManager()
+                .Settings.Gameplay.PauseAfterEnemyBombardment;
             OptionsToggleRowView gameplayRow = GetField<OptionsToggleRowView[]>(
                     view,
                     "_gameplayRows"
@@ -211,13 +214,14 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
 
             GetField<Button>(gameplayRow, "_button").onClick.Invoke();
 
-            Assert.IsFalse(
+            Assert.AreEqual(
+                !initiallyPaused,
                 _bootstrap.GetUserSettingsManager().Settings.Gameplay.PauseAfterEnemyBombardment
             );
         }
 
         [Test]
-        public void GameplayActions_DisableBriefingsClicked_TogglesOption()
+        public void HandleGameplayToggle_DisableBriefingsClicked_TogglesOption()
         {
             OptionsMenuView view = OpenAndRender();
             OptionsToggleRowView[] gameplayRows = GetField<OptionsToggleRowView[]>(
@@ -239,7 +243,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void UserInterfaceActions_Default_ToggleIdleBarOptions()
+        public void HandleUserInterfaceToggle_IdleBarOptionsClicked_TogglesOptions()
         {
             OptionsMenuView view = OpenAndRender(OptionsMenuTab.Gameplay);
             bool initiallyVisible = _bootstrap
@@ -273,7 +277,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void GraphicsActions_Default_ChangePreviewAndRestoreDefaultsAfterConfirmation()
+        public void HandleDefaults_ModifiedGraphicsConfirmed_ClosesPromptAndMarksSettingsDirty()
         {
             OptionsMenuView view = OpenAndRender(OptionsMenuTab.Graphics);
             int initialDirtyCount = _dirtyCount;
@@ -294,7 +298,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void ActiveGame_OpenAndBackToGame_PausesAndRestoresSpeed()
+        public void HandleBackToGame_ActiveGame_RestoresSpeedAndClosesWindow()
         {
             _bootstrap.GetRuntime().StartGame(CreateGame());
             GameManager gameManager = _bootstrap.GetRuntime().GetActiveGameManager();
@@ -309,7 +313,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void ActiveGame_ReturnToMainMenu_WarnsAboutUnsavedProgress()
+        public void HandleMainMenuRequested_ActiveGame_WarnsAboutUnsavedProgress()
         {
             _bootstrap.GetRuntime().StartGame(CreateGame());
             OptionsMenuView view = OpenAndRender();
@@ -328,7 +332,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void ActiveGame_Quit_WarnsAboutUnsavedProgress()
+        public void HandleQuitRequested_ActiveGame_WarnsAboutUnsavedProgress()
         {
             _bootstrap.GetRuntime().StartGame(CreateGame());
             OptionsMenuView view = OpenAndRender();
@@ -347,7 +351,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void AudioActions_Default_ChangeVolumeThenDiscardTabChange()
+        public void HandleTabSelected_DirtyAudioSettingsDeclined_KeepsAudioTabOpen()
         {
             OptionsMenuView view = OpenAndRender(OptionsMenuTab.Audio);
             NormalizedSliderView slider = GetField<NormalizedSliderView[]>(view, "_volumeSliders")
@@ -368,7 +372,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void ControlsActions_Default_RestoreBindingAndCancelRebind()
+        public void TryCancel_ActiveRebind_CancelsRebindWithoutClosingWindow()
         {
             OptionsMenuView view = OpenAndRender(OptionsMenuTab.Controls);
             Button restore = view.GetComponentsInChildren<Button>(true)
@@ -388,7 +392,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void SaveLoadActions_WithoutSelection_DoNotLoadOrClose()
+        public void HandleLoadRequested_NoSelection_LeavesWindowOpen()
         {
             OptionsMenuView view = OpenAndRender(OptionsMenuTab.SaveLoad);
             OptionsSaveListView saveList = GetField<OptionsSaveListView>(view, "_saveListView");
@@ -400,7 +404,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void SaveLoadActions_SelectedSave_OverwritesAndLoadsThroughHost()
+        public void HandleLoadRequested_SelectedSaveAfterOverwrite_LoadsThroughHostAndClosesWindow()
         {
             GameRoot game = CreateGame();
             _bootstrap.GetRuntime().StartGame(game);
@@ -425,7 +429,22 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void SaveLoadActions_ValidNewSaveName_EnablesSaveButtonAndCreatesSave()
+        public void RefreshSaveSlots_SavedDetails_RendersDifficultyAndTurn()
+        {
+            GameRoot game = CreateGame();
+            game.Summary.Difficulty = GameDifficulty.Hard;
+            game.CurrentTick = 42;
+            _saveGameManager.SaveGameData(game, "hard_save", "Hard Save");
+
+            OptionsMenuView view = OpenAndRender(OptionsMenuTab.SaveLoad);
+
+            TextMeshProUGUI metadata = view.GetComponentsInChildren<TextMeshProUGUI>(true)
+                .Single(text => text.name == "SlotMetadata0");
+            Assert.AreEqual("Hard • Turn 42", metadata.text);
+        }
+
+        [Test]
+        public void HandleSaveRequested_ValidNewSaveName_EnablesButtonAndCreatesSave()
         {
             _bootstrap.GetRuntime().StartGame(CreateGame());
             OptionsMenuView view = OpenAndRender(OptionsMenuTab.SaveLoad);
@@ -453,7 +472,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void SaveLoadActions_RenameCreateAndDelete_RefreshesPersistedSlots()
+        public void RefreshSaveSlots_PersistedSlotChanges_ReflectRenameCreationAndDeletion()
         {
             GameRoot game = CreateGame();
             _bootstrap.GetRuntime().StartGame(game);
@@ -496,7 +515,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void MainMenuFooter_Default_BackToMainMenuClosesOverlay()
+        public void HandleMainMenuRequested_NoActiveGame_ClosesWindow()
         {
             OptionsMenuView view = OpenAndRender();
 
@@ -506,7 +525,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void MainMenu_Quit_CancelDismissesPromptWithoutUnsavedProgressWarning()
+        public void HandleQuitRequested_NoActiveGameDeclined_KeepsWindowOpen()
         {
             OptionsMenuView view = OpenAndRender();
             ConfirmationDialogView confirmation = GetField<ConfirmationDialogView>(
@@ -527,7 +546,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void DestroyedView_Default_ClearsControllerWindowState()
+        public void HandleViewDestroyed_DestroyedWindow_ClearsControllerState()
         {
             OptionsMenuView view = OpenAndRender();
 

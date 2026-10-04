@@ -266,6 +266,8 @@ public class SaveGameManager
         game.Metadata.SaveVersion = GameMetadata.CurrentSaveVersion;
         game.Metadata.LastSavedUtc = DateTime.UtcNow;
         game.Metadata.PlayerFactionID = game.Summary?.PlayerFactionID;
+        game.Metadata.Difficulty = game.Summary?.Difficulty;
+        game.Metadata.CurrentTick = game.CurrentTick;
         game.Metadata.PackID = game.Summary?.PackID;
         game.Metadata.PackVersion = game.Summary?.PackVersion;
         game.Metadata.ScenarioID = game.Summary?.ScenarioID;
@@ -452,7 +454,7 @@ public class SaveGameManager
     }
 
     /// <summary>
-    /// Reads current sidecar metadata or extracts it from the full save file.
+    /// Reads current sidecar metadata or extracts the embedded metadata from the save file.
     /// </summary>
     /// <param name="fileName">The save file name without its extension.</param>
     /// <returns>The deserialized save metadata.</returns>
