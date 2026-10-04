@@ -367,6 +367,21 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         }
 
         [Test]
+        public void CompleteItemDrag_ActiveTargeting_ClearsCandidateWithoutCancellingTargeting()
+        {
+            BeginTargeting();
+            _contextItems = new ISceneNode[] { new Officer() };
+            PointerEventData eventData = CreatePointerEvent(_window.gameObject);
+            _controller.StartItemDrag(_window, eventData);
+
+            _controller.CompleteItemDrag(eventData);
+
+            Assert.IsTrue(_targetingController.IsTargeting);
+            Assert.IsFalse(_dragController.TryCancelItemDrag());
+            Assert.AreEqual(0, _receiver.CancelledCount);
+        }
+
+        [Test]
         public void CancelTargeting_ActiveThenInactive_ReturnsMatchingState()
         {
             BeginTargeting();
