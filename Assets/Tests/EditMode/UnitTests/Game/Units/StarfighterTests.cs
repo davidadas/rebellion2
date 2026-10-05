@@ -1,7 +1,10 @@
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game.Encyclopedia;
+using Rebellion.Game.ShipComponents;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 
 namespace Rebellion.Tests.Game.Units
 {
@@ -465,9 +468,57 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        public void CreateCopy_WithModelPath_PreservesPath()
+        {
+            _starfighter.ModelPath = "Pack/Units/TestStarfighter/Models/model";
+
+            Starfighter copy = (Starfighter)_starfighter.CreateCopy();
+
+            Assert.AreEqual(_starfighter.ModelPath, copy.ModelPath);
+        }
+
+        [Test]
+        public void CreateCopy_WithModelSize_CreatesIndependentSize()
+        {
+            _starfighter.ModelSize = new ModelDimensions
+            {
+                Width = 12f,
+                Height = 4f,
+                Depth = 18f,
+            };
+
+            Starfighter copy = (Starfighter)_starfighter.CreateCopy();
+
+            Assert.AreNotSame(_starfighter.ModelSize, copy.ModelSize);
+            Assert.AreEqual(12f, copy.ModelSize.Width);
+            Assert.AreEqual(4f, copy.ModelSize.Height);
+            Assert.AreEqual(18f, copy.ModelSize.Depth);
+        }
+
+        [Test]
         public void SerializeAndDeserialize_WithPopulatedStarfighter_MaintainsState()
         {
             _starfighter.ManufacturingQueueSequence = 7;
+            _starfighter.ModelPath = "Pack/Units/TestStarfighter/Models/model";
+            _starfighter.ModelSize = new ModelDimensions
+            {
+                Width = 12f,
+                Height = 4f,
+                Depth = 18f,
+            };
+            HardpointGroup hardpointGroup = new HardpointGroup();
+            hardpointGroup
+                .GetHardpoints()
+                .AddRange(
+                    new Hardpoint[]
+                    {
+                        new Hardpoint { Health = 25 },
+                        new Hardpoint { Health = 25 },
+                        new Hardpoint { Health = 25 },
+                        new Hardpoint { Health = 25 },
+                    }
+                );
+            _starfighter.GetHardpointGroups().Add(hardpointGroup);
             string serialized = SerializationHelper.Serialize(_starfighter);
             Starfighter deserialized = SerializationHelper.Deserialize<Starfighter>(serialized);
 
@@ -476,6 +527,10 @@ namespace Rebellion.Tests.Game.Units
                 deserialized.InstanceID,
                 "InstanceID should be correctly deserialized."
             );
+            Assert.AreEqual(_starfighter.ModelPath, deserialized.ModelPath);
+            Assert.AreEqual(12f, deserialized.ModelSize.Width);
+            Assert.AreEqual(4f, deserialized.ModelSize.Height);
+            Assert.AreEqual(18f, deserialized.ModelSize.Depth);
             Assert.AreEqual(
                 _starfighter.OwnerInstanceID,
                 deserialized.OwnerInstanceID,
@@ -606,6 +661,12 @@ namespace Rebellion.Tests.Game.Units
                 ((IMovable)_starfighter).GetPosition().Y,
                 ((IMovable)deserialized).GetPosition().Y,
                 "PositionY should be correctly deserialized."
+            );
+            Assert.AreEqual(1, deserialized.GetHardpointGroups().Count);
+            HardpointGroup deserializedGroup = deserialized.GetHardpointGroups()[0];
+            Assert.AreEqual(4, deserializedGroup.GetHardpoints().Count);
+            Assert.IsTrue(
+                deserializedGroup.GetHardpoints().All(hardpoint => hardpoint.Health == 25)
             );
         }
     }
