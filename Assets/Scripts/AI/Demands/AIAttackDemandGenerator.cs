@@ -14,6 +14,8 @@ namespace Rebellion.AI.Demands
     /// </summary>
     internal sealed class AIAttackDemandGenerator : IAIDemandGenerator
     {
+        private const int _assaultFleetCompositionReservePercent = 150;
+
         /// <summary>
         /// Generates attack demands for every planet in the faction view.
         /// </summary>
@@ -83,6 +85,9 @@ namespace Rebellion.AI.Demands
                 planet,
                 combatStrength,
                 orbitalStrength,
+                GetCapitalShipFirepower(context, planet),
+                GetStarfighterFirepower(context, planet),
+                GetStarfighterCount(context, planet),
                 Math.Max(
                     1,
                     IntegerMath.ScaleByPercent(
@@ -94,6 +99,58 @@ namespace Rebellion.AI.Demands
                 occupationCount,
                 blockedByShields ? assessment.GetBombardmentShieldStrength(planet) + 1 : 0,
                 blockedByShields
+            );
+        }
+
+        /// <summary>
+        /// Calculates required carried-starfighter capacity at one planet.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="planet">The target planet.</param>
+        /// <returns>The required carried-starfighter capacity.</returns>
+        private static int GetStarfighterCount(AITurnContext context, Planet planet)
+        {
+            int fleetCount = context.Assessment.GetStrongestHostileFleetStarfighterCount(planet);
+            int planetaryCount = context.Assessment.GetHostilePlanetaryStarfighterCount(planet);
+            return IntegerMath.ScaleByPercent(
+                fleetCount + planetaryCount,
+                _assaultFleetCompositionReservePercent
+            );
+        }
+
+        /// <summary>
+        /// Calculates required fighter-target strength at one planet.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="planet">The target planet.</param>
+        /// <returns>The required fighter-target strength.</returns>
+        private static int GetStarfighterFirepower(AITurnContext context, Planet planet)
+        {
+            int fleetFirepower =
+                context.Assessment.GetStrongestHostileFleetFirepowerAgainstStarfighters(planet);
+            int planetaryFirepower =
+                context.Assessment.GetHostilePlanetaryFirepowerAgainstStarfighters(planet);
+            return IntegerMath.ScaleByPercent(
+                    fleetFirepower,
+                    _assaultFleetCompositionReservePercent
+                )
+                + IntegerMath.ScaleByPercent(
+                    planetaryFirepower,
+                    _assaultFleetCompositionReservePercent
+                );
+        }
+
+        /// <summary>
+        /// Calculates required capital-ship firepower at one planet.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="planet">The target planet.</param>
+        /// <returns>The required capital-ship firepower.</returns>
+        private static int GetCapitalShipFirepower(AITurnContext context, Planet planet)
+        {
+            return IntegerMath.ScaleByPercent(
+                context.Assessment.GetStrongestHostileFleetFirepowerAgainstCapitalShips(planet),
+                _assaultFleetCompositionReservePercent
             );
         }
 

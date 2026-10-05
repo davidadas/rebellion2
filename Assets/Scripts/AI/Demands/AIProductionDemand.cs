@@ -1,3 +1,4 @@
+using System;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -70,6 +71,16 @@ namespace Rebellion.AI.Demands
         public int DeficitCount { get; }
         public int TargetCount { get; }
         public int BaseDemandPercent { get; }
+        public int CapitalFirepowerDeficit { get; }
+        public int StarfighterFirepowerDeficit { get; }
+        public int StarfighterCapacityDeficit { get; }
+        public int RegimentCapacityDeficit { get; }
+        public int PlanetDestroyerDeficit { get; }
+        public int BombardmentDeficit { get; }
+        public int InterdictionDeficit { get; }
+        public int EmbarkedRegimentDeficit { get; }
+        public int EmbarkedStarfighterDeficit { get; }
+        public int EscortDeficit { get; }
         public Planet ReferencePlanet { get; }
         public bool EstablishesInitialShield { get; }
         public bool UsesIdleShipyardCapacity { get; }
@@ -111,6 +122,16 @@ namespace Rebellion.AI.Demands
         /// <param name="establishesInitialShield">Whether this demand establishes a planet's first shield.</param>
         /// <param name="deficitCount">Original unmet quantity before proposal batching.</param>
         /// <param name="usesIdleShipyardCapacity">Whether this is opportunistic work for an otherwise idle local shipyard.</param>
+        /// <param name="capitalFirepowerDeficit">Unmet capital-target firepower.</param>
+        /// <param name="starfighterFirepowerDeficit">Unmet fighter-target firepower.</param>
+        /// <param name="starfighterCapacityDeficit">Unmet carried-starfighter capacity.</param>
+        /// <param name="regimentCapacityDeficit">Unmet carried-regiment capacity.</param>
+        /// <param name="planetDestroyerDeficit">Unmet planet-destroying ship count.</param>
+        /// <param name="bombardmentDeficit">Unmet bombardment strength.</param>
+        /// <param name="interdictionDeficit">Unmet interdiction capability count.</param>
+        /// <param name="embarkedRegimentDeficit">Unmet embarked-regiment count.</param>
+        /// <param name="embarkedStarfighterDeficit">Unmet embarked-starfighter count.</param>
+        /// <param name="escortDeficit">Unmet armed escort count.</param>
         public AIProductionDemand(
             string id,
             AIProductionDemandKind kind,
@@ -126,7 +147,17 @@ namespace Rebellion.AI.Demands
             Planet referencePlanet = null,
             bool establishesInitialShield = false,
             int deficitCount = 0,
-            bool usesIdleShipyardCapacity = false
+            bool usesIdleShipyardCapacity = false,
+            int capitalFirepowerDeficit = 0,
+            int starfighterFirepowerDeficit = 0,
+            int starfighterCapacityDeficit = 0,
+            int regimentCapacityDeficit = 0,
+            int planetDestroyerDeficit = 0,
+            int bombardmentDeficit = 0,
+            int interdictionDeficit = 0,
+            int embarkedRegimentDeficit = 0,
+            int embarkedStarfighterDeficit = 0,
+            int escortDeficit = 0
         )
         {
             Id = id;
@@ -144,6 +175,16 @@ namespace Rebellion.AI.Demands
             ProductTypeId = productTypeId;
             CapitalShipRole = capitalShipRole;
             BuildingToReplace = buildingToReplace;
+            CapitalFirepowerDeficit = Math.Max(0, capitalFirepowerDeficit);
+            StarfighterFirepowerDeficit = Math.Max(0, starfighterFirepowerDeficit);
+            StarfighterCapacityDeficit = Math.Max(0, starfighterCapacityDeficit);
+            RegimentCapacityDeficit = Math.Max(0, regimentCapacityDeficit);
+            PlanetDestroyerDeficit = Math.Max(0, planetDestroyerDeficit);
+            BombardmentDeficit = Math.Max(0, bombardmentDeficit);
+            InterdictionDeficit = Math.Max(0, interdictionDeficit);
+            EmbarkedRegimentDeficit = Math.Max(0, embarkedRegimentDeficit);
+            EmbarkedStarfighterDeficit = Math.Max(0, embarkedStarfighterDeficit);
+            EscortDeficit = Math.Max(0, escortDeficit);
         }
 
         /// <summary>
@@ -168,7 +209,17 @@ namespace Rebellion.AI.Demands
                 ReferencePlanet,
                 EstablishesInitialShield,
                 DeficitCount,
-                UsesIdleShipyardCapacity
+                UsesIdleShipyardCapacity,
+                CapitalFirepowerDeficit,
+                StarfighterFirepowerDeficit,
+                StarfighterCapacityDeficit,
+                RegimentCapacityDeficit,
+                PlanetDestroyerDeficit,
+                BombardmentDeficit,
+                InterdictionDeficit,
+                EmbarkedRegimentDeficit,
+                EmbarkedStarfighterDeficit,
+                EscortDeficit
             );
         }
 

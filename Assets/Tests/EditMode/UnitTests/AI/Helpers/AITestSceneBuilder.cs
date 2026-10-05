@@ -182,6 +182,8 @@ namespace Rebellion.Tests.AI.Helpers
                 CurrentHullStrength = durabilityStrength,
                 RegimentCapacity = regimentCapacity,
                 StarfighterCapacity = starfighterCapacity,
+                Maneuverability = 1,
+                WeaponRecharge = 1,
             };
             ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser][0] = combatStrength;
             return ship;
@@ -247,6 +249,7 @@ namespace Rebellion.Tests.AI.Helpers
                 BaseBuildSpeed = 1,
                 MaxSquadronSize = 12,
                 CurrentSquadronSize = 12,
+                Agility = 1,
                 LaserCannon = laserCannon,
                 IonCannon = ionCannon,
                 Torpedoes = torpedoes,

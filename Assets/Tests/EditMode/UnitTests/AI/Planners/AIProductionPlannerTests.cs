@@ -971,7 +971,7 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Plan_WithCombatAndTransportDeficits_SelectsEfficientTransport()
+        public void Plan_WithCombatAndTransportDeficits_SelectsCapitalFirepowerShip()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             game.Config.AI.Infrastructure.FleetProductionMinimumShipyardCount = 1;
@@ -1055,11 +1055,8 @@ namespace Rebellion.Tests.AI.Planners
                     && item.Destination == fleet
                 );
 
-            Assert.AreSame(transport, proposal.Product.GetReference());
-            Assert.AreEqual(
-                AICapitalShipProductionRole.TroopTransport,
-                proposal.Demand.CapitalShipRole
-            );
+            Assert.AreSame(lineShip, proposal.Product.GetReference());
+            Assert.Greater(proposal.Demand.RegimentCapacityDeficit, 0);
         }
 
         [Test]
@@ -1320,9 +1317,9 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreSame(higherMetricTemplate, proposal.Product.GetReference());
         }
 
-        [TestCase(false, TestName = "Plan_WithNoCarrier_SelectsCarrierCapableWarship")]
-        [TestCase(true, TestName = "Plan_WithCarrier_SelectsHigherQualityWarship")]
-        public void Plan_GeneralCombatSelection_FillsMissingCarrierRole(bool hasCarrier)
+        [TestCase(false, TestName = "Plan_WithNoCarrier_UsesCapitalFirepowerPriority")]
+        [TestCase(true, TestName = "Plan_WithCarrier_UsesCapitalFirepowerPriority")]
+        public void Plan_GeneralCombatSelection_UsesCapitalFirepowerPriority(bool hasCarrier)
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             game.Config.AI.Infrastructure.FleetProductionMinimumShipyardCount = 1;
@@ -1382,7 +1379,7 @@ namespace Rebellion.Tests.AI.Planners
             AITurnContext context = AITestSceneBuilder.CreateContext(
                 game,
                 empire,
-                random: new SequenceRNG(intValues: new[] { 1 })
+                random: new SequenceRNG(intValues: new[] { hasCarrier ? 0 : 1 })
             );
 
             AIManufactureProposal proposal = PlanProduction(context)
@@ -1392,12 +1389,12 @@ namespace Rebellion.Tests.AI.Planners
                     && item.Destination == fleet
                 );
 
-            Assert.AreSame(hasCarrier ? warship : carrier, proposal.Product.GetReference());
-            Assert.AreEqual(AICapitalShipProductionRole.General, proposal.Demand.CapitalShipRole);
+            Assert.AreSame(hasCarrier ? carrier : warship, proposal.Product.GetReference());
+            Assert.Greater(proposal.Demand.CapitalFirepowerDeficit, 0);
         }
 
         [Test]
-        public void Plan_WithBombardmentDeficit_SelectsEfficientBombardmentShip()
+        public void Plan_WithCombatAndBombardmentDeficits_SelectsCapitalFirepowerShip()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             game.Config.AI.Infrastructure.FleetProductionMinimumShipyardCount = 1;
@@ -1492,11 +1489,8 @@ namespace Rebellion.Tests.AI.Planners
                     && item.Destination == fleet
                 );
 
-            Assert.AreSame(bombardmentShip, proposal.Product.GetReference());
-            Assert.AreEqual(
-                AICapitalShipProductionRole.Bombardment,
-                proposal.Demand.CapitalShipRole
-            );
+            Assert.AreSame(lineShip, proposal.Product.GetReference());
+            Assert.Greater(proposal.Demand.BombardmentDeficit, 0);
         }
 
         [Test]
@@ -1583,14 +1577,11 @@ namespace Rebellion.Tests.AI.Planners
                 );
 
             Assert.AreSame(lowerRecharge, proposal.Product.GetReference());
-            Assert.AreEqual(
-                AICapitalShipProductionRole.Interdiction,
-                proposal.Demand.CapitalShipRole
-            );
+            Assert.AreEqual(1, proposal.Demand.InterdictionDeficit);
         }
 
         [Test]
-        public void Plan_WithOnlyBombardmentDeficit_IgnoresCarrierCapacity()
+        public void Plan_WithBombardmentAndEscortDeficits_SelectsEscortFirst()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             game.Config.AI.Infrastructure.FleetProductionMinimumShipyardCount = 1;
@@ -1677,11 +1668,11 @@ namespace Rebellion.Tests.AI.Planners
                     && item.Destination == fleet
                 );
 
-            Assert.AreSame(bombardmentShip, proposal.Product.GetReference());
+            Assert.AreSame(carrier, proposal.Product.GetReference());
         }
 
         [Test]
-        public void Plan_WithMultipleGeneralCandidatesAndFirstRoll_SelectsFirstCandidate()
+        public void Plan_WithMultipleCombatCandidates_UsesSeededEligibleSelection()
         {
             (GameRoot game, Faction empire, Fleet fleet) = CreateCapitalSelectionScene();
             game.Config.AI.Infrastructure.FleetProductionMinimumShipyardCount = 1;
@@ -1726,7 +1717,7 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Plan_WithMultipleGeneralCandidatesAndSecondRoll_SelectsSecondCandidate()
+        public void Plan_WithEquivalentCombatCandidatesAndSecondRoll_SelectsSecondCandidate()
         {
             (GameRoot game, Faction empire, Fleet fleet) = CreateCapitalSelectionScene();
             game.Config.AI.Infrastructure.FleetProductionMinimumShipyardCount = 1;
@@ -1742,7 +1733,7 @@ namespace Rebellion.Tests.AI.Planners
             CapitalShip secondTemplate = AITestSceneBuilder.CreateCapitalShip(
                 "second-template",
                 empire.InstanceID,
-                combatStrength: 250
+                combatStrength: 300
             );
             secondTemplate.TypeID = "second";
             secondTemplate.MaintenanceCost = 0;
