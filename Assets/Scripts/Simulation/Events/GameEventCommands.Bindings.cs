@@ -9,7 +9,7 @@ using Rebellion.Util.Random;
 
 namespace Rebellion.Simulation
 {
-    public partial class GameEventExecutor
+    public partial class GameEventCommands
     {
         /// <summary>
         /// Resolves the requested operation.
@@ -122,7 +122,7 @@ namespace Rebellion.Simulation
                 );
             return source
                 .Selectors.SelectMany(selector =>
-                    GameEventExecutor.Select(selector, game, provider, context)
+                    GameEventCommands.Select(selector, game, provider, context)
                 )
                 .Distinct()
                 .Count();
@@ -196,7 +196,7 @@ namespace Rebellion.Simulation
                     $"Selection binding '{binding.As}' requires exactly one selector."
                 );
 
-            ISceneNode[] values = GameEventExecutor
+            ISceneNode[] values = GameEventCommands
                 .Select(binding.Selectors[0], game, provider, context)
                 .Distinct()
                 .ToArray();

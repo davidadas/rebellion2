@@ -16,6 +16,7 @@ public sealed class FinderWindowRowBuilder
     private readonly IReadOnlyList<Faction> factions;
     private readonly IReadOnlyList<Officer> registeredOfficers;
     private readonly string playerFactionId;
+    private readonly Func<string, string> findTypeDisplayName;
     private readonly Func<string, IReadOnlyList<string>> getSpecialForcesColumnTypeIds;
     private readonly Func<string, IReadOnlyList<string>> getTroopColumnTypeIds;
 
@@ -28,19 +29,22 @@ public sealed class FinderWindowRowBuilder
     /// <param name="getTroopColumnTypeIds">Returns regiment type identifiers in Finder column order.</param>
     /// <param name="getSpecialForcesColumnTypeIds">Returns special-forces type identifiers in Finder column order.</param>
     /// <param name="registeredOfficers">The authoritative live officer roster, including disabled officers.</param>
+    /// <param name="findTypeDisplayName">Returns the configured display name for a unit type identifier.</param>
     public FinderWindowRowBuilder(
         IReadOnlyList<GalaxyMapSector> sectors,
         IReadOnlyList<Faction> factions,
         string playerFactionId,
         Func<string, IReadOnlyList<string>> getTroopColumnTypeIds = null,
         Func<string, IReadOnlyList<string>> getSpecialForcesColumnTypeIds = null,
-        IReadOnlyList<Officer> registeredOfficers = null
+        IReadOnlyList<Officer> registeredOfficers = null,
+        Func<string, string> findTypeDisplayName = null
     )
     {
         this.sectors = sectors ?? throw new ArgumentNullException(nameof(sectors));
         this.factions = factions ?? Array.Empty<Faction>();
         this.registeredOfficers = registeredOfficers;
         this.playerFactionId = playerFactionId;
+        this.findTypeDisplayName = findTypeDisplayName;
         this.getTroopColumnTypeIds = getTroopColumnTypeIds;
         this.getSpecialForcesColumnTypeIds = getSpecialForcesColumnTypeIds;
     }
@@ -104,7 +108,7 @@ public sealed class FinderWindowRowBuilder
                 planet
                     .Planet.GetChildren<Fleet>()
                     .Select(fleet => new FinderWindowRow(
-                        fleet.GetDisplayName(),
+                        GetFleetDisplayName(fleet, planet.Planet),
                         planet,
                         PlanetIcon.Fleet,
                         fleet
@@ -113,6 +117,35 @@ public sealed class FinderWindowRowBuilder
             .Where(row => MatchesFactionTab(row.OwnerFactionId, tab))
             .OrderBy(row => row.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
+    }
+
+    /// <summary>
+    /// Formats a fleet name with its current relationship to the represented planet.
+    /// </summary>
+    /// <param name="fleet">The fleet to label.</param>
+    /// <param name="planet">The fleet's current destination or stationary location.</param>
+    /// <returns>The fleet name followed by its location status.</returns>
+    private static string GetFleetDisplayName(Fleet fleet, Planet planet)
+    {
+        string fleetName = fleet?.GetDisplayName() ?? string.Empty;
+        string planetName = planet?.GetDisplayName() ?? string.Empty;
+        string fleetOwnerId = fleet?.GetOwnerInstanceID();
+        Planet liveDestination = fleet?.GetParentOfType<Planet>();
+        string planetOwnerId =
+            liveDestination?.GetOwnerInstanceID() ?? planet?.GetOwnerInstanceID();
+        bool isEnemyPlanet =
+            !string.IsNullOrEmpty(planetOwnerId)
+            && !string.Equals(fleetOwnerId, planetOwnerId, StringComparison.Ordinal);
+
+        string status;
+        if (fleet?.Movement != null)
+            status = isEnemyPlanet ? $"Attacking {planetName}" : $"En Route to {planetName}";
+        else if (string.IsNullOrEmpty(planetOwnerId))
+            status = $"Orbiting {planetName}";
+        else
+            status = isEnemyPlanet ? $"Blockading {planetName}" : $"Defending {planetName}";
+
+        return $"{fleetName} ({status})";
     }
 
     /// <summary>
@@ -131,7 +164,7 @@ public sealed class FinderWindowRowBuilder
                         fleet
                             .GetChildren<CapitalShip>()
                             .Select(ship => new FinderWindowRow(
-                                ship.GetDisplayName(),
+                                GetShipDisplayName(ship),
                                 planet,
                                 PlanetIcon.Fleet,
                                 ship,
@@ -142,6 +175,23 @@ public sealed class FinderWindowRowBuilder
             .Where(row => MatchesFactionTab(row.OwnerFactionId, tab))
             .OrderBy(row => row.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
+    }
+
+    /// <summary>
+    /// Formats a ship's assigned name together with its configured vessel type.
+    /// </summary>
+    /// <param name="ship">The capital ship to label.</param>
+    /// <returns>The Finder display label.</returns>
+    private string GetShipDisplayName(CapitalShip ship)
+    {
+        string displayName = ship?.GetDisplayName() ?? string.Empty;
+        if (ship?.HasAssignedName != true)
+            return displayName;
+
+        string typeDisplayName = findTypeDisplayName?.Invoke(ship.TypeID);
+        return string.IsNullOrWhiteSpace(typeDisplayName)
+            ? displayName
+            : $"{displayName} ({typeDisplayName})";
     }
 
     /// <summary>

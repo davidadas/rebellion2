@@ -76,7 +76,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
                         "fleet commando",
                         "planet commando",
                         "foreign",
-                    }
+                    },
+                null,
+                typeId => typeId == "mon-calamari" ? "Mon Calamari Cruiser" : null
             );
         }
 
@@ -224,7 +226,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             );
 
             CollectionAssert.AreEqual(
-                new[] { "Escort Fleet", "Zeta Fleet" },
+                new[] { "Escort Fleet (Defending beta)", "Zeta Fleet (Defending Alpha)" },
                 rows.Select(row => row.Name)
             );
             Assert.AreSame(_betaMapPlanet, rows[0].Planet);
@@ -250,6 +252,108 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
         }
 
         [Test]
+        public void GetRows_MovingFleetToEnemyPlanet_LabelsFleetAsAttacking()
+        {
+            GameFleet fleet = CreateFleet("fleet", "Fleet", _playerFactionId);
+            fleet.Movement = new MovementState();
+            _beta.AddTestChild(fleet);
+
+            List<FinderWindowRow> rows = _builder.GetRows(
+                FinderMode.Fleets,
+                false,
+                FinderWindowTab.Faction(_playerFactionId, "Player")
+            );
+
+            Assert.AreEqual("Fleet (Attacking beta)", rows.Single().Name);
+        }
+
+        [Test]
+        public void GetRows_MovingFleetToEnemyPlanetHiddenByProjection_LabelsFleetAsAttacking()
+        {
+            Planet liveDestination = CreatePlanet(
+                "hidden-enemy",
+                "Hidden Enemy",
+                _opponentFactionId,
+                _opponentFactionId
+            );
+            Planet projectedDestination = CreatePlanet(
+                "hidden-enemy",
+                "Hidden Enemy",
+                null,
+                _playerFactionId
+            );
+            GameFleet fleet = CreateFleet("fleet", "Fleet", _playerFactionId);
+            fleet.Movement = new MovementState();
+            fleet.SetParent(liveDestination);
+            projectedDestination.AddTestChild(fleet);
+
+            GalaxyPlanetSector sector = new GalaxyPlanetSector();
+            FinderWindowRowBuilder builder = new FinderWindowRowBuilder(
+                new[]
+                {
+                    new GalaxyMapSector(
+                        sector,
+                        new[] { new GalaxyMapPlanet(sector, projectedDestination, string.Empty) }
+                    ),
+                },
+                new[] { _playerFaction, _opponentFaction },
+                _playerFactionId
+            );
+
+            List<FinderWindowRow> rows = builder.GetRows(
+                FinderMode.Fleets,
+                false,
+                FinderWindowTab.Faction(_playerFactionId, "Player")
+            );
+
+            Assert.AreEqual("Fleet (Attacking Hidden Enemy)", rows.Single().Name);
+        }
+
+        [Test]
+        public void GetRows_MovingFleetToFriendlyOrNeutralPlanet_LabelsFleetAsEnRoute()
+        {
+            GameFleet friendlyFleet = CreateFleet("friendly", "Friendly Fleet", _playerFactionId);
+            friendlyFleet.Movement = new MovementState();
+            _alpha.AddTestChild(friendlyFleet);
+            GameFleet neutralFleet = CreateFleet("neutral", "Neutral Fleet", _playerFactionId);
+            neutralFleet.Movement = new MovementState();
+            _neutral.AddTestChild(neutralFleet);
+
+            List<FinderWindowRow> rows = _builder.GetRows(
+                FinderMode.Fleets,
+                false,
+                FinderWindowTab.Faction(_playerFactionId, "Player")
+            );
+
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    "Friendly Fleet (En Route to Alpha)",
+                    "Neutral Fleet (En Route to Neutral)",
+                },
+                rows.Select(row => row.Name)
+            );
+        }
+
+        [Test]
+        public void GetRows_StationaryFleetAtEnemyOrNeutralPlanet_LabelsFleetLocationStatus()
+        {
+            _beta.AddTestChild(CreateFleet("enemy", "Enemy Orbit", _playerFactionId));
+            _neutral.AddTestChild(CreateFleet("neutral", "Neutral Orbit", _playerFactionId));
+
+            List<FinderWindowRow> rows = _builder.GetRows(
+                FinderMode.Fleets,
+                false,
+                FinderWindowTab.Faction(_playerFactionId, "Player")
+            );
+
+            CollectionAssert.AreEqual(
+                new[] { "Enemy Orbit (Blockading beta)", "Neutral Orbit (Orbiting Neutral)" },
+                rows.Select(row => row.Name)
+            );
+        }
+
+        [Test]
         public void GetRows_ShipPanel_ReturnsShipsWithContainingFleet()
         {
             CapitalShip cruiser = CreateCapitalShip("cruiser", "Cruiser", _playerFactionId);
@@ -270,6 +374,23 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreSame(assault, rows[0].Node);
             Assert.AreSame(fleet, rows[0].Fleet);
             Assert.AreEqual(PlanetIcon.Fleet, rows[0].TargetIcon);
+        }
+
+        [Test]
+        public void GetRows_NamedShip_IncludesAssignedNameAndVesselType()
+        {
+            CapitalShip ship = CreateCapitalShip("ship", "Mon Calamari Cruiser", _playerFactionId);
+            ship.TypeID = "mon-calamari";
+            ship.AssignName("Home One");
+            _alpha.AddTestChild(CreateFleet("fleet", "Fleet", _playerFactionId, ship));
+
+            List<FinderWindowRow> rows = _builder.GetRows(
+                FinderMode.Fleets,
+                true,
+                FinderWindowTab.Faction(_playerFactionId, "Player")
+            );
+
+            Assert.AreEqual("Home One (Mon Calamari Cruiser)", rows.Single().Name);
         }
 
         [Test]

@@ -9,6 +9,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Simulation;
+using Rebellion.Util.Random;
 
 namespace Rebellion.Tests.Simulation
 {
@@ -69,29 +70,25 @@ namespace Rebellion.Tests.Simulation
             };
             _game.AttachNode(_empirePlanet, planetSector);
 
+            MovementQueries movementQueries = new MovementQueries(_game);
             _movementSystem = new MovementCommands(
                 _game,
                 new FogOfWarCommands(_game),
                 new FleetCommands(_game),
                 new FogOfWarQueries(_game),
-                new MovementQueries(_game)
+                movementQueries
             );
+            PlanetaryControlQueries controlQueries = new PlanetaryControlQueries(_game);
             _commands = new PlanetaryControlCommands(
                 _game,
-                _movementSystem,
-                new ManufacturingCommands(
-                    _game,
-                    new FleetCommands(_game),
-                    new ManufacturingQueries(_game)
-                ),
-                new FogOfWarCommands(_game),
-                new PlanetaryControlQueries(_game),
+                controlQueries,
                 new FogOfWarQueries(_game)
             );
             _observer = new PlanetaryControlObserver(
                 _game,
                 _commands,
-                new PlanetaryControlQueries(_game)
+                _movementSystem,
+                controlQueries
             );
         }
 
@@ -408,6 +405,44 @@ namespace Rebellion.Tests.Simulation
                 _game.GetSceneNodeByInstanceID<Starfighter>(starfighter.InstanceID, true)
             );
             Assert.IsNull(_game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID, true));
+        }
+
+        [Test]
+        public void HandleResults_BlockadedOwnershipChange_ResolvesEvacuationAgainstPriorBlockade()
+        {
+            _game.Config.Blockade.CapitalShipProductionPenaltyPercent = 100;
+            _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
+            AddBlockadingFleet(_targetPlanet, "capturing");
+            Regiment regiment = EntityFactory.CreateRegiment("evacuating", _empire.InstanceID);
+            regiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            _game.AttachNode(regiment, _targetPlanet);
+
+            MovementQueries movementQueries = new MovementQueries(_game);
+            MovementCommands movement = new MovementCommands(
+                _game,
+                new FogOfWarCommands(_game),
+                new FleetCommands(_game),
+                new FogOfWarQueries(_game),
+                movementQueries,
+                new FixedRNG()
+            );
+            PlanetaryControlObserver observer = new PlanetaryControlObserver(
+                _game,
+                _commands,
+                movement,
+                new PlanetaryControlQueries(_game)
+            );
+
+            PlanetOwnershipChangedResult change = _commands.TransferPlanet(_targetPlanet, _rebels);
+            List<GameResult> reactions = observer.HandleResults(new[] { change });
+
+            CollectionAssert.Contains(change.BlockadedFactionInstanceIDs, _empire.InstanceID);
+            Assert.IsFalse(_targetPlanet.IsBlockaded());
+            Assert.IsNull(_game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID, true));
+            Assert.AreSame(
+                regiment,
+                reactions.OfType<EvacuationLossesResult>().Single().LostRegiments.Single()
+            );
         }
 
         [Test]
@@ -997,7 +1032,7 @@ namespace Rebellion.Tests.Simulation
         private void RemoveGarrisonAndReconcile(Regiment garrison)
         {
             _game.DeleteNode(garrison);
-            _observer.HandleResults(
+            List<GameResult> results = _observer.HandleResults(
                 new[]
                 {
                     new PlanetGarrisonChangedResult
@@ -1007,6 +1042,7 @@ namespace Rebellion.Tests.Simulation
                     },
                 }
             );
+            _observer.HandleResults(results.OfType<PlanetOwnershipChangedResult>().ToList());
         }
     }
 }

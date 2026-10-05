@@ -94,7 +94,16 @@ namespace Rebellion.Game.Missions
 
         // Mission configuration.
         public SkillRating ParticipantRating { get; set; }
-        public bool HasInitiated;
+
+        [PersistableMember(Name = nameof(HasInitiated))]
+        private bool _hasInitiated;
+
+        [PersistableIgnore]
+        public bool HasInitiated
+        {
+            get => _hasInitiated;
+            set => _hasInitiated = value;
+        }
 
         // Mission progress.
         public int MaxProgress { get; set; }

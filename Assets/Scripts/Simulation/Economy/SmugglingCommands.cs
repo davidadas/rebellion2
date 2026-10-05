@@ -111,7 +111,7 @@ namespace Rebellion.Simulation
         /// <param name="controller">The faction that ordinarily receives production.</param>
         /// <param name="facility">The facility producing the resource.</param>
         /// <returns>The controlling faction or the faction benefiting from smuggling.</returns>
-        public Faction ResolveProductionRecipient(Faction controller, Building facility)
+        internal Faction ResolveProductionRecipient(Faction controller, Building facility)
         {
             Planet planet = facility.GetParentOfType<Planet>();
             if (

@@ -29,7 +29,7 @@ namespace Rebellion.Simulation
 
         internal MessageObserver MessageObserver { get; private set; }
 
-        internal GameEventExecutor GameEventExecutor { get; private set; }
+        internal GameEventCommands GameEventCommands { get; private set; }
 
         internal GameResultBus Results { get; private set; }
 
@@ -136,8 +136,8 @@ namespace Rebellion.Simulation
             GetService<MovementQueries>()
                 .SetCompletedBuildingMovementPolicy(GetService<HeadquartersQueries>().CanMove);
             Tick.ConnectRuntime(_serviceScope);
-            GameEventExecutor = GetService<GameEventExecutor>();
-            GameEventExecutor.ValidateEvents(Game.GetEventPool());
+            GameEventCommands = GetService<GameEventCommands>();
+            GameEventCommands.ValidateEvents(Game.GetEventPool());
 
             Results = resultBus;
             ConnectResults();
@@ -148,8 +148,23 @@ namespace Rebellion.Simulation
         /// </summary>
         private void ConnectResults()
         {
-            _disconnect.Add(Results.Subscribe<GameResult>(GameEventExecutor.HandleResults).Dispose);
             GameServiceRegistration.ConnectObservers(_serviceScope, Results);
+
+            PlanetaryControlCommands planetaryControlSystem =
+                GetService<PlanetaryControlCommands>();
+            PlanetaryControlObserver planetaryControlObserver =
+                GetService<PlanetaryControlObserver>();
+            FogOfWarObserver fogOfWarObserver = GetService<FogOfWarObserver>();
+            planetaryControlSystem.OwnershipChanging +=
+                planetaryControlObserver.ObserveOwnershipChange;
+            planetaryControlSystem.OwnershipChanged += fogOfWarObserver.ObserveOwnershipChange;
+            _disconnect.Add(() =>
+                planetaryControlSystem.OwnershipChanging -=
+                    planetaryControlObserver.ObserveOwnershipChange
+            );
+            _disconnect.Add(() =>
+                planetaryControlSystem.OwnershipChanged -= fogOfWarObserver.ObserveOwnershipChange
+            );
 
             MovementCommands movementSystem = GetService<MovementCommands>();
             movementSystem.ResultsProduced += ProcessImmediateResults;
@@ -160,6 +175,9 @@ namespace Rebellion.Simulation
             OfficerCommandCommands officerCommandSystem = GetService<OfficerCommandCommands>();
             officerCommandSystem.ResultsProduced += ProcessImmediateResults;
             _disconnect.Add(() => officerCommandSystem.ResultsProduced -= ProcessImmediateResults);
+            CaptiveCommands captiveSystem = GetService<CaptiveCommands>();
+            captiveSystem.ResultsProduced += ProcessImmediateResults;
+            _disconnect.Add(() => captiveSystem.ResultsProduced -= ProcessImmediateResults);
             BombardmentCommands bombardmentSystem = GetService<BombardmentCommands>();
             bombardmentSystem.ResultsProduced += ProcessImmediateResults;
             _disconnect.Add(() => bombardmentSystem.ResultsProduced -= ProcessImmediateResults);
@@ -169,6 +187,9 @@ namespace Rebellion.Simulation
             _disconnect.Add(() =>
                 planetaryAssaultSystem.ResultsProduced -= ProcessImmediateResults
             );
+            VictoryCommands victorySystem = GetService<VictoryCommands>();
+            victorySystem.ResultsProduced += ProcessImmediateResults;
+            _disconnect.Add(() => victorySystem.ResultsProduced -= ProcessImmediateResults);
         }
 
         /// <summary>
@@ -178,7 +199,7 @@ namespace Rebellion.Simulation
         private void ProcessImmediateResults(IReadOnlyList<GameResult> results)
         {
             Pipeline.ProcessImmediate(results);
-            GetService<FogOfWarCommands>().RefreshVisibleKnowledge();
+            GetService<FogOfWarObserver>().RefreshVisibleKnowledge();
         }
 
         /// <summary>
@@ -197,8 +218,8 @@ namespace Rebellion.Simulation
             foreach (Faction faction in Game.GetFactions())
                 faction.RebuildResearchCatalog(templates);
 
-            GetService<ManufacturingCommands>().RebuildQueues();
-            GetService<FogOfWarCommands>().ReconcileKnowledge();
+            GetService<ManufacturingObserver>().RebuildQueues();
+            GetService<FogOfWarObserver>().ReconcileKnowledge();
         }
 
         /// <summary>

@@ -21,10 +21,10 @@ using UnityEngine.TestTools;
 namespace Rebellion.Tests.Simulation
 {
     [TestFixture]
-    public class GameEventExecutorTests
+    public class GameEventCommandsTests
     {
         private GameRoot _game;
-        private GameEventExecutor _system;
+        private GameEventCommands _system;
 
         /// <summary>
         /// Sets up.
@@ -33,11 +33,11 @@ namespace Rebellion.Tests.Simulation
         public void SetUp()
         {
             _game = TestGame.Create(TestConfig.Create());
-            _system = new GameEventExecutor(_game, new FixedRandomProvider(new[] { 0.5 }));
+            _system = new GameEventCommands(_game, new FixedRandomProvider(new[] { 0.5 }));
         }
 
         [Test]
-        public void ProcessEvents_AbsoluteSchedule_StoresAbsoluteTick()
+        public void ProcessScheduledEvents_AbsoluteSchedule_StoresAbsoluteTick()
         {
             _game.CurrentTick = 10;
             GameEvent gameEvent = new GameEvent
@@ -47,13 +47,13 @@ namespace Rebellion.Tests.Simulation
             };
             _game.GetEventPool().Add(gameEvent);
 
-            _system.ProcessEvents(_game.GetEventPool());
+            _system.ProcessScheduledEvents(_game.GetEventPool());
 
             Assert.AreEqual(25, _game.EventRuntime.GetState(gameEvent.InstanceID).NextEligibleTick);
         }
 
         [Test]
-        public void ProcessEvents_FixedIntervalFirstActivation_UsesInitialDelay()
+        public void ProcessScheduledEvents_FixedIntervalFirstActivation_UsesInitialDelay()
         {
             GameEvent gameEvent = new GameEvent
             {
@@ -65,14 +65,14 @@ namespace Rebellion.Tests.Simulation
             };
             _game.GetEventPool().Add(gameEvent);
 
-            _system.ProcessEvents(_game.GetEventPool());
+            _system.ProcessScheduledEvents(_game.GetEventPool());
 
             Assert.AreEqual(5, _game.EventRuntime.GetState(gameEvent.InstanceID).NextEligibleTick);
         }
 
         [TestCase(0.0, 10)]
         [TestCase(0.9999, 30)]
-        public void ProcessEvents_RandomFirstActivation_UsesInclusiveRangeEndpoints(
+        public void ProcessScheduledEvents_RandomFirstActivation_UsesInclusiveRangeEndpoints(
             double roll,
             int expected
         )
@@ -86,9 +86,9 @@ namespace Rebellion.Tests.Simulation
                 },
             };
             _game.GetEventPool().Add(gameEvent);
-            GameEventExecutor executor = new GameEventExecutor(_game, new QueueRNG(roll));
+            GameEventCommands executor = new GameEventCommands(_game, new QueueRNG(roll));
 
-            executor.ProcessEvents(_game.GetEventPool());
+            executor.ProcessScheduledEvents(_game.GetEventPool());
 
             Assert.AreEqual(
                 expected,
@@ -98,7 +98,7 @@ namespace Rebellion.Tests.Simulation
 
         [TestCase(0.0, 50)]
         [TestCase(0.9999, 70)]
-        public void ProcessEvents_RandomRepeat_UsesInclusiveRangeFromCurrentTick(
+        public void ProcessScheduledEvents_RandomRepeat_UsesInclusiveRangeFromCurrentTick(
             double roll,
             int expected
         )
@@ -114,9 +114,9 @@ namespace Rebellion.Tests.Simulation
             };
             _game.GetEventPool().Add(gameEvent);
             _game.EventRuntime.GetState(gameEvent.InstanceID).IsInitialized = true;
-            GameEventExecutor executor = new GameEventExecutor(_game, new QueueRNG(roll));
+            GameEventCommands executor = new GameEventCommands(_game, new QueueRNG(roll));
 
-            executor.ProcessEvents(_game.GetEventPool());
+            executor.ProcessScheduledEvents(_game.GetEventPool());
 
             Assert.AreEqual(
                 expected,
@@ -125,16 +125,16 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ProcessEvents_MessageBeforeRename_ResolvesTemplateAfterLaterAction()
+        public void ProcessScheduledEvents_MessageBeforeRename_ResolvesTemplateAfterLaterAction()
         {
             (GameEvent gameEvent, Planet planet, Faction faction) = CreateMessageEvent();
-            GameEventExecutor system = new GameEventExecutor(
+            GameEventCommands system = new GameEventCommands(
                 _game,
                 _game.Random,
                 messageCommands: new MessageCommands(_game, new MessageFactory(null))
             );
 
-            List<GameResult> results = system.ProcessEvents(_game.GetEventPool());
+            List<GameResult> results = system.ProcessScheduledEvents(_game.GetEventPool());
 
             MessageDeliveredResult delivery = results.OfType<MessageDeliveredResult>().Single();
             Assert.AreEqual("After", delivery.Message.Title);
@@ -142,12 +142,12 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ProcessEvents_MissingCommands_PreservesActionsWithoutRecordingActivation()
+        public void ProcessScheduledEvents_MissingCommands_PreservesActionsWithoutRecordingActivation()
         {
             (GameEvent gameEvent, Planet planet, Faction _) = CreateMessageEvent();
 
             Assert.Throws<InvalidOperationException>(() =>
-                _system.ProcessEvents(_game.GetEventPool())
+                _system.ProcessScheduledEvents(_game.GetEventPool())
             );
 
             Assert.AreEqual("After", planet.DisplayName);
@@ -156,7 +156,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ProcessEvents_DeferredMessageFails_DeliversNextMessageAndRecordsActivation()
+        public void ProcessScheduledEvents_DeferredMessageFails_DeliversNextMessageAndRecordsActivation()
         {
             (GameEvent gameEvent, Planet planet, Faction faction) = CreateMessageEvent();
             gameEvent.Actions.Insert(
@@ -167,7 +167,7 @@ namespace Rebellion.Tests.Simulation
                     Subject = "{unknown}",
                 }
             );
-            GameEventExecutor system = new GameEventExecutor(
+            GameEventCommands system = new GameEventCommands(
                 _game,
                 _game.Random,
                 messageCommands: new MessageCommands(_game, new MessageFactory(null))
@@ -177,7 +177,7 @@ namespace Rebellion.Tests.Simulation
                 new Regex("Event 'MESSAGE_ORDER' deferred action 'SendMessageAction' failed:")
             );
 
-            List<GameResult> results = system.ProcessEvents(_game.GetEventPool());
+            List<GameResult> results = system.ProcessScheduledEvents(_game.GetEventPool());
 
             Assert.AreEqual(
                 "After",
@@ -187,10 +187,10 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ProcessEvents_MissingDuelCommands_DeliversFollowingMessage()
+        public void ProcessScheduledEvents_MissingDuelCommands_DeliversFollowingMessage()
         {
             (GameRoot game, GameEvent gameEvent, Officer _, Officer _) = CreateDeferredDuelEvent();
-            GameEventExecutor executor = new GameEventExecutor(
+            GameEventCommands executor = new GameEventCommands(
                 game,
                 game.Random,
                 messageCommands: new MessageCommands(game, new MessageFactory(null))
@@ -202,7 +202,7 @@ namespace Rebellion.Tests.Simulation
                 )
             );
 
-            List<GameResult> results = executor.ProcessEvents(game.GetEventPool());
+            List<GameResult> results = executor.ProcessScheduledEvents(game.GetEventPool());
 
             Assert.AreEqual(
                 "Following",
@@ -212,11 +212,11 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ProcessEvents_DuelFailsAfterCapture_RetainsCaptureWithoutPublishingPartialResults()
+        public void ProcessScheduledEvents_DuelFailsAfterCapture_RetainsCaptureWithoutPublishingPartialResults()
         {
             (GameRoot game, GameEvent gameEvent, Officer encountered, Officer opposing) =
                 CreateDeferredDuelEvent();
-            GameEventExecutor executor = new GameEventExecutor(
+            GameEventCommands executor = new GameEventCommands(
                 game,
                 game.Random,
                 duelCommands: new DuelCommands(game, new CaptureThenThrowRandom()),
@@ -229,7 +229,7 @@ namespace Rebellion.Tests.Simulation
                 )
             );
 
-            List<GameResult> results = executor.ProcessEvents(game.GetEventPool());
+            List<GameResult> results = executor.ProcessScheduledEvents(game.GetEventPool());
 
             Assert.IsTrue(encountered.IsCaptured);
             Assert.AreEqual(opposing.OwnerInstanceID, encountered.CaptorInstanceID);
@@ -238,7 +238,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ProcessEvents_DuelBeforeCapture_SkipsDeferredDuelWithoutRolling()
+        public void ProcessScheduledEvents_DuelBeforeCapture_SkipsDeferredDuelWithoutRolling()
         {
             GameRoot game = BuildGame(out Planet planet, out _);
             Officer first = EntityFactory.CreateOfficer("first", "empire");
@@ -265,20 +265,22 @@ namespace Rebellion.Tests.Simulation
                     },
                 },
             };
-            GameEventExecutor executor = new GameEventExecutor(
+            GameEventCommands executor = new GameEventCommands(
                 game,
                 game.Random,
                 duelCommands: new DuelCommands(game, new ThrowingRNG())
             );
 
-            List<GameResult> results = executor.ProcessEvents(new List<GameEvent> { gameEvent });
+            List<GameResult> results = executor.ProcessScheduledEvents(
+                new List<GameEvent> { gameEvent }
+            );
 
             Assert.IsInstanceOf<OfficerCaptureStateResult>(results.Single());
             Assert.AreEqual(gameEvent.InstanceID, results.Single().SourceEventInstanceID);
         }
 
         [Test]
-        public void ProcessEvents_OwnershipBeforeDisabling_TransfersPreviouslySelectedOfficer()
+        public void ProcessScheduledEvents_OwnershipBeforeDisabling_TransfersPreviouslySelectedOfficer()
         {
             GameRoot game = BuildGame(out Planet planet, out _);
             Officer officer = EntityFactory.CreateOfficer("selected", "empire");
@@ -306,23 +308,18 @@ namespace Rebellion.Tests.Simulation
             MovementCommands movement = CreateMovementCommands(game);
             PlanetaryControlCommands control = new PlanetaryControlCommands(
                 game,
-                movement,
-                new ManufacturingCommands(
-                    game,
-                    new FleetCommands(game),
-                    new ManufacturingQueries(game)
-                ),
-                new FogOfWarCommands(game),
                 new PlanetaryControlQueries(game),
                 new FogOfWarQueries(game)
             );
-            GameEventExecutor executor = new GameEventExecutor(
+            GameEventCommands executor = new GameEventCommands(
                 game,
                 game.Random,
                 planetaryControlCommands: control
             );
 
-            List<GameResult> results = executor.ProcessEvents(new List<GameEvent> { gameEvent });
+            List<GameResult> results = executor.ProcessScheduledEvents(
+                new List<GameEvent> { gameEvent }
+            );
 
             Assert.IsFalse(officer.IsActive());
             Assert.AreEqual("rebels", officer.OwnerInstanceID);
@@ -334,7 +331,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ProcessEvents_MessageBeforeLocalChange_ReturnsLocalFactBeforeDelivery()
+        public void ProcessScheduledEvents_MessageBeforeLocalChange_ReturnsLocalFactBeforeDelivery()
         {
             (GameEvent gameEvent, Planet planet, Faction _) = CreateMessageEvent();
             gameEvent.Actions.Add(
@@ -344,13 +341,13 @@ namespace Rebellion.Tests.Simulation
                     Amount = 1,
                 }
             );
-            GameEventExecutor executor = new GameEventExecutor(
+            GameEventCommands executor = new GameEventCommands(
                 _game,
                 _game.Random,
                 messageCommands: new MessageCommands(_game, new MessageFactory(null))
             );
 
-            List<GameResult> results = executor.ProcessEvents(_game.GetEventPool());
+            List<GameResult> results = executor.ProcessScheduledEvents(_game.GetEventPool());
 
             CollectionAssert.AreEqual(
                 new[] { typeof(PlanetStatChangedResult), typeof(MessageDeliveredResult) },
@@ -359,7 +356,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ProcessEvents_PlacementBeforeTransit_UsesPlacedPlanetAsDeparture()
+        public void ProcessScheduledEvents_PlacementBeforeTransit_UsesPlacedPlanetAsDeparture()
         {
             GameRoot game = BuildGame(out Planet origin, out _);
             Planet middle = new Planet
@@ -398,13 +395,13 @@ namespace Rebellion.Tests.Simulation
                 },
             };
             MovementCommands movement = CreateMovementCommands(game);
-            GameEventExecutor executor = new GameEventExecutor(
+            GameEventCommands executor = new GameEventCommands(
                 game,
                 game.Random,
                 movementCommands: movement
             );
 
-            executor.ProcessEvents(new List<GameEvent> { gameEvent });
+            executor.ProcessScheduledEvents(new List<GameEvent> { gameEvent });
 
             Assert.AreSame(destination, officer.GetParent());
             Assert.IsNotNull(officer.Movement);
@@ -588,46 +585,46 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ProcessEvents_UnmetOneShotEvent_RemainsPending()
+        public void ProcessScheduledEvents_UnmetOneShotEvent_RemainsPending()
         {
             GameEvent gameEvent = CreateTickEvent("PENDING", targetTick: 10, repeatable: false);
             _game.CurrentTick = 9;
             _game.GetEventPool().Add(gameEvent);
 
-            _system.ProcessEvents(_game.GetEventPool());
+            _system.ProcessScheduledEvents(_game.GetEventPool());
 
             Assert.Contains(gameEvent, _game.GetEventPool().ToList());
             Assert.IsFalse(_game.EventRuntime.GetState(gameEvent.InstanceID).IsComplete);
         }
 
         [Test]
-        public void ProcessEvents_MetOneShotEvent_CompletesAndLeavesPool()
+        public void ProcessScheduledEvents_MetOneShotEvent_CompletesAndLeavesPool()
         {
             GameEvent gameEvent = CreateTickEvent("ONE_SHOT", targetTick: 10, repeatable: false);
             _game.CurrentTick = 11;
             _game.GetEventPool().Add(gameEvent);
 
-            _system.ProcessEvents(_game.GetEventPool());
+            _system.ProcessScheduledEvents(_game.GetEventPool());
 
             Assert.IsFalse(_game.GetEventPool().Contains(gameEvent));
             Assert.IsTrue(_game.EventRuntime.GetState(gameEvent.InstanceID).IsComplete);
         }
 
         [Test]
-        public void ProcessEvents_MetRepeatableEvent_CompletesAndRemainsActive()
+        public void ProcessScheduledEvents_MetRepeatableEvent_CompletesAndRemainsActive()
         {
             GameEvent gameEvent = CreateTickEvent("REPEATABLE", targetTick: 10, repeatable: true);
             _game.CurrentTick = 11;
             _game.GetEventPool().Add(gameEvent);
 
-            _system.ProcessEvents(_game.GetEventPool());
+            _system.ProcessScheduledEvents(_game.GetEventPool());
 
             Assert.Contains(gameEvent, _game.GetEventPool().ToList());
             Assert.IsFalse(_game.EventRuntime.GetState(gameEvent.InstanceID).IsComplete);
         }
 
         [Test]
-        public void ProcessEvents_RecurringScheduleUntilMet_CompletesAndRemovesEvent()
+        public void ProcessScheduledEvents_RecurringScheduleUntilMet_CompletesAndRemovesEvent()
         {
             GameEvent gameEvent = CreateTickEvent("UNTIL_MET", targetTick: 0, repeatable: true);
             gameEvent.Schedule = new GameEventSchedule
@@ -648,7 +645,7 @@ namespace Rebellion.Tests.Simulation
             _game.CurrentTick = 10;
             _game.GetEventPool().Add(gameEvent);
 
-            _system.ProcessEvents(_game.GetEventPool());
+            _system.ProcessScheduledEvents(_game.GetEventPool());
 
             Assert.AreEqual(0, _game.EventRuntime.GetState(gameEvent.InstanceID).ActivationCount);
             Assert.IsTrue(_game.EventRuntime.GetState(gameEvent.InstanceID).IsComplete);
@@ -656,7 +653,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ProcessEvents_RecurringScheduleUntilMet_UsesEvaluationBinding()
+        public void ProcessScheduledEvents_RecurringScheduleUntilMet_UsesEvaluationBinding()
         {
             PlanetSector sector = new PlanetSector { InstanceID = "sector" };
             Planet planet = new Planet { InstanceID = "planet" };
@@ -707,7 +704,7 @@ namespace Rebellion.Tests.Simulation
             };
             _game.GetEventPool().Add(gameEvent);
 
-            _system.ProcessEvents(_game.GetEventPool());
+            _system.ProcessScheduledEvents(_game.GetEventPool());
 
             Assert.AreEqual(0, _game.EventRuntime.GetState(gameEvent.InstanceID).ActivationCount);
             Assert.IsTrue(_game.EventRuntime.GetState(gameEvent.InstanceID).IsComplete);
@@ -715,7 +712,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ProcessEvents_MaximumActivationsFive_ActivatesFiveTimes()
+        public void ProcessScheduledEvents_MaximumActivationsFive_ActivatesFiveTimes()
         {
             GameEvent gameEvent = CreateTickEvent("FIVE_RUNS", targetTick: 0, repeatable: false);
             gameEvent.MaximumActivations = 5;
@@ -723,13 +720,13 @@ namespace Rebellion.Tests.Simulation
             _game.GetEventPool().Add(gameEvent);
 
             for (int iteration = 0; iteration < 6; iteration++)
-                _system.ProcessEvents(_game.GetEventPool());
+                _system.ProcessScheduledEvents(_game.GetEventPool());
 
             Assert.AreEqual(5, _game.EventRuntime.GetState(gameEvent.InstanceID).ActivationCount);
         }
 
         [Test]
-        public void ProcessEvents_MaximumActivationsThree_ActivatesThreeTimes()
+        public void ProcessScheduledEvents_MaximumActivationsThree_ActivatesThreeTimes()
         {
             GameEvent gameEvent = CreateTickEvent("THREE_RUNS", targetTick: 0, repeatable: false);
             gameEvent.MaximumActivations = 3;
@@ -737,13 +734,13 @@ namespace Rebellion.Tests.Simulation
             _game.GetEventPool().Add(gameEvent);
 
             for (int iteration = 0; iteration < 4; iteration++)
-                _system.ProcessEvents(_game.GetEventPool());
+                _system.ProcessScheduledEvents(_game.GetEventPool());
 
             Assert.AreEqual(3, _game.EventRuntime.GetState(gameEvent.InstanceID).ActivationCount);
         }
 
         [Test]
-        public void ProcessEvents_RandomDelay_WaitsUntilRolledAbsoluteTick()
+        public void ProcessScheduledEvents_RandomDelay_WaitsUntilRolledAbsoluteTick()
         {
             GameEvent gameEvent = CreateTickEvent("DELAYED", targetTick: 0, repeatable: false);
             gameEvent.MaximumActivations = null;
@@ -754,11 +751,11 @@ namespace Rebellion.Tests.Simulation
             _game.GetEventPool().Add(gameEvent);
 
             _game.CurrentTick = 11;
-            _system.ProcessEvents(_game.GetEventPool());
+            _system.ProcessScheduledEvents(_game.GetEventPool());
             Assert.Contains(gameEvent, _game.GetEventPool().ToList());
 
             _game.CurrentTick = 12;
-            _system.ProcessEvents(_game.GetEventPool());
+            _system.ProcessScheduledEvents(_game.GetEventPool());
             Assert.IsFalse(_game.GetEventPool().Contains(gameEvent));
             Assert.AreEqual(
                 12,
@@ -767,25 +764,25 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ProcessEvents_RepeatDelay_PreventsActivationUntilCooldownExpires()
+        public void ProcessScheduledEvents_RepeatDelay_PreventsActivationUntilCooldownExpires()
         {
             GameEvent gameEvent = CreateTickEvent("COOLDOWN", targetTick: 0, repeatable: true);
             gameEvent.Schedule = new GameEventSchedule { Every = new EveryTicks { Ticks = 5 } };
             _game.GetEventPool().Add(gameEvent);
 
             _game.CurrentTick = 1;
-            _system.ProcessEvents(_game.GetEventPool());
+            _system.ProcessScheduledEvents(_game.GetEventPool());
             _game.CurrentTick = 5;
-            _system.ProcessEvents(_game.GetEventPool());
+            _system.ProcessScheduledEvents(_game.GetEventPool());
             Assert.AreEqual(1, _game.EventRuntime.GetState(gameEvent.InstanceID).ActivationCount);
 
             _game.CurrentTick = 6;
-            _system.ProcessEvents(_game.GetEventPool());
+            _system.ProcessScheduledEvents(_game.GetEventPool());
             Assert.AreEqual(2, _game.EventRuntime.GetState(gameEvent.InstanceID).ActivationCount);
         }
 
         [Test]
-        public void ProcessEvents_AfterSchedule_DelaysFromPredecessorActivation()
+        public void ProcessScheduledEvents_AfterSchedule_DelaysFromPredecessorActivation()
         {
             GameEvent predecessor = CreateTickEvent("DEPARTURE", targetTick: 19, repeatable: false);
             GameEvent pending = CreateTickEvent("PENDING_RETURN", targetTick: 0, repeatable: false);
@@ -796,67 +793,67 @@ namespace Rebellion.Tests.Simulation
             _game.GetEventPool().Add(predecessor);
             _game.GetEventPool().Add(pending);
             _game.CurrentTick = 20;
-            _system.ProcessEvents(_game.GetEventPool());
+            _system.ProcessScheduledEvents(_game.GetEventPool());
 
             _game.CurrentTick = 24;
-            _system.ProcessEvents(_game.GetEventPool());
+            _system.ProcessScheduledEvents(_game.GetEventPool());
             Assert.Contains(pending, _game.GetEventPool());
 
             _game.CurrentTick = 25;
-            _system.ProcessEvents(_game.GetEventPool());
+            _system.ProcessScheduledEvents(_game.GetEventPool());
             Assert.IsFalse(_game.GetEventPool().Contains(pending));
         }
 
         [Test]
-        public void ProcessEvents_AfterAllScheduleBeforeFinalDelay_KeepsEventPending()
+        public void ProcessScheduledEvents_AfterAllScheduleBeforeFinalDelay_KeepsEventPending()
         {
             GameEvent pending = CreateDependentEvent("AFTER_ALL", afterAll: true);
             _game.GetEventPool().Add(pending);
 
             _game.CurrentTick = 24;
-            _system.ProcessEvents(_game.GetEventPool());
+            _system.ProcessScheduledEvents(_game.GetEventPool());
 
             Assert.Contains(pending, _game.GetEventPool());
         }
 
         [Test]
-        public void ProcessEvents_AfterAllScheduleAtFinalDelay_ActivatesEvent()
+        public void ProcessScheduledEvents_AfterAllScheduleAtFinalDelay_ActivatesEvent()
         {
             GameEvent pending = CreateDependentEvent("AFTER_ALL", afterAll: true);
             _game.GetEventPool().Add(pending);
 
             _game.CurrentTick = 25;
-            _system.ProcessEvents(_game.GetEventPool());
+            _system.ProcessScheduledEvents(_game.GetEventPool());
 
             Assert.IsFalse(_game.GetEventPool().Contains(pending));
         }
 
         [Test]
-        public void ProcessEvents_AfterAnyScheduleBeforeFirstDelay_KeepsEventPending()
+        public void ProcessScheduledEvents_AfterAnyScheduleBeforeFirstDelay_KeepsEventPending()
         {
             GameEvent pending = CreateDependentEvent("AFTER_ANY", afterAll: false);
             _game.GetEventPool().Add(pending);
 
             _game.CurrentTick = 14;
-            _system.ProcessEvents(_game.GetEventPool());
+            _system.ProcessScheduledEvents(_game.GetEventPool());
 
             Assert.Contains(pending, _game.GetEventPool());
         }
 
         [Test]
-        public void ProcessEvents_AfterAnyScheduleAtFirstDelay_ActivatesEvent()
+        public void ProcessScheduledEvents_AfterAnyScheduleAtFirstDelay_ActivatesEvent()
         {
             GameEvent pending = CreateDependentEvent("AFTER_ANY", afterAll: false);
             _game.GetEventPool().Add(pending);
 
             _game.CurrentTick = 15;
-            _system.ProcessEvents(_game.GetEventPool());
+            _system.ProcessScheduledEvents(_game.GetEventPool());
 
             Assert.IsFalse(_game.GetEventPool().Contains(pending));
         }
 
         [Test]
-        public void ProcessEvents_ResultTriggeredEvent_DoesNotRunDuringScheduledPolling()
+        public void ProcessScheduledEvents_ResultTriggeredEvent_DoesNotRunDuringScheduledPolling()
         {
             GameEvent gameEvent = new GameEvent
             {
@@ -869,14 +866,14 @@ namespace Rebellion.Tests.Simulation
             };
             _game.GetEventPool().Add(gameEvent);
 
-            _system.ProcessEvents(_game.GetEventPool());
+            _system.ProcessScheduledEvents(_game.GetEventPool());
 
             Assert.Zero(_game.EventRuntime.GetVariable("unexpected"));
             Assert.Contains(gameEvent, _game.GetEventPool().ToList());
         }
 
         [Test]
-        public void ProcessEvents_TargetedPlanet_UsesOnePersistedSchedule()
+        public void ProcessScheduledEvents_TargetedPlanet_UsesOnePersistedSchedule()
         {
             _game.GetFactions().Add(new Faction { InstanceID = "alliance" });
             _game.GetFactions().Add(new Faction { InstanceID = "empire" });
@@ -919,12 +916,12 @@ namespace Rebellion.Tests.Simulation
             _game.GetEventPool().Add(gameEvent);
 
             _game.CurrentTick = 0;
-            _system.ProcessEvents(_game.GetEventPool());
+            _system.ProcessScheduledEvents(_game.GetEventPool());
             Assert.AreEqual(10, _game.EventRuntime.GetState(gameEvent.InstanceID).NextEligibleTick);
             Assert.AreEqual(10, _game.EventRuntime.GetState(gameEvent.InstanceID).NextEligibleTick);
 
             _game.CurrentTick = 10;
-            _system.ProcessEvents(_game.GetEventPool());
+            _system.ProcessScheduledEvents(_game.GetEventPool());
 
             Assert.AreEqual(1, first.NumRawResourceNodes);
             Assert.Zero(second.NumRawResourceNodes);
@@ -933,7 +930,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ProcessEvents_EachOwnedPlanetTarget_ArmsWhenNeutralPlanetBecomesOwned()
+        public void ProcessScheduledEvents_EachOwnedPlanetTarget_ArmsWhenNeutralPlanetBecomesOwned()
         {
             _game.GetFactions().Add(new Faction { InstanceID = "alliance" });
             PlanetSector sector = new PlanetSector { InstanceID = "sector" };
@@ -968,12 +965,12 @@ namespace Rebellion.Tests.Simulation
             _game.GetEventPool().Add(gameEvent);
 
             _game.CurrentTick = 100;
-            _system.ProcessEvents(_game.GetEventPool());
+            _system.ProcessScheduledEvents(_game.GetEventPool());
             Assert.IsTrue(_game.EventRuntime.GetState(gameEvent.InstanceID).IsInitialized);
 
             planet.OwnerInstanceID = "alliance";
             _game.CurrentTick = 120;
-            _system.ProcessEvents(_game.GetEventPool());
+            _system.ProcessScheduledEvents(_game.GetEventPool());
 
             GameEventState state = _game.EventRuntime.GetState(gameEvent.InstanceID);
             Assert.AreEqual(150, state.NextEligibleTick);
@@ -981,7 +978,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ProcessEvents_EachOwnedPlanetTarget_RearmsAfterNeutralInterval()
+        public void ProcessScheduledEvents_EachOwnedPlanetTarget_RearmsAfterNeutralInterval()
         {
             _game.GetFactions().Add(new Faction { InstanceID = "alliance" });
             _game.GetFactions().Add(new Faction { InstanceID = "empire" });
@@ -1018,13 +1015,13 @@ namespace Rebellion.Tests.Simulation
             _game.GetEventPool().Add(gameEvent);
 
             _game.CurrentTick = 100;
-            _system.ProcessEvents(_game.GetEventPool());
+            _system.ProcessScheduledEvents(_game.GetEventPool());
             planet.OwnerInstanceID = null;
             _game.CurrentTick = 110;
-            _system.ProcessEvents(_game.GetEventPool());
+            _system.ProcessScheduledEvents(_game.GetEventPool());
             planet.OwnerInstanceID = "empire";
             _game.CurrentTick = 120;
-            _system.ProcessEvents(_game.GetEventPool());
+            _system.ProcessScheduledEvents(_game.GetEventPool());
 
             GameEventState state = _game.EventRuntime.GetState(gameEvent.InstanceID);
             Assert.AreEqual(130, state.NextEligibleTick);
@@ -1032,7 +1029,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ProcessEvents_OneShotTarget_ActivatesTargetOnce()
+        public void ProcessScheduledEvents_OneShotTarget_ActivatesTargetOnce()
         {
             PlanetSector sector = new PlanetSector { InstanceID = "sector" };
             Planet planet = new Planet { InstanceID = "planet" };
@@ -1057,14 +1054,14 @@ namespace Rebellion.Tests.Simulation
             };
             _game.GetEventPool().Add(gameEvent);
 
-            _system.ProcessEvents(_game.GetEventPool());
-            _system.ProcessEvents(_game.GetEventPool());
+            _system.ProcessScheduledEvents(_game.GetEventPool());
+            _system.ProcessScheduledEvents(_game.GetEventPool());
 
             Assert.AreEqual(1, planet.NumRawResourceNodes);
         }
 
         [Test]
-        public void ProcessEvents_RandomTargetBeforeScheduledTick_DoesNotSelectTarget()
+        public void ProcessScheduledEvents_RandomTargetBeforeScheduledTick_DoesNotSelectTarget()
         {
             PlanetSector sector = new PlanetSector
             {
@@ -1100,7 +1097,7 @@ namespace Rebellion.Tests.Simulation
             _game.GetEventPool().Add(gameEvent);
             _game.CurrentTick = 9;
 
-            _system.ProcessEvents(_game.GetEventPool());
+            _system.ProcessScheduledEvents(_game.GetEventPool());
 
             GameEventState state = _game.EventRuntime.GetState(gameEvent.InstanceID);
             Assert.IsTrue(state.IsInitialized);
@@ -1108,7 +1105,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void HandleResults_MatchingEncounter_ActivatesResultTriggeredEventOnce()
+        public void ProcessTriggeredEvents_MatchingEncounter_ActivatesResultTriggeredEventOnce()
         {
             Officer luke = new Officer { InstanceID = "luke" };
             Officer vader = new Officer { InstanceID = "vader" };
@@ -1129,7 +1126,7 @@ namespace Rebellion.Tests.Simulation
             };
             _game.GetEventPool().Add(gameEvent);
 
-            _system.HandleResults(
+            _system.ProcessTriggeredEvents(
                 new[]
                 {
                     new DuelResult { EncounteredOfficer = luke, OpposingOfficer = vader },
@@ -1142,7 +1139,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void HandleResults_StableTriggerId_ActivatesWithoutClrTypeName()
+        public void ProcessTriggeredEvents_StableTriggerId_ActivatesWithoutClrTypeName()
         {
             GameEvent gameEvent = new GameEvent
             {
@@ -1199,7 +1196,7 @@ namespace Rebellion.Tests.Simulation
             Officer officer = new Officer { InstanceID = "officer" };
             officer.SetBaseRating(SkillRating.Combat, 40);
 
-            _system.HandleResults(
+            _system.ProcessTriggeredEvents(
                 new[]
                 {
                     new UnitArrivedResult { Unit = officer, Destination = destination },
@@ -1210,7 +1207,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void HandleResults_SecondUnitArrivedAlternativeMatches_ActivatesOnce()
+        public void ProcessTriggeredEvents_SecondUnitArrivedAlternativeMatches_ActivatesOnce()
         {
             GameEvent gameEvent = new GameEvent
             {
@@ -1227,7 +1224,7 @@ namespace Rebellion.Tests.Simulation
             };
             _game.GetEventPool().Add(gameEvent);
 
-            _system.HandleResults(
+            _system.ProcessTriggeredEvents(
                 new[] { new UnitArrivedResult { Unit = new Officer { InstanceID = "second" } } }
             );
 
@@ -1236,7 +1233,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void HandleResults_MatchingOptionalSourceBinding_ActivatesEvent()
+        public void ProcessTriggeredEvents_MatchingOptionalSourceBinding_ActivatesEvent()
         {
             GameEvent gameEvent = new GameEvent
             {
@@ -1252,7 +1249,7 @@ namespace Rebellion.Tests.Simulation
             };
             _game.GetEventPool().Add(gameEvent);
 
-            _system.HandleResults(
+            _system.ProcessTriggeredEvents(
                 new[] { new UnitArrivedResult { SourceEventInstanceID = "EXPECTED_SOURCE" } }
             );
 
@@ -1260,7 +1257,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void HandleResults_WithoutSuppression_PreservesTriggerAndSiblingMessages()
+        public void ProcessTriggeredEvents_WithoutSuppression_PreservesTriggerAndSiblingMessages()
         {
             GameEvent gameEvent = new GameEvent
             {
@@ -1277,7 +1274,7 @@ namespace Rebellion.Tests.Simulation
                 SourceEventInstanceID = "PALACE_RESCUE",
             };
 
-            List<GameResult> reactions = _system.HandleResults(
+            List<GameResult> reactions = _system.ProcessTriggeredEvents(
                 new GameResult[] { release, completion }
             );
 
@@ -1285,7 +1282,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void HandleResults_RepeatableEncounterEffect_ActivatesForEveryEncounter()
+        public void ProcessTriggeredEvents_RepeatableEncounterEffect_ActivatesForEveryEncounter()
         {
             Officer luke = new Officer { InstanceID = "luke" };
             Officer vader = new Officer { InstanceID = "vader" };
@@ -1316,8 +1313,8 @@ namespace Rebellion.Tests.Simulation
                 OpposingOfficer = vader,
             };
 
-            _system.HandleResults(new[] { encounter });
-            _system.HandleResults(new[] { encounter });
+            _system.ProcessTriggeredEvents(new[] { encounter });
+            _system.ProcessTriggeredEvents(new[] { encounter });
 
             Assert.Contains(gameEvent, _game.GetEventPool().ToList());
             Assert.AreEqual(2, _game.EventRuntime.GetVariable("encounter.count"));
@@ -1325,7 +1322,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ProcessEvents_MaximumActivationsReached_DoesNotActivate()
+        public void ProcessScheduledEvents_MaximumActivationsReached_DoesNotActivate()
         {
             GameEvent gameEvent = new GameEvent
             {
@@ -1340,27 +1337,27 @@ namespace Rebellion.Tests.Simulation
             GameEventState state = _game.EventRuntime.GetState(gameEvent.InstanceID);
             state.ActivationCount = 3;
 
-            _system.ProcessEvents(_game.GetEventPool());
+            _system.ProcessScheduledEvents(_game.GetEventPool());
 
             Assert.AreEqual(0, _game.EventRuntime.GetVariable("activated"));
             Assert.AreEqual(3, state.ActivationCount);
         }
 
         [Test]
-        public void ProcessEvents_UnlimitedEvent_ActivatesAgain()
+        public void ProcessScheduledEvents_UnlimitedEvent_ActivatesAgain()
         {
             GameEvent gameEvent = new GameEvent { InstanceID = "UNLIMITED" };
             _game.GetEventPool().Add(gameEvent);
             GameEventState state = _game.EventRuntime.GetState(gameEvent.InstanceID);
             state.ActivationCount = 100;
 
-            _system.ProcessEvents(_game.GetEventPool());
+            _system.ProcessScheduledEvents(_game.GetEventPool());
 
             Assert.AreEqual(101, state.ActivationCount);
         }
 
         [Test]
-        public void ProcessEvents_PlaceUnitsMixedSources_PlacesExistingAndSpawnedUnits()
+        public void ProcessScheduledEvents_PlaceUnitsMixedSources_PlacesExistingAndSpawnedUnits()
         {
             GameRoot game = BuildGame(out Planet destination, out _);
             Officer officer = new Officer
@@ -1447,7 +1444,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ProcessEvents_ChangeOwnerUnitSelectors_TransfersSelectedUnit()
+        public void ProcessScheduledEvents_ChangeOwnerUnitSelectors_TransfersSelectedUnit()
         {
             GameRoot game = BuildGame(out Planet planet, out _);
             Officer officer = new Officer { InstanceID = "officer", OwnerInstanceID = "empire" };
@@ -1617,7 +1614,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ProcessEvents_DuelOfficersAtDifferentPlanets_ReturnsNoDuel()
+        public void ProcessScheduledEvents_DuelOfficersAtDifferentPlanets_ReturnsNoDuel()
         {
             GameRoot game = BuildGame(out Planet empirePlanet, out Planet rebelPlanet);
             Officer attacker = EntityFactory.CreateOfficer("a1", "empire");
@@ -1639,7 +1636,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void HandleResults_DuelSecondOfficerParticipated_ReversesAuthoredOrder()
+        public void ProcessTriggeredEvents_DuelSecondOfficerParticipated_ReversesAuthoredOrder()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
@@ -1675,7 +1672,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ProcessEvents_DuelValidOfficers_ProducesDuelOutcome()
+        public void ProcessScheduledEvents_DuelValidOfficers_ProducesDuelOutcome()
         {
             GameRoot game = BuildGame(out Planet empirePlanet, out _);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
@@ -1726,7 +1723,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ProcessEvents_SendMessageExplicitRecipient_EmitsResolvedResult()
+        public void ProcessScheduledEvents_SendMessageExplicitRecipient_EmitsResolvedResult()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
@@ -1754,7 +1751,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ProcessEvents_SendMessageOfficerSubject_DoesNotIncludeSubjectImageByDefault()
+        public void ProcessScheduledEvents_SendMessageOfficerSubject_DoesNotIncludeSubjectImageByDefault()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
@@ -1775,7 +1772,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ProcessEvents_SendMessageShowSubjectImage_IncludesOfficerMessageImage()
+        public void ProcessScheduledEvents_SendMessageShowSubjectImage_IncludesOfficerMessageImage()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
@@ -1797,7 +1794,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ProcessEvents_SendMessageExplicitOverlayImage_UsesAuthoredImage()
+        public void ProcessScheduledEvents_SendMessageExplicitOverlayImage_UsesAuthoredImage()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
@@ -1832,7 +1829,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ProcessEvents_SendMessageInactiveSubject_EmitsResolvedResult()
+        public void ProcessScheduledEvents_SendMessageInactiveSubject_EmitsResolvedResult()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
@@ -1857,7 +1854,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void HandleResults_SendMessageAudioBinding_UsesTriggerBindingPath()
+        public void ProcessTriggeredEvents_SendMessageAudioBinding_UsesTriggerBindingPath()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
@@ -1895,7 +1892,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ProcessEvents_SendMessageOfficerVoicePreset_UsesSubjectVoiceSet()
+        public void ProcessScheduledEvents_SendMessageOfficerVoicePreset_UsesSubjectVoiceSet()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
@@ -2020,7 +2017,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ProcessEvents_SendUnitsFirstDestinationRejected_UsesNextCandidate()
+        public void ProcessScheduledEvents_SendUnitsFirstDestinationRejected_UsesNextCandidate()
         {
             GameRoot game = BuildGame(out Planet first, out Planet origin);
             Planet second = new Planet
@@ -2938,14 +2935,14 @@ namespace Rebellion.Tests.Simulation
                 new Regex("Event 'test-event' action 'SetEventVariableAction' failed:")
             );
 
-            GameEventExecutor.ExecuteActions(actions, context);
+            GameEventCommands.ExecuteActions(actions, context);
 
             Assert.AreEqual(1, game.EventRuntime.GetVariable("first"));
             Assert.AreEqual(1, game.EventRuntime.GetVariable("last"));
         }
 
         [Test]
-        public void ProcessEvents_FutureActivation_EvaluatesBindingRoll()
+        public void ProcessScheduledEvents_FutureActivation_EvaluatesBindingRoll()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
             QueueRNG random = new QueueRNG(0.25, 0.75);
@@ -2964,14 +2961,14 @@ namespace Rebellion.Tests.Simulation
             };
             game.GetEventPool().Add(gameEvent);
 
-            new GameEventExecutor(game, random).ProcessEvents(game.GetEventPool());
+            new GameEventCommands(game, random).ProcessScheduledEvents(game.GetEventPool());
 
             Assert.AreEqual(0.75, random.NextDouble());
             Assert.Zero(game.EventRuntime.GetState(gameEvent.InstanceID).ActivationCount);
         }
 
         [Test]
-        public void ProcessEvents_BindingThrows_DoesNotExecuteFollowingEvent()
+        public void ProcessScheduledEvents_BindingThrows_DoesNotExecuteFollowingEvent()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
             GameEvent invalid = new GameEvent
@@ -2991,10 +2988,10 @@ namespace Rebellion.Tests.Simulation
             };
             game.GetEventPool().Add(invalid);
             game.GetEventPool().Add(following);
-            GameEventExecutor executor = new GameEventExecutor(game, game.Random);
+            GameEventCommands executor = new GameEventCommands(game, game.Random);
 
             Assert.Throws<InvalidOperationException>(() =>
-                executor.ProcessEvents(game.GetEventPool())
+                executor.ProcessScheduledEvents(game.GetEventPool())
             );
 
             Assert.Zero(game.EventRuntime.GetVariable("after"));
@@ -3008,7 +3005,7 @@ namespace Rebellion.Tests.Simulation
             GameActionContext context = new GameActionContext(game, game.Random);
             LogAssert.Expect(LogType.Error, new Regex("Event 'unknown' action 'null' failed:"));
 
-            GameEventExecutor.ExecuteActions(
+            GameEventCommands.ExecuteActions(
                 new GameAction[]
                 {
                     null,
@@ -3042,7 +3039,7 @@ namespace Rebellion.Tests.Simulation
                 new Regex("Event 'unknown' action 'SetNodeStateAction' failed:")
             );
 
-            GameEventExecutor.ExecuteActions(
+            GameEventCommands.ExecuteActions(
                 new[]
                 {
                     new SetNodeStateAction
@@ -3078,7 +3075,7 @@ namespace Rebellion.Tests.Simulation
             RecordingRandom provider = new RecordingRandom(evaluation);
             GameActionContext context = new GameActionContext(game, provider, evaluation);
 
-            GameEventExecutor.ExecuteActions(
+            GameEventCommands.ExecuteActions(
                 new[]
                 {
                     new IfAction
@@ -3117,7 +3114,7 @@ namespace Rebellion.Tests.Simulation
             };
 
             Assert.Throws<InvalidOperationException>(() =>
-                GameEventExecutor.Bind(binding, game, random, context)
+                GameEventCommands.Bind(binding, game, random, context)
             );
 
             Assert.AreEqual(0.75, random.NextDouble());
@@ -3141,8 +3138,8 @@ namespace Rebellion.Tests.Simulation
                 RollDouble = new RollDouble { Minimum = 0.1, Maximum = 0.9 },
             };
             IRandomNumberProvider random = new FixedRandomProvider(new[] { 0.5, 0.5 });
-            GameEventExecutor.Bind(integerBinding, game, random, context);
-            GameEventExecutor.Bind(doubleBinding, game, random, context);
+            GameEventCommands.Bind(integerBinding, game, random, context);
+            GameEventCommands.Bind(doubleBinding, game, random, context);
 
             Assert.AreEqual(3, context.GetBinding<int>("count"));
             Assert.AreEqual(0.5, context.GetBinding<double>("probability"), 0.0001);
@@ -3175,7 +3172,7 @@ namespace Rebellion.Tests.Simulation
                 null
             );
             IRandomNumberProvider random = new FixedRandomProvider(new[] { 0.5 });
-            GameEventExecutor.Bind(
+            GameEventCommands.Bind(
                 new GameEventBinding
                 {
                     As = "combat",
@@ -3192,7 +3189,7 @@ namespace Rebellion.Tests.Simulation
                 random,
                 context
             );
-            GameEventExecutor.Bind(
+            GameEventCommands.Bind(
                 new GameEventBinding
                 {
                     As = "force",
@@ -3205,7 +3202,7 @@ namespace Rebellion.Tests.Simulation
                 random,
                 context
             );
-            GameEventExecutor.Bind(
+            GameEventCommands.Bind(
                 new GameEventBinding
                 {
                     As = "resources",
@@ -3222,7 +3219,7 @@ namespace Rebellion.Tests.Simulation
                 random,
                 context
             );
-            GameEventExecutor.Bind(
+            GameEventCommands.Bind(
                 new GameEventBinding
                 {
                     As = "officerCount",
@@ -3275,7 +3272,7 @@ namespace Rebellion.Tests.Simulation
                 null
             );
             IRandomNumberProvider random = new FixedRandomProvider(new[] { 0.5 });
-            GameEventExecutor.Bind(
+            GameEventCommands.Bind(
                 new GameEventBinding
                 {
                     As = "combat",
@@ -3292,7 +3289,7 @@ namespace Rebellion.Tests.Simulation
                 random,
                 context
             );
-            GameEventExecutor.Bind(
+            GameEventCommands.Bind(
                 new GameEventBinding
                 {
                     As = "force",
@@ -3335,7 +3332,7 @@ namespace Rebellion.Tests.Simulation
                     },
                 },
             };
-            GameEventExecutor.Bind(binding, game, new FixedRandomProvider(new[] { 0.5 }), context);
+            GameEventCommands.Bind(binding, game, new FixedRandomProvider(new[] { 0.5 }), context);
 
             Assert.AreEqual(7, context.GetBinding<int>("resources"));
         }
@@ -3349,7 +3346,7 @@ namespace Rebellion.Tests.Simulation
                 Maximum = double.MaxValue,
             };
 
-            double result = GameEventExecutor.Roll(roll, new FixedRNG(0.5));
+            double result = GameEventCommands.Roll(roll, new FixedRNG(0.5));
 
             Assert.IsFalse(double.IsNaN(result));
             Assert.IsFalse(double.IsInfinity(result));
@@ -3383,7 +3380,7 @@ namespace Rebellion.Tests.Simulation
                 "Not" => new NotConditional { Conditionals = conditions },
                 _ => throw new ArgumentOutOfRangeException(nameof(operation)),
             };
-            GameEventExecutor.IsMet(conditional, game);
+            GameEventCommands.IsMet(conditional, game);
 
             Assert.AreEqual(0.25, game.Random.NextDouble());
         }
@@ -3408,7 +3405,7 @@ namespace Rebellion.Tests.Simulation
                 },
             };
 
-            bool result = GameEventExecutor.IsMet(conditional, game);
+            bool result = GameEventCommands.IsMet(conditional, game);
 
             Assert.IsFalse(result);
             Assert.AreEqual(0.75, game.Random.NextDouble());
@@ -3427,7 +3424,7 @@ namespace Rebellion.Tests.Simulation
                 CompareToVariable = "bounty.chance",
             };
 
-            bool result = GameEventExecutor.IsMet(conditional, game);
+            bool result = GameEventCommands.IsMet(conditional, game);
 
             Assert.IsTrue(result);
         }
@@ -3445,7 +3442,7 @@ namespace Rebellion.Tests.Simulation
             };
 
             InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-                GameEventExecutor.IsMet(conditional, game)
+                GameEventCommands.IsMet(conditional, game)
             );
 
             StringAssert.Contains("exactly one CompareTo or CompareToVariable", exception.Message);
@@ -3462,7 +3459,7 @@ namespace Rebellion.Tests.Simulation
             };
 
             InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-                GameEventExecutor.IsMet(conditional, game)
+                GameEventCommands.IsMet(conditional, game)
             );
 
             StringAssert.Contains("exactly one CompareTo or CompareToVariable", exception.Message);
@@ -3485,7 +3482,7 @@ namespace Rebellion.Tests.Simulation
             );
             context.Bind("sourceEventInstanceID", null);
 
-            bool result = GameEventExecutor.IsMet(conditional, game, context);
+            bool result = GameEventCommands.IsMet(conditional, game, context);
 
             Assert.IsFalse(result);
         }
@@ -3514,7 +3511,7 @@ namespace Rebellion.Tests.Simulation
             context.Bind("unit", fleet);
 
             InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-                GameEventExecutor.IsMet(conditional, game, context)
+                GameEventCommands.IsMet(conditional, game, context)
             );
 
             StringAssert.Contains("cannot be compared", exception.Message);
@@ -3538,7 +3535,7 @@ namespace Rebellion.Tests.Simulation
             context.Bind("destination", rebelPlanet);
 
             InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-                GameEventExecutor.IsMet(conditional, game, context)
+                GameEventCommands.IsMet(conditional, game, context)
             );
 
             StringAssert.Contains("cannot be compared", exception.Message);
@@ -3562,7 +3559,7 @@ namespace Rebellion.Tests.Simulation
             context.Bind("first", 80);
             context.Bind("second", 60);
 
-            bool result = GameEventExecutor.IsMet(conditional, game, context);
+            bool result = GameEventCommands.IsMet(conditional, game, context);
 
             Assert.IsTrue(result);
         }
@@ -3586,7 +3583,7 @@ namespace Rebellion.Tests.Simulation
             context.Bind("second", "80");
 
             InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-                GameEventExecutor.IsMet(conditional, game, context)
+                GameEventCommands.IsMet(conditional, game, context)
             );
 
             StringAssert.Contains("incompatible value types", exception.Message);
@@ -3609,7 +3606,7 @@ namespace Rebellion.Tests.Simulation
             );
             context.Bind("comparison", ComparisonOperator.GreaterThan);
 
-            Assert.IsTrue(GameEventExecutor.IsMet(conditional, game, context));
+            Assert.IsTrue(GameEventCommands.IsMet(conditional, game, context));
         }
 
         [Test]
@@ -3631,7 +3628,7 @@ namespace Rebellion.Tests.Simulation
             context.Bind("second", "GreaterThan");
 
             InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-                GameEventExecutor.IsMet(conditional, game, context)
+                GameEventCommands.IsMet(conditional, game, context)
             );
 
             StringAssert.Contains("incompatible value types", exception.Message);
@@ -3655,7 +3652,7 @@ namespace Rebellion.Tests.Simulation
             context.Bind("comparison", ComparisonOperator.GreaterThan);
 
             InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-                GameEventExecutor.IsMet(conditional, game, context)
+                GameEventCommands.IsMet(conditional, game, context)
             );
 
             StringAssert.Contains("ordered comparisons only for numeric values", exception.Message);
@@ -3686,7 +3683,7 @@ namespace Rebellion.Tests.Simulation
             );
             context.Bind("sourceEventInstanceID", null);
 
-            Assert.AreEqual(expected, GameEventExecutor.IsMet(conditional, game, context));
+            Assert.AreEqual(expected, GameEventCommands.IsMet(conditional, game, context));
         }
 
         [Test]
@@ -3699,7 +3696,7 @@ namespace Rebellion.Tests.Simulation
                 EventInstanceID = "activated",
             };
 
-            Assert.IsTrue(GameEventExecutor.IsMet(conditional, game));
+            Assert.IsTrue(GameEventCommands.IsMet(conditional, game));
         }
 
         [Test]
@@ -3712,7 +3709,7 @@ namespace Rebellion.Tests.Simulation
                 EventInstanceID = "limited",
             };
 
-            bool isComplete = GameEventExecutor.IsMet(conditional, game);
+            bool isComplete = GameEventCommands.IsMet(conditional, game);
 
             Assert.IsTrue(isComplete);
         }
@@ -3728,7 +3725,7 @@ namespace Rebellion.Tests.Simulation
                 EventInstanceID = "unlimited",
             };
 
-            bool isComplete = GameEventExecutor.IsMet(conditional, game);
+            bool isComplete = GameEventCommands.IsMet(conditional, game);
 
             Assert.IsFalse(isComplete);
         }
@@ -3751,7 +3748,7 @@ namespace Rebellion.Tests.Simulation
             );
             context.Bind("target", planet);
 
-            bool result = GameEventExecutor.IsMet(
+            bool result = GameEventCommands.IsMet(
                 conditional,
                 new GameConditionContext(game, context)
             );
@@ -3776,7 +3773,7 @@ namespace Rebellion.Tests.Simulation
                 Units = References(planetOfficer, shipOfficer),
             };
 
-            bool isMet = GameEventExecutor.IsMet(condition, game);
+            bool isMet = GameEventCommands.IsMet(condition, game);
 
             Assert.IsFalse(isMet);
             Assert.AreSame(planet, fleet.GetParent());
@@ -3796,7 +3793,7 @@ namespace Rebellion.Tests.Simulation
                 Units = References(planetOfficer, shipOfficer),
             };
 
-            bool isMet = GameEventExecutor.IsMet(condition, game);
+            bool isMet = GameEventCommands.IsMet(condition, game);
 
             Assert.IsTrue(isMet);
         }
@@ -3815,7 +3812,7 @@ namespace Rebellion.Tests.Simulation
                 CaptorFactionInstanceID = "captor",
             };
 
-            bool isMet = GameEventExecutor.IsMet(condition, game);
+            bool isMet = GameEventCommands.IsMet(condition, game);
 
             Assert.IsFalse(isMet);
         }
@@ -3830,13 +3827,13 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(officer, planet);
 
             Assert.IsTrue(
-                GameEventExecutor.IsMet(
+                GameEventCommands.IsMet(
                     new IsCapturedConditional { OfficerInstanceID = officer.InstanceID },
                     game
                 )
             );
             Assert.IsFalse(
-                GameEventExecutor.IsMet(
+                GameEventCommands.IsMet(
                     new IsCapturedConditional
                     {
                         OfficerInstanceID = officer.InstanceID,
@@ -3859,7 +3856,7 @@ namespace Rebellion.Tests.Simulation
                 OfficerInstanceID = officer.InstanceID,
             };
 
-            bool isMet = GameEventExecutor.IsMet(condition, game);
+            bool isMet = GameEventCommands.IsMet(condition, game);
 
             Assert.IsTrue(isMet);
         }
@@ -3876,7 +3873,7 @@ namespace Rebellion.Tests.Simulation
                 NodeInstanceID = officer.InstanceID,
             };
 
-            bool isMet = GameEventExecutor.IsMet(condition, game);
+            bool isMet = GameEventCommands.IsMet(condition, game);
 
             Assert.IsFalse(isMet);
             Assert.AreSame(
@@ -3896,7 +3893,7 @@ namespace Rebellion.Tests.Simulation
                 NodeInstanceID = officer.InstanceID,
             };
 
-            bool isMet = GameEventExecutor.IsMet(condition, game);
+            bool isMet = GameEventCommands.IsMet(condition, game);
 
             Assert.IsTrue(isMet);
         }
@@ -3913,7 +3910,7 @@ namespace Rebellion.Tests.Simulation
                 UnitInstanceID = officer.InstanceID,
             };
 
-            bool isMet = GameEventExecutor.IsMet(condition, game);
+            bool isMet = GameEventCommands.IsMet(condition, game);
 
             Assert.IsTrue(isMet);
         }
@@ -3938,7 +3935,7 @@ namespace Rebellion.Tests.Simulation
                 Type = BuildingType.Defense,
             };
 
-            bool isMet = GameEventExecutor.IsMet(condition, game);
+            bool isMet = GameEventCommands.IsMet(condition, game);
 
             Assert.IsTrue(isMet);
         }
@@ -3963,7 +3960,7 @@ namespace Rebellion.Tests.Simulation
                 Type = BuildingType.Defense,
             };
 
-            bool isMet = GameEventExecutor.IsMet(condition, game);
+            bool isMet = GameEventCommands.IsMet(condition, game);
 
             Assert.IsFalse(isMet);
         }
@@ -3982,7 +3979,7 @@ namespace Rebellion.Tests.Simulation
                 Rank = ForceRankLabel.ForceKnight,
             };
 
-            bool isMet = GameEventExecutor.IsMet(condition, game);
+            bool isMet = GameEventCommands.IsMet(condition, game);
 
             Assert.IsTrue(isMet);
         }
@@ -4002,7 +3999,7 @@ namespace Rebellion.Tests.Simulation
                 Rank = ForceRankLabel.ForceKnight,
             };
 
-            bool isMet = GameEventExecutor.IsMet(condition, game);
+            bool isMet = GameEventCommands.IsMet(condition, game);
 
             Assert.IsTrue(isMet);
         }
@@ -4016,7 +4013,7 @@ namespace Rebellion.Tests.Simulation
                 Selectors = { new SelectPlanets(), new SpawnUnits() },
             };
 
-            ISceneNode selected = GameEventExecutor
+            ISceneNode selected = GameEventCommands
                 .Select(selector, game, new StubRNG(), null)
                 .Single();
 
@@ -4027,7 +4024,7 @@ namespace Rebellion.Tests.Simulation
         public void Select_PlanetDestroyedBeforeEnumeration_ExcludesPlanet()
         {
             GameRoot game = BuildSelectionGame(out Planet planet);
-            IEnumerable<ISceneNode> selected = GameEventExecutor.Select(
+            IEnumerable<ISceneNode> selected = GameEventCommands.Select(
                 new SelectPlanets(),
                 game,
                 new StubRNG(),
@@ -4051,7 +4048,7 @@ namespace Rebellion.Tests.Simulation
                 Selectors = { new SelectPlanets(), new SelectPlanets() },
             };
 
-            IEnumerable<ISceneNode> selected = GameEventExecutor.Select(
+            IEnumerable<ISceneNode> selected = GameEventCommands.Select(
                 selector,
                 game,
                 provider,
@@ -4069,7 +4066,7 @@ namespace Rebellion.Tests.Simulation
             QueueRNG provider = new QueueRNG(0.25);
 
             Assert.Throws<InvalidOperationException>(() =>
-                GameEventExecutor.Select(new SpawnUnits(), game, provider, null)
+                GameEventCommands.Select(new SpawnUnits(), game, provider, null)
             );
 
             Assert.AreEqual(0.25, provider.NextDouble());
@@ -4081,7 +4078,7 @@ namespace Rebellion.Tests.Simulation
             GameRoot game = BuildSelectionGame(out Planet planet);
             SelectPlanets selector = new SelectPlanets { InstanceID = planet.InstanceID };
 
-            Planet selected = GameEventExecutor
+            Planet selected = GameEventCommands
                 .Select(selector, game, new StubRNG(), null)
                 .Cast<Planet>()
                 .Single();
@@ -4096,7 +4093,7 @@ namespace Rebellion.Tests.Simulation
             planet.IsDestroyed = true;
             SelectPlanets selector = new SelectPlanets { InstanceID = planet.InstanceID };
 
-            bool any = GameEventExecutor.Select(selector, game, new StubRNG(), null).Any();
+            bool any = GameEventCommands.Select(selector, game, new StubRNG(), null).Any();
 
             Assert.IsFalse(any);
         }
@@ -4109,7 +4106,7 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(secondPlanet, firstPlanet.GetParent());
             SelectPlanets selector = new SelectPlanets();
 
-            Planet[] selected = GameEventExecutor
+            Planet[] selected = GameEventCommands
                 .Select(selector, game, new StubRNG(), null)
                 .Cast<Planet>()
                 .ToArray();
@@ -4135,7 +4132,7 @@ namespace Rebellion.Tests.Simulation
                 Selectors = { new SelectPlanets { SectorType = PlanetSectorType.OuterRim } },
             };
 
-            Planet selected = GameEventExecutor
+            Planet selected = GameEventCommands
                 .Select(selector, game, new StubRNG(), null)
                 .Cast<Planet>()
                 .Single();
@@ -4164,7 +4161,7 @@ namespace Rebellion.Tests.Simulation
                 ManufacturingType = ManufacturingType.Building,
             };
 
-            IManufacturable selected = GameEventExecutor
+            IManufacturable selected = GameEventCommands
                 .Select(selector, game, new StubRNG(), null)
                 .Cast<IManufacturable>()
                 .Single();
@@ -4191,7 +4188,7 @@ namespace Rebellion.Tests.Simulation
                 IncludeInactive = true,
             };
 
-            ISceneNode selected = GameEventExecutor
+            ISceneNode selected = GameEventCommands
                 .Select(selector, game, new FixedRNG(0), null)
                 .Single();
 
@@ -4214,7 +4211,7 @@ namespace Rebellion.Tests.Simulation
                 IncludeInactive = true,
             };
 
-            List<ISceneNode> selected = GameEventExecutor
+            List<ISceneNode> selected = GameEventCommands
                 .Select(selector, game, new FixedRNG(0), null)
                 .ToList();
 
@@ -4235,7 +4232,7 @@ namespace Rebellion.Tests.Simulation
             );
             context.Bind("officer", stale);
 
-            ISceneNode selected = GameEventExecutor
+            ISceneNode selected = GameEventCommands
                 .Select(new SelectBinding { Binding = "officer" }, game, new FixedRNG(0), context)
                 .Single();
 
@@ -4256,7 +4253,7 @@ namespace Rebellion.Tests.Simulation
             );
             context.Bind("officer", officer);
 
-            ISceneNode selected = GameEventExecutor
+            ISceneNode selected = GameEventCommands
                 .Select(new SelectBinding { Binding = "officer" }, game, new FixedRNG(0), context)
                 .Single();
 
@@ -4276,7 +4273,7 @@ namespace Rebellion.Tests.Simulation
                 UnitInstanceID = officer.InstanceID,
             };
 
-            ISceneNode selected = GameEventExecutor
+            ISceneNode selected = GameEventCommands
                 .Select(selector, game, new FixedRNG(0), null)
                 .Single();
 
@@ -4302,7 +4299,7 @@ namespace Rebellion.Tests.Simulation
             );
 
             Assert.Throws<InvalidOperationException>(() =>
-                GameEventExecutor.Bind(trigger, context, result)
+                GameEventCommands.Bind(trigger, context, result)
             );
 
             Assert.AreSame(officer, context.GetBinding<Officer>("officer"));
@@ -4332,7 +4329,7 @@ namespace Rebellion.Tests.Simulation
             );
 
             Assert.Throws<InvalidOperationException>(() =>
-                GameEventExecutor.Bind(trigger, context, result)
+                GameEventCommands.Bind(trigger, context, result)
             );
 
             Assert.AreSame(first, context.GetBinding<Officer>("officer"));
@@ -4354,9 +4351,9 @@ namespace Rebellion.Tests.Simulation
                 Reason = PlanetOwnershipChangeReason.PopularSupport,
             };
 
-            Assert.IsTrue(GameEventExecutor.Matches(trigger, result));
+            Assert.IsTrue(GameEventCommands.Matches(trigger, result));
             result.Reason = PlanetOwnershipChangeReason.None;
-            Assert.IsFalse(GameEventExecutor.Matches(trigger, result));
+            Assert.IsFalse(GameEventCommands.Matches(trigger, result));
         }
 
         [Test]
@@ -4373,9 +4370,9 @@ namespace Rebellion.Tests.Simulation
                 Observations = new List<ISceneNode> { new Planet { InstanceID = "planet" } },
             };
 
-            Assert.IsTrue(GameEventExecutor.Matches(trigger, result));
+            Assert.IsTrue(GameEventCommands.Matches(trigger, result));
             result.Observations.Clear();
-            Assert.IsFalse(GameEventExecutor.Matches(trigger, result));
+            Assert.IsFalse(GameEventCommands.Matches(trigger, result));
         }
 
         [Test]
@@ -4390,9 +4387,9 @@ namespace Rebellion.Tests.Simulation
                 Faction = new Faction { InstanceID = "alliance" },
             };
 
-            Assert.IsTrue(GameEventExecutor.Matches(trigger, result));
+            Assert.IsTrue(GameEventCommands.Matches(trigger, result));
             result.Faction.InstanceID = "empire";
-            Assert.IsFalse(GameEventExecutor.Matches(trigger, result));
+            Assert.IsFalse(GameEventCommands.Matches(trigger, result));
         }
 
         [Test]
@@ -4416,9 +4413,9 @@ namespace Rebellion.Tests.Simulation
                 Participants = new List<IMissionParticipant> { officer },
             };
 
-            Assert.IsTrue(GameEventExecutor.Matches(trigger, result));
+            Assert.IsTrue(GameEventCommands.Matches(trigger, result));
             result.Participants.Clear();
-            Assert.IsFalse(GameEventExecutor.Matches(trigger, result));
+            Assert.IsFalse(GameEventCommands.Matches(trigger, result));
         }
 
         [Test]
@@ -4435,9 +4432,9 @@ namespace Rebellion.Tests.Simulation
                 IsCaptured = true,
             };
 
-            Assert.IsTrue(GameEventExecutor.Matches(trigger, result));
+            Assert.IsTrue(GameEventCommands.Matches(trigger, result));
             result.IsCaptured = false;
-            Assert.IsFalse(GameEventExecutor.Matches(trigger, result));
+            Assert.IsFalse(GameEventCommands.Matches(trigger, result));
         }
 
         [Test]
@@ -4454,9 +4451,9 @@ namespace Rebellion.Tests.Simulation
                 EventType = ForceEventType.ForceUserDiscovered,
             };
 
-            Assert.IsTrue(GameEventExecutor.Matches(trigger, result));
+            Assert.IsTrue(GameEventCommands.Matches(trigger, result));
             result.EventType = ForceEventType.DiscoveringForceUser;
-            Assert.IsFalse(GameEventExecutor.Matches(trigger, result));
+            Assert.IsFalse(GameEventCommands.Matches(trigger, result));
         }
 
         [Test]
@@ -4473,9 +4470,9 @@ namespace Rebellion.Tests.Simulation
                 Destination = new Planet { InstanceID = "planet" },
             };
 
-            Assert.IsTrue(GameEventExecutor.Matches(trigger, result));
+            Assert.IsTrue(GameEventCommands.Matches(trigger, result));
             result.Destination.InstanceID = "elsewhere";
-            Assert.IsFalse(GameEventExecutor.Matches(trigger, result));
+            Assert.IsFalse(GameEventCommands.Matches(trigger, result));
         }
 
         [TestCaseSource(nameof(UnitDestructionResults))]
@@ -4490,7 +4487,7 @@ namespace Rebellion.Tests.Simulation
                 Reason = reason,
             };
 
-            Assert.IsTrue(GameEventExecutor.Matches(trigger, result));
+            Assert.IsTrue(GameEventCommands.Matches(trigger, result));
         }
 
         [Test]
@@ -4509,9 +4506,9 @@ namespace Rebellion.Tests.Simulation
                 SourceEventInstanceID = "encounter",
             };
 
-            Assert.IsTrue(GameEventExecutor.Matches(trigger, result));
+            Assert.IsTrue(GameEventCommands.Matches(trigger, result));
             result.SourceEventInstanceID = "other";
-            Assert.IsFalse(GameEventExecutor.Matches(trigger, result));
+            Assert.IsFalse(GameEventCommands.Matches(trigger, result));
         }
 
         [Test]
@@ -4530,9 +4527,9 @@ namespace Rebellion.Tests.Simulation
                 PlanetDestroyed = true,
             };
 
-            Assert.IsTrue(GameEventExecutor.Matches(trigger, result));
+            Assert.IsTrue(GameEventCommands.Matches(trigger, result));
             result.PlanetDestroyed = false;
-            Assert.IsFalse(GameEventExecutor.Matches(trigger, result));
+            Assert.IsFalse(GameEventCommands.Matches(trigger, result));
         }
 
         /// <summary>Builds an eligible duel followed by an authored message for deferred failure tests.</summary>
@@ -4619,17 +4616,10 @@ namespace Rebellion.Tests.Simulation
             MovementCommands movement = CreateMovementCommands(game);
             PlanetaryControlCommands control = new PlanetaryControlCommands(
                 game,
-                movement,
-                new ManufacturingCommands(
-                    game,
-                    new FleetCommands(game),
-                    new ManufacturingQueries(game)
-                ),
-                new FogOfWarCommands(game),
                 new PlanetaryControlQueries(game),
                 new FogOfWarQueries(game)
             );
-            GameEventExecutor executor = new GameEventExecutor(
+            GameEventCommands executor = new GameEventCommands(
                 game,
                 random,
                 unitFactory,
@@ -4647,8 +4637,8 @@ namespace Rebellion.Tests.Simulation
                 gameEvent.Triggers.Add(trigger);
             game.GetEventPool().Add(gameEvent);
             return trigger != null
-                ? executor.HandleResults(new[] { triggerResult })
-                : executor.ProcessEvents(game.GetEventPool());
+                ? executor.ProcessTriggeredEvents(new[] { triggerResult })
+                : executor.ProcessScheduledEvents(game.GetEventPool());
         }
 
         /// <summary>Builds movement dependencies for authored movement and ownership tests.</summary>

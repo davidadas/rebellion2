@@ -300,7 +300,7 @@ public static partial class HeadlessSimulationRunner
         Faction faction = game.GetFactionByOwnerInstanceID(summary.FactionId);
         FleetCommands fleetSystem = new FleetCommands(game);
         FogOfWarQueries fogOfWarQueries = new FogOfWarQueries(game);
-        FogOfWarCommands fogOfWar = new FogOfWarCommands(game, fogOfWarQueries);
+        FogOfWarCommands fogOfWar = new FogOfWarCommands(game);
         MovementCommands movement = new MovementCommands(
             game,
             fogOfWar,

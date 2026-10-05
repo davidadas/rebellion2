@@ -586,7 +586,9 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
                     date,
                     ResolveSaveFactionIcon(entry.Metadata?.PlayerFactionID),
                     false,
-                    entry.FileName
+                    entry.FileName,
+                    entry.Metadata?.Difficulty?.ToString(),
+                    entry.Metadata?.CurrentTick
                 )
             );
         }

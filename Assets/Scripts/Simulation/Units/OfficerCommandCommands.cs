@@ -244,21 +244,6 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Removes an officer's active command and records the resulting command changes.
-        /// </summary>
-        /// <param name="officer">The officer leaving command.</param>
-        /// <param name="tick">The current game tick.</param>
-        /// <param name="results">The destination result collection.</param>
-        internal static void ClearRank(Officer officer, int tick, ICollection<GameResult> results)
-        {
-            if (officer == null || officer.CurrentRank == OfficerRank.None)
-                return;
-
-            ISceneNode commandTarget = ResolveCommandHierarchyTarget(officer);
-            ApplyRankChange(officer, OfficerRank.None, commandTarget, tick, results);
-        }
-
-        /// <summary>
         /// Reports whether a value is one of the four supported command choices.
         /// </summary>
         /// <param name="rank">The value to inspect.</param>

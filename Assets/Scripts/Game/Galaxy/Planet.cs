@@ -85,7 +85,8 @@ namespace Rebellion.Game.Galaxy
         public int BlockadeSupportShiftIntervalTicks { get; set; }
 
         // Popular Support.
-        public Dictionary<string, int> PopularSupport = new Dictionary<string, int>();
+        [PersistableMember(Name = nameof(PopularSupport))]
+        private Dictionary<string, int> _popularSupport = new Dictionary<string, int>();
 
         // Child Nodes.
         [PersistableMember(Name = "Fleets")]
@@ -121,7 +122,22 @@ namespace Rebellion.Game.Galaxy
         } = new Dictionary<ManufacturingType, List<IManufacturable>>();
 
         // Visitor Status.
-        public List<string> VisitingFactionIDs = new List<string>();
+        [PersistableMember(Name = nameof(VisitingFactionIDs))]
+        private List<string> _visitingFactionIds = new List<string>();
+
+        [PersistableIgnore]
+        public Dictionary<string, int> PopularSupport
+        {
+            get => _popularSupport;
+            set => _popularSupport = value;
+        }
+
+        [PersistableIgnore]
+        public List<string> VisitingFactionIDs
+        {
+            get => _visitingFactionIds;
+            set => _visitingFactionIds = value;
+        }
 
         /// <summary>
         /// Default constructor used for deserialization.
@@ -827,10 +843,17 @@ namespace Rebellion.Game.Galaxy
         /// </summary>
         /// <param name="capitalShipPenalty">The percentage removed per capital ship.</param>
         /// <param name="fighterPenalty">The percentage removed per fighter squadron.</param>
+        /// <param name="blockadePresent">
+        /// A previously observed blockade state, or null to inspect the current planet state.
+        /// </param>
         /// <returns>The available percentage from zero through one hundred.</returns>
-        public int GetBlockadeModifier(int capitalShipPenalty, int fighterPenalty)
+        public int GetBlockadeModifier(
+            int capitalShipPenalty,
+            int fighterPenalty,
+            bool? blockadePresent = null
+        )
         {
-            if (!IsBlockaded() || HasOperationalIonCannon())
+            if (!(blockadePresent ?? IsBlockaded()) || HasOperationalIonCannon())
                 return _maximumProductionModifier;
 
             List<CapitalShip> capitalShips = _fleets
