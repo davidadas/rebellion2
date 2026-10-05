@@ -14,7 +14,7 @@ using Rebellion.SceneGraph;
 
 namespace Rebellion.Simulation
 {
-    public sealed partial class GameEventExecutor
+    public sealed partial class GameEventCommands
     {
         /// <summary>Evaluates an authored condition against its activation context.</summary>
         /// <param name="definition">The authored condition to evaluate.</param>

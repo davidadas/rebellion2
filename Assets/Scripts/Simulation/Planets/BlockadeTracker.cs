@@ -1,80 +1,28 @@
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
-using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Util.Logging;
-using Rebellion.Util.Random;
 
 namespace Rebellion.Simulation
 {
     /// <summary>
-    /// Manages blockade detection, transition events, and evacuation losses.
+    /// Tracks blockade transitions between simulation ticks.
     /// </summary>
-    public class BlockadeCommands
+    public class BlockadeTracker
     {
         private readonly GameRoot _game;
-        private readonly IRandomNumberProvider _provider;
         private readonly HashSet<string> _blockadedPlanets;
 
         /// <summary>
-        /// Creates a new BlockadeCommands.
+        /// Creates blockade tracking for the active game.
         /// </summary>
         /// <param name="game">The game instance.</param>
-        /// <param name="provider">Random number provider for evacuation rolls.</param>
-        public BlockadeCommands(GameRoot game, IRandomNumberProvider provider)
+        public BlockadeTracker(GameRoot game)
         {
             _game = game;
-            _provider = provider;
             _blockadedPlanets = new HashSet<string>();
-        }
-
-        /// <summary>
-        /// Rolls to determine if a regiment is destroyed while evacuating through a blockade.
-        /// </summary>
-        /// <returns>True if the regiment is destroyed.</returns>
-        public bool RollEvacuationLoss()
-        {
-            int threshold = _game.Config.Blockade.EvacuationLossPercent;
-            return _provider.NextInt(0, 100) < threshold;
-        }
-
-        /// <summary>
-        /// Applies evacuation losses when a unit departs through an opposing blockade.
-        /// Only regiments are currently subject to losses.
-        /// </summary>
-        /// <param name="unit">The unit attempting to leave.</param>
-        /// <param name="originPlanet">The planet the unit is departing from.</param>
-        /// <returns>Result describing the loss, or null if the unit survived.</returns>
-        public EvacuationLossesResult ApplyEvacuationLosses(IMovable unit, Planet originPlanet)
-        {
-            if (
-                !originPlanet.IsBlockadedFor(unit.GetOwnerInstanceID())
-                || originPlanet.HasOperationalIonCannon()
-            )
-                return null;
-
-            if (unit is Regiment regiment && RollEvacuationLoss())
-            {
-                Faction faction = _game
-                    .GetFactions()
-                    .FirstOrDefault(f => f.InstanceID == unit.GetOwnerInstanceID());
-                _game.DeleteNode(unit);
-                GameLogger.Log(
-                    $"{unit.GetDisplayName()} destroyed running blockade at {originPlanet.GetDisplayName()}"
-                );
-                return new EvacuationLossesResult
-                {
-                    Faction = faction,
-                    Location = originPlanet,
-                    LostRegiments = new List<Regiment> { regiment },
-                    Tick = _game.CurrentTick,
-                };
-            }
-
-            return null;
         }
 
         /// <summary>

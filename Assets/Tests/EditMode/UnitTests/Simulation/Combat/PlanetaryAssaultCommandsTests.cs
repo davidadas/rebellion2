@@ -15,7 +15,7 @@ namespace Rebellion.Tests.Simulation
     public class PlanetaryAssaultCommandsTests : CombatTestBase
     {
         [Test]
-        public void Execute_ValidAssault_DoesNotPublishResults()
+        public void TryExecute_ValidAssault_ReturnsSuccessfulResult()
         {
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "alliance");
@@ -24,10 +24,10 @@ namespace Rebellion.Tests.Simulation
             int publications = 0;
             system.ResultsProduced += _ => publications++;
 
-            PlanetaryAssaultResult result = system.Execute(new List<Fleet> { fleet }, planet);
+            PlanetaryAssaultResult result = system.TryExecute(new List<Fleet> { fleet }, planet);
 
             Assert.IsTrue(result.Success);
-            Assert.AreEqual(0, publications);
+            Assert.AreEqual(1, publications);
         }
 
         [Test]
@@ -84,7 +84,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void Execute_TwoShieldGenerators_BlockAssault()
+        public void TryExecute_TwoShieldGenerators_RejectsAssault()
         {
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 10);
@@ -93,15 +93,14 @@ namespace Rebellion.Tests.Simulation
             Fleet fleet = AddAssaultFleet(game, planet, "empire", regimentCount: 1);
 
             PlanetaryAssaultResult result = MakePlanetaryAssault(game, new SequenceRNG())
-                .Execute(new List<Fleet> { fleet }, planet);
+                .TryExecute(new List<Fleet> { fleet }, planet);
 
-            Assert.IsTrue(result.BlockedByShields);
-            Assert.IsFalse(result.Success);
+            Assert.IsNull(result);
             Assert.AreEqual("alliance", planet.GetOwnerInstanceID());
         }
 
         [Test]
-        public void Execute_DeathStarShield_DoesNotBlockAssault()
+        public void TryExecute_DeathStarShield_DoesNotBlockAssault()
         {
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 10);
@@ -110,14 +109,14 @@ namespace Rebellion.Tests.Simulation
             Fleet fleet = AddAssaultFleet(game, planet, "empire", regimentCount: 1);
 
             PlanetaryAssaultResult result = MakePlanetaryAssault(game, new SequenceRNG())
-                .Execute(new List<Fleet> { fleet }, planet);
+                .TryExecute(new List<Fleet> { fleet }, planet);
 
             Assert.IsFalse(result.BlockedByShields);
             Assert.IsTrue(result.Success);
         }
 
         [Test]
-        public void Execute_AttackingFleetWithWaypoints_ClearsRoute()
+        public void TryExecute_AttackingFleetWithWaypoints_ClearsRoute()
         {
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 10);
@@ -126,13 +125,13 @@ namespace Rebellion.Tests.Simulation
             fleet.Waypoints.Add("next-planet");
 
             MakePlanetaryAssault(game, new SequenceRNG(intValues: new[] { 0, 6, 99 }))
-                .Execute(new List<Fleet> { fleet }, planet);
+                .TryExecute(new List<Fleet> { fleet }, planet);
 
             Assert.IsEmpty(fleet.Waypoints);
         }
 
         [Test]
-        public void Execute_DefenseFire_UsesInitialAttackerIndexRange()
+        public void TryExecute_DefenseFire_UsesInitialAttackerIndexRange()
         {
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 10);
@@ -152,7 +151,7 @@ namespace Rebellion.Tests.Simulation
                     game,
                     new SequenceRNG(intValues: new[] { 0, 0, 0, 1 })
                 )
-                .Execute(new List<Fleet> { fleet }, planet);
+                .TryExecute(new List<Fleet> { fleet }, planet);
 
             Assert.AreEqual(1, result.DestroyedAttackerRegiments.Count);
             Assert.AreEqual(1, result.RemainingAttackerRegimentCount);
@@ -183,7 +182,7 @@ namespace Rebellion.Tests.Simulation
         [TestCase(4, true, false)]
         [TestCase(5, false, false)]
         [TestCase(6, false, true)]
-        public void Execute_ContestScore_UsesSourceThresholds(
+        public void TryExecute_ContestScore_UsesSourceThresholds(
             int contestRoll,
             bool defenderWins,
             bool attackerWins
@@ -199,7 +198,7 @@ namespace Rebellion.Tests.Simulation
                     game,
                     new SequenceRNG(intValues: new[] { 0, contestRoll, 99 })
                 )
-                .Execute(new List<Fleet> { fleet }, planet);
+                .TryExecute(new List<Fleet> { fleet }, planet);
 
             Assert.AreEqual(defenderWins, result.DestroyedAttackerRegiments.Contains(attacker));
             Assert.AreEqual(attackerWins, result.DestroyedDefenderRegiments.Contains(defender));
@@ -207,7 +206,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void Execute_EachTroop_UsesGeneralFromItsOwnFleet()
+        public void TryExecute_EachTroop_UsesGeneralFromItsOwnFleet()
         {
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 10);
@@ -228,7 +227,7 @@ namespace Rebellion.Tests.Simulation
                     game,
                     new SequenceRNG(intValues: new[] { 0, 4, 0, 4, 99, 99 })
                 )
-                .Execute(new List<Fleet> { uncommandedFleet, commandedFleet }, planet);
+                .TryExecute(new List<Fleet> { uncommandedFleet, commandedFleet }, planet);
 
             Assert.AreEqual(1, result.DestroyedAttackerRegiments.Count);
             Assert.AreEqual(1, result.DestroyedDefenderRegiments.Count);
@@ -237,7 +236,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void Execute_CollateralDamage_CanDestroyCivilianFacilityAndExcludesHeadquarters()
+        public void TryExecute_CollateralDamage_CanDestroyCivilianFacilityAndExcludesHeadquarters()
         {
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 2);
@@ -258,7 +257,7 @@ namespace Rebellion.Tests.Simulation
                     game,
                     new SequenceRNG(intValues: new[] { 0, 5, 0, 0 })
                 )
-                .Execute(new List<Fleet> { fleet }, planet);
+                .TryExecute(new List<Fleet> { fleet }, planet);
 
             Assert.IsTrue(planet.IsHeadquarters);
             Assert.AreSame(
@@ -271,7 +270,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void Execute_CollateralDamage_RollsAllTrialsBeforeSelectingTargets()
+        public void TryExecute_CollateralDamage_RollsAllTrialsBeforeSelectingTargets()
         {
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 1);
@@ -284,21 +283,21 @@ namespace Rebellion.Tests.Simulation
                     game,
                     new SequenceRNG(intValues: new[] { 0, 5, 0, 5, 0, 99, 0 })
                 )
-                .Execute(new List<Fleet> { fleet }, planet);
+                .TryExecute(new List<Fleet> { fleet }, planet);
 
             CollectionAssert.Contains(result.CollateralDestroyedBuildings, mine);
             Assert.AreEqual(1, planet.EnergyCapacity);
         }
 
         [Test]
-        public void Execute_Capture_LandsAtMostRequiredGarrison()
+        public void TryExecute_Capture_LandsAtMostRequiredGarrison()
         {
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 10);
             Fleet fleet = AddAssaultFleet(game, planet, "empire", regimentCount: 7);
 
             PlanetaryAssaultResult result = MakePlanetaryAssault(game, new SequenceRNG())
-                .Execute(new List<Fleet> { fleet }, planet);
+                .TryExecute(new List<Fleet> { fleet }, planet);
 
             Assert.IsTrue(result.Success);
             Assert.AreEqual("empire", planet.GetOwnerInstanceID());
@@ -312,14 +311,14 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void Execute_CaptureWithFewerTroops_LandsEverySurvivor()
+        public void TryExecute_CaptureWithFewerTroops_LandsEverySurvivor()
         {
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 10);
             Fleet fleet = AddAssaultFleet(game, planet, "empire", regimentCount: 2);
 
             PlanetaryAssaultResult result = MakePlanetaryAssault(game, new SequenceRNG())
-                .Execute(new List<Fleet> { fleet }, planet);
+                .TryExecute(new List<Fleet> { fleet }, planet);
 
             Assert.IsTrue(result.Success);
             Assert.AreEqual(2, result.LandedRegiments.Count);
@@ -327,7 +326,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void Execute_AttackersDestroyed_DoesNotCapturePlanet()
+        public void TryExecute_AttackersDestroyed_DoesNotCapturePlanet()
         {
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 10);
@@ -338,7 +337,7 @@ namespace Rebellion.Tests.Simulation
                     game,
                     new SequenceRNG(intValues: new[] { 0, 4, 99 })
                 )
-                .Execute(new List<Fleet> { fleet }, planet);
+                .TryExecute(new List<Fleet> { fleet }, planet);
 
             Assert.IsFalse(result.Success);
             Assert.AreEqual("alliance", planet.GetOwnerInstanceID());
@@ -346,7 +345,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void Execute_RngFailure_ClearsFleetCombatState()
+        public void TryExecute_RngFailure_ClearsFleetCombatState()
         {
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 10);
@@ -356,7 +355,7 @@ namespace Rebellion.Tests.Simulation
 
             Assert.Throws<InvalidOperationException>(() =>
                 MakePlanetaryAssault(game, new ThrowingRNG())
-                    .Execute(new List<Fleet> { fleet }, planet)
+                    .TryExecute(new List<Fleet> { fleet }, planet)
             );
 
             Assert.IsFalse(fleet.IsInCombat);
@@ -364,7 +363,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void Execute_TwoReadyAndSixMovingRegiments_UsesReadyRegiments()
+        public void TryExecute_TwoReadyAndSixMovingRegiments_UsesReadyRegiments()
         {
             GameRoot game = CreateGame();
             (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 10);
@@ -378,7 +377,7 @@ namespace Rebellion.Tests.Simulation
                 regiment.Movement = new MovementState();
             PlanetaryAssaultCommands system = MakePlanetaryAssault(game, new SequenceRNG());
 
-            PlanetaryAssaultResult result = system.Execute(new List<Fleet> { fleet }, planet);
+            PlanetaryAssaultResult result = system.TryExecute(new List<Fleet> { fleet }, planet);
 
             Assert.AreEqual(2, result.InitialAttackerRegimentCount);
             Assert.IsTrue(result.Success);

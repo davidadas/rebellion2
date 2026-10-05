@@ -119,7 +119,7 @@ namespace Rebellion.Tests.AI.Proposals
                 game,
                 empire,
                 random: random,
-                maintenance: new MaintenanceCommands(game, random, new FleetCommands(game))
+                maintenance: new MaintenanceCommands(game, random)
             );
         }
     }

@@ -108,7 +108,7 @@ namespace Rebellion.Tests.Simulation
                 new ManufacturingQueries(_game),
                 _movement
             );
-            _observer = new ManufacturingObserver(_manager);
+            _observer = new ManufacturingObserver(_game, _manager);
         }
 
         [Test]
@@ -116,7 +116,7 @@ namespace Rebellion.Tests.Simulation
         {
             Building item = CreateOrderTestBuildingTemplate("mine");
             item.OwnerInstanceID = "EMPIRE";
-            Assert.IsTrue(_manager.Enqueue(_coruscant, item, _coruscant, ignoreCost: true));
+            Assert.IsTrue(_manager.Enqueue(_coruscant, item, _coruscant));
             _game.DetachNode(_shipyard);
 
             List<GameResult> reactions = _observer.HandleResults(
@@ -149,7 +149,7 @@ namespace Rebellion.Tests.Simulation
                 BaseBuildSpeed = 10,
                 BuildingType = BuildingType.Mine,
             };
-            _manager.Enqueue(_coruscant, mine, _coruscant, ignoreCost: true);
+            _manager.Enqueue(_coruscant, mine, _coruscant);
             _game.DetachNode(_shipyard);
 
             _observer.HandleResults(
@@ -180,7 +180,7 @@ namespace Rebellion.Tests.Simulation
                 BaseBuildSpeed = 10,
                 BuildingType = BuildingType.Mine,
             };
-            _manager.Enqueue(_coruscant, mine, _coruscant, ignoreCost: true);
+            _manager.Enqueue(_coruscant, mine, _coruscant);
             _game.DetachNode(_shipyard);
 
             _observer.HandleResults(
@@ -221,7 +221,7 @@ namespace Rebellion.Tests.Simulation
                 BaseBuildSpeed = 10,
                 BuildingType = BuildingType.Mine,
             };
-            _manager.Enqueue(_coruscant, mine, _coruscant, ignoreCost: true);
+            _manager.Enqueue(_coruscant, mine, _coruscant);
             _game.DetachNode(_shipyard);
 
             _observer.HandleResults(
@@ -253,7 +253,7 @@ namespace Rebellion.Tests.Simulation
                 BaseBuildSpeed = 10,
                 BuildingType = BuildingType.Mine,
             };
-            _manager.Enqueue(_coruscant, mine, _coruscant, ignoreCost: true);
+            _manager.Enqueue(_coruscant, mine, _coruscant);
             _game.DetachNode(_shipyard);
 
             _observer.HandleResults(
@@ -273,6 +273,174 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(mine.GetParent());
         }
 
+        [Test]
+        public void Connect_OwnershipChangePublished_ClearsDestinationPlanetQueues()
+        {
+            Building mine = CreateOrderTestBuildingTemplate("captured-mine");
+            mine.OwnerInstanceID = _empire.InstanceID;
+            Assert.IsTrue(_manager.Enqueue(_coruscant, mine, _coruscant));
+            Faction alliance = CreateFaction("ALLIANCE");
+            GameResultBus results = new GameResultBus();
+            _observer.Connect(results);
+
+            results.Publish(
+                new PlanetOwnershipChangedResult
+                {
+                    Planet = _coruscant,
+                    PreviousOwner = _empire,
+                    NewOwner = alliance,
+                }
+            );
+
+            Assert.IsEmpty(_coruscant.GetManufacturingQueue());
+            Assert.IsNull(mine.GetParent());
+        }
+
+        [Test]
+        public void HandleResults_IncompatibleRemoteOrder_CancelsOnlyCapturedDestinationOrder()
+        {
+            Planet destination = CreatePlanet("CAPTURED", _empire.InstanceID);
+            Building remoteMine = CreateOrderTestBuildingTemplate("remote-mine");
+            remoteMine.OwnerInstanceID = _empire.InstanceID;
+            Building localMine = CreateOrderTestBuildingTemplate("local-mine");
+            localMine.OwnerInstanceID = _empire.InstanceID;
+            Assert.IsTrue(_manager.Enqueue(_coruscant, remoteMine, destination));
+            Assert.IsTrue(_manager.Enqueue(_coruscant, localMine, _coruscant));
+
+            _observer.HandleResults(
+                new[]
+                {
+                    new PlanetOwnershipChangedResult
+                    {
+                        Planet = destination,
+                        PreviousOwner = _empire,
+                        NewOwner = CreateFaction("ALLIANCE"),
+                    },
+                }
+            );
+
+            List<IManufacturable> queue = _coruscant.GetManufacturingQueue()[
+                ManufacturingType.Building
+            ];
+            CollectionAssert.AreEqual(new[] { localMine }, queue);
+            Assert.IsNull(remoteMine.GetParent());
+            Assert.IsNull(_game.GetSceneNodeByInstanceID<Building>(remoteMine.InstanceID));
+        }
+
+        [Test]
+        public void HandleResults_CompatibleRemoteOrder_PreservesOrder()
+        {
+            Planet destination = CreatePlanet("CLAIMED", _empire.InstanceID);
+            Building remoteMine = CreateOrderTestBuildingTemplate("friendly-mine");
+            remoteMine.OwnerInstanceID = _empire.InstanceID;
+            Assert.IsTrue(_manager.Enqueue(_coruscant, remoteMine, destination));
+
+            _observer.HandleResults(
+                new[]
+                {
+                    new PlanetOwnershipChangedResult
+                    {
+                        Planet = destination,
+                        PreviousOwner = null,
+                        NewOwner = _empire,
+                    },
+                }
+            );
+
+            CollectionAssert.Contains(
+                _coruscant.GetManufacturingQueue()[ManufacturingType.Building],
+                remoteMine
+            );
+            Assert.AreSame(destination, remoteMine.GetParent());
+        }
+
+        [Test]
+        public void HandleResults_FleetDestinationAtCapturedPlanet_PreservesOrder()
+        {
+            Planet destination = CreatePlanet("CAPTURED", _empire.InstanceID);
+            Building troopFacility = new Building
+            {
+                InstanceID = "TROOP_FACILITY",
+                OwnerInstanceID = _empire.InstanceID,
+                BuildingType = BuildingType.TrainingFacility,
+                ProductionType = ManufacturingType.Troop,
+                ProcessRate = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(troopFacility, _coruscant);
+            Fleet fleet = new Fleet(_empire.InstanceID, "Empire Fleet");
+            CapitalShip transport = new CapitalShip
+            {
+                InstanceID = "TRANSPORT",
+                OwnerInstanceID = _empire.InstanceID,
+                RegimentCapacity = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(fleet, destination);
+            _game.AttachNode(transport, fleet);
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "FLEET_REGIMENT",
+                OwnerInstanceID = _empire.InstanceID,
+                ConstructionCost = 100,
+            };
+            Assert.IsTrue(_manager.Enqueue(_coruscant, regiment, fleet));
+
+            _observer.HandleResults(
+                new[]
+                {
+                    new PlanetOwnershipChangedResult
+                    {
+                        Planet = destination,
+                        PreviousOwner = _empire,
+                        NewOwner = CreateFaction("ALLIANCE"),
+                    },
+                }
+            );
+
+            CollectionAssert.Contains(
+                _coruscant.GetManufacturingQueue()[ManufacturingType.Troop],
+                regiment
+            );
+            Assert.AreSame(fleet, regiment.GetParentOfType<Fleet>());
+        }
+
+        [Test]
+        public void HandleResults_QueuedRegimentEvacuatedBeforeObservation_CancelsOrder()
+        {
+            Planet destination = CreatePlanet("CAPTURED", _empire.InstanceID);
+            Building troopFacility = new Building
+            {
+                InstanceID = "TROOP_FACILITY",
+                OwnerInstanceID = _empire.InstanceID,
+                BuildingType = BuildingType.TrainingFacility,
+                ProductionType = ManufacturingType.Troop,
+                ProcessRate = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(troopFacility, _coruscant);
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "REMOTE_REGIMENT",
+                OwnerInstanceID = _empire.InstanceID,
+                ConstructionCost = 100,
+            };
+            Assert.IsTrue(_manager.Enqueue(_coruscant, regiment, destination));
+            Faction alliance = CreateFaction("ALLIANCE");
+            PlanetaryControlCommands control = new PlanetaryControlCommands(
+                _game,
+                new PlanetaryControlQueries(_game),
+                new FogOfWarQueries(_game)
+            );
+
+            PlanetOwnershipChangedResult result = control.TransferPlanet(destination, alliance);
+            _observer.HandleResults(new[] { result });
+
+            Assert.IsFalse(_coruscant.GetManufacturingQueue().ContainsKey(ManufacturingType.Troop));
+            Assert.IsNull(regiment.GetParent());
+            Assert.IsNull(regiment.Movement);
+        }
+
         /// <summary>
         /// Creates order test building template.
         /// </summary>
@@ -289,6 +457,33 @@ namespace Rebellion.Tests.Simulation
                 BaseBuildSpeed = 1,
                 BuildingType = BuildingType.Mine,
             };
+        }
+
+        /// <summary>Creates and attaches a faction for an ownership-change test.</summary>
+        /// <param name="instanceId">The faction instance identifier.</param>
+        /// <returns>The attached faction.</returns>
+        private Faction CreateFaction(string instanceId)
+        {
+            Faction faction = new Faction { InstanceID = instanceId };
+            _game.GetFactions().Add(faction);
+            return faction;
+        }
+
+        /// <summary>Creates a populated planet in the test sector.</summary>
+        /// <param name="instanceId">The planet instance identifier.</param>
+        /// <param name="ownerInstanceId">The optional owning faction identifier.</param>
+        /// <returns>The attached planet.</returns>
+        private Planet CreatePlanet(string instanceId, string ownerInstanceId)
+        {
+            Planet planet = new Planet
+            {
+                InstanceID = instanceId,
+                OwnerInstanceID = ownerInstanceId,
+                IsColonized = true,
+                EnergyCapacity = 10,
+            };
+            _game.AttachNode(planet, _coruscant.GetParent());
+            return planet;
         }
     }
 }

@@ -177,30 +177,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(ManufacturingStatus.Building, ship.ManufacturingStatus);
         }
 
-        [Test]
-        public void RemoveIfEmpty_PopulatedFleet_PreservesFleet()
-        {
-            Fleet fleet = CreateFleet("fleet", out _);
-
-            bool removed = _fleetSystem.RemoveIfEmpty(fleet);
-
-            Assert.IsFalse(removed);
-            Assert.AreSame(_planet, fleet.GetParent());
-        }
-
-        [Test]
-        public void RemoveIfEmpty_EmptyFleet_RemovesFleet()
-        {
-            Fleet fleet = new Fleet(_ownerId, "fleet") { InstanceID = "fleet" };
-            _game.AttachNode(fleet, _planet);
-
-            bool removed = _fleetSystem.RemoveIfEmpty(fleet);
-
-            Assert.IsTrue(removed);
-            Assert.IsNull(fleet.GetParent());
-            Assert.IsNull(_game.GetSceneNodeByInstanceID<Fleet>(fleet.InstanceID));
-        }
-
         /// <summary>
         /// Creates fleet.
         /// </summary>

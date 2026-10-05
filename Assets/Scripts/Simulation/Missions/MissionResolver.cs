@@ -27,7 +27,7 @@ namespace Rebellion.Simulation
         private readonly IRandomNumberProvider _provider;
         private readonly MovementCommands _movementManager;
         private readonly MovementQueries _movementQueries;
-        private readonly UprisingCommands _uprisingSystem;
+        private readonly UprisingResolver _uprisingSystem;
         private readonly MissionBetrayalResolver _betrayalResolver;
         private readonly PersonnelCommands _personnelCommands;
         private readonly MissionQueries _queries;
@@ -52,7 +52,7 @@ namespace Rebellion.Simulation
             GameRoot game,
             IRandomNumberProvider provider,
             MovementCommands movementManager,
-            UprisingCommands uprisingSystem,
+            UprisingResolver uprisingSystem,
             MissionQueries queries,
             MovementQueries movementQueries,
             MissionBetrayalResolver betrayalResolver = null,

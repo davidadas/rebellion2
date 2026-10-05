@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
@@ -24,7 +25,9 @@ namespace Rebellion.Tests.Simulation
                 BuildScene();
             CaptiveObserver system = CreateObserver(game, new FixedRNG(0.0), movement);
 
-            system.HandleResults(
+            HandleResults(
+                game,
+                system,
                 new[] { CaptureResult(captive, planet, 4), CaptureResult(captive, planet, 9) }
             );
 
@@ -37,9 +40,9 @@ namespace Rebellion.Tests.Simulation
             (GameRoot game, Planet planet, Officer captive, MovementCommands movement) =
                 BuildScene();
             CaptiveObserver system = CreateObserver(game, new FixedRNG(0.0), movement);
-            system.HandleResults(new[] { CaptureResult(captive, planet, 4) });
+            HandleResults(game, system, new[] { CaptureResult(captive, planet, 4) });
 
-            system.HandleResults(new[] { CaptureResult(captive, planet, 9) });
+            HandleResults(game, system, new[] { CaptureResult(captive, planet, 9) });
 
             Assert.AreEqual(9, GetOfficerOwnerSnapshot(game, captive, planet).TickCaptured);
         }
@@ -52,7 +55,9 @@ namespace Rebellion.Tests.Simulation
             captive.NextEscapeAttemptTick = 0;
             CaptiveObserver system = CreateObserver(game, new FixedRNG(0.0), movement);
 
-            system.HandleResults(
+            HandleResults(
+                game,
+                system,
                 new[]
                 {
                     CaptureResult(captive, planet),
@@ -74,7 +79,9 @@ namespace Rebellion.Tests.Simulation
             CaptiveObserver system = CreateObserver(game, new FixedRNG(0.0), movement);
 
             Assert.DoesNotThrow(() =>
-                system.HandleResults(
+                HandleResults(
+                    game,
+                    system,
                     new[]
                     {
                         new OfficerCaptureStateResult
@@ -94,7 +101,9 @@ namespace Rebellion.Tests.Simulation
                 BuildScene();
             CaptiveObserver system = CreateObserver(game, new ThrowingRNG(), movement);
 
-            Assert.IsEmpty(system.HandleResults((IReadOnlyList<OfficerCaptureStateResult>)null));
+            Assert.IsEmpty(
+                HandleResults(game, system, (IReadOnlyList<OfficerCaptureStateResult>)null)
+            );
         }
 
         [Test]
@@ -105,7 +114,9 @@ namespace Rebellion.Tests.Simulation
             game.CurrentTick = 20;
             CaptiveObserver system = CreateObserver(game, new ThrowingRNG(), movement);
 
-            List<GameResult> results = system.HandleResults(
+            List<GameResult> results = HandleResults(
+                game,
+                system,
                 new[]
                 {
                     new PlanetOwnershipChangedResult
@@ -127,7 +138,7 @@ namespace Rebellion.Tests.Simulation
                 BuildScene();
             CaptiveObserver system = CreateObserver(game, new FixedRNG(0.0), movement);
 
-            system.HandleResults(new[] { CaptureResult(captive, planet) });
+            HandleResults(game, system, new[] { CaptureResult(captive, planet) });
 
             Assert.AreSame(planet, captive.GetParent());
             Assert.IsNull(captive.Movement);
@@ -152,15 +163,18 @@ namespace Rebellion.Tests.Simulation
             captive.CaptorInstanceID = null;
             game.MoveNode(captive, previousPlanet);
             FogOfWarCommands fogOfWar = new FogOfWarCommands(game);
-            fogOfWar.CaptureSnapshot(captor, previousPlanet, sector, 1);
+            game.CurrentTick = 1;
+            fogOfWar.ObservePlanet(captor, previousPlanet);
             captive.IsCaptured = true;
             captive.CaptorInstanceID = captor.InstanceID;
             CaptiveObserver observer = new CaptiveObserver(
                 game,
-                new CaptiveCommands(game, new FixedRNG(0.0), movement, fogOfWar)
+                movement,
+                new MovementQueries(game),
+                new FixedRNG(0.0)
             );
 
-            observer.HandleResults(new[] { CaptureResult(captive, previousPlanet, 2) });
+            HandleResults(game, observer, new[] { CaptureResult(captive, previousPlanet, 2) });
 
             PlanetSnapshot previousSnapshot = captor.Fog.Snapshots[sector.InstanceID].Planets[
                 previousPlanet.InstanceID
@@ -195,7 +209,7 @@ namespace Rebellion.Tests.Simulation
             game.MoveNode(captive, mission);
             CaptiveObserver system = CreateObserver(game, new FixedRNG(0.0), movement);
 
-            system.HandleResults(new[] { CaptureResult(captive, planet) });
+            HandleResults(game, system, new[] { CaptureResult(captive, planet) });
 
             Assert.AreSame(planet, captive.GetParent());
             Assert.IsNull(captive.Movement);
@@ -215,7 +229,9 @@ namespace Rebellion.Tests.Simulation
             game.MoveNode(captive, capturePlanet);
             CaptiveObserver system = CreateObserver(game, new FixedRNG(0.0), movement);
 
-            system.HandleResults(
+            HandleResults(
+                game,
+                system,
                 new[] { CaptureResult(captive, capturePlanet, capturingUnit: ship) }
             );
 
@@ -262,7 +278,7 @@ namespace Rebellion.Tests.Simulation
             game.MoveNode(captive, capturePlanet);
             CaptiveObserver system = CreateObserver(game, new FixedRNG(0.0), movement);
 
-            system.HandleResults(new[] { CaptureResult(captive, capturePlanet) });
+            HandleResults(game, system, new[] { CaptureResult(captive, capturePlanet) });
 
             Assert.AreSame(destination, captive.GetParent());
             Assert.AreEqual(captive.CaptorInstanceID, destination.OwnerInstanceID);
@@ -292,7 +308,7 @@ namespace Rebellion.Tests.Simulation
             capturePlanet.IsColonized = false;
             CaptiveObserver system = CreateObserver(game, new FixedRNG(0.0), movement);
 
-            system.HandleResults(new[] { CaptureResult(captive, capturePlanet) });
+            HandleResults(game, system, new[] { CaptureResult(captive, capturePlanet) });
 
             Assert.AreSame(destination, captive.GetParent());
             Assert.IsNull(captive.Movement);
@@ -315,7 +331,9 @@ namespace Rebellion.Tests.Simulation
             game.MoveNode(captive, capturePlanet);
             CaptiveObserver system = CreateObserver(game, new FixedRNG(0.0), movement);
 
-            List<GameResult> results = system.HandleResults(
+            List<GameResult> results = HandleResults(
+                game,
+                system,
                 new[] { CaptureResult(captive, capturePlanet, capturingUnit: escort) }
             );
 
@@ -353,7 +371,7 @@ namespace Rebellion.Tests.Simulation
             captive.Movement = establishedMovement;
             CaptiveObserver system = CreateObserver(game, new FixedRNG(0.0), movement);
 
-            system.HandleResults(new[] { CaptureResult(captive, capturePlanet) });
+            HandleResults(game, system, new[] { CaptureResult(captive, capturePlanet) });
 
             Assert.AreSame(destination, captive.GetParent());
             Assert.AreSame(establishedMovement, captive.Movement);
@@ -374,7 +392,7 @@ namespace Rebellion.Tests.Simulation
             captive.IsEnabled = false;
             CaptiveObserver system = CreateObserver(game, new FixedRNG(0.0), movement);
 
-            system.HandleResults(new[] { CaptureResult(captive, capturePlanet) });
+            HandleResults(game, system, new[] { CaptureResult(captive, capturePlanet) });
 
             Assert.AreSame(destination, captive.GetParent());
             Assert.AreEqual(captive.CaptorInstanceID, destination.OwnerInstanceID);
@@ -403,7 +421,9 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(escort, mission);
             game.CurrentTick = 11;
             CaptiveObserver system = CreateObserver(game, new FixedRNG(0.0), movement);
-            system.HandleResults(
+            HandleResults(
+                game,
+                system,
                 new[] { CaptureResult(captive, capturePlanet, 10, capturingUnit: escort) }
             );
             PlanetSnapshot snapshot = GetOfficerOwnerSnapshot(game, captive, destination);
@@ -422,33 +442,6 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void HandleResults_ReleasedOfficer_RemovesCaptureSnapshot()
-        {
-            (GameRoot game, Planet planet, Officer captive, MovementCommands movement) =
-                BuildScene();
-            CaptiveObserver system = CreateObserver(game, new FixedRNG(0.0), movement);
-            system.HandleResults(new[] { CaptureResult(captive, planet) });
-            captive.IsCaptured = false;
-            captive.CaptorInstanceID = null;
-
-            system.HandleResults(
-                new[]
-                {
-                    new OfficerCaptureStateResult { TargetOfficer = captive, IsCaptured = false },
-                }
-            );
-
-            Faction owner = game.GetFactionByOwnerInstanceID(captive.OwnerInstanceID);
-            Assert.IsFalse(owner.Fog.EntityLastSeenAt.ContainsKey(captive.InstanceID));
-            Assert.IsFalse(
-                owner
-                    .Fog.Snapshots.Values.SelectMany(snapshot => snapshot.Planets.Values)
-                    .SelectMany(snapshot => snapshot.Officers)
-                    .Any(officer => officer.InstanceID == captive.InstanceID)
-            );
-        }
-
-        [Test]
         public void HandleResults_OwnerRecapturesCaptivePlanet_ReleasesOfficer()
         {
             (GameRoot game, Planet planet, Officer captive, MovementCommands movement) =
@@ -456,7 +449,9 @@ namespace Rebellion.Tests.Simulation
             Faction owner = game.GetFactionByOwnerInstanceID(captive.OwnerInstanceID);
             CaptiveObserver system = CreateObserver(game, new FixedRNG(0.0), movement);
 
-            List<GameResult> results = system.HandleResults(
+            List<GameResult> results = HandleResults(
+                game,
+                system,
                 new[]
                 {
                     new PlanetOwnershipChangedResult
@@ -482,6 +477,64 @@ namespace Rebellion.Tests.Simulation
         }
 
         /// <summary>
+        /// Handles capture changes and applies their settled intelligence effects.
+        /// </summary>
+        /// <param name="game">The active game graph.</param>
+        /// <param name="observer">The custody observer under test.</param>
+        /// <param name="results">The capture changes to handle.</param>
+        /// <returns>The custody reactions.</returns>
+        private static List<GameResult> HandleResults(
+            GameRoot game,
+            CaptiveObserver observer,
+            IReadOnlyList<OfficerCaptureStateResult> results
+        )
+        {
+            List<GameResult> reactions = observer.HandleResults(results);
+            RecordKnowledge(
+                game,
+                (results ?? Array.Empty<OfficerCaptureStateResult>())
+                    .Cast<GameResult>()
+                    .Concat(reactions)
+            );
+            return reactions;
+        }
+
+        /// <summary>Handles ownership changes and applies their settled intelligence effects.</summary>
+        /// <param name="game">The active game graph.</param>
+        /// <param name="observer">The custody observer under test.</param>
+        /// <param name="results">The ownership changes to handle.</param>
+        /// <returns>The custody reactions.</returns>
+        private static List<GameResult> HandleResults(
+            GameRoot game,
+            CaptiveObserver observer,
+            IReadOnlyList<PlanetOwnershipChangedResult> results
+        )
+        {
+            List<GameResult> reactions = observer.HandleResults(results);
+            RecordKnowledge(
+                game,
+                (results ?? Array.Empty<PlanetOwnershipChangedResult>())
+                    .Cast<GameResult>()
+                    .Concat(reactions)
+            );
+            return reactions;
+        }
+
+        /// <summary>Applies settled custody results to faction intelligence.</summary>
+        /// <param name="game">The active game graph.</param>
+        /// <param name="results">The settled results to observe.</param>
+        private static void RecordKnowledge(GameRoot game, IEnumerable<GameResult> results)
+        {
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            new FogOfWarObserver(
+                game,
+                new FogOfWarCommands(game, recorder),
+                new FogOfWarQueries(game),
+                recorder
+            ).ProcessResults(results.ToList());
+        }
+
+        /// <summary>
         /// Creates the custody listener and its operation dependencies.
         /// </summary>
         /// <param name="game">The game.</param>
@@ -494,10 +547,7 @@ namespace Rebellion.Tests.Simulation
             MovementCommands movement
         )
         {
-            return new CaptiveObserver(
-                game,
-                new CaptiveCommands(game, provider, movement, new FogOfWarCommands(game))
-            );
+            return new CaptiveObserver(game, movement, new MovementQueries(game), provider);
         }
 
         /// <summary>
