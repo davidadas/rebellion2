@@ -124,7 +124,10 @@ namespace Rebellion.Simulation
             );
             _uprising = new UprisingTickProcessor(services.GetService<UprisingResolver>());
             _jedi = new JediTickProcessor(services.GetService<JediCommands>());
-            _victory = new VictoryTickProcessor(services.GetService<VictoryCommands>());
+            _victory = new VictoryTickProcessor(
+                services.GetService<VictoryCommands>(),
+                services.GetService<VictoryQueries>()
+            );
         }
 
         /// <summary>

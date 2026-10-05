@@ -441,7 +441,7 @@ namespace Rebellion.Tests.AI.Fleets
         }
 
         [Test]
-        public void Execute_WithSuccessfulPlanetaryAssault_AddsGarrisonChangeResult()
+        public void Execute_WithSuccessfulPlanetaryAssault_DefersResultsUntilTurnCompletion()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultSuccessPercent = 0;
@@ -469,9 +469,15 @@ namespace Rebellion.Tests.AI.Fleets
 
             proposal.Execute(context);
 
-            PlanetaryAssaultResult assault = published.OfType<PlanetaryAssaultResult>().Single();
+            Assert.IsEmpty(published);
+            PlanetaryAssaultResult assault = context
+                .Results.OfType<PlanetaryAssaultResult>()
+                .Single();
             Assert.IsTrue(assault.Success);
-            Assert.AreSame(target, published.OfType<PlanetGarrisonChangedResult>().Single().Planet);
+            Assert.AreSame(
+                target,
+                context.Results.OfType<PlanetGarrisonChangedResult>().Single().Planet
+            );
         }
 
         /// <summary>

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
@@ -19,6 +20,12 @@ namespace Rebellion.Simulation
         private readonly PlanetaryControlQueries _queries;
         private readonly FogOfWarQueries _fogOfWarQueries;
         private readonly HashSet<string> _controlChangesInProgress = new HashSet<string>();
+
+        /// <summary>Raised before a planet's registered owner is changed.</summary>
+        internal event Action<PlanetOwnershipChangedResult> OwnershipChanging;
+
+        /// <summary>Raised immediately after a planet's registered owner is changed.</summary>
+        internal event Action<PlanetOwnershipChangedResult> OwnershipChanged;
 
         /// <summary>
         /// Creates a new PlanetaryControlCommands.
@@ -387,9 +394,23 @@ namespace Rebellion.Simulation
                     previousOwner,
                     newOwner
                 );
+                List<string> blockadedFactionInstanceIDs = _game
+                    .GetFactions()
+                    .Where(faction => planet.IsBlockadedFor(faction.InstanceID))
+                    .Select(faction => faction.InstanceID)
+                    .ToList();
 
                 if (newOwner != null)
                     TransferBuildings(planet, newOwner);
+
+                PlanetOwnershipChangedResult result = CreateOwnershipChangedResult(
+                    planet,
+                    previousOwner,
+                    newOwner,
+                    observers,
+                    blockadedFactionInstanceIDs
+                );
+                OwnershipChanging?.Invoke(result);
 
                 planet.EndUprising();
                 if (newOwner == null)
@@ -402,7 +423,8 @@ namespace Rebellion.Simulation
                     _game.ChangeOwnership(planet, newOwnerId);
                 }
 
-                return CreateOwnershipChangedResult(planet, previousOwner, newOwner, observers);
+                OwnershipChanged?.Invoke(result);
+                return result;
             }
             finally
             {
@@ -462,12 +484,16 @@ namespace Rebellion.Simulation
         /// <param name="previousOwner">The faction that previously controlled the planet.</param>
         /// <param name="newOwner">The faction that now controls the planet.</param>
         /// <param name="observers">The factions that observed the ownership change.</param>
+        /// <param name="blockadedFactionInstanceIDs">
+        /// Factions opposed by the active blockade before ownership changed.
+        /// </param>
         /// <returns>The populated ownership-change result.</returns>
         private PlanetOwnershipChangedResult CreateOwnershipChangedResult(
             Planet planet,
             Faction previousOwner,
             Faction newOwner,
-            IEnumerable<Faction> observers
+            IEnumerable<Faction> observers,
+            List<string> blockadedFactionInstanceIDs
         )
         {
             return new PlanetOwnershipChangedResult
@@ -480,6 +506,7 @@ namespace Rebellion.Simulation
                     .Select(faction => faction.InstanceID)
                     .Distinct()
                     .ToList(),
+                BlockadedFactionInstanceIDs = blockadedFactionInstanceIDs,
             };
         }
 

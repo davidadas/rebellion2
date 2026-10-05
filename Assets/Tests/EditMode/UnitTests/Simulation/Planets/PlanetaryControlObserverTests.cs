@@ -87,7 +87,6 @@ namespace Rebellion.Tests.Simulation
             _observer = new PlanetaryControlObserver(
                 _game,
                 _commands,
-                new CaptiveCommands(_game, new FixedRNG(0), _movementSystem),
                 _movementSystem,
                 controlQueries
             );
@@ -406,6 +405,44 @@ namespace Rebellion.Tests.Simulation
                 _game.GetSceneNodeByInstanceID<Starfighter>(starfighter.InstanceID, true)
             );
             Assert.IsNull(_game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID, true));
+        }
+
+        [Test]
+        public void HandleResults_BlockadedOwnershipChange_ResolvesEvacuationAgainstPriorBlockade()
+        {
+            _game.Config.Blockade.EvacuationLossPercent = 100;
+            _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
+            AddBlockadingFleet(_targetPlanet, "capturing");
+            Regiment regiment = EntityFactory.CreateRegiment("evacuating", _empire.InstanceID);
+            regiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            _game.AttachNode(regiment, _targetPlanet);
+
+            MovementQueries movementQueries = new MovementQueries(_game);
+            MovementCommands movement = new MovementCommands(
+                _game,
+                new FogOfWarCommands(_game),
+                new FleetCommands(_game),
+                new FogOfWarQueries(_game),
+                movementQueries,
+                new FixedRNG()
+            );
+            PlanetaryControlObserver observer = new PlanetaryControlObserver(
+                _game,
+                _commands,
+                movement,
+                new PlanetaryControlQueries(_game)
+            );
+
+            PlanetOwnershipChangedResult change = _commands.TransferPlanet(_targetPlanet, _rebels);
+            List<GameResult> reactions = observer.HandleResults(new[] { change });
+
+            CollectionAssert.Contains(change.BlockadedFactionInstanceIDs, _empire.InstanceID);
+            Assert.IsFalse(_targetPlanet.IsBlockaded());
+            Assert.IsNull(_game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID, true));
+            Assert.AreSame(
+                regiment,
+                reactions.OfType<EvacuationLossesResult>().Single().LostRegiments.Single()
+            );
         }
 
         [Test]

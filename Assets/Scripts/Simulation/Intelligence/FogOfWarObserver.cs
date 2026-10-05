@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
@@ -20,6 +21,10 @@ namespace Rebellion.Simulation
         private readonly FogOfWarCommands _commands;
         private readonly FogOfWarQueries _queries;
         private readonly FogOfWarRecorder _recorder;
+        private readonly ConditionalWeakTable<
+            PlanetOwnershipChangedResult,
+            object
+        > _observedOwnershipChanges = new();
         private IDisposable[] _subscriptions;
 
         /// <summary>
@@ -59,6 +64,17 @@ namespace Rebellion.Simulation
         {
             foreach (IDisposable subscription in _subscriptions ?? Array.Empty<IDisposable>())
                 subscription.Dispose();
+        }
+
+        /// <summary>Records intelligence at the instant an ownership transition completes.</summary>
+        /// <param name="result">The completed ownership transition.</param>
+        internal void ObserveOwnershipChange(PlanetOwnershipChangedResult result)
+        {
+            if (result?.Planet == null)
+                return;
+
+            RecordOwnershipChange(result);
+            _observedOwnershipChanges.Add(result, new object());
         }
 
         /// <summary>
@@ -118,7 +134,12 @@ namespace Rebellion.Simulation
             foreach (
                 PlanetOwnershipChangedResult result in results.OfType<PlanetOwnershipChangedResult>()
             )
+            {
+                if (_observedOwnershipChanges.Remove(result))
+                    continue;
+
                 RecordOwnershipChange(result);
+            }
         }
 
         /// <summary>Refreshes visible intelligence and repairs saved entity locations.</summary>

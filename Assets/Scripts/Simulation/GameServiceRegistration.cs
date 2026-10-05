@@ -125,6 +125,7 @@ namespace Rebellion.Simulation
             services.AddSingleton<BombardmentCommands>();
             services.AddSingleton<PlanetaryAssaultQueries>();
             services.AddSingleton<PlanetaryAssaultCommands>();
+            services.AddSingleton<VictoryQueries>();
             services.AddSingleton<VictoryCommands>();
             services.AddSingleton<AIDirector>();
             services.AddSingleton<MessageObserver>();

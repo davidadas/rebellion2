@@ -112,6 +112,22 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void TransferPlanet_OwnershipTransition_ReportsBeforeAndAfterOwnerMutation()
+        {
+            string ownerWhileChanging = "not-called";
+            string ownerAfterChange = "not-called";
+            _commands.OwnershipChanging += result =>
+                ownerWhileChanging = result.Planet.GetOwnerInstanceID();
+            _commands.OwnershipChanged += result =>
+                ownerAfterChange = result.Planet.GetOwnerInstanceID();
+
+            _commands.TransferPlanet(_targetPlanet, _empire);
+
+            Assert.IsNull(ownerWhileChanging);
+            Assert.AreEqual(_empire.InstanceID, ownerAfterChange);
+        }
+
+        [Test]
         public void ChangeOwnership_UnitAlreadyOwned_ReturnsNoResults()
         {
             Officer officer = EntityFactory.CreateOfficer("unchanged", _empire.InstanceID);
@@ -1280,14 +1296,12 @@ namespace Rebellion.Tests.Simulation
         {
             GameResultBus bus = new GameResultBus();
             MovementQueries movementQueries = new MovementQueries(_game);
-            CaptiveCommands captives = new CaptiveCommands(_game, new FixedRNG(0), _movementSystem);
             new CaptiveObserver(_game, _movementSystem, movementQueries, new FixedRNG(0)).Connect(
                 bus
             );
             new PlanetaryControlObserver(
                 _game,
                 commands,
-                captives,
                 _movementSystem,
                 new PlanetaryControlQueries(_game)
             ).Connect(bus);
@@ -1298,7 +1312,6 @@ namespace Rebellion.Tests.Simulation
                 new FogOfWarQueries(_game),
                 recorder
             ).Connect(bus);
-            captives.ResultsProduced += produced => bus.Publish(produced);
             return bus.Publish(results);
         }
 

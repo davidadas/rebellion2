@@ -28,11 +28,19 @@ namespace Rebellion.Simulation
         /// <summary>Resolves losses for a unit leaving through an opposing blockade.</summary>
         /// <param name="unit">The departing unit.</param>
         /// <param name="origin">The departure planet.</param>
+        /// <param name="opposingBlockadeAtDeparture">
+        /// Whether the unit faced an opposing blockade before a preceding state transition, or
+        /// null to inspect the current planet state.
+        /// </param>
         /// <returns>The loss result, or null when the unit survives.</returns>
-        internal EvacuationLossesResult Resolve(IMovable unit, Planet origin)
+        internal EvacuationLossesResult Resolve(
+            IMovable unit,
+            Planet origin,
+            bool? opposingBlockadeAtDeparture = null
+        )
         {
             if (
-                !origin.IsBlockadedFor(unit.GetOwnerInstanceID())
+                !(opposingBlockadeAtDeparture ?? origin.IsBlockadedFor(unit.GetOwnerInstanceID()))
                 || origin.HasOperationalIonCannon()
                 || unit is not Regiment regiment
                 || _random.NextInt(0, 100) >= _game.Config.Blockade.EvacuationLossPercent

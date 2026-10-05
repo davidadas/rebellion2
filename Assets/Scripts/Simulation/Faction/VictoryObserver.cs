@@ -1,27 +1,23 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using Rebellion.Game;
-using Rebellion.Game.Factions;
 using Rebellion.Game.Results;
-using Rebellion.Game.Units;
 
 namespace Rebellion.Simulation
 {
     /// <summary>Routes headquarters losses to victory resolution in batch order.</summary>
     public sealed class VictoryObserver : IResultObserver, IDisposable
     {
-        private readonly GameRoot _game;
         private readonly VictoryCommands _commands;
+        private readonly VictoryQueries _queries;
         private IDisposable _subscription;
 
         /// <summary>Creates the victory result listener.</summary>
-        /// <param name="game">The active game containing the configured victory condition.</param>
         /// <param name="commands">The general victory declaration operation.</param>
-        public VictoryObserver(GameRoot game, VictoryCommands commands)
+        /// <param name="queries">The configured victory eligibility rules.</param>
+        public VictoryObserver(VictoryCommands commands, VictoryQueries queries)
         {
-            _game = game ?? throw new ArgumentNullException(nameof(game));
             _commands = commands ?? throw new ArgumentNullException(nameof(commands));
+            _queries = queries ?? throw new ArgumentNullException(nameof(queries));
         }
 
         /// <summary>Registers the headquarters-loss callback with the result bus.</summary>
@@ -55,7 +51,7 @@ namespace Rebellion.Simulation
                 if (
                     result?.Attacker == null
                     || result.Defender == null
-                    || !MeetsConfiguredVictoryCondition(result.Defender)
+                    || !_queries.CanDeclareVictoryAfterHeadquartersLoss(result.Defender)
                 )
                     continue;
 
@@ -65,20 +61,6 @@ namespace Rebellion.Simulation
             }
 
             return new List<GameResult>();
-        }
-
-        /// <summary>Determines whether an headquarters loss satisfies the selected game mode.</summary>
-        /// <param name="defender">The faction that lost its headquarters.</param>
-        /// <returns>True when the loss may declare victory.</returns>
-        private bool MeetsConfiguredVictoryCondition(Faction defender)
-        {
-            return _game.Summary.VictoryCondition != GameVictoryCondition.Conquest
-                || _game
-                    .GetSceneNodesByType<Officer>()
-                    .Where(officer =>
-                        officer.GetOwnerInstanceID() == defender.InstanceID && officer.IsMain
-                    )
-                    .All(officer => officer.IsCaptured);
         }
     }
 }

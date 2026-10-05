@@ -64,25 +64,22 @@ namespace Rebellion.Simulation
         {
             Officer liveOfficer = ResolveOfficer(officer);
             Faction liveCaptor = ResolveFaction(captor);
-            if (
-                liveOfficer == null
-                || liveCaptor == null
-                || !liveOfficer.TryCapture(liveCaptor.InstanceID, canEscape)
-            )
+            if (liveOfficer == null || liveCaptor == null)
                 return false;
 
-            OfficerCaptureStateResult result = new OfficerCaptureStateResult
-            {
-                TargetOfficer = liveOfficer,
-                IsCaptured = true,
-                CaptorInstanceID = liveCaptor.InstanceID,
-                ParentAtCapture = liveOfficer.GetParent(),
-                CapturingUnit = capturingUnit,
-                Context =
-                    capturingUnit?.GetParentOfType<Planet>()
-                    ?? liveOfficer.GetParentOfType<Planet>(),
-                Tick = _game.CurrentTick,
-            };
+            Planet context =
+                capturingUnit?.GetParentOfType<Planet>() ?? liveOfficer.GetParentOfType<Planet>();
+            OfficerCaptureStateResult result = CaptiveStateTransition.Capture(
+                liveOfficer,
+                liveCaptor,
+                capturingUnit,
+                context,
+                _game.CurrentTick,
+                canEscape
+            );
+            if (result == null)
+                return false;
+
             ResultsProduced?.Invoke(new GameResult[] { result });
             return true;
         }

@@ -593,6 +593,48 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void ObserveOwnershipChange_BeforeAssaultLanding_PreservesCarrierContents()
+        {
+            Fleet fleet = CreateFleet("ATTACKERS", _alliance);
+            _game.AttachNode(fleet, _coruscant);
+            CapitalShip ship = AddCapitalShip(fleet, _alliance, "TRANSPORT");
+            ship.RegimentCapacity = 3;
+            Regiment first = CreateRegiment("FIRST", _alliance);
+            Regiment retained = CreateRegiment("RETAINED", _alliance);
+            Regiment second = CreateRegiment("SECOND", _alliance);
+            _game.AttachNode(first, ship);
+            _game.AttachNode(retained, ship);
+            _game.AttachNode(second, ship);
+            _game.ChangeOwnership(_coruscant, _alliance.InstanceID);
+            PlanetOwnershipChangedResult ownershipChange = new PlanetOwnershipChangedResult
+            {
+                Planet = _coruscant,
+                PreviousOwner = _empire,
+                NewOwner = _alliance,
+                Tick = 42,
+            };
+
+            _observer.ObserveOwnershipChange(ownershipChange);
+            _game.MoveNode(first, _coruscant);
+            _game.MoveNode(second, _coruscant);
+            _observer.ProcessResults(new GameResult[] { ownershipChange });
+
+            PlanetSnapshot snapshot = _empire.Fog.Snapshots[_coreSector.InstanceID].Planets[
+                _coruscant.InstanceID
+            ];
+            Assert.IsEmpty(snapshot.Regiments);
+            CollectionAssert.AreEqual(
+                new[] { first.InstanceID, retained.InstanceID, second.InstanceID },
+                snapshot
+                    .Fleets.Single(candidate => candidate.InstanceID == fleet.InstanceID)
+                    .GetChildren<CapitalShip>()
+                    .Single(candidate => candidate.InstanceID == ship.InstanceID)
+                    .GetChildren<Regiment>()
+                    .Select(regiment => regiment.InstanceID)
+            );
+        }
+
+        [Test]
         public void ProcessResults_ShipDestroyedInCombat_RemovesShipForBothParticipants()
         {
             Fleet fleet = CreateFleet("FLEET", _empire);

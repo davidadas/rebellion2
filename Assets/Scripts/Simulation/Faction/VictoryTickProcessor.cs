@@ -16,14 +16,17 @@ namespace Rebellion.Simulation
     internal sealed class VictoryTickProcessor : ITickProcessor
     {
         private readonly VictoryCommands _commands;
+        private readonly VictoryQueries _queries;
 
         /// <summary>
         /// Creates victory tick processing.
         /// </summary>
         /// <param name="commands">The victory operations and declaration state.</param>
-        public VictoryTickProcessor(VictoryCommands commands)
+        /// <param name="queries">The configured victory eligibility rules.</param>
+        public VictoryTickProcessor(VictoryCommands commands, VictoryQueries queries)
         {
             _commands = commands ?? throw new ArgumentNullException(nameof(commands));
+            _queries = queries ?? throw new ArgumentNullException(nameof(queries));
         }
 
         /// <summary>
@@ -36,12 +39,26 @@ namespace Rebellion.Simulation
             if (_commands.IsDeclared)
                 return Array.Empty<GameResult>();
 
+            List<(Faction Defender, Faction Attacker)> headquartersLosses = null;
             foreach (Faction faction in game.GetFactions())
             {
                 if (!TryGetHeadquartersCaptor(game, faction, out Faction attacker))
                     continue;
 
-                VictoryResult outcome = _commands.TryDeclareVictory(attacker, faction);
+                headquartersLosses ??= new List<(Faction Defender, Faction Attacker)>();
+                headquartersLosses.Add((faction, attacker));
+            }
+
+            if (headquartersLosses == null)
+                return Array.Empty<GameResult>();
+
+            List<Officer> officers = game.GetSceneNodesByType<Officer>();
+            foreach ((Faction defender, Faction attacker) in headquartersLosses)
+            {
+                if (!_queries.CanDeclareVictoryAfterHeadquartersLoss(defender, officers))
+                    continue;
+
+                VictoryResult outcome = _commands.TryDeclareVictory(attacker, defender);
                 if (outcome == null)
                     continue;
                 GameLogger.Log(

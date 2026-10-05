@@ -48,7 +48,6 @@ namespace Rebellion.Tests.Simulation
             new PlanetaryControlObserver(
                 game,
                 planetaryControl,
-                new CaptiveCommands(game, new FixedRNG(0), movement),
                 movement,
                 new PlanetaryControlQueries(game)
             ).Connect(results);

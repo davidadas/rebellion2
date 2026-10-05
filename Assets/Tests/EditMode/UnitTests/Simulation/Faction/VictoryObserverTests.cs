@@ -25,7 +25,7 @@ namespace Rebellion.Tests.Simulation
             ) = BuildScene(rebelsCaptureEmpireHQ: false);
 
             List<VictoryResult> published = CaptureVictories(system);
-            new VictoryObserver(game, system).HandleResults(
+            new VictoryObserver(system, new VictoryQueries(game)).HandleResults(
                 new List<HeadquartersLostResult>
                 {
                     new HeadquartersCapturedResult
@@ -51,7 +51,7 @@ namespace Rebellion.Tests.Simulation
             Faction secondAttacker = new Faction { InstanceID = "other" };
 
             List<VictoryResult> published = CaptureVictories(system);
-            new VictoryObserver(game, system).HandleResults(
+            new VictoryObserver(system, new VictoryQueries(game)).HandleResults(
                 new HeadquartersLostResult[]
                 {
                     null,
@@ -72,9 +72,11 @@ namespace Rebellion.Tests.Simulation
             VictoryResult victory = published.Single();
             Assert.AreSame(firstAttacker, victory.Winner);
             Assert.AreEqual(200, victory.Tick);
-            Assert.IsEmpty(new VictoryTickProcessor(system).ProcessTick(game));
             Assert.IsEmpty(
-                new VictoryObserver(game, system).HandleResults(
+                new VictoryTickProcessor(system, new VictoryQueries(game)).ProcessTick(game)
+            );
+            Assert.IsEmpty(
+                new VictoryObserver(system, new VictoryQueries(game)).HandleResults(
                     new HeadquartersLostResult[]
                     {
                         new HeadquartersCapturedResult
@@ -117,7 +119,7 @@ namespace Rebellion.Tests.Simulation
             game.GetFactions().Add(otherDefender);
 
             List<VictoryResult> published = CaptureVictories(system);
-            new VictoryObserver(game, system).HandleResults(
+            new VictoryObserver(system, new VictoryQueries(game)).HandleResults(
                 new HeadquartersLostResult[]
                 {
                     new HeadquartersCapturedResult { Attacker = attacker, Defender = defender },
@@ -137,7 +139,9 @@ namespace Rebellion.Tests.Simulation
         {
             (GameRoot game, _, _, _, VictoryCommands system) = BuildScene();
 
-            Assert.IsEmpty(new VictoryObserver(game, system).HandleResults(null));
+            Assert.IsEmpty(
+                new VictoryObserver(system, new VictoryQueries(game)).HandleResults(null)
+            );
         }
 
         /// <summary>Collects victories published by the supplied command service.</summary>

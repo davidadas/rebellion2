@@ -1402,11 +1402,16 @@ namespace Rebellion.Simulation
         /// <param name="unit">The unit to evacuate.</param>
         /// <param name="results">The collection receiving movement facts.</param>
         /// <param name="force">Whether the relocation must leave its current planet.</param>
+        /// <param name="opposingBlockadeAtDeparture">
+        /// Whether the unit faced an opposing blockade before a preceding state transition, or
+        /// null to inspect the current planet state.
+        /// </param>
         /// <returns>True when a safe destination accepts the unit.</returns>
         internal bool TryEvacuateToNearestFriendlyPlanet(
             IMovable unit,
             ICollection<GameResult> results,
-            bool force = false
+            bool force = false,
+            bool? opposingBlockadeAtDeparture = null
         )
         {
             if (unit == null)
@@ -1452,7 +1457,14 @@ namespace Rebellion.Simulation
                 )
             )
             {
-                if (ExecuteMove(unit, fallback, results))
+                if (
+                    ExecuteMove(
+                        unit,
+                        fallback,
+                        results,
+                        opposingBlockadeAtDeparture: opposingBlockadeAtDeparture
+                    )
+                )
                     return true;
             }
 
@@ -1575,13 +1587,18 @@ namespace Rebellion.Simulation
         /// <param name="results">The collection receiving movement results.</param>
         /// <param name="movementGroupID">The shared movement order id for grouped moves.</param>
         /// <param name="sourceEventInstanceID">The event that requested the movement, if any.</param>
+        /// <param name="opposingBlockadeAtDeparture">
+        /// Whether the unit faced an opposing blockade before a preceding state transition, or
+        /// null to inspect the current planet state.
+        /// </param>
         /// <returns>True when the movement order was accepted; otherwise false.</returns>
         private bool ExecuteMove(
             IMovable unit,
             ContainerNode destination,
             ICollection<GameResult> results,
             string movementGroupID = null,
-            string sourceEventInstanceID = null
+            string sourceEventInstanceID = null,
+            bool? opposingBlockadeAtDeparture = null
         )
         {
             movementGroupID ??= Guid.NewGuid().ToString("N");
@@ -1601,7 +1618,8 @@ namespace Rebellion.Simulation
                 resolvedDestination,
                 results,
                 movementGroupID,
-                sourceEventInstanceID
+                sourceEventInstanceID,
+                opposingBlockadeAtDeparture: opposingBlockadeAtDeparture
             );
         }
 
@@ -1614,6 +1632,10 @@ namespace Rebellion.Simulation
         /// <param name="movementGroupID">The shared movement order identifier.</param>
         /// <param name="sourceEventInstanceID">The event that requested the movement, if any.</param>
         /// <param name="transitTicksOverride">The common group duration, when applicable.</param>
+        /// <param name="opposingBlockadeAtDeparture">
+        /// Whether the unit faced an opposing blockade before a preceding state transition, or
+        /// null to inspect the current planet state.
+        /// </param>
         /// <returns>True when the movement order was accepted; otherwise false.</returns>
         private bool ExecuteAcceptedMove(
             IMovable unit,
@@ -1621,7 +1643,8 @@ namespace Rebellion.Simulation
             ICollection<GameResult> results,
             string movementGroupID,
             string sourceEventInstanceID = null,
-            int? transitTicksOverride = null
+            int? transitTicksOverride = null,
+            bool? opposingBlockadeAtDeparture = null
         )
         {
             Planet destinationPlanet = MovementQueries.RequireDestinationPlanet(destination);
@@ -1635,7 +1658,11 @@ namespace Rebellion.Simulation
                 return false;
             }
 
-            EvacuationLossesResult evacuationLoss = _evacuationLosses.Resolve(unit, originPlanet);
+            EvacuationLossesResult evacuationLoss = _evacuationLosses.Resolve(
+                unit,
+                originPlanet,
+                opposingBlockadeAtDeparture
+            );
             if (evacuationLoss != null)
             {
                 results.Add(evacuationLoss);

@@ -150,6 +150,22 @@ namespace Rebellion.Simulation
         {
             GameServiceRegistration.ConnectObservers(_serviceScope, Results);
 
+            PlanetaryControlCommands planetaryControlSystem =
+                GetService<PlanetaryControlCommands>();
+            PlanetaryControlObserver planetaryControlObserver =
+                GetService<PlanetaryControlObserver>();
+            FogOfWarObserver fogOfWarObserver = GetService<FogOfWarObserver>();
+            planetaryControlSystem.OwnershipChanging +=
+                planetaryControlObserver.ObserveOwnershipChange;
+            planetaryControlSystem.OwnershipChanged += fogOfWarObserver.ObserveOwnershipChange;
+            _disconnect.Add(() =>
+                planetaryControlSystem.OwnershipChanging -=
+                    planetaryControlObserver.ObserveOwnershipChange
+            );
+            _disconnect.Add(() =>
+                planetaryControlSystem.OwnershipChanged -= fogOfWarObserver.ObserveOwnershipChange
+            );
+
             MovementCommands movementSystem = GetService<MovementCommands>();
             movementSystem.ResultsProduced += ProcessImmediateResults;
             _disconnect.Add(() => movementSystem.ResultsProduced -= ProcessImmediateResults);
