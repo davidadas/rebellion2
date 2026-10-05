@@ -64,6 +64,10 @@ namespace Rebellion.Game.Combat
                     "A combatant must have an owner before entering battle.",
                     nameof(sourceUnit)
                 );
+            if (Map.Kind != BattleKind.Space)
+                throw new InvalidOperationException(
+                    "Capital ships and starfighters can only enter space battles."
+                );
 
             int combatantCount = sourceUnit is Starfighter starfighter
                 ? Math.Max(0, starfighter.CurrentSquadronSize)
@@ -71,6 +75,9 @@ namespace Rebellion.Game.Combat
             List<CombatUnit> addedCombatants = new List<CombatUnit>(combatantCount);
             if (combatantCount == 0)
                 return addedCombatants.AsReadOnly();
+
+            for (int combatantIndex = 0; combatantIndex < combatantCount; combatantIndex++)
+                addedCombatants.Add(CombatUnit.Create(sourceUnit));
 
             BattleParticipant participant = _participants.Find(candidate =>
                 candidate.FactionInstanceID == sourceUnit.OwnerInstanceID
@@ -84,12 +91,7 @@ namespace Rebellion.Game.Combat
                 _participants.Add(participant);
             }
 
-            for (int combatantIndex = 0; combatantIndex < combatantCount; combatantIndex++)
-            {
-                CombatUnit combatUnit = CombatUnit.Create(sourceUnit);
-                participant.GetCombatants().Add(combatUnit);
-                addedCombatants.Add(combatUnit);
-            }
+            participant.GetCombatants().AddRange(addedCombatants);
 
             return addedCombatants.AsReadOnly();
         }

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
@@ -92,6 +93,39 @@ namespace Rebellion.Tests.Game.Combat
                     .GetCombatants()
                     .Count
             );
+        }
+
+        [Test]
+        public void AddCombatants_GroundBattle_ThrowsBeforeAddingParticipant()
+        {
+            CapitalShip source = new CapitalShip
+            {
+                InstanceID = "CAPITAL_SHIP_1",
+                OwnerInstanceID = "FACTION_1",
+            };
+            ActiveBattle battle = new ActiveBattle
+            {
+                Map = new BattleMap { Kind = BattleKind.Ground },
+            };
+
+            Assert.Throws<InvalidOperationException>(() => battle.AddCombatants(source));
+
+            Assert.IsEmpty(battle.GetParticipants());
+        }
+
+        [Test]
+        public void AddCombatants_UnsupportedUnit_ThrowsBeforeAddingParticipant()
+        {
+            Regiment source = new Regiment
+            {
+                InstanceID = "REGIMENT_1",
+                OwnerInstanceID = "FACTION_1",
+            };
+            ActiveBattle battle = new ActiveBattle();
+
+            Assert.Throws<ArgumentException>(() => battle.AddCombatants(source));
+
+            Assert.IsEmpty(battle.GetParticipants());
         }
 
         [Test]
