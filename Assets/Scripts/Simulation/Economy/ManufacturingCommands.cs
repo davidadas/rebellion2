@@ -72,79 +72,13 @@ namespace Rebellion.Simulation
             string ownerInstanceId
         )
         {
-            return StartManufacturingCore(
-                producer,
-                template,
-                destination,
-                count,
-                ownerInstanceId,
-                maintenancePrevalidated: false
-            );
-        }
-
-        /// <summary>
-        /// Starts an AI-selected order whose turn-scoped maintenance budget is already reserved.
-        /// </summary>
-        /// <param name="producer">The planet performing the manufacturing.</param>
-        /// <param name="template">The unit or facility template to manufacture.</param>
-        /// <param name="destination">The node that receives completed items.</param>
-        /// <param name="count">The number of copies to queue.</param>
-        /// <param name="ownerInstanceId">The faction requesting the order.</param>
-        /// <returns>True when the complete order was queued.</returns>
-        internal bool StartPrevalidatedManufacturing(
-            Planet producer,
-            IManufacturable template,
-            ISceneNode destination,
-            int count,
-            string ownerInstanceId
-        )
-        {
-            return StartManufacturingCore(
-                producer,
-                template,
-                destination,
-                count,
-                ownerInstanceId,
-                maintenancePrevalidated: true
-            );
-        }
-
-        /// <summary>
-        /// Creates and queues copies after structural and optional maintenance validation.
-        /// </summary>
-        /// <param name="producer">The planet performing the manufacturing.</param>
-        /// <param name="template">The unit or facility template to manufacture.</param>
-        /// <param name="destination">The node that receives completed items.</param>
-        /// <param name="count">The number of copies to queue.</param>
-        /// <param name="ownerInstanceId">The faction requesting the order.</param>
-        /// <param name="maintenancePrevalidated">Whether the turn budget already reserved maintenance.</param>
-        /// <returns>True when the complete order was queued.</returns>
-        private bool StartManufacturingCore(
-            Planet producer,
-            IManufacturable template,
-            ISceneNode destination,
-            int count,
-            string ownerInstanceId,
-            bool maintenancePrevalidated
-        )
-        {
             if (
-                !(
-                    maintenancePrevalidated
-                        ? ManufacturingQueries.CanAcceptManufacturingOrder(
-                            producer,
-                            template,
-                            destination,
-                            count,
-                            ownerInstanceId
-                        )
-                        : _queries.CanStartManufacturing(
-                            producer,
-                            template,
-                            destination,
-                            count,
-                            ownerInstanceId
-                        )
+                !_queries.CanStartManufacturing(
+                    producer,
+                    template,
+                    destination,
+                    count,
+                    ownerInstanceId
                 )
             )
                 return false;
@@ -203,7 +137,7 @@ namespace Rebellion.Simulation
 
                 if (!enqueued)
                 {
-                    _fleetSystem.RemoveIfEmpty(capitalShipDestination);
+                    FleetLifecycle.RemoveEmptyFleet(_game, capitalShipDestination);
                     return started;
                 }
 
@@ -312,14 +246,8 @@ namespace Rebellion.Simulation
         /// <param name="planet">The planet where production occurs.</param>
         /// <param name="item">The item to manufacture.</param>
         /// <param name="destination">The planet receiving the completed item.</param>
-        /// <param name="ignoreCost">Whether to queue the item without charging resources.</param>
         /// <returns>True when the item was queued; otherwise, false.</returns>
-        public bool Enqueue(
-            Planet planet,
-            IManufacturable item,
-            Planet destination,
-            bool ignoreCost = false
-        )
+        public bool Enqueue(Planet planet, IManufacturable item, Planet destination)
         {
             Faction faction = GetValidatedFaction(planet, item);
             if (faction == null || !IsLiveDestination(destination))
@@ -334,7 +262,7 @@ namespace Rebellion.Simulation
             if (!destination.CanAcceptChild(item))
                 return false;
 
-            if (!HasMaintenanceHeadroom(faction, item, ignoreCost))
+            if (!HasMaintenanceHeadroom(faction, item))
                 return false;
 
             _game.AttachNode(item, destination);
@@ -349,7 +277,7 @@ namespace Rebellion.Simulation
                 }
             );
 
-            CommitToQueue(planet, item, ignoreCost);
+            CommitToQueue(planet, item);
             return true;
         }
 
@@ -361,14 +289,8 @@ namespace Rebellion.Simulation
         /// <param name="planet">The planet where production occurs.</param>
         /// <param name="item">The item to manufacture.</param>
         /// <param name="destination">The fleet receiving the completed item.</param>
-        /// <param name="ignoreCost">Whether to queue the item without charging resources.</param>
         /// <returns>True when the item was queued; otherwise, false.</returns>
-        public bool Enqueue(
-            Planet planet,
-            IManufacturable item,
-            Fleet destination,
-            bool ignoreCost = false
-        )
+        public bool Enqueue(Planet planet, IManufacturable item, Fleet destination)
         {
             Faction faction = GetValidatedFaction(planet, item);
             if (faction == null || !IsLiveDestination(destination))
@@ -413,7 +335,7 @@ namespace Rebellion.Simulation
             if (!parent.CanAcceptChild(item))
                 return false;
 
-            if (!HasMaintenanceHeadroom(faction, item, ignoreCost))
+            if (!HasMaintenanceHeadroom(faction, item))
                 return false;
 
             _game.AttachNode(item, parent);
@@ -428,7 +350,7 @@ namespace Rebellion.Simulation
                 }
             );
 
-            CommitToQueue(planet, item, ignoreCost);
+            CommitToQueue(planet, item);
             return true;
         }
 
@@ -438,14 +360,8 @@ namespace Rebellion.Simulation
         /// <param name="planet">The planet where production is queued.</param>
         /// <param name="item">The item to produce.</param>
         /// <param name="destination">The capital ship receiving the completed item.</param>
-        /// <param name="ignoreCost">Whether to queue the item without checking maintenance headroom.</param>
         /// <returns>True when the item was queued; otherwise false.</returns>
-        public bool Enqueue(
-            Planet planet,
-            IManufacturable item,
-            CapitalShip destination,
-            bool ignoreCost = false
-        )
+        public bool Enqueue(Planet planet, IManufacturable item, CapitalShip destination)
         {
             Faction faction = GetValidatedFaction(planet, item);
             if (faction == null || !IsLiveDestination(destination))
@@ -469,7 +385,7 @@ namespace Rebellion.Simulation
             if (!destination.CanAcceptChild(item))
                 return false;
 
-            if (!HasMaintenanceHeadroom(faction, item, ignoreCost))
+            if (!HasMaintenanceHeadroom(faction, item))
                 return false;
 
             _game.AttachNode(item, destination);
@@ -484,7 +400,7 @@ namespace Rebellion.Simulation
                 }
             );
 
-            CommitToQueue(planet, item, ignoreCost);
+            CommitToQueue(planet, item);
             return true;
         }
 
@@ -534,11 +450,10 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="faction">The faction producing the item.</param>
         /// <param name="item">The item being produced.</param>
-        /// <param name="ignoreCost">Whether maintenance checks should be skipped.</param>
         /// <returns>True when the item can be queued.</returns>
-        private bool HasMaintenanceHeadroom(Faction faction, IManufacturable item, bool ignoreCost)
+        private bool HasMaintenanceHeadroom(Faction faction, IManufacturable item)
         {
-            if (ignoreCost || item.GetMaintenanceCost() <= 0)
+            if (item.GetMaintenanceCost() <= 0 || ManufacturingQueries.IsResourceFacility(item))
                 return true;
 
             int projectedHeadroom =
@@ -553,10 +468,8 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="planet">The planet producing the item.</param>
         /// <param name="item">The item to enqueue for production.</param>
-        /// <param name="ignoreCost">Reserved for callers that bypass external production costs.</param>
-        private void CommitToQueue(Planet planet, IManufacturable item, bool ignoreCost)
+        private void CommitToQueue(Planet planet, IManufacturable item)
         {
-            _ = ignoreCost;
             item.ManufacturingStatus = ManufacturingStatus.Building;
             item.ManufacturingProgress = 0;
             item.ProducerOwnerID = planet.GetOwnerInstanceID();
@@ -1244,241 +1157,21 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Cancels queued work for each destroyed production type that no surviving facility can
-        /// manufacture on the same planet.
-        /// </summary>
-        /// <param name="planet">The planet where the facilities were destroyed.</param>
-        /// <param name="destroyedBuildings">The buildings destroyed by the completed action.</param>
-        internal void CancelUnsupportedProduction(
-            Planet planet,
-            IEnumerable<Building> destroyedBuildings
-        )
-        {
-            if (planet == null || destroyedBuildings == null)
-                return;
-
-            Dictionary<ManufacturingType, List<IManufacturable>> queues =
-                planet.GetManufacturingQueue();
-            foreach (
-                ManufacturingType type in destroyedBuildings
-                    .Where(building =>
-                        building != null
-                        && building.ManufacturingStatus == ManufacturingStatus.Complete
-                        && building.Movement == null
-                        && building.ProcessRate > 0
-                    )
-                    .Select(building => building.ProductionType)
-                    .Where(type => type != ManufacturingType.None)
-                    .Distinct()
-                    .ToList()
-            )
-            {
-                bool hasProducer = planet
-                    .GetChildren<Building>()
-                    .Any(facility =>
-                        facility.ProductionType == type
-                        && facility.ManufacturingStatus == ManufacturingStatus.Complete
-                        && facility.Movement == null
-                        && facility.ProcessRate > 0
-                    );
-                if (
-                    hasProducer
-                    || !queues.TryGetValue(type, out List<IManufacturable> items)
-                    || items == null
-                )
-                    continue;
-
-                ClearQueueItems(planet, items);
-                queues.Remove(type);
-            }
-        }
-
-        /// <summary>
         /// Detaches one queued item and removes an empty destination fleet.
         /// </summary>
         /// <param name="item">The queued item to detach.</param>
         private void DetachQueuedItem(IManufacturable item)
         {
+            if (item is IMovable movable)
+                movable.Movement = null;
+
             ISceneNode sceneNode = item;
             ISceneNode parent = sceneNode.GetParent();
             if (parent != null)
                 _game.DetachNode(sceneNode);
 
             if (parent is Fleet fleet)
-                _fleetSystem.RemoveIfEmpty(fleet);
-        }
-
-        /// <summary>
-        /// Clears all manufacturing queues for a planet and destroys items being built.
-        /// Called when planet ownership changes (capture, uprising, diplomacy).
-        /// </summary>
-        /// <param name="planet">The planet whose queues should be cleared.</param>
-        public void ClearQueuesOnOwnershipChange(Planet planet)
-        {
-            if (planet == null)
-            {
-                return;
-            }
-
-            Dictionary<ManufacturingType, List<IManufacturable>> queue =
-                planet.GetManufacturingQueue();
-            if (queue == null || queue.Count == 0)
-            {
-                return;
-            }
-
-            foreach (KeyValuePair<ManufacturingType, List<IManufacturable>> kvp in queue.ToList())
-            {
-                ManufacturingType type = kvp.Key;
-                List<IManufacturable> items = kvp.Value;
-
-                if (items == null || items.Count == 0)
-                {
-                    continue;
-                }
-
-                ClearQueueItems(planet, items);
-                queue.Remove(type);
-            }
-        }
-
-        /// <summary>
-        /// Cancels unfinished building and troop orders assigned directly to a planet that is
-        /// changing to an incompatible owner. Orders assigned to fleets or capital ships remain.
-        /// </summary>
-        /// <param name="destination">The planet whose ownership is changing.</param>
-        /// <param name="newOwnerInstanceId">The planet's incoming owner.</param>
-        public void InvalidatePlanetDestinationOrders(Planet destination, string newOwnerInstanceId)
-        {
-            if (destination == null)
-                return;
-
-            foreach (Planet producer in _game.GetSceneNodesByType<Planet>())
-            {
-                string producerOwnerId = producer.GetOwnerInstanceID();
-                Dictionary<ManufacturingType, List<IManufacturable>> queues =
-                    producer.GetManufacturingQueue();
-                foreach (
-                    KeyValuePair<ManufacturingType, List<IManufacturable>> entry in queues.ToList()
-                )
-                {
-                    List<IManufacturable> items = entry.Value;
-                    if (items == null)
-                        continue;
-
-                    foreach (IManufacturable item in items.ToList())
-                    {
-                        if (
-                            item is not ISceneNode sceneNode
-                            || item is CapitalShip
-                            || item is Starfighter
-                            || !ReferenceEquals(sceneNode.GetParent(), destination)
-                            || string.Equals(
-                                producerOwnerId,
-                                newOwnerInstanceId,
-                                StringComparison.Ordinal
-                            )
-                        )
-                        {
-                            continue;
-                        }
-
-                        item.ManufacturingQueueSequence = 0;
-                        DetachQueuedItem(item);
-                        items.Remove(item);
-                    }
-
-                    if (items.Count == 0)
-                        queues.Remove(entry.Key);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Rebuilds manufacturing queues for all planets from scene graph state.
-        /// Called after loading a saved game to reconstruct queue state from serialized items.
-        /// </summary>
-        public void RebuildQueues()
-        {
-            List<Planet> planets = _game.GetSceneNodesByType<Planet>().ToList();
-            Dictionary<Planet, Dictionary<ManufacturingType, List<IManufacturable>>> candidates =
-                planets.ToDictionary(
-                    planet => planet,
-                    _ => new Dictionary<ManufacturingType, List<IManufacturable>>()
-                );
-
-            _game
-                .GetGalaxyMap()
-                .Traverse(node =>
-                {
-                    if (node is IManufacturable manufacturable)
-                    {
-                        if (manufacturable.ManufacturingStatus != ManufacturingStatus.Building)
-                        {
-                            return;
-                        }
-
-                        if (string.IsNullOrEmpty(manufacturable.ProducerPlanetID))
-                        {
-                            return;
-                        }
-
-                        Planet producerPlanet = _game.GetSceneNodeByInstanceID<Planet>(
-                            manufacturable.ProducerPlanetID
-                        );
-                        if (producerPlanet == null)
-                        {
-                            return;
-                        }
-
-                        ManufacturingType type = manufacturable.GetManufacturingType();
-                        if (
-                            !candidates[producerPlanet]
-                                .TryGetValue(type, out List<IManufacturable> lane)
-                        )
-                        {
-                            lane = new List<IManufacturable>();
-                            candidates[producerPlanet][type] = lane;
-                        }
-
-                        lane.Add(manufacturable);
-                    }
-                });
-
-            foreach (Planet planet in planets)
-            {
-                Dictionary<ManufacturingType, List<IManufacturable>> queue =
-                    planet.GetManufacturingQueue();
-                queue.Clear();
-                foreach (
-                    KeyValuePair<ManufacturingType, List<IManufacturable>> entry in candidates[
-                        planet
-                    ]
-                )
-                {
-                    List<IManufacturable> ordered = RestoreQueueOrder(entry.Value);
-                    queue[entry.Key] = ordered;
-                }
-            }
-        }
-
-        /// <summary>
-        /// Restores a queue from persisted item sequences.
-        /// </summary>
-        /// <param name="candidates">The live queued items discovered in the scene graph.</param>
-        /// <returns>The rebuilt queue in manufacturing order.</returns>
-        private static List<IManufacturable> RestoreQueueOrder(
-            IReadOnlyList<IManufacturable> candidates
-        )
-        {
-            List<IManufacturable> ordered = candidates
-                .OrderBy(item => item.ManufacturingQueueSequence)
-                .ToList();
-
-            for (int index = 0; index < ordered.Count; index++)
-                ordered[index].ManufacturingQueueSequence = index + 1;
-
-            return ordered;
+                FleetLifecycle.RemoveEmptyFleet(_game, fleet);
         }
     }
 }

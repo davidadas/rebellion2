@@ -157,6 +157,7 @@ namespace Rebellion.Game.Results
         public Faction NewOwner { get; set; }
         public PlanetOwnershipChangeReason Reason { get; set; }
         public List<string> ObserverFactionInstanceIDs { get; set; } = new List<string>();
+        public List<string> BlockadedFactionInstanceIDs { get; set; }
     }
 
     /// <summary>

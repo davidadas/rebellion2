@@ -85,7 +85,8 @@ namespace Rebellion.Game.Galaxy
         public int BlockadeSupportShiftIntervalTicks { get; set; }
 
         // Popular Support.
-        public Dictionary<string, int> PopularSupport = new Dictionary<string, int>();
+        [PersistableMember(Name = nameof(PopularSupport))]
+        private Dictionary<string, int> _popularSupport = new Dictionary<string, int>();
 
         // Child Nodes.
         [PersistableMember(Name = "Fleets")]
@@ -121,7 +122,22 @@ namespace Rebellion.Game.Galaxy
         } = new Dictionary<ManufacturingType, List<IManufacturable>>();
 
         // Visitor Status.
-        public List<string> VisitingFactionIDs = new List<string>();
+        [PersistableMember(Name = nameof(VisitingFactionIDs))]
+        private List<string> _visitingFactionIds = new List<string>();
+
+        [PersistableIgnore]
+        public Dictionary<string, int> PopularSupport
+        {
+            get => _popularSupport;
+            set => _popularSupport = value;
+        }
+
+        [PersistableIgnore]
+        public List<string> VisitingFactionIDs
+        {
+            get => _visitingFactionIds;
+            set => _visitingFactionIds = value;
+        }
 
         /// <summary>
         /// Default constructor used for deserialization.

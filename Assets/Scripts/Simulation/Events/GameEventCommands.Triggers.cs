@@ -12,7 +12,7 @@ using Rebellion.SceneGraph;
 
 namespace Rebellion.Simulation
 {
-    public sealed partial class GameEventExecutor
+    public sealed partial class GameEventCommands
     {
         /// <summary>Tests a simulation result against an authored trigger.</summary>
         /// <param name="definition">The authored trigger and filters.</param>

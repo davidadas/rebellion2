@@ -25,7 +25,13 @@ namespace Rebellion.Tests.Simulation
         {
             _results = new GameResultBus();
             FogOfWarQueries queries = new FogOfWarQueries(_game);
-            _observer = new FogOfWarObserver(_game, new FogOfWarCommands(_game, queries), queries);
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            _observer = new FogOfWarObserver(
+                _game,
+                new FogOfWarCommands(_game, recorder),
+                queries,
+                recorder
+            );
         }
 
         [Test]
@@ -101,6 +107,36 @@ namespace Rebellion.Tests.Simulation
                     .Planets[_coruscant.InstanceID]
                     .TickCaptured
             );
+        }
+
+        [Test]
+        public void ProcessResults_ReleasedOfficer_RemovesOwnerAndCaptorObservations()
+        {
+            Officer captive = CreateOfficer("CAPTIVE", _alliance);
+            captive.IsCaptured = true;
+            captive.CaptorInstanceID = _empire.InstanceID;
+            _game.AttachNode(captive, _coruscant);
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordPlanetSnapshot(_alliance, _coruscant, _coreSector, 10);
+            recorder.RecordPlanetSnapshot(_empire, _coruscant, _coreSector, 10);
+            captive.IsCaptured = false;
+            captive.CaptorInstanceID = null;
+
+            _observer.ProcessResults(
+                new GameResult[]
+                {
+                    new OfficerCaptureStateResult
+                    {
+                        TargetOfficer = captive,
+                        IsCaptured = false,
+                        CaptorInstanceID = _empire.InstanceID,
+                        Tick = 12,
+                    },
+                }
+            );
+
+            Assert.IsFalse(_alliance.Fog.EntityLastSeenAt.ContainsKey(captive.InstanceID));
+            Assert.IsFalse(_empire.Fog.EntityLastSeenAt.ContainsKey(captive.InstanceID));
         }
 
         [Test]
@@ -553,6 +589,48 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("SELECTED_ORDER", snapshot.ManufacturingQueueItems.Single().InstanceID);
             Assert.IsFalse(
                 snapshot.ManufacturingQueueItems.Any(item => item.InstanceID == "HIDDEN_ORDER")
+            );
+        }
+
+        [Test]
+        public void ObserveOwnershipChange_BeforeAssaultLanding_PreservesCarrierContents()
+        {
+            Fleet fleet = CreateFleet("ATTACKERS", _alliance);
+            _game.AttachNode(fleet, _coruscant);
+            CapitalShip ship = AddCapitalShip(fleet, _alliance, "TRANSPORT");
+            ship.RegimentCapacity = 3;
+            Regiment first = CreateRegiment("FIRST", _alliance);
+            Regiment retained = CreateRegiment("RETAINED", _alliance);
+            Regiment second = CreateRegiment("SECOND", _alliance);
+            _game.AttachNode(first, ship);
+            _game.AttachNode(retained, ship);
+            _game.AttachNode(second, ship);
+            _game.ChangeOwnership(_coruscant, _alliance.InstanceID);
+            PlanetOwnershipChangedResult ownershipChange = new PlanetOwnershipChangedResult
+            {
+                Planet = _coruscant,
+                PreviousOwner = _empire,
+                NewOwner = _alliance,
+                Tick = 42,
+            };
+
+            _observer.ObserveOwnershipChange(ownershipChange);
+            _game.MoveNode(first, _coruscant);
+            _game.MoveNode(second, _coruscant);
+            _observer.ProcessResults(new GameResult[] { ownershipChange });
+
+            PlanetSnapshot snapshot = _empire.Fog.Snapshots[_coreSector.InstanceID].Planets[
+                _coruscant.InstanceID
+            ];
+            Assert.IsEmpty(snapshot.Regiments);
+            CollectionAssert.AreEqual(
+                new[] { first.InstanceID, retained.InstanceID, second.InstanceID },
+                snapshot
+                    .Fleets.Single(candidate => candidate.InstanceID == fleet.InstanceID)
+                    .GetChildren<CapitalShip>()
+                    .Single(candidate => candidate.InstanceID == ship.InstanceID)
+                    .GetChildren<Regiment>()
+                    .Select(regiment => regiment.InstanceID)
             );
         }
 

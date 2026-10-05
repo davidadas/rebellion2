@@ -18,6 +18,58 @@ namespace Rebellion.Tests.Simulation
     public class CaptiveCommandsTests
     {
         [Test]
+        public void TryCaptureOfficer_FreeOfficer_PublishesCaptureResult()
+        {
+            (GameRoot game, Planet planet, Officer captive, MovementCommands movement) =
+                BuildScene();
+            captive.IsCaptured = false;
+            captive.CaptorInstanceID = null;
+            captive.CanEscape = false;
+            CaptiveCommands commands = CreateCommands(game, new ThrowingRNG(), movement);
+            IReadOnlyList<GameResult> published = null;
+            commands.ResultsProduced += results => published = results;
+
+            bool captured = commands.TryCaptureOfficer(
+                captive,
+                game.GetFactionByOwnerInstanceID(planet.OwnerInstanceID),
+                canEscape: false
+            );
+
+            Assert.IsTrue(captured);
+            Assert.IsTrue(captive.IsCaptured);
+            Assert.AreEqual("rebels", captive.CaptorInstanceID);
+            Assert.IsFalse(captive.CanEscape);
+            OfficerCaptureStateResult result = published
+                .OfType<OfficerCaptureStateResult>()
+                .Single();
+            Assert.AreSame(captive, result.TargetOfficer);
+            Assert.AreSame(planet, result.Context);
+            Assert.AreEqual(game.CurrentTick, result.Tick);
+        }
+
+        [Test]
+        public void TryReleaseOfficer_CaptiveOfficer_PublishesReleaseResult()
+        {
+            (GameRoot game, Planet planet, Officer captive, MovementCommands movement) =
+                BuildScene();
+            CaptiveCommands commands = CreateCommands(game, new ThrowingRNG(), movement);
+            IReadOnlyList<GameResult> published = null;
+            commands.ResultsProduced += results => published = results;
+
+            bool released = commands.TryReleaseOfficer(captive);
+
+            Assert.IsTrue(released);
+            Assert.IsFalse(captive.IsCaptured);
+            Assert.IsNull(captive.CaptorInstanceID);
+            OfficerCaptureStateResult result = published
+                .OfType<OfficerCaptureStateResult>()
+                .Single();
+            Assert.AreEqual("rebels", result.CaptorInstanceID);
+            Assert.AreSame(planet, result.Context);
+            Assert.AreEqual(game.CurrentTick, result.Tick);
+        }
+
+        [Test]
         public void ProcessTick_EscapeRollSucceeds_FreesOfficer()
         {
             (GameRoot game, Planet planet, Officer captive, MovementCommands movement) =
@@ -420,7 +472,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ReleaseOfficer_OfficerAlreadyMoving_PreservesMovement()
+        public void TryReleaseOfficer_OfficerAlreadyMoving_PreservesMovement()
         {
             (GameRoot game, Planet planet, Officer captive, MovementCommands movement) =
                 BuildScene();
@@ -428,19 +480,19 @@ namespace Rebellion.Tests.Simulation
             captive.Movement = transfer;
             CaptiveCommands commands = CreateCommands(game, new ThrowingRNG(), movement);
 
-            commands.ReleaseOfficer(captive, planet, game.CurrentTick, captive.CaptorInstanceID);
+            commands.TryReleaseOfficer(captive);
 
             Assert.AreSame(transfer, captive.Movement);
         }
 
         [Test]
-        public void ReleaseOfficer_CaptiveReleased_PreservesLoyalty()
+        public void TryReleaseOfficer_CaptiveReleased_PreservesLoyalty()
         {
             (GameRoot game, Planet planet, Officer captive, MovementCommands movement) =
                 BuildScene();
             CaptiveCommands commands = CreateCommands(game, new ThrowingRNG(), movement);
 
-            commands.ReleaseOfficer(captive, planet, game.CurrentTick, captive.CaptorInstanceID);
+            commands.TryReleaseOfficer(captive);
 
             Assert.AreEqual(80, captive.Loyalty);
         }
@@ -458,7 +510,7 @@ namespace Rebellion.Tests.Simulation
             MovementCommands movement
         )
         {
-            return new CaptiveCommands(game, provider, movement, new FogOfWarCommands(game));
+            return new CaptiveCommands(game, provider, movement);
         }
 
         /// <summary>

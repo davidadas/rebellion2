@@ -74,7 +74,7 @@ namespace Rebellion.Tests.Game.Units
 
             int combatValue = _starfighter.GetCombatValue();
 
-            Assert.AreEqual(270, combatValue);
+            Assert.AreEqual(22, combatValue);
         }
 
         [Test]

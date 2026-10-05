@@ -11,9 +11,9 @@ using Rebellion.Util.Random;
 namespace Rebellion.Simulation
 {
     /// <summary>
-    /// Schedules authored events, executes eligible activations, and returns their factual results.
+    /// Validates authored events and applies scheduled or result-triggered activations.
     /// </summary>
-    public partial class GameEventExecutor
+    public partial class GameEventCommands
     {
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
@@ -22,10 +22,10 @@ namespace Rebellion.Simulation
         private readonly PlanetaryControlCommands _planetaryControlCommands;
         private readonly DuelCommands _duelCommands;
         private readonly MessageCommands _messageCommands;
-        private readonly MissionCommands _missionCommands;
+        private readonly MissionResolver _missionResolver;
 
         /// <summary>
-        /// Creates a new GameEventExecutor.
+        /// Creates a new GameEventCommands.
         /// </summary>
         /// <param name="game">The game instance.</param>
         /// <param name="provider">Random number provider for stochastic event actions.</param>
@@ -34,16 +34,44 @@ namespace Rebellion.Simulation
         /// <param name="planetaryControlCommands">The ownership operations.</param>
         /// <param name="duelCommands">The officer encounter operations.</param>
         /// <param name="messageCommands">The authored message delivery operations.</param>
-        /// <param name="missionCommands">The ordered mission interruption operations.</param>
-        public GameEventExecutor(
+        public GameEventCommands(
             GameRoot game,
             IRandomNumberProvider provider,
             UnitFactory unitFactory = null,
             MovementCommands movementCommands = null,
             PlanetaryControlCommands planetaryControlCommands = null,
             DuelCommands duelCommands = null,
-            MessageCommands messageCommands = null,
-            MissionCommands missionCommands = null
+            MessageCommands messageCommands = null
+        )
+            : this(
+                game,
+                provider,
+                unitFactory,
+                movementCommands,
+                planetaryControlCommands,
+                duelCommands,
+                messageCommands,
+                missionResolver: null
+            ) { }
+
+        /// <summary>Creates game-event processing with registered mission lifecycle handling.</summary>
+        /// <param name="game">The game instance.</param>
+        /// <param name="provider">Random number provider for stochastic event actions.</param>
+        /// <param name="unitFactory">Factory for actions that create runtime units.</param>
+        /// <param name="movementCommands">The movement and placement operations.</param>
+        /// <param name="planetaryControlCommands">The ownership operations.</param>
+        /// <param name="duelCommands">The officer encounter operations.</param>
+        /// <param name="messageCommands">The authored message delivery operations.</param>
+        /// <param name="missionResolver">The mission lifecycle resolver.</param>
+        internal GameEventCommands(
+            GameRoot game,
+            IRandomNumberProvider provider,
+            UnitFactory unitFactory,
+            MovementCommands movementCommands,
+            PlanetaryControlCommands planetaryControlCommands,
+            DuelCommands duelCommands,
+            MessageCommands messageCommands,
+            MissionResolver missionResolver
         )
         {
             _game = game;
@@ -53,7 +81,7 @@ namespace Rebellion.Simulation
             _planetaryControlCommands = planetaryControlCommands;
             _duelCommands = duelCommands;
             _messageCommands = messageCommands;
-            _missionCommands = missionCommands;
+            _missionResolver = missionResolver;
         }
 
         /// <summary>
@@ -286,11 +314,11 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Processes all eligible events and returns the aggregate results.
+        /// Applies all eligible scheduled events and returns their aggregate results.
         /// </summary>
         /// <param name="gameEvents">The events to evaluate.</param>
         /// <returns>Results produced by events that activated.</returns>
-        public List<GameResult> ProcessEvents(List<GameEvent> gameEvents)
+        public List<GameResult> ProcessScheduledEvents(List<GameEvent> gameEvents)
         {
             List<GameResult> allResults = new List<GameResult>();
             List<GameEvent> eventsToRemove = new List<GameEvent>();
@@ -313,11 +341,11 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Executes events whose authored trigger type matches a newly produced simulation result.
+        /// Applies events whose authored trigger type matches a newly produced simulation result.
         /// </summary>
         /// <param name="results">The results.</param>
         /// <returns>The result of handle results.</returns>
-        public List<GameResult> HandleResults(IReadOnlyList<GameResult> results)
+        public List<GameResult> ProcessTriggeredEvents(IReadOnlyList<GameResult> results)
         {
             List<GameResult> eventResults = new List<GameResult>();
             if (results == null)
@@ -451,7 +479,7 @@ namespace Rebellion.Simulation
                 _provider,
                 context,
                 _unitFactory,
-                _missionCommands
+                _missionResolver
             );
             results = new List<GameResult>(actionContext.Results);
             if (actionContext.DeferredOperations.Count > 0)
@@ -541,7 +569,7 @@ namespace Rebellion.Simulation
             state.IsComplete =
                 until?.Count > 0
                 && until.All(condition =>
-                    GameEventExecutor.IsMet(condition, new GameConditionContext(_game, context))
+                    GameEventCommands.IsMet(condition, new GameConditionContext(_game, context))
                 );
             return state.IsComplete;
         }
@@ -695,7 +723,7 @@ namespace Rebellion.Simulation
         {
             foreach (GameConditional conditional in gameEvent.Conditionals)
             {
-                if (!GameEventExecutor.IsMet(conditional, game, context))
+                if (!GameEventCommands.IsMet(conditional, game, context))
                     return false;
             }
             return true;
@@ -709,7 +737,7 @@ namespace Rebellion.Simulation
         /// <param name="provider">Random number provider for stochastic actions.</param>
         /// <param name="context">The scoped target, trigger, state, and runtime bindings.</param>
         /// <param name="unitFactory">Factory for actions that create runtime units.</param>
-        /// <param name="missionCommands">The ordered mission interruption operations.</param>
+        /// <param name="missionResolver">The mission lifecycle resolver.</param>
         /// <returns>The context containing requests and results produced by the actions.</returns>
         private static GameActionContext ExecuteActions(
             GameEvent gameEvent,
@@ -717,7 +745,7 @@ namespace Rebellion.Simulation
             IRandomNumberProvider provider,
             GameEventEvaluationContext context,
             UnitFactory unitFactory = null,
-            MissionCommands missionCommands = null
+            MissionResolver missionResolver = null
         )
         {
             GameActionContext actionContext = new GameActionContext(
@@ -725,7 +753,7 @@ namespace Rebellion.Simulation
                 provider,
                 context,
                 unitFactory,
-                missionCommands
+                missionResolver
             );
             ExecuteActions(gameEvent.Actions, actionContext);
             return actionContext;

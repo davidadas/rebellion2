@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Rebellion.Game.Results;
 
 namespace Rebellion.Simulation
@@ -9,13 +8,16 @@ namespace Rebellion.Simulation
     public sealed class VictoryObserver : IResultObserver, IDisposable
     {
         private readonly VictoryCommands _commands;
+        private readonly VictoryQueries _queries;
         private IDisposable _subscription;
 
         /// <summary>Creates the victory result listener.</summary>
-        /// <param name="commands">The victory operations for this game.</param>
-        public VictoryObserver(VictoryCommands commands)
+        /// <param name="commands">The general victory declaration operation.</param>
+        /// <param name="queries">The configured victory eligibility rules.</param>
+        public VictoryObserver(VictoryCommands commands, VictoryQueries queries)
         {
             _commands = commands ?? throw new ArgumentNullException(nameof(commands));
+            _queries = queries ?? throw new ArgumentNullException(nameof(queries));
         }
 
         /// <summary>Registers the headquarters-loss callback with the result bus.</summary>
@@ -42,14 +44,23 @@ namespace Rebellion.Simulation
             if (_commands.IsDeclared)
                 return new List<GameResult>();
 
-            return (results ?? Array.Empty<HeadquartersLostResult>())
-                .Where(result => result?.Attacker != null && result.Defender != null)
-                .Select(result =>
-                    _commands.ResolveHeadquartersLoss(result.Attacker, result.Defender)
+            foreach (
+                HeadquartersLostResult result in results ?? Array.Empty<HeadquartersLostResult>()
+            )
+            {
+                if (
+                    result?.Attacker == null
+                    || result.Defender == null
+                    || !_queries.CanDeclareVictoryAfterHeadquartersLoss(result.Defender)
                 )
-                .Where(result => result != null)
-                .Cast<GameResult>()
-                .ToList();
+                    continue;
+
+                _commands.TryDeclareVictory(result.Attacker, result.Defender);
+                if (_commands.IsDeclared)
+                    break;
+            }
+
+            return new List<GameResult>();
         }
     }
 }

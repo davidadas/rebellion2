@@ -7,16 +7,16 @@ using Rebellion.Game.Results;
 namespace Rebellion.Simulation
 {
     /// <summary>Selects missions interrupted by capture from the recorded participant parent.</summary>
-    public sealed class MissionObserver : IResultObserver, IDisposable
+    internal sealed class MissionObserver : IResultObserver, IDisposable
     {
-        private readonly MissionCommands _commands;
+        private readonly MissionResolver _resolver;
         private IDisposable _subscription;
 
         /// <summary>Creates the mission capture listener.</summary>
-        /// <param name="commands">The operations that interrupt selected missions.</param>
-        public MissionObserver(MissionCommands commands)
+        /// <param name="resolver">The lifecycle resolver that interrupts selected missions.</param>
+        public MissionObserver(MissionResolver resolver)
         {
-            _commands = commands ?? throw new ArgumentNullException(nameof(commands));
+            _resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
         }
 
         /// <summary>Registers the capture callback with the result bus.</summary>
@@ -49,7 +49,7 @@ namespace Rebellion.Simulation
                 .ToList();
 
             foreach (Mission mission in affectedMissions)
-                _commands.InterruptMission(mission, missionResults);
+                _resolver.InterruptMission(mission, missionResults);
 
             return missionResults;
         }

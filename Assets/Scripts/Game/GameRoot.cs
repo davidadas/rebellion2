@@ -36,8 +36,25 @@ namespace Rebellion.Game
         private GalaxyMap _galaxy;
 
         // Game details.
-        public GameSummary Summary { get; set; } = new GameSummary();
-        public GameMetadata Metadata { get; set; } = new GameMetadata();
+        [PersistableMember(Name = nameof(Summary))]
+        private GameSummary _summary = new GameSummary();
+
+        [PersistableMember(Name = nameof(Metadata))]
+        private GameMetadata _metadata = new GameMetadata();
+
+        [PersistableIgnore]
+        public GameSummary Summary
+        {
+            get => _summary;
+            set => _summary = value;
+        }
+
+        [PersistableIgnore]
+        public GameMetadata Metadata
+        {
+            get => _metadata;
+            set => _metadata = value;
+        }
 
         // Configuration.
         [PersistableIgnore]
@@ -56,7 +73,9 @@ namespace Rebellion.Game
 
         [PersistableIgnore]
         private long _restoredIndex;
-        public long RandomIndex
+
+        [PersistableMember(Name = nameof(RandomIndex))]
+        private long PersistedRandomIndex
         {
             get => (_random as SystemRandomProvider)?.CallCount ?? _restoredIndex;
             set
@@ -67,9 +86,33 @@ namespace Rebellion.Game
             }
         }
 
+        [PersistableIgnore]
+        public long RandomIndex
+        {
+            get => PersistedRandomIndex;
+            set => PersistedRandomIndex = value;
+        }
+
         // Game state.
-        public int CurrentTick;
-        public TickSpeed GameSpeed = TickSpeed.Slow;
+        [PersistableMember(Name = nameof(CurrentTick))]
+        private int _currentTick;
+
+        [PersistableMember(Name = nameof(GameSpeed))]
+        private TickSpeed _gameSpeed = TickSpeed.Slow;
+
+        [PersistableIgnore]
+        public int CurrentTick
+        {
+            get => _currentTick;
+            set => _currentTick = value;
+        }
+
+        [PersistableIgnore]
+        public TickSpeed GameSpeed
+        {
+            get => _gameSpeed;
+            set => _gameSpeed = value;
+        }
 
         [PersistableMember(Name = "ActiveBattle")]
         private ActiveBattle _activeBattle;
@@ -77,7 +120,16 @@ namespace Rebellion.Game
         // Game events.
         [PersistableMember(Name = "EventPool")]
         private List<GameEvent> _eventPool = new List<GameEvent>();
-        public GameEventRuntimeState EventRuntime { get; set; } = new GameEventRuntimeState();
+
+        [PersistableMember(Name = nameof(EventRuntime))]
+        private GameEventRuntimeState _eventRuntime = new GameEventRuntimeState();
+
+        [PersistableIgnore]
+        public GameEventRuntimeState EventRuntime
+        {
+            get => _eventRuntime;
+            set => _eventRuntime = value;
+        }
 
         // Scene nodes.
         [PersistableIgnore]
@@ -95,9 +147,10 @@ namespace Rebellion.Game
         private List<Officer> _unrecruitedOfficers = new List<Officer>();
 
         // Root scene node.
-        public GalaxyMap Galaxy
+        [PersistableMember(Name = nameof(Galaxy))]
+        private GalaxyMap PersistedGalaxy
         {
-            get { return _galaxy; }
+            get => _galaxy;
             set
             {
                 if (value != null)
@@ -106,6 +159,13 @@ namespace Rebellion.Game
                     _galaxy = InitializeGalaxy(value);
                 }
             }
+        }
+
+        [PersistableIgnore]
+        public GalaxyMap Galaxy
+        {
+            get => _galaxy;
+            set => PersistedGalaxy = value;
         }
 
         /// <summary>

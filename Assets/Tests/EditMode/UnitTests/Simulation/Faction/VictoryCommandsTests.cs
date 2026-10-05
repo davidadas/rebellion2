@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
@@ -14,12 +15,29 @@ namespace Rebellion.Tests.Simulation
     public class VictoryCommandsTests
     {
         [Test]
+        public void TryDeclareVictory_RegisteredFactions_PublishesOutcome()
+        {
+            (GameRoot game, Faction loser, Faction winner, _, VictoryCommands commands) =
+                BuildScene();
+            IReadOnlyList<VictoryResult> published = null;
+            commands.ResultsProduced += results => published = results;
+
+            VictoryResult result = commands.TryDeclareVictory(winner, loser);
+
+            Assert.IsNotNull(result);
+            Assert.AreSame(winner, result.Winner);
+            Assert.AreSame(loser, result.Loser);
+            Assert.AreSame(result, published.Single());
+            Assert.AreEqual(game.CurrentTick, result.Tick);
+        }
+
+        [Test]
         public void ProcessTick_HQNotConfigured_ReturnsEmpty()
         {
             (GameRoot game, Faction empire, _, _, VictoryCommands system) = BuildScene();
             empire.HQInstanceID = null;
 
-            IReadOnlyList<GameResult> results = new VictoryTickProcessor(system).ProcessTick(game);
+            IReadOnlyList<GameResult> results = CreateTickProcessor(game, system).ProcessTick(game);
 
             Assert.AreEqual(0, results.Count, "No HQ configured should return no results");
         }
@@ -31,22 +49,23 @@ namespace Rebellion.Tests.Simulation
                 rebelsCaptureEmpireHQ: false
             );
 
-            IReadOnlyList<GameResult> results = new VictoryTickProcessor(system).ProcessTick(game);
+            IReadOnlyList<GameResult> results = CreateTickProcessor(game, system).ProcessTick(game);
 
             Assert.AreEqual(0, results.Count, "HQ held by defender should not trigger victory");
         }
 
         [Test]
-        public void ProcessTick_HQCapturedHeadquartersMode_ReturnsVictoryResult()
+        public void ProcessTick_HQCapturedHeadquartersMode_PublishesVictoryResult()
         {
             (GameRoot game, Faction empire, Faction rebels, _, VictoryCommands system) = BuildScene(
                 GameVictoryCondition.Headquarters
             );
 
-            IReadOnlyList<GameResult> results = new VictoryTickProcessor(system).ProcessTick(game);
+            VictoryResult victory = CaptureVictory(
+                system,
+                () => CreateTickProcessor(game, system).ProcessTick(game)
+            );
 
-            Assert.AreEqual(1, results.Count);
-            VictoryResult victory = results[0] as VictoryResult;
             Assert.IsNotNull(victory);
             Assert.AreEqual(rebels, victory.Winner);
             Assert.AreEqual(empire, victory.Loser);
@@ -57,14 +76,14 @@ namespace Rebellion.Tests.Simulation
         {
             (GameRoot game, _, _, _, VictoryCommands system) = BuildScene();
 
-            IReadOnlyList<GameResult> firstResults = new VictoryTickProcessor(system).ProcessTick(
-                game
-            );
-            IReadOnlyList<GameResult> secondResults = new VictoryTickProcessor(system).ProcessTick(
-                game
-            );
+            int publications = 0;
+            system.ResultsProduced += results => publications += results.Count;
 
-            Assert.AreEqual(1, firstResults.OfType<VictoryResult>().Count());
+            CreateTickProcessor(game, system).ProcessTick(game);
+            IReadOnlyList<GameResult> secondResults = CreateTickProcessor(game, system)
+                .ProcessTick(game);
+
+            Assert.AreEqual(1, publications);
             Assert.IsEmpty(secondResults);
         }
 
@@ -95,17 +114,21 @@ namespace Rebellion.Tests.Simulation
             };
             game.AttachNode(leader, empirePlanet);
 
-            IReadOnlyList<GameResult> results = new VictoryTickProcessor(system).ProcessTick(game);
+            List<VictoryResult> published = new List<VictoryResult>();
+            system.ResultsProduced += outcomes => published.AddRange(outcomes);
+
+            IReadOnlyList<GameResult> results = CreateTickProcessor(game, system).ProcessTick(game);
 
             Assert.AreEqual(
                 0,
                 results.Count,
                 "Conquest mode with free leader should not trigger victory"
             );
+            Assert.IsEmpty(published);
         }
 
         [Test]
-        public void ProcessTick_HQCapturedConquestMode_AllLeadersCaptured_ReturnsVictoryResult()
+        public void ProcessTick_HQCapturedConquestMode_AllLeadersCaptured_PublishesVictoryResult()
         {
             (GameRoot game, Faction empire, Faction rebels, _, VictoryCommands system) = BuildScene(
                 GameVictoryCondition.Conquest
@@ -120,26 +143,28 @@ namespace Rebellion.Tests.Simulation
             };
             game.AttachNode(leader, game.GetSceneNodeByInstanceID<Planet>("hq_empire"));
 
-            IReadOnlyList<GameResult> results = new VictoryTickProcessor(system).ProcessTick(game);
+            VictoryResult victory = CaptureVictory(
+                system,
+                () => CreateTickProcessor(game, system).ProcessTick(game)
+            );
 
-            Assert.AreEqual(1, results.Count);
-            VictoryResult victory = results[0] as VictoryResult;
             Assert.IsNotNull(victory);
             Assert.AreEqual(rebels, victory.Winner);
             Assert.AreEqual(empire, victory.Loser);
         }
 
         [Test]
-        public void ProcessTick_HQCapturedConquestMode_NoMainCharacters_ReturnsVictoryResult()
+        public void ProcessTick_HQCapturedConquestMode_NoMainCharacters_PublishesVictoryResult()
         {
             (GameRoot game, _, Faction rebels, _, VictoryCommands system) = BuildScene(
                 GameVictoryCondition.Conquest
             );
 
-            IReadOnlyList<GameResult> results = new VictoryTickProcessor(system).ProcessTick(game);
+            VictoryResult victory = CaptureVictory(
+                system,
+                () => CreateTickProcessor(game, system).ProcessTick(game)
+            );
 
-            Assert.AreEqual(1, results.Count);
-            VictoryResult victory = results[0] as VictoryResult;
             Assert.IsNotNull(victory);
             Assert.AreEqual(rebels, victory.Winner);
         }
@@ -169,7 +194,7 @@ namespace Rebellion.Tests.Simulation
             };
             game.AttachNode(headquarters, empireHQ);
 
-            IReadOnlyList<GameResult> results = new VictoryTickProcessor(system).ProcessTick(game);
+            IReadOnlyList<GameResult> results = CreateTickProcessor(game, system).ProcessTick(game);
 
             Assert.AreEqual(0, results.Count);
         }
@@ -189,13 +214,13 @@ namespace Rebellion.Tests.Simulation
                 },
             };
 
-            IReadOnlyList<GameResult> results = new VictoryTickProcessor(system).ProcessTick(game);
+            IReadOnlyList<GameResult> results = CreateTickProcessor(game, system).ProcessTick(game);
 
             Assert.AreEqual(0, results.Count);
         }
 
         [Test]
-        public void ProcessTick_MobileHeadquartersCaptured_ReturnsVictoryResult()
+        public void ProcessTick_MobileHeadquartersCaptured_PublishesVictoryResult()
         {
             (
                 GameRoot game,
@@ -223,10 +248,11 @@ namespace Rebellion.Tests.Simulation
             };
             game.AttachNode(headquarters, empireHQ);
 
-            IReadOnlyList<GameResult> results = new VictoryTickProcessor(system).ProcessTick(game);
+            VictoryResult victory = CaptureVictory(
+                system,
+                () => CreateTickProcessor(game, system).ProcessTick(game)
+            );
 
-            Assert.AreEqual(1, results.Count);
-            VictoryResult victory = results[0] as VictoryResult;
             Assert.IsNotNull(victory);
             Assert.AreEqual(rebels, victory.Winner);
             Assert.AreEqual(empire, victory.Loser);
@@ -299,13 +325,40 @@ namespace Rebellion.Tests.Simulation
                 thirdHeadquartersPlanet
             );
 
-            IReadOnlyList<GameResult> results = new VictoryTickProcessor(system).ProcessTick(game);
+            VictoryResult victory = CaptureVictory(
+                system,
+                () => CreateTickProcessor(game, system).ProcessTick(game)
+            );
 
-            Assert.AreEqual(1, results.Count);
-            VictoryResult victory = results[0] as VictoryResult;
             Assert.IsNotNull(victory);
             Assert.AreSame(rebels, victory.Winner);
             Assert.AreSame(empire, victory.Loser);
+        }
+
+        /// <summary>Captures the single victory published by an operation.</summary>
+        /// <param name="commands">The victory commands publishing the outcome.</param>
+        /// <param name="operation">The operation expected to declare victory.</param>
+        /// <returns>The published victory.</returns>
+        private static VictoryResult CaptureVictory(VictoryCommands commands, Action operation)
+        {
+            List<VictoryResult> published = new List<VictoryResult>();
+            commands.ResultsProduced += results => published.AddRange(results);
+
+            operation();
+
+            return published.Single();
+        }
+
+        /// <summary>Creates tick processing with the configured victory rules.</summary>
+        /// <param name="game">The active game graph.</param>
+        /// <param name="commands">The victory declaration commands.</param>
+        /// <returns>The configured tick processor.</returns>
+        private static VictoryTickProcessor CreateTickProcessor(
+            GameRoot game,
+            VictoryCommands commands
+        )
+        {
+            return new VictoryTickProcessor(commands, new VictoryQueries(game));
         }
 
         /// <summary>

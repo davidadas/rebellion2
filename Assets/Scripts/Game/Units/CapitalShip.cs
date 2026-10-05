@@ -72,21 +72,40 @@ namespace Rebellion.Game.Units
         public int UprisingDefense { get; set; }
 
         // Hull, Shield, and Repair Info.
-        public int MaxHullStrength;
-        public int CurrentHullStrength;
-        public int DamageControl;
-        public int MaxShieldStrength;
-        public int ShieldRechargeRate;
+        [PersistableMember(Name = nameof(MaxHullStrength))]
+        private int _maxHullStrength;
+
+        [PersistableMember(Name = nameof(CurrentHullStrength))]
+        private int _currentHullStrength;
+
+        [PersistableMember(Name = nameof(DamageControl))]
+        private int _damageControl;
+
+        [PersistableMember(Name = nameof(MaxShieldStrength))]
+        private int _maxShieldStrength;
+
+        [PersistableMember(Name = nameof(ShieldRechargeRate))]
+        private int _shieldRechargeRate;
 
         // Movement Info.
-        public int Hyperdrive;
-        public int SublightSpeed;
-        public int Maneuverability;
+        [PersistableMember(Name = nameof(Hyperdrive))]
+        private int _hyperdrive;
+
+        [PersistableMember(Name = nameof(SublightSpeed))]
+        private int _sublightSpeed;
+
+        [PersistableMember(Name = nameof(Maneuverability))]
+        private int _maneuverability;
 
         // Capacity Info.
-        public int StarfighterCapacity;
-        public int RegimentCapacity;
-        public List<CapitalShipRole> Roles = new List<CapitalShipRole>();
+        [PersistableMember(Name = nameof(StarfighterCapacity))]
+        private int _starfighterCapacity;
+
+        [PersistableMember(Name = nameof(RegimentCapacity))]
+        private int _regimentCapacity;
+
+        [PersistableMember(Name = nameof(Roles))]
+        private List<CapitalShipRole> _roles = new List<CapitalShipRole>();
 
         // Component Info.
         [PersistableMember(Name = "Components")]
@@ -109,7 +128,8 @@ namespace Rebellion.Game.Units
         private List<Starfighter> _starfighters = new List<Starfighter>();
 
         // Weapon Info.
-        public Dictionary<PrimaryWeaponType, int[]> PrimaryWeapons = new Dictionary<
+        [PersistableMember(Name = nameof(PrimaryWeapons))]
+        private Dictionary<PrimaryWeaponType, int[]> _primaryWeapons = new Dictionary<
             PrimaryWeaponType,
             int[]
         >()
@@ -118,8 +138,12 @@ namespace Rebellion.Game.Units
             { PrimaryWeaponType.IonCannon, new int[PrimaryWeaponRangeIndex + 1] },
             { PrimaryWeaponType.LaserCannon, new int[PrimaryWeaponRangeIndex + 1] },
         };
-        public int WeaponRecharge;
-        public int Bombardment;
+
+        [PersistableMember(Name = nameof(WeaponRecharge))]
+        private int _weaponRecharge;
+
+        [PersistableMember(Name = nameof(Bombardment))]
+        private int _bombardment;
 
         // Manufacturing Info.
         public int ManufacturingProgress { get; set; } = 0;
@@ -135,11 +159,145 @@ namespace Rebellion.Game.Units
         public MovementState Movement { get; set; }
 
         // Misc Info.
-        public int TractorBeamPower;
-        public int TractorBeamnRange;
-        public bool HasGravityWell;
+        [PersistableMember(Name = nameof(TractorBeamPower))]
+        private int _tractorBeamPower;
+
+        [PersistableMember(Name = nameof(TractorBeamnRange))]
+        private int _tractorBeamRange;
+
+        [PersistableMember(Name = nameof(HasGravityWell))]
+        private bool _hasGravityWell;
+
         public bool CanDestroyPlanets { get; set; }
-        public int DetectionRating;
+
+        [PersistableMember(Name = nameof(DetectionRating))]
+        private int _detectionRating;
+
+        [PersistableIgnore]
+        public int MaxHullStrength
+        {
+            get => _maxHullStrength;
+            set => _maxHullStrength = value;
+        }
+
+        [PersistableIgnore]
+        public int CurrentHullStrength
+        {
+            get => _currentHullStrength;
+            set => _currentHullStrength = value;
+        }
+
+        [PersistableIgnore]
+        public int DamageControl
+        {
+            get => _damageControl;
+            set => _damageControl = value;
+        }
+
+        [PersistableIgnore]
+        public int MaxShieldStrength
+        {
+            get => _maxShieldStrength;
+            set => _maxShieldStrength = value;
+        }
+
+        [PersistableIgnore]
+        public int ShieldRechargeRate
+        {
+            get => _shieldRechargeRate;
+            set => _shieldRechargeRate = value;
+        }
+
+        [PersistableIgnore]
+        public int Hyperdrive
+        {
+            get => _hyperdrive;
+            set => _hyperdrive = value;
+        }
+
+        [PersistableIgnore]
+        public int SublightSpeed
+        {
+            get => _sublightSpeed;
+            set => _sublightSpeed = value;
+        }
+
+        [PersistableIgnore]
+        public int Maneuverability
+        {
+            get => _maneuverability;
+            set => _maneuverability = value;
+        }
+
+        [PersistableIgnore]
+        public int StarfighterCapacity
+        {
+            get => _starfighterCapacity;
+            set => _starfighterCapacity = value;
+        }
+
+        [PersistableIgnore]
+        public int RegimentCapacity
+        {
+            get => _regimentCapacity;
+            set => _regimentCapacity = value;
+        }
+
+        [PersistableIgnore]
+        public List<CapitalShipRole> Roles
+        {
+            get => _roles;
+            set => _roles = value;
+        }
+
+        [PersistableIgnore]
+        public Dictionary<PrimaryWeaponType, int[]> PrimaryWeapons
+        {
+            get => _primaryWeapons;
+            set => _primaryWeapons = value;
+        }
+
+        [PersistableIgnore]
+        public int WeaponRecharge
+        {
+            get => _weaponRecharge;
+            set => _weaponRecharge = value;
+        }
+
+        [PersistableIgnore]
+        public int Bombardment
+        {
+            get => _bombardment;
+            set => _bombardment = value;
+        }
+
+        [PersistableIgnore]
+        public int TractorBeamPower
+        {
+            get => _tractorBeamPower;
+            set => _tractorBeamPower = value;
+        }
+
+        [PersistableIgnore]
+        public int TractorBeamnRange
+        {
+            get => _tractorBeamRange;
+            set => _tractorBeamRange = value;
+        }
+
+        [PersistableIgnore]
+        public bool HasGravityWell
+        {
+            get => _hasGravityWell;
+            set => _hasGravityWell = value;
+        }
+
+        [PersistableIgnore]
+        public int DetectionRating
+        {
+            get => _detectionRating;
+            set => _detectionRating = value;
+        }
 
         // Owner Info.
         public string InitialParentInstanceID { get; set; }

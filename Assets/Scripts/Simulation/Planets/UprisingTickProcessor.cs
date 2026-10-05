@@ -11,15 +11,15 @@ namespace Rebellion.Simulation
     /// </summary>
     internal sealed class UprisingTickProcessor : ITickProcessor
     {
-        private readonly UprisingCommands _commands;
+        private readonly UprisingResolver _resolver;
 
         /// <summary>
         /// Creates uprising tick processing.
         /// </summary>
-        /// <param name="commands">The uprising operations and garrison state.</param>
-        public UprisingTickProcessor(UprisingCommands commands)
+        /// <param name="resolver">The uprising lifecycle resolver and garrison state.</param>
+        public UprisingTickProcessor(UprisingResolver resolver)
         {
-            _commands = commands ?? throw new ArgumentNullException(nameof(commands));
+            _resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
         }
 
         /// <summary>
@@ -31,7 +31,7 @@ namespace Rebellion.Simulation
         {
             List<GameResult> results = new List<GameResult>();
             foreach (Planet planet in game.GetSceneNodesByType<Planet>())
-                _commands.ProcessPlanet(planet, results);
+                _resolver.ProcessPlanet(planet, results);
 
             return results;
         }

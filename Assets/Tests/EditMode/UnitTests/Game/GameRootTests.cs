@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Xml.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
@@ -11,6 +13,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Random;
+using Rebellion.Util.Serialization;
 
 namespace Rebellion.Tests.Game
 {
@@ -934,6 +937,36 @@ namespace Rebellion.Tests.Game
             // Next roll should match what a fresh provider at position 7 would yield.
             int expected = new SystemRandomProvider(12345, advanceTo: 7).NextInt(0, int.MaxValue);
             Assert.AreEqual(expected, game.Random.NextInt(0, int.MaxValue));
+        }
+
+        [Test]
+        public void PersistedState_GameModelFields_UseExplicitNonPublicMembers()
+        {
+            string[] publicFields = typeof(GameRoot)
+                .Assembly.GetTypes()
+                .Where(type =>
+                    type.IsClass
+                    && type.Namespace?.StartsWith("Rebellion.Game") == true
+                    && !type.IsDefined(typeof(CompilerGeneratedAttribute), false)
+                    && type.GetCustomAttribute<PersistableObjectAttribute>(true) != null
+                )
+                .SelectMany(type =>
+                    ReflectionHelper.GetPersistableMembers(
+                        type,
+                        ReflectionHelper.OperationType.Write
+                    )
+                )
+                .OfType<FieldInfo>()
+                .Where(field => field.IsPublic)
+                .Select(field => $"{field.DeclaringType?.FullName}.{field.Name}")
+                .Distinct()
+                .OrderBy(name => name)
+                .ToArray();
+
+            Assert.IsEmpty(
+                publicFields,
+                "Persisted game-model fields must be private and explicitly attributed."
+            );
         }
 
         [Test]

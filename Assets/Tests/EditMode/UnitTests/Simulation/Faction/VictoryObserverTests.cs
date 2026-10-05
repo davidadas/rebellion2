@@ -14,7 +14,7 @@ namespace Rebellion.Tests.Simulation
     public class VictoryObserverTests
     {
         [Test]
-        public void HandleResults_HeadquartersCaptured_ReturnsVictory()
+        public void HandleResults_HeadquartersCaptured_PublishesVictory()
         {
             (
                 GameRoot game,
@@ -24,7 +24,8 @@ namespace Rebellion.Tests.Simulation
                 VictoryCommands system
             ) = BuildScene(rebelsCaptureEmpireHQ: false);
 
-            List<GameResult> results = new VictoryObserver(system).HandleResults(
+            List<VictoryResult> published = CaptureVictories(system);
+            new VictoryObserver(system, new VictoryQueries(game)).HandleResults(
                 new List<HeadquartersLostResult>
                 {
                     new HeadquartersCapturedResult
@@ -36,7 +37,7 @@ namespace Rebellion.Tests.Simulation
                 }
             );
 
-            VictoryResult victory = results[0] as VictoryResult;
+            VictoryResult victory = published.Single();
             Assert.IsNotNull(victory);
             Assert.AreSame(rebels, victory.Winner);
             Assert.AreSame(empire, victory.Loser);
@@ -49,7 +50,8 @@ namespace Rebellion.Tests.Simulation
                 BuildScene();
             Faction secondAttacker = new Faction { InstanceID = "other" };
 
-            List<GameResult> results = new VictoryObserver(system).HandleResults(
+            List<VictoryResult> published = CaptureVictories(system);
+            new VictoryObserver(system, new VictoryQueries(game)).HandleResults(
                 new HeadquartersLostResult[]
                 {
                     null,
@@ -67,12 +69,14 @@ namespace Rebellion.Tests.Simulation
                 }
             );
 
-            VictoryResult victory = results.OfType<VictoryResult>().Single();
+            VictoryResult victory = published.Single();
             Assert.AreSame(firstAttacker, victory.Winner);
             Assert.AreEqual(200, victory.Tick);
-            Assert.IsEmpty(new VictoryTickProcessor(system).ProcessTick(game));
             Assert.IsEmpty(
-                new VictoryObserver(system).HandleResults(
+                new VictoryTickProcessor(system, new VictoryQueries(game)).ProcessTick(game)
+            );
+            Assert.IsEmpty(
+                new VictoryObserver(system, new VictoryQueries(game)).HandleResults(
                     new HeadquartersLostResult[]
                     {
                         new HeadquartersCapturedResult
@@ -114,7 +118,8 @@ namespace Rebellion.Tests.Simulation
             Faction otherDefender = new Faction { InstanceID = "other-defender" };
             game.GetFactions().Add(otherDefender);
 
-            List<GameResult> results = new VictoryObserver(system).HandleResults(
+            List<VictoryResult> published = CaptureVictories(system);
+            new VictoryObserver(system, new VictoryQueries(game)).HandleResults(
                 new HeadquartersLostResult[]
                 {
                     new HeadquartersCapturedResult { Attacker = attacker, Defender = defender },
@@ -126,15 +131,27 @@ namespace Rebellion.Tests.Simulation
                 }
             );
 
-            Assert.AreSame(otherDefender, results.OfType<VictoryResult>().Single().Loser);
+            Assert.AreSame(otherDefender, published.Single().Loser);
         }
 
         [Test]
         public void HandleResults_NullBatch_ReturnsEmpty()
         {
-            (_, _, _, _, VictoryCommands system) = BuildScene();
+            (GameRoot game, _, _, _, VictoryCommands system) = BuildScene();
 
-            Assert.IsEmpty(new VictoryObserver(system).HandleResults(null));
+            Assert.IsEmpty(
+                new VictoryObserver(system, new VictoryQueries(game)).HandleResults(null)
+            );
+        }
+
+        /// <summary>Collects victories published by the supplied command service.</summary>
+        /// <param name="commands">The victory commands to observe.</param>
+        /// <returns>The collection receiving published victories.</returns>
+        private static List<VictoryResult> CaptureVictories(VictoryCommands commands)
+        {
+            List<VictoryResult> published = new List<VictoryResult>();
+            commands.ResultsProduced += results => published.AddRange(results);
+            return published;
         }
 
         /// <summary>
