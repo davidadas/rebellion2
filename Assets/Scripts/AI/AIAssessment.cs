@@ -1168,11 +1168,7 @@ namespace Rebellion.AI
                         && hostileFleet.GetOwnerInstanceID() != _faction.InstanceID
                         && planet?.GetOwnerInstanceID() == _faction.InstanceID
                     )
-                        AddIndexedValue(
-                            _hostileFleetsByPlanetId,
-                            planet.InstanceID,
-                            hostileFleet
-                        );
+                        AddIndexedValue(_hostileFleetsByPlanetId, planet.InstanceID, hostileFleet);
                     continue;
                 }
 

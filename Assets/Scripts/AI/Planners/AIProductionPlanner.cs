@@ -1327,6 +1327,10 @@ namespace Rebellion.AI.Planners
             AIProductionDemand demand
         )
         {
+            if (demand.RegimentCapacityDeficit > 0)
+                yield return ship => ship.RegimentCapacity > 0;
+            if (demand.BombardmentDeficit > 0)
+                yield return ship => ship.Bombardment > 0;
             if (demand.CapitalFirepowerDeficit > 0)
                 yield return ship =>
                     SpaceCombatStrengthCalculator.GetCapitalShipFirepowerAgainstCapitalShips(ship)
@@ -1337,12 +1341,8 @@ namespace Rebellion.AI.Planners
                     > 0;
             if (demand.EscortDeficit > 0)
                 yield return SpaceCombatStrengthCalculator.IsArmedEscort;
-            if (demand.RegimentCapacityDeficit > 0)
-                yield return ship => ship.RegimentCapacity > 0;
             if (demand.StarfighterCapacityDeficit > 0)
                 yield return ship => ship.StarfighterCapacity > 0;
-            if (demand.BombardmentDeficit > 0)
-                yield return ship => ship.Bombardment > 0;
             if (demand.PlanetDestroyerDeficit > 0)
                 yield return ship => ship.CanDestroyPlanets;
             if (demand.InterdictionDeficit > 0)

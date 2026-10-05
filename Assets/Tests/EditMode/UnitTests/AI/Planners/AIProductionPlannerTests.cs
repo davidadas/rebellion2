@@ -971,7 +971,7 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Plan_WithCombatAndTransportDeficits_SelectsCapitalFirepowerShip()
+        public void Plan_WithCombatAndTransportDeficits_SelectsTransport()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             game.Config.AI.Infrastructure.FleetProductionMinimumShipyardCount = 1;
@@ -1055,7 +1055,7 @@ namespace Rebellion.Tests.AI.Planners
                     && item.Destination == fleet
                 );
 
-            Assert.AreSame(lineShip, proposal.Product.GetReference());
+            Assert.AreSame(transport, proposal.Product.GetReference());
             Assert.Greater(proposal.Demand.RegimentCapacityDeficit, 0);
         }
 
@@ -1394,7 +1394,7 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Plan_WithCombatAndBombardmentDeficits_SelectsCapitalFirepowerShip()
+        public void Plan_WithCombatAndBombardmentDeficits_SelectsBombardmentShip()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             game.Config.AI.Infrastructure.FleetProductionMinimumShipyardCount = 1;
@@ -1489,7 +1489,7 @@ namespace Rebellion.Tests.AI.Planners
                     && item.Destination == fleet
                 );
 
-            Assert.AreSame(lineShip, proposal.Product.GetReference());
+            Assert.Greater(((CapitalShip)proposal.Product.GetReference()).Bombardment, 0);
             Assert.Greater(proposal.Demand.BombardmentDeficit, 0);
         }
 
