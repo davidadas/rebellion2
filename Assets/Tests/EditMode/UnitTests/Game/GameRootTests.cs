@@ -208,16 +208,28 @@ namespace Rebellion.Tests.Game
             };
             activeBattle
                 .GetParticipants()
-                .Add(new BattleParticipant { FactionInstanceID = "FACTION1" });
+                .Add(
+                    new BattleParticipant
+                    {
+                        FactionInstanceID = "FACTION1",
+                        BattleMapSlotID = "attacker",
+                    }
+                );
             activeBattle
                 .GetParticipants()
-                .Add(new BattleParticipant { FactionInstanceID = "FACTION2" });
+                .Add(
+                    new BattleParticipant
+                    {
+                        FactionInstanceID = "FACTION2",
+                        BattleMapSlotID = "defender",
+                    }
+                );
             activeBattle
                 .Map.GetDeploymentRegions()
                 .Add(
                     new BattleMapDeploymentRegion
                     {
-                        ParticipantFactionInstanceID = "FACTION1",
+                        ParticipantSlotID = "attacker",
                         Bounds = new BattleMapBounds { MinimumX = -100f, MaximumX = 0f },
                     }
                 );
@@ -245,11 +257,8 @@ namespace Rebellion.Tests.Game
             );
             Assert.AreEqual("PLANET1", restored.GetActiveBattle().PlanetInstanceID);
             Assert.AreEqual(
-                "FACTION1",
-                restored
-                    .GetActiveBattle()
-                    .Map.GetDeploymentRegions()[0]
-                    .ParticipantFactionInstanceID
+                "attacker",
+                restored.GetActiveBattle().Map.GetDeploymentRegions()[0].ParticipantSlotID
             );
             Assert.AreEqual(
                 -100f,

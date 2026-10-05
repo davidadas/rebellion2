@@ -60,6 +60,7 @@ namespace Rebellion.Game.Galaxy
         // Planet Asset Info.
         public string PlanetIconPath { get; set; }
         public string EncyclopediaImagePath { get; set; }
+        public List<string> BattleMapInstanceIDs { get; set; } = new List<string>();
         public List<EncyclopediaEntryStat> EncyclopediaStats { get; set; } =
             new List<EncyclopediaEntryStat>();
         public string EncyclopediaDescription { get; set; }
@@ -166,6 +167,7 @@ namespace Rebellion.Game.Galaxy
             copy.PositionX = PositionX;
             copy.PositionY = PositionY;
             copy.PlanetIconPath = PlanetIconPath;
+            copy.BattleMapInstanceIDs = new List<string>(BattleMapInstanceIDs);
             ((IEncyclopediaSource)this).CopyEncyclopediaStateTo(copy);
             copy.IsUnexploredView = IsUnexploredView;
             copy.IsDestroyed = IsDestroyed;

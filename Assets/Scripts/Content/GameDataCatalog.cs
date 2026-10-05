@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using Rebellion.Game;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
@@ -22,6 +23,8 @@ public sealed class GameDataCatalog
     public Faction[] Factions { get; }
 
     public PlanetSector[] PlanetSectors { get; }
+
+    public BattleMap[] BattleMaps { get; }
 
     public Building[] Buildings { get; }
 
@@ -50,6 +53,7 @@ public sealed class GameDataCatalog
     /// <param name="generationConfig">The selected scenario's generation configuration.</param>
     /// <param name="factions">The faction templates.</param>
     /// <param name="planetSectors">The planet-sector templates.</param>
+    /// <param name="battleMaps">The battle-map definitions.</param>
     /// <param name="buildings">The building templates.</param>
     /// <param name="capitalShips">The capital-ship templates.</param>
     /// <param name="starfighters">The starfighter templates.</param>
@@ -65,6 +69,7 @@ public sealed class GameDataCatalog
         GameGenerationConfig generationConfig,
         Faction[] factions,
         PlanetSector[] planetSectors,
+        BattleMap[] battleMaps,
         Building[] buildings,
         CapitalShip[] capitalShips,
         Starfighter[] starfighters,
@@ -82,6 +87,8 @@ public sealed class GameDataCatalog
             generationConfig ?? throw new ArgumentNullException(nameof(generationConfig));
         Factions = factions ?? throw new ArgumentNullException(nameof(factions));
         PlanetSectors = planetSectors ?? throw new ArgumentNullException(nameof(planetSectors));
+        BattleMaps = battleMaps ?? throw new ArgumentNullException(nameof(battleMaps));
+        ValidateBattleMapReferences(BattleMaps, PlanetSectors);
         Buildings = buildings ?? throw new ArgumentNullException(nameof(buildings));
         ValidateBuildingUpgrades(Buildings);
         CapitalShips = capitalShips ?? throw new ArgumentNullException(nameof(capitalShips));
@@ -95,6 +102,64 @@ public sealed class GameDataCatalog
         EncyclopediaEntries =
             encyclopediaEntries ?? throw new ArgumentNullException(nameof(encyclopediaEntries));
         FactionThemes = factionThemes ?? throw new ArgumentNullException(nameof(factionThemes));
+    }
+
+    /// <summary>
+    /// Validates battle-map identities and every planet reference to them.
+    /// </summary>
+    /// <param name="battleMaps">The authored battle maps.</param>
+    /// <param name="planetSectors">The planet sectors containing map references.</param>
+    internal static void ValidateBattleMapReferences(
+        IReadOnlyCollection<BattleMap> battleMaps,
+        IReadOnlyCollection<PlanetSector> planetSectors
+    )
+    {
+        if (battleMaps == null)
+            throw new ArgumentNullException(nameof(battleMaps));
+        if (planetSectors == null)
+            throw new ArgumentNullException(nameof(planetSectors));
+
+        HashSet<string> battleMapInstanceIDs = new HashSet<string>(StringComparer.Ordinal);
+        foreach (BattleMap battleMap in battleMaps)
+        {
+            if (battleMap == null || string.IsNullOrWhiteSpace(battleMap.InstanceID))
+                throw new InvalidDataException("Every battle map requires an InstanceID.");
+            if (!battleMapInstanceIDs.Add(battleMap.InstanceID))
+                throw new InvalidDataException(
+                    $"Duplicate battle map InstanceID '{battleMap.InstanceID}'."
+                );
+        }
+
+        foreach (PlanetSector planetSector in planetSectors)
+        {
+            if (planetSector == null)
+                continue;
+
+            foreach (Planet planet in planetSector.GetChildren<Planet>())
+            {
+                if (planet?.BattleMapInstanceIDs == null)
+                    throw new InvalidDataException(
+                        $"Planet '{planet?.InstanceID}' requires a battle-map reference collection."
+                    );
+
+                HashSet<string> planetMapInstanceIDs = new HashSet<string>(StringComparer.Ordinal);
+                foreach (string battleMapInstanceID in planet.BattleMapInstanceIDs)
+                {
+                    if (string.IsNullOrWhiteSpace(battleMapInstanceID))
+                        throw new InvalidDataException(
+                            $"Planet '{planet.InstanceID}' contains a blank battle map InstanceID."
+                        );
+                    if (!planetMapInstanceIDs.Add(battleMapInstanceID))
+                        throw new InvalidDataException(
+                            $"Planet '{planet.InstanceID}' contains duplicate battle map InstanceID '{battleMapInstanceID}'."
+                        );
+                    if (!battleMapInstanceIDs.Contains(battleMapInstanceID))
+                        throw new InvalidDataException(
+                            $"Planet '{planet.InstanceID}' references missing battle map '{battleMapInstanceID}'."
+                        );
+                }
+            }
+        }
     }
 
     /// <summary>

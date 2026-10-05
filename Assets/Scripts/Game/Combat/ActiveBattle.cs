@@ -16,6 +16,7 @@ namespace Rebellion.Game.Combat
         private List<CombatUnit> _combatants = new List<CombatUnit>();
 
         public string FactionInstanceID { get; set; }
+        public string BattleMapSlotID { get; set; }
 
         /// <summary>
         /// Returns the battle units controlled by this participant.

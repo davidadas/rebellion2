@@ -149,13 +149,21 @@ namespace Rebellion.Tests.Game.Combat
                 Map = new BattleMap { Kind = BattleKind.Space },
                 PlanetInstanceID = "PLANET_1",
             };
-            battle.GetParticipants().Add(new BattleParticipant { FactionInstanceID = "FACTION_2" });
+            battle
+                .GetParticipants()
+                .Add(
+                    new BattleParticipant
+                    {
+                        FactionInstanceID = "FACTION_2",
+                        BattleMapSlotID = "defender",
+                    }
+                );
             battle
                 .Map.GetDeploymentRegions()
                 .Add(
                     new BattleMapDeploymentRegion
                     {
-                        ParticipantFactionInstanceID = "FACTION_2",
+                        ParticipantSlotID = "defender",
                         Bounds = new BattleMapBounds { MinimumX = -100f, MaximumX = 100f },
                     }
                 );
@@ -196,9 +204,13 @@ namespace Rebellion.Tests.Game.Combat
             Assert.AreEqual(250f, restoredShip.ModelSize.Depth);
             Assert.AreEqual(2, restored.GetParticipants().Count);
             Assert.AreEqual(
-                "FACTION_2",
-                restored.Map.GetDeploymentRegions()[0].ParticipantFactionInstanceID
+                "defender",
+                restored
+                    .GetParticipants()
+                    .Single(participant => participant.FactionInstanceID == "FACTION_2")
+                    .BattleMapSlotID
             );
+            Assert.AreEqual("defender", restored.Map.GetDeploymentRegions()[0].ParticipantSlotID);
             Assert.AreEqual(-100f, restored.Map.GetDeploymentRegions()[0].Bounds.MinimumX);
             Assert.AreEqual(100f, restored.Map.GetDeploymentRegions()[0].Bounds.MaximumX);
         }

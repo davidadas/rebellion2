@@ -7,6 +7,7 @@ using System.Runtime.CompilerServices;
 using System.Xml;
 using System.Xml.Schema;
 using Rebellion.Game;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
@@ -513,6 +514,7 @@ public static class TestGameData
             new GameGenerationConfig(),
             Array.Empty<Faction>(),
             Array.Empty<PlanetSector>(),
+            Array.Empty<BattleMap>(),
             Array.Empty<Building>(),
             Array.Empty<CapitalShip>(),
             Array.Empty<Starfighter>(),

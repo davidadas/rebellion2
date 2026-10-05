@@ -5,6 +5,7 @@ using System.Linq;
 using System.Xml;
 using System.Xml.Schema;
 using Rebellion.Game;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
@@ -363,6 +364,11 @@ public static class ContentPackLoader
             pack.PlanetSectorsPath,
             "PlanetSectors"
         );
+        BattleMap[] battleMaps = DeserializeGameData<BattleMap[]>(
+            fileResolver,
+            pack.BattleMapsPath,
+            "BattleMaps"
+        );
         Building[] buildings = DeserializeGameData<Building[]>(
             fileResolver,
             pack.BuildingsPath,
@@ -452,6 +458,7 @@ public static class ContentPackLoader
             generationConfig,
             factionData.ToArray(),
             planetSectors,
+            battleMaps,
             buildings,
             capitalShips.ToArray(),
             starfighters.ToArray(),

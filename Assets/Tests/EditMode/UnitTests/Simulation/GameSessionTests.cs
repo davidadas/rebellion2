@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
@@ -2624,6 +2625,7 @@ namespace Rebellion.Tests.Simulation
                     new Faction { InstanceID = factionId, GarrisonTroopTypeID = regimentTypeId },
                 },
                 Array.Empty<PlanetSector>(),
+                Array.Empty<BattleMap>(),
                 Array.Empty<Building>(),
                 Array.Empty<CapitalShip>(),
                 Array.Empty<Starfighter>(),

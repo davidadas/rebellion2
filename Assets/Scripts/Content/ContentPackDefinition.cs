@@ -39,6 +39,9 @@ public sealed class ContentPackDefinition
     public string PlanetSectorsPath { get; set; }
 
     [XmlElement]
+    public string BattleMapsPath { get; set; }
+
+    [XmlElement]
     public string BuildingsPath { get; set; }
 
     [XmlElement]

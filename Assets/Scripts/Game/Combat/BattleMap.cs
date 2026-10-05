@@ -32,7 +32,7 @@ namespace Rebellion.Game.Combat
     [PersistableObject]
     public sealed class BattleMapDeploymentRegion
     {
-        public string ParticipantFactionInstanceID { get; set; }
+        public string ParticipantSlotID { get; set; }
         public BattleMapBounds Bounds { get; set; } = new BattleMapBounds();
     }
 
@@ -46,6 +46,7 @@ namespace Rebellion.Game.Combat
         private List<BattleMapDeploymentRegion> _deploymentRegions =
             new List<BattleMapDeploymentRegion>();
 
+        public string InstanceID { get; set; }
         public BattleKind Kind { get; set; }
         public BattleMapBounds PlayableBounds { get; set; } = new BattleMapBounds();
 
