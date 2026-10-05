@@ -27,6 +27,7 @@ namespace Rebellion.Tests.Simulation
         private GameRoot _game;
         private GameDataCatalog _gameData;
         private Faction _faction;
+        private ManufacturingCommands _manufacturing;
         private Planet _producer;
         private Planet _destination;
         private FactionAutomationCommands _automation;
@@ -61,16 +62,24 @@ namespace Rebellion.Tests.Simulation
             AddResourcePairs(_producer, 1);
             SatisfyGarrison(_producer);
 
-            ManufacturingCommands manufacturing = new ManufacturingCommands(
+            MovementCommands movement = new MovementCommands(
+                _game,
+                new FogOfWarCommands(_game),
+                new FleetCommands(_game),
+                new FogOfWarQueries(_game),
+                new MovementQueries(_game)
+            );
+            _manufacturing = new ManufacturingCommands(
                 _game,
                 new FleetCommands(_game),
-                new ManufacturingQueries(_game)
+                new ManufacturingQueries(_game),
+                movement
             );
             _automation = new FactionAutomationCommands(
                 _game,
                 _gameData,
-                manufacturing,
-                new GarrisonAutomationCommands(_game, _gameData, manufacturing)
+                _manufacturing,
+                new GarrisonAutomationCommands(_game, _gameData, _manufacturing)
             );
         }
 
@@ -616,6 +625,47 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void ProcessFaction_CompletedAutomatedRegiments_RefillsEveryLaneImmediately()
+        {
+            _faction.ManageProduction = false;
+            _destination.SetPopularSupport(_faction.InstanceID, 10);
+            Planet secondProducer = CreateProducer(
+                "PRODUCER_2",
+                _producer.GetParentOfType<PlanetSector>(),
+                100
+            );
+
+            _automation.ProcessFaction(_faction);
+            new ManufacturingTickProcessor(_manufacturing).ProcessTick(_game);
+            _automation.ProcessFaction(_faction);
+
+            Assert.AreEqual(1, GetQueueCount(_producer, ManufacturingType.Troop));
+            Assert.AreEqual(1, GetQueueCount(secondProducer, ManufacturingType.Troop));
+            Assert.AreEqual(0, _producer.GetIdleManufacturingFacilities(ManufacturingType.Troop));
+            Assert.AreEqual(
+                0,
+                secondProducer.GetIdleManufacturingFacilities(ManufacturingType.Troop)
+            );
+        }
+
+        [Test]
+        public void ProcessFaction_CompletedAutomatedBuildings_RefillsEveryLaneImmediately()
+        {
+            _faction.ManageGarrisons = false;
+            AddProductionInfrastructure();
+
+            _automation.ProcessFaction(_faction);
+            new ManufacturingTickProcessor(_manufacturing).ProcessTick(_game);
+            _automation.ProcessFaction(_faction);
+
+            Assert.AreEqual(2, GetQueueCount(_producer, ManufacturingType.Building));
+            Assert.AreEqual(
+                0,
+                _producer.GetIdleManufacturingFacilities(ManufacturingType.Building)
+            );
+        }
+
+        [Test]
         public void ProcessFaction_ReservedTrainingFacility_DoesNotQueueWork()
         {
             _faction.ManageProduction = false;
@@ -810,6 +860,7 @@ namespace Rebellion.Tests.Simulation
         private static GameConfig CreateGameConfig()
         {
             GameConfig config = new GameConfig();
+            config.Movement.DistanceDivisor = 1;
             config.AI.Garrison.SupportThreshold = 50;
             config.AI.Garrison.GarrisonDivisor = 10;
             config.AI.Garrison.UprisingMultiplier = 2;
