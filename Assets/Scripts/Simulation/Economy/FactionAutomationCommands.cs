@@ -52,10 +52,19 @@ namespace Rebellion.Simulation
                 throw new ArgumentNullException(nameof(faction));
 
             if (faction.ManageGarrisons)
-                _garrisonAutomation.TryQueueRegiment(faction);
+                FillGarrisonManufacturingCapacity(faction);
 
             if (faction.ManageProduction)
                 FillProductionManufacturingCapacity(faction);
+        }
+
+        /// <summary>
+        /// Fills every eligible idle troop-manufacturing lane with advisor-managed work.
+        /// </summary>
+        /// <param name="faction">The faction delegating garrison management.</param>
+        private void FillGarrisonManufacturingCapacity(Faction faction)
+        {
+            while (_garrisonAutomation.TryQueueRegiment(faction)) { }
         }
 
         /// <summary>
