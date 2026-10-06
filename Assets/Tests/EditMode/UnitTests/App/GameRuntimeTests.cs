@@ -98,6 +98,16 @@ namespace Rebellion.Tests.App
         }
 
         [Test]
+        public void StartGame_FactionSettings_RestoresActiveContentSettings()
+        {
+            GameRoot game = CreateGameWithLegacyFactionSettings();
+
+            GameSession session = _runtime.StartGame(game);
+
+            AssertFactionSettingsMatchActiveContent(session.Game);
+        }
+
+        [Test]
         public void LoadGame_LegacyFactionSettings_RestoresActiveContentSettings()
         {
             _runtime.StartGame(CreateGame());

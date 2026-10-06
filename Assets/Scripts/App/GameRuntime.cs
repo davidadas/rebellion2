@@ -80,7 +80,7 @@ public sealed class GameRuntime
     /// <returns>The created game session.</returns>
     public GameSession StartGame(GameRoot game)
     {
-        return ReplaceSession(game, reconcileFactionSettings: false);
+        return ReplaceSession(game);
     }
 
     /// <summary>
@@ -90,7 +90,7 @@ public sealed class GameRuntime
     /// <returns>The created game session.</returns>
     public GameSession StartLoadedGame(GameRoot game)
     {
-        GameSession session = ReplaceSession(game, reconcileFactionSettings: true);
+        GameSession session = ReplaceSession(game);
         session.Tick.ReconcileLoadedState();
         return session;
     }
@@ -99,11 +99,8 @@ public sealed class GameRuntime
     /// Replaces the active game session with one backed by the supplied game.
     /// </summary>
     /// <param name="game">The game instance to manage.</param>
-    /// <param name="reconcileFactionSettings">
-    /// Whether to restore authored faction settings after loading persisted state.
-    /// </param>
     /// <returns>The created game session.</returns>
-    private GameSession ReplaceSession(GameRoot game, bool reconcileFactionSettings)
+    private GameSession ReplaceSession(GameRoot game)
     {
         if (_activeGameSession != null)
         {
@@ -111,8 +108,7 @@ public sealed class GameRuntime
         }
 
         ValidateGameContent(game);
-        if (reconcileFactionSettings)
-            ReconcileLoadedFactionSettings(game);
+        ReconcileFactionSettings(game);
         GameSession session = new GameSession(game, _contentPack.GameData);
         GameManager clock = new GameManager(() => session.Game, session.Tick);
         _activeGameSession = session;
@@ -238,7 +234,7 @@ public sealed class GameRuntime
     {
         GameRoot loadedGame = _saveGameManager.LoadGameData(fileName);
         ValidateGameContent(loadedGame);
-        ReconcileLoadedFactionSettings(loadedGame);
+        ReconcileFactionSettings(loadedGame);
         _activeGameSession.ReplaceGame(loadedGame);
         _gameManager.Reset();
         GameReplaced?.Invoke(_activeGameSession.Game);
@@ -272,10 +268,10 @@ public sealed class GameRuntime
     }
 
     /// <summary>
-    /// Restores immutable faction configuration from the active content pack after loading a save.
+    /// Restores immutable faction configuration from the active content pack.
     /// </summary>
-    /// <param name="game">The loaded game whose faction settings will be restored.</param>
-    private void ReconcileLoadedFactionSettings(GameRoot game)
+    /// <param name="game">The game whose faction settings will be restored.</param>
+    private void ReconcileFactionSettings(GameRoot game)
     {
         foreach (Faction faction in game.GetFactions())
         {
