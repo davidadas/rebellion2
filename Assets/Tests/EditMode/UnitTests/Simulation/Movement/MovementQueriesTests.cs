@@ -53,7 +53,7 @@ namespace Rebellion.Tests.Simulation
                     MinTransitTicks = 1,
                     SameSectorMinTransitTicks = 1,
                     DefaultFighterHyperdrive = 60,
-                    DefaultOfficerHyperdrive = 100,
+                    DefaultPersonnelHyperdrive = 100,
                 },
             };
             (
@@ -106,7 +106,7 @@ namespace Rebellion.Tests.Simulation
                     MinTransitTicks = 1,
                     SameSectorMinTransitTicks = 1,
                     DefaultFighterHyperdrive = 60,
-                    DefaultOfficerHyperdrive = 100,
+                    DefaultPersonnelHyperdrive = 100,
                 },
             };
             (_, Planet origin, Planet destination, _, MovementQueries movement) = BuildScene(
@@ -145,7 +145,7 @@ namespace Rebellion.Tests.Simulation
                     MinTransitTicks = 1,
                     SameSectorMinTransitTicks = 1,
                     DefaultFighterHyperdrive = 60,
-                    DefaultOfficerHyperdrive = 100,
+                    DefaultPersonnelHyperdrive = 100,
                 },
             };
             (_, Planet origin, Planet destination, Officer officer, MovementQueries movement) =
@@ -169,7 +169,7 @@ namespace Rebellion.Tests.Simulation
                     MinTransitTicks = 1,
                     SameSectorMinTransitTicks = 1,
                     DefaultFighterHyperdrive = 50,
-                    DefaultOfficerHyperdrive = 100,
+                    DefaultPersonnelHyperdrive = 100,
                 },
             };
             (GameRoot game, Planet origin, Planet destination, _, MovementQueries movement) =
@@ -200,7 +200,7 @@ namespace Rebellion.Tests.Simulation
                     MinTransitTicks = 1,
                     SameSectorMinTransitTicks = 1,
                     DefaultFighterHyperdrive = 60,
-                    DefaultOfficerHyperdrive = 100,
+                    DefaultPersonnelHyperdrive = 100,
                 },
             };
             (_, Planet origin, Planet destination, _, MovementQueries movement) = BuildScene(
@@ -586,7 +586,7 @@ namespace Rebellion.Tests.Simulation
                     MinTransitTicks = 1,
                     SameSectorMinTransitTicks = 1,
                     DefaultFighterHyperdrive = 60,
-                    DefaultOfficerHyperdrive = 100,
+                    DefaultPersonnelHyperdrive = 100,
                 },
             };
         }

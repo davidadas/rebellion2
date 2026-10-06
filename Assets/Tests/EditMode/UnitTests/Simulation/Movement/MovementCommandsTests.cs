@@ -1213,7 +1213,7 @@ namespace Rebellion.Tests.Simulation
                     MinTransitTicks = 1,
                     SameSectorMinTransitTicks = 1,
                     DefaultFighterHyperdrive = 60,
-                    DefaultOfficerHyperdrive = 100,
+                    DefaultPersonnelHyperdrive = 100,
                 },
             };
             GameRoot game = TestGame.Create(config);
@@ -2963,7 +2963,7 @@ namespace Rebellion.Tests.Simulation
                     MinTransitTicks = 1,
                     SameSectorMinTransitTicks = 1,
                     DefaultFighterHyperdrive = 50,
-                    DefaultOfficerHyperdrive = 100,
+                    DefaultPersonnelHyperdrive = 100,
                 },
             };
             (
@@ -3097,7 +3097,7 @@ namespace Rebellion.Tests.Simulation
                     MinTransitTicks = 1,
                     SameSectorMinTransitTicks = 1,
                     DefaultFighterHyperdrive = 60,
-                    DefaultOfficerHyperdrive = 100,
+                    DefaultPersonnelHyperdrive = 100,
                 },
             };
             (
@@ -4641,7 +4641,7 @@ namespace Rebellion.Tests.Simulation
                     MinTransitTicks = 10,
                     SameSectorMinTransitTicks = 1,
                     DefaultFighterHyperdrive = 60,
-                    DefaultOfficerHyperdrive = 100,
+                    DefaultPersonnelHyperdrive = 100,
                 },
             };
             (
@@ -4976,7 +4976,7 @@ namespace Rebellion.Tests.Simulation
                     MinTransitTicks = 1,
                     SameSectorMinTransitTicks = 1,
                     DefaultFighterHyperdrive = 60,
-                    DefaultOfficerHyperdrive = 100,
+                    DefaultPersonnelHyperdrive = 100,
                 },
             };
             GameRoot game = TestGame.Create(config);
@@ -5054,7 +5054,7 @@ namespace Rebellion.Tests.Simulation
                     MinTransitTicks = 1,
                     SameSectorMinTransitTicks = 1,
                     DefaultFighterHyperdrive = 60,
-                    DefaultOfficerHyperdrive = 100,
+                    DefaultPersonnelHyperdrive = 100,
                 },
             };
             GameRoot game = TestGame.Create(config);
