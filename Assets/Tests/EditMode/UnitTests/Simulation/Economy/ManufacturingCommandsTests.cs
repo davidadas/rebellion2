@@ -3120,6 +3120,34 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void StartManufacturing_SpecialForcesToOwnedUncolonizedPlanet_QueuesOrder()
+        {
+            AddProductionFacility("TRAINING", ManufacturingType.Troop);
+            Planet destination = CreateOwnedUncolonizedDestination();
+            SpecialForces template = new SpecialForces
+            {
+                TypeID = "SPECIAL_FORCES",
+                ConstructionCost = 1,
+                BaseBuildSpeed = 1,
+            };
+
+            bool started = _manager.StartManufacturing(
+                _coruscant,
+                template,
+                destination,
+                1,
+                _empire.InstanceID
+            );
+
+            Assert.IsTrue(started);
+            SpecialForces queued = _coruscant
+                .GetManufacturingQueue()[ManufacturingType.Troop]
+                .OfType<SpecialForces>()
+                .Single();
+            Assert.AreSame(destination, queued.GetParent());
+        }
+
+        [Test]
         public void Enqueue_MultipleBuildings_MaintainsOrder()
         {
             Building building1 = new Building
