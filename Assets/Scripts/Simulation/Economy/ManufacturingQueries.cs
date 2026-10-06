@@ -150,7 +150,8 @@ namespace Rebellion.Simulation
                 {
                     Regiment _ => true,
                     SpecialForces _ => planet.CanHostOwnedUnits(),
-                    Starfighter _ => planet.CanHostOwnedUnits(),
+                    Starfighter _ => planet.CanHostOwnedUnits()
+                        && !planet.IsBlockadedFor(ownerInstanceId),
                     Building _ => planet.GetAvailableEnergy() >= count,
                     _ => false,
                 };

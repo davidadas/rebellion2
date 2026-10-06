@@ -591,6 +591,67 @@ namespace Rebellion.Tests.AI.Proposals
         }
 
         [Test]
+        public void CanSelect_WithPlanetaryStarfighterForBlockadedPlanet_ReturnsFalse()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
+            Planet producer = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "shipyard-world",
+                empire.InstanceID
+            );
+            Planet destination = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "blockaded-world",
+                empire.InstanceID
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                producer,
+                "shipyard-building",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            Fleet blockadingFleet = EntityFactory.CreateFleet(
+                "blockading-fleet",
+                rebels.InstanceID
+            );
+            game.AttachNode(blockadingFleet, destination);
+            game.AttachNode(
+                AITestSceneBuilder.CreateCapitalShip("blockading-ship", rebels.InstanceID),
+                blockadingFleet
+            );
+            Starfighter template = AITestSceneBuilder.CreateStarfighter(
+                "planetary-fighter",
+                empire.InstanceID
+            );
+            AIProductionDemand demand = new AIProductionDemand(
+                "planetary-starfighter-demand",
+                AIProductionDemandKind.PlanetaryStarfighterReserve,
+                ManufacturingType.Ship,
+                BuildingType.None,
+                destination,
+                1,
+                baseDemandPercent: 100
+            );
+            AIManufactureProposal proposal = new AIManufactureProposal(
+                demand,
+                producer,
+                new Technology(template),
+                distributesDemand: true
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            Assert.IsFalse(proposal.CanSelect(context));
+
+            proposal.Execute(context);
+
+            Assert.IsFalse(producer.GetManufacturingQueue().ContainsKey(ManufacturingType.Ship));
+        }
+
+        [Test]
         public void CanExecute_WithDistributedBatchForMovingFleet_ReturnsFalse()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);

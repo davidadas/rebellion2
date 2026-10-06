@@ -1940,6 +1940,31 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void RequestMove_ManufacturedStarfighterForBlockadedPlanet_DeploysAtProducer()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet blockadedDestination,
+                Planet nearestSafeDestination,
+                Planet fartherSafeDestination,
+                BlockadeTracker blockade,
+                MovementCommands movement,
+                GameResultBus resultBus
+            ) scene = BuildBlockadeRetargetingScene();
+            Starfighter starfighter = EntityFactory.CreateStarfighter("fighter", "empire");
+            starfighter.ManufacturingStatus = ManufacturingStatus.Delivering;
+            scene.game.AttachNode(starfighter, scene.blockadedDestination);
+            AddBlockadingFleet(scene.game, scene.blockadedDestination);
+
+            scene.movement.RequestMove(starfighter, scene.blockadedDestination, scene.origin);
+
+            Assert.AreSame(scene.origin, starfighter.GetParent());
+            Assert.IsNull(starfighter.Movement);
+            Assert.AreEqual(ManufacturingStatus.Complete, starfighter.ManufacturingStatus);
+        }
+
+        [Test]
         public void RequestMove_RegimentFromBlockadedPlanet_LowRoll_DestroysRegiment()
         {
             // FixedRNG returns 0 -> 0 < 50 -> loss

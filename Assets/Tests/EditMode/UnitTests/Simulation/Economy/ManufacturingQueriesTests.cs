@@ -144,6 +144,37 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void CanAcceptManufacturingOrder_StarfighterForBlockadedPlanet_ReturnsFalse()
+        {
+            GameRoot game = CreateOrderTestGame();
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
+            Planet producer = CreateOrderTestShipyardPlanet(game, "producer", "empire");
+            Planet destination = CreateOrderTestPlanet(game, "destination", "empire");
+            Fleet blockadingFleet = EntityFactory.CreateFleet("blockading-fleet", "rebels");
+            CapitalShip blockadingShip = new CapitalShip
+            {
+                InstanceID = "blockading-ship",
+                OwnerInstanceID = "rebels",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaxHullStrength = 100,
+                CurrentHullStrength = 100,
+            };
+            game.AttachNode(blockadingFleet, destination);
+            game.AttachNode(blockadingShip, blockadingFleet);
+            Starfighter template = CreateOrderTestStarfighterTemplate("fighter", "empire");
+
+            bool canAccept = ManufacturingQueries.CanAcceptManufacturingOrder(
+                producer,
+                template,
+                destination,
+                1,
+                "empire"
+            );
+
+            Assert.IsFalse(canAccept);
+        }
+
+        [Test]
         public void CanStartManufacturing_ResourceFacilityWithoutMaintenanceHeadroom_ReturnsTrue()
         {
             GameRoot game = CreateOrderTestGame();
@@ -505,6 +536,28 @@ namespace Rebellion.Tests.Simulation
                 ConstructionCost = 10,
                 MaintenanceCost = maintenanceCost,
                 BaseBuildSpeed = 1,
+            };
+        }
+
+        /// <summary>
+        /// Creates an order test starfighter template.
+        /// </summary>
+        /// <param name="typeId">The type id.</param>
+        /// <param name="factionId">The manufacturing faction id.</param>
+        /// <returns>The created starfighter template.</returns>
+        private static Starfighter CreateOrderTestStarfighterTemplate(
+            string typeId,
+            string factionId
+        )
+        {
+            return new Starfighter
+            {
+                TypeID = typeId,
+                DisplayName = typeId,
+                ConstructionCost = 10,
+                MaintenanceCost = 0,
+                BaseBuildSpeed = 1,
+                ManufacturingFactionInstanceIDs = new List<string> { factionId },
             };
         }
 

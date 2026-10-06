@@ -263,6 +263,18 @@ namespace Rebellion.Simulation
             Planet destinationPlanet = MovementQueries.RequireDestinationPlanet(destination);
 
             if (
+                unit is Starfighter
+                && destinationPlanet != origin
+                && MovementQueries.IsBlockedFromDestinationByBlockade(unit, destinationPlanet)
+            )
+            {
+                _game.MoveNode(unit, origin);
+                unit.Movement = null;
+                CompleteManufacturingDelivery(unit);
+                return;
+            }
+
+            if (
                 destinationPlanet.GetOwnerInstanceID() != unit.GetOwnerInstanceID()
                 && !MovementQueries.CanEnterHostileOrbit(unit, destination)
             )
