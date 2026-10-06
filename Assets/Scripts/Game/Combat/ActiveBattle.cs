@@ -37,7 +37,8 @@ namespace Rebellion.Game.Combat
         [PersistableMember(Name = "Participants")]
         private List<BattleParticipant> _participants = new List<BattleParticipant>();
 
-        public BattleMap Map { get; set; } = new BattleMap();
+        public string BattleMapInstanceID { get; set; }
+        public BattleKind Kind { get; set; }
         public string PlanetInstanceID { get; set; }
 
         /// <summary>
@@ -65,7 +66,7 @@ namespace Rebellion.Game.Combat
                     "A combatant must have an owner before entering battle.",
                     nameof(sourceUnit)
                 );
-            if (Map.Kind != BattleKind.Space)
+            if (Kind != BattleKind.Space)
                 throw new InvalidOperationException(
                     "Capital ships and starfighters can only enter space battles."
                 );

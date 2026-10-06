@@ -1,6 +1,5 @@
 using System.IO;
 using NUnit.Framework;
-using Rebellion.Game.Combat;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 
