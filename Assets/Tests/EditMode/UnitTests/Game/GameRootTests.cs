@@ -201,9 +201,11 @@ namespace Rebellion.Tests.Game
         [TestCase(BattleKind.Ground)]
         public void ActiveBattle_WhenPresent_RoundTripsDirectlyUnderGame(BattleKind kind)
         {
+            string battleMapInstanceID = $"{kind.ToString().ToUpperInvariant()}_MAP";
             ActiveBattle activeBattle = new ActiveBattle
             {
-                Map = new BattleMap { Kind = kind },
+                BattleMapInstanceID = battleMapInstanceID,
+                Kind = kind,
                 PlanetInstanceID = "PLANET1",
             };
             activeBattle
@@ -224,15 +226,6 @@ namespace Rebellion.Tests.Game
                         BattleMapSlotID = "defender",
                     }
                 );
-            activeBattle
-                .Map.GetDeploymentRegions()
-                .Add(
-                    new BattleMapDeploymentRegion
-                    {
-                        ParticipantSlotID = "attacker",
-                        Bounds = new BattleMapBounds { MinimumX = -100f, MaximumX = 0f },
-                    }
-                );
             _game.SetActiveBattle(activeBattle);
 
             string xml = SerializationHelper.Serialize(_game);
@@ -240,12 +233,18 @@ namespace Rebellion.Tests.Game
             Assert.IsNotNull(gameElement);
             XElement battleElement = gameElement.Element("ActiveBattle");
             Assert.IsNotNull(battleElement);
-            Assert.AreEqual(kind.ToString(), battleElement.Element("Map")?.Element("Kind")?.Value);
+            Assert.AreEqual(
+                battleMapInstanceID,
+                battleElement.Element("BattleMapInstanceID")?.Value
+            );
+            Assert.AreEqual(kind.ToString(), battleElement.Element("Kind")?.Value);
+            Assert.IsNull(battleElement.Element("Map"));
             Assert.AreEqual("PLANET1", battleElement.Element("PlanetInstanceID")?.Value);
 
             GameRoot restored = SerializationHelper.Deserialize<GameRoot>(xml);
             Assert.IsNotNull(restored.GetActiveBattle());
-            Assert.AreEqual(kind, restored.GetActiveBattle().Map.Kind);
+            Assert.AreEqual(battleMapInstanceID, restored.GetActiveBattle().BattleMapInstanceID);
+            Assert.AreEqual(kind, restored.GetActiveBattle().Kind);
             Assert.AreEqual(2, restored.GetActiveBattle().GetParticipants().Count);
             Assert.AreEqual(
                 "FACTION1",
@@ -256,14 +255,6 @@ namespace Rebellion.Tests.Game
                 restored.GetActiveBattle().GetParticipants()[1].FactionInstanceID
             );
             Assert.AreEqual("PLANET1", restored.GetActiveBattle().PlanetInstanceID);
-            Assert.AreEqual(
-                "attacker",
-                restored.GetActiveBattle().Map.GetDeploymentRegions()[0].ParticipantSlotID
-            );
-            Assert.AreEqual(
-                -100f,
-                restored.GetActiveBattle().Map.GetDeploymentRegions()[0].Bounds.MinimumX
-            );
         }
 
         [Test]

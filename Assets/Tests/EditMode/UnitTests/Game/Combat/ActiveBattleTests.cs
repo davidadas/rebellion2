@@ -21,7 +21,7 @@ namespace Rebellion.Tests.Game.Combat
                 OwnerInstanceID = "FACTION_1",
                 CurrentHullStrength = 75,
             };
-            ActiveBattle battle = new ActiveBattle();
+            ActiveBattle battle = CreateBattle();
 
             IReadOnlyList<CombatUnit> addedCombatants = battle.AddCombatants(source);
             BattleParticipant participant = battle.GetParticipants().Single();
@@ -42,7 +42,7 @@ namespace Rebellion.Tests.Game.Combat
                 MaxSquadronSize = 12,
                 CurrentSquadronSize = 3,
             };
-            ActiveBattle battle = new ActiveBattle();
+            ActiveBattle battle = CreateBattle();
 
             IReadOnlyList<CombatUnit> addedCombatants = battle.AddCombatants(source);
             BattleParticipant participant = battle.GetParticipants().Single();
@@ -71,7 +71,7 @@ namespace Rebellion.Tests.Game.Combat
                 InstanceID = "CAPITAL_SHIP_2",
                 OwnerInstanceID = "FACTION_2",
             };
-            ActiveBattle battle = new ActiveBattle();
+            ActiveBattle battle = CreateBattle();
 
             battle.AddCombatants(firstSource);
             battle.AddCombatants(secondSource);
@@ -103,10 +103,7 @@ namespace Rebellion.Tests.Game.Combat
                 InstanceID = "CAPITAL_SHIP_1",
                 OwnerInstanceID = "FACTION_1",
             };
-            ActiveBattle battle = new ActiveBattle
-            {
-                Map = new BattleMap { Kind = BattleKind.Ground },
-            };
+            ActiveBattle battle = CreateBattle(BattleKind.Ground);
 
             Assert.Throws<InvalidOperationException>(() => battle.AddCombatants(source));
 
@@ -121,7 +118,7 @@ namespace Rebellion.Tests.Game.Combat
                 InstanceID = "REGIMENT_1",
                 OwnerInstanceID = "FACTION_1",
             };
-            ActiveBattle battle = new ActiveBattle();
+            ActiveBattle battle = CreateBattle();
 
             Assert.Throws<ArgumentException>(() => battle.AddCombatants(source));
 
@@ -144,11 +141,8 @@ namespace Rebellion.Tests.Game.Combat
                     Depth = 250f,
                 },
             };
-            ActiveBattle battle = new ActiveBattle
-            {
-                Map = new BattleMap { Kind = BattleKind.Space },
-                PlanetInstanceID = "PLANET_1",
-            };
+            ActiveBattle battle = CreateBattle();
+            battle.PlanetInstanceID = "PLANET_1";
             battle
                 .GetParticipants()
                 .Add(
@@ -156,15 +150,6 @@ namespace Rebellion.Tests.Game.Combat
                     {
                         FactionInstanceID = "FACTION_2",
                         BattleMapSlotID = "defender",
-                    }
-                );
-            battle
-                .Map.GetDeploymentRegions()
-                .Add(
-                    new BattleMapDeploymentRegion
-                    {
-                        ParticipantSlotID = "defender",
-                        Bounds = new BattleMapBounds { MinimumX = -100f, MaximumX = 100f },
                     }
                 );
             CombatUnit combatUnit = battle.AddCombatants(source)[0];
@@ -210,9 +195,22 @@ namespace Rebellion.Tests.Game.Combat
                     .Single(participant => participant.FactionInstanceID == "FACTION_2")
                     .BattleMapSlotID
             );
-            Assert.AreEqual("defender", restored.Map.GetDeploymentRegions()[0].ParticipantSlotID);
-            Assert.AreEqual(-100f, restored.Map.GetDeploymentRegions()[0].Bounds.MinimumX);
-            Assert.AreEqual(100f, restored.Map.GetDeploymentRegions()[0].Bounds.MaximumX);
+            Assert.AreEqual("SPACE_MAP", restored.BattleMapInstanceID);
+            StringAssert.DoesNotContain("DeploymentRegions", xml);
+        }
+
+        /// <summary>
+        /// Creates a battle with its map identity and battle kind initialized.
+        /// </summary>
+        /// <param name="kind">The battle environment kind.</param>
+        /// <returns>The initialized battle.</returns>
+        private static ActiveBattle CreateBattle(BattleKind kind = BattleKind.Space)
+        {
+            return new ActiveBattle
+            {
+                BattleMapInstanceID = kind == BattleKind.Space ? "SPACE_MAP" : "GROUND_MAP",
+                Kind = kind,
+            };
         }
     }
 }
