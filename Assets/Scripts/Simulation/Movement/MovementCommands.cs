@@ -435,8 +435,20 @@ namespace Rebellion.Simulation
             foreach (KeyValuePair<ContainerNode, List<IMovable>> returnGroup in returnGroups)
             {
                 string movementGroupID = Guid.NewGuid().ToString("N");
+                int groupTransitTicks = CalculateGroupTransitTicks(
+                    returnGroup.Value,
+                    Enumerable.Repeat(returnGroup.Key, returnGroup.Value.Count).ToList()
+                );
                 foreach (IMovable unit in returnGroup.Value)
-                    ExecuteMove(unit, returnGroup.Key, _pendingResults, movementGroupID);
+                {
+                    ExecuteMove(
+                        unit,
+                        returnGroup.Key,
+                        _pendingResults,
+                        movementGroupID,
+                        transitTicksOverride: groupTransitTicks
+                    );
+                }
             }
 
             return strandedUnits.Distinct().ToList();
@@ -1587,6 +1599,7 @@ namespace Rebellion.Simulation
         /// <param name="results">The collection receiving movement results.</param>
         /// <param name="movementGroupID">The shared movement order id for grouped moves.</param>
         /// <param name="sourceEventInstanceID">The event that requested the movement, if any.</param>
+        /// <param name="transitTicksOverride">The common group duration, when applicable.</param>
         /// <param name="opposingBlockadeAtDeparture">
         /// Whether the unit faced an opposing blockade before a preceding state transition, or
         /// null to inspect the current planet state.
@@ -1598,6 +1611,7 @@ namespace Rebellion.Simulation
             ICollection<GameResult> results,
             string movementGroupID = null,
             string sourceEventInstanceID = null,
+            int? transitTicksOverride = null,
             bool? opposingBlockadeAtDeparture = null
         )
         {
@@ -1619,6 +1633,7 @@ namespace Rebellion.Simulation
                 results,
                 movementGroupID,
                 sourceEventInstanceID,
+                transitTicksOverride,
                 opposingBlockadeAtDeparture: opposingBlockadeAtDeparture
             );
         }

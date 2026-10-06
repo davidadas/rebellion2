@@ -159,6 +159,37 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void CalculateTransitTicks_SpecialForces_UsesConfiguredOfficerHyperdrive()
+        {
+            GameConfig config = new GameConfig
+            {
+                Movement = new GameConfig.MovementConfig
+                {
+                    DistanceDivisor = 5,
+                    MinTransitTicks = 1,
+                    SameSectorMinTransitTicks = 1,
+                    DefaultFighterHyperdrive = 50,
+                    DefaultOfficerHyperdrive = 100,
+                },
+            };
+            (GameRoot game, Planet origin, Planet destination, _, MovementQueries movement) =
+                BuildScene(config);
+            destination.PositionX = 100;
+            destination.PositionY = 0;
+            SpecialForces specialForces = new SpecialForces
+            {
+                InstanceID = "special-forces",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(specialForces, origin);
+
+            int transitTicks = movement.CalculateTransitTicks(specialForces, origin, destination);
+
+            Assert.AreEqual(20, transitTicks);
+        }
+
+        [Test]
         public void CalculateTransitTicks_ZeroDistanceDivisor_ThrowsInvalidOperationException()
         {
             GameConfig config = new GameConfig

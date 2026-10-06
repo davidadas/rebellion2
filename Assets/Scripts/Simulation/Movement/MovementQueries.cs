@@ -54,10 +54,24 @@ namespace Rebellion.Simulation
                 participant.MissionReturnParentInstanceID
             );
 
-            if (CanUseSafeRelocationDestination(participant, returnParent, missionPlanet))
+            if (
+                CanUseSafeRelocationDestination(
+                    participant,
+                    returnParent,
+                    missionPlanet,
+                    allowOriginPlanet: true
+                )
+            )
                 return returnParent;
 
-            if (CanUseSafeRelocationDestination(participant, returnLocation, missionPlanet))
+            if (
+                CanUseSafeRelocationDestination(
+                    participant,
+                    returnLocation,
+                    missionPlanet,
+                    allowOriginPlanet: true
+                )
+            )
                 return returnLocation;
 
             return FindSafeRelocationDestinations(participant, missionPlanet).FirstOrDefault();
@@ -1401,7 +1415,7 @@ namespace Rebellion.Simulation
             if (unit is CapitalShip capitalShip)
                 return Math.Max(capitalShip.Hyperdrive, 1);
 
-            if (unit is Officer)
+            if (unit is Officer or SpecialForces)
                 return Math.Max(_game.GetConfig().Movement.DefaultOfficerHyperdrive, 1);
 
             return Math.Max(_game.GetConfig().Movement.DefaultFighterHyperdrive, 1);

@@ -2916,6 +2916,101 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void ReturnFromMission_RecordedMissionPlanet_KeepsEscortAndCaptiveAtPlanet()
+        {
+            (GameRoot game, Planet _, Planet missionPlanet, Officer _, MovementCommands movement) =
+                BuildScene();
+            SpecialForces escort = new SpecialForces
+            {
+                InstanceID = "escort",
+                DisplayName = "escort",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(escort, missionPlanet);
+            StubMission mission = new StubMission("empire", missionPlanet.InstanceID);
+            game.AttachNode(mission, missionPlanet);
+            movement.SendToMission(escort, mission);
+            escort.Movement = null;
+
+            Officer captive = EntityFactory.CreateOfficer("captive", "rebels");
+            captive.IsCaptured = true;
+            captive.CaptorInstanceID = "empire";
+            game.AttachNode(captive, missionPlanet);
+
+            List<IMovable> stranded = movement.ReturnFromMission(
+                new IMissionParticipant[] { escort },
+                new IMovable[] { captive },
+                out Planet returnLocation
+            );
+
+            Assert.IsEmpty(stranded);
+            Assert.AreSame(missionPlanet, returnLocation);
+            Assert.AreSame(missionPlanet, escort.GetParent());
+            Assert.AreSame(missionPlanet, captive.GetParent());
+            Assert.IsNull(escort.Movement);
+            Assert.IsNull(captive.Movement);
+        }
+
+        [Test]
+        public void ReturnFromMission_SpecialForcesEscortAndCaptiveOfficer_ArriveTogether()
+        {
+            GameConfig config = new GameConfig
+            {
+                Movement = new GameConfig.MovementConfig
+                {
+                    DistanceDivisor = 5,
+                    MinTransitTicks = 1,
+                    SameSectorMinTransitTicks = 1,
+                    DefaultFighterHyperdrive = 50,
+                    DefaultOfficerHyperdrive = 100,
+                },
+            };
+            (
+                GameRoot game,
+                Planet returnPlanet,
+                Planet missionPlanet,
+                Officer _,
+                MovementCommands movement
+            ) = BuildScene(config);
+            SpecialForces escort = new SpecialForces
+            {
+                InstanceID = "escort",
+                DisplayName = "escort",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(escort, returnPlanet);
+            StubMission mission = new StubMission("empire", missionPlanet.InstanceID);
+            game.AttachNode(mission, missionPlanet);
+            movement.SendToMission(escort, mission);
+            escort.Movement = null;
+
+            Officer captive = EntityFactory.CreateOfficer("captive", "rebels");
+            captive.IsCaptured = true;
+            captive.CaptorInstanceID = "empire";
+            game.AttachNode(captive, missionPlanet);
+            int expectedTransitTicks = new MovementQueries(game).CalculateTransitTicks(
+                captive,
+                missionPlanet,
+                returnPlanet
+            );
+
+            List<IMovable> stranded = movement.ReturnFromMission(
+                new IMissionParticipant[] { escort },
+                new IMovable[] { captive },
+                out _
+            );
+
+            Assert.IsEmpty(stranded);
+            Assert.NotNull(escort.Movement);
+            Assert.NotNull(captive.Movement);
+            Assert.AreEqual(expectedTransitTicks, escort.Movement.TransitTicks);
+            Assert.AreEqual(expectedTransitTicks, captive.Movement.TransitTicks);
+            Assert.AreEqual(escort.Movement.MovementGroupID, captive.Movement.MovementGroupID);
+        }
+
+        [Test]
         public void ReturnFromMission_PassengerWithoutParticipant_ReturnsPassengerAsStranded()
         {
             (
