@@ -23,6 +23,7 @@ namespace Rebellion.Simulation
         private readonly FogOfWarCommands _fogOfWar;
         private readonly FogOfWarQueries _fogOfWarQueries;
         private readonly EvacuationLossResolver _evacuationLosses;
+        private readonly PersonnelTransitEncounterResolver _personnelTransitEncounters;
         private readonly FleetCommands _fleetSystem;
         private readonly MovementQueries _queries;
         private readonly List<GameResult> _pendingResults = new List<GameResult>();
@@ -53,7 +54,12 @@ namespace Rebellion.Simulation
             _game = game ?? throw new ArgumentNullException(nameof(game));
             _fogOfWar = fogOfWar ?? throw new ArgumentNullException(nameof(fogOfWar));
             _fleetSystem = fleetSystem ?? throw new ArgumentNullException(nameof(fleetSystem));
-            _evacuationLosses = new EvacuationLossResolver(game, evacuationRandom ?? game.Random);
+            IRandomNumberProvider movementRandom = evacuationRandom ?? game.Random;
+            _evacuationLosses = new EvacuationLossResolver(game, movementRandom);
+            _personnelTransitEncounters = new PersonnelTransitEncounterResolver(
+                game,
+                movementRandom
+            );
             _fogOfWarQueries =
                 fogOfWarQueries ?? throw new ArgumentNullException(nameof(fogOfWarQueries));
             _queries = queries ?? throw new ArgumentNullException(nameof(queries));
@@ -458,7 +464,8 @@ namespace Rebellion.Simulation
                         returnGroup.Key,
                         _pendingResults,
                         movementGroupID,
-                        transitTicksOverride: groupTransitTicks
+                        transitTicksOverride: groupTransitTicks,
+                        personnelDepartureResolved: true
                     );
                 }
             }
@@ -818,9 +825,17 @@ namespace Rebellion.Simulation
 
             int groupTransitTicks = CalculateGroupTransitTicks(units, destinations);
             string movementGroupID = Guid.NewGuid().ToString("N");
+            HashSet<IMovable> stoppedPersonnel = ResolvePersonnelTransitDepartures(
+                units,
+                destinations,
+                results
+            );
             for (int index = 0; index < units.Count; index++)
             {
                 IMovable unit = units[index];
+                if (stoppedPersonnel.Contains(unit))
+                    continue;
+
                 ContainerNode resolvedDestination = destinations[index];
                 if (MovementQueries.IsManufacturingDestinationChange(unit))
                     ApplyManufacturingDestination(unit, resolvedDestination);
@@ -831,11 +846,65 @@ namespace Rebellion.Simulation
                         results,
                         movementGroupID,
                         sourceEventInstanceID,
-                        groupTransitTicks
+                        groupTransitTicks,
+                        personnelDepartureResolved: true
                     );
             }
 
             return true;
+        }
+
+        /// <summary>
+        /// Resolves hostile-orbit encounters before a grouped personnel movement order departs.
+        /// </summary>
+        /// <param name="units">The units in the accepted movement group.</param>
+        /// <param name="destinations">The resolved destination for each unit.</param>
+        /// <param name="results">The collection receiving encounter results.</param>
+        /// <returns>The personnel that can no longer depart.</returns>
+        private HashSet<IMovable> ResolvePersonnelTransitDepartures(
+            IReadOnlyList<IMovable> units,
+            IReadOnlyList<ContainerNode> destinations,
+            ICollection<GameResult> results
+        )
+        {
+            List<IMovable> personnel = new List<IMovable>();
+            for (int index = 0; index < units.Count; index++)
+            {
+                IMovable unit = units[index];
+                if (
+                    !IsFreePersonnel(unit)
+                    || destinations[index] is Mission
+                    || unit.GetParent() is Mission
+                )
+                    continue;
+
+                Planet originPlanet = unit.GetParentOfType<Planet>();
+                Planet destinationPlanet = MovementQueries.RequireDestinationPlanet(
+                    destinations[index]
+                );
+                if (originPlanet != null && originPlanet != destinationPlanet)
+                    personnel.Add(unit);
+            }
+
+            foreach (
+                IGrouping<Planet, IMovable> originGroup in personnel.GroupBy(unit =>
+                    unit.GetParentOfType<Planet>()
+                )
+            )
+                _personnelTransitEncounters.Resolve(originGroup.ToList(), originGroup.Key, results);
+
+            HashSet<IMovable> stopped = personnel
+                .Where(unit => !CanContinuePersonnelMovement(unit))
+                .ToHashSet();
+            foreach (
+                Officer captive in units.OfType<Officer>().Where(officer => officer.IsCaptured)
+            )
+            {
+                if (!HasAvailableEscort(captive, units))
+                    stopped.Add(captive);
+            }
+
+            return stopped;
         }
 
         /// <summary>
@@ -1032,6 +1101,9 @@ namespace Rebellion.Simulation
                 return;
             }
 
+            if (TryResolvePersonnelTransitArrival(movable, destinationPlanet, results))
+                return;
+
             if (TryRejectBlockadedArrival(movable, destinationPlanet, results))
                 return;
 
@@ -1064,6 +1136,91 @@ namespace Rebellion.Simulation
                 );
                 HandleArrivalRejection(movable, destinationPlanet);
             }
+        }
+
+        /// <summary>
+        /// Resolves the shared hostile-orbit encounter for personnel completing one movement group.
+        /// </summary>
+        /// <param name="movable">The arriving unit.</param>
+        /// <param name="destinationPlanet">The destination planet.</param>
+        /// <param name="results">The collection receiving encounter results.</param>
+        /// <returns>True when the arriving unit was captured, killed, or destroyed.</returns>
+        private bool TryResolvePersonnelTransitArrival(
+            IMovable movable,
+            Planet destinationPlanet,
+            List<GameResult> results
+        )
+        {
+            if (
+                !IsFreePersonnel(movable)
+                || movable.Movement?.PersonnelArrivalEncounterResolved != false
+            )
+                return false;
+
+            string movementGroupID = movable.Movement.MovementGroupID;
+            List<IMovable> personnel = string.IsNullOrEmpty(movementGroupID)
+                ? new List<IMovable> { movable }
+                : destinationPlanet
+                    .GetChildren<IMovable>(recursive: true)
+                    .Where(candidate =>
+                        candidate is Officer or SpecialForces
+                        && candidate.Movement?.MovementGroupID == movementGroupID
+                        && candidate.Movement.TicksRemaining() <= 1
+                    )
+                    .ToList();
+
+            foreach (IMovable participant in personnel)
+                participant.Movement.PersonnelArrivalEncounterResolved = true;
+
+            _personnelTransitEncounters.Resolve(personnel, destinationPlanet, results);
+            return !CanContinuePersonnelMovement(movable);
+        }
+
+        /// <summary>
+        /// Returns whether a unit is free personnel eligible for a transit encounter.
+        /// </summary>
+        /// <param name="movable">The unit to inspect.</param>
+        /// <returns>True for an active, uncaptured officer or special-forces unit.</returns>
+        private static bool IsFreePersonnel(IMovable movable)
+        {
+            return movable switch
+            {
+                Officer officer => !officer.IsKilled && !officer.IsCaptured,
+                SpecialForces specialForces => specialForces.IsActive(),
+                _ => false,
+            };
+        }
+
+        /// <summary>
+        /// Returns whether a captive still has an eligible escort after a departure encounter.
+        /// </summary>
+        /// <param name="captive">The captured officer requiring an escort.</param>
+        /// <param name="units">The complete movement group.</param>
+        /// <returns>True when a surviving free escort remains in the group.</returns>
+        private static bool HasAvailableEscort(Officer captive, IReadOnlyList<IMovable> units)
+        {
+            return !string.IsNullOrEmpty(captive.CaptorInstanceID)
+                && units.Any(unit =>
+                    !ReferenceEquals(unit, captive)
+                    && unit.GetOwnerInstanceID() == captive.CaptorInstanceID
+                    && IsFreePersonnel(unit)
+                );
+        }
+
+        /// <summary>
+        /// Returns whether personnel remain free and active after a transit encounter.
+        /// </summary>
+        /// <param name="movable">The personnel unit to inspect.</param>
+        /// <returns>True when movement may continue.</returns>
+        private static bool CanContinuePersonnelMovement(IMovable movable)
+        {
+            return movable switch
+            {
+                Officer officer => !officer.IsKilled && !officer.IsCaptured,
+                SpecialForces specialForces => specialForces.IsActive()
+                    && specialForces.GetParent() != null,
+                _ => true,
+            };
         }
 
         /// <summary>
@@ -1616,6 +1773,9 @@ namespace Rebellion.Simulation
         /// Whether the unit faced an opposing blockade before a preceding state transition, or
         /// null to inspect the current planet state.
         /// </param>
+        /// <param name="personnelDepartureResolved">
+        /// Whether a containing movement group already resolved its shared personnel encounter.
+        /// </param>
         /// <returns>True when the movement order was accepted; otherwise false.</returns>
         private bool ExecuteMove(
             IMovable unit,
@@ -1624,7 +1784,8 @@ namespace Rebellion.Simulation
             string movementGroupID = null,
             string sourceEventInstanceID = null,
             int? transitTicksOverride = null,
-            bool? opposingBlockadeAtDeparture = null
+            bool? opposingBlockadeAtDeparture = null,
+            bool personnelDepartureResolved = false
         )
         {
             movementGroupID ??= Guid.NewGuid().ToString("N");
@@ -1646,7 +1807,8 @@ namespace Rebellion.Simulation
                 movementGroupID,
                 sourceEventInstanceID,
                 transitTicksOverride,
-                opposingBlockadeAtDeparture: opposingBlockadeAtDeparture
+                opposingBlockadeAtDeparture: opposingBlockadeAtDeparture,
+                personnelDepartureResolved: personnelDepartureResolved
             );
         }
 
@@ -1663,6 +1825,9 @@ namespace Rebellion.Simulation
         /// Whether the unit faced an opposing blockade before a preceding state transition, or
         /// null to inspect the current planet state.
         /// </param>
+        /// <param name="personnelDepartureResolved">
+        /// Whether a containing movement group already resolved its shared personnel encounter.
+        /// </param>
         /// <returns>True when the movement order was accepted; otherwise false.</returns>
         private bool ExecuteAcceptedMove(
             IMovable unit,
@@ -1671,7 +1836,8 @@ namespace Rebellion.Simulation
             string movementGroupID,
             string sourceEventInstanceID = null,
             int? transitTicksOverride = null,
-            bool? opposingBlockadeAtDeparture = null
+            bool? opposingBlockadeAtDeparture = null,
+            bool personnelDepartureResolved = false
         )
         {
             Planet destinationPlanet = MovementQueries.RequireDestinationPlanet(destination);
@@ -1683,6 +1849,19 @@ namespace Rebellion.Simulation
                     $"RequestMove rejected: {unit.GetDisplayName()} is not at a planet location and cannot move."
                 );
                 return false;
+            }
+
+            if (
+                !personnelDepartureResolved
+                && destinationPlanet != originPlanet
+                && destination is not Mission
+                && unit.GetParent() is not Mission
+                && unit is Officer or SpecialForces
+            )
+            {
+                _personnelTransitEncounters.Resolve(new[] { unit }, originPlanet, results);
+                if (!CanContinuePersonnelMovement(unit))
+                    return true;
             }
 
             EvacuationLossesResult evacuationLoss = _evacuationLosses.Resolve(

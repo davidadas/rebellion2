@@ -21,6 +21,9 @@ namespace Rebellion.Game.Units
         public string SourceEventInstanceID { get; set; }
 
         [PersistableIgnore]
+        public bool PersonnelArrivalEncounterResolved { get; set; }
+
+        [PersistableIgnore]
         public Point OriginPosition
         {
             get => new Point(OriginPositionX, OriginPositionY);
@@ -64,6 +67,7 @@ namespace Rebellion.Game.Units
                 TicksElapsed = TicksElapsed,
                 MovementGroupID = MovementGroupID,
                 SourceEventInstanceID = SourceEventInstanceID,
+                PersonnelArrivalEncounterResolved = PersonnelArrivalEncounterResolved,
                 OriginPositionX = OriginPositionX,
                 OriginPositionY = OriginPositionY,
                 CurrentPositionX = CurrentPositionX,

@@ -2087,20 +2087,188 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void RequestMove_OfficerFromBlockadedPlanet_NotAffected()
+        public void RequestMove_OfficerFromBlockadedPlanetWithoutDetector_StartsTransit()
         {
             (GameRoot game, Planet origin, Planet destination, MovementCommands movement) =
-                BuildBlockadeScene(new FixedRNG());
+                BuildBlockadeScene(new ThrowingRNG());
 
             Officer officer = EntityFactory.CreateOfficer("o1", "empire");
             game.AttachNode(officer, origin);
 
             movement.RequestMove(officer, destination);
 
-            Assert.IsNotNull(
-                game.GetSceneNodeByInstanceID<Officer>("o1"),
-                "Officers should not be affected by evacuation losses"
+            Assert.IsNotNull(officer.Movement);
+            Assert.AreSame(destination, officer.GetParent());
+        }
+
+        [Test]
+        public void RequestMove_OfficerDetectedLeavingHostileFleet_FailsEvasionAndIsCaptured()
+        {
+            (GameRoot game, Planet origin, Planet destination, MovementCommands movement) =
+                BuildBlockadeScene(new FixedRNG(0));
+            ConfigurePersonnelTransitEncounter(game, evasionProbability: 0);
+            AddPersonnelTransitDetector(game, origin);
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            officer.IsMain = true;
+            game.AttachNode(officer, origin);
+
+            movement.RequestMove(officer, destination);
+            IReadOnlyList<GameResult> results = movement.TakePendingResults();
+
+            Assert.IsTrue(officer.IsCaptured);
+            Assert.AreEqual("rebels", officer.CaptorInstanceID);
+            Assert.IsNull(officer.Movement);
+            Assert.AreSame(origin, officer.GetParent());
+            Assert.IsTrue(results.OfType<OfficerInjuredResult>().Any());
+            Assert.IsTrue(results.OfType<OfficerCaptureStateResult>().Any());
+        }
+
+        [Test]
+        public void RequestMove_OfficerDetectedLeavingHostileFleet_EvadesAndStartsTransitAfterInjury()
+        {
+            (GameRoot game, Planet origin, Planet destination, MovementCommands movement) =
+                BuildBlockadeScene(new FixedRNG(0));
+            ConfigurePersonnelTransitEncounter(game, evasionProbability: 100);
+            AddPersonnelTransitDetector(game, origin);
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            officer.IsMain = true;
+            game.AttachNode(officer, origin);
+
+            movement.RequestMove(officer, destination);
+            IReadOnlyList<GameResult> results = movement.TakePendingResults();
+
+            Assert.IsFalse(officer.IsCaptured);
+            Assert.IsFalse(officer.IsKilled);
+            Assert.IsNotNull(officer.Movement);
+            Assert.AreSame(destination, officer.GetParent());
+            Assert.IsTrue(results.OfType<OfficerInjuredResult>().Any());
+        }
+
+        [Test]
+        public void RequestMove_OfficerLeavingProtectedPlanet_StartsTransitWithoutEncounter()
+        {
+            (GameRoot game, Planet origin, Planet destination, MovementCommands movement) =
+                BuildBlockadeScene(new ThrowingRNG());
+            AddPersonnelTransitDetector(game, origin);
+            origin.EnergyCapacity = 1;
+            Building blocker = new Building
+            {
+                InstanceID = "detection-blocker",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                IsDetectionBlocker = true,
+            };
+            game.AttachNode(blocker, origin);
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            game.AttachNode(officer, origin);
+
+            movement.RequestMove(officer, destination);
+
+            Assert.IsNotNull(officer.Movement);
+            Assert.AreSame(destination, officer.GetParent());
+        }
+
+        [Test]
+        public void SendToMission_OfficerLeavingHostileFleet_DoesNotDuplicateMissionEncounter()
+        {
+            (GameRoot game, Planet origin, Planet destination, MovementCommands movement) =
+                BuildBlockadeScene(new ThrowingRNG());
+            AddPersonnelTransitDetector(game, origin);
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            game.AttachNode(officer, origin);
+            Mission mission = new SabotageMission
+            {
+                InstanceID = "mission",
+                OwnerInstanceID = "empire",
+                LocationInstanceID = destination.InstanceID,
+            };
+            game.AttachNode(mission, destination);
+
+            movement.SendToMission(officer, mission);
+
+            Assert.IsNotNull(officer.Movement);
+            Assert.AreSame(mission, officer.GetParent());
+        }
+
+        [Test]
+        public void RequestMove_SpecialForcesDetectedLeavingHostileFleet_FailsEvasionAndIsDestroyed()
+        {
+            (GameRoot game, Planet origin, Planet destination, MovementCommands movement) =
+                BuildBlockadeScene(new FixedRNG(0));
+            ConfigurePersonnelTransitEncounter(game, evasionProbability: 0);
+            AddPersonnelTransitDetector(game, origin);
+            SpecialForces specialForces = new SpecialForces
+            {
+                InstanceID = "special-forces",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(specialForces, origin);
+
+            movement.RequestMove(specialForces, destination);
+            IReadOnlyList<GameResult> results = movement.TakePendingResults();
+
+            Assert.IsNull(game.GetSceneNodeByInstanceID<SpecialForces>(specialForces.InstanceID));
+            Assert.IsTrue(
+                results
+                    .OfType<GameObjectDestroyedResult>()
+                    .Any(result => ReferenceEquals(result.DestroyedObject, specialForces))
             );
+        }
+
+        [Test]
+        public void ProcessTick_OfficerDetectedArrivingNearHostileFleet_FailsEvasionAndIsCaptured()
+        {
+            (GameRoot game, Planet origin, Planet destination, MovementCommands movement) =
+                BuildBlockadeScene(new FixedRNG(0));
+            ConfigurePersonnelTransitEncounter(game, evasionProbability: 0);
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            officer.IsMain = true;
+            game.AttachNode(officer, origin);
+
+            movement.RequestMove(officer, destination);
+            Fleet hostile = game.GetSceneNodeByInstanceID<Fleet>("hostile");
+            game.MoveNode(hostile, destination);
+            AddPersonnelTransitDetector(game, destination);
+            officer.Movement.TicksElapsed = officer.Movement.TransitTicks - 1;
+
+            IReadOnlyList<GameResult> results = new MovementTickProcessor(movement).ProcessTick(
+                game
+            );
+
+            Assert.IsTrue(officer.IsCaptured);
+            Assert.IsNull(officer.Movement);
+            Assert.AreSame(destination, officer.GetParent());
+            Assert.IsTrue(results.OfType<OfficerInjuredResult>().Any());
+            Assert.IsTrue(results.OfType<OfficerCaptureStateResult>().Any());
+        }
+
+        [Test]
+        public void UpdateMovement_GroupDetectedArrivingNearHostileFleet_ResolvesTogether()
+        {
+            (GameRoot game, Planet origin, Planet destination, MovementCommands movement) =
+                BuildBlockadeScene(new FixedRNG(0));
+            ConfigurePersonnelTransitEncounter(game, evasionProbability: 0);
+            Officer first = EntityFactory.CreateOfficer("first", "empire");
+            first.IsMain = true;
+            Officer second = EntityFactory.CreateOfficer("second", "empire");
+            second.IsMain = true;
+            game.AttachNode(first, origin);
+            game.AttachNode(second, origin);
+
+            movement.RequestMove(new List<IMovable> { first, second }, destination);
+            Fleet hostile = game.GetSceneNodeByInstanceID<Fleet>("hostile");
+            game.MoveNode(hostile, destination);
+            AddPersonnelTransitDetector(game, destination);
+            first.Movement.TicksElapsed = first.Movement.TransitTicks - 1;
+            second.Movement.TicksElapsed = second.Movement.TransitTicks - 1;
+
+            movement.UpdateMovement(first, new List<GameResult>());
+
+            Assert.IsTrue(first.IsCaptured);
+            Assert.IsTrue(second.IsCaptured);
+            Assert.IsNull(first.Movement);
+            Assert.IsNull(second.Movement);
         }
 
         [Test]
@@ -5304,6 +5472,55 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(fleet, planet);
             game.AttachNode(ship, fleet);
             return (fleet, ship);
+        }
+
+        /// <summary>
+        /// Adds a completed hostile starfighter that can detect personnel in transit.
+        /// </summary>
+        /// <param name="game">The game containing the hostile fleet.</param>
+        /// <param name="planet">The planet containing the hostile fleet.</param>
+        /// <returns>The added detector.</returns>
+        private static Starfighter AddPersonnelTransitDetector(GameRoot game, Planet planet)
+        {
+            CapitalShip hostileShip = planet
+                .GetChildren<Fleet>()
+                .Where(fleet => fleet.OwnerInstanceID == "rebels")
+                .SelectMany(fleet => fleet.GetChildren<CapitalShip>())
+                .Single();
+            hostileShip.StarfighterCapacity++;
+            Starfighter detector = EntityFactory.CreateStarfighter(
+                $"detector-{planet.InstanceID}",
+                "rebels"
+            );
+            detector.DetectionRating = 100;
+            detector.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(detector, hostileShip);
+            return detector;
+        }
+
+        /// <summary>
+        /// Configures deterministic personnel transit detection, evasion, and injury outcomes.
+        /// </summary>
+        /// <param name="game">The game whose probability tables are configured.</param>
+        /// <param name="evasionProbability">The evasion percentage returned for every score.</param>
+        private static void ConfigurePersonnelTransitEncounter(
+            GameRoot game,
+            int evasionProbability
+        )
+        {
+            game.Config.ProbabilityTables.Mission.Foil = new Dictionary<int, int>
+            {
+                { -1000, 100 },
+            };
+            game.Config.ProbabilityTables.Mission.Evasion = new Dictionary<int, int>
+            {
+                { -1000, evasionProbability },
+            };
+            game.Config.DuelResolution.CaptureEvasionInjuryBaseChance = 100;
+            game.Config.DuelResolution.MinimumInjuryChance = 100;
+            game.Config.DuelResolution.InjuryBase = 1;
+            game.Config.DuelResolution.InjurySecondaryRollMaximum = 0;
+            game.Config.Assassination.KillProbability = 0;
         }
 
         /// <summary>
