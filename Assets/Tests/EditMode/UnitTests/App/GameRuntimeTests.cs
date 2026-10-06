@@ -1,10 +1,13 @@
 using System;
 using System.IO;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Messages;
+using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Simulation;
 
@@ -82,6 +85,78 @@ namespace Rebellion.Tests.App
             _runtime.LoadGame("replacement");
 
             Assert.AreSame(manager, _runtime.GetActiveGameManager());
+        }
+
+        [Test]
+        public void StartLoadedGame_LegacyFactionSettings_RestoresActiveContentSettings()
+        {
+            GameRoot legacyGame = CreateGameWithLegacyFactionSettings();
+
+            GameSession session = _runtime.StartLoadedGame(legacyGame);
+
+            AssertFactionSettingsMatchActiveContent(session.Game);
+        }
+
+        [Test]
+        public void StartGame_FactionSettings_RestoresActiveContentSettings()
+        {
+            GameRoot game = CreateGameWithLegacyFactionSettings();
+
+            GameSession session = _runtime.StartGame(game);
+
+            AssertFactionSettingsMatchActiveContent(session.Game);
+        }
+
+        [Test]
+        public void LoadGame_LegacyFactionSettings_RestoresActiveContentSettings()
+        {
+            _runtime.StartGame(CreateGame());
+            GameRoot legacyGame = CreateGameWithLegacyFactionSettings();
+            _saveGameManager.SaveGameData(legacyGame, "legacy-faction-settings", "Legacy");
+
+            bool loaded = _runtime.LoadGame("legacy-faction-settings");
+
+            Assert.IsTrue(loaded);
+            AssertFactionSettingsMatchActiveContent(_runtime.GetActiveGame());
+        }
+
+        [Test]
+        public void StartLoadedGame_LegacyFactionSettings_BombardmentDeliversCombatReport()
+        {
+            GameRoot legacyGame = CreateGameWithLegacyFactionSettings();
+            Faction alliance = legacyGame
+                .GetFactions()
+                .Single(faction => faction.InstanceID == "FNALL1");
+            Faction empire = legacyGame
+                .GetFactions()
+                .Single(faction => faction.InstanceID == "FNEMP1");
+            PlanetSector sector = new PlanetSector { InstanceID = "SECTOR" };
+            Planet planet = new Planet
+            {
+                InstanceID = "PLANET",
+                DisplayName = "Planet",
+                OwnerInstanceID = empire.InstanceID,
+                IsColonized = true,
+            };
+            legacyGame.AttachNode(sector, legacyGame.GetGalaxyMap());
+            legacyGame.AttachNode(planet, sector);
+            GameSession session = _runtime.StartLoadedGame(legacyGame);
+            BombardmentResult result = new BombardmentResult
+            {
+                Planet = planet,
+                AttackingFaction = alliance,
+                AttackerOwnerInstanceID = alliance.InstanceID,
+                DefenderOwnerInstanceID = empire.InstanceID,
+                DestroyedRegiments = { new Regiment { UprisingDefense = 80 } },
+            };
+
+            Assert.DoesNotThrow(() => session.Pipeline.ProcessResults(new[] { result }));
+
+            CombatReport report = empire
+                .Messages[MessageType.Conflict]
+                .OfType<CombatReport>()
+                .Single(message => message.CombatType == CombatReportType.Bombardment);
+            Assert.AreEqual(planet.InstanceID, report.PlanetInstanceID);
         }
 
         [Test]
@@ -340,6 +415,56 @@ namespace Rebellion.Tests.App
                     ScenarioID = _contentPack.Scenario.ID,
                 },
             };
+        }
+
+        /// <summary>
+        /// Creates a load-compatible game whose serialized faction settings predate current content.
+        /// </summary>
+        /// <returns>The prepared legacy game.</returns>
+        private GameRoot CreateGameWithLegacyFactionSettings()
+        {
+            GameRoot game = CreateGame();
+            foreach (Faction template in _contentPack.GameData.Factions)
+            {
+                game.GetFactions()
+                    .Add(
+                        new Faction
+                        {
+                            InstanceID = template.InstanceID,
+                            DisplayName = template.DisplayName,
+                            Settings = new FactionSettings
+                            {
+                                BattleLossLoyaltyDivisor = 0,
+                                GarrisonEfficiency = 99,
+                            },
+                        }
+                    );
+            }
+
+            return game;
+        }
+
+        /// <summary>
+        /// Asserts that loaded factions own independent copies of active authored settings.
+        /// </summary>
+        /// <param name="game">The loaded game to inspect.</param>
+        private void AssertFactionSettingsMatchActiveContent(GameRoot game)
+        {
+            foreach (Faction template in _contentPack.GameData.Factions)
+            {
+                Faction loaded = game.GetFactions()
+                    .Single(faction => faction.InstanceID == template.InstanceID);
+                Assert.AreEqual(
+                    template.Settings.BattleLossLoyaltyDivisor,
+                    loaded.Settings.BattleLossLoyaltyDivisor
+                );
+                Assert.AreEqual(
+                    template.Settings.GarrisonEfficiency,
+                    loaded.Settings.GarrisonEfficiency
+                );
+                Assert.AreNotSame(template.Settings, loaded.Settings);
+                Assert.AreNotSame(template.Settings.Headquarters, loaded.Settings.Headquarters);
+            }
         }
 
         /// <summary>
