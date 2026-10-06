@@ -200,7 +200,7 @@ namespace Rebellion.Simulation
         /// <param name="opponents">The opposing fleets.</param>
         /// <param name="planet">The combat planet.</param>
         /// <param name="ownerInstanceId">The withdrawing owner identifier.</param>
-        /// <returns>The fleets and independent fighter squadrons that can withdraw.</returns>
+        /// <returns>The coordinated fleet force and independent fighter squadrons that can withdraw.</returns>
         internal List<IReadOnlyCollection<ISceneNode>> GetAutomaticWithdrawalGroups(
             IReadOnlyList<Fleet> fleets,
             IReadOnlyList<Fleet> opponents,
@@ -224,16 +224,23 @@ namespace Rebellion.Simulation
             )
                 return groups;
 
-            foreach (
-                Fleet fleet in (fleets ?? Array.Empty<Fleet>()).Where(fleet =>
+            List<Fleet> withdrawingFleets = (fleets ?? Array.Empty<Fleet>())
+                .Where(fleet => fleet != null)
+                .ToList();
+            if (
+                withdrawingFleets.Count > 0
+                && withdrawingFleets.All(fleet =>
                     HasHyperdriveCapableShip(fleet)
                     && _movement.CanEvacuateToNearestFriendlyPlanet(fleet)
                 )
             )
             {
-                List<ISceneNode> fleetUnits = GetActiveCapitalShips(fleet)
-                    .Cast<ISceneNode>()
-                    .Concat(GetActiveStarfighters(fleet))
+                List<ISceneNode> fleetUnits = withdrawingFleets
+                    .SelectMany(fleet =>
+                        GetActiveCapitalShips(fleet)
+                            .Cast<ISceneNode>()
+                            .Concat(GetActiveStarfighters(fleet))
+                    )
                     .Distinct()
                     .ToList();
                 if (fleetUnits.Count > 0)

@@ -178,6 +178,46 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, groups.Count);
         }
 
+        [Test]
+        public void GetAutomaticWithdrawalGroups_MultipleEligibleFleets_ReturnsSingleFleetGroup()
+        {
+            (GameRoot game, Planet planet, Fleet fleet, SpaceCombatQueries queries) =
+                CreateScenario();
+            CreatePlanet(game, "home", owner: "alliance");
+            Fleet secondFleet = AddFleet(game, planet, "second-fleet", "alliance");
+            CapitalShip firstShip = fleet.GetChildren<CapitalShip>()[0];
+            CapitalShip secondShip = secondFleet.GetChildren<CapitalShip>()[0];
+
+            List<IReadOnlyCollection<ISceneNode>> groups = queries.GetAutomaticWithdrawalGroups(
+                new[] { fleet, secondFleet },
+                new List<Fleet>(),
+                planet,
+                "alliance"
+            );
+
+            Assert.AreEqual(1, groups.Count);
+            CollectionAssert.AreEquivalent(new ISceneNode[] { firstShip, secondShip }, groups[0]);
+        }
+
+        [Test]
+        public void GetAutomaticWithdrawalGroups_OneFleetCannotWithdraw_ReturnsNoFleetGroup()
+        {
+            (GameRoot game, Planet planet, Fleet fleet, SpaceCombatQueries queries) =
+                CreateScenario();
+            CreatePlanet(game, "home", owner: "alliance");
+            Fleet trappedFleet = AddFleet(game, planet, "trapped-fleet", "alliance");
+            trappedFleet.GetChildren<CapitalShip>()[0].Hyperdrive = 0;
+
+            List<IReadOnlyCollection<ISceneNode>> groups = queries.GetAutomaticWithdrawalGroups(
+                new[] { fleet, trappedFleet },
+                new List<Fleet>(),
+                planet,
+                "alliance"
+            );
+
+            Assert.IsEmpty(groups);
+        }
+
         /// <summary>
         /// Creates a stationary fleet and the read-only combat query dependencies.
         /// </summary>

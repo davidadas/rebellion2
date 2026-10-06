@@ -1420,6 +1420,52 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void ProcessTick_OneFleetCannotWithdraw_KeepsVictoriousForceAtCombatPlanet()
+        {
+            GameRoot game = CreateAutomaticCombatGame();
+            game.Random = new SequenceRNG();
+            game.Config.Combat.SpaceCombat.AutoResolveRetreatStrengthRatio = double.MaxValue;
+            game.Config.Combat.SpaceCombat.AutoResolveStartingDistance = 0;
+            game.Config.Combat.SpaceCombat.AutoResolveWithdrawalDistance = 20;
+            game.Config.Combat.SpaceCombat.AutoResolveTargetScanDivisor = 1;
+            (Planet combatPlanet, _) = CreatePlanet(game, "combat", owner: "alliance");
+            CreatePlanet(game, "empire-fallback", owner: "empire");
+            CreatePlanet(game, "alliance-fallback", owner: "alliance");
+            Fleet attacker = CreateFleet(game, "attacker", "empire", combatPlanet, 1, 1, 0);
+            attacker.GetChildren<CapitalShip>().Single().Hyperdrive = 0;
+            Fleet retreatingFleet = CreateFleet(
+                game,
+                "retreating-fleet",
+                "alliance",
+                combatPlanet,
+                1,
+                100,
+                0
+            );
+            retreatingFleet.GetChildren<CapitalShip>().Single().SublightSpeed = 20;
+            Fleet coveringFleet = CreateFleet(
+                game,
+                "covering-fleet",
+                "alliance",
+                combatPlanet,
+                1,
+                100,
+                1
+            );
+            coveringFleet.GetChildren<CapitalShip>().Single().Hyperdrive = 0;
+            SpaceCombatCommands manager = MakeSpaceCombat(game);
+
+            new SpaceCombatTickProcessor(manager).ProcessTick(game);
+
+            Assert.AreSame(combatPlanet, retreatingFleet.GetParentOfType<Planet>());
+            Assert.IsNull(retreatingFleet.Movement);
+            Assert.AreSame(combatPlanet, coveringFleet.GetParentOfType<Planet>());
+            Assert.IsNull(coveringFleet.Movement);
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>(attacker.InstanceID));
+            Assert.IsFalse(HasHostileFleets(combatPlanet));
+        }
+
+        [Test]
         public void ProcessTick_WeakerAIFleetDestroyedDuringWithdrawal_RemovesFleet()
         {
             GameRoot game = CreateGame();
