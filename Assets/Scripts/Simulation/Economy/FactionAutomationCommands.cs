@@ -91,7 +91,7 @@ namespace Rebellion.Simulation
         /// Queues the next mine or refinery needed to expand paired production.
         /// </summary>
         /// <param name="faction">The faction delegating production management.</param>
-        /// <param name="ownedPlanets">The faction's colonized planets.</param>
+        /// <param name="ownedPlanets">The faction's owned planets.</param>
         /// <returns>True when an order was queued.</returns>
         private bool TryQueueProductionFacility(Faction faction, List<Planet> ownedPlanets)
         {
@@ -136,7 +136,7 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Returns the faction's colonized planets in stable order.
+        /// Returns the faction's owned planets in stable order.
         /// </summary>
         /// <param name="faction">The faction whose planets are requested.</param>
         /// <returns>The owned planets.</returns>
@@ -145,8 +145,7 @@ namespace Rebellion.Simulation
             return _game
                 .GetSceneNodesByType<Planet>()
                 .Where(planet =>
-                    planet.IsColonized
-                    && string.Equals(
+                    string.Equals(
                         planet.GetOwnerInstanceID(),
                         faction.InstanceID,
                         StringComparison.Ordinal
