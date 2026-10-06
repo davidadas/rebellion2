@@ -144,17 +144,13 @@ namespace Rebellion.Simulation
                         StringComparison.Ordinal
                     )
                 )
-                {
-                    return template is Regiment
-                        && !planet.IsColonized
-                        && string.IsNullOrEmpty(planet.GetOwnerInstanceID());
-                }
+                    return false;
 
                 return template switch
                 {
                     Regiment _ => true,
-                    SpecialForces _ => planet.IsColonized,
-                    Starfighter _ => planet.IsColonized,
+                    SpecialForces _ => planet.CanHostOwnedUnits(),
+                    Starfighter _ => planet.CanHostOwnedUnits(),
                     Building _ => planet.GetAvailableEnergy() >= count,
                     _ => false,
                 };
