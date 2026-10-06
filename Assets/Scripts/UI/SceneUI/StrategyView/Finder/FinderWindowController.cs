@@ -327,16 +327,14 @@ public sealed class FinderWindowController
         UIContext uiContext = GetRequiredUIContext();
         IReadOnlyList<GalaxyMapSector> sectors =
             getSectors() ?? throw new InvalidOperationException("Finder sectors are unavailable.");
-        string playerFactionId = uiContext.GetPlayerFactionInstanceID();
         FinderWindowRowBuilder builder = new FinderWindowRowBuilder(
             sectors,
             uiContext.Game?.GetFactions(),
-            playerFactionId,
+            uiContext.GetPlayerFactionInstanceID(),
             factionId => uiContext.GetTheme(factionId)?.StrategyWindows?.Finder?.TroopColumnTypeIDs,
             factionId =>
                 uiContext.GetTheme(factionId)?.StrategyWindows?.Finder?.SpecialForcesColumnTypeIDs,
-            uiContext.Game?.GetRegisteredSceneNodesByType<Officer>(includeDisabled: true),
-            typeId => uiContext.EncyclopediaCatalog?.FindEntry(typeId, playerFactionId)?.DisplayName
+            uiContext.Game?.GetRegisteredSceneNodesByType<Officer>(includeDisabled: true)
         );
         List<FinderWindowTab> tabs = builder.GetTabs(session.Mode);
         session.ReconcileTabCount(tabs.Count);
