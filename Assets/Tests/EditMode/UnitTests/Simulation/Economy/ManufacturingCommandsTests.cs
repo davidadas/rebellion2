@@ -3064,6 +3064,90 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void StartManufacturing_RegimentToOwnedUncolonizedPlanet_QueuesOrder()
+        {
+            AddProductionFacility("TRAINING", ManufacturingType.Troop);
+            Planet destination = CreateOwnedUncolonizedDestination();
+            Regiment template = new Regiment
+            {
+                TypeID = "REGIMENT",
+                ConstructionCost = 1,
+                BaseBuildSpeed = 1,
+            };
+
+            bool started = _manager.StartManufacturing(
+                _coruscant,
+                template,
+                destination,
+                1,
+                _empire.InstanceID
+            );
+
+            Assert.IsTrue(started);
+            Regiment queued = _coruscant
+                .GetManufacturingQueue()[ManufacturingType.Troop]
+                .OfType<Regiment>()
+                .Single();
+            Assert.AreSame(destination, queued.GetParent());
+        }
+
+        [Test]
+        public void StartManufacturing_StarfighterToOwnedUncolonizedPlanet_QueuesOrder()
+        {
+            AddProductionFacility("FIGHTER_YARD", ManufacturingType.Ship);
+            Planet destination = CreateOwnedUncolonizedDestination();
+            Starfighter template = new Starfighter
+            {
+                TypeID = "STARFIGHTER",
+                ConstructionCost = 1,
+                BaseBuildSpeed = 1,
+            };
+
+            bool started = _manager.StartManufacturing(
+                _coruscant,
+                template,
+                destination,
+                1,
+                _empire.InstanceID
+            );
+
+            Assert.IsTrue(started);
+            Starfighter queued = _coruscant
+                .GetManufacturingQueue()[ManufacturingType.Ship]
+                .OfType<Starfighter>()
+                .Single();
+            Assert.AreSame(destination, queued.GetParent());
+        }
+
+        [Test]
+        public void StartManufacturing_SpecialForcesToOwnedUncolonizedPlanet_QueuesOrder()
+        {
+            AddProductionFacility("TRAINING", ManufacturingType.Troop);
+            Planet destination = CreateOwnedUncolonizedDestination();
+            SpecialForces template = new SpecialForces
+            {
+                TypeID = "SPECIAL_FORCES",
+                ConstructionCost = 1,
+                BaseBuildSpeed = 1,
+            };
+
+            bool started = _manager.StartManufacturing(
+                _coruscant,
+                template,
+                destination,
+                1,
+                _empire.InstanceID
+            );
+
+            Assert.IsTrue(started);
+            SpecialForces queued = _coruscant
+                .GetManufacturingQueue()[ManufacturingType.Troop]
+                .OfType<SpecialForces>()
+                .Single();
+            Assert.AreSame(destination, queued.GetParent());
+        }
+
+        [Test]
         public void Enqueue_MultipleBuildings_MaintainsOrder()
         {
             Building building1 = new Building
@@ -5154,6 +5238,55 @@ namespace Rebellion.Tests.Simulation
                 BaseBuildSpeed = 1,
                 BuildingType = BuildingType.Mine,
             };
+        }
+
+        /// <summary>
+        /// Adds a completed manufacturing facility to the default producer.
+        /// </summary>
+        /// <param name="instanceId">The facility identifier.</param>
+        /// <param name="manufacturingType">The production lane supplied by the facility.</param>
+        private void AddProductionFacility(string instanceId, ManufacturingType manufacturingType)
+        {
+            _game.AttachNode(
+                new Building
+                {
+                    InstanceID = instanceId,
+                    OwnerInstanceID = _empire.InstanceID,
+                    BuildingType =
+                        manufacturingType == ManufacturingType.Troop
+                            ? BuildingType.TrainingFacility
+                            : BuildingType.Shipyard,
+                    ProductionType = manufacturingType,
+                    ProcessRate = 1,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                _coruscant
+            );
+        }
+
+        /// <summary>
+        /// Creates an owned uncolonized destination held by one stationary regiment.
+        /// </summary>
+        /// <returns>The attached destination planet.</returns>
+        private Planet CreateOwnedUncolonizedDestination()
+        {
+            Planet destination = new Planet
+            {
+                InstanceID = "RIM_DESTINATION",
+                OwnerInstanceID = _empire.InstanceID,
+                IsColonized = false,
+            };
+            _game.AttachNode(destination, _coruscant.GetParent());
+            _game.AttachNode(
+                new Regiment
+                {
+                    InstanceID = "RIM_GARRISON",
+                    OwnerInstanceID = _empire.InstanceID,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                destination
+            );
+            return destination;
         }
     }
 }

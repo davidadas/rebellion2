@@ -704,6 +704,19 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void ProcessTick_ManageProduction_UsesOwnedUncolonizedResourceDestination()
+        {
+            _faction.ManageGarrisons = false;
+            AddProductionInfrastructure();
+            _destination.IsColonized = false;
+            AddCompletedRegiment(_destination, "DESTINATION_GARRISON");
+
+            new FactionAutomationTickProcessor(_automation).ProcessTick(_game);
+
+            Assert.AreEqual(2, _destination.GetTotalBuildingTypeCount(BuildingType.Mine));
+        }
+
+        [Test]
         public void ProcessTick_ManageProductionWithReservedBuildingLane_DoesNotQueueWork()
         {
             _faction.ManageGarrisons = false;

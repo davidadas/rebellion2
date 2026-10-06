@@ -256,7 +256,13 @@ namespace Rebellion.Simulation
             if (item is CapitalShip)
                 return false;
 
-            if (!destination.IsColonized && item is not Building)
+            if (
+                !string.Equals(
+                    destination.GetOwnerInstanceID(),
+                    item.GetOwnerInstanceID(),
+                    StringComparison.Ordinal
+                )
+            )
                 return false;
 
             if (!destination.CanAcceptChild(item))
