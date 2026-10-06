@@ -35,6 +35,18 @@ Rebellion 2 is available in early access for Windows, macOS, and Linux.
   </tr>
 </table>
 
+### Running on Linux
+
+The Linux download is an AppImage: a portable application that runs without a traditional
+installer. After downloading it, open the file's properties, allow it to run as a program, and
+double-click it. You can also launch it from a terminal:
+
+```bash
+cd ~/Downloads
+chmod +x Rebellion2-*-x86_64.AppImage
+./Rebellion2-*-x86_64.AppImage
+```
+
 [View release notes and all downloads](https://github.com/adasgames/rebellion2-installers/releases/latest)
 or browse the public [installer and launcher source code](https://github.com/adasgames/rebellion2-installers).
 
