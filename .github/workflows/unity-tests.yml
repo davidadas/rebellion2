@@ -35,6 +35,7 @@ jobs:
           repository: adasgames/rebellion2-media
           ref: main
           ssh-key: ${{ secrets.REBELLION2_MEDIA_SSH_KEY }}
+          fetch-depth: 0
           lfs: false
           path: .ci/rebellion2-media
 
@@ -42,26 +43,7 @@ jobs:
         id: resolve
         env:
           PULL_REQUEST_BRANCH: ${{ github.head_ref }}
-        run: |
-          revision="main"
-          if [ -n "$PULL_REQUEST_BRANCH" ]; then
-            for candidate in "$PULL_REQUEST_BRANCH" "$PULL_REQUEST_BRANCH-media"; do
-              if git -C .ci/rebellion2-media ls-remote --exit-code --heads origin \
-                "refs/heads/$candidate" >/dev/null; then
-                revision="$candidate"
-                break
-              fi
-            done
-          fi
-          sha="$(git -C .ci/rebellion2-media ls-remote origin "refs/heads/$revision" | awk 'NR == 1 { print $1 }')"
-          if [ -z "$sha" ]; then
-            echo "Could not resolve rebellion2-media revision: $revision"
-            exit 1
-          fi
-          echo "Using rebellion2-media revision: $revision"
-          echo "Using rebellion2-media commit: $sha"
-          echo "revision=$revision" >> "$GITHUB_OUTPUT"
-          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+        run: bash .github/scripts/resolve-media-revision.sh
 
   build:
     name: Build (${{ matrix.targetPlatform }})
