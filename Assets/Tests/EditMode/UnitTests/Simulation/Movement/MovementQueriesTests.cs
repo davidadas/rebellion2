@@ -53,7 +53,7 @@ namespace Rebellion.Tests.Simulation
                     MinTransitTicks = 1,
                     SameSectorMinTransitTicks = 1,
                     DefaultFighterHyperdrive = 60,
-                    DefaultOfficerHyperdrive = 100,
+                    DefaultPersonnelHyperdrive = 100,
                 },
             };
             (
@@ -106,7 +106,7 @@ namespace Rebellion.Tests.Simulation
                     MinTransitTicks = 1,
                     SameSectorMinTransitTicks = 1,
                     DefaultFighterHyperdrive = 60,
-                    DefaultOfficerHyperdrive = 100,
+                    DefaultPersonnelHyperdrive = 100,
                 },
             };
             (_, Planet origin, Planet destination, _, MovementQueries movement) = BuildScene(
@@ -145,7 +145,7 @@ namespace Rebellion.Tests.Simulation
                     MinTransitTicks = 1,
                     SameSectorMinTransitTicks = 1,
                     DefaultFighterHyperdrive = 60,
-                    DefaultOfficerHyperdrive = 100,
+                    DefaultPersonnelHyperdrive = 100,
                 },
             };
             (_, Planet origin, Planet destination, Officer officer, MovementQueries movement) =
@@ -154,6 +154,37 @@ namespace Rebellion.Tests.Simulation
             destination.PositionY = 0;
 
             int transitTicks = movement.CalculateTransitTicks(officer, origin, destination);
+
+            Assert.AreEqual(20, transitTicks);
+        }
+
+        [Test]
+        public void CalculateTransitTicks_SpecialForces_UsesConfiguredOfficerHyperdrive()
+        {
+            GameConfig config = new GameConfig
+            {
+                Movement = new GameConfig.MovementConfig
+                {
+                    DistanceDivisor = 5,
+                    MinTransitTicks = 1,
+                    SameSectorMinTransitTicks = 1,
+                    DefaultFighterHyperdrive = 50,
+                    DefaultPersonnelHyperdrive = 100,
+                },
+            };
+            (GameRoot game, Planet origin, Planet destination, _, MovementQueries movement) =
+                BuildScene(config);
+            destination.PositionX = 100;
+            destination.PositionY = 0;
+            SpecialForces specialForces = new SpecialForces
+            {
+                InstanceID = "special-forces",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(specialForces, origin);
+
+            int transitTicks = movement.CalculateTransitTicks(specialForces, origin, destination);
 
             Assert.AreEqual(20, transitTicks);
         }
@@ -169,7 +200,7 @@ namespace Rebellion.Tests.Simulation
                     MinTransitTicks = 1,
                     SameSectorMinTransitTicks = 1,
                     DefaultFighterHyperdrive = 60,
-                    DefaultOfficerHyperdrive = 100,
+                    DefaultPersonnelHyperdrive = 100,
                 },
             };
             (_, Planet origin, Planet destination, _, MovementQueries movement) = BuildScene(
@@ -555,7 +586,7 @@ namespace Rebellion.Tests.Simulation
                     MinTransitTicks = 1,
                     SameSectorMinTransitTicks = 1,
                     DefaultFighterHyperdrive = 60,
-                    DefaultOfficerHyperdrive = 100,
+                    DefaultPersonnelHyperdrive = 100,
                 },
             };
         }
