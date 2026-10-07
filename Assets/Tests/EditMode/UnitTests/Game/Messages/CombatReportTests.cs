@@ -1,12 +1,73 @@
 using NUnit.Framework;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
+using Rebellion.Game.Units;
 
 namespace Rebellion.Tests.Game.Messages
 {
     [TestFixture]
     public class CombatReportTests
     {
+        [Test]
+        public void CaptureBombardment_DestroyedMine_AppearsInDefendingUnits()
+        {
+            Building mine = new Building
+            {
+                InstanceID = "MINE1",
+                DisplayName = "Mining Facility",
+                BuildingType = BuildingType.Mine,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            CombatUnitSnapshot snapshot = new CombatUnitSnapshot(mine);
+            snapshot.Destroyed = true;
+
+            BombardmentResult result = new BombardmentResult
+            {
+                DefendingUnits = { snapshot },
+                DestroyedBuildings = { mine },
+            };
+
+            CombatReport report = CombatReport.Capture(result, "FNALL1", "Title", "Body");
+
+            Assert.IsNotNull(report);
+            Assert.AreEqual(1, report.DefendingUnits.Count);
+            Assert.AreEqual(
+                CombatReportUnitCategory.ManufacturingFacility,
+                report.DefendingUnits[0].Category
+            );
+            Assert.IsTrue(report.DefendingUnits[0].Destroyed);
+        }
+
+        [Test]
+        public void CaptureBombardment_DestroyedRefinery_AppearsInDefendingUnits()
+        {
+            Building refinery = new Building
+            {
+                InstanceID = "REF1",
+                DisplayName = "Refinery",
+                BuildingType = BuildingType.Refinery,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            CombatUnitSnapshot snapshot = new CombatUnitSnapshot(refinery);
+            snapshot.Destroyed = true;
+
+            BombardmentResult result = new BombardmentResult
+            {
+                DefendingUnits = { snapshot },
+                DestroyedBuildings = { refinery },
+            };
+
+            CombatReport report = CombatReport.Capture(result, "FNALL1", "Title", "Body");
+
+            Assert.IsNotNull(report);
+            Assert.AreEqual(1, report.DefendingUnits.Count);
+            Assert.AreEqual(
+                CombatReportUnitCategory.ManufacturingFacility,
+                report.DefendingUnits[0].Category
+            );
+            Assert.IsTrue(report.DefendingUnits[0].Destroyed);
+        }
+
         [Test]
         public void SerializeAndDeserialize_CombatReport_MaintainsState()
         {

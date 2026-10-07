@@ -334,7 +334,9 @@ internal sealed class BattleResultTableProjector
     private static bool IsManufacturingFacility(Building building)
     {
         return building.BuildingType
-            is BuildingType.Shipyard
+            is BuildingType.Mine
+                or BuildingType.Refinery
+                or BuildingType.Shipyard
                 or BuildingType.TrainingFacility
                 or BuildingType.ConstructionFacility;
     }
