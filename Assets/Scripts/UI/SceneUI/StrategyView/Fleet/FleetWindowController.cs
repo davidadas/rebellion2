@@ -809,6 +809,49 @@ public sealed class FleetWindowController
     }
 
     /// <summary>
+    /// Completes active targeting with the fleet-window destination under a pointer.
+    /// </summary>
+    /// <param name="view">The source fleet view.</param>
+    /// <param name="eventData">The pointer event used to resolve the target.</param>
+    /// <returns>True when an active targeting request accepted the resolved target.</returns>
+    internal bool TrySelectTarget(FleetWindowView view, PointerEventData eventData)
+    {
+        if (!TryGetSession(view, out FleetWindowSession session))
+            return false;
+
+        if (
+            view.TryGetFleetRowIndex(eventData, out int fleetIndex)
+            && session.TryGetFleet(fleetIndex, out Fleet fleet)
+        )
+            return TrySelectTarget(session, ResolveFleetContainerTarget(fleet));
+
+        if (
+            view.TryGetDetailItemIndex(eventData, out int itemIndex)
+            && session.TryGetDetailItem(itemIndex, out ISceneNode item)
+        )
+            return TrySelectTarget(session, item);
+
+        if (view.IsFleetDetailClick(eventData))
+            return TrySelectTarget(session, ResolveFleetContainerTarget(session.SelectedFleet));
+
+        return TrySelectTarget(session, null);
+    }
+
+    /// <summary>
+    /// Resolves whether the active request targets a fleet container or its planet.
+    /// </summary>
+    /// <param name="fleet">The fleet container under the pointer.</param>
+    /// <returns>The fleet for container targeting, or null for mission targeting.</returns>
+    private ISceneNode ResolveFleetContainerTarget(Fleet fleet)
+    {
+        return
+            targetingController.ActiveRequest?.Source
+                is IStrategyTargetingSource { Action: StrategyMenuAction.CreateMission }
+            ? null
+            : fleet;
+    }
+
+    /// <summary>
     /// Handles a fleet-row press and starts selection, context, or drag flow.
     /// </summary>
     /// <param name="view">The source fleet view.</param>
@@ -1093,7 +1136,7 @@ public sealed class FleetWindowController
     {
         if (!TryGetSession(view, out FleetWindowSession session))
             return;
-        if (TrySelectTarget(session, null) || view.IsSelectionItemClick(eventData))
+        if (view.IsSelectionItemClick(eventData) || TrySelectTarget(view, eventData))
             return;
 
         session.ClearContext();

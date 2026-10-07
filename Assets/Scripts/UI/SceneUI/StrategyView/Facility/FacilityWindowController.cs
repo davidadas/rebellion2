@@ -1142,8 +1142,10 @@ public sealed class FacilityWindowController
     /// <summary>
     /// Identifies the facility window and lane that began destination targeting.
     /// </summary>
-    private sealed class FacilityDestinationTargetingSource
+    private sealed class FacilityDestinationTargetingSource : IStrategyTargetingSource
     {
+        StrategyMenuAction IStrategyTargetingSource.Action => StrategyMenuAction.Destination;
+
         public UIWindow Window { get; }
 
         public FacilityWindowView View { get; }

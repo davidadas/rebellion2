@@ -12,6 +12,7 @@ using Rebellion.Simulation;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
+using GameFleet = Rebellion.Game.Units.Fleet;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
 {
@@ -334,6 +335,68 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         }
 
         [Test]
+        public void OnTargetSelected_ManufacturingDestinationFleet_StoresExactFleet()
+        {
+            FacilityWindowView view = OpenWindow(out UIWindow window);
+            GameFleet fleet = new GameFleet
+            {
+                InstanceID = "destination-fleet",
+                OwnerInstanceID = _playerFactionId,
+            };
+            _game.AttachNode(fleet, _planet.Planet);
+            BeginManufacturingDestinationTargeting(view, window);
+
+            bool selected = _targetingController.TrySelectTarget(
+                new StrategyMissionTarget(_planet, fleet)
+            );
+            bool found = _controller.TryGetConstructionDestinationIDs(
+                view,
+                FacilityWindowTab.Training,
+                out string destinationPlanetId,
+                out string destinationItemId
+            );
+
+            Assert.IsTrue(selected);
+            Assert.IsTrue(found);
+            Assert.AreEqual(_planet.Planet.InstanceID, destinationPlanetId);
+            Assert.AreEqual(fleet.InstanceID, destinationItemId);
+        }
+
+        [Test]
+        public void OnTargetSelected_ManufacturingDestinationCapitalShip_StoresExactShip()
+        {
+            FacilityWindowView view = OpenWindow(out UIWindow window);
+            GameFleet fleet = new GameFleet
+            {
+                InstanceID = "destination-fleet",
+                OwnerInstanceID = _playerFactionId,
+            };
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "destination-ship",
+                OwnerInstanceID = _playerFactionId,
+            };
+            _game.AttachNode(fleet, _planet.Planet);
+            _game.AttachNode(ship, fleet);
+            BeginManufacturingDestinationTargeting(view, window);
+
+            bool selected = _targetingController.TrySelectTarget(
+                new StrategyMissionTarget(_planet, ship)
+            );
+            bool found = _controller.TryGetConstructionDestinationIDs(
+                view,
+                FacilityWindowTab.Training,
+                out string destinationPlanetId,
+                out string destinationItemId
+            );
+
+            Assert.IsTrue(selected);
+            Assert.IsTrue(found);
+            Assert.AreEqual(_planet.Planet.InstanceID, destinationPlanetId);
+            Assert.AreEqual(ship.InstanceID, destinationItemId);
+        }
+
+        [Test]
         public void ViewDestroyed_InitializedSession_ReleasesPlanetAssociation()
         {
             FacilityWindowView view = OpenWindow(out UIWindow _);
@@ -426,6 +489,51 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             window = _controller.Open(_planet, 20, 30, out bool _);
             _windowManager.TryGetWindowView(window, out FacilityWindowView view);
             return view;
+        }
+
+        /// <summary>
+        /// Begins destination targeting from the training manufacturing card.
+        /// </summary>
+        /// <param name="view">The open facility view.</param>
+        /// <param name="window">The open facility window.</param>
+        private void BeginManufacturingDestinationTargeting(
+            FacilityWindowView view,
+            UIWindow window
+        )
+        {
+            ManufacturingLaneCardView card =
+                view.GetComponentsInChildren<ManufacturingLaneCardView>(true)
+                    .Single(candidate => candidate.name == "TrainingManufacturingLaneCard");
+            UIComponentTestHelper.InvokeLifecycle(card, "Awake");
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            PointerEventData pointer = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Right,
+            };
+            card.GetComponent<UIPointerGestureRelay>().OnPointerDown(pointer);
+            StrategyContextMenuProviderContext context = new StrategyContextMenuProviderContext(
+                window,
+                new StrategyContextMenuLayout(1, 2, 3, 4, 5, 6, 7),
+                pointer,
+                10,
+                20
+            );
+            StrategyMenuCommand destination = FacilityWindowContextMenuBuilder
+                .Build(
+                    _planet.Planet,
+                    FacilityWindowTab.Manufacturing,
+                    FacilityWindowTab.Training,
+                    null,
+                    _playerFactionId
+                )
+                .Single(command => command.Action == StrategyMenuAction.Destination);
+            ContextMenuRequest request = new ContextMenuRequest(
+                context,
+                new IContextMenuCommand[] { destination },
+                _controller
+            );
+
+            _controller.OnContextMenuCommandSelected(request, destination);
         }
 
         private sealed class ConstructionActions : IConstructionWindowActions
