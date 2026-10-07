@@ -2349,6 +2349,51 @@ namespace Rebellion.Tests.AI.Demands
             );
         }
 
+        [Test]
+        public void BuildDemands_WithSmallCombatGapAndNoCapitalFirepowerTarget_UsesCombatRatio()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.FleetDeployment.MinimumAttackStrength = 500;
+            game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 0;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
+            target.SetPopularSupport(empire.InstanceID, game.Config.AI.Garrison.SupportThreshold);
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+            Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
+            fleet.RoleType = FleetRoleType.Battle;
+            fleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                Status = FleetOrderStatus.Staging,
+                TargetPlanetId = target.InstanceID,
+            };
+            game.AttachNode(fleet, owned);
+            CapitalShip ship = AITestSceneBuilder.CreateCapitalShip(
+                "ship",
+                empire.InstanceID,
+                combatStrength: 499,
+                regimentCapacity: 1,
+                starfighterCapacity: 0
+            );
+            ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon][0] = 1;
+            game.AttachNode(ship, fleet);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIProductionDemand demand = new AIProductionDemandGenerator()
+                .BuildDemands(context)
+                .Single(item =>
+                    item.Kind == AIProductionDemandKind.FleetCapitalShip
+                    && item.DestinationFleet == fleet
+                );
+
+            Assert.AreEqual(
+                1,
+                demand.DeficitCount,
+                $"capital={demand.CapitalFirepowerDeficit}, fighterFire={demand.StarfighterFirepowerDeficit}, fighterCapacity={demand.StarfighterCapacityDeficit}, regimentCapacity={demand.RegimentCapacityDeficit}, bombardment={demand.BombardmentDeficit}, interdiction={demand.InterdictionDeficit}, escort={demand.EscortDeficit}"
+            );
+        }
+
         [TestCase(ManufacturingStatus.Building)]
         [TestCase(ManufacturingStatus.Complete)]
         public void BuildDemands_WithCommittedCapitalShipFillingCombatNeed_DoesNotAddCapitalShipDemand(

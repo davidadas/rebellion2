@@ -452,6 +452,19 @@ namespace Rebellion.AI.Planners
                 .ToList();
             if (producerPlanets.Count == 0)
                 return;
+            if (demand.Kind == AIProductionDemandKind.FleetCapitalShip)
+            {
+                AddProducerSpecificProposal(
+                    context,
+                    demand,
+                    product,
+                    remainingQuantity,
+                    producerPlanets,
+                    proposals,
+                    distributesDemand: true
+                );
+                return;
+            }
             if (!distributesDemand)
             {
                 if (IsFacilityExpansionDemand(demand))
@@ -461,7 +474,8 @@ namespace Rebellion.AI.Planners
                         product,
                         remainingQuantity,
                         producerPlanets,
-                        proposals
+                        proposals,
+                        distributesDemand: false
                     );
                 else
                     AddEquivalentProducerProposal(
@@ -554,13 +568,15 @@ namespace Rebellion.AI.Planners
         /// <param name="remainingQuantity">Quantity still required.</param>
         /// <param name="producerPlanets">Ranked producer alternatives.</param>
         /// <param name="proposals">The proposal list to update.</param>
+        /// <param name="distributesDemand">Whether each candidate uses distributed production.</param>
         private void AddProducerSpecificProposal(
             AITurnContext context,
             AIProductionDemand demand,
             Technology product,
             int remainingQuantity,
             IReadOnlyList<Planet> producerPlanets,
-            List<AIProposal> proposals
+            List<AIProposal> proposals,
+            bool distributesDemand
         )
         {
             List<AIManufactureProposal> candidates = producerPlanets
@@ -579,7 +595,7 @@ namespace Rebellion.AI.Planners
                             candidateDemand,
                             producerPlanet,
                             product,
-                            distributesDemand: false
+                            distributesDemand
                         );
                 })
                 .Where(candidate => candidate != null)

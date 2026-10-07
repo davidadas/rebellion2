@@ -1683,7 +1683,8 @@ namespace Rebellion.AI.Demands
             );
             greatestDeficitRatio = Math.Max(
                 greatestDeficitRatio,
-                Math.Max(0, capitalFirepowerDeficit) / (double)Math.Max(1, targetCapitalFirepower)
+                Math.Max(0, measuredCapitalFirepowerDeficit)
+                    / (double)Math.Max(1, targetCapitalFirepower)
             );
             greatestDeficitRatio = Math.Max(
                 greatestDeficitRatio,

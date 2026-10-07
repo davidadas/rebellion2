@@ -1115,6 +1115,26 @@ namespace Rebellion.AI
             foreach (CapitalShip capitalShip in capitalShips)
             {
                 Fleet fleet = capitalShip.GetParentOfType<Fleet>();
+                starfightersByCapitalShip.TryGetValue(
+                    capitalShip.InstanceID,
+                    out List<Starfighter> containedStarfighters
+                );
+                if (
+                    fleet != null
+                    && !string.IsNullOrEmpty(fleet.GetOwnerInstanceID())
+                    && fleet.GetOwnerInstanceID() != _faction.InstanceID
+                )
+                {
+                    IndexFleetComposition(
+                        fleet,
+                        capitalShip,
+                        containedStarfighters != null
+                            ? containedStarfighters
+                            : Array.Empty<Starfighter>(),
+                        includeProjected: false
+                    );
+                }
+
                 if (
                     fleet == null
                     || fleet.GetOwnerInstanceID() == _faction.InstanceID
@@ -1122,12 +1142,7 @@ namespace Rebellion.AI
                 )
                     continue;
 
-                if (
-                    starfightersByCapitalShip.TryGetValue(
-                        capitalShip.InstanceID,
-                        out List<Starfighter> containedStarfighters
-                    )
-                )
+                if (containedStarfighters != null)
                 {
                     foreach (Starfighter starfighter in containedStarfighters)
                         AddMissionDetectorCandidate(starfighter, true);
@@ -1211,7 +1226,8 @@ namespace Rebellion.AI
                 IndexFleetComposition(
                     fleet,
                     capitalShip,
-                    starfighters != null ? starfighters : Array.Empty<Starfighter>()
+                    starfighters != null ? starfighters : Array.Empty<Starfighter>(),
+                    includeProjected: true
                 );
             }
         }
@@ -1256,10 +1272,12 @@ namespace Rebellion.AI
         /// <param name="fleet">The containing fleet.</param>
         /// <param name="capitalShip">The capital ship.</param>
         /// <param name="starfighters">The carried starfighters.</param>
+        /// <param name="includeProjected">Whether to populate committed-unit aggregates.</param>
         private void IndexFleetComposition(
             Fleet fleet,
             CapitalShip capitalShip,
-            IReadOnlyList<Starfighter> starfighters
+            IReadOnlyList<Starfighter> starfighters,
+            bool includeProjected
         )
         {
             string fleetId = fleet.InstanceID;
@@ -1290,7 +1308,7 @@ namespace Rebellion.AI
                 );
             }
 
-            if (isProjected)
+            if (includeProjected && isProjected)
             {
                 AddIndexedAmount(
                     _projectedCapitalFirepowerByFleetId,
@@ -1337,7 +1355,7 @@ namespace Rebellion.AI
                     AddIndexedAmount(_readyStarfighterCountByFleetId, fleetId, 1);
                 }
 
-                if (isProjected)
+                if (includeProjected && isProjected)
                 {
                     AddIndexedAmount(
                         _projectedCapitalFirepowerByFleetId,

@@ -447,6 +447,63 @@ namespace Rebellion.Tests.AI.Phases
             CollectionAssert.AreEqual(new[] { higher }, selected);
         }
 
+        [Test]
+        public void Select_WithRegularAndIdlePlanetaryFighters_CountsBothAgainstIdleLimit()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Infrastructure.IdleShipyardFighterReserveCount = 1;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet regularPlanet = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "regular-planet",
+                empire.InstanceID
+            );
+            Planet idlePlanet = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "idle-planet",
+                empire.InstanceID
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                regularPlanet,
+                "regular-shipyard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                idlePlanet,
+                "idle-shipyard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            Starfighter fighter = AITestSceneBuilder.CreateStarfighter(
+                "fighter",
+                empire.InstanceID
+            );
+            AIManufactureProposal regular = CreatePlanetaryStarfighterProposal(
+                regularPlanet,
+                fighter,
+                20,
+                usesIdleShipyardCapacity: false
+            );
+            AIManufactureProposal idle = CreatePlanetaryStarfighterProposal(
+                idlePlanet,
+                fighter,
+                10,
+                usesIdleShipyardCapacity: true
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            context.AddProposal(idle);
+            context.AddProposal(regular);
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+
+            CollectionAssert.AreEqual(new[] { regular }, selected);
+        }
+
         [TestCase(AIProductionDemandKind.ConstructionFacility, BuildingType.ConstructionFacility)]
         [TestCase(AIProductionDemandKind.Shipyard, BuildingType.Shipyard)]
         [TestCase(AIProductionDemandKind.TrainingFacility, BuildingType.TrainingFacility)]
@@ -802,6 +859,21 @@ namespace Rebellion.Tests.AI.Phases
             Planet planet,
             Starfighter fighter,
             double score
+        ) => CreatePlanetaryStarfighterProposal(planet, fighter, score, true);
+
+        /// <summary>
+        /// Creates one scored planetary-fighter proposal.
+        /// </summary>
+        /// <param name="planet">Planet producing and receiving the fighter.</param>
+        /// <param name="fighter">Fighter technology to manufacture.</param>
+        /// <param name="score">Proposal score.</param>
+        /// <param name="usesIdleShipyardCapacity">Whether the proposal uses idle capacity.</param>
+        /// <returns>The configured proposal.</returns>
+        private static AIManufactureProposal CreatePlanetaryStarfighterProposal(
+            Planet planet,
+            Starfighter fighter,
+            double score,
+            bool usesIdleShipyardCapacity
         )
         {
             AIProductionDemand demand = new AIProductionDemand(
@@ -813,7 +885,7 @@ namespace Rebellion.Tests.AI.Phases
                 1,
                 targetCount: 1,
                 baseDemandPercent: 1,
-                usesIdleShipyardCapacity: true
+                usesIdleShipyardCapacity: usesIdleShipyardCapacity
             );
             AIManufactureProposal proposal = new AIManufactureProposal(
                 demand,

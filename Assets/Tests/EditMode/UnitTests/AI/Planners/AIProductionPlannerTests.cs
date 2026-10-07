@@ -1394,6 +1394,66 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
+        public void Plan_FleetCapitalShipWithMultipleProducers_RetainsProducerAlternatives()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Infrastructure.FleetProductionMinimumShipyardCount = 1;
+            game.Config.AI.FleetDeployment.MinimumBattleFleetCount = 1;
+            game.Config.AI.FleetDeployment.MinimumAttackStrength = 500;
+            game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 0;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet first = AITestSceneBuilder.AddPlanet(game, system, "first", empire.InstanceID);
+            Planet second = AITestSceneBuilder.AddPlanet(game, system, "second", empire.InstanceID);
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                first,
+                "first-shipyard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                second,
+                "second-shipyard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
+            fleet.RoleType = FleetRoleType.Battle;
+            game.AttachNode(fleet, first);
+            game.AttachNode(
+                AITestSceneBuilder.CreateCapitalShip(
+                    "existing-ship",
+                    empire.InstanceID,
+                    combatStrength: 1,
+                    regimentCapacity: 0,
+                    starfighterCapacity: 0
+                ),
+                fleet
+            );
+            CapitalShip template = AITestSceneBuilder.CreateCapitalShip(
+                "ship-template",
+                empire.InstanceID,
+                combatStrength: 100
+            );
+            template.MaintenanceCost = 0;
+            empire.ResearchQueue[ManufacturingType.Ship] = new List<Technology>
+            {
+                new Technology(template),
+            };
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIManufactureProposal proposal = PlanProduction(context)
+                .OfType<AIManufactureProposal>()
+                .Single(item =>
+                    item.Demand.Kind == AIProductionDemandKind.FleetCapitalShip
+                    && item.Destination == fleet
+                );
+
+            Assert.AreEqual(1, proposal.ProducerAlternatives.Count);
+        }
+
+        [Test]
         public void Plan_WithCombatAndBombardmentDeficits_SelectsBombardmentShip()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
