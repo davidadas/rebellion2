@@ -3166,8 +3166,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(2, deliveries.Count);
             Assert.AreEqual("owner:Target:Empire:Coruscant", ownerMessage.Body);
             Assert.AreEqual("captor:Target:Coruscant", captorMessage.Body);
-            Assert.AreEqual("alliance-image", ownerMessage.DisplayImagePath);
-            Assert.AreEqual("empire-image", captorMessage.DisplayImagePath);
             Assert.IsNull(ownerMessage.OverlayImagePath);
             Assert.IsNull(captorMessage.OverlayImagePath);
             Assert.AreEqual(
@@ -3175,6 +3173,53 @@ namespace Rebellion.Tests.Simulation
                 DeliveryFor(captorMessage).AdvisorSubjectNotification
             );
             Assert.AreEqual(target.TypeID, DeliveryFor(captorMessage).AdvisorSubjectTypeID);
+        }
+
+        [Test]
+        public void CreateMessages_OfficerCapture_UsesCapturedOfficerFactionImageForBothRecipients()
+        {
+            (GameRoot game, Faction alliance, Faction empire, Planet origin, _) =
+                BuildTwoFactionMessageScene();
+            Officer target = new Officer
+            {
+                DisplayName = "Target",
+                OwnerInstanceID = alliance.InstanceID,
+                CaptorInstanceID = empire.InstanceID,
+            };
+            game.AttachNode(target, origin);
+
+            List<MessageDelivery> deliveries = CreateMessages(
+                game,
+                new[]
+                {
+                    Definition(
+                        MessageResultType.OfficerCaptured,
+                        MessageType.Mission,
+                        "owner",
+                        "owner",
+                        imagePaths: FactionImages()
+                    ),
+                    Definition(
+                        MessageResultType.EnemyOfficerCaptured,
+                        MessageType.Mission,
+                        "captor",
+                        "captor",
+                        imagePaths: FactionImages()
+                    ),
+                },
+                new OfficerCaptureStateResult
+                {
+                    TargetOfficer = target,
+                    IsCaptured = true,
+                    Context = origin,
+                }
+            );
+
+            Assert.AreEqual(
+                "alliance-image",
+                FirstMessageFor(deliveries, alliance).DisplayImagePath
+            );
+            Assert.AreEqual("alliance-image", FirstMessageFor(deliveries, empire).DisplayImagePath);
         }
 
         [Test]
