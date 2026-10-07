@@ -530,6 +530,7 @@ namespace Rebellion.Simulation
                         },
                         { "system", planet?.GetDisplayName() ?? string.Empty },
                     },
+                    imageFaction: GetOwnerFaction(game, officer),
                     overlayImagePath: GetMessageImagePath(officer),
                     officerVoicePath: GetOfficerMessageVoicePath(resultType, officer, game)
                 ),
