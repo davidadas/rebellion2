@@ -1221,6 +1221,13 @@ namespace Rebellion.Tests.AI.Demands
                 BuildingType.Shipyard,
                 ManufacturingType.Ship
             );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "second-shipyard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
             for (
                 int index = 0;
                 index < game.Config.AI.NonCapitalSummary.StarfighterRequirementInfrastructure;
@@ -1264,9 +1271,11 @@ namespace Rebellion.Tests.AI.Demands
             );
 
             Assert.AreEqual(1, demand.QuantityNeeded);
-            Assert.AreEqual(
+            Assert.IsTrue(demand.UsesIdleShipyardCapacity);
+            Assert.GreaterOrEqual(
+                AIProductionProposalScorer.GetDemandPressure(context, demand),
                 game.Config.AI.Infrastructure.IdleShipyardFighterDemandPercent,
-                AIProductionProposalScorer.GetDemandPressure(context, demand)
+                "Idle work should retain its configured minimum pressure."
             );
 
             game.AttachNode(
@@ -1276,11 +1285,14 @@ namespace Rebellion.Tests.AI.Demands
             demands = new AIProductionDemandGenerator().BuildDemands(
                 AITestSceneBuilder.CreateContext(game, empire)
             );
-            Assert.IsFalse(
-                demands.Any(item =>
-                    item.Kind == AIProductionDemandKind.PlanetaryStarfighterReserve
-                    && item.DestinationPlanet == planet
-                )
+            AIProductionDemand nextDemand = demands.Single(item =>
+                item.Kind == AIProductionDemandKind.PlanetaryStarfighterReserve
+                && item.DestinationPlanet == planet
+            );
+            Assert.AreEqual(1, nextDemand.QuantityNeeded);
+            Assert.AreEqual(
+                game.Config.AI.NonCapitalSummary.StarfighterRequirementInfrastructure + 2,
+                nextDemand.TargetCount
             );
         }
 
@@ -1720,8 +1732,8 @@ namespace Rebellion.Tests.AI.Demands
                     && item.DestinationFleet == fleet
                 );
 
-            Assert.AreEqual(100, demand.QuantityNeeded);
-            Assert.AreEqual(AICapitalShipProductionRole.General, demand.CapitalShipRole);
+            Assert.AreEqual(1, demand.QuantityNeeded);
+            Assert.AreEqual(100, demand.CapitalFirepowerDeficit);
         }
 
         [Test]
@@ -1930,8 +1942,8 @@ namespace Rebellion.Tests.AI.Demands
                     && item.DestinationFleet == fleet
                 );
 
-            Assert.AreEqual(3, demand.QuantityNeeded);
-            Assert.AreEqual(AICapitalShipProductionRole.TroopTransport, demand.CapitalShipRole);
+            Assert.AreEqual(1, demand.QuantityNeeded);
+            Assert.AreEqual(3, demand.RegimentCapacityDeficit);
         }
 
         [Test]
@@ -1962,12 +1974,12 @@ namespace Rebellion.Tests.AI.Demands
                     && item.DestinationFleet == fleet
                 );
 
+            Assert.AreEqual(1, demand.QuantityNeeded);
             Assert.AreEqual(
                 game.Config.AI.FleetDeployment.MinimumAttackStrength
                     - ship.GetPrimaryWeaponStrength(),
-                demand.QuantityNeeded
+                demand.CapitalFirepowerDeficit
             );
-            Assert.AreEqual(AICapitalShipProductionRole.General, demand.CapitalShipRole);
         }
 
         [Test]
@@ -2010,12 +2022,12 @@ namespace Rebellion.Tests.AI.Demands
                     && item.DestinationFleet == fleet
                 );
 
-            Assert.AreEqual(191, demand.QuantityNeeded);
-            Assert.AreEqual(AICapitalShipProductionRole.Bombardment, demand.CapitalShipRole);
+            Assert.AreEqual(1, demand.QuantityNeeded);
+            Assert.AreEqual(191, demand.BombardmentDeficit);
         }
 
         [Test]
-        public void BuildDemands_WithCombatAndBombardmentGaps_PrioritizesBombardmentShip()
+        public void BuildDemands_WithCombatAndBombardmentGaps_PreservesBothDeficits()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 500;
@@ -2054,7 +2066,8 @@ namespace Rebellion.Tests.AI.Demands
                     && item.DestinationFleet == fleet
                 );
 
-            Assert.AreEqual(AICapitalShipProductionRole.Bombardment, demand.CapitalShipRole);
+            Assert.Greater(demand.CapitalFirepowerDeficit, 0);
+            Assert.Greater(demand.BombardmentDeficit, 0);
         }
 
         [Test]
@@ -2107,7 +2120,7 @@ namespace Rebellion.Tests.AI.Demands
                 );
 
             Assert.AreEqual(1, demand.QuantityNeeded);
-            Assert.AreEqual(AICapitalShipProductionRole.Interdiction, demand.CapitalShipRole);
+            Assert.AreEqual(1, demand.InterdictionDeficit);
         }
 
         [Test]
@@ -2152,7 +2165,7 @@ namespace Rebellion.Tests.AI.Demands
                 );
 
             Assert.AreEqual(1, demand.QuantityNeeded);
-            Assert.AreEqual(AICapitalShipProductionRole.Interdiction, demand.CapitalShipRole);
+            Assert.AreEqual(1, demand.InterdictionDeficit);
         }
 
         [TestCase(ManufacturingStatus.Building)]
@@ -2188,6 +2201,16 @@ namespace Rebellion.Tests.AI.Demands
             interdictor.HasGravityWell = true;
             interdictor.ManufacturingStatus = manufacturingStatus;
             game.AttachNode(interdictor, fleet);
+            game.AttachNode(
+                AITestSceneBuilder.CreateCapitalShip(
+                    "escort",
+                    empire.InstanceID,
+                    combatStrength: 1,
+                    regimentCapacity: 0,
+                    starfighterCapacity: 0
+                ),
+                fleet
+            );
             CapitalShip template = AITestSceneBuilder.CreateCapitalShip(
                 "interdictor-template",
                 empire.InstanceID
@@ -2281,7 +2304,8 @@ namespace Rebellion.Tests.AI.Demands
                     && item.DestinationFleet == fleet
                 );
 
-            Assert.AreEqual(50, demand.QuantityNeeded);
+            Assert.AreEqual(1, demand.QuantityNeeded);
+            Assert.AreEqual(50, demand.CapitalFirepowerDeficit);
         }
 
         [Test]
@@ -2322,6 +2346,51 @@ namespace Rebellion.Tests.AI.Demands
                     demand.Kind == AIProductionDemandKind.FleetCapitalShip
                     && demand.DestinationFleet == fleet
                 )
+            );
+        }
+
+        [Test]
+        public void BuildDemands_WithSmallCombatGapAndNoCapitalFirepowerTarget_UsesCombatRatio()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.FleetDeployment.MinimumAttackStrength = 500;
+            game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 0;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
+            target.SetPopularSupport(empire.InstanceID, game.Config.AI.Garrison.SupportThreshold);
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+            Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
+            fleet.RoleType = FleetRoleType.Battle;
+            fleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                Status = FleetOrderStatus.Staging,
+                TargetPlanetId = target.InstanceID,
+            };
+            game.AttachNode(fleet, owned);
+            CapitalShip ship = AITestSceneBuilder.CreateCapitalShip(
+                "ship",
+                empire.InstanceID,
+                combatStrength: 499,
+                regimentCapacity: 1,
+                starfighterCapacity: 0
+            );
+            ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon][0] = 1;
+            game.AttachNode(ship, fleet);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIProductionDemand demand = new AIProductionDemandGenerator()
+                .BuildDemands(context)
+                .Single(item =>
+                    item.Kind == AIProductionDemandKind.FleetCapitalShip
+                    && item.DestinationFleet == fleet
+                );
+
+            Assert.AreEqual(
+                1,
+                demand.DeficitCount,
+                $"capital={demand.CapitalFirepowerDeficit}, fighterFire={demand.StarfighterFirepowerDeficit}, fighterCapacity={demand.StarfighterCapacityDeficit}, regimentCapacity={demand.RegimentCapacityDeficit}, bombardment={demand.BombardmentDeficit}, interdiction={demand.InterdictionDeficit}, escort={demand.EscortDeficit}"
             );
         }
 
@@ -2397,9 +2466,10 @@ namespace Rebellion.Tests.AI.Demands
                     && item.DestinationFleet == fleet
                 );
 
+            Assert.AreEqual(1, demand.QuantityNeeded);
             Assert.AreEqual(
                 game.Config.AI.FleetDeployment.ColonizationFleetMaximumRegimentCount,
-                demand.QuantityNeeded
+                demand.RegimentCapacityDeficit
             );
         }
 

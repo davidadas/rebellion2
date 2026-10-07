@@ -102,6 +102,30 @@ namespace Rebellion.AI
         private readonly Dictionary<string, int> _fleetCombatValues = new Dictionary<string, int>(
             StringComparer.Ordinal
         );
+        private readonly Dictionary<string, int> _readyCapitalFirepowerByFleetId = new Dictionary<
+            string,
+            int
+        >(StringComparer.Ordinal);
+        private readonly Dictionary<string, int> _readyStarfighterFirepowerByFleetId =
+            new Dictionary<string, int>(StringComparer.Ordinal);
+        private readonly Dictionary<string, int> _projectedCapitalFirepowerByFleetId =
+            new Dictionary<string, int>(StringComparer.Ordinal);
+        private readonly Dictionary<string, int> _projectedStarfighterFirepowerByFleetId =
+            new Dictionary<string, int>(StringComparer.Ordinal);
+        private readonly Dictionary<string, int> _readyStarfighterCountByFleetId = new Dictionary<
+            string,
+            int
+        >(StringComparer.Ordinal);
+        private readonly Dictionary<string, int> _projectedArmedEscortCountByFleetId =
+            new Dictionary<string, int>(StringComparer.Ordinal);
+        private readonly Dictionary<string, int> _projectedInterdictionCountByFleetId =
+            new Dictionary<string, int>(StringComparer.Ordinal);
+        private readonly Dictionary<string, int> _hostilePlanetaryCapitalFirepowerByPlanetId =
+            new Dictionary<string, int>(StringComparer.Ordinal);
+        private readonly Dictionary<string, int> _hostilePlanetaryStarfighterFirepowerByPlanetId =
+            new Dictionary<string, int>(StringComparer.Ordinal);
+        private readonly Dictionary<string, int> _hostilePlanetaryStarfighterCountByPlanetId =
+            new Dictionary<string, int>(StringComparer.Ordinal);
         private readonly Dictionary<string, int> _fleetBombardmentStrengths = new Dictionary<
             string,
             int
@@ -213,6 +237,8 @@ namespace Rebellion.AI
 
         public IReadOnlyList<Fleet> ColonizationOrderedFleets { get; }
 
+        public int UnfinishedPlanetStarfighterCount { get; }
+
         /// <summary>
         /// Creates an AI assessment from the faction-visible turn state.
         /// </summary>
@@ -300,12 +326,18 @@ namespace Rebellion.AI
             }
             BuildMissionDetectorIndex();
             OwnedPlanets = BuildOwnedPlanets();
+            UnfinishedPlanetStarfighterCount = OwnedPlanets
+                .SelectMany(GetPlanetStarfighters)
+                .Count(starfighter =>
+                    starfighter.ManufacturingStatus != ManufacturingStatus.Complete
+                );
             NearTermRefinedMaterialCommitment = GetNearTermRefinedMaterialCommitment();
             EnemyPlanets = BuildEnemyPlanets();
             NeutralPlanets = BuildNeutralPlanets();
             AvailableMissionParticipants = BuildAvailableMissionParticipants();
             TargetableEnemyOfficerMissionTargets = BuildTargetableEnemyOfficerMissionTargets();
             OwnedFleets = BuildOwnedFleets();
+            BuildFleetCompositionIndex();
             AttackOrderedFleets = BuildAttackOrderedFleets();
             foreach (Fleet fleet in AttackOrderedFleets)
             {
@@ -1055,12 +1087,14 @@ namespace Rebellion.AI
                 switch (node)
                 {
                     case Fleet fleet:
-                        IndexMissionHostileFleet(fleet);
+                        IndexHostileFleet(fleet);
                         break;
                     case Building building:
                         IndexMissionDetectionBlocker(building);
                         break;
                     case Starfighter starfighter:
+                        if (starfighter.GetParentOfType<CapitalShip>() == null)
+                            IndexHostilePlanetaryStarfighter(starfighter);
                         IndexMissionDetector(starfighter, starfightersByCapitalShip);
                         break;
                     case Regiment regiment:
@@ -1076,9 +1110,35 @@ namespace Rebellion.AI
                 }
             }
 
+            foreach (List<Fleet> fleets in _hostileFleetsByPlanetId.Values)
+                fleets.Sort(
+                    (left, right) =>
+                        StringComparer.Ordinal.Compare(left.InstanceID, right.InstanceID)
+                );
+
             foreach (CapitalShip capitalShip in capitalShips)
             {
                 Fleet fleet = capitalShip.GetParentOfType<Fleet>();
+                starfightersByCapitalShip.TryGetValue(
+                    capitalShip.InstanceID,
+                    out List<Starfighter> containedStarfighters
+                );
+                if (
+                    fleet != null
+                    && !string.IsNullOrEmpty(fleet.GetOwnerInstanceID())
+                    && fleet.GetOwnerInstanceID() != _faction.InstanceID
+                )
+                {
+                    IndexFleetComposition(
+                        fleet,
+                        capitalShip,
+                        containedStarfighters != null
+                            ? containedStarfighters
+                            : Array.Empty<Starfighter>(),
+                        includeProjected: false
+                    );
+                }
+
                 if (
                     fleet == null
                     || fleet.GetOwnerInstanceID() == _faction.InstanceID
@@ -1088,12 +1148,7 @@ namespace Rebellion.AI
 
                 if (Mission.IsEligibleDetectorForOwner(capitalShip, _faction.InstanceID))
                     AddMissionDetectorCandidate(capitalShip, true);
-                if (
-                    starfightersByCapitalShip.TryGetValue(
-                        capitalShip.InstanceID,
-                        out List<Starfighter> containedStarfighters
-                    )
-                )
+                if (containedStarfighters != null)
                 {
                     foreach (Starfighter starfighter in containedStarfighters)
                         AddMissionDetectorCandidate(starfighter, true);
@@ -1102,19 +1157,260 @@ namespace Rebellion.AI
         }
 
         /// <summary>
-        /// Indexes a stationary hostile fleet by its known planet.
+        /// Indexes projected owned-fleet composition and inbound threats at owned planets.
+        /// </summary>
+        private void BuildFleetCompositionIndex()
+        {
+            if (_game == null || _faction == null)
+                return;
+
+            HashSet<string> ownedFleetIds = OwnedFleets
+                .Select(fleet => fleet.InstanceID)
+                .ToHashSet(StringComparer.Ordinal);
+            List<CapitalShip> capitalShips = new List<CapitalShip>();
+            Dictionary<string, List<Starfighter>> starfightersByCapitalShip = new Dictionary<
+                string,
+                List<Starfighter>
+            >(StringComparer.Ordinal);
+
+            foreach (
+                ISceneNode node in _game.Galaxy.GetChildren(recursive: true, includeDisabled: true)
+            )
+            {
+                if (node is Fleet hostileFleet)
+                {
+                    Planet planet = hostileFleet.GetParentOfType<Planet>();
+                    if (
+                        hostileFleet.Movement != null
+                        && hostileFleet.GetOwnerInstanceID() != _faction.InstanceID
+                        && planet?.GetOwnerInstanceID() == _faction.InstanceID
+                    )
+                        AddIndexedValue(_hostileFleetsByPlanetId, planet.InstanceID, hostileFleet);
+                    continue;
+                }
+
+                if (node.GetOwnerInstanceID() != _faction.InstanceID)
+                    continue;
+
+                if (node is CapitalShip capitalShip)
+                {
+                    Fleet fleet = capitalShip.GetParentOfType<Fleet>();
+                    if (fleet != null && ownedFleetIds.Contains(fleet.InstanceID))
+                        capitalShips.Add(capitalShip);
+                }
+                else if (node is Starfighter starfighter)
+                {
+                    CapitalShip parentShip = starfighter.GetParentOfType<CapitalShip>();
+                    Fleet fleet = parentShip?.GetParentOfType<Fleet>();
+                    if (fleet != null && ownedFleetIds.Contains(fleet.InstanceID))
+                        AddIndexedValue(
+                            starfightersByCapitalShip,
+                            parentShip.InstanceID,
+                            starfighter
+                        );
+                }
+            }
+
+            foreach (CapitalShip capitalShip in capitalShips)
+            {
+                Fleet fleet = capitalShip.GetParentOfType<Fleet>();
+                starfightersByCapitalShip.TryGetValue(
+                    capitalShip.InstanceID,
+                    out List<Starfighter> starfighters
+                );
+                IndexFleetComposition(
+                    fleet,
+                    capitalShip,
+                    starfighters != null ? starfighters : Array.Empty<Starfighter>(),
+                    includeProjected: true
+                );
+            }
+        }
+
+        /// <summary>
+        /// Adds one ready hostile planetary fighter to the composition indexes.
+        /// </summary>
+        /// <param name="starfighter">The visible fighter to inspect.</param>
+        private void IndexHostilePlanetaryStarfighter(Starfighter starfighter)
+        {
+            Planet planet = starfighter.GetParentOfType<Planet>();
+            if (
+                planet == null
+                || starfighter.ManufacturingStatus != ManufacturingStatus.Complete
+                || starfighter.Movement != null
+                || string.IsNullOrEmpty(starfighter.GetOwnerInstanceID())
+                || starfighter.GetOwnerInstanceID() == _faction.InstanceID
+            )
+                return;
+
+            string planetId = planet.InstanceID;
+            AddIndexedAmount(
+                _hostilePlanetaryCapitalFirepowerByPlanetId,
+                planetId,
+                SpaceCombatStrengthCalculator.GetStarfighterFirepowerAgainstCapitalShips(
+                    starfighter
+                )
+            );
+            AddIndexedAmount(
+                _hostilePlanetaryStarfighterFirepowerByPlanetId,
+                planetId,
+                SpaceCombatStrengthCalculator.GetStarfighterFirepowerAgainstStarfighters(
+                    starfighter
+                )
+            );
+            AddIndexedAmount(_hostilePlanetaryStarfighterCountByPlanetId, planetId, 1);
+        }
+
+        /// <summary>
+        /// Adds one visible capital-ship group's composition values to its fleet aggregates.
+        /// </summary>
+        /// <param name="fleet">The containing fleet.</param>
+        /// <param name="capitalShip">The capital ship.</param>
+        /// <param name="starfighters">The carried starfighters.</param>
+        /// <param name="includeProjected">Whether to populate committed-unit aggregates.</param>
+        private void IndexFleetComposition(
+            Fleet fleet,
+            CapitalShip capitalShip,
+            IReadOnlyList<Starfighter> starfighters,
+            bool includeProjected
+        )
+        {
+            string fleetId = fleet.InstanceID;
+            bool isReady =
+                capitalShip.ManufacturingStatus == ManufacturingStatus.Complete
+                && capitalShip.Movement == null
+                && (capitalShip.MaxHullStrength <= 0 || capitalShip.CurrentHullStrength > 0);
+            bool isProjected =
+                capitalShip.ManufacturingStatus != ManufacturingStatus.Complete
+                || capitalShip.MaxHullStrength <= 0
+                || capitalShip.CurrentHullStrength > 0;
+
+            if (isReady)
+            {
+                AddIndexedAmount(
+                    _readyCapitalFirepowerByFleetId,
+                    fleetId,
+                    SpaceCombatStrengthCalculator.GetCapitalShipFirepowerAgainstCapitalShips(
+                        capitalShip
+                    )
+                );
+                AddIndexedAmount(
+                    _readyStarfighterFirepowerByFleetId,
+                    fleetId,
+                    SpaceCombatStrengthCalculator.GetCapitalShipFirepowerAgainstStarfighters(
+                        capitalShip
+                    )
+                );
+            }
+
+            if (includeProjected && isProjected)
+            {
+                AddIndexedAmount(
+                    _projectedCapitalFirepowerByFleetId,
+                    fleetId,
+                    SpaceCombatStrengthCalculator.GetCapitalShipFirepowerAgainstCapitalShips(
+                        capitalShip
+                    )
+                );
+                AddIndexedAmount(
+                    _projectedStarfighterFirepowerByFleetId,
+                    fleetId,
+                    SpaceCombatStrengthCalculator.GetCapitalShipFirepowerAgainstStarfighters(
+                        capitalShip
+                    )
+                );
+                if (SpaceCombatStrengthCalculator.IsArmedEscort(capitalShip))
+                    AddIndexedAmount(_projectedArmedEscortCountByFleetId, fleetId, 1);
+                if (capitalShip.HasGravityWell)
+                    AddIndexedAmount(_projectedInterdictionCountByFleetId, fleetId, 1);
+            }
+
+            foreach (Starfighter starfighter in starfighters)
+            {
+                if (
+                    isReady
+                    && starfighter.ManufacturingStatus == ManufacturingStatus.Complete
+                    && starfighter.Movement == null
+                )
+                {
+                    AddIndexedAmount(
+                        _readyCapitalFirepowerByFleetId,
+                        fleetId,
+                        SpaceCombatStrengthCalculator.GetStarfighterFirepowerAgainstCapitalShips(
+                            starfighter
+                        )
+                    );
+                    AddIndexedAmount(
+                        _readyStarfighterFirepowerByFleetId,
+                        fleetId,
+                        SpaceCombatStrengthCalculator.GetStarfighterFirepowerAgainstStarfighters(
+                            starfighter
+                        )
+                    );
+                    AddIndexedAmount(_readyStarfighterCountByFleetId, fleetId, 1);
+                }
+
+                if (includeProjected && isProjected)
+                {
+                    AddIndexedAmount(
+                        _projectedCapitalFirepowerByFleetId,
+                        fleetId,
+                        SpaceCombatStrengthCalculator.GetProjectedStarfighterFirepowerAgainstCapitalShips(
+                            starfighter
+                        )
+                    );
+                    AddIndexedAmount(
+                        _projectedStarfighterFirepowerByFleetId,
+                        fleetId,
+                        SpaceCombatStrengthCalculator.GetProjectedStarfighterFirepowerAgainstStarfighters(
+                            starfighter
+                        )
+                    );
+                }
+            }
+        }
+
+        /// <summary>
+        /// Adds an amount to an integer index entry.
+        /// </summary>
+        /// <param name="index">The index to update.</param>
+        /// <param name="key">The entry key.</param>
+        /// <param name="amount">The amount to add.</param>
+        private static void AddIndexedAmount(IDictionary<string, int> index, string key, int amount)
+        {
+            index.TryGetValue(key, out int current);
+            index[key] = current + amount;
+        }
+
+        /// <summary>
+        /// Returns an indexed integer or zero when the key is unavailable.
+        /// </summary>
+        /// <param name="index">The index to read.</param>
+        /// <param name="key">The entry key.</param>
+        /// <returns>The indexed value.</returns>
+        private static int GetIndexedAmount(IReadOnlyDictionary<string, int> index, string key)
+        {
+            return !string.IsNullOrEmpty(key) && index.TryGetValue(key, out int value) ? value : 0;
+        }
+
+        /// <summary>
+        /// Indexes a visible hostile fleet by its known planet.
         /// </summary>
         /// <param name="fleet">The visible fleet to inspect.</param>
-        private void IndexMissionHostileFleet(Fleet fleet)
+        private void IndexHostileFleet(Fleet fleet)
         {
             Planet planet = fleet.GetParentOfType<Planet>();
             if (
                 planet != null
                 && _knownPlanets.ContainsKey(planet.InstanceID)
+                && !string.IsNullOrEmpty(fleet.GetOwnerInstanceID())
                 && fleet.GetOwnerInstanceID() != _faction.InstanceID
-                && fleet.Movement == null
             )
-                _missionHostileFleetPlanetIds.Add(planet.InstanceID);
+            {
+                AddIndexedValue(_hostileFleetsByPlanetId, planet.InstanceID, fleet);
+                if (fleet.Movement == null)
+                    _missionHostileFleetPlanetIds.Add(planet.InstanceID);
+            }
         }
 
         /// <summary>
@@ -1420,19 +1716,9 @@ namespace Rebellion.AI
             if (planet == null)
                 return Array.Empty<Fleet>();
 
-            return GetOrAdd(
-                _hostileFleetsByPlanetId,
-                planet.InstanceID,
-                () =>
-                    planet
-                        .GetChildren<Fleet>()
-                        .Where(fleet =>
-                            !string.IsNullOrEmpty(fleet.GetOwnerInstanceID())
-                            && fleet.GetOwnerInstanceID() != _faction?.InstanceID
-                        )
-                        .OrderBy(fleet => fleet.InstanceID)
-                        .ToList()
-            );
+            return _hostileFleetsByPlanetId.TryGetValue(planet.InstanceID, out List<Fleet> fleets)
+                ? fleets
+                : Array.Empty<Fleet>();
         }
 
         /// <summary>
@@ -1467,8 +1753,7 @@ namespace Rebellion.AI
             if (planet == null)
                 return 0;
 
-            return planet
-                .GetChildren<Fleet>()
+            return GetHostileFleets(planet)
                 .Where(fleet =>
                     fleet.Movement == null
                     && !string.IsNullOrEmpty(fleet.GetOwnerInstanceID())
@@ -1477,6 +1762,98 @@ namespace Rebellion.AI
                 .Select(GetReadyFleetCombatValueAgainstCapitalShips)
                 .DefaultIfEmpty()
                 .Max();
+        }
+
+        /// <summary>
+        /// Returns the strongest hostile fleet's ready strength against starfighters.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <returns>The strongest hostile fleet's fighter-target strength.</returns>
+        public int GetStrongestHostileFleetFirepowerAgainstStarfighters(Planet planet)
+        {
+            if (planet == null)
+                return 0;
+
+            return GetHostileFleets(planet)
+                .Where(fleet => fleet.Movement == null)
+                .Select(GetReadyFleetFirepowerAgainstStarfighters)
+                .DefaultIfEmpty()
+                .Max();
+        }
+
+        /// <summary>
+        /// Returns the strongest hostile fleet's ready firepower against capital ships.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <returns>The strongest hostile fleet's capital-target firepower.</returns>
+        public int GetStrongestHostileFleetFirepowerAgainstCapitalShips(Planet planet)
+        {
+            if (planet == null)
+                return 0;
+
+            return GetHostileFleets(planet)
+                .Where(fleet => fleet.Movement == null)
+                .Select(GetReadyFleetFirepowerAgainstCapitalShips)
+                .DefaultIfEmpty()
+                .Max();
+        }
+
+        /// <summary>
+        /// Returns the largest ready hostile fleet's carried-starfighter count.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <returns>The largest hostile carried-starfighter count.</returns>
+        public int GetStrongestHostileFleetStarfighterCount(Planet planet)
+        {
+            if (planet == null)
+                return 0;
+
+            return GetHostileFleets(planet)
+                .Where(fleet => fleet.Movement == null)
+                .Select(fleet =>
+                    GetIndexedAmount(_readyStarfighterCountByFleetId, fleet.InstanceID)
+                )
+                .DefaultIfEmpty()
+                .Max();
+        }
+
+        /// <summary>
+        /// Returns ready hostile planetary fighter firepower against capital ships.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <returns>The capital-target firepower.</returns>
+        public int GetHostilePlanetaryFirepowerAgainstCapitalShips(Planet planet)
+        {
+            return GetIndexedAmount(
+                _hostilePlanetaryCapitalFirepowerByPlanetId,
+                planet?.InstanceID
+            );
+        }
+
+        /// <summary>
+        /// Returns ready hostile planetary fighter firepower against starfighters.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <returns>The fighter-target firepower.</returns>
+        public int GetHostilePlanetaryFirepowerAgainstStarfighters(Planet planet)
+        {
+            return GetIndexedAmount(
+                _hostilePlanetaryStarfighterFirepowerByPlanetId,
+                planet?.InstanceID
+            );
+        }
+
+        /// <summary>
+        /// Returns the ready hostile planetary fighter count.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <returns>The fighter count.</returns>
+        public int GetHostilePlanetaryStarfighterCount(Planet planet)
+        {
+            return GetIndexedAmount(
+                _hostilePlanetaryStarfighterCountByPlanetId,
+                planet?.InstanceID
+            );
         }
 
         /// <summary>
@@ -1698,6 +2075,26 @@ namespace Rebellion.AI
         }
 
         /// <summary>
+        /// Returns combat value from ready fleet units against starfighters.
+        /// </summary>
+        /// <param name="fleet">The fleet to inspect.</param>
+        /// <returns>The ready fighter-target combat value.</returns>
+        public int GetReadyFleetFirepowerAgainstStarfighters(Fleet fleet)
+        {
+            return GetIndexedAmount(_readyStarfighterFirepowerByFleetId, fleet?.InstanceID);
+        }
+
+        /// <summary>
+        /// Returns composition firepower from ready fleet units against capital ships.
+        /// </summary>
+        /// <param name="fleet">The fleet to inspect.</param>
+        /// <returns>The ready capital-target firepower.</returns>
+        public int GetReadyFleetFirepowerAgainstCapitalShips(Fleet fleet)
+        {
+            return GetIndexedAmount(_readyCapitalFirepowerByFleetId, fleet?.InstanceID);
+        }
+
+        /// <summary>
         /// Returns fleet combat value including committed reinforcements.
         /// </summary>
         /// <param name="fleet">Fleet to inspect.</param>
@@ -1721,6 +2118,46 @@ namespace Rebellion.AI
                 fleet,
                 _game.Config.Combat.SpaceCombat
             );
+        }
+
+        /// <summary>
+        /// Returns projected fleet combat value against starfighters.
+        /// </summary>
+        /// <param name="fleet">The fleet to inspect.</param>
+        /// <returns>The projected fighter-target combat value.</returns>
+        public int GetProjectedFleetFirepowerAgainstStarfighters(Fleet fleet)
+        {
+            return GetIndexedAmount(_projectedStarfighterFirepowerByFleetId, fleet?.InstanceID);
+        }
+
+        /// <summary>
+        /// Returns projected composition firepower against capital ships.
+        /// </summary>
+        /// <param name="fleet">The fleet to inspect.</param>
+        /// <returns>The projected capital-target firepower.</returns>
+        public int GetProjectedFleetFirepowerAgainstCapitalShips(Fleet fleet)
+        {
+            return GetIndexedAmount(_projectedCapitalFirepowerByFleetId, fleet?.InstanceID);
+        }
+
+        /// <summary>
+        /// Returns the projected armed escort count in a fleet.
+        /// </summary>
+        /// <param name="fleet">The fleet to inspect.</param>
+        /// <returns>The armed escort count.</returns>
+        public int GetProjectedFleetArmedEscortCount(Fleet fleet)
+        {
+            return GetIndexedAmount(_projectedArmedEscortCountByFleetId, fleet?.InstanceID);
+        }
+
+        /// <summary>
+        /// Returns the projected interdiction-capable ship count in a fleet.
+        /// </summary>
+        /// <param name="fleet">The fleet to inspect.</param>
+        /// <returns>The interdiction-capable ship count.</returns>
+        public int GetProjectedFleetInterdictionCount(Fleet fleet)
+        {
+            return GetIndexedAmount(_projectedInterdictionCountByFleetId, fleet?.InstanceID);
         }
 
         /// <summary>
