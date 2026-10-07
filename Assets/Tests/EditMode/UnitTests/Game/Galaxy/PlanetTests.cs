@@ -112,6 +112,67 @@ namespace Rebellion.Tests.Game.Galaxy
         }
 
         [Test]
+        public void CanAcceptChild_MineAtRawResourceNodeCapacity_ReturnsFalse()
+        {
+            _planet.NumRawResourceNodes = 1;
+            _planet.AddChild(
+                new Building
+                {
+                    OwnerInstanceID = "FNALL1",
+                    BuildingType = BuildingType.Mine,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                }
+            );
+
+            Building mine = new Building
+            {
+                OwnerInstanceID = "FNALL1",
+                BuildingType = BuildingType.Mine,
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+
+            Assert.IsFalse(_planet.CanAcceptChild(mine));
+        }
+
+        [Test]
+        public void CanAcceptChild_MineWithAvailableResourceNodes_ReturnsTrue()
+        {
+            _planet.NumRawResourceNodes = 2;
+
+            Building mine = new Building
+            {
+                OwnerInstanceID = "FNALL1",
+                BuildingType = BuildingType.Mine,
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+
+            Assert.IsTrue(_planet.CanAcceptChild(mine));
+        }
+
+        [Test]
+        public void CanAcceptChild_NonMineBuildingAtRawResourceNodeCapacity_ReturnsTrue()
+        {
+            _planet.NumRawResourceNodes = 1;
+            _planet.AddChild(
+                new Building
+                {
+                    OwnerInstanceID = "FNALL1",
+                    BuildingType = BuildingType.Mine,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                }
+            );
+
+            Building refinery = new Building
+            {
+                OwnerInstanceID = "FNALL1",
+                BuildingType = BuildingType.Refinery,
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+
+            Assert.IsTrue(_planet.CanAcceptChild(refinery));
+        }
+
+        [Test]
         public void AddOfficer_ValidOfficer_AddsToPlanet()
         {
             Officer officer = new Officer { OwnerInstanceID = "FNALL1" };
