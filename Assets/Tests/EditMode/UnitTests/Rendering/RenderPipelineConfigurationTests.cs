@@ -136,6 +136,17 @@ public sealed class RenderPipelineConfigurationTests
         Assert.AreEqual(ColorSpace.Linear, QualitySettings.activeColorSpace);
     }
 
+    [Test]
+    public void Lighting_ProjectConfiguration_UsesLinearIntensityAndColorTemperature()
+    {
+        SerializedObject graphicsSettings = new SerializedObject(
+            GraphicsSettings.GetGraphicsSettings()
+        );
+
+        Assert.IsTrue(graphicsSettings.FindProperty("m_LightsUseLinearIntensity").boolValue);
+        Assert.IsTrue(graphicsSettings.FindProperty("m_LightsUseColorTemperature").boolValue);
+    }
+
     [TestCase("Custom/AtmosphereRim")]
     [TestCase("Custom/PlanetClouds")]
     [TestCase("Custom/PlanetDayNightShade")]
