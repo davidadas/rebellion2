@@ -163,6 +163,103 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void CanStartManufacturing_MineAtRawResourceNodeCapacity_ReturnsFalse()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet planet = CreateOrderTestConstructionPlanet(game, "p1", "empire");
+            planet.NumRawResourceNodes = 2;
+            game.AttachNode(
+                new Building
+                {
+                    InstanceID = "mine1",
+                    OwnerInstanceID = "empire",
+                    BuildingType = BuildingType.Mine,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                planet
+            );
+            game.AttachNode(
+                new Building
+                {
+                    InstanceID = "mine2",
+                    OwnerInstanceID = "empire",
+                    BuildingType = BuildingType.Mine,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                planet
+            );
+
+            bool canStart = new ManufacturingQueries(game).CanStartManufacturing(
+                planet,
+                CreateOrderTestBuildingTemplate("mine"),
+                planet,
+                1,
+                "empire"
+            );
+
+            Assert.IsFalse(canStart);
+        }
+
+        [Test]
+        public void CanStartManufacturing_MineWithAvailableResourceNodes_ReturnsTrue()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet planet = CreateOrderTestConstructionPlanet(game, "p1", "empire");
+            planet.NumRawResourceNodes = 3;
+            game.AttachNode(
+                new Building
+                {
+                    InstanceID = "mine1",
+                    OwnerInstanceID = "empire",
+                    BuildingType = BuildingType.Mine,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                planet
+            );
+
+            bool canStart = new ManufacturingQueries(game).CanStartManufacturing(
+                planet,
+                CreateOrderTestBuildingTemplate("mine"),
+                planet,
+                1,
+                "empire"
+            );
+
+            Assert.IsTrue(canStart);
+        }
+
+        [Test]
+        public void CanStartManufacturing_NonMineBuildingAtRawResourceNodeCapacity_ReturnsTrue()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet planet = CreateOrderTestConstructionPlanet(game, "p1", "empire");
+            planet.NumRawResourceNodes = 1;
+            game.AttachNode(
+                new Building
+                {
+                    InstanceID = "mine1",
+                    OwnerInstanceID = "empire",
+                    BuildingType = BuildingType.Mine,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                planet
+            );
+
+            Building refinery = CreateOrderTestBuildingTemplate("refinery");
+            refinery.BuildingType = BuildingType.Refinery;
+
+            bool canStart = new ManufacturingQueries(game).CanStartManufacturing(
+                planet,
+                refinery,
+                planet,
+                1,
+                "empire"
+            );
+
+            Assert.IsTrue(canStart);
+        }
+
+        [Test]
         public void CanStartManufacturing_HardAiMaintenanceBonus_AllowsBonusHeadroom()
         {
             GameRoot game = CreateOrderTestGame();
