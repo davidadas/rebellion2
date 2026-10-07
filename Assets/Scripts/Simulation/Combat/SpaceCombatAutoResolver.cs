@@ -866,31 +866,7 @@ namespace Rebellion.Simulation
             /// <returns>The carrier-dependent fighters that can leave with the group.</returns>
             private HashSet<TacticalUnit> GetRecoverableUnits()
             {
-                HashSet<TacticalUnit> recoverableUnits = new HashSet<TacticalUnit>();
-                foreach (
-                    IGrouping<Fleet, TacticalUnit> fleetUnits in _units.GroupBy(unit =>
-                        unit.Node.GetParentOfType<Fleet>()
-                    )
-                )
-                {
-                    AddRecoverableUnits(fleetUnits.ToList(), recoverableUnits);
-                }
-
-                return recoverableUnits;
-            }
-
-            /// <summary>
-            /// Assigns carrier-dependent fighters within one fleet to that fleet's surviving
-            /// carrier capacity.
-            /// </summary>
-            /// <param name="fleetUnits">The tactical units belonging to one fleet.</param>
-            /// <param name="recoverableUnits">The set receiving recoverable fighters.</param>
-            private static void AddRecoverableUnits(
-                IReadOnlyList<TacticalUnit> fleetUnits,
-                ISet<TacticalUnit> recoverableUnits
-            )
-            {
-                List<CapitalShipState> carriers = fleetUnits
+                List<CapitalShipState> carriers = _units
                     .OfType<CapitalShipState>()
                     .Where(carrier =>
                         carrier.IsTargetable
@@ -898,9 +874,7 @@ namespace Rebellion.Simulation
                         && carrier.Ship.StarfighterCapacity > 0
                     )
                     .ToList();
-                List<StarfighterState> fighterStates = fleetUnits
-                    .OfType<StarfighterState>()
-                    .ToList();
+                List<StarfighterState> fighterStates = _units.OfType<StarfighterState>().ToList();
                 List<StarfighterState> survivingFighters = fighterStates
                     .Where(fighter => fighter.IsTargetable)
                     .ToList();
@@ -908,6 +882,7 @@ namespace Rebellion.Simulation
                     carrier => carrier,
                     carrier => GetAvailableRecoveryCapacity(carrier, fighterStates)
                 );
+                HashSet<TacticalUnit> recoverableUnits = new HashSet<TacticalUnit>();
 
                 foreach (CapitalShipState carrier in carriers)
                 {
@@ -935,6 +910,8 @@ namespace Rebellion.Simulation
                     remainingCapacity[recoveryCarrier]--;
                     recoverableUnits.Add(fighter);
                 }
+
+                return recoverableUnits;
             }
 
             /// <summary>

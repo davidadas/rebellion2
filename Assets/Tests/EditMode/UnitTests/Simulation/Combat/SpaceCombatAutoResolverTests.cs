@@ -1417,7 +1417,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void Resolve_CarrierInOtherFleetHasRecoveryCapacity_DestroysNonHyperdriveFighter()
+        public void Resolve_CarrierInOtherFleetHasRecoveryCapacity_PreservesNonHyperdriveFighter()
         {
             CapitalShip attacker = CreateShip("attacker", hull: 1000, weaponStrength: 10);
             CapitalShip destroyedCarrier = CreateShip(
@@ -1469,8 +1469,8 @@ namespace Rebellion.Tests.Simulation
 
             Assert.AreEqual(0, GetShipOutcome(result, destroyedCarrier).HullAfter);
             Assert.IsTrue(GetShipOutcome(result, otherFleetCarrier).Withdrew);
-            Assert.IsFalse(GetFighterOutcome(result, fighter).Withdrew);
-            Assert.AreEqual(0, GetFighterOutcome(result, fighter).SquadronSizeAfter);
+            Assert.IsTrue(GetFighterOutcome(result, fighter).Withdrew);
+            Assert.AreEqual(12, GetFighterOutcome(result, fighter).SquadronSizeAfter);
         }
 
         [Test]
