@@ -576,6 +576,106 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void Resolve_DestroyedCarrierWithEmbarkedUnits_RecordsDestroyedOutcomes()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            game.Random = new SequenceRNG();
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "alliance" });
+
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            Planet planet = new Planet { InstanceID = "planet" };
+            game.AttachNode(sector, game.Galaxy);
+            game.AttachNode(planet, sector);
+
+            Fleet allianceFleet = new Fleet
+            {
+                InstanceID = "alliance-fleet",
+                OwnerInstanceID = "alliance",
+            };
+            game.AttachNode(allianceFleet, planet);
+            CapitalShip carrier = new CapitalShip
+            {
+                InstanceID = "carrier",
+                OwnerInstanceID = "alliance",
+                MaxHullStrength = 1,
+                CurrentHullStrength = 1,
+                RegimentCapacity = 1,
+                ShieldRechargeRate = 0,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            CapitalShip survivor = new CapitalShip
+            {
+                InstanceID = "survivor",
+                OwnerInstanceID = "alliance",
+                MaxHullStrength = 1000000,
+                CurrentHullStrength = 1000000,
+                RegimentCapacity = 1,
+                ShieldRechargeRate = 0,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                WeaponRecharge = 1,
+            };
+            survivor.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 1000, 0, 0, 0, 100 };
+            game.AttachNode(carrier, allianceFleet);
+            game.AttachNode(survivor, allianceFleet);
+
+            Regiment regiment = EntityFactory.CreateRegiment("regiment", "alliance");
+            regiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            SpecialForces specialForces = new SpecialForces
+            {
+                InstanceID = "special-forces",
+                OwnerInstanceID = "alliance",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(regiment, carrier);
+            game.AttachNode(specialForces, carrier);
+
+            Fleet empireFleet = CreateFleet(
+                game,
+                "empire-fleet",
+                "empire",
+                planet,
+                1,
+                1000,
+                100,
+                shieldRechargeRate: 0
+            );
+
+            TryResolveCombat(
+                MakeSpaceCombat(game),
+                empireFleet,
+                allianceFleet,
+                out List<GameResult> results
+            );
+
+            Assert.IsNull(
+                game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID, includeDisabled: true)
+            );
+            Assert.IsNull(
+                game.GetSceneNodeByInstanceID<SpecialForces>(
+                    specialForces.InstanceID,
+                    includeDisabled: true
+                )
+            );
+            CollectionAssert.IsSubsetOf(
+                new IGameEntity[] { regiment, specialForces },
+                results
+                    .OfType<GameObjectDestroyedResult>()
+                    .Select(destruction => destruction.DestroyedObject)
+                    .ToList()
+            );
+
+            SpaceCombatResult combatResult = GetCombatResult(results);
+            foreach (string instanceId in new[] { regiment.InstanceID, specialForces.InstanceID })
+            {
+                CombatUnitSnapshot snapshot = combatResult
+                    .AttackingUnits.Concat(combatResult.DefendingUnits)
+                    .Single(unit => unit.Unit.InstanceID == instanceId);
+                Assert.IsTrue(snapshot.Destroyed);
+            }
+        }
+
+        [Test]
         public void Resolve_FighterSquadronTakesLosses_ReducesCurrentSquadronSize()
         {
             GameRoot game = CreateAutomaticCombatGame();
@@ -1373,7 +1473,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ProcessTick_FleetWithdrawalInterruptedByVictory_KeepsEntireFleetAtCombatPlanet()
+        public void ProcessTick_StalledEnemyWithdrawal_KeepsEntireVictoriousFleetAtCombatPlanet()
         {
             GameRoot game = CreateAutomaticCombatGame();
             game.Random = new SequenceRNG();

@@ -97,6 +97,8 @@ namespace Rebellion.Simulation
             );
             double previousAttackerDurability = GetTacticalDurability(attacker);
             double previousDefenderDurability = GetTacticalDurability(defender);
+            double previousAttackerWithdrawalProgress = GetWithdrawalProgress(attacker);
+            double previousDefenderWithdrawalProgress = GetWithdrawalProgress(defender);
             int stagnantIterations = 0;
             int iterationsCompleted = 0;
             Dictionary<TacticalUnit, PendingDamage> pendingDamage =
@@ -120,12 +122,20 @@ namespace Rebellion.Simulation
                 double defenderStrength = GetTacticalStrength(defender, attacker);
                 double attackerDurability = GetTacticalDurability(attacker);
                 double defenderDurability = GetTacticalDurability(defender);
+                double attackerWithdrawalProgress = GetWithdrawalProgress(attacker);
+                double defenderWithdrawalProgress = GetWithdrawalProgress(defender);
                 bool stateChanged =
                     Math.Abs(attackerDurability - previousAttackerDurability) > double.Epsilon
-                    || Math.Abs(defenderDurability - previousDefenderDurability) > double.Epsilon;
+                    || Math.Abs(defenderDurability - previousDefenderDurability) > double.Epsilon
+                    || Math.Abs(attackerWithdrawalProgress - previousAttackerWithdrawalProgress)
+                        > double.Epsilon
+                    || Math.Abs(defenderWithdrawalProgress - previousDefenderWithdrawalProgress)
+                        > double.Epsilon;
                 stagnantIterations = stateChanged ? 0 : stagnantIterations + 1;
                 previousAttackerDurability = attackerDurability;
                 previousDefenderDurability = defenderDurability;
+                previousAttackerWithdrawalProgress = attackerWithdrawalProgress;
+                previousDefenderWithdrawalProgress = defenderWithdrawalProgress;
 
                 if (stagnantIterations >= _config.AutoResolveStagnationIterations)
                 {
@@ -134,18 +144,28 @@ namespace Rebellion.Simulation
                 }
             }
 
-            if (
-                attacker.Outcome == SpaceCombatSideOutcome.Active
-                && defender.Outcome == SpaceCombatSideOutcome.Active
-                && !CompleteEliminatedForces(attacker, defender)
-            )
+            if (!CompleteEliminatedForces(attacker, defender))
             {
-                ResolveStalemate(
-                    attacker,
-                    defender,
-                    GetTacticalStrength(attacker, defender),
-                    GetTacticalStrength(defender, attacker)
-                );
+                if (
+                    attacker.Outcome == SpaceCombatSideOutcome.Active
+                    && defender.Outcome == SpaceCombatSideOutcome.Active
+                )
+                {
+                    ResolveStalemate(
+                        attacker,
+                        defender,
+                        GetTacticalStrength(attacker, defender),
+                        GetTacticalStrength(defender, attacker)
+                    );
+                }
+                else if (attacker.Outcome == SpaceCombatSideOutcome.Active)
+                {
+                    CompleteStalematedForce(attacker);
+                }
+                else if (defender.Outcome == SpaceCombatSideOutcome.Active)
+                {
+                    CompleteStalematedForce(defender);
+                }
             }
 
             return CreateResult(attacker, defender, iterationsCompleted);
@@ -159,16 +179,16 @@ namespace Rebellion.Simulation
         /// <returns>True when combat has ended.</returns>
         private static bool CompleteEliminatedForces(CombatForce attacker, CombatForce defender)
         {
-            bool attackerActive = attacker.HasCombatants;
-            bool defenderActive = defender.HasCombatants;
-            if (attackerActive && defenderActive)
+            bool attackerUnresolved = attacker.HasUnresolvedUnits;
+            bool defenderUnresolved = defender.HasUnresolvedUnits;
+            if (attackerUnresolved && defenderUnresolved)
                 return false;
 
-            if (!attackerActive)
+            if (!attackerUnresolved)
                 CompleteForce(attacker);
-            if (!defenderActive)
+            if (!defenderUnresolved)
                 CompleteForce(defender);
-            return true;
+            return !attacker.HasPendingWithdrawal && !defender.HasPendingWithdrawal;
         }
 
         /// <summary>
@@ -320,13 +340,13 @@ namespace Rebellion.Simulation
         {
             foreach (TacticalUnit unit in force.Units)
             {
-                if (!unit.IsTargetable)
+                if (!unit.IsAlive || unit.HasWithdrawn)
                     continue;
 
                 unit.AdvanceTacticalState(_config, _random);
             }
 
-            force.CompleteWithdrawalWhenReady(Math.Max(_config.AutoResolveWithdrawalDistance, 0));
+            force.CompleteReadyWithdrawals(Math.Max(_config.AutoResolveWithdrawalDistance, 0));
         }
 
         /// <summary>
@@ -387,6 +407,20 @@ namespace Rebellion.Simulation
             return durability;
         }
 
+        /// <summary>Calculates movement completed by units currently leaving combat.</summary>
+        /// <param name="force">The force whose withdrawal motion is measured.</param>
+        /// <returns>The combined withdrawal distance of units still moving toward safety.</returns>
+        private static double GetWithdrawalProgress(CombatForce force)
+        {
+            double progress = 0;
+            foreach (TacticalUnit unit in force.Units)
+            {
+                if (unit.IsWithdrawing && unit.CanWithdrawIndependently)
+                    progress += unit.WithdrawalDistance;
+            }
+            return progress;
+        }
+
         /// <summary>
         /// Resolves forces that can no longer change the tactical state.
         /// </summary>
@@ -401,6 +435,18 @@ namespace Rebellion.Simulation
             double defenderStrength
         )
         {
+            if (attacker.HasPendingWithdrawal)
+            {
+                CompleteStalematedForce(attacker);
+                return;
+            }
+
+            if (defender.HasPendingWithdrawal)
+            {
+                CompleteStalematedForce(defender);
+                return;
+            }
+
             int comparison = attackerStrength.CompareTo(defenderStrength);
             if (comparison < 0)
             {
@@ -427,7 +473,9 @@ namespace Rebellion.Simulation
             if (force.CanWithdraw && !force.WithdrawalOrdered)
                 force.CompleteWithdrawal();
 
-            foreach (TacticalUnit unit in force.Units.Where(unit => unit.IsTargetable))
+            foreach (
+                TacticalUnit unit in force.Units.Where(unit => unit.IsAlive && !unit.HasWithdrawn)
+            )
                 unit.Destroy();
 
             if (force.HasWithdrawnUnits)
@@ -612,6 +660,8 @@ namespace Rebellion.Simulation
             private readonly List<TacticalUnit> _targetableUnits = new List<TacticalUnit>();
 
             internal bool HasCombatants => HasTargetableUnits(Units);
+            internal bool HasUnresolvedUnits => HasUnresolvedUnit(Units);
+            internal bool HasPendingWithdrawal => HasWithdrawingUnit(Units);
             internal bool HasTargetableShips => HasTargetableUnits(Ships);
             internal bool HasTargetableFighters => HasTargetableUnits(Fighters);
             internal bool HasWithdrawnUnits => HasWithdrawnUnit(Units);
@@ -699,45 +749,74 @@ namespace Rebellion.Simulation
                     unit.StartWithdrawal();
             }
 
-            /// <summary>Completes withdrawal once every independently mobile survivor reaches safety.</summary>
+            /// <summary>Completes each mobile withdrawal that has reached safety.</summary>
             /// <param name="withdrawalDistance">The distance required to leave combat.</param>
-            internal void CompleteWithdrawalWhenReady(double withdrawalDistance)
+            internal void CompleteReadyWithdrawals(double withdrawalDistance)
             {
-                if (
-                    !WithdrawalOrdered
-                    || Units.Any(unit =>
-                        unit.IsAlive
-                        && unit.CanWithdrawIndependently
-                        && unit.WithdrawalDistance < withdrawalDistance
-                    )
-                )
+                if (!WithdrawalOrdered)
                     return;
 
-                CompleteWithdrawal();
+                foreach (
+                    TacticalUnit unit in Units.Where(unit =>
+                        unit.IsWithdrawing
+                        && unit.CanWithdrawIndependently
+                        && unit.WithdrawalDistance >= withdrawalDistance
+                    )
+                )
+                {
+                    unit.FinishWithdrawal();
+                }
+
+                if (HasWithdrawingIndependentUnit())
+                    return;
+
+                CompleteDependentWithdrawal();
             }
 
-            /// <summary>Withdraws mobile survivors and fighters that fit aboard withdrawing carriers.</summary>
+            /// <summary>Immediately resolves withdrawal for every surviving unit.</summary>
             internal void CompleteWithdrawal()
             {
+                foreach (
+                    TacticalUnit unit in Units.Where(unit =>
+                        unit.IsAlive && !unit.HasWithdrawn && unit.CanWithdrawIndependently
+                    )
+                )
+                {
+                    unit.FinishWithdrawal();
+                }
+
+                CompleteDependentWithdrawal();
+            }
+
+            /// <summary>Resolves stranded units after every mobile survivor has escaped.</summary>
+            private void CompleteDependentWithdrawal()
+            {
                 HashSet<Starfighter> carrierDependentFighters = Fighters
-                    .Where(fighter => fighter.IsTargetable && !fighter.CanWithdrawIndependently)
+                    .Where(fighter =>
+                        fighter.IsAlive
+                        && !fighter.HasWithdrawn
+                        && !fighter.CanWithdrawIndependently
+                    )
                     .Select(fighter => fighter.Fighter)
                     .ToHashSet();
                 Dictionary<Starfighter, CapitalShip> recoveryAssignments =
                     SpaceCombatWithdrawalPlanner.GetRecoveryAssignments(
                         Ships
-                            .Where(ship => ship.IsTargetable && ship.CanWithdrawIndependently)
+                            .Where(ship =>
+                                ship.IsAlive && ship.HasWithdrawn && ship.CanWithdrawIndependently
+                            )
                             .Select(ship => ship.Ship),
                         Fighters.ConvertAll(fighter => fighter.Fighter),
                         carrierDependentFighters
                     );
 
-                foreach (TacticalUnit unit in Units.Where(unit => unit.IsTargetable))
+                foreach (
+                    TacticalUnit unit in Units.Where(unit => unit.IsAlive && !unit.HasWithdrawn)
+                )
                 {
                     if (
-                        unit.CanWithdrawIndependently
-                        || unit is StarfighterState fighter
-                            && recoveryAssignments.ContainsKey(fighter.Fighter)
+                        unit is StarfighterState fighter
+                        && recoveryAssignments.ContainsKey(fighter.Fighter)
                     )
                         unit.FinishWithdrawal();
                     else
@@ -757,6 +836,44 @@ namespace Rebellion.Simulation
                 foreach (TUnit unit in units)
                 {
                     if (unit.IsTargetable)
+                        return true;
+                }
+                return false;
+            }
+
+            /// <summary>Determines whether a tactical collection contains an unresolved survivor.</summary>
+            /// <param name="units">The units to inspect.</param>
+            /// <returns>True when at least one unit is alive and has not withdrawn.</returns>
+            private static bool HasUnresolvedUnit(IReadOnlyList<TacticalUnit> units)
+            {
+                foreach (TacticalUnit unit in units)
+                {
+                    if (unit.IsAlive && !unit.HasWithdrawn)
+                        return true;
+                }
+                return false;
+            }
+
+            /// <summary>Determines whether a tactical collection is still moving out of combat.</summary>
+            /// <param name="units">The units to inspect.</param>
+            /// <returns>True when at least one surviving unit is withdrawing.</returns>
+            private static bool HasWithdrawingUnit(IReadOnlyList<TacticalUnit> units)
+            {
+                foreach (TacticalUnit unit in units)
+                {
+                    if (unit.IsAlive && unit.IsWithdrawing)
+                        return true;
+                }
+                return false;
+            }
+
+            /// <summary>Determines whether an independently mobile unit is still withdrawing.</summary>
+            /// <returns>True when an independently mobile survivor has not reached safety.</returns>
+            private bool HasWithdrawingIndependentUnit()
+            {
+                foreach (TacticalUnit unit in Units)
+                {
+                    if (unit.IsAlive && unit.IsWithdrawing && unit.CanWithdrawIndependently)
                         return true;
                 }
                 return false;
@@ -801,7 +918,7 @@ namespace Rebellion.Simulation
             internal bool CanFire => IsTargetable && !IsWithdrawing && !IsAttackDelayed;
             internal bool HasWithdrawn { get; private set; }
             internal bool IsWithdrawing { get; private set; }
-            internal bool IsTargetable => IsAlive && !HasWithdrawn;
+            internal bool IsTargetable => IsAlive && !HasWithdrawn && !IsWithdrawing;
             internal double WithdrawalDistance => _withdrawalDistance;
 
             /// <summary>

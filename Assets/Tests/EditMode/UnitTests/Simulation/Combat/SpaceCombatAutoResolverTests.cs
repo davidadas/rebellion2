@@ -1271,7 +1271,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void Resolve_ForceBeginsWithdrawal_RemainsVulnerableUntilItEscapes()
+        public void Resolve_ForceBeginsWithdrawal_CannotBeTargeted()
         {
             CapitalShip attacker = CreateShip("attacker", hull: 100, weaponStrength: 5);
             CapitalShip defender = CreateShip("defender", hull: 100, weaponStrength: 1);
@@ -1293,7 +1293,61 @@ namespace Rebellion.Tests.Simulation
             );
 
             Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
-            Assert.AreEqual(90, GetShipOutcome(result, defender).HullAfter);
+            Assert.AreEqual(100, GetShipOutcome(result, defender).HullAfter);
+        }
+
+        [Test]
+        public void Resolve_UnitsReachWithdrawalBoundaryAtDifferentTimes_CompletesEachUnitIndependently()
+        {
+            CapitalShip attacker = CreateShip("attacker", hull: 100, weaponStrength: 5);
+            CapitalShip fastDefender = CreateShip("fast-defender", hull: 100, weaponStrength: 1);
+            fastDefender.SublightSpeed = 20;
+            CapitalShip slowDefender = CreateShip("slow-defender", hull: 100, weaponStrength: 1);
+            slowDefender.SublightSpeed = 10;
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveMaximumIterations = 1;
+            config.AutoResolveRetreatStrengthRatio = 1.01;
+            config.AutoResolveStartingDistance = 0;
+            config.AutoResolveWithdrawalDistance = 20;
+
+            SpaceCombatResult result = Resolve(
+                config,
+                new[] { attacker },
+                new List<Starfighter>(),
+                new[] { fastDefender, slowDefender },
+                new List<Starfighter>(),
+                defenderCanWithdraw: true
+            );
+
+            Assert.IsTrue(GetShipOutcome(result, fastDefender).Withdrew);
+            Assert.IsFalse(GetShipOutcome(result, slowDefender).Withdrew);
+        }
+
+        [Test]
+        public void Resolve_WithdrawalCannotAdvance_DoesNotWithdrawOpposingForce()
+        {
+            CapitalShip attacker = CreateShip("attacker", hull: 100, weaponStrength: 10);
+            CapitalShip defender = CreateShip("defender", hull: 100, weaponStrength: 1);
+            defender.SublightSpeed = 0;
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveMaximumIterations = 2;
+            config.AutoResolveStagnationIterations = 2;
+            config.AutoResolveRetreatStrengthRatio = 0.33;
+            config.AutoResolveStartingDistance = 0;
+            config.AutoResolveWithdrawalDistance = 20;
+
+            SpaceCombatResult result = Resolve(
+                config,
+                new[] { attacker },
+                new List<Starfighter>(),
+                new[] { defender },
+                new List<Starfighter>(),
+                defenderCanWithdraw: true
+            );
+
+            Assert.AreEqual(SpaceCombatSideOutcome.Active, result.AttackerOutcome);
+            Assert.IsFalse(GetShipOutcome(result, attacker).Withdrew);
+            Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, result.DefenderOutcome);
         }
 
         [Test]
@@ -1340,6 +1394,7 @@ namespace Rebellion.Tests.Simulation
             );
             destroyedCarrier.StarfighterCapacity = 1;
             destroyedCarrier.SublightSpeed = 10;
+            destroyedCarrier.CurrentHullStrength = 0;
             CapitalShip otherFleetCarrier = CreateShip(
                 "other-fleet-carrier",
                 hull: 1000,
@@ -1387,6 +1442,7 @@ namespace Rebellion.Tests.Simulation
             CapitalShip carrier = CreateShip("carrier", hull: 1, weaponStrength: 1);
             carrier.StarfighterCapacity = 1;
             carrier.SublightSpeed = 10;
+            carrier.CurrentHullStrength = 0;
             CapitalShip escapeShip = CreateShip("escape-ship", hull: 1000, weaponStrength: 1);
             escapeShip.StarfighterCapacity = 0;
             escapeShip.SublightSpeed = 10;
@@ -1432,6 +1488,8 @@ namespace Rebellion.Tests.Simulation
             CapitalShip secondCarrier = CreatePassiveTarget("second-carrier", hull: 1);
             secondCarrier.StarfighterCapacity = 1;
             secondCarrier.SublightSpeed = 1;
+            firstCarrier.CurrentHullStrength = 0;
+            secondCarrier.CurrentHullStrength = 0;
             Starfighter firstFighter = CreateFighter(
                 "first-fighter",
                 squadronSize: 12,
@@ -1490,6 +1548,7 @@ namespace Rebellion.Tests.Simulation
             );
             destroyedCarrier.StarfighterCapacity = 1;
             destroyedCarrier.SublightSpeed = 10;
+            destroyedCarrier.CurrentHullStrength = 0;
             CapitalShip recoveryCarrier = CreateShip(
                 "recovery-carrier",
                 hull: 1000,
@@ -1552,6 +1611,7 @@ namespace Rebellion.Tests.Simulation
             );
             destroyedCarrier.StarfighterCapacity = 1;
             destroyedCarrier.SublightSpeed = 10;
+            destroyedCarrier.CurrentHullStrength = 0;
             CapitalShip recoveryCarrier = CreateShip(
                 "recovery-carrier",
                 hull: 1000,
@@ -1602,6 +1662,7 @@ namespace Rebellion.Tests.Simulation
             );
             destroyedCarrier.StarfighterCapacity = 1;
             destroyedCarrier.SublightSpeed = 10;
+            destroyedCarrier.CurrentHullStrength = 0;
             CapitalShip recoveryCarrier = CreateShip(
                 "recovery-carrier",
                 hull: 1000,

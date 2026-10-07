@@ -903,6 +903,22 @@ namespace Rebellion.Simulation
             RemoveEmptyFleets(attackerFleets, defenderFleets);
             CompleteFleetWithdrawal(attackerWithdrawalPlan);
             CompleteFleetWithdrawal(defenderWithdrawalPlan);
+
+            List<ISceneNode> destroyedUnits = events
+                .OfType<GameObjectDestroyedResult>()
+                .Select(destruction => destruction.DestroyedObject)
+                .OfType<ISceneNode>()
+                .ToList();
+            CombatUnitSnapshot.RecordOutcomes(
+                result.AttackingUnits,
+                Enumerable.Empty<ISceneNode>(),
+                destroyedUnits
+            );
+            CombatUnitSnapshot.RecordOutcomes(
+                result.DefendingUnits,
+                Enumerable.Empty<ISceneNode>(),
+                destroyedUnits
+            );
             return events;
         }
 
@@ -960,6 +976,23 @@ namespace Rebellion.Simulation
 
                 if (damage.HullAfter <= 0)
                 {
+                    foreach (
+                        IGameEntity unit in ship.GetChildren<Regiment>(includeDisabled: true)
+                            .Cast<IGameEntity>()
+                            .Concat(ship.GetChildren<SpecialForces>(includeDisabled: true))
+                    )
+                    {
+                        events.Add(
+                            new GameObjectDestroyedResult
+                            {
+                                DestroyedObject = unit,
+                                Context = planet,
+                                Reason = UnitDestructionReason.Combat,
+                                Tick = _game.CurrentTick,
+                            }
+                        );
+                    }
+
                     _game.DeleteNode(ship);
                     events.Add(
                         new GameObjectDestroyedResult
