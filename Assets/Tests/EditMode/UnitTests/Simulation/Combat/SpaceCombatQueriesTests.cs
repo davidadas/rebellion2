@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
@@ -38,6 +39,37 @@ namespace Rebellion.Tests.Simulation
         public void CanRetreatForces_NoFriendlyDestination_ReturnsFalse()
         {
             (_, Planet planet, Fleet fleet, SpaceCombatQueries queries) = CreateScenario();
+
+            bool canRetreat = queries.CanRetreatForces(
+                new[] { fleet },
+                new List<Fleet>(),
+                planet,
+                "alliance"
+            );
+
+            Assert.IsFalse(canRetreat);
+        }
+
+        [Test]
+        public void CanRetreatForces_HyperdriveFighterWithOnlyLocalCarrier_ReturnsFalse()
+        {
+            (GameRoot game, Planet planet, Fleet fleet, SpaceCombatQueries queries) =
+                CreateScenario();
+            CapitalShip carrier = fleet.GetChildren<CapitalShip>().Single();
+            carrier.Hyperdrive = 0;
+            carrier.StarfighterCapacity = 1;
+            game.AttachNode(
+                new Starfighter
+                {
+                    InstanceID = "fighter",
+                    OwnerInstanceID = "alliance",
+                    Hyperdrive = 1,
+                    MaxSquadronSize = 12,
+                    CurrentSquadronSize = 12,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                planet
+            );
 
             bool canRetreat = queries.CanRetreatForces(
                 new[] { fleet },

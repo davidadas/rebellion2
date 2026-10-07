@@ -2414,6 +2414,56 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void ResolvePending_CarrierBayFreedByDestroyedFighter_RecoversWithdrawnFighter()
+        {
+            (
+                GameRoot game,
+                _,
+                _,
+                CapitalShip recoveryCarrier,
+                List<Starfighter> displacedFighters,
+                List<Starfighter> existingFighters,
+                _,
+                SpaceCombatResult result
+            ) = ResolveCarrierDestructionWithdrawal(
+                recoveryCapacity: 1,
+                displacedFighterHyperdrives: new[] { 0 },
+                existingRecoveryFighterCount: 1,
+                destroyExistingRecoveryFighters: true
+            );
+            Starfighter displacedFighter = displacedFighters.Single();
+            Starfighter destroyedFighter = existingFighters.Single();
+
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Starfighter>(destroyedFighter.InstanceID));
+            Assert.AreSame(
+                displacedFighter,
+                game.GetSceneNodeByInstanceID<Starfighter>(displacedFighter.InstanceID)
+            );
+            Assert.AreSame(recoveryCarrier, displacedFighter.GetParent());
+            Assert.IsTrue(
+                result.FighterLosses.Any(loss =>
+                    loss.Fighter == destroyedFighter && loss.SquadsAfter == 0
+                )
+            );
+            Assert.IsFalse(result.FighterLosses.Any(loss => loss.Fighter == displacedFighter));
+        }
+
+        [Test]
+        public void ResolvePending_DestroyedSlowShip_CalculatesWithdrawalFromSurvivingShips()
+        {
+            (GameRoot game, Fleet retreatingFleet, CapitalShip destroyedShip, _, _, _, _, _) =
+                ResolveCarrierDestructionWithdrawal(
+                    recoveryCapacity: 0,
+                    displacedFighterHyperdrives: Array.Empty<int>(),
+                    destroyedCarrierHyperdrive: 100
+                );
+
+            Assert.IsNull(game.GetSceneNodeByInstanceID<CapitalShip>(destroyedShip.InstanceID));
+            Assert.IsNotNull(retreatingFleet.Movement);
+            Assert.AreEqual(1, retreatingFleet.Movement.TransitTicks);
+        }
+
+        [Test]
         public void ResolvePending_CarrierInOtherFleetHasRecoveryCapacity_ReparentsFighter()
         {
             (
@@ -3679,6 +3729,8 @@ namespace Rebellion.Tests.Simulation
         /// <param name="existingRecoveryFightersAreInTransit">Whether existing recovery fighters are in transit.</param>
         /// <param name="recoveryCarrierInSeparateFleet">Whether the recovery carrier belongs to another fleet.</param>
         /// <param name="includeUnrelatedOutboundCarrier">Whether an unrelated outbound fleet has spare carrier capacity.</param>
+        /// <param name="destroyExistingRecoveryFighters">Whether opposing fire destroys existing recovery-carrier fighters.</param>
+        /// <param name="destroyedCarrierHyperdrive">The doomed carrier's hyperdrive rating.</param>
         /// <returns>The resolved carrier destruction withdrawal.</returns>
         private (
             GameRoot game,
@@ -3696,7 +3748,9 @@ namespace Rebellion.Tests.Simulation
             int existingRecoveryFighterHyperdrive = 0,
             bool existingRecoveryFightersAreInTransit = false,
             bool recoveryCarrierInSeparateFleet = false,
-            bool includeUnrelatedOutboundCarrier = false
+            bool includeUnrelatedOutboundCarrier = false,
+            bool destroyExistingRecoveryFighters = false,
+            int destroyedCarrierHyperdrive = 1
         )
         {
             GameRoot game = CreateAutomaticCombatGame();
@@ -3708,7 +3762,30 @@ namespace Rebellion.Tests.Simulation
             (Planet combatPlanet, _) = CreatePlanet(game, "combat", owner: "alliance");
             (Planet fallbackPlanet, _) = CreatePlanet(game, "alliance-fallback", owner: "alliance");
             CreatePlanet(game, "empire-fallback", owner: "empire");
-            CreateFleet(game, "attacker", "empire", combatPlanet, 1, 1000, 10);
+            combatPlanet.PositionX = 0;
+            fallbackPlanet.PositionX = 100;
+            Fleet attackingFleet = CreateFleet(
+                game,
+                "attacker",
+                "empire",
+                combatPlanet,
+                1,
+                1000,
+                10
+            );
+            if (destroyExistingRecoveryFighters)
+            {
+                CapitalShip attackingShip = attackingFleet.GetChildren<CapitalShip>().Single();
+                attackingShip.SublightSpeed = 100;
+                attackingShip.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = new int[]
+                {
+                    1000,
+                    0,
+                    0,
+                    0,
+                    100,
+                };
+            }
             Fleet retreatingFleet = CreateFleet(
                 game,
                 "retreating",
@@ -3723,6 +3800,7 @@ namespace Rebellion.Tests.Simulation
             CapitalShip destroyedCarrier = retreatingShips[0];
             destroyedCarrier.MaxHullStrength = 1;
             destroyedCarrier.CurrentHullStrength = 1;
+            destroyedCarrier.Hyperdrive = destroyedCarrierHyperdrive;
             destroyedCarrier.StarfighterCapacity = displacedFighterHyperdrives.Count;
             destroyedCarrier.SublightSpeed = 10;
             destroyedCarrier.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new int[]
@@ -3778,6 +3856,7 @@ namespace Rebellion.Tests.Simulation
                     ShieldStrength = 1,
                     Hyperdrive = displacedFighterHyperdrives[index],
                     SublightSpeed = 10,
+                    Agility = destroyExistingRecoveryFighters ? 1000 : 0,
                 };
                 game.AttachNode(fighter, destroyedCarrier);
                 displacedFighters.Add(fighter);
@@ -3794,7 +3873,7 @@ namespace Rebellion.Tests.Simulation
                     CurrentSquadronSize = 12,
                     ShieldStrength = 1,
                     Hyperdrive = existingRecoveryFighterHyperdrive,
-                    SublightSpeed = 10,
+                    SublightSpeed = destroyExistingRecoveryFighters ? 0 : 10,
                 };
                 if (existingRecoveryFightersAreInTransit)
                 {

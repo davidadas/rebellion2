@@ -204,7 +204,8 @@ namespace Rebellion.Simulation
         /// <returns>True when the fighter has a hyperdrive and a valid destination.</returns>
         internal bool CanRetreatFighter(Starfighter fighter)
         {
-            return fighter?.Hyperdrive > 0 && _movement.CanEvacuateToNearestFriendlyPlanet(fighter);
+            return fighter?.Hyperdrive > 0
+                && _movement.CanEvacuateToNearestFriendlyPlanet(fighter, leaveOriginPlanet: true);
         }
 
         /// <summary>

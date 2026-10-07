@@ -942,8 +942,12 @@ namespace Rebellion.Simulation
         /// Determines whether a unit has a valid friendly evacuation destination.
         /// </summary>
         /// <param name="unit">The unit that would evacuate.</param>
+        /// <param name="leaveOriginPlanet">Whether destinations at the current planet are excluded.</param>
         /// <returns>True when at least one safe container can receive the unit.</returns>
-        internal bool CanEvacuateToNearestFriendlyPlanet(IMovable unit)
+        internal bool CanEvacuateToNearestFriendlyPlanet(
+            IMovable unit,
+            bool leaveOriginPlanet = false
+        )
         {
             if (unit == null)
                 return false;
@@ -951,7 +955,12 @@ namespace Rebellion.Simulation
                 return false;
 
             Planet currentPlanet = unit.GetParentOfType<Planet>();
-            return FindSafeRelocationDestinations(unit, currentPlanet).Any();
+            return FindSafeRelocationDestinations(
+                    unit,
+                    currentPlanet,
+                    leaveOriginPlanet: leaveOriginPlanet
+                )
+                .Any();
         }
 
         /// <summary>
