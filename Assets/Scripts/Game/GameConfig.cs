@@ -319,7 +319,7 @@ namespace Rebellion.Game
 
             public int AttackStrengthPercentOfStrongestHostileFleet { get; set; }
 
-            public int AssaultFleetCompositionReservePercent { get; set; }
+            public int AssaultFleetCompositionReservePercent { get; set; } = 100;
 
             public int StaleIntelMaximumAttackStrengthPercent { get; set; }
 
