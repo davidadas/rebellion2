@@ -134,24 +134,32 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.IsNotNull(viewport.Find("SpaceBackdrop/Planet"));
             Assert.IsNotNull(viewport.Find("Cockpit"));
             Assert.AreSame(viewport, viewport.Find("MainMenuControls").parent);
-            Assert.AreEqual(7, _prefabRoot.GetComponentsInChildren<AutoRotate>(true).Length);
+            Assert.AreEqual(6, _prefabRoot.GetComponentsInChildren<AutoRotate>(true).Length);
         }
 
         [Test]
-        public void AuthoredPrefab_PlanetRig_UsesDayNightShade()
+        public void AuthoredPrefab_PlanetRig_UsesUnifiedSurfaceAndAtmosphere()
         {
-            Transform shade = _prefabRoot.transform.Find("PlanetRig/DayNightShade");
-            Assert.IsNotNull(shade);
-            Assert.AreEqual(Vector3.one * 2.04f, shade.localScale);
+            Transform model = _prefabRoot.transform.Find("PlanetRig/Pivot/Model");
+            PlanetSurfaceBinding binding = model.GetComponent<PlanetSurfaceBinding>();
+            RawImage planet = _prefabRoot
+                .transform.Find("UI/Canvas/Viewport/SpaceBackdrop/Planet")
+                .GetComponent<RawImage>();
 
-            RuntimeMaterialBinding binding = shade.GetComponent<RuntimeMaterialBinding>();
             Assert.IsNotNull(binding);
-            Assert.AreEqual(
-                "Custom/PlanetDayNightShade",
-                typeof(RuntimeMaterialBinding)
-                    .GetField("shaderName", BindingFlags.Instance | BindingFlags.NonPublic)
-                    .GetValue(binding)
+            Assert.IsNull(_prefabRoot.transform.Find("PlanetRig/CloudPivot"));
+            Assert.IsNull(_prefabRoot.transform.Find("PlanetRig/DayNightShade"));
+            Assert.IsNotNull(_prefabRoot.transform.Find("PlanetRig/PlanetSun"));
+            Transform atmosphere = _prefabRoot.transform.Find("PlanetRig/Atmosphere");
+            Assert.IsNotNull(atmosphere);
+            Assert.IsNotNull(atmosphere.GetComponent<PlanetAtmosphereBinding>());
+            Assert.AreEqual(Vector3.one * 2.08f, atmosphere.localScale);
+            Assert.GreaterOrEqual(
+                atmosphere.GetComponent<MeshFilter>().sharedMesh.vertexCount,
+                16000
             );
+            Assert.IsNotNull(planet.material);
+            Assert.AreEqual("Custom/PremultipliedTexture", planet.material.shader.name);
         }
 
         [Test]
