@@ -57,15 +57,18 @@ namespace Rebellion.Simulation
             return true;
         }
 
-        /// <summary>Records the units that leave or are lost when a side orders withdrawal.</summary>
+        /// <summary>Plans and records the units that leave or are lost after a manual order.</summary>
         /// <param name="result">The combat result receiving withdrawal outcomes.</param>
         /// <param name="retreatingFleets">Every participating fleet on the withdrawing side.</param>
+        /// <param name="opposingFleets">The fleets capable of blocking withdrawal.</param>
         /// <param name="ownerInstanceId">The withdrawing faction identifier.</param>
         /// <param name="attackerRetreated">Whether the withdrawing side initiated the encounter.</param>
         /// <param name="origin">The planet where withdrawal began.</param>
-        internal void ResolveManualWithdrawal(
+        /// <returns>The reserved plan, or null when the side cannot withdraw.</returns>
+        internal SpaceCombatWithdrawalPlan ResolveManualWithdrawal(
             SpaceCombatResult result,
             IReadOnlyList<Fleet> retreatingFleets,
+            IReadOnlyList<Fleet> opposingFleets,
             string ownerInstanceId,
             bool attackerRetreated,
             Planet origin
@@ -74,97 +77,79 @@ namespace Rebellion.Simulation
             if (result == null)
                 throw new ArgumentNullException(nameof(result));
 
-            List<CapitalShip> ships = GetParticipatingShips(retreatingFleets);
-            List<Starfighter> fighters = GetParticipatingFighters(ships, origin, ownerInstanceId);
-            HashSet<CapitalShip> independentlyWithdrawingShips = ships
-                .Where(ship =>
-                    ship.Hyperdrive > 0
-                    && _spaceCombatQueries.CanRetreatFleet(ship.GetParentOfType<Fleet>())
-                )
-                .ToHashSet();
-            HashSet<Starfighter> independentlyWithdrawingFighters = fighters
-                .Where(_spaceCombatQueries.CanRetreatFighter)
-                .ToHashSet();
-            HashSet<Starfighter> carrierDependentFighters = fighters
-                .Where(fighter => !independentlyWithdrawingFighters.Contains(fighter))
-                .ToHashSet();
-            Dictionary<Starfighter, CapitalShip> recoveryAssignments = GetRecoveryAssignments(
-                independentlyWithdrawingShips,
-                fighters,
-                carrierDependentFighters
-            );
-            HashSet<ISceneNode> withdrawnUnits = independentlyWithdrawingShips
-                .Cast<ISceneNode>()
-                .Concat(independentlyWithdrawingFighters)
-                .Concat(recoveryAssignments.Keys)
-                .ToHashSet();
-            List<CapitalShip> lostShips = ships
-                .Where(ship => !withdrawnUnits.Contains(ship))
-                .ToList();
-            List<Starfighter> lostFighters = fighters
-                .Where(fighter => !withdrawnUnits.Contains(fighter))
-                .ToList();
+            if (SpaceCombatQueries.IsRetreatBlockedByGravityWell(origin, opposingFleets))
+                return null;
 
-            result.WithdrawnUnits.AddRange(withdrawnUnits);
-            result.ShipDamage.AddRange(
-                lostShips.Select(ship => new ShipDamageResult
-                {
-                    Ship = ship,
-                    HullBefore = ship.CurrentHullStrength,
-                    HullAfter = 0,
-                })
+            SpaceCombatWithdrawalPlan plan = _spaceCombatQueries.GetWithdrawalPlan(
+                retreatingFleets,
+                origin,
+                ownerInstanceId
             );
-            result.FighterLosses.AddRange(
-                lostFighters.Select(fighter => new FighterLossResult
-                {
-                    Fighter = fighter,
-                    SquadsBefore = fighter.CurrentSquadronSize,
-                    SquadsAfter = 0,
-                })
+            if (!plan.CanWithdraw)
+                return null;
+
+            RecordWithdrawalOutcomes(
+                result,
+                plan,
+                retreatingFleets,
+                ownerInstanceId,
+                attackerRetreated,
+                origin,
+                eligibleUnits: null
             );
-            CombatUnitSnapshot.RecordOutcomes(
-                attackerRetreated ? result.AttackingUnits : result.DefendingUnits,
-                Enumerable.Empty<ISceneNode>(),
-                lostShips.Cast<ISceneNode>().Concat(lostFighters)
-            );
+            return plan;
         }
 
-        /// <summary>Places withdrawn carrier-dependent fighters aboard participating carriers.</summary>
-        /// <param name="fleets">The fleets that participated on the withdrawing side.</param>
-        /// <param name="planet">The combat planet.</param>
+        /// <summary>Reserves and records strategic destinations after tactical withdrawal.</summary>
+        /// <param name="result">The combat result receiving corrected withdrawal outcomes.</param>
+        /// <param name="fleets">Every participating fleet on the withdrawing side.</param>
         /// <param name="ownerInstanceId">The withdrawing faction identifier.</param>
-        /// <param name="withdrawnUnits">The units resolved as withdrawn.</param>
-        internal void ApplyFighterRecovery(
+        /// <param name="attackerRetreated">Whether the withdrawing side initiated the encounter.</param>
+        /// <param name="origin">The planet where withdrawal began.</param>
+        /// <param name="tacticallyWithdrawnUnits">The units that escaped tactical combat.</param>
+        /// <returns>The reserved strategic withdrawal plan.</returns>
+        internal SpaceCombatWithdrawalPlan ResolveAutomaticWithdrawal(
+            SpaceCombatResult result,
             IReadOnlyList<Fleet> fleets,
-            Planet planet,
             string ownerInstanceId,
-            ISet<ISceneNode> withdrawnUnits
+            bool attackerRetreated,
+            Planet origin,
+            ISet<ISceneNode> tacticallyWithdrawnUnits
         )
         {
-            if (withdrawnUnits == null || withdrawnUnits.Count == 0)
-                return;
+            if (result == null)
+                throw new ArgumentNullException(nameof(result));
 
-            List<CapitalShip> ships = GetParticipatingShips(fleets);
-            List<Starfighter> fighters = GetParticipatingFighters(ships, planet, ownerInstanceId);
-            HashSet<CapitalShip> withdrawingCarriers = ships
-                .Where(ship => withdrawnUnits.Contains(ship))
-                .ToHashSet();
-            HashSet<Starfighter> carrierDependentFighters = fighters
-                .Where(fighter => withdrawnUnits.Contains(fighter) && fighter.Hyperdrive <= 0)
-                .ToHashSet();
-            Dictionary<Starfighter, CapitalShip> recoveryAssignments = GetRecoveryAssignments(
-                withdrawingCarriers,
-                fighters,
-                carrierDependentFighters
+            SpaceCombatWithdrawalPlan plan = _spaceCombatQueries.GetWithdrawalPlan(
+                fleets,
+                origin,
+                ownerInstanceId,
+                tacticallyWithdrawnUnits
             );
+            RecordWithdrawalOutcomes(
+                result,
+                plan,
+                fleets,
+                ownerInstanceId,
+                attackerRetreated,
+                origin,
+                tacticallyWithdrawnUnits
+            );
+            return plan;
+        }
 
+        /// <summary>Places withdrawn dependent fighters aboard their reserved carriers.</summary>
+        /// <param name="plan">The applied withdrawal plan.</param>
+        internal void ApplyFighterRecovery(SpaceCombatWithdrawalPlan plan)
+        {
             foreach (
-                KeyValuePair<Starfighter, CapitalShip> assignment in recoveryAssignments.Where(
-                    assignment =>
-                        !ReferenceEquals(
-                            assignment.Key.GetParentOfType<CapitalShip>(),
-                            assignment.Value
-                        )
+                KeyValuePair<Starfighter, CapitalShip> assignment in (
+                    plan?.FighterRecoveryAssignments ?? new Dictionary<Starfighter, CapitalShip>()
+                ).Where(assignment =>
+                    !ReferenceEquals(
+                        assignment.Key.GetParentOfType<CapitalShip>(),
+                        assignment.Value
+                    )
                 )
             )
             {
@@ -172,115 +157,129 @@ namespace Rebellion.Simulation
             }
         }
 
-        /// <summary>Returns active capital ships in stable participating-fleet order.</summary>
-        /// <param name="fleets">The participating fleets.</param>
-        /// <returns>The active capital ships.</returns>
-        private static List<CapitalShip> GetParticipatingShips(IReadOnlyList<Fleet> fleets)
-        {
-            return (fleets ?? Array.Empty<Fleet>())
-                .Where(fleet => fleet != null)
-                .SelectMany(SpaceCombatQueries.GetActiveCapitalShips)
-                .Distinct()
-                .ToList();
-        }
-
-        /// <summary>Returns active carried and planetary fighters in stable combat order.</summary>
-        /// <param name="ships">The participating capital ships.</param>
-        /// <param name="planet">The combat planet.</param>
-        /// <param name="ownerInstanceId">The participating faction identifier.</param>
-        /// <returns>The active fighter squadrons.</returns>
-        private static List<Starfighter> GetParticipatingFighters(
-            IReadOnlyList<CapitalShip> ships,
-            Planet planet,
-            string ownerInstanceId
+        /// <summary>Reconciles tactical withdrawal candidates with reserved strategic movement.</summary>
+        /// <param name="result">The combat result receiving reconciled outcomes.</param>
+        /// <param name="plan">The reserved withdrawal plan.</param>
+        /// <param name="fleets">Every participating fleet on the withdrawing side.</param>
+        /// <param name="ownerInstanceId">The withdrawing faction identifier.</param>
+        /// <param name="attackerRetreated">Whether the withdrawing side initiated the encounter.</param>
+        /// <param name="origin">The combat planet.</param>
+        /// <param name="eligibleUnits">The tactical candidates, or null for a manual order.</param>
+        private static void RecordWithdrawalOutcomes(
+            SpaceCombatResult result,
+            SpaceCombatWithdrawalPlan plan,
+            IReadOnlyList<Fleet> fleets,
+            string ownerInstanceId,
+            bool attackerRetreated,
+            Planet origin,
+            ISet<ISceneNode> eligibleUnits
         )
         {
-            return (ships ?? Array.Empty<CapitalShip>())
-                .SelectMany(ship => ship.GetChildren<Starfighter>())
-                .Concat(SpaceCombatQueries.GetActivePlanetStarfighters(planet, ownerInstanceId))
-                .Where(SpaceCombatQueries.IsActiveStarfighter)
-                .Distinct()
-                .ToList();
-        }
-
-        /// <summary>Assigns surviving carrier-dependent fighters to withdrawing carriers.</summary>
-        /// <param name="carriers">The capital ships that successfully withdraw.</param>
-        /// <param name="participatingFighters">Every active fighter that entered combat.</param>
-        /// <param name="carrierDependentFighters">Fighters eligible to leave aboard a carrier.</param>
-        /// <returns>Carrier assignments for every recoverable dependent fighter.</returns>
-        internal static Dictionary<Starfighter, CapitalShip> GetRecoveryAssignments(
-            IEnumerable<CapitalShip> carriers,
-            IReadOnlyList<Starfighter> participatingFighters,
-            ISet<Starfighter> carrierDependentFighters
-        )
-        {
-            List<CapitalShip> availableCarriers = (carriers ?? Enumerable.Empty<CapitalShip>())
-                .Where(carrier => carrier?.StarfighterCapacity > 0)
-                .Distinct()
-                .ToList();
-            Dictionary<CapitalShip, int> remainingCapacity = availableCarriers.ToDictionary(
-                carrier => carrier,
-                carrier =>
-                    GetAvailableRecoveryCapacity(
-                        carrier,
-                        participatingFighters,
-                        carrierDependentFighters
-                    )
+            List<CapitalShip> ships = SpaceCombatWithdrawalPlanner.GetParticipatingShips(fleets);
+            List<Starfighter> fighters = SpaceCombatWithdrawalPlanner.GetParticipatingFighters(
+                ships,
+                origin,
+                ownerInstanceId
             );
-            Dictionary<Starfighter, CapitalShip> assignments =
-                new Dictionary<Starfighter, CapitalShip>();
+            List<CapitalShip> evaluatedShips = FilterEvaluated(ships, eligibleUnits);
+            List<Starfighter> evaluatedFighters = FilterEvaluated(fighters, eligibleUnits);
+            List<CapitalShip> lostShips = evaluatedShips
+                .Where(ship => !plan.Contains(ship))
+                .ToList();
+            List<Starfighter> lostFighters = evaluatedFighters
+                .Where(fighter => !plan.Contains(fighter))
+                .ToList();
+            HashSet<ISceneNode> evaluatedUnits = evaluatedShips
+                .Cast<ISceneNode>()
+                .Concat(evaluatedFighters)
+                .ToHashSet();
 
-            foreach (CapitalShip carrier in availableCarriers)
-            {
-                foreach (
-                    Starfighter fighter in carrier
-                        .GetChildren<Starfighter>()
-                        .Where(fighter => carrierDependentFighters?.Contains(fighter) == true)
-                )
-                {
-                    assignments[fighter] = carrier;
-                }
-            }
+            result.WithdrawnUnits.RemoveAll(evaluatedUnits.Contains);
+            result.WithdrawnUnits.AddRange(
+                plan.WithdrawnUnits.Where(unit => !result.WithdrawnUnits.Contains(unit))
+            );
+            foreach (CapitalShip ship in lostShips)
+                RecordDestroyedShip(result, ship);
+            foreach (Starfighter fighter in lostFighters)
+                RecordDestroyedFighter(result, fighter);
+            CombatUnitSnapshot.RecordOutcomes(
+                attackerRetreated ? result.AttackingUnits : result.DefendingUnits,
+                Enumerable.Empty<ISceneNode>(),
+                lostShips.Cast<ISceneNode>().Concat(lostFighters)
+            );
 
-            foreach (
-                Starfighter fighter in (participatingFighters ?? Array.Empty<Starfighter>()).Where(
-                    fighter =>
-                        fighter != null
-                        && carrierDependentFighters?.Contains(fighter) == true
-                        && !assignments.ContainsKey(fighter)
-                )
-            )
+            if (attackerRetreated)
+                result.AttackerOutcome = plan.CanWithdraw
+                    ? SpaceCombatSideOutcome.Withdrawn
+                    : SpaceCombatSideOutcome.Destroyed;
+            else
+                result.DefenderOutcome = plan.CanWithdraw
+                    ? SpaceCombatSideOutcome.Withdrawn
+                    : SpaceCombatSideOutcome.Destroyed;
+        }
+
+        /// <summary>Filters participants to the tactical units being reconciled.</summary>
+        /// <typeparam name="TUnit">The scene-node type being filtered.</typeparam>
+        /// <param name="units">The participating units.</param>
+        /// <param name="eligibleUnits">The allowed units, or null to include every participant.</param>
+        /// <returns>The evaluated participants in stable order.</returns>
+        private static List<TUnit> FilterEvaluated<TUnit>(
+            IEnumerable<TUnit> units,
+            ISet<ISceneNode> eligibleUnits
+        )
+            where TUnit : class, ISceneNode
+        {
+            return (units ?? Enumerable.Empty<TUnit>())
+                .Where(unit => eligibleUnits?.Contains(unit) != false)
+                .ToList();
+        }
+
+        /// <summary>Records a participating capital ship as destroyed.</summary>
+        /// <param name="result">The result receiving the loss.</param>
+        /// <param name="ship">The ship unable to complete withdrawal.</param>
+        private static void RecordDestroyedShip(SpaceCombatResult result, CapitalShip ship)
+        {
+            ShipDamageResult damage = result.ShipDamage.FirstOrDefault(candidate =>
+                candidate.Ship == ship
+            );
+            if (damage == null)
             {
-                CapitalShip carrier = availableCarriers.FirstOrDefault(candidate =>
-                    remainingCapacity[candidate] > 0
+                result.ShipDamage.Add(
+                    new ShipDamageResult
+                    {
+                        Ship = ship,
+                        HullBefore = ship.CurrentHullStrength,
+                        HullAfter = 0,
+                    }
                 );
-                if (carrier == null)
-                    continue;
-
-                remainingCapacity[carrier]--;
-                assignments[fighter] = carrier;
+                return;
             }
 
-            return assignments;
+            damage.HullAfter = 0;
         }
 
-        /// <summary>Calculates bays available after non-travelling combat participants are removed.</summary>
-        /// <param name="carrier">The carrier receiving displaced fighters.</param>
-        /// <param name="participatingFighters">Every active fighter that entered combat.</param>
-        /// <param name="carrierDependentFighters">Fighters resolved to remain aboard a carrier.</param>
-        /// <returns>The number of bays available for displaced fighters.</returns>
-        private static int GetAvailableRecoveryCapacity(
-            CapitalShip carrier,
-            IReadOnlyList<Starfighter> participatingFighters,
-            ISet<Starfighter> carrierDependentFighters
-        )
+        /// <summary>Records a participating fighter squadron as destroyed.</summary>
+        /// <param name="result">The result receiving the loss.</param>
+        /// <param name="fighter">The fighter unable to complete withdrawal.</param>
+        private static void RecordDestroyedFighter(SpaceCombatResult result, Starfighter fighter)
         {
-            int releasedCapacity = (participatingFighters ?? Array.Empty<Starfighter>()).Count(
-                fighter =>
-                    ReferenceEquals(fighter?.GetParentOfType<CapitalShip>(), carrier)
-                    && !(carrierDependentFighters?.Contains(fighter) ?? false)
+            FighterLossResult loss = result.FighterLosses.FirstOrDefault(candidate =>
+                candidate.Fighter == fighter
             );
-            return Math.Max(carrier.GetExcessStarfighterCapacity() + releasedCapacity, 0);
+            if (loss == null)
+            {
+                result.FighterLosses.Add(
+                    new FighterLossResult
+                    {
+                        Fighter = fighter,
+                        SquadsBefore = fighter.CurrentSquadronSize,
+                        SquadsAfter = 0,
+                    }
+                );
+                return;
+            }
+
+            loss.SquadsAfter = 0;
         }
     }
 }

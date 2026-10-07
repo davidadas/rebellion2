@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
@@ -6,6 +5,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 
 namespace Rebellion.Simulation
 {
@@ -15,7 +15,7 @@ namespace Rebellion.Simulation
     public sealed class SpaceCombatQueries
     {
         private readonly GameRoot _game;
-        private readonly MovementQueries _movement;
+        private readonly SpaceCombatWithdrawalPlanner _withdrawalPlanner;
 
         /// <summary>
         /// Creates space-combat queries for the current game.
@@ -25,7 +25,7 @@ namespace Rebellion.Simulation
         public SpaceCombatQueries(GameRoot game, MovementQueries movement)
         {
             _game = game;
-            _movement = movement;
+            _withdrawalPlanner = new SpaceCombatWithdrawalPlanner(movement);
         }
 
         /// <summary>
@@ -175,37 +175,28 @@ namespace Rebellion.Simulation
             string ownerInstanceId
         )
         {
-            IReadOnlyList<Fleet> retreatingFleets = fleets ?? Array.Empty<Fleet>();
-            IEnumerable<Starfighter> retreatingFighters = retreatingFleets
-                .SelectMany(GetActiveStarfighters)
-                .Concat(GetActivePlanetStarfighters(planet, ownerInstanceId));
             return !IsRetreatBlockedByGravityWell(planet, opponents)
-                && (
-                    retreatingFleets.Any(CanRetreatFleet)
-                    || retreatingFighters.Any(CanRetreatFighter)
-                );
+                && GetWithdrawalPlan(fleets, planet, ownerInstanceId).CanWithdraw;
         }
 
         /// <summary>
-        /// Reports whether a fleet can evacuate from its current planet.
+        /// Builds a capacity-aware withdrawal plan without mutating combat or movement state.
         /// </summary>
-        /// <param name="fleet">The fleet to inspect.</param>
-        /// <returns>True when the fleet has an operational hyperdrive and a valid destination.</returns>
-        internal bool CanRetreatFleet(Fleet fleet)
+        /// <param name="fleets">The side's participating fleets.</param>
+        /// <param name="planet">The combat planet.</param>
+        /// <param name="ownerInstanceId">The withdrawing faction identifier.</param>
+        /// <param name="eligibleUnits">
+        /// The units that completed tactical withdrawal, or null to consider every participant.
+        /// </param>
+        /// <returns>The reserved withdrawal plan.</returns>
+        internal SpaceCombatWithdrawalPlan GetWithdrawalPlan(
+            IReadOnlyList<Fleet> fleets,
+            Planet planet,
+            string ownerInstanceId,
+            ISet<ISceneNode> eligibleUnits = null
+        )
         {
-            return HasHyperdriveCapableShip(fleet)
-                && _movement.CanEvacuateToNearestFriendlyPlanet(fleet);
-        }
-
-        /// <summary>
-        /// Reports whether an independently deployed fighter can evacuate from its current planet.
-        /// </summary>
-        /// <param name="fighter">The fighter to inspect.</param>
-        /// <returns>True when the fighter has a hyperdrive and a valid destination.</returns>
-        internal bool CanRetreatFighter(Starfighter fighter)
-        {
-            return fighter?.Hyperdrive > 0
-                && _movement.CanEvacuateToNearestFriendlyPlanet(fighter, leaveOriginPlanet: true);
+            return _withdrawalPlanner.CreatePlan(fleets, planet, ownerInstanceId, eligibleUnits);
         }
 
         /// <summary>

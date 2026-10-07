@@ -724,7 +724,7 @@ namespace Rebellion.Simulation
                     .Select(fighter => fighter.Fighter)
                     .ToHashSet();
                 Dictionary<Starfighter, CapitalShip> recoveryAssignments =
-                    SpaceCombatWithdrawalResolver.GetRecoveryAssignments(
+                    SpaceCombatWithdrawalPlanner.GetRecoveryAssignments(
                         Ships
                             .Where(ship => ship.IsTargetable && ship.CanWithdrawIndependently)
                             .Select(ship => ship.Ship),

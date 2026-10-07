@@ -8,6 +8,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 using Rebellion.Simulation;
 
 namespace Rebellion.Tests.Simulation
@@ -2710,6 +2711,87 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void ResolvePending_AutomaticWithdrawalWithOneRemoteCarrierBay_WithdrawsOnlyReservedFighter()
+        {
+            GameRoot game = CreateAutomaticCombatGame();
+            game.Config.Combat.SpaceCombat.AutoResolveRetreatStrengthRatio = 1.01;
+            game.Config.Combat.SpaceCombat.AutoResolveStartingDistance = 0;
+            game.Config.Combat.SpaceCombat.AutoResolveWithdrawalDistance = 0;
+            game.Random = new SequenceRNG();
+            game.SetFactionController("empire", "player1", PlayerControllerType.Human);
+            (Planet combatPlanet, _) = CreatePlanet(game, "combat", owner: "empire");
+            (Planet recoveryPlanet, _) = CreatePlanet(game, "recovery");
+            CreatePlanet(game, "empire-home", owner: "empire");
+            CreateFleet(game, "attacker", "empire", combatPlanet, 1, 1000, 100);
+            Fleet strandedFleet = CreateFleet(
+                game,
+                "stranded-fleet",
+                "alliance",
+                combatPlanet,
+                1,
+                100,
+                1,
+                shieldRechargeRate: 0
+            );
+            CapitalShip strandedShip = strandedFleet.GetChildren<CapitalShip>().Single();
+            strandedShip.Hyperdrive = 0;
+            strandedShip.StarfighterCapacity = 2;
+            Starfighter reservedFighter = new Starfighter
+            {
+                InstanceID = "reserved-fighter",
+                OwnerInstanceID = "alliance",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaxSquadronSize = 12,
+                CurrentSquadronSize = 12,
+                Hyperdrive = 1,
+            };
+            Starfighter unreservedFighter = new Starfighter
+            {
+                InstanceID = "unreserved-fighter",
+                OwnerInstanceID = "alliance",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaxSquadronSize = 12,
+                CurrentSquadronSize = 12,
+                Hyperdrive = 1,
+            };
+            game.AttachNode(reservedFighter, strandedShip);
+            game.AttachNode(unreservedFighter, strandedShip);
+            Fleet recoveryFleet = CreateFleet(
+                game,
+                "recovery-fleet",
+                "alliance",
+                recoveryPlanet,
+                1,
+                100,
+                1
+            );
+            CapitalShip recoveryCarrier = recoveryFleet.GetChildren<CapitalShip>().Single();
+            recoveryCarrier.StarfighterCapacity = 1;
+            SpaceCombatCommands manager = MakeSpaceCombat(game);
+
+            new SpaceCombatTickProcessor(manager).ProcessTick(game);
+            SpaceCombatResult result = manager
+                .ResolvePending(autoResolve: true)
+                .OfType<SpaceCombatResult>()
+                .Single();
+
+            Assert.AreSame(
+                reservedFighter,
+                game.GetSceneNodeByInstanceID<Starfighter>(reservedFighter.InstanceID)
+            );
+            Assert.AreSame(recoveryCarrier, reservedFighter.GetParent());
+            Assert.IsNotNull(reservedFighter.Movement);
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Starfighter>(unreservedFighter.InstanceID));
+            Assert.IsTrue(result.WithdrawnUnits.Contains(reservedFighter));
+            Assert.IsFalse(result.WithdrawnUnits.Contains(unreservedFighter));
+            Assert.IsTrue(
+                result.FighterLosses.Any(loss =>
+                    loss.Fighter == unreservedFighter && loss.SquadsAfter == 0
+                )
+            );
+        }
+
+        [Test]
         public void ResolvePending_CapitalShipAgainstPlanetaryFighter_DestroysFighter()
         {
             GameRoot game = CreateAutomaticCombatGame();
@@ -3054,6 +3136,82 @@ namespace Rebellion.Tests.Simulation
                 results
                     .OfType<GameObjectDestroyedResult>()
                     .Any(destruction => destruction.DestroyedObject == strandedShip)
+            );
+        }
+
+        [Test]
+        public void ResolvePendingRetreat_TwoFightersCompeteForOneRemoteCarrierBay_WithdrawsOnlyReservedFighter()
+        {
+            GameRoot game = CreateGame();
+            game.SetFactionController("empire", "player1", PlayerControllerType.Human);
+            (Planet combatPlanet, _) = CreatePlanet(game, "combat");
+            (Planet recoveryPlanet, _) = CreatePlanet(game, "recovery");
+            CreatePlanet(game, "alliance-home", owner: "alliance");
+            Fleet strandedFleet = CreateFleet(
+                game,
+                "stranded-fleet",
+                "empire",
+                combatPlanet,
+                1,
+                100,
+                1
+            );
+            CapitalShip strandedShip = strandedFleet.GetChildren<CapitalShip>().Single();
+            strandedShip.Hyperdrive = 0;
+            strandedShip.StarfighterCapacity = 2;
+            Starfighter reservedFighter = new Starfighter
+            {
+                InstanceID = "reserved-fighter",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaxSquadronSize = 12,
+                CurrentSquadronSize = 12,
+                Hyperdrive = 1,
+            };
+            Starfighter unreservedFighter = new Starfighter
+            {
+                InstanceID = "unreserved-fighter",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaxSquadronSize = 12,
+                CurrentSquadronSize = 12,
+                Hyperdrive = 1,
+            };
+            game.AttachNode(reservedFighter, strandedShip);
+            game.AttachNode(unreservedFighter, strandedShip);
+            Fleet recoveryFleet = CreateFleet(
+                game,
+                "recovery-fleet",
+                "empire",
+                recoveryPlanet,
+                1,
+                100,
+                1
+            );
+            CapitalShip recoveryCarrier = recoveryFleet.GetChildren<CapitalShip>().Single();
+            recoveryCarrier.StarfighterCapacity = 1;
+            CreateFleet(game, "opponent", "alliance", combatPlanet, 1, 1000, 100);
+            SpaceCombatCommands manager = MakeSpaceCombat(game);
+
+            new SpaceCombatTickProcessor(manager).ProcessTick(game);
+            List<GameResult> results = manager.ResolvePendingRetreat("empire");
+            SpaceCombatResult combatResult = results.OfType<SpaceCombatResult>().Single();
+
+            Assert.AreSame(
+                reservedFighter,
+                game.GetSceneNodeByInstanceID<Starfighter>(reservedFighter.InstanceID)
+            );
+            Assert.AreSame(recoveryCarrier, reservedFighter.GetParent());
+            Assert.IsNotNull(reservedFighter.Movement);
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Starfighter>(unreservedFighter.InstanceID));
+            CollectionAssert.AreEquivalent(
+                new ISceneNode[] { reservedFighter },
+                combatResult.WithdrawnUnits
+            );
+            Assert.IsTrue(
+                combatResult.FighterLosses.Any(loss =>
+                    loss.Fighter == unreservedFighter && loss.SquadsAfter == 0
+                )
             );
         }
 
