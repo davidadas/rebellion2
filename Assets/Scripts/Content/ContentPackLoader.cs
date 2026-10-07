@@ -463,7 +463,8 @@ public static class ContentPackLoader
             gameEvents,
             messageDefinitions,
             encyclopediaEntries,
-            themes
+            themes,
+            pack.DefaultSpaceBattleMapInstanceIDs
         );
     }
 

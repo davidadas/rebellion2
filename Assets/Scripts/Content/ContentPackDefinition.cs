@@ -42,6 +42,10 @@ public sealed class ContentPackDefinition
     [XmlArrayItem("Path")]
     public List<string> BattleMapPaths { get; set; } = new List<string>();
 
+    [XmlArray("DefaultSpaceBattleMaps")]
+    [XmlArrayItem("MapID")]
+    public List<string> DefaultSpaceBattleMapInstanceIDs { get; set; } = new List<string>();
+
     [XmlElement]
     public string BuildingsPath { get; set; }
 

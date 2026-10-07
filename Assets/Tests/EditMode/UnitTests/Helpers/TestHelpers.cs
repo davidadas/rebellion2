@@ -503,18 +503,24 @@ public static class TestGameData
     /// </summary>
     /// <param name="config">The config.</param>
     /// <param name="messageDefinitions">The message definitions.</param>
+    /// <param name="planetSectors">The planet-sector templates.</param>
+    /// <param name="battleMaps">The battle-map definitions.</param>
+    /// <param name="defaultSpaceBattleMapInstanceIDs">The default space-map identifiers.</param>
     /// <returns>The created value.</returns>
     public static GameDataCatalog Create(
         GameConfig config = null,
-        MessageDefinition[] messageDefinitions = null
+        MessageDefinition[] messageDefinitions = null,
+        PlanetSector[] planetSectors = null,
+        BattleMap[] battleMaps = null,
+        IEnumerable<string> defaultSpaceBattleMapInstanceIDs = null
     )
     {
         return new GameDataCatalog(
             config ?? new GameConfig(),
             new GameGenerationConfig(),
             Array.Empty<Faction>(),
-            Array.Empty<PlanetSector>(),
-            Array.Empty<BattleMap>(),
+            planetSectors ?? Array.Empty<PlanetSector>(),
+            battleMaps ?? Array.Empty<BattleMap>(),
             Array.Empty<Building>(),
             Array.Empty<CapitalShip>(),
             Array.Empty<Starfighter>(),
@@ -524,7 +530,8 @@ public static class TestGameData
             Array.Empty<GameEvent>(),
             messageDefinitions ?? Array.Empty<MessageDefinition>(),
             new EncyclopediaEntries(),
-            new FactionThemes()
+            new FactionThemes(),
+            defaultSpaceBattleMapInstanceIDs
         );
     }
 }
