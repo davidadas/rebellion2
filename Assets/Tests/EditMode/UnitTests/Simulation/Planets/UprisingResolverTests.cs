@@ -13,7 +13,7 @@ using Rebellion.Util.Random;
 namespace Rebellion.Tests.Simulation
 {
     [TestFixture]
-    public class UprisingCommandsTests
+    public class UprisingResolverTests
     {
         [Test]
         public void Constructor_OwnedPlanet_DoesNotConsumeRandomValues()
@@ -24,7 +24,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void ProcessTick_UnscheduledActiveUprising_PreservesTimerInitializationOrder()
         {
-            (GameRoot game, Planet planet, UprisingCommands system) = BuildScene(
+            (GameRoot game, Planet planet, UprisingResolver system) = BuildScene(
                 ownerSupport: 50,
                 troopCount: 2,
                 rng: new QueueRNG(0.2, 0.4, 0.6)
@@ -63,7 +63,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void ProcessTick_ClearTimerWinsTie_EndsUprisingWithoutFurtherRolls()
         {
-            (GameRoot game, Planet planet, UprisingCommands system) = BuildScene(
+            (GameRoot game, Planet planet, UprisingResolver system) = BuildScene(
                 ownerSupport: 50,
                 troopCount: 2,
                 rng: new ThrowingRNG()
@@ -88,7 +88,7 @@ namespace Rebellion.Tests.Simulation
         public void ProcessTick_OverdueSupportTimer_ProcessesEveryDuePulse()
         {
             CountingRNG rng = new CountingRNG();
-            (GameRoot game, Planet planet, UprisingCommands system) = BuildScene(
+            (GameRoot game, Planet planet, UprisingResolver system) = BuildScene(
                 ownerSupport: 50,
                 troopCount: 2,
                 rng: rng
@@ -116,7 +116,7 @@ namespace Rebellion.Tests.Simulation
         public void ProcessTick_SufficientGarrison_NoUprising()
         {
             // Garrison requirement is 5 at support 10. Five troops meets it exactly.
-            (GameRoot game, Planet planet, UprisingCommands system) = BuildScene(
+            (GameRoot game, Planet planet, UprisingResolver system) = BuildScene(
                 ownerSupport: 10,
                 troopCount: 5
             );
@@ -130,7 +130,7 @@ namespace Rebellion.Tests.Simulation
         public void ProcessTick_NoGarrison_UprisingStarts()
         {
             // Garrison requirement is 5 at support 10. Zero troops means a deficit, so uprising starts.
-            (GameRoot game, Planet planet, UprisingCommands system) = BuildScene(
+            (GameRoot game, Planet planet, UprisingResolver system) = BuildScene(
                 ownerSupport: 10,
                 troopCount: 0
             );
@@ -141,7 +141,7 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(
                 "empire",
                 planet.OwnerInstanceID,
-                "UprisingCommands must not change ownership"
+                "UprisingResolver must not change ownership"
             );
             Assert.IsTrue(results.OfType<PlanetUprisingStartedResult>().Any());
         }
@@ -150,7 +150,7 @@ namespace Rebellion.Tests.Simulation
         public void ProcessTick_ExactGarrison_NoUprising()
         {
             // Garrison requirement is 5 at support 10. Five troops exactly meets it, no uprising.
-            (GameRoot game, Planet planet, UprisingCommands system) = BuildScene(
+            (GameRoot game, Planet planet, UprisingResolver system) = BuildScene(
                 ownerSupport: 10,
                 troopCount: 5
             );
@@ -166,7 +166,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void ProcessTick_GarrisonFallsToRequirement_ReportsNearUprisingOnce()
         {
-            (GameRoot game, Planet planet, UprisingCommands system) = BuildScene(
+            (GameRoot game, Planet planet, UprisingResolver system) = BuildScene(
                 ownerSupport: 10,
                 troopCount: 6
             );
@@ -187,7 +187,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void ProcessTick_ActiveUprisingWithFacility_DestroysFacility()
         {
-            (GameRoot game, Planet planet, UprisingCommands system) = BuildScene(
+            (GameRoot game, Planet planet, UprisingResolver system) = BuildScene(
                 ownerSupport: 10,
                 troopCount: 1
             );
@@ -216,7 +216,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void ProcessTick_ActiveUprisingLastBuildingDestroyed_DoesNotChangeControl()
         {
-            (GameRoot game, Planet planet, UprisingCommands system) = BuildScene(
+            (GameRoot game, Planet planet, UprisingResolver system) = BuildScene(
                 ownerSupport: 10,
                 troopCount: 1
             );
@@ -238,7 +238,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void ProcessTick_ActiveUprising_OfficerCaptured()
         {
-            (GameRoot game, Planet planet, UprisingCommands system) = BuildScene(
+            (GameRoot game, Planet planet, UprisingResolver system) = BuildScene(
                 ownerSupport: 10,
                 troopCount: 1,
                 rng: new SequenceRNG(intValues: new[] { 2, 1 })
@@ -262,7 +262,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void ProcessTick_ActiveUprising_CapturedOfficerFreed()
         {
-            (GameRoot game, Planet planet, UprisingCommands system) = BuildScene(
+            (GameRoot game, Planet planet, UprisingResolver system) = BuildScene(
                 ownerSupport: 10,
                 troopCount: 1,
                 rng: new SequenceRNG(intValues: new[] { 3, 2 })
@@ -292,7 +292,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void ProcessTick_Incident_ExcludesIncompleteFacility()
         {
-            (GameRoot game, Planet planet, UprisingCommands system) = BuildScene(
+            (GameRoot game, Planet planet, UprisingResolver system) = BuildScene(
                 ownerSupport: 10,
                 troopCount: 1
             );
@@ -310,7 +310,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void ProcessTick_Incident_ExcludesEnrouteRegiment()
         {
-            (GameRoot game, Planet planet, UprisingCommands system) = BuildScene(
+            (GameRoot game, Planet planet, UprisingResolver system) = BuildScene(
                 ownerSupport: 10,
                 troopCount: 2,
                 rng: new SequenceRNG(intValues: new[] { 3, 3, 2 })
@@ -334,7 +334,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void ProcessTick_IncidentDestroysLastGarrison_ReportsGarrisonRemoval()
         {
-            (GameRoot game, Planet planet, UprisingCommands system) = BuildScene(
+            (GameRoot game, Planet planet, UprisingResolver system) = BuildScene(
                 ownerSupport: 10,
                 opposingSupport: 50,
                 troopCount: 1,
@@ -355,7 +355,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void ProcessTick_Incident_CapturesOnlyUsableOfficer()
         {
-            (GameRoot game, Planet planet, UprisingCommands system) = BuildScene(
+            (GameRoot game, Planet planet, UprisingResolver system) = BuildScene(
                 ownerSupport: 10,
                 troopCount: 1,
                 rng: new SequenceRNG(intValues: new[] { 2, 1, 0 })
@@ -390,7 +390,7 @@ namespace Rebellion.Tests.Simulation
         public void ProcessTick_HighSupport_NoUprising()
         {
             // At support 80, garrison requirement is 0. No uprising regardless of troops.
-            (GameRoot game, Planet planet, UprisingCommands system) = BuildScene(
+            (GameRoot game, Planet planet, UprisingResolver system) = BuildScene(
                 ownerSupport: 80,
                 opposingSupport: 20,
                 troopCount: 0,
@@ -405,7 +405,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void ProcessTick_ActiveUprising_ZeroTroops_PlanetGoesNeutral()
         {
-            (GameRoot game, Planet planet, UprisingCommands system) = BuildScene(
+            (GameRoot game, Planet planet, UprisingResolver system) = BuildScene(
                 ownerSupport: 10,
                 troopCount: 0
             );
@@ -426,7 +426,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void ProcessTick_ActiveUprisingZeroTroopsWithOpposingSupport_TransfersControl()
         {
-            (GameRoot game, Planet planet, UprisingCommands system) = BuildScene(
+            (GameRoot game, Planet planet, UprisingResolver system) = BuildScene(
                 ownerSupport: 0,
                 opposingSupport: 100,
                 troopCount: 0
@@ -447,7 +447,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void ProcessTick_SufficientUprisingGarrison_ClearsOnlyWhenTimerExpires()
         {
-            (GameRoot game, Planet planet, UprisingCommands system) = BuildScene(
+            (GameRoot game, Planet planet, UprisingResolver system) = BuildScene(
                 ownerSupport: 50,
                 opposingSupport: 50,
                 troopCount: 2
@@ -468,7 +468,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void ProcessTick_Incident_IgnoresHostileFleetPresence()
         {
-            (GameRoot game, Planet planet, UprisingCommands system) = BuildScene(
+            (GameRoot game, Planet planet, UprisingResolver system) = BuildScene(
                 ownerSupport: 10,
                 troopCount: 2
             );
@@ -488,7 +488,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void ProcessTick_Incident_AppliesInciteAndSubdueLeadershipAdjustments()
         {
-            (GameRoot game, Planet planet, UprisingCommands system) = BuildScene(
+            (GameRoot game, Planet planet, UprisingResolver system) = BuildScene(
                 ownerSupport: 10,
                 troopCount: 2
             );
@@ -511,7 +511,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void ProcessTick_Incident_ExcludesMissionParticipantsInTransit()
         {
-            (GameRoot game, Planet planet, UprisingCommands system) = BuildScene(
+            (GameRoot game, Planet planet, UprisingResolver system) = BuildScene(
                 ownerSupport: 10,
                 troopCount: 2
             );
@@ -560,17 +560,10 @@ namespace Rebellion.Tests.Simulation
             );
             PlanetaryControlCommands planetaryControl = new PlanetaryControlCommands(
                 game,
-                movementSystem,
-                new ManufacturingCommands(
-                    game,
-                    new FleetCommands(game),
-                    new ManufacturingQueries(game)
-                ),
-                new FogOfWarCommands(game),
                 new PlanetaryControlQueries(game),
                 new FogOfWarQueries(game)
             );
-            UprisingCommands uprisingSystem = new UprisingCommands(
+            UprisingResolver uprisingSystem = new UprisingResolver(
                 game,
                 new StubRNG(),
                 planetaryControl
@@ -622,17 +615,10 @@ namespace Rebellion.Tests.Simulation
             );
             PlanetaryControlCommands planetaryControl = new PlanetaryControlCommands(
                 game,
-                movementSystem,
-                new ManufacturingCommands(
-                    game,
-                    new FleetCommands(game),
-                    new ManufacturingQueries(game)
-                ),
-                new FogOfWarCommands(game),
                 new PlanetaryControlQueries(game),
                 new FogOfWarQueries(game)
             );
-            UprisingCommands uprisingSystem = new UprisingCommands(
+            UprisingResolver uprisingSystem = new UprisingResolver(
                 game,
                 new StubRNG(),
                 planetaryControl
@@ -687,17 +673,10 @@ namespace Rebellion.Tests.Simulation
             );
             PlanetaryControlCommands planetaryControl = new PlanetaryControlCommands(
                 game,
-                movementSystem,
-                new ManufacturingCommands(
-                    game,
-                    new FleetCommands(game),
-                    new ManufacturingQueries(game)
-                ),
-                new FogOfWarCommands(game),
                 new PlanetaryControlQueries(game),
                 new FogOfWarQueries(game)
             );
-            UprisingCommands uprisingSystem = new UprisingCommands(
+            UprisingResolver uprisingSystem = new UprisingResolver(
                 game,
                 new StubRNG(),
                 planetaryControl
@@ -713,7 +692,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void ReconcileGarrison_CapturedPlanetAtRequirement_ReportsNearUprising()
         {
-            (GameRoot game, Planet planet, UprisingCommands system) = BuildScene(
+            (GameRoot game, Planet planet, UprisingResolver system) = BuildScene(
                 ownerSupport: 10,
                 opposingSupport: 50,
                 troopCount: 4
@@ -735,7 +714,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void ReconcileGarrison_DeficitReturnsBeforeClearPulse_CancelsClearTimer()
         {
-            (GameRoot game, Planet planet, UprisingCommands system) = BuildScene(
+            (GameRoot game, Planet planet, UprisingResolver system) = BuildScene(
                 ownerSupport: 50,
                 opposingSupport: 50,
                 troopCount: 2
@@ -761,7 +740,7 @@ namespace Rebellion.Tests.Simulation
         public void TryExecuteMission_OfficersOutOfScoreOrder_AttemptsLowestScoreFirst()
         {
             CountingRNG rng = new CountingRNG();
-            (GameRoot game, Planet planet, UprisingCommands system) = BuildScene(rng: rng);
+            (GameRoot game, Planet planet, UprisingResolver system) = BuildScene(rng: rng);
             Officer highProbabilityOfficer = EntityFactory.CreateOfficer("high", "rebels");
             highProbabilityOfficer.SetBaseRating(SkillRating.Leadership, 100);
             Officer lowProbabilityOfficer = EntityFactory.CreateOfficer("low", "rebels");
@@ -791,7 +770,7 @@ namespace Rebellion.Tests.Simulation
         public void TryExecuteMission_FirstOfficerSucceeds_DoesNotAttemptRemainingOfficers()
         {
             CountingRNG rng = new CountingRNG();
-            (GameRoot game, Planet planet, UprisingCommands system) = BuildScene(rng: rng);
+            (GameRoot game, Planet planet, UprisingResolver system) = BuildScene(rng: rng);
             Officer firstOfficer = EntityFactory.CreateOfficer("first", "rebels");
             firstOfficer.SetBaseRating(SkillRating.Leadership, 100);
             Officer secondOfficer = EntityFactory.CreateOfficer("second", "rebels");
@@ -819,7 +798,7 @@ namespace Rebellion.Tests.Simulation
         public void TryExecuteMission_FirstSpecialForcesSucceeds_DoesNotAttemptRemainingSpecialForces()
         {
             CountingRNG rng = new CountingRNG();
-            (GameRoot game, Planet planet, UprisingCommands system) = BuildScene(rng: rng);
+            (GameRoot game, Planet planet, UprisingResolver system) = BuildScene(rng: rng);
             SpecialForces firstSpecialForces = new SpecialForces
             {
                 InstanceID = "first",
@@ -862,7 +841,7 @@ namespace Rebellion.Tests.Simulation
         /// <param name="isCoreSector">Whether is core sector.</param>
         /// <param name="rng">The rng.</param>
         /// <returns>The constructed scene.</returns>
-        private (GameRoot game, Planet planet, UprisingCommands system) BuildScene(
+        private (GameRoot game, Planet planet, UprisingResolver system) BuildScene(
             int ownerSupport = 10,
             int opposingSupport = 50,
             int troopCount = 0,
@@ -918,17 +897,10 @@ namespace Rebellion.Tests.Simulation
             );
             PlanetaryControlCommands planetaryControl = new PlanetaryControlCommands(
                 game,
-                movementSystem,
-                new ManufacturingCommands(
-                    game,
-                    new FleetCommands(game),
-                    new ManufacturingQueries(game)
-                ),
-                new FogOfWarCommands(game),
                 new PlanetaryControlQueries(game),
                 new FogOfWarQueries(game)
             );
-            UprisingCommands uprisingSystem = new UprisingCommands(
+            UprisingResolver uprisingSystem = new UprisingResolver(
                 game,
                 rng ?? new StubRNG(),
                 planetaryControl

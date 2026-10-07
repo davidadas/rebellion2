@@ -280,8 +280,7 @@ namespace Rebellion.AI.Proposals
                 return;
 
             Fleet.Order.Status = FleetOrderStatus.Readying;
-            context.Movement.RequestMove(Fleet, liveTarget);
-            context.Movement.SynchronizeInTransitFleetJoiners(Fleet);
+            context.Movement.RequestCoordinatedMove(Fleet, liveTarget);
         }
 
         /// <summary>

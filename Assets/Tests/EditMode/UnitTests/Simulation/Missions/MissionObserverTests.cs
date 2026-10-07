@@ -29,7 +29,9 @@ namespace Rebellion.Tests.Simulation
                 new ThrowingRNG(),
                 movement
             );
-            MissionObserver observer = new MissionObserver(commands);
+            MissionObserver observer = new MissionObserver(
+                TestSystems.GetMissionResolver(commands)
+            );
 
             List<GameResult> results = observer.HandleResults(
                 new[]
@@ -54,7 +56,9 @@ namespace Rebellion.Tests.Simulation
                 new ThrowingRNG(),
                 movement
             );
-            MissionObserver observer = new MissionObserver(commands);
+            MissionObserver observer = new MissionObserver(
+                TestSystems.GetMissionResolver(commands)
+            );
 
             Assert.IsEmpty(observer.HandleResults(new OfficerCaptureStateResult[] { null }));
         }
@@ -71,7 +75,9 @@ namespace Rebellion.Tests.Simulation
                 new StubRNG(),
                 movement
             );
-            MissionObserver observer = new MissionObserver(commands);
+            MissionObserver observer = new MissionObserver(
+                TestSystems.GetMissionResolver(commands)
+            );
 
             observer.HandleResults(
                 new[]
@@ -84,13 +90,13 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void Constructor_NullCommands_ThrowsArgumentNullException()
+        public void Constructor_NullResolver_ThrowsArgumentNullException()
         {
             ArgumentNullException exception = Assert.Throws<ArgumentNullException>(() =>
                 new MissionObserver(null)
             );
 
-            Assert.AreEqual("commands", exception.ParamName);
+            Assert.AreEqual("resolver", exception.ParamName);
         }
 
         [Test]
@@ -112,7 +118,7 @@ namespace Rebellion.Tests.Simulation
             );
 
             GameResultBus results = new GameResultBus();
-            MissionObserver observer = new MissionObserver(system);
+            MissionObserver observer = new MissionObserver(TestSystems.GetMissionResolver(system));
             observer.Connect(results);
             results.Publish(
                 new OfficerCaptureStateResult
@@ -149,7 +155,7 @@ namespace Rebellion.Tests.Simulation
             );
             GameResultBus results = new GameResultBus();
             results.Subscribe<OfficerCaptureStateResult>(_ => game.MoveNode(officer, planet));
-            new MissionObserver(commands).Connect(results);
+            new MissionObserver(TestSystems.GetMissionResolver(commands)).Connect(results);
 
             results.Publish(
                 new OfficerCaptureStateResult
@@ -179,7 +185,9 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
             GameResultBus results = new GameResultBus();
-            MissionObserver observer = new MissionObserver(commands);
+            MissionObserver observer = new MissionObserver(
+                TestSystems.GetMissionResolver(commands)
+            );
 
             results.Publish(
                 new OfficerCaptureStateResult
@@ -203,7 +211,9 @@ namespace Rebellion.Tests.Simulation
                 new StubRNG(),
                 movement
             );
-            MissionObserver observer = new MissionObserver(commands);
+            MissionObserver observer = new MissionObserver(
+                TestSystems.GetMissionResolver(commands)
+            );
             observer.Connect(new GameResultBus());
 
             Assert.Throws<InvalidOperationException>(() => observer.Connect(new GameResultBus()));
@@ -225,7 +235,9 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
             GameResultBus results = new GameResultBus();
-            MissionObserver observer = new MissionObserver(commands);
+            MissionObserver observer = new MissionObserver(
+                TestSystems.GetMissionResolver(commands)
+            );
             observer.Connect(results);
             observer.Dispose();
 

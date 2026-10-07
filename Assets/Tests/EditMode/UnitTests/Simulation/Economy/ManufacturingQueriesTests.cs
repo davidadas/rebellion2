@@ -144,6 +144,25 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void CanStartManufacturing_ResourceFacilityWithoutMaintenanceHeadroom_ReturnsTrue()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet planet = CreateOrderTestConstructionPlanet(game, "p1", "empire");
+            Building mine = CreateOrderTestBuildingTemplate("mine");
+            mine.MaintenanceCost = 1;
+
+            bool canStart = new ManufacturingQueries(game).CanStartManufacturing(
+                planet,
+                mine,
+                planet,
+                1,
+                "empire"
+            );
+
+            Assert.IsTrue(canStart);
+        }
+
+        [Test]
         public void CanStartManufacturing_HardAiMaintenanceBonus_AllowsBonusHeadroom()
         {
             GameRoot game = CreateOrderTestGame();

@@ -21,7 +21,6 @@ namespace Rebellion.Simulation
     {
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
-        private readonly FleetCommands _fleetSystem;
         private readonly HashSet<string> _shortfallFactions = new HashSet<string>();
         private readonly Dictionary<string, int> _nextAutoscrapTickByFaction =
             new Dictionary<string, int>();
@@ -36,17 +35,10 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="game">The game instance.</param>
         /// <param name="provider">Random number provider for scrap target selection.</param>
-        /// <param name="fleetSystem">Owns empty-fleet cleanup.</param>
-        public MaintenanceCommands(
-            GameRoot game,
-            IRandomNumberProvider provider,
-            FleetCommands fleetSystem
-        )
+        public MaintenanceCommands(GameRoot game, IRandomNumberProvider provider)
         {
             _game = game ?? throw new System.ArgumentNullException(nameof(game));
             _provider = provider;
-            _fleetSystem =
-                fleetSystem ?? throw new System.ArgumentNullException(nameof(fleetSystem));
         }
 
         /// <summary>
@@ -263,7 +255,7 @@ namespace Rebellion.Simulation
             Fleet parentFleet = item is CapitalShip ? node?.GetParent() as Fleet : null;
             RefundScrapMaterials(item);
             _game.DeleteNode(node);
-            _fleetSystem.RemoveIfEmpty(parentFleet);
+            FleetLifecycle.RemoveEmptyFleet(_game, parentFleet);
 
             if (
                 garrisonPlanet != null

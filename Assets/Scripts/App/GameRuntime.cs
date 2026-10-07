@@ -2,8 +2,10 @@ using System;
 using System.IO;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Game.Factions;
 using Rebellion.Simulation;
 using Rebellion.Util.Logging;
+using Rebellion.Util.Reflection;
 using UnityEngine;
 
 /// <summary>
@@ -106,6 +108,7 @@ public sealed class GameRuntime
         }
 
         ValidateGameContent(game);
+        ReconcileFactionSettings(game);
         GameSession session = new GameSession(game, _contentPack.GameData);
         GameManager clock = new GameManager(() => session.Game, session.Tick);
         _activeGameSession = session;
@@ -231,6 +234,7 @@ public sealed class GameRuntime
     {
         GameRoot loadedGame = _saveGameManager.LoadGameData(fileName);
         ValidateGameContent(loadedGame);
+        ReconcileFactionSettings(loadedGame);
         _activeGameSession.ReplaceGame(loadedGame);
         _gameManager.Reset();
         GameReplaced?.Invoke(_activeGameSession.Game);
@@ -260,6 +264,31 @@ public sealed class GameRuntime
                     + $"'{_contentPack.Definition.ID}' version '{_contentPack.Definition.Version}' "
                     + $"scenario '{_contentPack.Scenario.ID}' with mods [{activeMods}] is active."
             );
+        }
+    }
+
+    /// <summary>
+    /// Restores immutable faction configuration from the active content pack.
+    /// </summary>
+    /// <param name="game">The game whose faction settings will be restored.</param>
+    private void ReconcileFactionSettings(GameRoot game)
+    {
+        foreach (Faction faction in game.GetFactions())
+        {
+            if (faction == null || string.IsNullOrWhiteSpace(faction.InstanceID))
+                throw new InvalidOperationException(
+                    "Loaded game contains an unidentified faction."
+                );
+
+            Faction template = _contentPack.GameData.Factions.FirstOrDefault(candidate =>
+                candidate?.InstanceID == faction.InstanceID
+            );
+            if (template == null)
+                throw new InvalidOperationException(
+                    $"Loaded faction '{faction.InstanceID}' is missing from the active content pack."
+                );
+
+            faction.Settings = template.Settings.GetDeepCopy();
         }
     }
 

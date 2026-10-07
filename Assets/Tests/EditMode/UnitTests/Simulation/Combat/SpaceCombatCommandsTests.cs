@@ -3238,7 +3238,7 @@ namespace Rebellion.Tests.Simulation
                 new MovementQueries(game)
             );
             GameResultBus resultBus = new GameResultBus();
-            new MovementObserver(movement).Connect(resultBus);
+            new MovementObserver(game, movement, new MovementQueries(game)).Connect(resultBus);
             return resultBus.Publish(results);
         }
 
@@ -3416,7 +3416,7 @@ namespace Rebellion.Tests.Simulation
                     MinTransitTicks = 1,
                     SameSectorMinTransitTicks = 1,
                     DefaultFighterHyperdrive = 60,
-                    DefaultOfficerHyperdrive = 100,
+                    DefaultPersonnelHyperdrive = 100,
                 },
                 Combat = new GameConfig.CombatConfig
                 {

@@ -19,12 +19,8 @@ namespace Rebellion.Simulation
         private readonly GameRoot _game;
         private readonly MissionQueries _queries;
         private readonly MissionResolver _resolver;
+        private readonly OfficerCommandCommands _officerCommands;
         private readonly List<GameResult> _pendingResults = new List<GameResult>();
-
-        /// <summary>
-        /// Gets the resolver used by tick processing and immediate mission commands.
-        /// </summary>
-        internal MissionResolver Resolver => _resolver;
 
         /// <summary>
         /// Creates mission commands with their creation and resolution dependencies.
@@ -37,19 +33,22 @@ namespace Rebellion.Simulation
         /// <param name="movementQueries">The mission-return destination rules.</param>
         /// <param name="betrayalResolver">The mission-betrayal resolver.</param>
         /// <param name="personnelCommands">The personnel lifecycle commands.</param>
+        /// <param name="officerCommands">The officer command-assignment operations.</param>
         public MissionCommands(
             GameRoot game,
             IRandomNumberProvider provider,
             MovementCommands movementManager,
-            UprisingCommands uprisingSystem,
+            UprisingResolver uprisingSystem,
             MissionQueries queries,
             MovementQueries movementQueries,
             MissionBetrayalResolver betrayalResolver = null,
-            PersonnelCommands personnelCommands = null
+            PersonnelCommands personnelCommands = null,
+            OfficerCommandCommands officerCommands = null
         )
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
             _queries = queries ?? throw new ArgumentNullException(nameof(queries));
+            _officerCommands = officerCommands ?? new OfficerCommandCommands(game);
             _resolver = new MissionResolver(
                 game,
                 provider,
@@ -60,6 +59,25 @@ namespace Rebellion.Simulation
                 betrayalResolver,
                 personnelCommands
             );
+        }
+
+        /// <summary>Creates mission commands around the registered mission resolver.</summary>
+        /// <param name="game">The active game state.</param>
+        /// <param name="queries">The mission eligibility and probability queries.</param>
+        /// <param name="resolver">The registered mission lifecycle resolver.</param>
+        /// <param name="officerCommands">The officer command-assignment operations.</param>
+        internal MissionCommands(
+            GameRoot game,
+            MissionQueries queries,
+            MissionResolver resolver,
+            OfficerCommandCommands officerCommands
+        )
+        {
+            _game = game ?? throw new ArgumentNullException(nameof(game));
+            _queries = queries ?? throw new ArgumentNullException(nameof(queries));
+            _resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
+            _officerCommands =
+                officerCommands ?? throw new ArgumentNullException(nameof(officerCommands));
         }
 
         /// <summary>
@@ -91,7 +109,11 @@ namespace Rebellion.Simulation
             _game.AttachNode(mission, planet);
             List<IMissionParticipant> startingParticipants = mission.GetAllParticipants();
             foreach (Officer officer in startingParticipants.OfType<Officer>())
-                OfficerCommandCommands.ClearRank(officer, _game.CurrentTick, _pendingResults);
+                _officerCommands.TrySetRank(
+                    officer.InstanceID,
+                    OfficerRank.None,
+                    officer.GetOwnerInstanceID()
+                );
             _pendingResults.Add(
                 new MissionStartedResult
                 {
@@ -124,26 +146,6 @@ namespace Rebellion.Simulation
 
             _resolver.InterruptMission(mission, _pendingResults);
             return true;
-        }
-
-        /// <summary>Interrupts a selected mission and appends its teardown consequences.</summary>
-        /// <param name="mission">The mission selected while its participants still belong to it.</param>
-        /// <param name="results">The batch receiving interruption and teardown results.</param>
-        internal void InterruptMission(Mission mission, List<GameResult> results)
-        {
-            _resolver.InterruptMission(mission, results);
-        }
-
-        /// <summary>
-        /// Immediately interrupts missions containing newly captured officers.
-        /// </summary>
-        /// <param name="officers">The newly captured officers.</param>
-        /// <returns>The mission interruption and teardown results.</returns>
-        internal List<GameResult> InterruptMissionsForCapturedOfficers(
-            IReadOnlyList<Officer> officers
-        )
-        {
-            return _resolver.InterruptMissionsForCapturedOfficers(officers);
         }
     }
 }

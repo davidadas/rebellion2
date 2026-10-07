@@ -243,7 +243,7 @@ namespace Rebellion.Tests.Game.Missions
                 new MovementQueries(game)
             );
             GameResultBus resultBus = new GameResultBus();
-            new MovementObserver(movement).Connect(resultBus);
+            new MovementObserver(game, movement, new MovementQueries(game)).Connect(resultBus);
             Mission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,
@@ -315,7 +315,7 @@ namespace Rebellion.Tests.Game.Missions
                 new MovementQueries(game)
             );
             GameResultBus resultBus = new GameResultBus();
-            new MovementObserver(movement).Connect(resultBus);
+            new MovementObserver(game, movement, new MovementQueries(game)).Connect(resultBus);
             Mission mission = CreateSabotageMission(
                 "empire",
                 enemyPlanet,

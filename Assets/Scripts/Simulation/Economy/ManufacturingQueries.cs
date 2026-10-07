@@ -144,17 +144,13 @@ namespace Rebellion.Simulation
                         StringComparison.Ordinal
                     )
                 )
-                {
-                    return template is Regiment
-                        && !planet.IsColonized
-                        && string.IsNullOrEmpty(planet.GetOwnerInstanceID());
-                }
+                    return false;
 
                 return template switch
                 {
                     Regiment _ => true,
-                    SpecialForces _ => planet.IsColonized,
-                    Starfighter _ => planet.IsColonized,
+                    SpecialForces _ => planet.CanHostOwnedUnits(),
+                    Starfighter _ => planet.CanHostOwnedUnits(),
                     Building _ => planet.GetAvailableEnergy() >= count,
                     _ => false,
                 };
@@ -512,6 +508,16 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
+        /// Returns whether an item expands the resource facilities that supply maintenance.
+        /// </summary>
+        /// <param name="item">The prospective manufacturing item.</param>
+        /// <returns>True for mines and refineries.</returns>
+        internal static bool IsResourceFacility(IManufacturable item)
+        {
+            return item is Building { BuildingType: BuildingType.Mine or BuildingType.Refinery };
+        }
+
+        /// <summary>
         /// Determines whether a faction can afford a complete manufacturing order.
         /// </summary>
         /// <param name="faction">The faction committing the order.</param>
@@ -530,7 +536,7 @@ namespace Rebellion.Simulation
                 return false;
 
             int maintenanceCost = item.GetMaintenanceCost();
-            if (maintenanceCost <= 0)
+            if (maintenanceCost <= 0 || IsResourceFacility(item))
                 return true;
 
             int projectedHeadroom =

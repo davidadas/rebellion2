@@ -15,7 +15,7 @@ namespace Rebellion.Simulation
     /// <summary>
     /// Manages planetary uprisings based on garrison strength vs. popular support.
     /// </summary>
-    public class UprisingCommands
+    public class UprisingResolver
     {
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
@@ -29,7 +29,7 @@ namespace Rebellion.Simulation
         /// <param name="game">The game instance.</param>
         /// <param name="provider">Random number provider for uprising rolls.</param>
         /// <param name="planetaryControl">Planetary control operations for ownership changes.</param>
-        public UprisingCommands(
+        public UprisingResolver(
             GameRoot game,
             IRandomNumberProvider provider,
             PlanetaryControlCommands planetaryControl
@@ -68,7 +68,7 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="planet">The planet whose garrison changed.</param>
         /// <returns>The uprising results produced by reconciliation.</returns>
-        public List<GameResult> ReconcileGarrison(Planet planet)
+        internal List<GameResult> ReconcileGarrison(Planet planet)
         {
             List<GameResult> results = new List<GameResult>();
             Faction faction = GetControllingFaction(planet);

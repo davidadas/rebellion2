@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Xml;
 using System.Xml.Schema;
 using Rebellion.Game;
@@ -191,7 +192,7 @@ public sealed class MaximumRNG : IRandomNumberProvider
 
 /// <summary>
 /// Returns a fixed sequence of doubles, then falls back to 0.5.
-/// Replaces MockRNG in SpaceCombatCommandsTests and UprisingCommandsTests.
+/// Replaces MockRNG in SpaceCombatCommandsTests and UprisingResolverTests.
 /// </summary>
 public class QueueRNG : IRandomNumberProvider
 {
@@ -637,6 +638,15 @@ public static class MissionSceneBuilder
 /// </summary>
 public static class TestSystems
 {
+    private static readonly ConditionalWeakTable<
+        MissionCommands,
+        MissionResolver
+    > _missionResolvers = new ConditionalWeakTable<MissionCommands, MissionResolver>();
+    private static readonly ConditionalWeakTable<
+        MissionCommands,
+        OfficerCommandCommands
+    > _officerCommands = new ConditionalWeakTable<MissionCommands, OfficerCommandCommands>();
+
     /// <summary>
     /// Creates a mission system with the uprising resolution path available.
     /// </summary>
@@ -650,31 +660,68 @@ public static class TestSystems
         MovementCommands movement
     )
     {
-        FogOfWarCommands fog = new FogOfWarCommands(game);
-        FleetCommands fleet = new FleetCommands(game);
-        ManufacturingCommands manufacturing = new ManufacturingCommands(
-            game,
-            fleet,
-            new ManufacturingQueries(game),
-            movement
-        );
         PlanetaryControlCommands control = new PlanetaryControlCommands(
             game,
-            movement,
-            manufacturing,
-            fog,
             new PlanetaryControlQueries(game),
             new FogOfWarQueries(game)
         );
-        UprisingCommands uprising = new UprisingCommands(game, provider, control);
-        return new MissionCommands(
+        UprisingResolver uprising = new UprisingResolver(game, provider, control);
+        return CreateMissionCommands(game, provider, movement, uprising);
+    }
+
+    /// <summary>Creates mission commands around a supplied uprising resolver.</summary>
+    /// <param name="game">The game state used by every system in the graph.</param>
+    /// <param name="provider">The random number provider used by mission resolution.</param>
+    /// <param name="movement">The movement system used by mission behavior.</param>
+    /// <param name="uprising">The uprising resolver shared with mission resolution.</param>
+    /// <returns>A mission system paired with its lifecycle resolver.</returns>
+    public static MissionCommands CreateMissionCommands(
+        GameRoot game,
+        IRandomNumberProvider provider,
+        MovementCommands movement,
+        UprisingResolver uprising
+    )
+    {
+        MissionQueries queries = new MissionQueries(game);
+        MissionResolver resolver = new MissionResolver(
             game,
             provider,
             movement,
             uprising,
-            new MissionQueries(game),
-            new MovementQueries(game)
+            queries,
+            new MovementQueries(game),
+            new MissionBetrayalResolver(game, provider),
+            new PersonnelCommands(new PersonnelQueries(game))
         );
+        OfficerCommandCommands officerCommands = new OfficerCommandCommands(game);
+        MissionCommands commands = new MissionCommands(game, queries, resolver, officerCommands);
+        _missionResolvers.Add(commands, resolver);
+        _officerCommands.Add(commands, officerCommands);
+        return commands;
+    }
+
+    /// <summary>Gets the lifecycle resolver paired with test mission commands.</summary>
+    /// <param name="commands">The mission commands created by this helper.</param>
+    /// <returns>The paired lifecycle resolver.</returns>
+    internal static MissionResolver GetMissionResolver(MissionCommands commands)
+    {
+        return _missionResolvers.TryGetValue(commands, out MissionResolver resolver)
+            ? resolver
+            : throw new InvalidOperationException(
+                "Mission commands were not created by TestSystems."
+            );
+    }
+
+    /// <summary>Gets the officer-command service paired with test mission commands.</summary>
+    /// <param name="commands">The mission commands created by this helper.</param>
+    /// <returns>The paired officer-command service.</returns>
+    internal static OfficerCommandCommands GetOfficerCommands(MissionCommands commands)
+    {
+        return _officerCommands.TryGetValue(commands, out OfficerCommandCommands officerCommands)
+            ? officerCommands
+            : throw new InvalidOperationException(
+                "Mission commands were not created by TestSystems."
+            );
     }
 }
 
@@ -691,7 +738,9 @@ public static class MissionTickTestExtensions
     /// <returns>The mission results produced during the tick.</returns>
     public static List<GameResult> ProcessMissionTick(this MissionCommands commands, GameRoot game)
     {
-        return new MissionTickProcessor(commands).ProcessTick(game).ToList();
+        return new MissionTickProcessor(commands, TestSystems.GetMissionResolver(commands))
+            .ProcessTick(game)
+            .ToList();
     }
 }
 

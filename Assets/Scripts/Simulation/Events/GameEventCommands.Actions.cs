@@ -15,7 +15,7 @@ using Rebellion.Util.Random;
 
 namespace Rebellion.Simulation
 {
-    public partial class GameEventExecutor
+    public partial class GameEventCommands
     {
         /// <summary>Interprets one authored action in the supplied activation without catching failures.</summary>
         /// <param name="action">The authored action definition.</param>
@@ -161,7 +161,7 @@ namespace Rebellion.Simulation
                 .Outcomes.Where(outcome =>
                     outcome.Weight > 0
                     && outcome.Conditionals.All(condition =>
-                        GameEventExecutor.IsMet(condition, context.Game, context.Evaluation)
+                        GameEventCommands.IsMet(condition, context.Game, context.Evaluation)
                     )
                 )
                 .ToList();
@@ -226,7 +226,7 @@ namespace Rebellion.Simulation
         private static void Execute(IfAction action, GameActionContext context)
         {
             IEnumerable<GameAction> selected = action.Conditionals.TrueForAll(condition =>
-                GameEventExecutor.IsMet(condition, context.Game, context.Evaluation)
+                GameEventCommands.IsMet(condition, context.Game, context.Evaluation)
             )
                 ? action.Actions
                 : action.Else;
@@ -274,7 +274,7 @@ namespace Rebellion.Simulation
             Faction recipient = context.Game.GetFactionByOwnerInstanceID(action.FactionInstanceID);
             List<ISceneNode> observations = action
                 .Targets.SelectMany(selector =>
-                    GameEventExecutor.Select(
+                    GameEventCommands.Select(
                         selector,
                         context.Game,
                         context.Random,
@@ -400,7 +400,7 @@ namespace Rebellion.Simulation
                     "SetCaptureStatus cannot specify CaptorFactionInstanceID when releasing officers."
                 );
             IEnumerable<ISceneNode> selectedNodes = action.Selectors.SelectMany(selector =>
-                GameEventExecutor.Select(selector, game, context.Random, context.Evaluation)
+                GameEventCommands.Select(selector, game, context.Random, context.Evaluation)
             );
             if (!string.IsNullOrWhiteSpace(action.OfficerInstanceID))
             {
@@ -548,7 +548,7 @@ namespace Rebellion.Simulation
         {
             GameRoot game = context.Game;
             IEnumerable<ISceneNode> selected = action.Selectors.SelectMany(selector =>
-                GameEventExecutor.Select(selector, game, context.Random, context.Evaluation)
+                GameEventCommands.Select(selector, game, context.Random, context.Evaluation)
             );
             if (!string.IsNullOrWhiteSpace(action.OfficerInstanceID))
             {
@@ -624,7 +624,7 @@ namespace Rebellion.Simulation
             }
 
             IEnumerable<ISceneNode> selected = action.Selectors.SelectMany(selector =>
-                GameEventExecutor.Select(selector, game, context.Random, context.Evaluation)
+                GameEventCommands.Select(selector, game, context.Random, context.Evaluation)
             );
             if (!string.IsNullOrWhiteSpace(action.OfficerInstanceID))
             {
@@ -1224,7 +1224,7 @@ namespace Rebellion.Simulation
                 throw new InvalidOperationException("DestroyUnits requires at least one selector.");
             HashSet<ISceneNode> selected = action
                 .Selectors.SelectMany(selector =>
-                    GameEventExecutor.Select(selector, game, context.Random, context.Evaluation)
+                    GameEventCommands.Select(selector, game, context.Random, context.Evaluation)
                 )
                 .ToHashSet();
             List<ISceneNode> destroyedRoots = selected
@@ -1292,7 +1292,7 @@ namespace Rebellion.Simulation
             Faction faction = context.Game.GetFactionByOwnerInstanceID(action.FactionInstanceID);
             List<ISceneNode> selected = (hasPlanets ? action.Planets : action.Units)
                 .SelectMany(selector =>
-                    GameEventExecutor.Select(
+                    GameEventCommands.Select(
                         selector,
                         context.Game,
                         context.Random,
@@ -1455,7 +1455,7 @@ namespace Rebellion.Simulation
         private static void Execute(SetNodeStateAction action, GameActionContext context)
         {
             IEnumerable<ISceneNode> selected = action.Selectors.SelectMany(selector =>
-                GameEventExecutor.Select(selector, context.Game, context.Random, context.Evaluation)
+                GameEventCommands.Select(selector, context.Game, context.Random, context.Evaluation)
             );
             ISceneNode explicitNode = string.IsNullOrWhiteSpace(action.InstanceID)
                 ? null
@@ -1559,7 +1559,7 @@ namespace Rebellion.Simulation
                     );
                 return boundValue;
             }
-            return value ?? GameEventExecutor.Roll(roll, context.Random);
+            return value ?? GameEventCommands.Roll(roll, context.Random);
         }
 
         /// <summary>
@@ -1600,7 +1600,7 @@ namespace Rebellion.Simulation
                     );
                 return boundValue;
             }
-            return value ?? GameEventExecutor.Roll(roll, context.Random);
+            return value ?? GameEventCommands.Roll(roll, context.Random);
         }
     }
 
@@ -1695,7 +1695,7 @@ namespace Rebellion.Simulation
             IEnumerable<ISceneNode> selected = (
                 selectors ?? Enumerable.Empty<GameEventSelector>()
             ).SelectMany(selector =>
-                GameEventExecutor.Select(selector, context.Game, context.Random, context.Evaluation)
+                GameEventCommands.Select(selector, context.Game, context.Random, context.Evaluation)
             );
             if (!string.IsNullOrWhiteSpace(targetInstanceID))
             {
@@ -1863,7 +1863,7 @@ namespace Rebellion.Simulation
             IEnumerable<ISceneNode> selected = (
                 selectors ?? Enumerable.Empty<GameEventSelector>()
             ).SelectMany(selector =>
-                GameEventExecutor.Select(selector, game, context.Random, context.Evaluation)
+                GameEventCommands.Select(selector, game, context.Random, context.Evaluation)
             );
             Planet explicitPlanet = !string.IsNullOrWhiteSpace(planetBinding)
                 ? context.Evaluation?.GetBindingReference<Planet>(planetBinding)
@@ -1924,7 +1924,7 @@ namespace Rebellion.Simulation
             IEnumerable<ISceneNode> selected = sources
                 .Where(source => source is not SpawnUnits)
                 .SelectMany(selector =>
-                    GameEventExecutor.Select(selector, game, context.Random, context.Evaluation)
+                    GameEventCommands.Select(selector, game, context.Random, context.Evaluation)
                 );
             if (!string.IsNullOrWhiteSpace(unitInstanceID))
             {
@@ -1989,14 +1989,14 @@ namespace Rebellion.Simulation
             bool selectFirstAccepted =
                 destinationSelectors.Count == 1 && destinationSelectors[0] is SelectFirst;
             IEnumerable<ISceneNode> selected = selectFirstAccepted
-                ? GameEventExecutor.SelectCandidates(
+                ? GameEventCommands.SelectCandidates(
                     ((SelectFirst)destinationSelectors[0]),
                     game,
                     context.Random,
                     context.Evaluation
                 )
                 : destinationSelectors.SelectMany(selector =>
-                    GameEventExecutor.Select(selector, game, context.Random, context.Evaluation)
+                    GameEventCommands.Select(selector, game, context.Random, context.Evaluation)
                 );
             if (!string.IsNullOrWhiteSpace(destinationInstanceID))
             {

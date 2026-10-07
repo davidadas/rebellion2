@@ -30,11 +30,7 @@ namespace Rebellion.Tests.Simulation
             second.ManufacturingStatus = ManufacturingStatus.Building;
             game.AttachNode(first, planet);
             game.AttachNode(second, planet);
-            MaintenanceCommands maintenance = new MaintenanceCommands(
-                game,
-                new FixedRNG(),
-                new FleetCommands(game)
-            );
+            MaintenanceCommands maintenance = new MaintenanceCommands(game, new FixedRNG());
 
             Assert.IsFalse(
                 maintenance.TryScrap(new IManufacturable[] { first, second }, owner.InstanceID)
@@ -57,11 +53,7 @@ namespace Rebellion.Tests.Simulation
             Building second = CreateRefinery("second", owner.InstanceID);
             game.AttachNode(first, planet);
             game.AttachNode(second, planet);
-            MaintenanceCommands maintenance = new MaintenanceCommands(
-                game,
-                new FixedRNG(),
-                new FleetCommands(game)
-            );
+            MaintenanceCommands maintenance = new MaintenanceCommands(game, new FixedRNG());
             int deliveries = 0;
             maintenance.ResultsProduced += results =>
             {
@@ -93,11 +85,7 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(planet, sector);
             Building building = CreateMine("mine", owner.InstanceID);
             game.AttachNode(building, planet);
-            MaintenanceCommands maintenance = new MaintenanceCommands(
-                game,
-                new FixedRNG(),
-                new FleetCommands(game)
-            );
+            MaintenanceCommands maintenance = new MaintenanceCommands(game, new FixedRNG());
             InvalidOperationException failure = new InvalidOperationException("listener failure");
             maintenance.ResultsProduced += _ => throw failure;
 
@@ -185,25 +173,11 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void Constructor_WithNullGame_ThrowsArgumentNullException()
         {
-            GameRoot dependencyGame = CreateGame();
-
             ArgumentNullException exception = Assert.Throws<ArgumentNullException>(() =>
-                new MaintenanceCommands(null, new FixedRNG(), new FleetCommands(dependencyGame))
+                new MaintenanceCommands(null, new FixedRNG())
             );
 
             Assert.AreEqual("game", exception.ParamName);
-        }
-
-        [Test]
-        public void Constructor_WithNullFleetSystem_ThrowsArgumentNullException()
-        {
-            GameRoot game = CreateGame();
-
-            ArgumentNullException exception = Assert.Throws<ArgumentNullException>(() =>
-                new MaintenanceCommands(game, new FixedRNG(), null)
-            );
-
-            Assert.AreEqual("fleetSystem", exception.ParamName);
         }
 
         [Test]
@@ -232,11 +206,7 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(regiment, planet);
 
             FixedRNG rng = new FixedRNG();
-            MaintenanceCommands system2 = new MaintenanceCommands(
-                game,
-                rng,
-                new FleetCommands(game)
-            );
+            MaintenanceCommands system2 = new MaintenanceCommands(game, rng);
 
             new MaintenanceTickProcessor(system2).ProcessTick(game);
 
@@ -272,11 +242,7 @@ namespace Rebellion.Tests.Simulation
                 },
                 planet
             );
-            MaintenanceCommands maintenance = new MaintenanceCommands(
-                game,
-                new FixedRNG(),
-                new FleetCommands(game)
-            );
+            MaintenanceCommands maintenance = new MaintenanceCommands(game, new FixedRNG());
 
             IReadOnlyList<GameResult> results = new MaintenanceTickProcessor(
                 maintenance
@@ -321,11 +287,7 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(regiment2, planet);
 
             FixedRNG rng = new FixedRNG();
-            MaintenanceCommands maintenanceSystem = new MaintenanceCommands(
-                game,
-                rng,
-                new FleetCommands(game)
-            );
+            MaintenanceCommands maintenanceSystem = new MaintenanceCommands(game, rng);
 
             IReadOnlyList<GameResult> firstResults = new MaintenanceTickProcessor(
                 maintenanceSystem
@@ -496,11 +458,7 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(regiment2, planet);
 
             FixedRNG rng = new FixedRNG();
-            MaintenanceCommands maintenanceSystem = new MaintenanceCommands(
-                game,
-                rng,
-                new FleetCommands(game)
-            );
+            MaintenanceCommands maintenanceSystem = new MaintenanceCommands(game, rng);
 
             new MaintenanceTickProcessor(maintenanceSystem).ProcessTick(game);
             game.CurrentTick = 1;
@@ -539,11 +497,7 @@ namespace Rebellion.Tests.Simulation
                 game.AttachNode(regiment, planet);
             }
 
-            MaintenanceCommands maintenanceSystem = new MaintenanceCommands(
-                game,
-                new FixedRNG(),
-                new FleetCommands(game)
-            );
+            MaintenanceCommands maintenanceSystem = new MaintenanceCommands(game, new FixedRNG());
 
             new MaintenanceTickProcessor(maintenanceSystem).ProcessTick(game);
             game.CurrentTick = game.Config.Production.MaintenanceShortfallAutoscrapInterval;
@@ -583,11 +537,7 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(regiment, planet);
 
             FixedRNG rng = new FixedRNG();
-            MaintenanceCommands maintenanceSystem = new MaintenanceCommands(
-                game,
-                rng,
-                new FleetCommands(game)
-            );
+            MaintenanceCommands maintenanceSystem = new MaintenanceCommands(game, rng);
 
             IReadOnlyList<GameResult> firstResults = new MaintenanceTickProcessor(
                 maintenanceSystem
@@ -626,11 +576,7 @@ namespace Rebellion.Tests.Simulation
             };
             game.AttachNode(regiment, planet);
 
-            MaintenanceCommands maintenanceSystem = new MaintenanceCommands(
-                game,
-                new FixedRNG(),
-                new FleetCommands(game)
-            );
+            MaintenanceCommands maintenanceSystem = new MaintenanceCommands(game, new FixedRNG());
 
             IReadOnlyList<GameResult> results = new MaintenanceTickProcessor(
                 maintenanceSystem
@@ -678,11 +624,7 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(ship, fleet);
 
             FixedRNG rng = new FixedRNG();
-            MaintenanceCommands maintenanceSystem = new MaintenanceCommands(
-                game,
-                rng,
-                new FleetCommands(game)
-            );
+            MaintenanceCommands maintenanceSystem = new MaintenanceCommands(game, rng);
 
             new MaintenanceTickProcessor(maintenanceSystem).ProcessTick(game);
             game.CurrentTick = game.Config.Production.MaintenanceShortfallAutoscrapInterval;
@@ -724,11 +666,7 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(defense, planet);
 
             FixedRNG rng = new FixedRNG();
-            MaintenanceCommands maintenanceSystem = new MaintenanceCommands(
-                game,
-                rng,
-                new FleetCommands(game)
-            );
+            MaintenanceCommands maintenanceSystem = new MaintenanceCommands(game, rng);
 
             new MaintenanceTickProcessor(maintenanceSystem).ProcessTick(game);
             game.CurrentTick = game.Config.Production.MaintenanceShortfallAutoscrapInterval;
@@ -764,11 +702,7 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(mine, planet);
             game.AttachNode(regiment, planet);
 
-            MaintenanceCommands maintenanceSystem = new MaintenanceCommands(
-                game,
-                new FixedRNG(),
-                new FleetCommands(game)
-            );
+            MaintenanceCommands maintenanceSystem = new MaintenanceCommands(game, new FixedRNG());
 
             new MaintenanceTickProcessor(maintenanceSystem).ProcessTick(game);
             game.CurrentTick = game.Config.Production.MaintenanceShortfallAutoscrapInterval;
@@ -797,11 +731,7 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(sector, game.GetGalaxyMap());
             game.AttachNode(planet, sector);
             game.AttachNode(regiment, planet);
-            MaintenanceCommands maintenanceSystem = new MaintenanceCommands(
-                game,
-                new FixedRNG(),
-                new FleetCommands(game)
-            );
+            MaintenanceCommands maintenanceSystem = new MaintenanceCommands(game, new FixedRNG());
             IReadOnlyList<GameResult> results = null;
             maintenanceSystem.ResultsProduced += producedResults => results = producedResults;
 
@@ -835,11 +765,7 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(sector, game.GetGalaxyMap());
             game.AttachNode(planet, sector);
             game.AttachNode(shipyard, planet);
-            MaintenanceCommands maintenanceSystem = new MaintenanceCommands(
-                game,
-                new FixedRNG(),
-                new FleetCommands(game)
-            );
+            MaintenanceCommands maintenanceSystem = new MaintenanceCommands(game, new FixedRNG());
             IReadOnlyList<GameResult> results = null;
             maintenanceSystem.ResultsProduced += producedResults => results = producedResults;
 
@@ -874,11 +800,7 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(sector, game.GetGalaxyMap());
             game.AttachNode(planet, sector);
             game.AttachNode(regiment, planet);
-            MaintenanceCommands maintenanceSystem = new MaintenanceCommands(
-                game,
-                new FixedRNG(),
-                new FleetCommands(game)
-            );
+            MaintenanceCommands maintenanceSystem = new MaintenanceCommands(game, new FixedRNG());
             IReadOnlyList<GameResult> results = null;
             maintenanceSystem.ResultsProduced += producedResults => results = producedResults;
 
@@ -911,11 +833,7 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(sector, game.GetGalaxyMap());
             game.AttachNode(planet, sector);
             game.AttachNode(regiment, planet);
-            MaintenanceCommands maintenanceSystem = new MaintenanceCommands(
-                game,
-                new FixedRNG(),
-                new FleetCommands(game)
-            );
+            MaintenanceCommands maintenanceSystem = new MaintenanceCommands(game, new FixedRNG());
             IReadOnlyList<GameResult> results = null;
             maintenanceSystem.ResultsProduced += producedResults => results = producedResults;
 
@@ -998,12 +916,8 @@ namespace Rebellion.Tests.Simulation
                 new MovementQueries(game)
             );
             GameResultBus resultBus = new GameResultBus();
-            new MovementObserver(movement).Connect(resultBus);
-            MaintenanceCommands maintenance = new MaintenanceCommands(
-                game,
-                new FixedRNG(),
-                new FleetCommands(game)
-            );
+            new MovementObserver(game, movement, new MovementQueries(game)).Connect(resultBus);
+            MaintenanceCommands maintenance = new MaintenanceCommands(game, new FixedRNG());
             maintenance.ResultsProduced += results =>
             {
                 resultBus.Publish(results);

@@ -917,7 +917,7 @@ namespace Rebellion.Game
 
             public int DefaultFighterHyperdrive { get; set; }
 
-            public int DefaultOfficerHyperdrive { get; set; }
+            public int DefaultPersonnelHyperdrive { get; set; }
         }
 
         /// <summary>

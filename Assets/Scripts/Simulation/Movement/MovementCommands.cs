@@ -10,6 +10,7 @@ using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Logging;
+using Rebellion.Util.Random;
 
 namespace Rebellion.Simulation
 {
@@ -21,7 +22,7 @@ namespace Rebellion.Simulation
         private readonly GameRoot _game;
         private readonly FogOfWarCommands _fogOfWar;
         private readonly FogOfWarQueries _fogOfWarQueries;
-        private readonly BlockadeCommands _blockade;
+        private readonly EvacuationLossResolver _evacuationLosses;
         private readonly FleetCommands _fleetSystem;
         private readonly MovementQueries _queries;
         private readonly List<GameResult> _pendingResults = new List<GameResult>();
@@ -39,20 +40,20 @@ namespace Rebellion.Simulation
         /// <param name="fleetSystem">Owns fleet formation and empty-fleet cleanup.</param>
         /// <param name="fogOfWarQueries">The visibility rules for arrival observations.</param>
         /// <param name="queries">The shared movement eligibility and destination rules.</param>
-        /// <param name="blockade">The blockade system for evacuation loss rolls.</param>
+        /// <param name="evacuationRandom">The random source used for blockade evacuation losses.</param>
         public MovementCommands(
             GameRoot game,
             FogOfWarCommands fogOfWar,
             FleetCommands fleetSystem,
             FogOfWarQueries fogOfWarQueries,
             MovementQueries queries,
-            BlockadeCommands blockade = null
+            IRandomNumberProvider evacuationRandom = null
         )
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
             _fogOfWar = fogOfWar ?? throw new ArgumentNullException(nameof(fogOfWar));
             _fleetSystem = fleetSystem ?? throw new ArgumentNullException(nameof(fleetSystem));
-            _blockade = blockade;
+            _evacuationLosses = new EvacuationLossResolver(game, evacuationRandom ?? game.Random);
             _fogOfWarQueries =
                 fogOfWarQueries ?? throw new ArgumentNullException(nameof(fogOfWarQueries));
             _queries = queries ?? throw new ArgumentNullException(nameof(queries));
@@ -70,10 +71,21 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Delays retargeted inbound fleet units so they arrive with the moving fleet.
+        /// Moves a fleet and keeps units already joining it synchronized with its arrival.
+        /// </summary>
+        /// <param name="fleet">The fleet receiving the movement order.</param>
+        /// <param name="destination">The requested destination.</param>
+        internal void RequestCoordinatedMove(Fleet fleet, ContainerNode destination)
+        {
+            RequestMove(fleet, destination);
+            AlignInboundUnits(fleet);
+        }
+
+        /// <summary>
+        /// Delays units already joining a moving fleet so they arrive with it.
         /// </summary>
         /// <param name="fleet">The moving destination fleet.</param>
-        public void SynchronizeInTransitFleetJoiners(Fleet fleet)
+        private static void AlignInboundUnits(Fleet fleet)
         {
             if (fleet?.Movement == null)
                 return;
@@ -97,7 +109,7 @@ namespace Rebellion.Simulation
         /// <param name="sourceEventInstanceID">The event requesting movement, when applicable.</param>
         /// <param name="reactions">The result collection receiving accepted movement outcomes.</param>
         /// <returns>True when a destination accepted and received the movement request.</returns>
-        public bool TryRequestMove(
+        internal bool TryRequestMove(
             IReadOnlyList<IMovable> units,
             IReadOnlyList<ContainerNode> destinations,
             string sourceEventInstanceID,
@@ -131,7 +143,7 @@ namespace Rebellion.Simulation
         /// <param name="units">The units that must be placed together.</param>
         /// <param name="destinations">Candidate destinations in preference order.</param>
         /// <returns>True when a destination accepts the complete group.</returns>
-        public bool TryPlaceUnits(List<IMovable> units, IReadOnlyList<ContainerNode> destinations)
+        internal bool TryPlaceUnits(List<IMovable> units, IReadOnlyList<ContainerNode> destinations)
         {
             if (units == null || destinations == null)
                 return false;
@@ -152,7 +164,7 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="unit">The unit to move.</param>
         /// <param name="destination">The target container to move toward.</param>
-        public void RequestMove(IMovable unit, ContainerNode destination)
+        internal void RequestMove(IMovable unit, ContainerNode destination)
         {
             TryRequestMove(unit, destination);
         }
@@ -166,73 +178,6 @@ namespace Rebellion.Simulation
         internal bool TryRequestMove(IMovable unit, ContainerNode destination)
         {
             return TryRequestMove(unit, destination, sourceEventInstanceID: null);
-        }
-
-        /// <summary>
-        /// Establishes a captured officer's custody in a captor-controlled container.
-        /// </summary>
-        /// <param name="officer">The captured officer to transfer.</param>
-        /// <param name="destination">The captor-controlled ship or planet receiving the officer.</param>
-        /// <param name="escort">The captor unit accompanying a remote transfer, if one exists.</param>
-        /// <param name="results">The collection receiving movement results.</param>
-        /// <returns>True when custody is established or the officer is already there.</returns>
-        internal bool TryEstablishCapturedOfficerCustody(
-            Officer officer,
-            ContainerNode destination,
-            IMovable escort,
-            ICollection<GameResult> results
-        )
-        {
-            if (officer == null)
-                throw new ArgumentNullException(nameof(officer));
-            if (destination == null)
-                throw new ArgumentNullException(nameof(destination));
-            if (results == null)
-                throw new ArgumentNullException(nameof(results));
-            if (!officer.IsCaptured || string.IsNullOrEmpty(officer.CaptorInstanceID))
-                return false;
-
-            destination = _queries.ResolveLiveContainer(destination);
-            if (
-                !_queries.TryResolveAcceptedDestination(
-                    officer,
-                    destination,
-                    out ContainerNode resolvedDestination
-                )
-                || !string.Equals(
-                    resolvedDestination.GetOwnerInstanceID(),
-                    officer.CaptorInstanceID,
-                    StringComparison.Ordinal
-                )
-            )
-                return false;
-
-            if (ReferenceEquals(officer.GetParent(), resolvedDestination))
-                return true;
-
-            Planet originPlanet = officer.GetParentOfType<Planet>();
-            Planet destinationPlanet = MovementQueries.RequireDestinationPlanet(
-                resolvedDestination
-            );
-            if (!officer.IsActive() || ReferenceEquals(originPlanet, destinationPlanet))
-            {
-                officer.Movement = null;
-                _game.MoveNode(officer, resolvedDestination);
-                return true;
-            }
-
-            if (escort == null)
-            {
-                officer.Movement = null;
-                _game.MoveNode(officer, resolvedDestination);
-                return true;
-            }
-
-            return TryExecuteMoveGroup(
-                new List<IMovable> { escort, officer },
-                resolvedDestination,
-                results
-            );
         }
 
         /// <summary>
@@ -304,7 +249,7 @@ namespace Rebellion.Simulation
         /// <param name="unit">The unit to set in transit.</param>
         /// <param name="destination">The pre-assigned destination container.</param>
         /// <param name="origin">The production planet the unit departs from visually.</param>
-        public void RequestMove(IMovable unit, ContainerNode destination, Planet origin)
+        internal void RequestMove(IMovable unit, ContainerNode destination, Planet origin)
         {
             if (unit == null)
                 throw new ArgumentNullException(nameof(unit));
@@ -354,7 +299,7 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="units">The units to move as a group.</param>
         /// <param name="destination">The shared target container.</param>
-        public void RequestMove(List<IMovable> units, ContainerNode destination)
+        internal void RequestMove(List<IMovable> units, ContainerNode destination)
         {
             RequestMove(units, destination, null);
         }
@@ -490,8 +435,20 @@ namespace Rebellion.Simulation
             foreach (KeyValuePair<ContainerNode, List<IMovable>> returnGroup in returnGroups)
             {
                 string movementGroupID = Guid.NewGuid().ToString("N");
+                int groupTransitTicks = CalculateGroupTransitTicks(
+                    returnGroup.Value,
+                    Enumerable.Repeat(returnGroup.Key, returnGroup.Value.Count).ToList()
+                );
                 foreach (IMovable unit in returnGroup.Value)
-                    ExecuteMove(unit, returnGroup.Key, _pendingResults, movementGroupID);
+                {
+                    ExecuteMove(
+                        unit,
+                        returnGroup.Key,
+                        _pendingResults,
+                        movementGroupID,
+                        transitTicksOverride: groupTransitTicks
+                    );
+                }
             }
 
             return strandedUnits.Distinct().ToList();
@@ -639,7 +596,7 @@ namespace Rebellion.Simulation
                 )
             )
             {
-                _fleetSystem.RemoveIfEmpty(createdDestinationFleet);
+                FleetLifecycle.RemoveEmptyFleet(_game, createdDestinationFleet);
                 return false;
             }
 
@@ -651,10 +608,10 @@ namespace Rebellion.Simulation
             if (accepted)
             {
                 foreach (Fleet sourceFleet in sourceFleets.Distinct())
-                    _fleetSystem.RemoveIfEmpty(sourceFleet);
+                    FleetLifecycle.RemoveEmptyFleet(_game, sourceFleet);
             }
 
-            _fleetSystem.RemoveIfEmpty(createdDestinationFleet);
+            FleetLifecycle.RemoveEmptyFleet(_game, createdDestinationFleet);
             return accepted;
         }
 
@@ -1378,7 +1335,7 @@ namespace Rebellion.Simulation
 
             PlanetSector sector = destinationPlanet.GetParentOfType<PlanetSector>();
             if (sector != null)
-                _fogOfWar.CaptureSnapshot(faction, destinationPlanet, sector, _game.CurrentTick);
+                _fogOfWar.ObservePlanet(faction, destinationPlanet);
         }
 
         /// <summary>
@@ -1443,160 +1400,30 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Resolves every independently moving unit headed toward a newly blockaded planet.
-        /// </summary>
-        /// <param name="result">The blockade-start result containing the planet and blockader.</param>
-        /// <param name="reactions">The collection receiving generated results.</param>
-        internal void HandleBlockadeStarted(
-            BlockadeChangedResult result,
-            ICollection<GameResult> reactions
-        )
-        {
-            string blockadingOwner = result.BlockadingFleet.GetOwnerInstanceID();
-            if (string.IsNullOrEmpty(blockadingOwner))
-                return;
-
-            List<IMovable> inboundUnits = result
-                .Planet.GetChildren<IMovable>(recursive: true)
-                .Where(unit => unit.Movement != null)
-                .Where(unit => unit.GetOwnerInstanceID() != blockadingOwner)
-                .ToList();
-
-            foreach (IMovable unit in inboundUnits)
-            {
-                if (unit is Building)
-                {
-                    DestroyBlockadeInboundUnit(unit, result.Planet, reactions);
-                    continue;
-                }
-
-                if (!ShouldAutorouteFromBlockade(unit))
-                    continue;
-
-                ContainerNode destination = _queries.FindBlockadeAutorouteDestination(
-                    unit,
-                    result.Planet
-                );
-                if (destination == null)
-                {
-                    DestroyBlockadeInboundUnit(unit, result.Planet, reactions);
-                    continue;
-                }
-
-                Planet destinationPlanet =
-                    destination as Planet ?? destination.GetParentOfType<Planet>();
-                if (destinationPlanet == null)
-                    continue;
-
-                _game.MoveNode(unit, destination);
-                RetargetMovement(unit, destinationPlanet);
-                reactions.Add(
-                    new GameObjectEnrouteResult { GameObject = unit, Tick = _game.CurrentTick }
-                );
-            }
-        }
-
-        /// <summary>
-        /// Returns whether an independently moving unit must seek another destination.
-        /// </summary>
-        /// <param name="unit">The inbound unit to evaluate.</param>
-        /// <returns>True when the unit must be autorouted.</returns>
-        private static bool ShouldAutorouteFromBlockade(IMovable unit)
-        {
-            return unit is Starfighter
-                || unit is Regiment
-                || unit is SpecialForces specialForces && !specialForces.IsOnMission();
-        }
-
-        /// <summary>
-        /// Removes an inbound unit and records its destruction at the blockaded planet.
-        /// </summary>
-        /// <param name="unit">The unit to destroy.</param>
-        /// <param name="blockadedPlanet">The destination responsible for the destruction.</param>
-        /// <param name="reactions">The collection receiving the destruction result.</param>
-        private void DestroyBlockadeInboundUnit(
-            IMovable unit,
-            Planet blockadedPlanet,
-            ICollection<GameResult> reactions
-        )
-        {
-            _game.DeleteNode(unit);
-            reactions.Add(
-                new GameObjectDestroyedResult
-                {
-                    DestroyedObject = unit,
-                    Context = blockadedPlanet,
-                    Tick = _game.CurrentTick,
-                }
-            );
-        }
-
-        /// <summary>
-        /// Destroys a unit that cannot remain at a planet whose ownership changed and records
-        /// its destruction.
-        /// </summary>
-        /// <param name="unit">The unit to destroy.</param>
-        /// <param name="planet">The planet responsible for the destruction.</param>
-        public void DestroyEvictedUnit(IMovable unit, Planet planet)
-        {
-            GameLogger.Log(
-                $"{unit.GetDisplayName()} was destroyed when {planet.GetDisplayName()} changed hands."
-            );
-            _game.DeleteNode(unit);
-            _pendingResults.Add(
-                new GameObjectDestroyedResult
-                {
-                    DestroyedObject = unit,
-                    Context = planet,
-                    Tick = _game.CurrentTick,
-                }
-            );
-        }
-
-        /// <summary>
-        /// Moves a unit to the nearest planet owned by its faction that accepts it. When every
-        /// destination refuses the unit and <paramref name="evictingOwnerInstanceID"/> is set,
-        /// stranded starfighters and regiments are destroyed and stranded officers are captured
-        /// by the evicting faction; all other units remain in place.
+        /// Moves a unit to the nearest planet owned by its faction that accepts it.
         /// </summary>
         /// <param name="unit">The unit to evacuate.</param>
-        /// <param name="evictingOwnerInstanceID">The faction claiming the planet, when evicting.</param>
-        /// <param name="force">Whether a planet ownership change is forcing the relocation.</param>
-        public void EvacuateToNearestFriendlyPlanet(
-            IMovable unit,
-            string evictingOwnerInstanceID = null,
-            bool force = false
-        )
+        internal void EvacuateToNearestFriendlyPlanet(IMovable unit)
         {
-            EvacuateToNearestFriendlyPlanet(unit, evictingOwnerInstanceID, _pendingResults, force);
+            TryEvacuateToNearestFriendlyPlanet(unit, _pendingResults);
         }
 
         /// <summary>
-        /// Moves a unit to the nearest friendly planet and appends movement facts to the supplied
-        /// reaction batch.
+        /// Attempts to move a unit to the nearest friendly destination.
         /// </summary>
         /// <param name="unit">The unit to evacuate.</param>
-        /// <param name="results">The reaction batch receiving movement facts.</param>
-        internal void EvacuateToNearestFriendlyPlanet(
-            IMovable unit,
-            ICollection<GameResult> results
-        )
-        {
-            EvacuateToNearestFriendlyPlanet(unit, null, results, force: false);
-        }
-
-        /// <summary>
-        /// Moves a unit to the nearest friendly planet using the supplied result collection.
-        /// </summary>
-        /// <param name="unit">The unit to evacuate.</param>
-        /// <param name="evictingOwnerInstanceID">The faction claiming the planet, when evicting.</param>
         /// <param name="results">The collection receiving movement facts.</param>
-        /// <param name="force">Whether a planet ownership change is forcing the relocation.</param>
-        private void EvacuateToNearestFriendlyPlanet(
+        /// <param name="force">Whether the relocation must leave its current planet.</param>
+        /// <param name="opposingBlockadeAtDeparture">
+        /// Whether the unit faced an opposing blockade before a preceding state transition, or
+        /// null to inspect the current planet state.
+        /// </param>
+        /// <returns>True when a safe destination accepts the unit.</returns>
+        internal bool TryEvacuateToNearestFriendlyPlanet(
             IMovable unit,
-            string evictingOwnerInstanceID,
             ICollection<GameResult> results,
-            bool force
+            bool force = false,
+            bool? opposingBlockadeAtDeparture = null
         )
         {
             if (unit == null)
@@ -1609,7 +1436,7 @@ namespace Rebellion.Simulation
             {
                 unit.Movement = null;
                 GameLogger.Warning($"{unit.GetDisplayName()} has no owner — cannot evacuate.");
-                return;
+                return false;
             }
 
             Planet currentPlanet = unit.GetParentOfType<Planet>();
@@ -1630,7 +1457,7 @@ namespace Rebellion.Simulation
                     GameLogger.Log(
                         $"{inactiveFleet.GetDisplayName()} rebased to {rebasePlanet.GetDisplayName()} because it has no operational capital ships."
                     );
-                    return;
+                    return true;
                 }
             }
 
@@ -1642,71 +1469,20 @@ namespace Rebellion.Simulation
                 )
             )
             {
-                if (ExecuteMove(unit, fallback, results))
-                    return;
+                if (
+                    ExecuteMove(
+                        unit,
+                        fallback,
+                        results,
+                        opposingBlockadeAtDeparture: opposingBlockadeAtDeparture
+                    )
+                )
+                    return true;
             }
 
             unit.Movement = null;
-            if (!string.IsNullOrEmpty(evictingOwnerInstanceID))
-            {
-                if (unit is Officer officer)
-                {
-                    CaptureStrandedOfficer(officer, currentPlanet, evictingOwnerInstanceID);
-                    return;
-                }
-
-                if (unit is Starfighter or Regiment)
-                {
-                    DestroyEvictedUnit(unit, currentPlanet);
-                    return;
-                }
-            }
-
             GameLogger.Warning($"{unit.GetDisplayName()} has no friendly planet to evacuate to.");
-        }
-
-        /// <summary>
-        /// Captures an officer stranded on a planet claimed by an enemy faction.
-        /// </summary>
-        /// <param name="officer">The stranded officer.</param>
-        /// <param name="planet">The planet the officer is stranded on.</param>
-        /// <param name="captorInstanceID">The instance ID of the capturing faction.</param>
-        private void CaptureStrandedOfficer(Officer officer, Planet planet, string captorInstanceID)
-        {
-            CaptureStrandedOfficer(officer, planet, captorInstanceID, _pendingResults);
-        }
-
-        /// <summary>
-        /// Captures an officer stranded on a planet claimed by an enemy faction and appends the
-        /// capture fact to the supplied result batch.
-        /// </summary>
-        /// <param name="officer">The stranded officer.</param>
-        /// <param name="planet">The planet the officer is stranded on.</param>
-        /// <param name="captorInstanceID">The instance ID of the capturing faction.</param>
-        /// <param name="results">The result batch receiving the capture fact.</param>
-        private void CaptureStrandedOfficer(
-            Officer officer,
-            Planet planet,
-            string captorInstanceID,
-            ICollection<GameResult> results
-        )
-        {
-            if (!officer.TryCapture(captorInstanceID))
-                return;
-
-            results.Add(
-                new OfficerCaptureStateResult
-                {
-                    TargetOfficer = officer,
-                    IsCaptured = true,
-                    ParentAtCapture = officer.GetParent(),
-                    Context = planet,
-                    Tick = _game.CurrentTick,
-                }
-            );
-            GameLogger.Log(
-                $"{officer.GetDisplayName()} was captured when {planet.GetDisplayName()} changed hands."
-            );
+            return false;
         }
 
         /// <summary>
@@ -1714,7 +1490,7 @@ namespace Rebellion.Simulation
         /// them, sends them toward the nearest eligible planet owned by their movement controller.
         /// </summary>
         /// <param name="units">The units to relocate from their current containers.</param>
-        public void RelocateUnits(IEnumerable<IMovable> units)
+        internal void RelocateUnits(IEnumerable<IMovable> units)
         {
             if (units == null)
                 throw new ArgumentNullException(nameof(units));
@@ -1778,285 +1554,6 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Restores officers retained by a removed capital ship to the nearest safe container.
-        /// </summary>
-        /// <param name="removedShip">The removed capital ship retaining its former children.</param>
-        /// <param name="context">The location associated with the removal result.</param>
-        /// <param name="removedInstanceIds">Units explicitly removed by the same result batch.</param>
-        /// <param name="recoverStarfighters">Whether surviving completed starfighters may be recovered.</param>
-        /// <param name="results">The collection receiving movement facts.</param>
-        internal void RelocateRemovedCapitalShipOccupants(
-            CapitalShip removedShip,
-            IGameEntity context,
-            ISet<string> removedInstanceIds,
-            bool recoverStarfighters,
-            ICollection<GameResult> results
-        )
-        {
-            if (removedShip == null)
-                throw new ArgumentNullException(nameof(removedShip));
-            if (results == null)
-                throw new ArgumentNullException(nameof(results));
-
-            Fleet previousFleet =
-                removedShip.GetParent() as Fleet ?? removedShip.GetLastParent() as Fleet;
-            Fleet liveFleet = string.IsNullOrEmpty(previousFleet?.InstanceID)
-                ? null
-                : _game.GetSceneNodeByInstanceID<Fleet>(
-                    previousFleet.InstanceID,
-                    includeDisabled: true
-                );
-            Planet originPlanet =
-                context as Planet
-                ?? liveFleet?.GetParentOfType<Planet>()
-                ?? previousFleet?.GetLastParent() as Planet;
-            IEnumerable<IMovable> occupants = removedShip
-                .GetChildren<Officer>(includeDisabled: true)
-                .Cast<IMovable>();
-            if (recoverStarfighters)
-            {
-                occupants = occupants.Concat(
-                    removedShip
-                        .GetChildren<Starfighter>(includeDisabled: true)
-                        .Where(fighter =>
-                            fighter.ManufacturingStatus == ManufacturingStatus.Complete
-                        )
-                );
-            }
-
-            List<IMovable> recoverableOccupants = occupants
-                .Where(occupant =>
-                    occupant != null
-                    && !(removedInstanceIds?.Contains(occupant.InstanceID) ?? false)
-                )
-                .OrderBy(occupant =>
-                    occupant is Starfighter fighter && fighter.Hyperdrive <= 0 ? 0 : 1
-                )
-                .ToList();
-
-            foreach (IMovable occupant in recoverableOccupants)
-                RelocateRemovedCapitalShipOccupant(occupant, liveFleet, originPlanet, results);
-        }
-
-        /// <summary>
-        /// Restores one removed-ship occupant to its nearest safe container.
-        /// </summary>
-        /// <param name="occupant">The retained occupant to restore.</param>
-        /// <param name="fleet">The removed carrier's former fleet when it remains live.</param>
-        /// <param name="originPlanet">The planet where removal occurred.</param>
-        /// <param name="results">The collection receiving movement facts.</param>
-        private void RelocateRemovedCapitalShipOccupant(
-            IMovable occupant,
-            Fleet fleet,
-            Planet originPlanet,
-            ICollection<GameResult> results
-        )
-        {
-            if (originPlanet == null)
-                return;
-
-            ContainerNode destination = FindFleetRecoveryCarrier(occupant, fleet);
-            if (destination == null && occupant is Starfighter { Hyperdrive: <= 0 })
-            {
-                FreeFleetRecoveryCapacity(fleet, originPlanet, results);
-                destination = FindFleetRecoveryCarrier(occupant, fleet);
-            }
-            destination ??= _queries
-                .FindSafeRelocationDestinations(occupant, originPlanet, allowOriginPlanet: true)
-                .FirstOrDefault();
-            if (destination == null)
-            {
-                ResolveRemovedOccupantWithoutDestination(occupant, originPlanet, results);
-                return;
-            }
-
-            RestoreRemovedOccupant((ISceneNode)occupant, destination);
-            Planet destinationPlanet = MovementQueries.RequireDestinationPlanet(destination);
-            bool recoveredByFormerFleet =
-                destination is CapitalShip && destination.GetParentOfType<Fleet>() == fleet;
-            if (!recoveredByFormerFleet && destinationPlanet != originPlanet)
-                StartRemovedUnitTransit(occupant, originPlanet, destination, results);
-        }
-
-        /// <summary>
-        /// Applies the established stranded-unit fallback when no friendly container can receive
-        /// a survivor. Officers are captured locally; other occupants remain destroyed.
-        /// </summary>
-        /// <param name="occupant">The removed carrier occupant.</param>
-        /// <param name="originPlanet">The location where the carrier was removed.</param>
-        /// <param name="results">The collection receiving capture facts.</param>
-        private void ResolveRemovedOccupantWithoutDestination(
-            IMovable occupant,
-            Planet originPlanet,
-            ICollection<GameResult> results
-        )
-        {
-            if (occupant is not Officer officer)
-                return;
-
-            string captorInstanceId = originPlanet.GetOwnerInstanceID();
-            if (
-                string.Equals(
-                    captorInstanceId,
-                    officer.GetOwnerInstanceID(),
-                    StringComparison.Ordinal
-                )
-            )
-            {
-                throw new InvalidOperationException(
-                    $"Officer '{officer.InstanceID}' has no valid destination or captor after carrier removal."
-                );
-            }
-
-            officer.Movement = null;
-            CaptureStrandedOfficer(officer, originPlanet, captorInstanceId, results);
-            RestoreRemovedOccupant(officer, originPlanet);
-        }
-
-        /// <summary>
-        /// Finds a completed carrier in the removed ship's surviving fleet that can receive an
-        /// occupant before the fleet's already-scheduled withdrawal is considered.
-        /// </summary>
-        /// <param name="occupant">The occupant requiring recovery.</param>
-        /// <param name="fleet">The removed ship's surviving fleet.</param>
-        /// <returns>The first compatible carrier, or null when the fleet has no capacity.</returns>
-        private static CapitalShip FindFleetRecoveryCarrier(IMovable occupant, Fleet fleet)
-        {
-            return fleet
-                ?.GetChildren<CapitalShip>()
-                .Where(ship =>
-                    ship.ManufacturingStatus == ManufacturingStatus.Complete
-                    && ship.Movement == null
-                )
-                .OrderBy(ship => ship.InstanceID, StringComparer.Ordinal)
-                .FirstOrDefault(ship => ship.CanAcceptChild(occupant));
-        }
-
-        /// <summary>
-        /// Evacuates one independently mobile completed fighter from a surviving carrier so that
-        /// a stranded non-hyperdrive fighter can take its place.
-        /// </summary>
-        /// <param name="fleet">The removed ship's surviving fleet.</param>
-        /// <param name="originPlanet">The planet where carrier destruction occurred.</param>
-        /// <param name="results">The collection receiving movement facts.</param>
-        private void FreeFleetRecoveryCapacity(
-            Fleet fleet,
-            Planet originPlanet,
-            ICollection<GameResult> results
-        )
-        {
-            if (fleet == null || originPlanet == null)
-                return;
-
-            Starfighter mobileFighter = fleet
-                .GetChildren<CapitalShip>()
-                .Where(ship =>
-                    ship.ManufacturingStatus == ManufacturingStatus.Complete
-                    && ship.Movement == null
-                )
-                .OrderBy(ship => ship.InstanceID, StringComparer.Ordinal)
-                .SelectMany(ship => ship.GetChildren<Starfighter>())
-                .FirstOrDefault(fighter =>
-                    fighter.ManufacturingStatus == ManufacturingStatus.Complete
-                    && fighter.Movement == null
-                    && fighter.Hyperdrive > 0
-                    && CanVacateRecoveryCarrier(fighter, originPlanet)
-                );
-            if (mobileFighter == null)
-                return;
-
-            Planet fleetDestination = mobileFighter.GetParentOfType<Planet>();
-            if (
-                fleetDestination != originPlanet
-                && _queries.CanUseSafeRelocationDestination(
-                    mobileFighter,
-                    fleetDestination,
-                    originPlanet
-                )
-            )
-            {
-                _game.MoveNode(mobileFighter, fleetDestination);
-                StartRemovedUnitTransit(mobileFighter, originPlanet, fleetDestination, results);
-                return;
-            }
-
-            EvacuateToNearestFriendlyPlanet(mobileFighter, results);
-        }
-
-        /// <summary>
-        /// Returns whether a completed hyperdrive fighter can leave a recovery carrier for the
-        /// fleet's destination or another safe container.
-        /// </summary>
-        /// <param name="fighter">The fighter currently occupying recovery capacity.</param>
-        /// <param name="originPlanet">The planet where carrier destruction occurred.</param>
-        /// <returns>True when moving the fighter can safely free its carrier bay.</returns>
-        private bool CanVacateRecoveryCarrier(Starfighter fighter, Planet originPlanet)
-        {
-            Planet fleetDestination = fighter.GetParentOfType<Planet>();
-            return fleetDestination != originPlanet
-                    && _queries.CanUseSafeRelocationDestination(
-                        fighter,
-                        fleetDestination,
-                        originPlanet
-                    )
-                || _queries.CanEvacuateToNearestFriendlyPlanet(fighter);
-        }
-
-        /// <summary>
-        /// Records transit from a removed container's location after the unit has been restored at
-        /// its live destination.
-        /// </summary>
-        /// <param name="occupant">The restored unit.</param>
-        /// <param name="originPlanet">The planet where its container was removed.</param>
-        /// <param name="destination">The live destination receiving the unit.</param>
-        /// <param name="results">The collection receiving movement facts.</param>
-        private void StartRemovedUnitTransit(
-            IMovable occupant,
-            Planet originPlanet,
-            ContainerNode destination,
-            ICollection<GameResult> results
-        )
-        {
-            Planet destinationPlanet = MovementQueries.RequireDestinationPlanet(destination);
-            occupant.Movement = new MovementState
-            {
-                TransitTicks = _queries.CalculateTransitTicks(
-                    occupant,
-                    originPlanet,
-                    destinationPlanet
-                ),
-                TicksElapsed = 0,
-                MovementGroupID = Guid.NewGuid().ToString("N"),
-                OriginPosition = originPlanet.GetPosition(),
-                CurrentPosition = originPlanet.GetPosition(),
-            };
-
-            results.Add(
-                new GameObjectEnrouteResult { GameObject = occupant, Tick = _game.CurrentTick }
-            );
-            results.Add(
-                new GameObjectEnrouteActiveResult
-                {
-                    GameObject = occupant,
-                    IsActive = true,
-                    Tick = _game.CurrentTick,
-                }
-            );
-        }
-
-        /// <summary>
-        /// Detaches a retained child from its removed container and registers it at a live
-        /// destination.
-        /// </summary>
-        /// <param name="occupant">The retained scene node.</param>
-        /// <param name="destination">The live destination that accepts it.</param>
-        private void RestoreRemovedOccupant(ISceneNode occupant, ContainerNode destination)
-        {
-            _game.DetachNode(occupant);
-            _game.AttachNode(occupant, destination);
-        }
-
-        /// <summary>
         /// Redirects a unit when its destination is unavailable.
         /// </summary>
         /// <param name="movable">The unit whose arrival was rejected.</param>
@@ -2102,13 +1599,20 @@ namespace Rebellion.Simulation
         /// <param name="results">The collection receiving movement results.</param>
         /// <param name="movementGroupID">The shared movement order id for grouped moves.</param>
         /// <param name="sourceEventInstanceID">The event that requested the movement, if any.</param>
+        /// <param name="transitTicksOverride">The common group duration, when applicable.</param>
+        /// <param name="opposingBlockadeAtDeparture">
+        /// Whether the unit faced an opposing blockade before a preceding state transition, or
+        /// null to inspect the current planet state.
+        /// </param>
         /// <returns>True when the movement order was accepted; otherwise false.</returns>
         private bool ExecuteMove(
             IMovable unit,
             ContainerNode destination,
             ICollection<GameResult> results,
             string movementGroupID = null,
-            string sourceEventInstanceID = null
+            string sourceEventInstanceID = null,
+            int? transitTicksOverride = null,
+            bool? opposingBlockadeAtDeparture = null
         )
         {
             movementGroupID ??= Guid.NewGuid().ToString("N");
@@ -2128,7 +1632,9 @@ namespace Rebellion.Simulation
                 resolvedDestination,
                 results,
                 movementGroupID,
-                sourceEventInstanceID
+                sourceEventInstanceID,
+                transitTicksOverride,
+                opposingBlockadeAtDeparture: opposingBlockadeAtDeparture
             );
         }
 
@@ -2141,6 +1647,10 @@ namespace Rebellion.Simulation
         /// <param name="movementGroupID">The shared movement order identifier.</param>
         /// <param name="sourceEventInstanceID">The event that requested the movement, if any.</param>
         /// <param name="transitTicksOverride">The common group duration, when applicable.</param>
+        /// <param name="opposingBlockadeAtDeparture">
+        /// Whether the unit faced an opposing blockade before a preceding state transition, or
+        /// null to inspect the current planet state.
+        /// </param>
         /// <returns>True when the movement order was accepted; otherwise false.</returns>
         private bool ExecuteAcceptedMove(
             IMovable unit,
@@ -2148,7 +1658,8 @@ namespace Rebellion.Simulation
             ICollection<GameResult> results,
             string movementGroupID,
             string sourceEventInstanceID = null,
-            int? transitTicksOverride = null
+            int? transitTicksOverride = null,
+            bool? opposingBlockadeAtDeparture = null
         )
         {
             Planet destinationPlanet = MovementQueries.RequireDestinationPlanet(destination);
@@ -2162,18 +1673,16 @@ namespace Rebellion.Simulation
                 return false;
             }
 
-            if (_blockade != null)
+            EvacuationLossesResult evacuationLoss = _evacuationLosses.Resolve(
+                unit,
+                originPlanet,
+                opposingBlockadeAtDeparture
+            );
+            if (evacuationLoss != null)
             {
-                EvacuationLossesResult evacResult = _blockade.ApplyEvacuationLosses(
-                    unit,
-                    originPlanet
-                );
-                if (evacResult != null)
-                {
-                    results.Add(evacResult);
-                    AddPlanetGarrisonChangedResults(results, unit, originPlanet);
-                    return true;
-                }
+                results.Add(evacuationLoss);
+                AddPlanetGarrisonChangedResults(results, unit, originPlanet);
+                return true;
             }
 
             Point originPosition = unit.Movement?.CurrentPosition ?? originPlanet.GetPosition();
