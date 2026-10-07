@@ -152,7 +152,11 @@ namespace Rebellion.Simulation
                     SpecialForces _ => planet.CanHostOwnedUnits(),
                     Starfighter _ => planet.CanHostOwnedUnits()
                         && !planet.IsBlockadedFor(ownerInstanceId),
-                    Building _ => planet.GetAvailableEnergy() >= count,
+                    Building building => planet.GetAvailableEnergy() >= count
+                        && (
+                            building.BuildingType != BuildingType.Mine
+                            || planet.GetUnminedResourceNodeCount() >= count
+                        ),
                     _ => false,
                 };
             }
