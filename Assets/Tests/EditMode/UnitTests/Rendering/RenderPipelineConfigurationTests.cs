@@ -147,9 +147,11 @@ public sealed class RenderPipelineConfigurationTests
         Assert.IsTrue(graphicsSettings.FindProperty("m_LightsUseColorTemperature").boolValue);
     }
 
-    [TestCase("Custom/AtmosphereRim")]
+    [TestCase("Custom/PlanetAtmosphere")]
     [TestCase("Custom/PlanetClouds")]
     [TestCase("Custom/PlanetDayNightShade")]
+    [TestCase("Custom/PlanetSurface")]
+    [TestCase("Custom/PremultipliedTexture")]
     public void CustomShader_UniversalPipeline_IsSupported(string shaderName)
     {
         Shader shader = Shader.Find(shaderName);

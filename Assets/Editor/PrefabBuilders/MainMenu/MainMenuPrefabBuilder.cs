@@ -47,10 +47,14 @@ public static class MainMenuPrefabBuilder
     // Spinning-planet backdrop.
     private const string _starfieldAddress = "Application/MainMenu/UI/starfield";
     private const string _cloudTextureAddress = "Application/MainMenu/UI/clouds";
-    private const string _cloudShaderName = "Custom/PlanetClouds";
-    private const string _atmosphereShaderName = "Custom/AtmosphereRim";
-    private const string _planetDayNightShaderName = "Custom/PlanetDayNightShade";
+    private const string _planetSurfaceShaderName = "Custom/PlanetSurface";
+    private const string _atmosphereShaderName = "Custom/PlanetAtmosphere";
+    private const string _planetCompositeShaderName = "Custom/PremultipliedTexture";
     private const string _renderTexturePath = "Assets/Art/Models/MainMenu/Planet.renderTexture";
+    private const string _planetCompositeMaterialPath =
+        "Assets/Art/Models/MainMenu/PlanetComposite.mat";
+    private const string _atmosphereMeshPath =
+        "Assets/Art/Models/MainMenu/PlanetAtmosphereSphere.asset";
     private const string _citadelModelAddress = "Application/MainMenu/Models/citadel";
     private const string _citadelRenderTexturePath =
         "Assets/Art/Models/MainMenu/HqCitadel.renderTexture";
@@ -58,6 +62,8 @@ public static class MainMenuPrefabBuilder
     private const string _backdropName = "SpaceBackdrop";
     private const string _foregroundName = "Cockpit";
     private const float _cloudSpinDegreesPerSecond = 1f / 3f;
+    private const float _planetRadius = 1f;
+    private const float _atmosphereRadius = 1.04f;
     private static readonly Vector3 _planetSunDirection = new Vector3(
         0.80f,
         0.46f,
@@ -2024,6 +2030,10 @@ public static class MainMenuPrefabBuilder
         FillParent(stars.rectTransform);
 
         RawImage planet = NewRawImage(backdrop.transform, "Planet", rt);
+        planet.material = LoadOrCreateMaterial(
+            _planetCompositeMaterialPath,
+            _planetCompositeShaderName
+        );
         // Tilted and positioned in the windshield canopy; values tuned in the editor.
         ApplyPlanetBackdropRect(planet.rectTransform);
     }
@@ -2044,8 +2054,8 @@ public static class MainMenuPrefabBuilder
     }
 
     /// <summary>
-    /// Builds the off-screen planet model, lighting, and camera rig. The model is normalized and
-    /// recentered before spinning because its exported scale and origin are arbitrary.
+    /// Builds the off-screen planet model, atmosphere, and camera rig. The model is normalized and
+    /// recentered because its exported scale and origin are arbitrary.
     /// </summary>
     /// <param name="root">The prefab root to parent the rig under.</param>
     /// <param name="renderTexture">The texture the rig camera renders into.</param>
@@ -2057,7 +2067,6 @@ public static class MainMenuPrefabBuilder
 
         GameObject pivot = new GameObject("Pivot");
         pivot.transform.SetParent(rig.transform, false);
-        // The planet stays still; only the cloud layer drifts.
 
         // The planet ships as a pre-skinned GLB in the content pack. Load it at runtime and apply
         // the same pole-forward rotation, unit normalization, centering, and render layer the baked
@@ -2076,50 +2085,42 @@ public static class MainMenuPrefabBuilder
                 center: true,
                 layer: planetLayer
             );
+        planetModelNode
+            .AddComponent<PlanetSurfaceBinding>()
+            .Configure(_planetSurfaceShaderName, _cloudTextureAddress, _cloudSpinDegreesPerSecond);
 
-        // Cloud layer: a slightly larger sphere on its own pivot so the clouds drift in the
-        // planet's spin direction while the planet itself stays still.
-        GameObject cloudPivot = new GameObject("CloudPivot");
-        cloudPivot.transform.SetParent(rig.transform, false);
-        cloudPivot.AddComponent<AutoRotate>().Configure(-_cloudSpinDegreesPerSecond, Vector3.up);
-        GameObject clouds = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        clouds.name = "Clouds";
-        UnityEngine.Object.DestroyImmediate(clouds.GetComponent<Collider>());
-        clouds.transform.SetParent(cloudPivot.transform, false);
-        clouds.transform.localScale = Vector3.one * 2.020f; // primitive radius 0.5 -> ~1.010
-        clouds.layer = planetLayer;
-        clouds
-            .AddComponent<RuntimeMaterialBinding>()
-            .Configure(_cloudShaderName, _cloudTextureAddress);
-
-        // Atmosphere: a static shell just outside the clouds with a Fresnel rim glow, so the limb
-        // reads as a lit atmosphere. Built from a primitive with the custom rim shader assigned here.
-        GameObject atmosphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        atmosphere.name = "Atmosphere";
-        UnityEngine.Object.DestroyImmediate(atmosphere.GetComponent<Collider>());
+        // The shell supplies atmosphere entry pixels; its shader integrates view and sunlight paths
+        // through the volume and stops at the opaque planet surface where applicable.
+        GameObject atmosphere = new GameObject(
+            "Atmosphere",
+            typeof(MeshFilter),
+            typeof(MeshRenderer)
+        );
         atmosphere.transform.SetParent(rig.transform, false);
-        atmosphere.transform.localScale = Vector3.one * 2.025f; // primitive radius 0.5 -> ~1.0125
+        atmosphere.transform.localScale = Vector3.one * (2f * _atmosphereRadius);
         atmosphere.layer = planetLayer;
-        atmosphere.AddComponent<RuntimeMaterialBinding>().Configure(_atmosphereShaderName);
+        atmosphere.GetComponent<MeshFilter>().sharedMesh = LoadOrCreateSphereMesh(
+            _atmosphereMeshPath,
+            128,
+            128
+        );
+        atmosphere
+            .AddComponent<PlanetAtmosphereBinding>()
+            .Configure(
+                _atmosphereShaderName,
+                _planetRadius,
+                _atmosphereRadius,
+                _planetSunDirection
+            );
 
-        // A final multiply shell reproduces the prototype's world-space day/night terminator over
-        // the complete composited globe, including the asynchronously loaded surface and clouds.
-        GameObject dayNightShade = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        dayNightShade.name = "DayNightShade";
-        UnityEngine.Object.DestroyImmediate(dayNightShade.GetComponent<Collider>());
-        dayNightShade.transform.SetParent(rig.transform, false);
-        dayNightShade.transform.localScale = Vector3.one * 2.040f;
-        dayNightShade.layer = planetLayer;
-        dayNightShade.AddComponent<RuntimeMaterialBinding>().Configure(_planetDayNightShaderName);
-
-        // Dedicated sun for the planet, masked to their layer so it never touches the icons.
-        // Gives the rocky surface real directional shading; the emission only lifts the night side.
+        // Preserve the surface model's authored PBR response while the clouds remain part of the
+        // same opaque depth-writing pass.
         GameObject sunObject = new GameObject("PlanetSun", typeof(Light));
         sunObject.transform.SetParent(rig.transform, false);
         sunObject.transform.localRotation = Quaternion.LookRotation(-_planetSunDirection);
         Light sun = sunObject.GetComponent<Light>();
         sun.type = LightType.Directional;
-        sun.intensity = 0.6f;
+        sun.intensity = 0.85f;
         sun.color = new Color(1f, 0.94f, 0.88f);
         sun.cullingMask = 1 << planetLayer;
         sun.shadows = LightShadows.None;
@@ -2166,6 +2167,133 @@ public static class MainMenuPrefabBuilder
         EnsureAssetFolder(Path.GetDirectoryName(_renderTexturePath));
         AssetDatabase.CreateAsset(created, _renderTexturePath);
         return created;
+    }
+
+    /// <summary>
+    /// Loads a generated material asset, creating or updating it to use the required shader.
+    /// </summary>
+    /// <param name="path">The project-relative material asset path.</param>
+    /// <param name="shaderName">The shader the material must use.</param>
+    /// <returns>The persistent material asset.</returns>
+    private static Material LoadOrCreateMaterial(string path, string shaderName)
+    {
+        Shader shader = Shader.Find(shaderName);
+        if (shader == null)
+            throw new InvalidOperationException($"Shader not found: {shaderName}");
+
+        Material material = AssetDatabase.LoadAssetAtPath<Material>(path);
+        if (material == null)
+        {
+            material = new Material(shader) { name = Path.GetFileNameWithoutExtension(path) };
+            EnsureAssetFolder(Path.GetDirectoryName(path));
+            AssetDatabase.CreateAsset(material, path);
+            return material;
+        }
+
+        if (material.shader != shader)
+        {
+            material.shader = shader;
+            EditorUtility.SetDirty(material);
+        }
+
+        return material;
+    }
+
+    /// <summary>
+    /// Loads or generates a smooth UV sphere mesh with a half-unit radius.
+    /// </summary>
+    /// <param name="path">The project-relative mesh asset path.</param>
+    /// <param name="longitudeSegments">The number of segments around the equator.</param>
+    /// <param name="latitudeSegments">The number of segments between the poles.</param>
+    /// <returns>The persistent sphere mesh asset.</returns>
+    private static Mesh LoadOrCreateSphereMesh(
+        string path,
+        int longitudeSegments,
+        int latitudeSegments
+    )
+    {
+        if (longitudeSegments < 3)
+            throw new ArgumentOutOfRangeException(nameof(longitudeSegments));
+        if (latitudeSegments < 2)
+            throw new ArgumentOutOfRangeException(nameof(latitudeSegments));
+
+        int vertexCount = (longitudeSegments + 1) * (latitudeSegments + 1);
+        int triangleIndexCount = longitudeSegments * latitudeSegments * 6;
+        Mesh mesh = AssetDatabase.LoadAssetAtPath<Mesh>(path);
+        if (
+            mesh != null
+            && mesh.vertexCount == vertexCount
+            && mesh.triangles.Length == triangleIndexCount
+        )
+        {
+            return mesh;
+        }
+
+        if (mesh == null)
+            mesh = new Mesh { name = Path.GetFileNameWithoutExtension(path) };
+        else
+            mesh.Clear();
+
+        Vector3[] vertices = new Vector3[vertexCount];
+        Vector3[] normals = new Vector3[vertexCount];
+        Vector2[] textureCoordinates = new Vector2[vertexCount];
+        int vertexIndex = 0;
+        for (int latitude = 0; latitude <= latitudeSegments; latitude++)
+        {
+            float latitudeRatio = latitude / (float)latitudeSegments;
+            float polarAngle = latitudeRatio * Mathf.PI;
+            float ringRadius = Mathf.Sin(polarAngle);
+            float height = Mathf.Cos(polarAngle);
+            for (int longitude = 0; longitude <= longitudeSegments; longitude++)
+            {
+                float longitudeRatio = longitude / (float)longitudeSegments;
+                float azimuth = longitudeRatio * 2f * Mathf.PI;
+                Vector3 normal = new Vector3(
+                    ringRadius * Mathf.Cos(azimuth),
+                    height,
+                    ringRadius * Mathf.Sin(azimuth)
+                );
+                vertices[vertexIndex] = normal * 0.5f;
+                normals[vertexIndex] = normal;
+                textureCoordinates[vertexIndex] = new Vector2(longitudeRatio, latitudeRatio);
+                vertexIndex++;
+            }
+        }
+
+        int[] triangles = new int[triangleIndexCount];
+        int triangleIndex = 0;
+        int rowStride = longitudeSegments + 1;
+        for (int latitude = 0; latitude < latitudeSegments; latitude++)
+        {
+            for (int longitude = 0; longitude < longitudeSegments; longitude++)
+            {
+                int current = latitude * rowStride + longitude;
+                int nextRow = current + rowStride;
+                triangles[triangleIndex++] = current;
+                triangles[triangleIndex++] = current + 1;
+                triangles[triangleIndex++] = nextRow;
+                triangles[triangleIndex++] = current + 1;
+                triangles[triangleIndex++] = nextRow + 1;
+                triangles[triangleIndex++] = nextRow;
+            }
+        }
+
+        mesh.vertices = vertices;
+        mesh.normals = normals;
+        mesh.uv = textureCoordinates;
+        mesh.triangles = triangles;
+        mesh.RecalculateBounds();
+        if (AssetDatabase.GetAssetPath(mesh).Length == 0)
+        {
+            EnsureAssetFolder(Path.GetDirectoryName(path));
+            AssetDatabase.CreateAsset(mesh, path);
+        }
+        else
+        {
+            EditorUtility.SetDirty(mesh);
+        }
+
+        return mesh;
     }
 
     /// <summary>
