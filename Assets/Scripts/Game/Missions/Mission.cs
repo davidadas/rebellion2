@@ -810,17 +810,6 @@ namespace Rebellion.Game.Missions
         internal Officer FindDetectorCommander(ISceneNode detector, Planet planet = null)
         {
             planet ??= GetParent() as Planet ?? detector?.GetParentOfType<Planet>();
-            return FindDetectorCommanderAtPlanet(detector, planet);
-        }
-
-        /// <summary>
-        /// Finds the commander type paired with a detector at the supplied planet.
-        /// </summary>
-        /// <param name="detector">The detector whose commander is requested.</param>
-        /// <param name="planet">The planet containing the detector.</param>
-        /// <returns>The matching commander, or null when none is assigned.</returns>
-        internal static Officer FindDetectorCommanderAtPlanet(ISceneNode detector, Planet planet)
-        {
             if (planet == null)
                 return null;
 

@@ -1217,65 +1217,6 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Returns hostile detector units that can intercept personnel during travel.
-        /// </summary>
-        /// <param name="ownerInstanceId">The faction whose personnel are traveling.</param>
-        /// <param name="planet">The planet where the crossing occurs.</param>
-        /// <returns>The ordered detector units.</returns>
-        internal static List<ISceneNode> GetPersonnelTransitDetectors(
-            string ownerInstanceId,
-            Planet planet
-        )
-        {
-            List<ISceneNode> detectors = new List<ISceneNode>();
-            if (
-                string.IsNullOrEmpty(ownerInstanceId)
-                || planet == null
-                || HasDetectionBlockerForOwner(ownerInstanceId, planet)
-            )
-                return detectors;
-
-            List<Fleet> hostileFleets = planet
-                .GetChildren<Fleet>()
-                .Where(fleet =>
-                    fleet.GetOwnerInstanceID() != ownerInstanceId && fleet.Movement == null
-                )
-                .ToList();
-            if (hostileFleets.Count == 0)
-                return detectors;
-
-            AddEligibleDetectorsForOwner(
-                ownerInstanceId,
-                planet.GetChildren<Starfighter>(),
-                detectors
-            );
-            AddEligibleDetectorsForOwner(
-                ownerInstanceId,
-                planet.GetChildren<Regiment>(),
-                detectors
-            );
-
-            foreach (Fleet fleet in hostileFleets)
-            {
-                foreach (CapitalShip capitalShip in fleet.GetChildren<CapitalShip>())
-                {
-                    AddEligibleDetectorsForOwner(
-                        ownerInstanceId,
-                        capitalShip.GetChildren<Starfighter>(),
-                        detectors
-                    );
-                    AddEligibleDetectorsForOwner(
-                        ownerInstanceId,
-                        capitalShip.GetChildren<Regiment>(),
-                        detectors
-                    );
-                }
-            }
-
-            return detectors;
-        }
-
-        /// <summary>
         /// Returns whether a completed friendly building suppresses approach encounters.
         /// </summary>
         /// <param name="mission">The mission whose owner receives protection.</param>
@@ -1283,23 +1224,12 @@ namespace Rebellion.Simulation
         /// <returns>True when an eligible building is present.</returns>
         internal static bool HasDetectionBlocker(Mission mission, Planet planet)
         {
-            return mission != null && HasDetectionBlockerForOwner(mission.OwnerInstanceID, planet);
-        }
-
-        /// <summary>
-        /// Returns whether a completed building protects one faction from approach encounters.
-        /// </summary>
-        /// <param name="ownerInstanceId">The faction receiving protection.</param>
-        /// <param name="planet">The planet containing candidate buildings.</param>
-        /// <returns>True when an eligible building is present.</returns>
-        internal static bool HasDetectionBlockerForOwner(string ownerInstanceId, Planet planet)
-        {
-            return !string.IsNullOrEmpty(ownerInstanceId)
+            return mission != null
                 && planet
                     ?.GetChildren<Building>()
                     .Any(building =>
                         building.IsDetectionBlocker
-                        && building.OwnerInstanceID == ownerInstanceId
+                        && building.OwnerInstanceID == mission.OwnerInstanceID
                         && building.ManufacturingStatus == ManufacturingStatus.Complete
                         && building.Movement == null
                     ) == true;
@@ -1322,90 +1252,6 @@ namespace Rebellion.Simulation
                 if (mission.IsEligibleDetector(candidate))
                     detectors.Add(candidate);
             }
-        }
-
-        /// <summary>
-        /// Appends detector units eligible against the supplied faction.
-        /// </summary>
-        /// <param name="ownerInstanceId">The faction attempting to avoid detection.</param>
-        /// <param name="candidates">The candidate detector units.</param>
-        /// <param name="detectors">The collection receiving eligible detectors.</param>
-        private static void AddEligibleDetectorsForOwner(
-            string ownerInstanceId,
-            IEnumerable<ISceneNode> candidates,
-            ICollection<ISceneNode> detectors
-        )
-        {
-            foreach (ISceneNode candidate in candidates)
-            {
-                if (Mission.IsEligibleDetectorForOwner(candidate, ownerInstanceId))
-                    detectors.Add(candidate);
-            }
-        }
-
-        /// <summary>
-        /// Returns one detector's chance to intercept a personnel movement group.
-        /// </summary>
-        /// <param name="participants">The personnel traveling together.</param>
-        /// <param name="detector">The hostile detector making the attempt.</param>
-        /// <param name="planet">The planet where the crossing occurs.</param>
-        /// <returns>The interception percentage.</returns>
-        internal int GetPersonnelTransitFoilProbability(
-            IReadOnlyList<IMissionParticipant> participants,
-            ISceneNode detector,
-            Planet planet
-        )
-        {
-            if (participants == null || participants.Count == 0 || detector == null)
-                return 0;
-
-            GameConfig.MissionProbabilityTablesConfig missionTables = GetMissionTables();
-            Officer commander = Mission.FindDetectorCommanderAtPlanet(detector, planet);
-            int score =
-                GetAverageEspionage(participants)
-                - GetScaledCommanderEspionage(commander, missionTables.FoilDefenderScalingPercent)
-                - GetAuthoredDetectionRating(detector)
-                - participants.OfType<SpecialForces>().Count()
-                - missionTables.FoilFlatScoreAdjustment;
-            return Math.Clamp(LookupProbability(missionTables.Foil, score), 0, 100);
-        }
-
-        /// <summary>
-        /// Returns a detector's authored rating without applying faction difficulty modifiers.
-        /// </summary>
-        /// <param name="detector">The detector whose authored rating is requested.</param>
-        /// <returns>The detector's stored detection rating.</returns>
-        private static int GetAuthoredDetectionRating(ISceneNode detector)
-        {
-            return detector switch
-            {
-                Regiment regiment => regiment.DetectionRating,
-                Starfighter starfighter => starfighter.DetectionRating,
-                CapitalShip capitalShip => capitalShip.DetectionRating,
-                _ => 0,
-            };
-        }
-
-        /// <summary>
-        /// Returns one participant's chance to evade a transit detector.
-        /// </summary>
-        /// <param name="participant">The participant attempting to evade.</param>
-        /// <param name="detector">The hostile detector confronting the participant.</param>
-        /// <param name="planet">The planet where the confrontation occurs.</param>
-        /// <returns>The evasion percentage.</returns>
-        internal double GetPersonnelTransitEvasionProbability(
-            IMissionParticipant participant,
-            ISceneNode detector,
-            Planet planet
-        )
-        {
-            if (participant == null || detector == null)
-                return 0;
-
-            Officer commander = Mission.FindDetectorCommanderAtPlanet(detector, planet);
-            int defenderCombat = commander?.GetEffectiveRating(SkillRating.Combat) ?? 0;
-            int score = participant.GetEffectiveRating(SkillRating.Combat) - defenderCombat;
-            return GetEvasionProbability(score);
         }
 
         /// <summary>

@@ -30,12 +30,14 @@ namespace Rebellion.Simulation
         public IReadOnlyList<GameResult> ProcessTick(GameRoot game)
         {
             List<GameResult> results = _commands.TakePendingResults();
+            List<IMovable> movables = new List<IMovable>();
             game.GetGalaxyMap()
                 .Traverse(node =>
                 {
                     if (node is IMovable movable)
-                        _commands.UpdateMovement(movable, results);
+                        movables.Add(movable);
                 });
+            _commands.UpdateMovements(movables, results);
             return results;
         }
     }

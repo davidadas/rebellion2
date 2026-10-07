@@ -2244,7 +2244,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void UpdateMovement_GroupDetectedArrivingNearHostileFleet_ResolvesTogether()
+        public void ProcessTick_GroupDetectedArrivingNearHostileFleet_ResolvesTogether()
         {
             (GameRoot game, Planet origin, Planet destination, MovementCommands movement) =
                 BuildBlockadeScene(new FixedRNG(0));
@@ -2263,7 +2263,7 @@ namespace Rebellion.Tests.Simulation
             first.Movement.TicksElapsed = first.Movement.TransitTicks - 1;
             second.Movement.TicksElapsed = second.Movement.TransitTicks - 1;
 
-            movement.UpdateMovement(first, new List<GameResult>());
+            new MovementTickProcessor(movement).ProcessTick(game);
 
             Assert.IsTrue(first.IsCaptured);
             Assert.IsTrue(second.IsCaptured);
