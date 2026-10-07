@@ -145,6 +145,38 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void CanRetreatForces_NonHyperdriveFleetWithCarriedHyperdriveFighter_ReturnsTrue()
+        {
+            (GameRoot game, Planet planet, Fleet fleet, SpaceCombatQueries queries) =
+                CreateScenario();
+            CreatePlanet(game, "home", owner: "alliance");
+            CapitalShip carrier = fleet.GetChildren<CapitalShip>()[0];
+            carrier.Hyperdrive = 0;
+            carrier.StarfighterCapacity = 1;
+            game.AttachNode(
+                new Starfighter
+                {
+                    InstanceID = "fighter",
+                    OwnerInstanceID = "alliance",
+                    Hyperdrive = 1,
+                    MaxSquadronSize = 12,
+                    CurrentSquadronSize = 12,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                carrier
+            );
+
+            bool canRetreat = queries.CanRetreatForces(
+                new[] { fleet },
+                new List<Fleet>(),
+                planet,
+                "alliance"
+            );
+
+            Assert.IsTrue(canRetreat);
+        }
+
+        [Test]
         public void CanRetreatForces_HumanControlledOwnedHeadquarters_ReturnsTrue()
         {
             (GameRoot game, Planet planet, Fleet fleet, SpaceCombatQueries queries) =

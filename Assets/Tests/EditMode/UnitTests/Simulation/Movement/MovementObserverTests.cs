@@ -469,6 +469,43 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void HandleResults_DestroyedCarrierWithCarrierInOtherFleet_DoesNotMoveOfficerAcrossFleets()
+        {
+            var scene = BuildRemovedCarrierScene();
+            Fleet otherFleet = EntityFactory.CreateFleet("other-fleet", "empire");
+            CapitalShip otherCarrier = new CapitalShip
+            {
+                InstanceID = "other-carrier",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                CurrentHullStrength = 100,
+            };
+            Officer officer = EntityFactory.CreateOfficer("officer", "empire");
+            scene.game.AttachNode(otherFleet, scene.fallback);
+            scene.game.AttachNode(otherCarrier, otherFleet);
+            otherFleet.Movement = new MovementState
+            {
+                OriginPosition = scene.origin.GetPosition(),
+                CurrentPosition = scene.origin.GetPosition(),
+            };
+            scene.game.AttachNode(officer, scene.carrier);
+            scene.game.DeleteNode(scene.carrier);
+
+            scene.resultBus.Publish(
+                new GameObjectDestroyedResult
+                {
+                    DestroyedObject = scene.carrier,
+                    Context = scene.origin,
+                    Reason = UnitDestructionReason.Combat,
+                }
+            );
+
+            Assert.AreSame(scene.fallback, officer.GetParent());
+            Assert.AreNotSame(otherCarrier, officer.GetParent());
+            Assert.IsNotNull(officer.Movement);
+        }
+
+        [Test]
         public void HandleResults_DestroyedCarrierOverFriendlyPlanet_RestoresOfficerLocally()
         {
             var scene = BuildRemovedCarrierScene();
@@ -636,6 +673,42 @@ namespace Rebellion.Tests.Simulation
             );
 
             Assert.AreSame(scene.fallback, officer.GetParent());
+            Assert.IsNotNull(officer.Movement);
+        }
+
+        [Test]
+        public void HandleResults_ScrappedCarrierWithCarrierInOtherFleet_DoesNotMoveOfficerAcrossFleets()
+        {
+            var scene = BuildRemovedCarrierScene();
+            Fleet otherFleet = EntityFactory.CreateFleet("other-fleet", "empire");
+            CapitalShip otherCarrier = new CapitalShip
+            {
+                InstanceID = "other-carrier",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                CurrentHullStrength = 100,
+            };
+            Officer officer = EntityFactory.CreateOfficer("officer", "empire");
+            scene.game.AttachNode(otherFleet, scene.fallback);
+            scene.game.AttachNode(otherCarrier, otherFleet);
+            otherFleet.Movement = new MovementState
+            {
+                OriginPosition = scene.origin.GetPosition(),
+                CurrentPosition = scene.origin.GetPosition(),
+            };
+            scene.game.AttachNode(officer, scene.carrier);
+            scene.game.DeleteNode(scene.carrier);
+
+            scene.resultBus.Publish(
+                new GameObjectScrappedResult
+                {
+                    ScrappedObject = scene.carrier,
+                    Context = scene.origin,
+                }
+            );
+
+            Assert.AreSame(scene.fallback, officer.GetParent());
+            Assert.AreNotSame(otherCarrier, officer.GetParent());
             Assert.IsNotNull(officer.Movement);
         }
 

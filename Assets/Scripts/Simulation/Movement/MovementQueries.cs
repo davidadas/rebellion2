@@ -993,12 +993,14 @@ namespace Rebellion.Simulation
         /// <param name="allowOriginPlanet">
         /// Whether the origin planet itself may receive the unit without interplanetary travel.
         /// </param>
+        /// <param name="leaveOriginPlanet">Whether every destination at the origin is excluded.</param>
         /// <returns>The valid relocation destinations, nearest first.</returns>
         internal IReadOnlyList<ContainerNode> FindSafeRelocationDestinations(
             IMovable unit,
             Planet originPlanet,
             bool forceInterplanetaryTravel = false,
-            bool allowOriginPlanet = false
+            bool allowOriginPlanet = false,
+            bool leaveOriginPlanet = false
         )
         {
             if (unit == null)
@@ -1023,6 +1025,9 @@ namespace Rebellion.Simulation
                 .Concat(_game.GetSceneNodesByType<CapitalShip>());
 
             return destinations
+                .Where(destination =>
+                    !leaveOriginPlanet || RequireDestinationPlanet(destination) != originPlanet
+                )
                 .Where(destination =>
                     CanUseSafeRelocationDestination(
                         unit,

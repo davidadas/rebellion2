@@ -167,7 +167,7 @@ namespace Rebellion.Simulation
         /// <param name="opponents">The opposing fleets.</param>
         /// <param name="planet">The combat planet.</param>
         /// <param name="ownerInstanceId">The withdrawing faction identifier.</param>
-        /// <returns>True when at least one fleet or directly deployed fighter can evacuate.</returns>
+        /// <returns>True when at least one capital ship or fighter can evacuate.</returns>
         public bool CanRetreatForces(
             IReadOnlyList<Fleet> fleets,
             IReadOnlyList<Fleet> opponents,
@@ -176,10 +176,9 @@ namespace Rebellion.Simulation
         )
         {
             IReadOnlyList<Fleet> retreatingFleets = fleets ?? Array.Empty<Fleet>();
-            IEnumerable<Starfighter> retreatingFighters = GetActivePlanetStarfighters(
-                planet,
-                ownerInstanceId
-            );
+            IEnumerable<Starfighter> retreatingFighters = retreatingFleets
+                .SelectMany(GetActiveStarfighters)
+                .Concat(GetActivePlanetStarfighters(planet, ownerInstanceId));
             return !IsRetreatBlockedByGravityWell(planet, opponents)
                 && (
                     retreatingFleets.Any(CanRetreatFleet)

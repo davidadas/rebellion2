@@ -834,7 +834,9 @@ namespace Rebellion.Simulation
                 if (
                     !IsWithdrawing
                     || _units.Any(unit =>
-                        unit.IsAlive && unit.WithdrawalDistance < withdrawalDistance
+                        unit.IsAlive
+                        && unit.CanWithdrawIndependently
+                        && unit.WithdrawalDistance < withdrawalDistance
                     )
                 )
                     return;

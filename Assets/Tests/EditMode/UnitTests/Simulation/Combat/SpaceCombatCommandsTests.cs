@@ -2229,7 +2229,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ResolvePending_OneFleetWithoutHyperdrive_WithdrawsEligibleFleetOnly()
+        public void ResolvePending_OneFleetWithoutHyperdrive_WithdrawsCapableFleetAndDestroysTrappedFleetTogether()
         {
             GameRoot game = CreateAutomaticCombatGame();
             game.Config.Combat.SpaceCombat.AutoResolveRetreatStrengthRatio = 0.75;
@@ -2242,7 +2242,7 @@ namespace Rebellion.Tests.Simulation
                 owner: "alliance"
             );
             CreatePlanet(game, "empire-fallback", owner: "empire");
-            CreateFleet(
+            Fleet attackingFleet = CreateFleet(
                 game,
                 "attacker",
                 "empire",
@@ -2252,6 +2252,7 @@ namespace Rebellion.Tests.Simulation
                 76,
                 shieldRechargeRate: 0
             );
+            CapitalShip attackingShip = attackingFleet.GetChildren<CapitalShip>().Single();
             Fleet retreatingFleet = CreateFleet(
                 game,
                 "retreating-fleet",
@@ -2270,7 +2271,7 @@ namespace Rebellion.Tests.Simulation
                 combatPlanet,
                 1,
                 1,
-                0,
+                10,
                 shieldRechargeRate: 0
             );
             trappedFleet.GetChildren<CapitalShip>().Single().Hyperdrive = 0;
@@ -2290,6 +2291,7 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(allianceFallback, retreatingFleet.GetParentOfType<Planet>());
             Assert.IsNotNull(retreatingFleet.Movement);
             Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>(trappedFleet.InstanceID));
+            Assert.AreEqual(attackingShip.MaxHullStrength, attackingShip.CurrentHullStrength);
         }
 
         [Test]
@@ -2426,7 +2428,8 @@ namespace Rebellion.Tests.Simulation
             ) = ResolveCarrierDestructionWithdrawal(
                 recoveryCapacity: 1,
                 displacedFighterHyperdrives: new[] { 0 },
-                recoveryCarrierInSeparateFleet: true
+                recoveryCarrierInSeparateFleet: true,
+                includeUnrelatedOutboundCarrier: true
             );
             Starfighter fighter = displacedFighters.Single();
             SpaceCombatSideOutcome retreatingOutcome =
@@ -2850,7 +2853,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ResolvePendingRetreat_PlanetaryNonHyperdriveFighter_DestroysStrandedFighter()
+        public void ResolvePendingRetreat_PlanetaryNonHyperdriveFighterWithoutCarrierCapacity_DestroysStrandedFighter()
         {
             GameRoot game = CreateGame();
             game.SetFactionController("empire", "player1", PlayerControllerType.Human);
@@ -2895,6 +2898,41 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void ResolvePendingRetreat_PlanetaryNonHyperdriveFighterWithCarrierCapacity_BoardsWithdrawingCarrier()
+        {
+            GameRoot game = CreateGame();
+            game.SetFactionController("empire", "player1", PlayerControllerType.Human);
+            (Planet combatPlanet, _) = CreatePlanet(game, "combat", owner: "empire");
+            (Planet empireHome, _) = CreatePlanet(game, "empireHome", owner: "empire");
+            CreatePlanet(game, "allianceHome", owner: "alliance");
+            Fleet empireFleet = CreateFleet(game, "ef1", "empire", combatPlanet, 1, 100, 1);
+            CapitalShip carrier = empireFleet.GetChildren<CapitalShip>().Single();
+            carrier.StarfighterCapacity = 1;
+            CreateFleet(game, "af1", "alliance", combatPlanet, 1, 1000, 100);
+            Starfighter fighter = new Starfighter
+            {
+                InstanceID = "planet-fighter",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaxSquadronSize = 12,
+                CurrentSquadronSize = 12,
+                Hyperdrive = 0,
+            };
+            game.AttachNode(fighter, combatPlanet);
+            SpaceCombatCommands manager = MakeSpaceCombat(game);
+
+            new SpaceCombatTickProcessor(manager).ProcessTick(game);
+            List<GameResult> results = manager.ResolvePendingRetreat("empire");
+            SpaceCombatResult combatResult = results.OfType<SpaceCombatResult>().Single();
+
+            Assert.AreSame(empireHome, empireFleet.GetParentOfType<Planet>());
+            Assert.IsNotNull(empireFleet.Movement);
+            Assert.AreSame(fighter, game.GetSceneNodeByInstanceID<Starfighter>(fighter.InstanceID));
+            Assert.AreSame(carrier, fighter.GetParent());
+            Assert.IsFalse(combatResult.FighterLosses.Any(loss => loss.Fighter == fighter));
+        }
+
+        [Test]
         public void ResolvePendingRetreat_FleetWithoutHyperdrive_DoesNotMoveFleet()
         {
             GameRoot game = CreateGame();
@@ -2920,6 +2958,53 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(results);
             Assert.AreSame(combatPlanet, empireFleet.GetParentOfType<Planet>());
             Assert.IsNull(empireFleet.Movement);
+        }
+
+        [Test]
+        public void ResolvePendingRetreat_FleetWithoutHyperdriveAndCarriedHyperdriveFighter_EvacuatesFighterAndDestroysFleet()
+        {
+            GameRoot game = CreateGame();
+            game.SetFactionController("empire", "player1", PlayerControllerType.Human);
+            (Planet combatPlanet, _) = CreatePlanet(game, "combat");
+            (Planet empireHome, _) = CreatePlanet(game, "empireHome", owner: "empire");
+            CreatePlanet(game, "allianceHome", owner: "alliance");
+            Fleet empireFleet = CreateFleet(game, "ef1", "empire", combatPlanet, 1, 100, 1);
+            CapitalShip strandedShip = empireFleet.GetChildren<CapitalShip>().Single();
+            strandedShip.Hyperdrive = 0;
+            strandedShip.StarfighterCapacity = 1;
+            Starfighter fighter = new Starfighter
+            {
+                InstanceID = "carried-fighter",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaxSquadronSize = 12,
+                CurrentSquadronSize = 12,
+                Hyperdrive = 1,
+            };
+            game.AttachNode(fighter, strandedShip);
+            CreateFleet(game, "af1", "alliance", combatPlanet, 1, 1000, 100);
+            SpaceCombatCommands manager = MakeSpaceCombat(game);
+
+            PendingCombatResult pending = new SpaceCombatTickProcessor(manager)
+                .ProcessTick(game)
+                .OfType<PendingCombatResult>()
+                .Single();
+            bool empireCanRetreat =
+                pending.AttackerOwnerInstanceID == "empire"
+                    ? pending.AttackerCanRetreat
+                    : pending.DefenderCanRetreat;
+            List<GameResult> results = manager.ResolvePendingRetreat("empire");
+
+            Assert.IsTrue(empireCanRetreat);
+            Assert.IsNotNull(results);
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>(empireFleet.InstanceID));
+            Assert.AreSame(empireHome, fighter.GetParentOfType<Planet>());
+            Assert.IsNotNull(fighter.Movement);
+            Assert.IsTrue(
+                results
+                    .OfType<GameObjectDestroyedResult>()
+                    .Any(destruction => destruction.DestroyedObject == strandedShip)
+            );
         }
 
         [Test]
@@ -3593,6 +3678,7 @@ namespace Rebellion.Tests.Simulation
         /// <param name="existingRecoveryFighterHyperdrive">The existing recovery fighter hyperdrive.</param>
         /// <param name="existingRecoveryFightersAreInTransit">Whether existing recovery fighters are in transit.</param>
         /// <param name="recoveryCarrierInSeparateFleet">Whether the recovery carrier belongs to another fleet.</param>
+        /// <param name="includeUnrelatedOutboundCarrier">Whether an unrelated outbound fleet has spare carrier capacity.</param>
         /// <returns>The resolved carrier destruction withdrawal.</returns>
         private (
             GameRoot game,
@@ -3609,7 +3695,8 @@ namespace Rebellion.Tests.Simulation
             int existingRecoveryFighterCount = 0,
             int existingRecoveryFighterHyperdrive = 0,
             bool existingRecoveryFightersAreInTransit = false,
-            bool recoveryCarrierInSeparateFleet = false
+            bool recoveryCarrierInSeparateFleet = false,
+            bool includeUnrelatedOutboundCarrier = false
         )
         {
             GameRoot game = CreateAutomaticCombatGame();
@@ -3659,6 +3746,24 @@ namespace Rebellion.Tests.Simulation
                 game.AttachNode(recoveryFleet, combatPlanet);
                 game.MoveNode(recoveryCarrier, recoveryFleet);
                 retreatingFleet = recoveryFleet;
+            }
+            if (includeUnrelatedOutboundCarrier)
+            {
+                Fleet unrelatedFleet = CreateFleet(
+                    game,
+                    "a-unrelated-fleet",
+                    "alliance",
+                    fallbackPlanet,
+                    1,
+                    1000,
+                    0
+                );
+                unrelatedFleet.GetChildren<CapitalShip>().Single().StarfighterCapacity = 1;
+                unrelatedFleet.Movement = new MovementState
+                {
+                    OriginPosition = combatPlanet.GetPosition(),
+                    CurrentPosition = combatPlanet.GetPosition(),
+                };
             }
             List<Starfighter> displacedFighters = new List<Starfighter>();
             for (int index = 0; index < displacedFighterHyperdrives.Count; index++)

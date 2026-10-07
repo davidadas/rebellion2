@@ -281,11 +281,6 @@ namespace Rebellion.Simulation
                 context as Planet
                 ?? liveFleet?.GetParentOfType<Planet>()
                 ?? previousFleet?.GetLastParent() as Planet;
-            IReadOnlyList<Fleet> recoveryFleets = GetRecoveryFleets(
-                removedShip.GetOwnerInstanceID(),
-                liveFleet,
-                origin
-            );
             IEnumerable<IMovable> occupants = removedShip
                 .GetChildren<Officer>(includeDisabled: true)
                 .Cast<IMovable>();
@@ -312,18 +307,18 @@ namespace Rebellion.Simulation
                     .ToList()
             )
             {
-                RelocateRemovedCapitalShipOccupant(occupant, recoveryFleets, origin, results);
+                RelocateRemovedCapitalShipOccupant(occupant, liveFleet, origin, results);
             }
         }
 
         /// <summary>Moves one removed-ship occupant to the nearest safe container.</summary>
         /// <param name="occupant">The surviving occupant.</param>
-        /// <param name="recoveryFleets">The colocated friendly fleets available for recovery.</param>
+        /// <param name="fleet">The former fleet when it remains active.</param>
         /// <param name="origin">The planet where removal occurred.</param>
         /// <param name="results">The collection receiving recovery facts.</param>
         private void RelocateRemovedCapitalShipOccupant(
             IMovable occupant,
-            IReadOnlyList<Fleet> recoveryFleets,
+            Fleet fleet,
             Planet origin,
             ICollection<GameResult> results
         )
@@ -331,11 +326,11 @@ namespace Rebellion.Simulation
             if (origin == null)
                 return;
 
-            ContainerNode destination = FindRecoveryCarrier(occupant, recoveryFleets);
+            ContainerNode destination = FindFleetRecoveryCarrier(occupant, fleet);
             if (destination == null && occupant is Starfighter { Hyperdrive: <= 0 })
             {
-                FreeRecoveryCapacity(recoveryFleets, origin, results);
-                destination = FindRecoveryCarrier(occupant, recoveryFleets);
+                FreeFleetRecoveryCapacity(fleet, origin, results);
+                destination = FindFleetRecoveryCarrier(occupant, fleet);
             }
 
             destination ??= _queries
@@ -349,8 +344,9 @@ namespace Rebellion.Simulation
 
             RestoreOccupant((ISceneNode)occupant, destination);
             Planet destinationPlanet = MovementQueries.RequireDestinationPlanet(destination);
-            bool travelsWithFleet = destination is CapitalShip;
-            if (!travelsWithFleet && destinationPlanet != origin)
+            bool remainsWithFleet =
+                destination is CapitalShip && destination.GetParentOfType<Fleet>() == fleet;
+            if (!remainsWithFleet && destinationPlanet != origin)
                 StartTransit(occupant, origin, destination, results);
         }
 
@@ -396,43 +392,14 @@ namespace Rebellion.Simulation
             RestoreOccupant(officer, origin);
         }
 
-        /// <summary>Finds friendly fleets still at or withdrawing from the removal location.</summary>
-        /// <param name="ownerInstanceId">The removed ship's owner.</param>
-        /// <param name="previousFleet">The removed ship's former fleet when it survives.</param>
-        /// <param name="origin">The planet where removal occurred.</param>
-        /// <returns>Eligible recovery fleets in deterministic preference order.</returns>
-        private IReadOnlyList<Fleet> GetRecoveryFleets(
-            string ownerInstanceId,
-            Fleet previousFleet,
-            Planet origin
-        )
-        {
-            if (string.IsNullOrEmpty(ownerInstanceId) || origin == null)
-                return Array.Empty<Fleet>();
-
-            Point originPosition = origin.GetPosition();
-            return _game
-                .GetSceneNodesByOwnerInstanceID<Fleet>(ownerInstanceId)
-                .Where(fleet =>
-                    fleet != null
-                    && (
-                        fleet.GetParentOfType<Planet>() == origin
-                        || fleet.Movement?.OriginPosition == originPosition
-                    )
-                )
-                .OrderBy(fleet => ReferenceEquals(fleet, previousFleet) ? 0 : 1)
-                .ThenBy(fleet => fleet.InstanceID, StringComparer.Ordinal)
-                .ToList();
-        }
-
-        /// <summary>Finds a compatible surviving carrier among eligible friendly fleets.</summary>
+        /// <summary>Finds a compatible surviving carrier in the removed ship's fleet.</summary>
         /// <param name="occupant">The occupant requiring recovery.</param>
-        /// <param name="fleets">The fleets available for recovery.</param>
+        /// <param name="fleet">The surviving fleet.</param>
         /// <returns>The first compatible carrier, or null.</returns>
-        private static CapitalShip FindRecoveryCarrier(IMovable occupant, IEnumerable<Fleet> fleets)
+        private static CapitalShip FindFleetRecoveryCarrier(IMovable occupant, Fleet fleet)
         {
-            return (fleets ?? Enumerable.Empty<Fleet>())
-                .SelectMany(fleet => fleet.GetChildren<CapitalShip>())
+            return fleet
+                ?.GetChildren<CapitalShip>()
                 .Where(ship =>
                     ship.ManufacturingStatus == ManufacturingStatus.Complete
                     && ship.Movement == null
@@ -442,20 +409,20 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>Moves a mobile fighter out of a carrier to free recovery capacity.</summary>
-        /// <param name="fleets">The fleets available for recovery.</param>
+        /// <param name="fleet">The surviving fleet.</param>
         /// <param name="origin">The carrier-removal planet.</param>
         /// <param name="results">The collection receiving movement facts.</param>
-        private void FreeRecoveryCapacity(
-            IEnumerable<Fleet> fleets,
+        private void FreeFleetRecoveryCapacity(
+            Fleet fleet,
             Planet origin,
             ICollection<GameResult> results
         )
         {
-            if (fleets == null || origin == null)
+            if (fleet == null || origin == null)
                 return;
 
-            Starfighter mobileFighter = fleets
-                .SelectMany(fleet => fleet.GetChildren<CapitalShip>())
+            Starfighter mobileFighter = fleet
+                .GetChildren<CapitalShip>()
                 .Where(ship =>
                     ship.ManufacturingStatus == ManufacturingStatus.Complete
                     && ship.Movement == null

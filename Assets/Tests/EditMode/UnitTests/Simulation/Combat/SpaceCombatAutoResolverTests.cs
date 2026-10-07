@@ -1258,7 +1258,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void Resolve_ThreeCapitalShipsWithdrawWithOneWithoutHyperdrive_DestroysStrandedShip()
+        public void Resolve_ThreeCapitalShipsWithdrawWithSlowNonHyperdriveShip_DoesNotDelayWithdrawal()
         {
             CapitalShip attacker = CreateShip("attacker", hull: 1000, weaponStrength: 10);
             CapitalShip firstWithdrawingShip = CreateShip(
@@ -1275,7 +1275,7 @@ namespace Rebellion.Tests.Simulation
             secondWithdrawingShip.SublightSpeed = 10;
             CapitalShip strandedShip = CreateShip("stranded-ship", hull: 100, weaponStrength: 1);
             strandedShip.Hyperdrive = 0;
-            strandedShip.SublightSpeed = 10;
+            strandedShip.SublightSpeed = 1;
             GameConfig.SpaceCombatConfig config = CreateConfig();
             config.AutoResolveRetreatStrengthRatio = 1.01;
             config.AutoResolveStartingDistance = 0;
