@@ -39,12 +39,18 @@ namespace Rebellion.Simulation
             bool? opposingBlockadeAtDeparture = null
         )
         {
-            if (
-                !(opposingBlockadeAtDeparture ?? origin.IsBlockadedFor(unit.GetOwnerInstanceID()))
-                || origin.HasOperationalIonCannon()
-                || unit is not Regiment regiment
-                || _random.NextInt(0, 100) >= _game.Config.Blockade.EvacuationLossPercent
-            )
+            bool facedOpposingBlockade =
+                opposingBlockadeAtDeparture ?? origin.IsBlockadedFor(unit.GetOwnerInstanceID());
+            if (!facedOpposingBlockade || unit is not Regiment regiment)
+                return null;
+
+            GameConfig.BlockadeConfig config = _game.Config.Blockade;
+            int survivalPercent = origin.GetBlockadeModifier(
+                config.CapitalShipProductionPenaltyPercent,
+                config.FighterProductionPenaltyPercent,
+                blockadePresent: true
+            );
+            if (_random.NextInt(0, 100) < survivalPercent)
                 return null;
 
             Faction faction = _game
@@ -57,6 +63,8 @@ namespace Rebellion.Simulation
             return new EvacuationLossesResult
             {
                 Faction = faction,
+                DestroyedObject = regiment,
+                Context = origin,
                 Location = origin,
                 LostRegiments = new List<Regiment> { regiment },
                 Tick = _game.CurrentTick,

@@ -293,7 +293,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void GetMissionOdds_Default_IncludesStationaryFleetDetectors()
+        public void GetMissionOdds_Default_IncludesStationaryCapitalShipDetectors()
         {
             (GameRoot game, Planet planet, Officer spy, Officer _) = BuildDetectionScene();
             game.DeleteNode(planet.GetChildren<Regiment>().Single());
@@ -302,18 +302,10 @@ namespace Rebellion.Tests.Simulation
             {
                 InstanceID = "ship",
                 OwnerInstanceID = "rebels",
-                StarfighterCapacity = 1,
-                ManufacturingStatus = ManufacturingStatus.Complete,
-            };
-            Starfighter starfighter = new Starfighter
-            {
-                InstanceID = "fighter",
-                OwnerInstanceID = "rebels",
                 DetectionRating = 100,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             game.AttachNode(capitalShip, fleet);
-            game.AttachNode(starfighter, capitalShip);
             planet.AddVisitor("empire");
             SetFoilTable(game, new Dictionary<int, int> { { -1000, 100 } });
             MissionQueries system = new MissionQueries(game);
@@ -324,6 +316,27 @@ namespace Rebellion.Tests.Simulation
 
             Assert.IsNotNull(odds);
             Assert.AreEqual(100, odds.FoilProbability, 0.001);
+        }
+
+        [Test]
+        public void GetFoilProbability_NoActiveMainParticipants_ReturnsZero()
+        {
+            (GameRoot game, Planet planet, Officer _, Officer _) = BuildDetectionScene();
+            Regiment detector = planet.GetChildren<Regiment>().Single();
+            StubMission mission = new StubMission("empire", planet.InstanceID);
+            game.AttachNode(mission, planet);
+            SetFoilTable(game, new Dictionary<int, int> { { -1000, 100 } });
+            MissionQueries system = new MissionQueries(game);
+
+            int probability = system.GetFoilProbability(
+                mission,
+                detector,
+                0,
+                System.Array.Empty<IMissionParticipant>(),
+                planet
+            );
+
+            Assert.AreEqual(0, probability);
         }
 
         [Test]

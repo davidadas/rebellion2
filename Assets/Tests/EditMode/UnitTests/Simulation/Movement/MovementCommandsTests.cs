@@ -1940,9 +1940,8 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void RequestMove_RegimentFromBlockadedPlanet_LowRoll_DestroysRegiment()
+        public void RequestMove_RegimentFromBlockadedPlanet_LowRoll_RegimentSurvives()
         {
-            // FixedRNG returns 0 -> 0 < 50 -> loss
             (GameRoot game, Planet origin, Planet destination, MovementCommands movement) =
                 BuildBlockadeScene(new FixedRNG());
 
@@ -1952,16 +1951,13 @@ namespace Rebellion.Tests.Simulation
 
             movement.RequestMove(regiment, destination);
 
-            Assert.IsNull(
-                game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID),
-                "Regiment should be destroyed running the blockade"
-            );
+            Assert.AreSame(regiment, game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
+            Assert.IsNotNull(regiment.Movement);
         }
 
         [Test]
-        public void RequestMove_RegimentFromBlockadedPlanet_HighRoll_RegimentSurvives()
+        public void RequestMove_RegimentFromBlockadedPlanet_HighRoll_DestroysRegiment()
         {
-            // MaximumRNG returns 99 -> 99 >= 50 -> survives
             (GameRoot game, Planet origin, Planet destination, MovementCommands movement) =
                 BuildBlockadeScene(new MaximumRNG());
 
@@ -1971,18 +1967,14 @@ namespace Rebellion.Tests.Simulation
 
             movement.RequestMove(regiment, destination);
 
-            Assert.IsNotNull(
-                game.GetSceneNodeByInstanceID<Regiment>("r1"),
-                "Regiment should survive the blockade"
-            );
-            Assert.IsNotNull(regiment.Movement, "Surviving regiment should be in transit");
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
         }
 
         [Test]
         public void RequestMove_RegimentFromBlockadedPlanet_EmitsEvacuationResult()
         {
             (GameRoot game, Planet origin, Planet destination, MovementCommands movement) =
-                BuildBlockadeScene(new FixedRNG());
+                BuildBlockadeScene(new MaximumRNG());
 
             Regiment regiment = EntityFactory.CreateRegiment("r1", "empire");
             regiment.ManufacturingStatus = ManufacturingStatus.Complete;
@@ -2006,9 +1998,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void RequestMove_RegimentFromUnblockedPlanet_NoEvacuationLoss()
         {
-            // FixedRNG would cause loss, but planet isn't blockaded
             GameConfig config = TestConfig.Create();
-            config.Blockade.EvacuationLossPercent = 100;
             GameRoot game = TestGame.Create(config);
 
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
@@ -5182,7 +5172,6 @@ namespace Rebellion.Tests.Simulation
         ) BuildBlockadeRetargetingScene()
         {
             GameConfig config = TestConfig.Create();
-            config.Blockade.EvacuationLossPercent = 100;
             GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
@@ -5310,7 +5299,7 @@ namespace Rebellion.Tests.Simulation
         ) BuildBlockadeScene(IRandomNumberProvider rng)
         {
             GameConfig config = TestConfig.Create();
-            config.Blockade.EvacuationLossPercent = 50;
+            config.Blockade.CapitalShipProductionPenaltyPercent = 50;
             GameRoot game = TestGame.Create(config);
 
             game.GetFactions().Add(new Faction { InstanceID = "empire" });

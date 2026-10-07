@@ -4551,7 +4551,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void CreateMessages_EvacuationLosses_JoinsLostUnitNames()
+        public void CreateMessages_EvacuationLosses_UsesDedicatedFleetReportPresentation()
         {
             (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
 
@@ -4563,8 +4563,8 @@ namespace Rebellion.Tests.Simulation
                         Definition(
                             MessageResultType.EvacuationLosses,
                             MessageType.Fleet,
-                            "losses:{system}",
-                            "body:{units}",
+                            "Evacuation Losses",
+                            "The following units were lost running an enemy blockade of {system}.\n\n{units}",
                             imagePaths: FactionImages()
                         ),
                     },
@@ -4581,9 +4581,11 @@ namespace Rebellion.Tests.Simulation
             );
 
             Assert.AreEqual(MessageType.Fleet, message.Type);
-            Assert.AreEqual("losses:Coruscant", message.Title);
+            Assert.AreEqual(MessageResultType.EvacuationLosses, message.ResultType);
+            Assert.AreEqual("Evacuation Losses", message.Title);
             Assert.AreEqual(
-                "body:Nebulon-B Frigate\nX-wing Squadron\nInfantry Regiment",
+                "The following units were lost running an enemy blockade of Coruscant.\n\n"
+                    + "Nebulon-B Frigate\nX-wing Squadron\nInfantry Regiment",
                 message.Body
             );
             Assert.AreEqual("alliance-image", message.DisplayImagePath);

@@ -410,7 +410,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void HandleResults_BlockadedOwnershipChange_ResolvesEvacuationAgainstPriorBlockade()
         {
-            _game.Config.Blockade.EvacuationLossPercent = 100;
+            _game.Config.Blockade.CapitalShipProductionPenaltyPercent = 100;
             _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
             AddBlockadingFleet(_targetPlanet, "capturing");
             Regiment regiment = EntityFactory.CreateRegiment("evacuating", _empire.InstanceID);

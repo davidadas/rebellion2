@@ -18,7 +18,7 @@ namespace Rebellion.Tests.Simulation
             (GameRoot game, Planet planet) = BuildScene();
             Regiment regiment = EntityFactory.CreateRegiment("evacuating", "empire");
             game.AttachNode(regiment, planet);
-            game.Config.Blockade.EvacuationLossPercent = 100;
+            game.Config.Blockade.CapitalShipProductionPenaltyPercent = 100;
             game.CurrentTick = 42;
             EvacuationLossResolver system = new EvacuationLossResolver(game, new FixedRNG());
 
@@ -26,8 +26,11 @@ namespace Rebellion.Tests.Simulation
 
             Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
             Assert.AreSame(regiment, result.LostRegiments.Single());
+            Assert.AreSame(regiment, result.DestroyedObject);
+            Assert.AreSame(planet, result.Context);
             Assert.AreSame(planet, result.Location);
             Assert.AreEqual("empire", result.Faction.InstanceID);
+            Assert.AreEqual(UnitDestructionReason.Blockade, result.Reason);
             Assert.AreEqual(42, result.Tick);
         }
 
@@ -47,13 +50,28 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void Resolve_RollBelowThreshold_RemovesRegiment()
+        public void Resolve_RollBelowSurvivalThreshold_PreservesRegiment()
         {
             (GameRoot game, Planet planet) = BuildScene();
-            game.Config.Blockade.EvacuationLossPercent = 25;
+            game.Config.Blockade.CapitalShipProductionPenaltyPercent = 25;
             Regiment regiment = EntityFactory.CreateRegiment("evacuating", "empire");
             game.AttachNode(regiment, planet);
             EvacuationLossResolver system = new EvacuationLossResolver(game, new FixedRNG());
+
+            EvacuationLossesResult result = system.Resolve(regiment, planet);
+
+            Assert.IsNull(result);
+            Assert.AreSame(regiment, game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
+        }
+
+        [Test]
+        public void Resolve_RollAboveSurvivalThreshold_RemovesRegiment()
+        {
+            (GameRoot game, Planet planet) = BuildScene();
+            game.Config.Blockade.CapitalShipProductionPenaltyPercent = 25;
+            Regiment regiment = EntityFactory.CreateRegiment("evacuating", "empire");
+            game.AttachNode(regiment, planet);
+            EvacuationLossResolver system = new EvacuationLossResolver(game, new MaximumRNG());
 
             EvacuationLossesResult result = system.Resolve(regiment, planet);
 
@@ -62,13 +80,13 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void Resolve_RollAboveThreshold_PreservesRegiment()
+        public void Resolve_NoOpposingBlockade_PreservesRegimentWithoutRolling()
         {
             (GameRoot game, Planet planet) = BuildScene();
-            game.Config.Blockade.EvacuationLossPercent = 25;
             Regiment regiment = EntityFactory.CreateRegiment("evacuating", "empire");
             game.AttachNode(regiment, planet);
-            EvacuationLossResolver system = new EvacuationLossResolver(game, new MaximumRNG());
+            planet.OwnerInstanceID = "alliance";
+            EvacuationLossResolver system = new EvacuationLossResolver(game, new ThrowingRNG());
 
             EvacuationLossesResult result = system.Resolve(regiment, planet);
 
@@ -77,28 +95,13 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void Resolve_ZeroPercent_PreservesRegiment()
+        public void Resolve_OverwhelmingBlockade_RemovesRegiment()
         {
             (GameRoot game, Planet planet) = BuildScene();
-            game.Config.Blockade.EvacuationLossPercent = 0;
+            game.Config.Blockade.CapitalShipProductionPenaltyPercent = 100;
             Regiment regiment = EntityFactory.CreateRegiment("evacuating", "empire");
             game.AttachNode(regiment, planet);
             EvacuationLossResolver system = new EvacuationLossResolver(game, new FixedRNG());
-
-            EvacuationLossesResult result = system.Resolve(regiment, planet);
-
-            Assert.IsNull(result);
-            Assert.AreSame(regiment, game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
-        }
-
-        [Test]
-        public void Resolve_HundredPercent_RemovesRegiment()
-        {
-            (GameRoot game, Planet planet) = BuildScene();
-            game.Config.Blockade.EvacuationLossPercent = 100;
-            Regiment regiment = EntityFactory.CreateRegiment("evacuating", "empire");
-            game.AttachNode(regiment, planet);
-            EvacuationLossResolver system = new EvacuationLossResolver(game, new MaximumRNG());
 
             EvacuationLossesResult result = system.Resolve(regiment, planet);
 
@@ -130,6 +133,7 @@ namespace Rebellion.Tests.Simulation
         public void Resolve_OperationalIonCannon_PreventsLoss()
         {
             (GameRoot game, Planet planet) = BuildScene();
+            game.Config.Blockade.CapitalShipProductionPenaltyPercent = 100;
             planet.IsColonized = true;
             planet.EnergyCapacity = 1;
             Regiment regiment = new Regiment
@@ -154,6 +158,27 @@ namespace Rebellion.Tests.Simulation
 
             Assert.IsNull(result);
             Assert.AreSame(regiment, game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
+        }
+
+        [Test]
+        public void Resolve_PreOwnershipChangeBlockade_UsesObservedBlockadeStrength()
+        {
+            (GameRoot game, Planet planet) = BuildScene();
+            game.Config.Blockade.CapitalShipProductionPenaltyPercent = 100;
+            Regiment regiment = EntityFactory.CreateRegiment("evacuating", "empire");
+            game.AttachNode(regiment, planet);
+            planet.OwnerInstanceID = "alliance";
+            Assert.IsFalse(planet.IsBlockaded());
+            EvacuationLossResolver system = new EvacuationLossResolver(game, new FixedRNG());
+
+            EvacuationLossesResult result = system.Resolve(
+                regiment,
+                planet,
+                opposingBlockadeAtDeparture: true
+            );
+
+            Assert.IsNotNull(result);
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
         }
 
         /// <summary>Builds a planet under an opposing blockade.</summary>

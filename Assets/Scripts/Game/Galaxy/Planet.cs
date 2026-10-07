@@ -838,15 +838,22 @@ namespace Rebellion.Game.Galaxy
         }
 
         /// <summary>
-        /// Gets the manufacturing output percentage available during a blockade.
+        /// Gets the shared survival and production percentage available during a blockade.
         /// An operational KDY-150 ion cannon prevents the blockade penalty.
         /// </summary>
         /// <param name="capitalShipPenalty">The percentage removed per capital ship.</param>
         /// <param name="fighterPenalty">The percentage removed per fighter squadron.</param>
-        /// <returns>The available manufacturing percentage from zero through one hundred.</returns>
-        public int GetBlockadeProductionModifier(int capitalShipPenalty, int fighterPenalty)
+        /// <param name="blockadePresent">
+        /// A previously observed blockade state, or null to inspect the current planet state.
+        /// </param>
+        /// <returns>The available percentage from zero through one hundred.</returns>
+        public int GetBlockadeModifier(
+            int capitalShipPenalty,
+            int fighterPenalty,
+            bool? blockadePresent = null
+        )
         {
-            if (!IsBlockaded() || HasOperationalIonCannon())
+            if (!(blockadePresent ?? IsBlockaded()) || HasOperationalIonCannon())
                 return _maximumProductionModifier;
 
             List<CapitalShip> capitalShips = _fleets

@@ -698,7 +698,7 @@ namespace Rebellion.Simulation
                 return 0;
 
             GameConfig.BlockadeConfig config = _game.Config.Blockade;
-            int modifier = planet.GetBlockadeProductionModifier(
+            int modifier = planet.GetBlockadeModifier(
                 config.CapitalShipProductionPenaltyPercent,
                 config.FighterProductionPenaltyPercent
             );
