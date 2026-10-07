@@ -6,7 +6,6 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.SceneGraph;
 
 namespace Rebellion.Simulation
 {
@@ -162,13 +161,13 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Reports whether every force on one side can withdraw from its opponent.
+        /// Reports whether at least one force on one side can withdraw from its opponent.
         /// </summary>
         /// <param name="fleets">The fleets requesting withdrawal.</param>
         /// <param name="opponents">The opposing fleets.</param>
         /// <param name="planet">The combat planet.</param>
         /// <param name="ownerInstanceId">The withdrawing faction identifier.</param>
-        /// <returns>True when every fleet and directly deployed fighter can evacuate.</returns>
+        /// <returns>True when at least one fleet or directly deployed fighter can evacuate.</returns>
         public bool CanRetreatForces(
             IReadOnlyList<Fleet> fleets,
             IReadOnlyList<Fleet> opponents,
@@ -177,85 +176,36 @@ namespace Rebellion.Simulation
         )
         {
             IReadOnlyList<Fleet> retreatingFleets = fleets ?? Array.Empty<Fleet>();
-            List<Starfighter> retreatingFighters = GetActivePlanetStarfighters(
-                    planet,
-                    ownerInstanceId
-                )
-                .ToList();
-            return (retreatingFleets.Count > 0 || retreatingFighters.Count > 0)
-                && !IsRetreatBlockedByGravityWell(planet, opponents)
-                && retreatingFleets.All(fleet =>
-                    HasHyperdriveCapableShip(fleet)
-                    && _movement.CanEvacuateToNearestFriendlyPlanet(fleet)
-                )
-                && retreatingFighters.All(fighter =>
-                    fighter.Hyperdrive > 0 && _movement.CanEvacuateToNearestFriendlyPlanet(fighter)
+            IEnumerable<Starfighter> retreatingFighters = GetActivePlanetStarfighters(
+                planet,
+                ownerInstanceId
+            );
+            return !IsRetreatBlockedByGravityWell(planet, opponents)
+                && (
+                    retreatingFleets.Any(CanRetreatFleet)
+                    || retreatingFighters.Any(CanRetreatFighter)
                 );
         }
 
         /// <summary>
-        /// Returns the tactical unit groups capable of leaving an automatically resolved battle.
+        /// Reports whether a fleet can evacuate from its current planet.
         /// </summary>
-        /// <param name="fleets">The fleets on the withdrawing side.</param>
-        /// <param name="opponents">The opposing fleets.</param>
-        /// <param name="planet">The combat planet.</param>
-        /// <param name="ownerInstanceId">The withdrawing owner identifier.</param>
-        /// <returns>The coordinated fleet force and independent fighter squadrons that can withdraw.</returns>
-        internal List<IReadOnlyCollection<ISceneNode>> GetAutomaticWithdrawalGroups(
-            IReadOnlyList<Fleet> fleets,
-            IReadOnlyList<Fleet> opponents,
-            Planet planet,
-            string ownerInstanceId
-        )
+        /// <param name="fleet">The fleet to inspect.</param>
+        /// <returns>True when the fleet has an operational hyperdrive and a valid destination.</returns>
+        internal bool CanRetreatFleet(Fleet fleet)
         {
-            List<IReadOnlyCollection<ISceneNode>> groups =
-                new List<IReadOnlyCollection<ISceneNode>>();
-            Faction faction =
-                planet == null || string.IsNullOrEmpty(ownerInstanceId)
-                    ? null
-                    : _game?.GetFactionByOwnerInstanceID(ownerInstanceId);
-            if (
-                (
-                    faction != null
-                    && _game.IsFactionAIControlled(faction)
-                    && planet.GetOwnerInstanceID() == faction.InstanceID
-                    && planet.GetInstanceID() == faction.HQInstanceID
-                ) || IsRetreatBlockedByGravityWell(planet, opponents)
-            )
-                return groups;
+            return HasHyperdriveCapableShip(fleet)
+                && _movement.CanEvacuateToNearestFriendlyPlanet(fleet);
+        }
 
-            List<Fleet> withdrawingFleets = (fleets ?? Array.Empty<Fleet>())
-                .Where(fleet => fleet != null)
-                .ToList();
-            if (
-                withdrawingFleets.Count > 0
-                && withdrawingFleets.All(fleet =>
-                    HasHyperdriveCapableShip(fleet)
-                    && _movement.CanEvacuateToNearestFriendlyPlanet(fleet)
-                )
-            )
-            {
-                List<ISceneNode> fleetUnits = withdrawingFleets
-                    .SelectMany(fleet =>
-                        GetActiveCapitalShips(fleet)
-                            .Cast<ISceneNode>()
-                            .Concat(GetActiveStarfighters(fleet))
-                    )
-                    .Distinct()
-                    .ToList();
-                if (fleetUnits.Count > 0)
-                    groups.Add(fleetUnits);
-            }
-
-            foreach (Starfighter fighter in GetActivePlanetStarfighters(planet, ownerInstanceId))
-            {
-                if (fighter.Hyperdrive > 0 && _movement.CanEvacuateToNearestFriendlyPlanet(fighter))
-                {
-                    groups.Add(new ISceneNode[] { fighter });
-                }
-            }
-
-            return groups;
+        /// <summary>
+        /// Reports whether an independently deployed fighter can evacuate from its current planet.
+        /// </summary>
+        /// <param name="fighter">The fighter to inspect.</param>
+        /// <returns>True when the fighter has a hyperdrive and a valid destination.</returns>
+        internal bool CanRetreatFighter(Starfighter fighter)
+        {
+            return fighter?.Hyperdrive > 0 && _movement.CanEvacuateToNearestFriendlyPlanet(fighter);
         }
 
         /// <summary>

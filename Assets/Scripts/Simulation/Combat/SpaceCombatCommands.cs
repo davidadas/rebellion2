@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
@@ -197,9 +198,15 @@ namespace Rebellion.Simulation
                 )
             )
                 return false;
+            List<Fleet> retreatableFleets = retreatingFleets
+                .Where(_queries.CanRetreatFleet)
+                .ToList();
+            List<Starfighter> retreatableFighters = retreatingFighters
+                .Where(_queries.CanRetreatFighter)
+                .ToList();
             if (
-                retreatingFleets.Count > 0
-                && !TryRetreatFleets(retreatingFleets, opposingFleets, ignoreGravityWell: false)
+                retreatableFleets.Count > 0
+                && !TryRetreatFleets(retreatableFleets, opposingFleets, ignoreGravityWell: false)
             )
                 return false;
 
@@ -210,11 +217,11 @@ namespace Rebellion.Simulation
                 defenderFleets,
                 planet
             );
-            foreach (Starfighter fighter in retreatingFighters)
+            foreach (Starfighter fighter in retreatableFighters)
                 _movement.EvacuateToNearestFriendlyPlanet(fighter);
             string retreatPlanetInstanceId = GetRetreatPlanetInstanceID(
-                retreatingFleets,
-                retreatingFighters,
+                retreatableFleets,
+                retreatableFighters,
                 planet,
                 SpaceCombatSideOutcome.Withdrawn
             );
@@ -699,6 +706,71 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
+        /// Builds coordinated tactical withdrawal groups for forces capable of leaving a battle.
+        /// </summary>
+        /// <param name="fleets">The fleets on the withdrawing side.</param>
+        /// <param name="opponents">The opposing fleets.</param>
+        /// <param name="planet">The combat planet.</param>
+        /// <param name="ownerInstanceId">The withdrawing owner identifier.</param>
+        /// <returns>The coordinated fleet force and independent fighter squadrons that can withdraw.</returns>
+        private List<IReadOnlyCollection<ISceneNode>> BuildAutomaticWithdrawalGroups(
+            IReadOnlyList<Fleet> fleets,
+            IReadOnlyList<Fleet> opponents,
+            Planet planet,
+            string ownerInstanceId
+        )
+        {
+            List<IReadOnlyCollection<ISceneNode>> groups =
+                new List<IReadOnlyCollection<ISceneNode>>();
+            Faction faction =
+                planet == null || string.IsNullOrEmpty(ownerInstanceId)
+                    ? null
+                    : _game.GetFactionByOwnerInstanceID(ownerInstanceId);
+            if (
+                (
+                    faction != null
+                    && _game.IsFactionAIControlled(faction)
+                    && planet.GetOwnerInstanceID() == faction.InstanceID
+                    && planet.GetInstanceID() == faction.HQInstanceID
+                ) || SpaceCombatQueries.IsRetreatBlockedByGravityWell(planet, opponents)
+            )
+                return groups;
+
+            List<Fleet> withdrawingFleets = (fleets ?? Array.Empty<Fleet>())
+                .Where(_queries.CanRetreatFleet)
+                .ToList();
+            if (withdrawingFleets.Count > 0)
+            {
+                List<CapitalShip> fleetShips = withdrawingFleets
+                    .SelectMany(SpaceCombatQueries.GetActiveCapitalShips)
+                    .Distinct()
+                    .ToList();
+                List<ISceneNode> fleetUnits = fleetShips
+                    .Cast<ISceneNode>()
+                    .Concat(
+                        fleetShips
+                            .SelectMany(ship => ship.GetChildren<Starfighter>())
+                            .Where(SpaceCombatQueries.IsActiveStarfighter)
+                    )
+                    .Distinct()
+                    .ToList();
+                if (fleetUnits.Count > 0)
+                    groups.Add(fleetUnits);
+            }
+
+            foreach (
+                Starfighter fighter in SpaceCombatQueries
+                    .GetActivePlanetStarfighters(planet, ownerInstanceId)
+                    .Where(_queries.CanRetreatFighter)
+            )
+            {
+                groups.Add(new ISceneNode[] { fighter });
+            }
+
+            return groups;
+        }
+
+        /// <summary>
         /// Placeholder for interactive/manual combat resolution.
         /// </summary>
         private void RunManualCombat() { }
@@ -751,14 +823,14 @@ namespace Rebellion.Simulation
                 .Distinct()
                 .ToList();
             List<IReadOnlyCollection<ISceneNode>> attackerWithdrawalGroups =
-                _queries.GetAutomaticWithdrawalGroups(
+                BuildAutomaticWithdrawalGroups(
                     attackerFleets,
                     defenderFleets,
                     planet,
                     attackerOwnerInstanceId
                 );
             List<IReadOnlyCollection<ISceneNode>> defenderWithdrawalGroups =
-                _queries.GetAutomaticWithdrawalGroups(
+                BuildAutomaticWithdrawalGroups(
                     defenderFleets,
                     attackerFleets,
                     planet,

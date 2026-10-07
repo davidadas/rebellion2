@@ -2229,6 +2229,70 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void ResolvePending_OneFleetWithoutHyperdrive_WithdrawsEligibleFleetOnly()
+        {
+            GameRoot game = CreateAutomaticCombatGame();
+            game.Config.Combat.SpaceCombat.AutoResolveRetreatStrengthRatio = 0.75;
+            game.Random = new SequenceRNG();
+            game.SetFactionController("empire", "player1", PlayerControllerType.Human);
+            (Planet combatPlanet, _) = CreatePlanet(game, "combat", owner: "alliance");
+            (Planet allianceFallback, _) = CreatePlanet(
+                game,
+                "alliance-fallback",
+                owner: "alliance"
+            );
+            CreatePlanet(game, "empire-fallback", owner: "empire");
+            CreateFleet(
+                game,
+                "attacker",
+                "empire",
+                combatPlanet,
+                1,
+                1000,
+                76,
+                shieldRechargeRate: 0
+            );
+            Fleet retreatingFleet = CreateFleet(
+                game,
+                "retreating-fleet",
+                "alliance",
+                combatPlanet,
+                1,
+                100,
+                10,
+                shieldRechargeRate: 0
+            );
+            retreatingFleet.GetChildren<CapitalShip>().Single().SublightSpeed = 10;
+            Fleet trappedFleet = CreateFleet(
+                game,
+                "trapped-fleet",
+                "alliance",
+                combatPlanet,
+                1,
+                1,
+                0,
+                shieldRechargeRate: 0
+            );
+            trappedFleet.GetChildren<CapitalShip>().Single().Hyperdrive = 0;
+            SpaceCombatCommands manager = MakeSpaceCombat(game);
+
+            new SpaceCombatTickProcessor(manager).ProcessTick(game);
+            SpaceCombatResult result = manager
+                .ResolvePending(autoResolve: true)
+                .OfType<SpaceCombatResult>()
+                .Single();
+            SpaceCombatSideOutcome allianceOutcome =
+                result.AttackerOwnerInstanceID == "alliance"
+                    ? result.AttackerOutcome
+                    : result.DefenderOutcome;
+
+            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, allianceOutcome);
+            Assert.AreSame(allianceFallback, retreatingFleet.GetParentOfType<Planet>());
+            Assert.IsNotNull(retreatingFleet.Movement);
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>(trappedFleet.InstanceID));
+        }
+
+        [Test]
         public void ResolvePending_WithdrawingFleetCarriesNonHyperdriveFighter_PreservesFighter()
         {
             GameRoot game = CreateAutomaticCombatGame();
@@ -2755,12 +2819,12 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ResolvePendingRetreat_PlanetaryNonHyperdriveFighter_DoesNotMoveAnyForces()
+        public void ResolvePendingRetreat_PlanetaryNonHyperdriveFighter_MovesEligibleFleetOnly()
         {
             GameRoot game = CreateGame();
             game.SetFactionController("empire", "player1", PlayerControllerType.Human);
             (Planet combatPlanet, _) = CreatePlanet(game, "combat", owner: "empire");
-            CreatePlanet(game, "empireHome", owner: "empire");
+            (Planet empireHome, _) = CreatePlanet(game, "empireHome", owner: "empire");
             CreatePlanet(game, "allianceHome", owner: "alliance");
             Fleet empireFleet = CreateFleet(game, "ef1", "empire", combatPlanet, 1, 100, 1);
             CreateFleet(game, "af1", "alliance", combatPlanet, 1, 1000, 100);
@@ -2786,12 +2850,18 @@ namespace Rebellion.Tests.Simulation
                     : pending.DefenderCanRetreat;
             List<GameResult> results = manager.ResolvePendingRetreat("empire");
 
-            Assert.IsFalse(empireCanRetreat);
-            Assert.IsNull(results);
-            Assert.AreSame(combatPlanet, empireFleet.GetParentOfType<Planet>());
-            Assert.IsNull(empireFleet.Movement);
+            Assert.IsTrue(empireCanRetreat);
+            Assert.IsNotNull(results);
+            Assert.AreSame(empireHome, empireFleet.GetParentOfType<Planet>());
+            Assert.IsNotNull(empireFleet.Movement);
             Assert.AreSame(combatPlanet, fighter.GetParentOfType<Planet>());
             Assert.IsNull(fighter.Movement);
+            Assert.IsTrue(
+                new SpaceCombatTickProcessor(manager)
+                    .ProcessTick(game)
+                    .OfType<PendingCombatResult>()
+                    .Any()
+            );
         }
 
         [Test]

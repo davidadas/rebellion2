@@ -3,7 +3,6 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
-using Rebellion.SceneGraph;
 using Rebellion.Simulation;
 
 namespace Rebellion.Tests.Simulation
@@ -70,7 +69,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void CanRetreatForces_PlanetaryFighterWithoutHyperdrive_ReturnsFalse()
+        public void CanRetreatForces_FleetWithPlanetaryNonHyperdriveFighter_ReturnsTrue()
         {
             (GameRoot game, Planet planet, Fleet fleet, SpaceCombatQueries queries) =
                 CreateScenario();
@@ -87,6 +86,53 @@ namespace Rebellion.Tests.Simulation
                 },
                 planet
             );
+
+            bool canRetreat = queries.CanRetreatForces(
+                new[] { fleet },
+                new List<Fleet>(),
+                planet,
+                "alliance"
+            );
+
+            Assert.IsTrue(canRetreat);
+        }
+
+        [Test]
+        public void CanRetreatForces_FleetWithMixedHyperdriveShips_ReturnsTrue()
+        {
+            (GameRoot game, Planet planet, Fleet fleet, SpaceCombatQueries queries) =
+                CreateScenario();
+            CreatePlanet(game, "home", owner: "alliance");
+            game.AttachNode(
+                new CapitalShip
+                {
+                    InstanceID = "stranded-ship",
+                    OwnerInstanceID = "alliance",
+                    Hyperdrive = 0,
+                    MaxHullStrength = 100,
+                    CurrentHullStrength = 100,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                fleet
+            );
+
+            bool canRetreat = queries.CanRetreatForces(
+                new[] { fleet },
+                new List<Fleet>(),
+                planet,
+                "alliance"
+            );
+
+            Assert.IsTrue(canRetreat);
+        }
+
+        [Test]
+        public void CanRetreatForces_FleetWithoutAnyHyperdrive_ReturnsFalse()
+        {
+            (GameRoot game, Planet planet, Fleet fleet, SpaceCombatQueries queries) =
+                CreateScenario();
+            CreatePlanet(game, "home", owner: "alliance");
+            fleet.GetChildren<CapitalShip>()[0].Hyperdrive = 0;
 
             bool canRetreat = queries.CanRetreatForces(
                 new[] { fleet },
@@ -136,86 +182,6 @@ namespace Rebellion.Tests.Simulation
             );
 
             Assert.IsTrue(canRetreat);
-        }
-
-        [Test]
-        public void GetAutomaticWithdrawalGroups_AIControlledOwnedHeadquarters_ReturnsEmpty()
-        {
-            (GameRoot game, Planet planet, Fleet fleet, SpaceCombatQueries queries) =
-                CreateScenario();
-            CreatePlanet(game, "home", owner: "alliance");
-            game.SetFactionController("alliance", "ai", PlayerControllerType.AI);
-            game.GetFactionByOwnerInstanceID("alliance").HQInstanceID = planet.InstanceID;
-            planet.IsHeadquarters = true;
-
-            List<IReadOnlyCollection<ISceneNode>> groups = queries.GetAutomaticWithdrawalGroups(
-                new[] { fleet },
-                new List<Fleet>(),
-                planet,
-                "alliance"
-            );
-
-            Assert.IsEmpty(groups);
-        }
-
-        [Test]
-        public void GetAutomaticWithdrawalGroups_HumanControlledOwnedHeadquarters_ReturnsFleet()
-        {
-            (GameRoot game, Planet planet, Fleet fleet, SpaceCombatQueries queries) =
-                CreateScenario();
-            CreatePlanet(game, "home", owner: "alliance");
-            game.SetFactionController("alliance", "player", PlayerControllerType.Human);
-            game.GetFactionByOwnerInstanceID("alliance").HQInstanceID = planet.InstanceID;
-            planet.IsHeadquarters = true;
-
-            List<IReadOnlyCollection<ISceneNode>> groups = queries.GetAutomaticWithdrawalGroups(
-                new[] { fleet },
-                new List<Fleet>(),
-                planet,
-                "alliance"
-            );
-
-            Assert.AreEqual(1, groups.Count);
-        }
-
-        [Test]
-        public void GetAutomaticWithdrawalGroups_MultipleEligibleFleets_ReturnsSingleFleetGroup()
-        {
-            (GameRoot game, Planet planet, Fleet fleet, SpaceCombatQueries queries) =
-                CreateScenario();
-            CreatePlanet(game, "home", owner: "alliance");
-            Fleet secondFleet = AddFleet(game, planet, "second-fleet", "alliance");
-            CapitalShip firstShip = fleet.GetChildren<CapitalShip>()[0];
-            CapitalShip secondShip = secondFleet.GetChildren<CapitalShip>()[0];
-
-            List<IReadOnlyCollection<ISceneNode>> groups = queries.GetAutomaticWithdrawalGroups(
-                new[] { fleet, secondFleet },
-                new List<Fleet>(),
-                planet,
-                "alliance"
-            );
-
-            Assert.AreEqual(1, groups.Count);
-            CollectionAssert.AreEquivalent(new ISceneNode[] { firstShip, secondShip }, groups[0]);
-        }
-
-        [Test]
-        public void GetAutomaticWithdrawalGroups_OneFleetCannotWithdraw_ReturnsNoFleetGroup()
-        {
-            (GameRoot game, Planet planet, Fleet fleet, SpaceCombatQueries queries) =
-                CreateScenario();
-            CreatePlanet(game, "home", owner: "alliance");
-            Fleet trappedFleet = AddFleet(game, planet, "trapped-fleet", "alliance");
-            trappedFleet.GetChildren<CapitalShip>()[0].Hyperdrive = 0;
-
-            List<IReadOnlyCollection<ISceneNode>> groups = queries.GetAutomaticWithdrawalGroups(
-                new[] { fleet, trappedFleet },
-                new List<Fleet>(),
-                planet,
-                "alliance"
-            );
-
-            Assert.IsEmpty(groups);
         }
 
         /// <summary>
