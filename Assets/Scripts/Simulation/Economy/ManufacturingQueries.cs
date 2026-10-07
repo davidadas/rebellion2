@@ -151,7 +151,11 @@ namespace Rebellion.Simulation
                     Regiment _ => true,
                     SpecialForces _ => planet.CanHostOwnedUnits(),
                     Starfighter _ => planet.CanHostOwnedUnits(),
-                    Building _ => planet.GetAvailableEnergy() >= count,
+                    Building building => planet.GetAvailableEnergy() >= count
+                        && (
+                            building.BuildingType != BuildingType.Mine
+                            || planet.GetUnminedResourceNodeCount() >= count
+                        ),
                     _ => false,
                 };
             }
