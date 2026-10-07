@@ -629,38 +629,6 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Moves withdrawn fighters away from the battle or onto a withdrawing carrier.
-        /// </summary>
-        /// <param name="attackerFleets">The attacking fleets.</param>
-        /// <param name="attackerOwnerInstanceId">The attacking faction identifier.</param>
-        /// <param name="defenderFleets">The defending fleets.</param>
-        /// <param name="defenderOwnerInstanceId">The defending faction identifier.</param>
-        /// <param name="planet">The planet where combat occurred.</param>
-        /// <param name="withdrawnUnits">The units that escaped during tactical resolution.</param>
-        private void CompleteFighterWithdrawals(
-            IReadOnlyList<Fleet> attackerFleets,
-            string attackerOwnerInstanceId,
-            IReadOnlyList<Fleet> defenderFleets,
-            string defenderOwnerInstanceId,
-            Planet planet,
-            ISet<ISceneNode> withdrawnUnits
-        )
-        {
-            CompleteFighterWithdrawal(
-                attackerFleets,
-                attackerOwnerInstanceId,
-                planet,
-                withdrawnUnits
-            );
-            CompleteFighterWithdrawal(
-                defenderFleets,
-                defenderOwnerInstanceId,
-                planet,
-                withdrawnUnits
-            );
-        }
-
-        /// <summary>
         /// Moves withdrawn fighters for one combat side after fighter losses have been applied.
         /// </summary>
         /// <param name="fleets">The withdrawing fleets.</param>
@@ -684,9 +652,7 @@ namespace Rebellion.Simulation
                     .SelectMany(ship => ship.GetChildren<Starfighter>())
                     .Concat(SpaceCombatQueries.GetActivePlanetStarfighters(planet, ownerInstanceId))
                     .Where(SpaceCombatQueries.IsActiveStarfighter)
-                    .Where(fighter =>
-                        withdrawnUnits.Contains(fighter) && _queries.CanRetreatFighter(fighter)
-                    )
+                    .Where(fighter => withdrawnUnits.Contains(fighter) && fighter.Hyperdrive > 0)
                     .Distinct()
                     .ToList()
             )
@@ -700,20 +666,6 @@ namespace Rebellion.Simulation
                 ownerInstanceId,
                 withdrawnUnits
             );
-        }
-
-        /// <summary>Moves withdrawn fleets after destroyed capital ships have been removed.</summary>
-        /// <param name="attackerFleets">The attacking fleets.</param>
-        /// <param name="defenderFleets">The defending fleets.</param>
-        /// <param name="withdrawnUnits">The units that completed tactical withdrawal.</param>
-        private void CompleteFleetWithdrawals(
-            IReadOnlyList<Fleet> attackerFleets,
-            IReadOnlyList<Fleet> defenderFleets,
-            ISet<ISceneNode> withdrawnUnits
-        )
-        {
-            CompleteFleetWithdrawal(attackerFleets, withdrawnUnits);
-            CompleteFleetWithdrawal(defenderFleets, withdrawnUnits);
         }
 
         /// <summary>Moves fleets containing a surviving capital ship that withdrew.</summary>
@@ -787,20 +739,18 @@ namespace Rebellion.Simulation
                 .Where(SpaceCombatQueries.IsActiveStarfighter)
                 .Distinct()
                 .ToList();
-            List<IReadOnlyCollection<ISceneNode>> attackerWithdrawalGroups =
-                _withdrawalResolver.BuildAutomaticGroups(
-                    attackerFleets,
-                    defenderFleets,
-                    planet,
-                    attackerOwnerInstanceId
-                );
-            List<IReadOnlyCollection<ISceneNode>> defenderWithdrawalGroups =
-                _withdrawalResolver.BuildAutomaticGroups(
-                    defenderFleets,
-                    attackerFleets,
-                    planet,
-                    defenderOwnerInstanceId
-                );
+            bool attackerCanWithdraw = _withdrawalResolver.CanAutomaticallyWithdraw(
+                attackerFleets,
+                defenderFleets,
+                planet,
+                attackerOwnerInstanceId
+            );
+            bool defenderCanWithdraw = _withdrawalResolver.CanAutomaticallyWithdraw(
+                defenderFleets,
+                attackerFleets,
+                planet,
+                defenderOwnerInstanceId
+            );
             SpaceCombatCommandModifiers attackerCommand = GetCommandModifiers(
                 attackerFleets,
                 planet,
@@ -816,8 +766,8 @@ namespace Rebellion.Simulation
                 attackerFighters,
                 defenderShips,
                 defenderFighters,
-                attackerWithdrawalGroups,
-                defenderWithdrawalGroups,
+                attackerCanWithdraw,
+                defenderCanWithdraw,
                 attackerCommand,
                 defenderCommand
             );
@@ -980,9 +930,13 @@ namespace Rebellion.Simulation
                 result.FighterLosses,
                 result.Planet
             );
-            CompleteFighterWithdrawals(
+            CompleteFighterWithdrawal(
                 attackerFleets,
                 result.AttackerOwnerInstanceID,
+                result.Planet,
+                withdrawnUnits
+            );
+            CompleteFighterWithdrawal(
                 defenderFleets,
                 result.DefenderOwnerInstanceID,
                 result.Planet,
@@ -990,7 +944,8 @@ namespace Rebellion.Simulation
             );
             events.AddRange(ApplyShipDamage(result.ShipDamage, result.Planet));
             RemoveEmptyFleets(attackerFleets, defenderFleets);
-            CompleteFleetWithdrawals(attackerFleets, defenderFleets, withdrawnUnits);
+            CompleteFleetWithdrawal(attackerFleets, withdrawnUnits);
+            CompleteFleetWithdrawal(defenderFleets, withdrawnUnits);
             return events;
         }
 

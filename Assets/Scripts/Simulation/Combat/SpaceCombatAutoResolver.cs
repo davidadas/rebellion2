@@ -65,8 +65,8 @@ namespace Rebellion.Simulation
         /// <param name="attackerFighters">The attacking fighter squadrons.</param>
         /// <param name="defenderShips">The defending capital ships.</param>
         /// <param name="defenderFighters">The defending fighter squadrons.</param>
-        /// <param name="attackerWithdrawalGroups">The attacking unit groups capable of retreat.</param>
-        /// <param name="defenderWithdrawalGroups">The defending unit groups capable of retreat.</param>
+        /// <param name="attackerCanWithdraw">Whether the attacking force can withdraw.</param>
+        /// <param name="defenderCanWithdraw">Whether the defending force can withdraw.</param>
         /// <param name="attackerCommand">The attacking side's tactical command bonuses.</param>
         /// <param name="defenderCommand">The defending side's tactical command bonuses.</param>
         /// <returns>The resolved tactical state for both forces.</returns>
@@ -75,8 +75,8 @@ namespace Rebellion.Simulation
             IReadOnlyList<Starfighter> attackerFighters,
             IReadOnlyList<CapitalShip> defenderShips,
             IReadOnlyList<Starfighter> defenderFighters,
-            IReadOnlyList<IReadOnlyCollection<ISceneNode>> attackerWithdrawalGroups,
-            IReadOnlyList<IReadOnlyCollection<ISceneNode>> defenderWithdrawalGroups,
+            bool attackerCanWithdraw,
+            bool defenderCanWithdraw,
             SpaceCombatCommandModifiers attackerCommand = default,
             SpaceCombatCommandModifiers defenderCommand = default
         )
@@ -84,14 +84,14 @@ namespace Rebellion.Simulation
             CombatForce attacker = new CombatForce(
                 attackerShips,
                 attackerFighters,
-                attackerWithdrawalGroups,
+                attackerCanWithdraw,
                 _config,
                 attackerCommand
             );
             CombatForce defender = new CombatForce(
                 defenderShips,
                 defenderFighters,
-                defenderWithdrawalGroups,
+                defenderCanWithdraw,
                 _config,
                 defenderCommand
             );
@@ -116,11 +116,6 @@ namespace Rebellion.Simulation
                 ApplyPendingDamage(pendingDamage);
                 AdvanceTacticalState(attacker);
                 AdvanceTacticalState(defender);
-                bool attackerHadOpposition = defender.HasCombatants;
-                bool defenderHadOpposition = attacker.HasCombatants;
-                CompleteStrandedWithdrawal(attacker, attackerHadOpposition);
-                CompleteStrandedWithdrawal(defender, defenderHadOpposition);
-
                 double attackerStrength = GetTacticalStrength(attacker, defender);
                 double defenderStrength = GetTacticalStrength(defender, attacker);
                 double attackerDurability = GetTacticalDurability(attacker);
@@ -185,32 +180,12 @@ namespace Rebellion.Simulation
         {
             if (
                 force.WithdrawalOrdered
-                || !force.Units.Any(unit => unit.CanWithdraw)
+                || !force.CanWithdraw
                 || !HasReachedWithdrawalThreshold(force, opposingForce)
             )
                 return;
 
-            force.WithdrawalOrdered = true;
-            foreach (TacticalUnit unit in force.Units.Where(unit => unit.CanWithdraw))
-                unit.BeginWithdrawal();
-        }
-
-        /// <summary>
-        /// Removes units that cannot leave after the withdrawing units have cleared the battle.
-        /// </summary>
-        /// <param name="force">The force completing its withdrawal.</param>
-        /// <param name="opposingForceActive">Whether an opposing combatant survived this exchange.</param>
-        private static void CompleteStrandedWithdrawal(CombatForce force, bool opposingForceActive)
-        {
-            if (
-                !opposingForceActive
-                || !force.WithdrawalOrdered
-                || force.Units.Any(unit => unit.IsTargetable && unit.IsWithdrawing)
-            )
-                return;
-
-            foreach (TacticalUnit unit in force.Units.Where(unit => unit.IsTargetable))
-                unit.Destroy();
+            force.BeginWithdrawal();
         }
 
         /// <summary>
@@ -350,10 +325,12 @@ namespace Rebellion.Simulation
 
                 unit.AdvanceTacticalState(_config, _random);
             }
+
+            force.CompleteWithdrawalWhenReady(Math.Max(_config.AutoResolveWithdrawalDistance, 0));
         }
 
         /// <summary>
-        /// Calculates the remaining strength used by the original retreat check.
+        /// Calculates the remaining strength used by the withdrawal threshold check.
         /// </summary>
         /// <param name="force">The force being measured.</param>
         /// <returns>The force's remaining tactical strength.</returns>
@@ -447,11 +424,8 @@ namespace Rebellion.Simulation
         /// <param name="force">The force to complete.</param>
         private static void CompleteStalematedForce(CombatForce force)
         {
-            foreach (TacticalUnit unit in force.Units.Where(unit => unit.IsTargetable).ToList())
-            {
-                if (unit.CanWithdraw)
-                    unit.CompleteWithdrawal();
-            }
+            if (force.CanWithdraw && !force.WithdrawalOrdered)
+                force.CompleteWithdrawal();
 
             foreach (TacticalUnit unit in force.Units.Where(unit => unit.IsTargetable))
                 unit.Destroy();
@@ -641,21 +615,22 @@ namespace Rebellion.Simulation
             internal bool HasTargetableShips => HasTargetableUnits(Ships);
             internal bool HasTargetableFighters => HasTargetableUnits(Fighters);
             internal bool HasWithdrawnUnits => HasWithdrawnUnit(Units);
+            internal bool CanWithdraw { get; }
             internal SpaceCombatSideOutcome Outcome { get; set; }
-            internal bool WithdrawalOrdered { get; set; }
+            internal bool WithdrawalOrdered { get; private set; }
 
             /// <summary>
             /// Creates tactical state for one combat force.
             /// </summary>
             /// <param name="ships">The force's capital ships.</param>
             /// <param name="fighters">The force's fighter squadrons.</param>
-            /// <param name="withdrawalGroups">The force's unit groups capable of retreat.</param>
+            /// <param name="canWithdraw">Whether the force can withdraw.</param>
             /// <param name="config">The automatic combat parameters.</param>
             /// <param name="command">The force's tactical command bonuses.</param>
             internal CombatForce(
                 IReadOnlyList<CapitalShip> ships,
                 IReadOnlyList<Starfighter> fighters,
-                IReadOnlyList<IReadOnlyCollection<ISceneNode>> withdrawalGroups,
+                bool canWithdraw,
                 GameConfig.SpaceCombatConfig config,
                 SpaceCombatCommandModifiers command
             )
@@ -683,7 +658,7 @@ namespace Rebellion.Simulation
                 Units = new List<TacticalUnit>(Ships.Count + Fighters.Count);
                 Units.AddRange(Ships);
                 Units.AddRange(Fighters);
-                ConfigureWithdrawalGroups(withdrawalGroups);
+                CanWithdraw = canWithdraw;
                 Outcome = SpaceCombatSideOutcome.Active;
             }
 
@@ -713,34 +688,61 @@ namespace Rebellion.Simulation
                 return _targetableUnits;
             }
 
-            /// <summary>
-            /// Assigns every tactical unit to an eligible or ineligible withdrawal group.
-            /// </summary>
-            /// <param name="withdrawalGroups">The scene-node groups capable of retreat.</param>
-            private void ConfigureWithdrawalGroups(
-                IReadOnlyList<IReadOnlyCollection<ISceneNode>> withdrawalGroups
-            )
+            /// <summary>Starts withdrawal for every surviving unit in the force.</summary>
+            internal void BeginWithdrawal()
             {
-                Dictionary<ISceneNode, TacticalUnit> stateByNode = Units.ToDictionary(unit =>
-                    unit.Node
-                );
-                HashSet<TacticalUnit> assignedUnits = new HashSet<TacticalUnit>();
-                foreach (
-                    IReadOnlyCollection<ISceneNode> group in withdrawalGroups
-                        ?? Array.Empty<IReadOnlyCollection<ISceneNode>>()
-                )
-                {
-                    List<TacticalUnit> members = (group ?? Array.Empty<ISceneNode>())
-                        .Where(stateByNode.ContainsKey)
-                        .Select(node => stateByNode[node])
-                        .Where(assignedUnits.Add)
-                        .ToList();
-                    if (members.Count > 0)
-                        AssignWithdrawalGroup(members, canWithdraw: true);
-                }
+                if (!CanWithdraw || WithdrawalOrdered)
+                    return;
 
-                foreach (TacticalUnit unit in Units.Where(unit => !assignedUnits.Contains(unit)))
-                    AssignWithdrawalGroup(new[] { unit }, canWithdraw: false);
+                WithdrawalOrdered = true;
+                foreach (TacticalUnit unit in Units.Where(unit => unit.IsTargetable))
+                    unit.StartWithdrawal();
+            }
+
+            /// <summary>Completes withdrawal once every independently mobile survivor reaches safety.</summary>
+            /// <param name="withdrawalDistance">The distance required to leave combat.</param>
+            internal void CompleteWithdrawalWhenReady(double withdrawalDistance)
+            {
+                if (
+                    !WithdrawalOrdered
+                    || Units.Any(unit =>
+                        unit.IsAlive
+                        && unit.CanWithdrawIndependently
+                        && unit.WithdrawalDistance < withdrawalDistance
+                    )
+                )
+                    return;
+
+                CompleteWithdrawal();
+            }
+
+            /// <summary>Withdraws mobile survivors and fighters that fit aboard withdrawing carriers.</summary>
+            internal void CompleteWithdrawal()
+            {
+                HashSet<Starfighter> carrierDependentFighters = Fighters
+                    .Where(fighter => fighter.IsTargetable && !fighter.CanWithdrawIndependently)
+                    .Select(fighter => fighter.Fighter)
+                    .ToHashSet();
+                Dictionary<Starfighter, CapitalShip> recoveryAssignments =
+                    SpaceCombatWithdrawalResolver.GetRecoveryAssignments(
+                        Ships
+                            .Where(ship => ship.IsTargetable && ship.CanWithdrawIndependently)
+                            .Select(ship => ship.Ship),
+                        Fighters.ConvertAll(fighter => fighter.Fighter),
+                        carrierDependentFighters
+                    );
+
+                foreach (TacticalUnit unit in Units.Where(unit => unit.IsTargetable))
+                {
+                    if (
+                        unit.CanWithdrawIndependently
+                        || unit is StarfighterState fighter
+                            && recoveryAssignments.ContainsKey(fighter.Fighter)
+                    )
+                        unit.FinishWithdrawal();
+                    else
+                        unit.Destroy();
+                }
             }
 
             /// <summary>
@@ -774,183 +776,6 @@ namespace Rebellion.Simulation
                 }
                 return false;
             }
-
-            /// <summary>
-            /// Assigns tactical units to a shared withdrawal group.
-            /// </summary>
-            /// <param name="units">The tactical units to group.</param>
-            /// <param name="canWithdraw">Whether the group can leave combat.</param>
-            private static void AssignWithdrawalGroup(
-                IReadOnlyList<TacticalUnit> units,
-                bool canWithdraw
-            )
-            {
-                WithdrawalGroup group = new WithdrawalGroup(units, canWithdraw);
-                foreach (TacticalUnit unit in units)
-                    unit.SetWithdrawalGroup(group);
-            }
-        }
-
-        /// <summary>
-        /// Coordinates tactical withdrawal for units that must leave combat together.
-        /// </summary>
-        private sealed class WithdrawalGroup
-        {
-            private readonly IReadOnlyList<TacticalUnit> _units;
-
-            internal bool CanWithdraw { get; }
-            internal bool IsWithdrawing { get; private set; }
-
-            /// <summary>
-            /// Creates a withdrawal group.
-            /// </summary>
-            /// <param name="units">The units that must withdraw together.</param>
-            /// <param name="canWithdraw">Whether the group can leave the battle.</param>
-            internal WithdrawalGroup(IReadOnlyList<TacticalUnit> units, bool canWithdraw)
-            {
-                _units = units ?? Array.Empty<TacticalUnit>();
-                CanWithdraw = canWithdraw;
-            }
-
-            /// <summary>
-            /// Starts withdrawal for every surviving member.
-            /// </summary>
-            internal void BeginWithdrawal()
-            {
-                if (!CanWithdraw || IsWithdrawing)
-                    return;
-
-                IsWithdrawing = true;
-                foreach (TacticalUnit unit in _units.Where(unit => unit.IsTargetable))
-                    unit.StartWithdrawal();
-            }
-
-            /// <summary>
-            /// Completes withdrawal once every surviving member reaches safety.
-            /// </summary>
-            /// <param name="withdrawalDistance">The distance required to leave combat.</param>
-            internal void CompleteWithdrawalWhenReady(double withdrawalDistance)
-            {
-                if (
-                    !IsWithdrawing
-                    || _units.Any(unit =>
-                        unit.IsAlive
-                        && unit.CanWithdrawIndependently
-                        && unit.WithdrawalDistance < withdrawalDistance
-                    )
-                )
-                    return;
-
-                CompleteWithdrawal();
-            }
-
-            /// <summary>
-            /// Removes every surviving member from combat as withdrawn.
-            /// </summary>
-            internal void CompleteWithdrawal()
-            {
-                HashSet<TacticalUnit> recoverableUnits = GetRecoverableUnits();
-                foreach (TacticalUnit unit in _units.Where(unit => unit.IsTargetable))
-                {
-                    if (unit.CanWithdrawIndependently || recoverableUnits.Contains(unit))
-                        unit.FinishWithdrawal();
-                    else
-                        unit.Destroy();
-                }
-                IsWithdrawing = false;
-            }
-
-            /// <summary>
-            /// Assigns surviving non-hyperdrive fighters to withdrawing carrier capacity.
-            /// Existing mother-ship assignments are honored first, followed by deterministic
-            /// reassignment to another carrier that is still able to leave the battle.
-            /// </summary>
-            /// <returns>The carrier-dependent fighters that can leave with the group.</returns>
-            private HashSet<TacticalUnit> GetRecoverableUnits()
-            {
-                List<CapitalShipState> carriers = _units
-                    .OfType<CapitalShipState>()
-                    .Where(carrier =>
-                        carrier.IsTargetable
-                        && carrier.CanWithdrawIndependently
-                        && carrier.Ship.StarfighterCapacity > 0
-                    )
-                    .ToList();
-                List<StarfighterState> fighterStates = _units.OfType<StarfighterState>().ToList();
-                List<StarfighterState> survivingFighters = fighterStates
-                    .Where(fighter => fighter.IsTargetable)
-                    .ToList();
-                Dictionary<CapitalShipState, int> remainingCapacity = carriers.ToDictionary(
-                    carrier => carrier,
-                    carrier => GetAvailableRecoveryCapacity(carrier, fighterStates)
-                );
-                HashSet<TacticalUnit> recoverableUnits = new HashSet<TacticalUnit>();
-
-                foreach (CapitalShipState carrier in carriers)
-                {
-                    IEnumerable<StarfighterState> assignedFighters = survivingFighters.Where(
-                        fighter =>
-                            !fighter.CanWithdrawIndependently
-                            && IsAssignedToCarrier(fighter, carrier)
-                    );
-                    foreach (StarfighterState fighter in assignedFighters)
-                        recoverableUnits.Add(fighter);
-                }
-
-                foreach (
-                    StarfighterState fighter in survivingFighters.Where(fighter =>
-                        !fighter.CanWithdrawIndependently && !recoverableUnits.Contains(fighter)
-                    )
-                )
-                {
-                    CapitalShipState recoveryCarrier = carriers.FirstOrDefault(carrier =>
-                        remainingCapacity[carrier] > 0
-                    );
-                    if (recoveryCarrier == null)
-                        continue;
-
-                    remainingCapacity[recoveryCarrier]--;
-                    recoverableUnits.Add(fighter);
-                }
-
-                return recoverableUnits;
-            }
-
-            /// <summary>
-            /// Calculates the carrier bays available after already-resolved fighter outcomes are
-            /// applied. Existing inactive occupants continue to reserve their bays.
-            /// </summary>
-            /// <param name="carrier">The carrier receiving displaced fighters.</param>
-            /// <param name="fighterStates">All fighters that participated in the battle.</param>
-            /// <returns>The number of bays available for reassignment.</returns>
-            private static int GetAvailableRecoveryCapacity(
-                CapitalShipState carrier,
-                IReadOnlyList<StarfighterState> fighterStates
-            )
-            {
-                int releasedCapacity = fighterStates.Count(fighter =>
-                    IsAssignedToCarrier(fighter, carrier)
-                    && (!fighter.IsAlive || fighter.CanWithdrawIndependently)
-                );
-                return Math.Max(carrier.Ship.GetExcessStarfighterCapacity() + releasedCapacity, 0);
-            }
-
-            /// <summary>
-            /// Returns whether a fighter is currently assigned to a specified carrier.
-            /// </summary>
-            /// <param name="fighter">The fighter assignment to inspect.</param>
-            /// <param name="carrier">The expected carrier.</param>
-            /// <returns>True when the fighter is a child of the carrier.</returns>
-            private static bool IsAssignedToCarrier(
-                StarfighterState fighter,
-                CapitalShipState carrier
-            )
-            {
-                return ReferenceEquals(
-                    fighter.Fighter.GetParentOfType<CapitalShip>(),
-                    carrier.Ship
-                );
-            }
         }
 
         /// <summary>
@@ -959,7 +784,6 @@ namespace Rebellion.Simulation
         private abstract class TacticalUnit
         {
             private readonly double _minimumManeuverRatio;
-            private WithdrawalGroup _withdrawalGroup;
             private double _approachDistance;
             private double _withdrawalDistance;
 
@@ -975,10 +799,6 @@ namespace Rebellion.Simulation
             internal abstract bool CanScanForTargets { get; }
             internal virtual bool IsAttackDelayed => false;
             internal bool CanFire => IsTargetable && !IsWithdrawing && !IsAttackDelayed;
-            internal bool CanWithdraw =>
-                _withdrawalGroup?.CanWithdraw == true
-                && IsTargetable
-                && !_withdrawalGroup.IsWithdrawing;
             internal bool HasWithdrawn { get; private set; }
             internal bool IsWithdrawing { get; private set; }
             internal bool IsTargetable => IsAlive && !HasWithdrawn;
@@ -1075,9 +895,6 @@ namespace Rebellion.Simulation
                 if (IsWithdrawing)
                 {
                     _withdrawalDistance += WithdrawalSpeed;
-                    _withdrawalGroup.CompleteWithdrawalWhenReady(
-                        Math.Max(config.AutoResolveWithdrawalDistance, 0)
-                    );
                     return;
                 }
 
@@ -1100,37 +917,12 @@ namespace Rebellion.Simulation
             internal abstract void Destroy();
 
             /// <summary>
-            /// Starts the vulnerable movement toward the tactical escape boundary.
-            /// </summary>
-            internal void BeginWithdrawal()
-            {
-                _withdrawalGroup?.BeginWithdrawal();
-            }
-
-            /// <summary>
-            /// Removes this surviving unit from combat as withdrawn.
-            /// </summary>
-            internal void CompleteWithdrawal()
-            {
-                _withdrawalGroup?.CompleteWithdrawal();
-            }
-
-            /// <summary>
             /// Creates tactical state using the configured maneuver floor.
             /// </summary>
             /// <param name="minimumManeuverRatio">The minimum maneuver value and multiplier.</param>
             protected TacticalUnit(double minimumManeuverRatio)
             {
                 _minimumManeuverRatio = minimumManeuverRatio;
-            }
-
-            /// <summary>
-            /// Assigns the unit to its withdrawal group.
-            /// </summary>
-            /// <param name="withdrawalGroup">The group that coordinates this unit's retreat.</param>
-            internal void SetWithdrawalGroup(WithdrawalGroup withdrawalGroup)
-            {
-                _withdrawalGroup = withdrawalGroup;
             }
 
             /// <summary>

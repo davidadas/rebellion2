@@ -26,21 +26,19 @@ namespace Rebellion.Simulation
                 spaceCombatQueries ?? throw new ArgumentNullException(nameof(spaceCombatQueries));
         }
 
-        /// <summary>Builds one coordinated tactical withdrawal group for a combat side.</summary>
+        /// <summary>Determines whether a combat side can withdraw during automatic combat.</summary>
         /// <param name="fleets">The fleets on the withdrawing side.</param>
         /// <param name="opponents">The opposing fleets.</param>
         /// <param name="planet">The combat planet.</param>
         /// <param name="ownerInstanceId">The withdrawing owner identifier.</param>
-        /// <returns>One group containing every participating unit, or no groups when withdrawal is unavailable.</returns>
-        internal List<IReadOnlyCollection<ISceneNode>> BuildAutomaticGroups(
+        /// <returns>True when the side can withdraw.</returns>
+        internal bool CanAutomaticallyWithdraw(
             IReadOnlyList<Fleet> fleets,
             IReadOnlyList<Fleet> opponents,
             Planet planet,
             string ownerInstanceId
         )
         {
-            List<IReadOnlyCollection<ISceneNode>> groups =
-                new List<IReadOnlyCollection<ISceneNode>>();
             Faction faction =
                 planet == null || string.IsNullOrEmpty(ownerInstanceId)
                     ? null
@@ -54,18 +52,9 @@ namespace Rebellion.Simulation
                 )
                 || !_spaceCombatQueries.CanRetreatForces(fleets, opponents, planet, ownerInstanceId)
             )
-                return groups;
+                return false;
 
-            List<CapitalShip> ships = GetParticipatingShips(fleets);
-            List<ISceneNode> units = ships
-                .Cast<ISceneNode>()
-                .Concat(GetParticipatingFighters(ships, planet, ownerInstanceId))
-                .Distinct()
-                .ToList();
-            if (units.Count > 0)
-                groups.Add(units);
-
-            return groups;
+            return true;
         }
 
         /// <summary>Records the units that leave or are lost when a side orders withdrawal.</summary>
@@ -219,7 +208,7 @@ namespace Rebellion.Simulation
         /// <param name="participatingFighters">Every active fighter that entered combat.</param>
         /// <param name="carrierDependentFighters">Fighters eligible to leave aboard a carrier.</param>
         /// <returns>Carrier assignments for every recoverable dependent fighter.</returns>
-        private static Dictionary<Starfighter, CapitalShip> GetRecoveryAssignments(
+        internal static Dictionary<Starfighter, CapitalShip> GetRecoveryAssignments(
             IEnumerable<CapitalShip> carriers,
             IReadOnlyList<Starfighter> participatingFighters,
             ISet<Starfighter> carrierDependentFighters
