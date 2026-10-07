@@ -116,6 +116,10 @@ namespace Rebellion.Simulation
                 ApplyPendingDamage(pendingDamage);
                 AdvanceTacticalState(attacker);
                 AdvanceTacticalState(defender);
+                bool attackerHadOpposition = defender.HasCombatants;
+                bool defenderHadOpposition = attacker.HasCombatants;
+                CompleteStrandedWithdrawal(attacker, attackerHadOpposition);
+                CompleteStrandedWithdrawal(defender, defenderHadOpposition);
 
                 double attackerStrength = GetTacticalStrength(attacker, defender);
                 double defenderStrength = GetTacticalStrength(defender, attacker);
@@ -189,6 +193,24 @@ namespace Rebellion.Simulation
             force.WithdrawalOrdered = true;
             foreach (TacticalUnit unit in force.Units.Where(unit => unit.CanWithdraw))
                 unit.BeginWithdrawal();
+        }
+
+        /// <summary>
+        /// Removes units that cannot leave after the withdrawing units have cleared the battle.
+        /// </summary>
+        /// <param name="force">The force completing its withdrawal.</param>
+        /// <param name="opposingForceActive">Whether an opposing combatant survived this exchange.</param>
+        private static void CompleteStrandedWithdrawal(CombatForce force, bool opposingForceActive)
+        {
+            if (
+                !opposingForceActive
+                || !force.WithdrawalOrdered
+                || force.Units.Any(unit => unit.IsTargetable && unit.IsWithdrawing)
+            )
+                return;
+
+            foreach (TacticalUnit unit in force.Units.Where(unit => unit.IsTargetable))
+                unit.Destroy();
         }
 
         /// <summary>
@@ -831,7 +853,7 @@ namespace Rebellion.Simulation
                     if (unit.CanWithdrawIndependently || recoverableUnits.Contains(unit))
                         unit.FinishWithdrawal();
                     else
-                        unit.CancelWithdrawal();
+                        unit.Destroy();
                 }
                 IsWithdrawing = false;
             }
@@ -1126,15 +1148,6 @@ namespace Rebellion.Simulation
                     return;
 
                 HasWithdrawn = true;
-                IsWithdrawing = false;
-            }
-
-            /// <summary>
-            /// Returns a unit to combat when it reaches the boundary without a way to enter
-            /// hyperspace or recover aboard a surviving carrier.
-            /// </summary>
-            internal void CancelWithdrawal()
-            {
                 IsWithdrawing = false;
             }
 

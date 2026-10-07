@@ -2819,7 +2819,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ResolvePendingRetreat_PlanetaryNonHyperdriveFighter_MovesEligibleFleetOnly()
+        public void ResolvePendingRetreat_PlanetaryNonHyperdriveFighter_DestroysStrandedFighter()
         {
             GameRoot game = CreateGame();
             game.SetFactionController("empire", "player1", PlayerControllerType.Human);
@@ -2854,14 +2854,13 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNotNull(results);
             Assert.AreSame(empireHome, empireFleet.GetParentOfType<Planet>());
             Assert.IsNotNull(empireFleet.Movement);
-            Assert.AreSame(combatPlanet, fighter.GetParentOfType<Planet>());
-            Assert.IsNull(fighter.Movement);
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Starfighter>(fighter.InstanceID));
             Assert.IsTrue(
-                new SpaceCombatTickProcessor(manager)
-                    .ProcessTick(game)
-                    .OfType<PendingCombatResult>()
-                    .Any()
+                results
+                    .OfType<GameObjectDestroyedResult>()
+                    .Any(destruction => destruction.DestroyedObject == fighter)
             );
+            Assert.IsEmpty(new SpaceCombatTickProcessor(manager).ProcessTick(game));
         }
 
         [Test]
@@ -2890,6 +2889,51 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(results);
             Assert.AreSame(combatPlanet, empireFleet.GetParentOfType<Planet>());
             Assert.IsNull(empireFleet.Movement);
+        }
+
+        [Test]
+        public void ResolvePendingRetreat_OneFleetWithoutHyperdrive_DestroysStrandedFleet()
+        {
+            GameRoot game = CreateGame();
+            game.SetFactionController("empire", "player1", PlayerControllerType.Human);
+            (Planet combatPlanet, _) = CreatePlanet(game, "combat", owner: "empire");
+            (Planet empireHome, _) = CreatePlanet(game, "empireHome", owner: "empire");
+            CreatePlanet(game, "allianceHome", owner: "alliance");
+            Fleet retreatingFleet = CreateFleet(
+                game,
+                "retreating-fleet",
+                "empire",
+                combatPlanet,
+                1,
+                100,
+                1
+            );
+            Fleet strandedFleet = CreateFleet(
+                game,
+                "stranded-fleet",
+                "empire",
+                combatPlanet,
+                1,
+                100,
+                1
+            );
+            CapitalShip strandedShip = strandedFleet.GetChildren<CapitalShip>().Single();
+            strandedShip.Hyperdrive = 0;
+            CreateFleet(game, "opponent", "alliance", combatPlanet, 1, 1000, 100);
+            SpaceCombatCommands manager = MakeSpaceCombat(game);
+
+            new SpaceCombatTickProcessor(manager).ProcessTick(game);
+            List<GameResult> results = manager.ResolvePendingRetreat("empire");
+
+            Assert.AreSame(empireHome, retreatingFleet.GetParentOfType<Planet>());
+            Assert.IsNotNull(retreatingFleet.Movement);
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>(strandedFleet.InstanceID));
+            Assert.IsTrue(
+                results
+                    .OfType<GameObjectDestroyedResult>()
+                    .Any(destruction => destruction.DestroyedObject == strandedShip)
+            );
+            Assert.IsEmpty(new SpaceCombatTickProcessor(manager).ProcessTick(game));
         }
 
         [Test]

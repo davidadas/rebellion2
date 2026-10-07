@@ -1301,8 +1301,9 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(GetShipOutcome(result, secondWithdrawingShip).Withdrew);
             Assert.IsFalse(GetShipOutcome(result, strandedShip).Withdrew);
             Assert.AreEqual(0, GetShipOutcome(result, strandedShip).HullAfter);
-            Assert.Less(GetShipOutcome(result, attacker).HullAfter, 1000);
+            Assert.AreEqual(1000, GetShipOutcome(result, attacker).HullAfter);
             Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
+            Assert.AreEqual(2, result.IterationsCompleted);
         }
 
         [Test]
@@ -1463,7 +1464,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void Resolve_TwoCarriersDestroyedWithNonHyperdriveFighters_DestroysFightersAfterTheyFight()
+        public void Resolve_TwoCarriersDestroyedWithNonHyperdriveFighters_DestroysFightersWithoutReturnFire()
         {
             CapitalShip attacker = CreateShip("attacker", hull: 1000, weaponStrength: 100);
             attacker.WeaponRecharge = 100;
@@ -1523,7 +1524,7 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(GetFighterOutcome(result, secondFighter).Withdrew);
             Assert.AreEqual(0, GetFighterOutcome(result, firstFighter).SquadronSizeAfter);
             Assert.AreEqual(0, GetFighterOutcome(result, secondFighter).SquadronSizeAfter);
-            Assert.Less(GetShipOutcome(result, attacker).HullAfter, 1000);
+            Assert.AreEqual(1000, GetShipOutcome(result, attacker).HullAfter);
         }
 
         [Test]

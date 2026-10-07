@@ -219,6 +219,14 @@ namespace Rebellion.Simulation
             );
             foreach (Starfighter fighter in retreatableFighters)
                 _movement.EvacuateToNearestFriendlyPlanet(fighter);
+            RecordStrandedWithdrawalLosses(
+                result,
+                retreatingFleets,
+                retreatableFleets,
+                retreatingFighters,
+                retreatableFighters,
+                attackerRetreated
+            );
             string retreatPlanetInstanceId = GetRetreatPlanetInstanceID(
                 retreatableFleets,
                 retreatableFighters,
@@ -230,9 +238,75 @@ namespace Rebellion.Simulation
             else
                 result.DefenderRetreatPlanetInstanceID = retreatPlanetInstanceId;
 
+            result.Events = ApplyCombatResult(result, attackerFleets, defenderFleets);
             results.Add(result);
+            results.AddRange(result.Events.OfType<GameObjectDestroyedResult>());
             ClearCombatFlags(decision);
             return true;
+        }
+
+        /// <summary>
+        /// Records units that cannot accompany the withdrawing portion of their force as combat
+        /// losses.
+        /// </summary>
+        /// <param name="result">The withdrawal result receiving the losses.</param>
+        /// <param name="retreatingFleets">Every fleet on the withdrawing side.</param>
+        /// <param name="retreatableFleets">The fleets that successfully began evacuation.</param>
+        /// <param name="retreatingFighters">Directly deployed fighters on the withdrawing side.</param>
+        /// <param name="retreatableFighters">Directly deployed fighters that began evacuation.</param>
+        /// <param name="attackerRetreated">Whether the withdrawing side initiated the encounter.</param>
+        private static void RecordStrandedWithdrawalLosses(
+            SpaceCombatResult result,
+            IReadOnlyList<Fleet> retreatingFleets,
+            IReadOnlyList<Fleet> retreatableFleets,
+            IReadOnlyList<Starfighter> retreatingFighters,
+            IReadOnlyList<Starfighter> retreatableFighters,
+            bool attackerRetreated
+        )
+        {
+            HashSet<Fleet> retreatableFleetSet = (retreatableFleets ?? Array.Empty<Fleet>())
+                .Where(fleet => fleet != null)
+                .ToHashSet();
+            List<CapitalShip> strandedShips = (retreatingFleets ?? Array.Empty<Fleet>())
+                .Where(fleet => fleet != null)
+                .SelectMany(fleet =>
+                    SpaceCombatQueries
+                        .GetActiveCapitalShips(fleet)
+                        .Where(ship => !retreatableFleetSet.Contains(fleet) || ship.Hyperdrive <= 0)
+                )
+                .Distinct()
+                .ToList();
+            HashSet<Starfighter> retreatableFighterSet = (
+                retreatableFighters ?? Array.Empty<Starfighter>()
+            )
+                .Where(fighter => fighter != null)
+                .ToHashSet();
+            List<Starfighter> strandedFighters = (retreatingFighters ?? Array.Empty<Starfighter>())
+                .Where(fighter => fighter != null && !retreatableFighterSet.Contains(fighter))
+                .Distinct()
+                .ToList();
+
+            result.ShipDamage.AddRange(
+                strandedShips.Select(ship => new ShipDamageResult
+                {
+                    Ship = ship,
+                    HullBefore = ship.CurrentHullStrength,
+                    HullAfter = 0,
+                })
+            );
+            result.FighterLosses.AddRange(
+                strandedFighters.Select(fighter => new FighterLossResult
+                {
+                    Fighter = fighter,
+                    SquadsBefore = fighter.CurrentSquadronSize,
+                    SquadsAfter = 0,
+                })
+            );
+            CombatUnitSnapshot.RecordOutcomes(
+                attackerRetreated ? result.AttackingUnits : result.DefendingUnits,
+                Enumerable.Empty<ISceneNode>(),
+                strandedShips.Cast<ISceneNode>().Concat(strandedFighters)
+            );
         }
 
         /// <summary>
