@@ -14,6 +14,112 @@ namespace Rebellion.Tests.Simulation
     [TestFixture]
     public class DuelCommandsTests
     {
+        [TestCase(99, true)]
+        [TestCase(0, false)]
+        public void Resolve_CaptureOrEvasion_AppliesInitialInjuryBeforeCapture(
+            int avoidanceRoll,
+            bool captured
+        )
+        {
+            (GameRoot game, Officer encountered, Officer opposing) = BuildEncounter();
+            encountered.IsMain = true;
+            opposing.IsMain = true;
+            DuelCommands commands = new DuelCommands(
+                game,
+                new SequenceRNG(intValues: new[] { avoidanceRoll, 0, 9, 0, 99 })
+            );
+
+            List<GameResult> results = commands.Resolve(encountered, opposing);
+
+            Assert.AreEqual(captured, encountered.IsCaptured);
+            Assert.AreEqual(10, encountered.InjuryPoints);
+            Assert.AreEqual(1, results.OfType<OfficerInjuredResult>().Count());
+            Assert.IsInstanceOf<OfficerInjuredResult>(results[0]);
+            Assert.AreEqual(10, results.OfType<DuelResult>().Single().EncounteredOfficerInjury);
+            Assert.AreEqual(51, opposing.GetBaseRating(SkillRating.Combat));
+        }
+
+        [Test]
+        public void Resolve_LethalInitialInjury_DoesNotCaptureDeadOfficer()
+        {
+            (GameRoot game, Officer encountered, Officer opposing) = BuildEncounter();
+            game.Config.Assassination.KillProbability = 100;
+            encountered.IsMain = false;
+            opposing.IsMain = true;
+            DuelCommands commands = new DuelCommands(
+                game,
+                new SequenceRNG(intValues: new[] { 99, 0, 0, 0, 0, 99 })
+            );
+
+            List<GameResult> results = commands.Resolve(encountered, opposing);
+
+            Assert.IsTrue(encountered.IsKilled);
+            Assert.IsFalse(encountered.IsCaptured);
+            Assert.IsEmpty(results.OfType<OfficerCaptureStateResult>());
+            Assert.AreSame(
+                encountered,
+                results.OfType<OfficerKilledResult>().Single().TargetOfficer
+            );
+            Assert.IsFalse(results.OfType<DuelResult>().Single().EncounteredOfficerCaptured);
+        }
+
+        [Test]
+        public void Resolve_MainOfficerInjured_SurvivesGuaranteedMinorDeathChance()
+        {
+            (GameRoot game, Officer encountered, Officer opposing) = BuildEncounter();
+            game.Config.Assassination.KillProbability = 100;
+            encountered.IsMain = true;
+            opposing.IsMain = true;
+            DuelCommands commands = new DuelCommands(
+                game,
+                new SequenceRNG(intValues: new[] { 99, 0, 0, 0, 99 })
+            );
+
+            List<GameResult> results = commands.Resolve(encountered, opposing);
+
+            Assert.IsFalse(encountered.IsKilled);
+            Assert.IsTrue(encountered.IsCaptured);
+            Assert.AreEqual(1, encountered.InjuryPoints);
+            Assert.IsEmpty(results.OfType<OfficerKilledResult>());
+        }
+
+        [Test]
+        public void Resolve_InitialInjuryAvoided_UsesFallbackInjury()
+        {
+            (GameRoot game, Officer encountered, Officer opposing) = BuildEncounter();
+            encountered.IsMain = true;
+            opposing.IsMain = true;
+            DuelCommands commands = new DuelCommands(
+                game,
+                new SequenceRNG(intValues: new[] { 0, 99, 0, 0, 0, 99 })
+            );
+
+            List<GameResult> results = commands.Resolve(encountered, opposing);
+
+            Assert.AreEqual(1, encountered.InjuryPoints);
+            Assert.AreEqual(1, results.OfType<OfficerInjuredResult>().Count());
+        }
+
+        [Test]
+        public void Resolve_InitialInjuryLowersCombat_UsesUpdatedRatingForOpposingInjury()
+        {
+            (GameRoot game, Officer encountered, Officer opposing) = BuildEncounter();
+            encountered.IsMain = true;
+            opposing.IsMain = true;
+            encountered.SetBaseRating(SkillRating.Combat, 80);
+            opposing.SetBaseRating(SkillRating.Combat, 60);
+            DuelCommands commands = new DuelCommands(
+                game,
+                new SequenceRNG(intValues: new[] { 0, 0, 20, 0, 15 })
+            );
+
+            List<GameResult> results = commands.Resolve(encountered, opposing);
+
+            Assert.AreEqual(21, encountered.InjuryPoints);
+            Assert.AreEqual(0, opposing.InjuryPoints);
+            Assert.AreEqual(0, results.OfType<DuelResult>().Single().OpposingOfficerInjury);
+        }
+
         [Test]
         public void Resolve_CapturedOfficer_ReturnsNoResultsWithoutRolling()
         {

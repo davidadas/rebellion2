@@ -49,7 +49,10 @@ namespace Rebellion.Tests.Simulation
 
             IMovable[] units = { regiment, specialForces };
             foreach (IMovable unit in units)
+            {
                 unit.Movement.CurrentPosition = new Point(10, 0);
+                unit.Movement.ResolveEncounterOnArrival = true;
+            }
 
             Dictionary<IMovable, Point> currentPositions = units.ToDictionary(
                 unit => unit,
@@ -73,6 +76,7 @@ namespace Rebellion.Tests.Simulation
                 Assert.AreEqual(currentPositions[unit], unit.Movement.OriginPosition);
                 Assert.AreEqual(currentPositions[unit], unit.Movement.CurrentPosition);
                 Assert.AreEqual(movementGroupIDs[unit], unit.Movement.MovementGroupID);
+                Assert.IsTrue(unit.Movement.ResolveEncounterOnArrival);
                 Assert.AreEqual(0, unit.Movement.TicksElapsed);
             }
 

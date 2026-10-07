@@ -105,13 +105,13 @@ namespace Rebellion.Simulation
                 context,
                 observedDetectors == null
                     ? null
-                    : (mission, planet, phase, mainParticipants) =>
+                    : (mission, planet, phase, objective) =>
                         planet?.InstanceID == target?.InstanceID
                             ? FilterEncounterDetectors(
                                 mission,
                                 planet,
                                 phase,
-                                mainParticipants,
+                                objective,
                                 observedDetectors
                             )
                             : Array.Empty<ISceneNode>(),
@@ -146,7 +146,7 @@ namespace Rebellion.Simulation
                 Mission,
                 Planet,
                 MissionEncounterPhase,
-                IReadOnlyList<IMissionParticipant>,
+                ISceneNode,
                 IReadOnlyList<ISceneNode>
             > observedDetectorSource
         )
@@ -169,7 +169,7 @@ namespace Rebellion.Simulation
                 Mission,
                 Planet,
                 MissionEncounterPhase,
-                IReadOnlyList<IMissionParticipant>,
+                ISceneNode,
                 IReadOnlyList<ISceneNode>
             > observedDetectorSource
         )
@@ -197,7 +197,7 @@ namespace Rebellion.Simulation
                 Mission,
                 Planet,
                 MissionEncounterPhase,
-                IReadOnlyList<IMissionParticipant>,
+                ISceneNode,
                 IReadOnlyList<ISceneNode>
             > observedDetectorSource,
             bool includePersonnelLoss
@@ -219,6 +219,7 @@ namespace Rebellion.Simulation
                 (foilProbability, personnelLossProbability) = EstimateEncounterOdds(
                     mission,
                     context.Location as Planet,
+                    context.SelectedTarget ?? context.Location,
                     observedDetectorSource
                 );
             }
@@ -227,6 +228,7 @@ namespace Rebellion.Simulation
                 foilProbability = EstimateFoilProbability(
                     mission,
                     context.Location as Planet,
+                    context.SelectedTarget ?? context.Location,
                     observedDetectorSource
                 );
                 personnelLossProbability = 0;
@@ -243,16 +245,18 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="mission">The unstarted mission to evaluate.</param>
         /// <param name="target">The mission destination.</param>
+        /// <param name="objective">The observed objective whose container determines detector scope.</param>
         /// <param name="observedDetectorSource">Optional observed detector candidates by planet.</param>
         /// <returns>The cumulative foil percentage.</returns>
         private double EstimateFoilProbability(
             Mission mission,
             Planet target,
+            ISceneNode objective,
             Func<
                 Mission,
                 Planet,
                 MissionEncounterPhase,
-                IReadOnlyList<IMissionParticipant>,
+                ISceneNode,
                 IReadOnlyList<ISceneNode>
             > observedDetectorSource
         )
@@ -285,6 +289,18 @@ namespace Rebellion.Simulation
                 ApplyFoilEncounterOdds(
                     mission,
                     origin,
+                    objective,
+                    MissionEncounterPhase.DepartureStart,
+                    mainParticipants,
+                    allDecoys,
+                    GetDecoyIndexesAtPlanet(allDecoys, origin),
+                    observedDetectorSource,
+                    ref survivingByDecoyPool
+                );
+                ApplyFoilEncounterOdds(
+                    mission,
+                    origin,
+                    objective,
                     MissionEncounterPhase.DepartureComplete,
                     mainParticipants,
                     allDecoys,
@@ -298,6 +314,7 @@ namespace Rebellion.Simulation
             ApplyFoilEncounterOdds(
                 mission,
                 target,
+                objective,
                 MissionEncounterPhase.Arrival,
                 mission.GetMainParticipants(),
                 allDecoys,
@@ -308,6 +325,7 @@ namespace Rebellion.Simulation
             ApplyFoilEncounterOdds(
                 mission,
                 target,
+                objective,
                 MissionEncounterPhase.PreObjective,
                 mission.GetMainParticipants(),
                 allDecoys,
@@ -325,6 +343,7 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="mission">The mission being estimated.</param>
         /// <param name="planet">The encounter planet.</param>
+        /// <param name="objective">The observed mission objective.</param>
         /// <param name="phase">The encounter checkpoint.</param>
         /// <param name="mainParticipants">The primary participants present.</param>
         /// <param name="allDecoys">Every decoy assigned to the mission.</param>
@@ -334,6 +353,7 @@ namespace Rebellion.Simulation
         private void ApplyFoilEncounterOdds(
             Mission mission,
             Planet planet,
+            ISceneNode objective,
             MissionEncounterPhase phase,
             IReadOnlyList<IMissionParticipant> mainParticipants,
             IReadOnlyList<IMissionParticipant> allDecoys,
@@ -342,7 +362,7 @@ namespace Rebellion.Simulation
                 Mission,
                 Planet,
                 MissionEncounterPhase,
-                IReadOnlyList<IMissionParticipant>,
+                ISceneNode,
                 IReadOnlyList<ISceneNode>
             > observedDetectorSource,
             ref Dictionary<BigInteger, double> survivingByDecoyPool
@@ -355,7 +375,7 @@ namespace Rebellion.Simulation
                 mission,
                 planet,
                 phase,
-                mainParticipants,
+                objective,
                 observedDetectorSource
             );
             if (detectors.Count == 0)
@@ -523,6 +543,7 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="mission">The unstarted mission to evaluate.</param>
         /// <param name="target">The mission destination.</param>
+        /// <param name="objective">The observed mission objective.</param>
         /// <param name="observedDetectorSource">
         /// Optional source of detector candidates from the caller's observed state.
         /// </param>
@@ -530,11 +551,12 @@ namespace Rebellion.Simulation
         private (double FoilProbability, double PersonnelLossProbability) EstimateEncounterOdds(
             Mission mission,
             Planet target,
+            ISceneNode objective,
             Func<
                 Mission,
                 Planet,
                 MissionEncounterPhase,
-                IReadOnlyList<IMissionParticipant>,
+                ISceneNode,
                 IReadOnlyList<ISceneNode>
             > observedDetectorSource
         )
@@ -570,6 +592,20 @@ namespace Rebellion.Simulation
                 ApplyEncounterOdds(
                     mission,
                     origin,
+                    objective,
+                    MissionEncounterPhase.DepartureStart,
+                    mainParticipants,
+                    allDecoys,
+                    decoyIndexes,
+                    observedDetectorSource,
+                    ref survivingByDecoyPool,
+                    ref foilProbability,
+                    ref personnelLossProbability
+                );
+                ApplyEncounterOdds(
+                    mission,
+                    origin,
+                    objective,
                     MissionEncounterPhase.DepartureComplete,
                     mainParticipants,
                     allDecoys,
@@ -585,6 +621,7 @@ namespace Rebellion.Simulation
             ApplyEncounterOdds(
                 mission,
                 target,
+                objective,
                 MissionEncounterPhase.Arrival,
                 mission.GetMainParticipants(),
                 allDecoys,
@@ -597,6 +634,7 @@ namespace Rebellion.Simulation
             ApplyEncounterOdds(
                 mission,
                 target,
+                objective,
                 MissionEncounterPhase.PreObjective,
                 mission.GetMainParticipants(),
                 allDecoys,
@@ -615,6 +653,7 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="mission">The mission being estimated.</param>
         /// <param name="planet">The encounter planet.</param>
+        /// <param name="objective">The observed mission objective.</param>
         /// <param name="phase">The encounter checkpoint.</param>
         /// <param name="mainParticipants">The primary participants present.</param>
         /// <param name="allDecoys">Every decoy assigned to the mission.</param>
@@ -626,6 +665,7 @@ namespace Rebellion.Simulation
         private void ApplyEncounterOdds(
             Mission mission,
             Planet planet,
+            ISceneNode objective,
             MissionEncounterPhase phase,
             IReadOnlyList<IMissionParticipant> mainParticipants,
             IReadOnlyList<IMissionParticipant> allDecoys,
@@ -634,7 +674,7 @@ namespace Rebellion.Simulation
                 Mission,
                 Planet,
                 MissionEncounterPhase,
-                IReadOnlyList<IMissionParticipant>,
+                ISceneNode,
                 IReadOnlyList<ISceneNode>
             > observedDetectorSource,
             ref Dictionary<BigInteger, double> survivingByDecoyPool,
@@ -649,7 +689,7 @@ namespace Rebellion.Simulation
                 mission,
                 planet,
                 phase,
-                mainParticipants,
+                objective,
                 observedDetectorSource
             );
             if (detectors.Count == 0)
@@ -855,28 +895,28 @@ namespace Rebellion.Simulation
         /// <param name="mission">The mission being estimated.</param>
         /// <param name="planet">The encounter planet.</param>
         /// <param name="phase">The encounter checkpoint.</param>
-        /// <param name="mainParticipants">The primary participants present.</param>
+        /// <param name="objective">The observed mission objective.</param>
         /// <param name="observedDetectorSource">Optional observed detector source.</param>
         /// <returns>The eligible detector units in traversal order.</returns>
         private IReadOnlyList<ISceneNode> GetEncounterDetectors(
             Mission mission,
             Planet planet,
             MissionEncounterPhase phase,
-            IReadOnlyList<IMissionParticipant> mainParticipants,
+            ISceneNode objective,
             Func<
                 Mission,
                 Planet,
                 MissionEncounterPhase,
-                IReadOnlyList<IMissionParticipant>,
+                ISceneNode,
                 IReadOnlyList<ISceneNode>
             > observedDetectorSource
         )
         {
             if (observedDetectorSource != null)
-                return observedDetectorSource(mission, planet, phase, mainParticipants);
+                return observedDetectorSource(mission, planet, phase, objective);
 
             IReadOnlyList<ISceneNode> candidates = GetDetectorCandidates(planet);
-            return FilterEncounterDetectors(mission, planet, phase, mainParticipants, candidates);
+            return FilterEncounterDetectors(mission, planet, phase, objective, candidates);
         }
 
         /// <summary>
@@ -885,17 +925,33 @@ namespace Rebellion.Simulation
         /// <param name="mission">The mission being estimated.</param>
         /// <param name="planet">The encounter planet.</param>
         /// <param name="phase">The encounter checkpoint.</param>
-        /// <param name="mainParticipants">The primary participants present.</param>
+        /// <param name="objective">The observed mission objective.</param>
         /// <param name="candidates">The observed detector candidates.</param>
         /// <returns>The eligible detector units in traversal order.</returns>
         private static IReadOnlyList<ISceneNode> FilterEncounterDetectors(
             Mission mission,
             Planet planet,
             MissionEncounterPhase phase,
-            IReadOnlyList<IMissionParticipant> mainParticipants,
+            ISceneNode objective,
             IReadOnlyList<ISceneNode> candidates
         )
         {
+            if (UsesPlanetaryDetectors(phase, objective))
+            {
+                if (
+                    string.IsNullOrEmpty(planet.GetOwnerInstanceID())
+                    || planet.GetOwnerInstanceID() == mission.GetOwnerInstanceID()
+                )
+                    return Array.Empty<ISceneNode>();
+                return candidates
+                    .Where(candidate =>
+                        candidate is Regiment
+                        && candidate.GetParent() is Planet
+                        && mission.IsEligibleDetector(candidate)
+                    )
+                    .ToList();
+            }
+
             bool hasHostileFleet = planet
                 .GetChildren<Fleet>()
                 .Any(fleet =>
@@ -908,18 +964,28 @@ namespace Rebellion.Simulation
             if (phase != MissionEncounterPhase.PreObjective && HasDetectionBlocker(mission, planet))
                 return Array.Empty<ISceneNode>();
 
-            bool includePlanetaryDetectors =
-                phase == MissionEncounterPhase.PreObjective
-                || mainParticipants.Any(participant =>
-                    participant.GetParentOfType<Planet>()?.InstanceID != planet.InstanceID
-                );
             return candidates
                 .Where(candidate =>
                     mission.IsEligibleDetector(candidate)
-                    && (includePlanetaryDetectors || candidate.GetParentOfType<Fleet>() != null)
+                    && candidate is CapitalShip or Starfighter
+                    && candidate.GetParentOfType<Fleet>() != null
                 )
                 .ToList();
         }
+
+        /// <summary>Returns whether a checkpoint checks planetary rather than orbital defenders.</summary>
+        /// <param name="phase">The encounter checkpoint.</param>
+        /// <param name="objective">The authoritative or observed mission objective.</param>
+        /// <returns>True when the checkpoint uses planetary defenders.</returns>
+        internal static bool UsesPlanetaryDetectors(
+            MissionEncounterPhase phase,
+            ISceneNode objective
+        ) =>
+            phase == MissionEncounterPhase.DepartureStart
+            || phase == MissionEncounterPhase.PreObjective
+                && objective != null
+                && objective is not Fleet
+                && objective.GetParentOfType<Fleet>() == null;
 
         /// <summary>
         /// Returns all direct and fleet-contained detector candidates at a planet.
@@ -932,14 +998,13 @@ namespace Rebellion.Simulation
                 return Array.Empty<ISceneNode>();
 
             List<ISceneNode> candidates = new List<ISceneNode>();
-            candidates.AddRange(planet.GetChildren<Starfighter>());
             candidates.AddRange(planet.GetChildren<Regiment>());
             foreach (Fleet fleet in planet.GetChildren<Fleet>())
             {
                 foreach (CapitalShip capitalShip in fleet.GetChildren<CapitalShip>())
                 {
+                    candidates.Add(capitalShip);
                     candidates.AddRange(capitalShip.GetChildren<Starfighter>());
-                    candidates.AddRange(capitalShip.GetChildren<Regiment>());
                 }
             }
 
@@ -1169,15 +1234,28 @@ namespace Rebellion.Simulation
         /// <param name="planet">The planet where the mission is operating.</param>
         /// <param name="phase">The mission lifecycle checkpoint being evaluated.</param>
         /// <returns>The ordered detector units.</returns>
-        internal static List<ISceneNode> GetDetectors(
+        internal List<ISceneNode> GetDetectors(
             Mission mission,
             Planet planet,
             MissionEncounterPhase phase
         )
         {
             List<ISceneNode> detectors = new List<ISceneNode>();
-            if (mission == null || planet == null || phase == MissionEncounterPhase.DepartureStart)
+            if (mission == null || planet == null)
                 return detectors;
+
+            if (
+                phase == MissionEncounterPhase.DepartureStart
+                || (phase == MissionEncounterPhase.PreObjective && IsPlanetaryObjective(mission))
+            )
+            {
+                if (
+                    !string.IsNullOrEmpty(planet.GetOwnerInstanceID())
+                    && planet.GetOwnerInstanceID() != mission.GetOwnerInstanceID()
+                )
+                    AddEligibleDetectors(mission, planet.GetChildren<Regiment>(), detectors);
+                return detectors;
+            }
 
             List<Fleet> hostileFleets = planet
                 .GetChildren<Fleet>()
@@ -1194,26 +1272,38 @@ namespace Rebellion.Simulation
             if (blocksFleetDetection)
                 return detectors;
 
-            if (phase == MissionEncounterPhase.PreObjective || mission.HasRemoteOrigin(planet))
-            {
-                AddEligibleDetectors(mission, planet.GetChildren<Starfighter>(), detectors);
-                AddEligibleDetectors(mission, planet.GetChildren<Regiment>(), detectors);
-            }
-
             foreach (Fleet fleet in hostileFleets)
             {
                 foreach (CapitalShip capitalShip in fleet.GetChildren<CapitalShip>())
                 {
+                    if (mission.IsEligibleDetector(capitalShip))
+                        detectors.Add(capitalShip);
                     AddEligibleDetectors(
                         mission,
                         capitalShip.GetChildren<Starfighter>(),
                         detectors
                     );
-                    AddEligibleDetectors(mission, capitalShip.GetChildren<Regiment>(), detectors);
                 }
             }
 
             return detectors;
+        }
+
+        /// <summary>Returns whether the mission's objective is on a planet rather than aboard a fleet.</summary>
+        /// <param name="mission">The mission whose current target is evaluated.</param>
+        /// <returns>True for a planetary objective.</returns>
+        internal bool IsPlanetaryObjective(Mission mission)
+        {
+            string targetID = mission switch
+            {
+                AbductionMission abduction => abduction.TargetOfficerInstanceID,
+                AssassinationMission assassination => assassination.TargetOfficerInstanceID,
+                RescueMission rescue => rescue.TargetOfficerInstanceID,
+                SabotageMission sabotage => sabotage.SabotageTargetInstanceID,
+                _ => mission.LocationInstanceID,
+            };
+            ISceneNode target = _game.GetSceneNodeByInstanceID<ISceneNode>(targetID);
+            return UsesPlanetaryDetectors(MissionEncounterPhase.PreObjective, target);
         }
 
         /// <summary>

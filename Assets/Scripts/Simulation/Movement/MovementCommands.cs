@@ -25,7 +25,6 @@ namespace Rebellion.Simulation
         private readonly EvacuationLossResolver _evacuationLosses;
         private readonly FleetCommands _fleetSystem;
         private readonly PersonnelCommands _personnelCommands;
-        private readonly DuelCommands _duelCommands;
         private readonly MovementQueries _queries;
         private readonly IRandomNumberProvider _movementRandom;
         private readonly List<GameResult> _pendingResults = new List<GameResult>();
@@ -65,7 +64,6 @@ namespace Rebellion.Simulation
             _evacuationLosses = new EvacuationLossResolver(game, _movementRandom);
             _personnelCommands =
                 personnelCommands ?? new PersonnelCommands(new PersonnelQueries(game));
-            _duelCommands = new DuelCommands(game, _movementRandom);
         }
 
         /// <summary>
@@ -1047,13 +1045,14 @@ namespace Rebellion.Simulation
                 )
                 .ToList();
             foreach (
-                IGrouping<string, IMovable> group in personnel
+                IGrouping<(string GroupID, Planet Destination), IMovable> group in personnel
                     .Where(movable => !string.IsNullOrEmpty(movable.Movement?.MovementGroupID))
-                    .GroupBy(movable => movable.Movement.MovementGroupID)
+                    .GroupBy(movable =>
+                        (movable.Movement.MovementGroupID, movable.GetParentOfType<Planet>())
+                    )
             )
             {
-                Planet destinationPlanet = group.First().GetParentOfType<Planet>();
-                ResolvePersonnelEncounters(group.ToList(), destinationPlanet, results);
+                ResolvePersonnelEncounters(group.ToList(), group.Key.Destination, results);
             }
 
             foreach (
@@ -1119,75 +1118,29 @@ namespace Rebellion.Simulation
                 participants,
                 planet
             );
-            if (ResolvePersonnelForceEncounter(encounter.ForceEncounters, results))
-                return;
-
             bool detected = encounter.Detectors.Any(detector =>
                 RollMovementPercent(detector.DetectionProbability)
             );
             if (!detected)
                 return;
 
-            foreach (IMissionParticipant participant in participants.ToList())
+            foreach (
+                IMissionParticipant participant in participants
+                    .OrderBy(participant =>
+                        participant is Officer { IsMain: true } ? 0
+                        : participant is Officer ? 1
+                        : 2
+                    )
+                    .ToList()
+            )
             {
+                if (!IsEligibleEncounterParticipant(participant))
+                    continue;
                 PersonnelMovementDetectorOdds detector = encounter.Detectors[
                     _movementRandom.NextInt(0, encounter.Detectors.Count)
                 ];
                 ResolveDetectedPersonnel(participant, detector, planet, results);
             }
-        }
-
-        /// <summary>Resolves the Force-user stage that precedes conventional detection.</summary>
-        /// <param name="encounters">The eligible Force-user comparisons.</param>
-        /// <param name="results">The collection receiving encounter consequences.</param>
-        /// <returns>True when a Force-user encounter was resolved.</returns>
-        private bool ResolvePersonnelForceEncounter(
-            IReadOnlyList<PersonnelMovementForceEncounterOdds> encounters,
-            ICollection<GameResult> results
-        )
-        {
-            foreach (PersonnelMovementForceEncounterOdds encounter in encounters)
-            {
-                if (!RollMovementPercent(encounter.DetectionProbability))
-                    continue;
-
-                List<GameResult> duelResults = ResolvePersonnelForceDuel(
-                    encounter.Participant,
-                    encounter.Defender
-                );
-                foreach (GameResult duelResult in duelResults)
-                    results.Add(duelResult);
-                if (duelResults.OfType<DuelResult>().Any())
-                    return true;
-            }
-
-            return false;
-        }
-
-        /// <summary>Resolves one selected Force-user pair at a return-arrival checkpoint.</summary>
-        /// <param name="participant">The returning officer.</param>
-        /// <param name="defender">The hostile officer.</param>
-        /// <returns>The ordered duel results, or an empty collection when the pair is ineligible.</returns>
-        private List<GameResult> ResolvePersonnelForceDuel(Officer participant, Officer defender)
-        {
-            MovementState completedMovement = participant.Movement;
-            if (completedMovement != null)
-            {
-                if (!completedMovement.IsComplete())
-                    return new List<GameResult>();
-                participant.Movement = null;
-            }
-
-            List<GameResult> results = _duelCommands.Resolve(participant, defender);
-            if (
-                completedMovement != null
-                && !participant.IsCaptured
-                && !participant.IsKilled
-                && participant.GetParent() != null
-            )
-                participant.Movement = completedMovement;
-
-            return results;
         }
 
         /// <summary>Resolves one detected participant's confrontation.</summary>
@@ -1324,9 +1277,6 @@ namespace Rebellion.Simulation
             bool completesManufacturingDelivery =
                 movable is IManufacturable { ManufacturingStatus: ManufacturingStatus.Delivering };
 
-            if (TryFollowMovingFleetDestination(movable, destination))
-                return;
-
             if (destination is Mission)
             {
                 CompleteMissionParticipantArrival(movable);
@@ -1387,28 +1337,6 @@ namespace Rebellion.Simulation
                 SpecialForces specialForces => specialForces.IsActive(),
                 _ => false,
             };
-        }
-
-        /// <summary>
-        /// Redirects a unit when its fleet destination is still moving.
-        /// </summary>
-        /// <param name="movable">The moving unit.</param>
-        /// <param name="destination">The requested destination.</param>
-        /// <returns>True if the unit was redirected to continue chasing the fleet.</returns>
-        private bool TryFollowMovingFleetDestination(IMovable movable, ContainerNode destination)
-        {
-            Fleet movingFleet = destination is Fleet fleet
-                ? fleet
-                : (destination is CapitalShip ship ? ship.GetParent() as Fleet : null);
-            if (movingFleet?.Movement == null)
-                return false;
-
-            Planet newDestination = movingFleet.GetParentOfType<Planet>();
-            if (newDestination == null)
-                return true;
-
-            RetargetMovement(movable, newDestination);
-            return true;
         }
 
         /// <summary>

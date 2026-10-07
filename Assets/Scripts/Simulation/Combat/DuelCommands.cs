@@ -77,6 +77,7 @@ namespace Rebellion.Simulation
                 return reactions;
 
             Planet location = encountered.GetParentOfType<Planet>();
+            int injuryBefore = encountered.InjuryPoints;
             int encounteredCombat = encountered.GetEffectiveRating(SkillRating.Combat);
             int opposingCombat = opposing.GetEffectiveRating(SkillRating.Combat);
             bool captured = TryCaptureEncounteredOfficer(
@@ -88,15 +89,38 @@ namespace Rebellion.Simulation
                 sourceEventInstanceID,
                 reactions
             );
-            int encounteredInjury = CalculateEncounteredOfficerInjury(
-                captured,
-                encounteredCombat,
-                opposingCombat
-            );
+            int encounteredInjury = encountered.InjuryPoints - injuryBefore;
+            encounteredCombat = encountered.GetEffectiveRating(SkillRating.Combat);
+            opposingCombat = opposing.GetEffectiveRating(SkillRating.Combat);
+            if (encounteredInjury == 0)
+            {
+                encounteredInjury = TryRollInjury(
+                    Math.Max(
+                        _game.Config.DuelResolution.MinimumInjuryChance,
+                        opposingCombat - encounteredCombat
+                    )
+                );
+                ApplyInjury(
+                    encountered,
+                    encounteredInjury,
+                    opposing,
+                    sourceEventInstanceID,
+                    reactions
+                );
+            }
             int opposingInjury = CalculateOpposingOfficerInjury(encounteredCombat, opposingCombat);
 
-            ApplyInjury(encountered, encounteredInjury, opposing, sourceEventInstanceID, reactions);
             ApplyInjury(opposing, opposingInjury, encountered, sourceEventInstanceID, reactions);
+            if (opposingInjury > 0)
+                encountered.IncrementBaseRating(
+                    SkillRating.Combat,
+                    _game.Config.DuelResolution.CombatReward
+                );
+            if (encounteredInjury > 0)
+                opposing.IncrementBaseRating(
+                    SkillRating.Combat,
+                    _game.Config.DuelResolution.CombatReward
+                );
             reactions.Add(
                 Stamp(
                     new DuelResult
@@ -104,7 +128,7 @@ namespace Rebellion.Simulation
                         EncounteredOfficer = encountered,
                         OpposingOfficer = opposing,
                         Location = location,
-                        EncounteredOfficerCaptured = captured,
+                        EncounteredOfficerCaptured = captured && !encountered.IsKilled,
                         EncounteredOfficerInjury = encounteredInjury,
                         OpposingOfficerInjury = opposingInjury,
                         ImagePath = imagePath,
@@ -136,11 +160,20 @@ namespace Rebellion.Simulation
             int encounteredCombat,
             int opposingCombat,
             string sourceEventInstanceID,
-            ICollection<GameResult> reactions
+            List<GameResult> reactions
         )
         {
             int avoidanceChance = _captureAvoidance.Lookup(encounteredCombat - opposingCombat);
-            if (RollPercent(avoidanceChance))
+            bool evaded = RollPercent(avoidanceChance);
+            GameConfig.DuelResolutionConfig config = _game.Config.DuelResolution;
+            int injury = TryRollInjury(
+                Math.Max(
+                    config.MinimumInjuryChance,
+                    config.CaptureEvasionInjuryBaseChance - encounteredCombat
+                )
+            );
+            ApplyInjury(encountered, injury, opposing, sourceEventInstanceID, reactions);
+            if (evaded || encountered.IsKilled)
                 return false;
 
             if (!encountered.TryCapture(opposing.OwnerInstanceID))
@@ -163,35 +196,6 @@ namespace Rebellion.Simulation
                 )
             );
             return true;
-        }
-
-        /// <summary>
-        /// Resolves injury to the encountered officer after capture or successful evasion.
-        /// </summary>
-        /// <param name="captured">Whether captured.</param>
-        /// <param name="encounteredCombat">The encountered combat.</param>
-        /// <param name="opposingCombat">The opposing combat.</param>
-        /// <returns>The calculated encountered officer injury.</returns>
-        private int CalculateEncounteredOfficerInjury(
-            bool captured,
-            int encounteredCombat,
-            int opposingCombat
-        )
-        {
-            GameConfig.DuelResolutionConfig config = _game.Config.DuelResolution;
-            int injury = captured
-                ? 0
-                : TryRollInjury(
-                    Math.Max(
-                        config.MinimumInjuryChance,
-                        config.CaptureEvasionInjuryBaseChance - encounteredCombat
-                    )
-                );
-            return injury != 0
-                ? injury
-                : TryRollInjury(
-                    Math.Max(config.MinimumInjuryChance, opposingCombat - encounteredCombat)
-                );
         }
 
         /// <summary>
@@ -235,11 +239,11 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Applies an injury and awards the opposing officer when severity is positive.
+        /// Applies positive injury and resolves the injured minor officer's survival.
         /// </summary>
         /// <param name="injured">The officer receiving the injury.</param>
         /// <param name="injury">The resolved injury severity.</param>
-        /// <param name="beneficiary">The opposing officer receiving combat growth.</param>
+        /// <param name="beneficiary">The opposing officer responsible for the injury.</param>
         /// <param name="sourceEventInstanceID">The authored event initiating the encounter, when applicable.</param>
         /// <param name="reactions">The result collection receiving the injury report.</param>
         private void ApplyInjury(
@@ -254,10 +258,6 @@ namespace Rebellion.Simulation
                 return;
 
             injured.ApplyInjury(injury, _game.Config.Recovery.MaxInjuryPoints);
-            beneficiary.IncrementBaseRating(
-                SkillRating.Combat,
-                _game.Config.DuelResolution.CombatReward
-            );
             reactions.Add(
                 Stamp(
                     new OfficerInjuredResult
@@ -269,6 +269,22 @@ namespace Rebellion.Simulation
                     sourceEventInstanceID
                 )
             );
+            if (!injured.IsMain && RollPercent(_game.Config.Assassination.KillProbability))
+            {
+                new PersonnelCommands(new PersonnelQueries(_game)).KillOfficer(injured);
+                reactions.Add(
+                    Stamp(
+                        new OfficerKilledResult
+                        {
+                            TargetOfficer = injured,
+                            Assassin = beneficiary,
+                            Context = injured.GetParentOfType<Planet>(),
+                            Tick = _game.CurrentTick,
+                        },
+                        sourceEventInstanceID
+                    )
+                );
+            }
         }
 
         /// <summary>

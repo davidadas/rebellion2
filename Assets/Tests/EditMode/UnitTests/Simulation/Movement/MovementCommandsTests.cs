@@ -3295,8 +3295,110 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        [Test]
-        public void ProcessTick_ReturningForceUserEncounter_ResolvesExactPairAndSkipsDetection()
+        [TestCase(1)]
+        [TestCase(1000)]
+        public void ProcessTick_ReturnFleetChangesDestination_ResolvesArrivalEncounterOnce(
+            int fleetHyperdrive
+        )
+        {
+            (GameRoot game, Planet missionPlanet, Planet returnPlanet, MovementCommands movement) =
+                BuildBlockadeScene(new FixedRNG(0));
+            ConfigurePersonnelTransitEncounter(game, evasionProbability: 100);
+            game.Config.Movement.DefaultPersonnelHyperdrive = 100;
+            Planet newDestination = new Planet
+            {
+                InstanceID = "new-return-destination",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 1000,
+                PositionY = 1000,
+            };
+            game.AttachNode(newDestination, returnPlanet.GetParent());
+            Fleet fleet = EntityFactory.CreateFleet("return-fleet", "empire");
+            CapitalShip carrier = new CapitalShip
+            {
+                InstanceID = "return-carrier",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                Hyperdrive = fleetHyperdrive,
+            };
+            game.AttachNode(fleet, returnPlanet);
+            game.AttachNode(carrier, fleet);
+            Officer officer = EntityFactory.CreateOfficer("returning-officer", "empire");
+            officer.IsMain = true;
+            officer.MissionReturnParentInstanceID = carrier.InstanceID;
+            officer.MissionReturnLocationInstanceID = returnPlanet.InstanceID;
+            game.AttachNode(officer, missionPlanet);
+            Officer captive = EntityFactory.CreateOfficer("returning-captive", "rebels");
+            Assert.IsTrue(captive.TryCapture("empire"));
+            game.AttachNode(captive, missionPlanet);
+            movement.ReturnFromMission(
+                new IMissionParticipant[] { officer },
+                new IMovable[] { captive },
+                out _
+            );
+            int previousTransitTicks = officer.Movement.TransitTicks;
+            string movementGroupID = officer.Movement.MovementGroupID;
+
+            movement.RequestMove(fleet, newDestination);
+            Assert.AreSame(carrier, officer.GetParent());
+            Assert.AreSame(carrier, captive.GetParent());
+            int transitTicks = officer.Movement.TransitTicks;
+            Assert.Greater(transitTicks, previousTransitTicks);
+            Assert.AreEqual(transitTicks, captive.Movement.TransitTicks);
+            Assert.AreEqual(movementGroupID, officer.Movement.MovementGroupID);
+            Assert.AreEqual(movementGroupID, captive.Movement.MovementGroupID);
+            Starfighter detector = AddPersonnelTransitDetector(game, missionPlanet);
+            game.MoveNode(detector.GetParentOfType<Fleet>(), newDestination);
+
+            MovementTickProcessor processor = new MovementTickProcessor(movement);
+            List<GameResult> results = new List<GameResult>();
+            for (int tick = 0; tick < transitTicks - 1; tick++)
+            {
+                results.AddRange(processor.ProcessTick(game));
+                Assert.Zero(
+                    officer.InjuryPoints,
+                    "Continued travel must not resolve arrival detection."
+                );
+                Assert.IsNotNull(officer.Movement);
+                Assert.IsNotNull(captive.Movement);
+            }
+            results.AddRange(processor.ProcessTick(game));
+
+            Assert.AreEqual(1, officer.InjuryPoints);
+            Assert.IsNull(
+                officer.Movement,
+                "Reaching the destination must not restart the same trip."
+            );
+            Assert.IsNull(captive.Movement);
+            Assert.AreSame(carrier, officer.GetParent());
+            Assert.AreSame(carrier, captive.GetParent());
+            Assert.AreEqual(fleetHyperdrive == 1000, fleet.Movement != null);
+            Assert.IsFalse(officer.IsCaptured);
+            Assert.IsTrue(captive.IsCaptured);
+            Assert.Zero(captive.InjuryPoints);
+            for (int tick = 0; tick < 3; tick++)
+                results.AddRange(processor.ProcessTick(game));
+            Assert.AreEqual(
+                1,
+                officer.InjuryPoints,
+                "Later ticks must not repeat the arrival encounter."
+            );
+            Assert.AreEqual(
+                1,
+                results.OfType<UnitArrivedResult>().Count(result => result.Unit == officer)
+            );
+            Assert.AreEqual(
+                1,
+                results.OfType<UnitArrivedResult>().Count(result => result.Unit == captive)
+            );
+        }
+
+        [TestCase(0)]
+        [TestCase(100)]
+        public void ProcessTick_ReturningForceUser_UsesOnlyOrdinaryDetection(
+            int detectionProbability
+        )
         {
             (GameRoot game, Planet missionPlanet, Planet returnPlanet, MovementCommands movement) =
                 BuildBlockadeScene(new FixedRNG(0));
@@ -3304,6 +3406,10 @@ namespace Rebellion.Tests.Simulation
             game.Config.Jedi.MissionParticipantEncounterMinimum = 1;
             game.Config.Jedi.MissionDefenderEncounterMinimum = 1;
             game.Config.Jedi.EncounterProbabilityOffset = 100;
+            game.Config.ProbabilityTables.Mission.Foil = new Dictionary<int, int>
+            {
+                { -1000, detectionProbability },
+            };
             Starfighter detector = AddPersonnelTransitDetector(game, missionPlanet);
             Fleet hostileFleet = detector.GetParentOfType<Fleet>();
             CapitalShip hostileShip = detector.GetParentOfType<CapitalShip>();
@@ -3335,15 +3441,50 @@ namespace Rebellion.Tests.Simulation
                 game
             );
 
-            DuelResult duel = results.OfType<DuelResult>().Single();
-            Assert.AreSame(forceTraveler, duel.EncounteredOfficer);
-            Assert.AreSame(defender, duel.OpposingOfficer);
-            Assert.IsFalse(companion.IsCaptured);
-            Assert.IsFalse(
+            Assert.IsEmpty(results.OfType<DuelResult>());
+            Assert.AreEqual(detectionProbability > 0, forceTraveler.IsCaptured);
+            Assert.AreEqual(detectionProbability > 0, companion.IsCaptured);
+            Assert.AreEqual(
+                detectionProbability > 0,
                 results
                     .OfType<OfficerCaptureStateResult>()
                     .Any(result => result.TargetOfficer == companion)
             );
+        }
+
+        [Test]
+        public void ProcessTick_ReturnGroupSplitAcrossPlanets_UsesEachDestination()
+        {
+            (GameRoot game, Planet origin, Planet destination, MovementCommands movement) =
+                BuildBlockadeScene(new FixedRNG(0));
+            ConfigurePersonnelTransitEncounter(game, evasionProbability: 0);
+            Starfighter detector = AddPersonnelTransitDetector(game, origin);
+            Officer safe = EntityFactory.CreateOfficer("safe-return", "empire");
+            Officer exposed = EntityFactory.CreateOfficer("exposed-return", "empire");
+            foreach (Officer officer in new[] { safe, exposed })
+            {
+                officer.IsMain = true;
+                officer.MissionReturnParentInstanceID = destination.InstanceID;
+                officer.MissionReturnLocationInstanceID = destination.InstanceID;
+                game.AttachNode(officer, origin);
+            }
+            movement.ReturnFromMission(
+                new IMissionParticipant[] { safe, exposed },
+                Array.Empty<IMovable>(),
+                out _
+            );
+            Assert.AreEqual(safe.Movement.MovementGroupID, exposed.Movement.MovementGroupID);
+            game.MoveNode(safe, origin);
+            game.MoveNode(detector.GetParentOfType<Fleet>(), destination);
+            safe.Movement.TicksElapsed = safe.Movement.TransitTicks - 1;
+            exposed.Movement.TicksElapsed = exposed.Movement.TransitTicks - 1;
+
+            new MovementTickProcessor(movement).ProcessTick(game);
+
+            Assert.IsFalse(safe.IsCaptured);
+            Assert.IsTrue(exposed.IsCaptured);
+            Assert.AreSame(origin, safe.GetParent());
+            Assert.AreSame(destination, exposed.GetParent());
         }
 
         [Test]

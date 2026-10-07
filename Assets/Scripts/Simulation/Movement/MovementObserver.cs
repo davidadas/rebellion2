@@ -189,6 +189,7 @@ namespace Rebellion.Simulation
                 TicksElapsed = 0,
                 MovementGroupID = movement.MovementGroupID,
                 SourceEventInstanceID = movement.SourceEventInstanceID,
+                ResolveEncounterOnArrival = movement.ResolveEncounterOnArrival,
                 OriginPosition = currentPosition,
                 CurrentPosition = currentPosition,
             };

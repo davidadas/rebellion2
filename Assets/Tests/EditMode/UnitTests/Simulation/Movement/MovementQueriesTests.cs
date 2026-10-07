@@ -342,14 +342,60 @@ namespace Rebellion.Tests.Simulation
                 destination
             );
 
-            PersonnelMovementDetectorOdds detectorOdds = odds.Detectors.Single();
+            CollectionAssert.AreEqual(
+                new ISceneNode[] { ship, detector },
+                odds.Detectors.Select(odds => odds.Detector)
+            );
+            PersonnelMovementDetectorOdds detectorOdds = odds.Detectors.Single(odds =>
+                odds.Detector == detector
+            );
             Assert.AreSame(detector, detectorOdds.Detector);
             Assert.AreEqual(73, detectorOdds.DetectionProbability);
             Assert.AreEqual(41, detectorOdds.GetEvasionProbability(officer));
         }
 
         [Test]
-        public void GetPersonnelEncounterOdds_HostileFleetForceUser_ReturnsForceProjection()
+        public void GetPersonnelEncounterOdds_MixedDefenders_UsesOnlyCapitalShipsAndCarriedFighters()
+        {
+            (
+                GameRoot game,
+                Planet _,
+                Planet destination,
+                Officer officer,
+                MovementQueries movement
+            ) = BuildScene();
+            destination.OwnerInstanceID = "rebels";
+            (_, CapitalShip ship) = AddBlockadingFleet(game, destination, starfighterCapacity: 1);
+            Starfighter carriedFighter = EntityFactory.CreateStarfighter(
+                "carried-fighter",
+                "rebels"
+            );
+            Starfighter groundFighter = EntityFactory.CreateStarfighter("ground-fighter", "rebels");
+            Regiment carriedRegiment = EntityFactory.CreateRegiment("carried-regiment", "rebels");
+            Regiment groundRegiment = EntityFactory.CreateRegiment("ground-regiment", "rebels");
+            carriedFighter.ManufacturingStatus = ManufacturingStatus.Complete;
+            groundFighter.ManufacturingStatus = ManufacturingStatus.Complete;
+            carriedRegiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            groundRegiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            ship.RegimentCapacity = 1;
+            game.AttachNode(carriedFighter, ship);
+            game.AttachNode(carriedRegiment, ship);
+            game.AttachNode(groundFighter, destination);
+            game.AttachNode(groundRegiment, destination);
+
+            PersonnelMovementEncounterOdds odds = movement.GetPersonnelEncounterOdds(
+                new IMissionParticipant[] { officer },
+                destination
+            );
+
+            CollectionAssert.AreEqual(
+                new ISceneNode[] { ship, carriedFighter },
+                odds.Detectors.Select(entry => entry.Detector)
+            );
+        }
+
+        [Test]
+        public void GetPersonnelEncounterOdds_HostileFleetForceUser_ReturnsOnlyShipDetector()
         {
             GameConfig config = TestConfig.Create();
             config.Jedi.MissionParticipantEncounterMinimum = 1;
@@ -373,10 +419,7 @@ namespace Rebellion.Tests.Simulation
                 destination
             );
 
-            PersonnelMovementForceEncounterOdds forceOdds = odds.ForceEncounters.Single();
-            Assert.AreSame(officer, forceOdds.Participant);
-            Assert.AreSame(defender, forceOdds.Defender);
-            Assert.AreEqual(50, forceOdds.DetectionProbability);
+            Assert.AreSame(ship, odds.Detectors.Single().Detector);
         }
 
         [Test]
@@ -414,7 +457,6 @@ namespace Rebellion.Tests.Simulation
             );
 
             Assert.IsEmpty(odds.Detectors);
-            Assert.IsEmpty(odds.ForceEncounters);
         }
 
         [Test]

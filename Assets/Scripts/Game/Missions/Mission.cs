@@ -337,21 +337,6 @@ namespace Rebellion.Game.Missions
                 .ToList();
 
         /// <summary>
-        /// Returns whether the mission originated outside its target location.
-        /// </summary>
-        /// <param name="encounterPlanet">The planet hosting the current encounter.</param>
-        /// <returns>True when an assigned participant or the encounter came from another planet.</returns>
-        internal bool HasRemoteOrigin(Planet encounterPlanet)
-        {
-            return encounterPlanet?.InstanceID != LocationInstanceID
-                || GetAllParticipants(includeDisabled: true)
-                    .Any(participant =>
-                        !string.IsNullOrEmpty(participant.MissionReturnLocationInstanceID)
-                        && participant.MissionReturnLocationInstanceID != LocationInstanceID
-                    );
-        }
-
-        /// <summary>
         /// Gets the mission's primary participants.
         /// </summary>
         /// <returns>The primary participants.</returns>
@@ -798,7 +783,7 @@ namespace Rebellion.Game.Missions
             )
                 return false;
 
-            return candidate is Regiment or Starfighter;
+            return candidate is Regiment or Starfighter or CapitalShip;
         }
 
         /// <summary>

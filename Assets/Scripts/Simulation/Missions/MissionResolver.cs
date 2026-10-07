@@ -273,34 +273,25 @@ namespace Rebellion.Simulation
         )
         {
             foilingFactionInstanceID = null;
-            if (
-                ResolveForceEncounter(
+            bool betrayed = false;
+            if (phase == MissionEncounterPhase.PreObjective)
+            {
+                betrayed = _betrayalResolver.TryResolve(
                     mission,
-                    planet,
-                    mainParticipants,
-                    phase,
-                    out foilingFactionInstanceID
-                )
-            )
+                    out List<GameResult> betrayalResults
+                );
+                results.AddRange(betrayalResults);
+            }
+            if (betrayed)
             {
                 ResolveFoiledParticipants(
                     mission,
                     mainParticipants,
-                    decoys,
-                    MissionQueries.GetDetectors(mission, planet, phase),
+                    _queries.GetDetectors(mission, planet, phase),
                     planet,
                     results
                 );
                 ApplyOfficerDeaths(results);
-                return true;
-            }
-
-            if (
-                phase == MissionEncounterPhase.PreObjective
-                && _betrayalResolver.TryResolve(mission, out List<GameResult> betrayalResults)
-            )
-            {
-                results.AddRange(betrayalResults);
                 return true;
             }
 
@@ -318,140 +309,6 @@ namespace Rebellion.Simulation
             );
             ApplyOfficerDeaths(results);
             return missionFoiled;
-        }
-
-        /// <summary>
-        /// Resolves hostile Force-user encounters against the mission's primary officer team.
-        /// </summary>
-        /// <param name="mission">The mission reaching an encounter checkpoint.</param>
-        /// <param name="planet">The planet where the encounter occurs.</param>
-        /// <param name="mainParticipants">The primary team present at the encounter.</param>
-        /// <param name="phase">The mission lifecycle checkpoint being resolved.</param>
-        /// <param name="foilingFactionInstanceID">The faction whose Force user foiled the mission.</param>
-        /// <returns>True when a hostile Force user detects a primary participant.</returns>
-        private bool ResolveForceEncounter(
-            Mission mission,
-            Planet planet,
-            IReadOnlyList<IMissionParticipant> mainParticipants,
-            MissionEncounterPhase phase,
-            out string foilingFactionInstanceID
-        )
-        {
-            foilingFactionInstanceID = null;
-            if (mission == null || planet == null || mainParticipants == null)
-                return false;
-
-            GameConfig.JediConfig config = _game.Config.Jedi;
-            List<Officer> participants = mainParticipants
-                .OfType<Officer>()
-                .Where(officer => officer.ForceRank >= config.MissionParticipantEncounterMinimum)
-                .ToList();
-            if (participants.Count == 0)
-                return false;
-
-            List<Officer> defenders = GetForceDefenders(mission, planet, phase);
-
-            foreach (Officer participant in participants)
-            {
-                foreach (Officer defender in defenders)
-                {
-                    int probability = Math.Clamp(
-                        participant.ForceRank
-                            + defender.ForceRank
-                            + config.EncounterProbabilityOffset,
-                        0,
-                        100
-                    );
-                    if (RollProbability(probability))
-                    {
-                        foilingFactionInstanceID = defender.GetOwnerInstanceID();
-                        return true;
-                    }
-                }
-            }
-
-            return false;
-        }
-
-        /// <summary>
-        /// Returns hostile Force users relevant to a mission lifecycle checkpoint.
-        /// </summary>
-        /// <param name="mission">The mission reaching an encounter checkpoint.</param>
-        /// <param name="planet">The planet where the encounter occurs.</param>
-        /// <param name="phase">The mission lifecycle checkpoint being resolved.</param>
-        /// <returns>The eligible hostile Force users in traversal order.</returns>
-        private List<Officer> GetForceDefenders(
-            Mission mission,
-            Planet planet,
-            MissionEncounterPhase phase
-        )
-        {
-            IEnumerable<Officer> candidates = phase switch
-            {
-                MissionEncounterPhase.DepartureStart
-                    when planet.GetOwnerInstanceID() == mission.GetOwnerInstanceID() =>
-                    GetLocalOfficers(planet),
-                MissionEncounterPhase.DepartureComplete or MissionEncounterPhase.Arrival =>
-                    MissionQueries.HasDetectionBlocker(mission, planet)
-                        ? Enumerable.Empty<Officer>()
-                        : GetFleetOfficers(mission, planet),
-                MissionEncounterPhase.PreObjective => GetLocalOfficers(planet)
-                    .Concat(GetFleetOfficers(mission, planet)),
-                _ => Enumerable.Empty<Officer>(),
-            };
-
-            return candidates
-                .Where(officer =>
-                    officer.GetOwnerInstanceID() != mission.GetOwnerInstanceID()
-                    && officer.Movement == null
-                    && !officer.IsCaptured
-                    && !officer.IsKilled
-                    && officer.InjuryPoints == 0
-                    && officer.ForceRank >= _game.Config.Jedi.MissionDefenderEncounterMinimum
-                )
-                .ToList();
-        }
-
-        /// <summary>
-        /// Enumerates officers stationed on a planet or participating in a mission there.
-        /// </summary>
-        /// <param name="planet">The planet containing the local personnel.</param>
-        /// <returns>The local officers in scene traversal order.</returns>
-        private static IEnumerable<Officer> GetLocalOfficers(Planet planet)
-        {
-            return planet.GetChildren<Officer>();
-        }
-
-        /// <summary>
-        /// Enumerates officers contained by hostile capital ships at a planet.
-        /// </summary>
-        /// <param name="mission">The mission selecting the hostile side.</param>
-        /// <param name="planet">The planet containing candidate fleets.</param>
-        /// <returns>The contained hostile officers in scene traversal order.</returns>
-        private static IEnumerable<Officer> GetFleetOfficers(Mission mission, Planet planet)
-        {
-            foreach (
-                Fleet fleet in planet
-                    .GetChildren<Fleet>()
-                    .Where(fleet =>
-                        fleet.GetOwnerInstanceID() != mission.GetOwnerInstanceID()
-                        && fleet.Movement == null
-                    )
-            )
-            {
-                foreach (
-                    CapitalShip ship in fleet
-                        .GetChildren<CapitalShip>()
-                        .Where(ship =>
-                            ship.ManufacturingStatus == ManufacturingStatus.Complete
-                            && ship.Movement == null
-                        )
-                )
-                {
-                    foreach (Officer officer in ship.GetChildren<Officer>())
-                        yield return officer;
-                }
-            }
         }
 
         /// <summary>
@@ -710,7 +567,7 @@ namespace Rebellion.Simulation
             if (mission == null || planet == null || mainParticipants == null || decoys == null)
                 return false;
 
-            List<ISceneNode> activeDetectors = MissionQueries.GetDetectors(mission, planet, phase);
+            List<ISceneNode> activeDetectors = _queries.GetDetectors(mission, planet, phase);
             if (activeDetectors.Count == 0)
                 return false;
 
@@ -732,14 +589,7 @@ namespace Rebellion.Simulation
 
             foilingFactionInstanceID = foilingDetector.GetOwnerInstanceID();
 
-            ResolveFoiledParticipants(
-                mission,
-                mainParticipants,
-                availableDecoys,
-                activeDetectors,
-                planet,
-                results
-            );
+            ResolveFoiledParticipants(mission, mainParticipants, activeDetectors, planet, results);
 
             return true;
         }
@@ -749,14 +599,12 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="mission">The mission that was foiled.</param>
         /// <param name="mainParticipants">The primary participants exposed by the encounter.</param>
-        /// <param name="decoys">The decoy participants exposed by the encounter.</param>
         /// <param name="detectors">The hostile detectors available for confrontations.</param>
         /// <param name="planet">The planet where the mission was foiled.</param>
         /// <param name="results">The result collection receiving encounter consequences.</param>
         private void ResolveFoiledParticipants(
             Mission mission,
             IReadOnlyList<IMissionParticipant> mainParticipants,
-            IReadOnlyList<IMissionParticipant> decoys,
             IReadOnlyList<ISceneNode> detectors,
             Planet planet,
             List<GameResult> results
@@ -765,8 +613,18 @@ namespace Rebellion.Simulation
             if (!mission.AppliesFoiledParticipantConsequences)
                 return;
 
-            foreach (IMissionParticipant participant in decoys.Concat(mainParticipants).ToList())
+            foreach (
+                IMissionParticipant participant in mainParticipants
+                    .OrderBy(participant =>
+                        participant is Officer { IsMain: true } ? 0
+                        : participant is Officer ? 1
+                        : 2
+                    )
+                    .ToList()
+            )
+            {
                 ResolveFoiledParticipant(mission, participant, detectors, planet, results);
+            }
         }
 
         /// <summary>

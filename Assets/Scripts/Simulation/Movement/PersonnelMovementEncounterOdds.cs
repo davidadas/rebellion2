@@ -11,48 +11,13 @@ namespace Rebellion.Simulation
         /// <summary>Gets the eligible detector attempts in scene traversal order.</summary>
         public IReadOnlyList<PersonnelMovementDetectorOdds> Detectors { get; }
 
-        /// <summary>Gets the eligible Force-user encounters in traversal order.</summary>
-        public IReadOnlyList<PersonnelMovementForceEncounterOdds> ForceEncounters { get; }
-
         /// <summary>Creates a personnel movement encounter projection.</summary>
         /// <param name="detectors">The eligible detector attempts.</param>
-        /// <param name="forceEncounters">The eligible Force-user encounters.</param>
         internal PersonnelMovementEncounterOdds(
-            IReadOnlyList<PersonnelMovementDetectorOdds> detectors,
-            IReadOnlyList<PersonnelMovementForceEncounterOdds> forceEncounters
+            IReadOnlyList<PersonnelMovementDetectorOdds> detectors
         )
         {
             Detectors = detectors ?? throw new ArgumentNullException(nameof(detectors));
-            ForceEncounters =
-                forceEncounters ?? throw new ArgumentNullException(nameof(forceEncounters));
-        }
-    }
-
-    /// <summary>Describes one Force-user encounter involving personnel in transit.</summary>
-    public sealed class PersonnelMovementForceEncounterOdds
-    {
-        /// <summary>Gets the traveling officer exposed by the encounter.</summary>
-        public Officer Participant { get; }
-
-        /// <summary>Gets the hostile officer opposing the traveler.</summary>
-        public Officer Defender { get; }
-
-        /// <summary>Gets the percentage chance that the encounter exposes the movement group.</summary>
-        public int DetectionProbability { get; }
-
-        /// <summary>Creates one Force-user encounter projection.</summary>
-        /// <param name="participant">The traveling officer.</param>
-        /// <param name="defender">The hostile officer.</param>
-        /// <param name="detectionProbability">The encounter probability.</param>
-        internal PersonnelMovementForceEncounterOdds(
-            Officer participant,
-            Officer defender,
-            int detectionProbability
-        )
-        {
-            Participant = participant ?? throw new ArgumentNullException(nameof(participant));
-            Defender = defender ?? throw new ArgumentNullException(nameof(defender));
-            DetectionProbability = detectionProbability;
         }
     }
 

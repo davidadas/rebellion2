@@ -4575,7 +4575,7 @@ namespace Rebellion.Tests.Simulation
             return (game, gameEvent, encountered, opposing);
         }
 
-        /// <summary>Fails after the first capture roll to exercise partial-mutation failure handling.</summary>
+        /// <summary>Fails after capture to exercise partial-mutation failure handling.</summary>
         private sealed class CaptureThenThrowRandom : IRandomNumberProvider
         {
             private int _rolls;
@@ -4585,14 +4585,12 @@ namespace Rebellion.Tests.Simulation
             public double NextDouble() =>
                 throw new InvalidOperationException("Unexpected random draw.");
 
-            /// <summary>Fails the first capture-avoidance roll, then throws during injury resolution.</summary>
+            /// <summary>Fails capture avoidance, avoids the initial injury, then throws on fallback injury.</summary>
             /// <param name="min">The requested inclusive lower bound.</param>
             /// <param name="max">The requested exclusive upper bound.</param>
-            /// <returns>The maximum allowed value on the first call only.</returns>
+            /// <returns>The maximum allowed value on the first two calls.</returns>
             public int NextInt(int min, int max) =>
-                _rolls++ == 0
-                    ? max - 1
-                    : throw new InvalidOperationException("Injury roll failed.");
+                _rolls++ < 2 ? max - 1 : throw new InvalidOperationException("Injury roll failed.");
         }
 
         /// <summary>Executes one authored action through the public event-processing contract.</summary>
