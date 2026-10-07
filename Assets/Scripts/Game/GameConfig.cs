@@ -319,6 +319,8 @@ namespace Rebellion.Game
 
             public int AttackStrengthPercentOfStrongestHostileFleet { get; set; }
 
+            public int AssaultFleetCompositionReservePercent { get; set; }
+
             public int StaleIntelMaximumAttackStrengthPercent { get; set; }
 
             public int StaleIntelReserveSaturationIntervals { get; set; }

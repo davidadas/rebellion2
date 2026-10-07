@@ -237,6 +237,8 @@ namespace Rebellion.AI
 
         public IReadOnlyList<Fleet> ColonizationOrderedFleets { get; }
 
+        public int UnfinishedPlanetStarfighterCount { get; }
+
         /// <summary>
         /// Creates an AI assessment from the faction-visible turn state.
         /// </summary>
@@ -324,6 +326,11 @@ namespace Rebellion.AI
             }
             BuildMissionDetectorIndex();
             OwnedPlanets = BuildOwnedPlanets();
+            UnfinishedPlanetStarfighterCount = OwnedPlanets
+                .SelectMany(GetPlanetStarfighters)
+                .Count(starfighter =>
+                    starfighter.ManufacturingStatus != ManufacturingStatus.Complete
+                );
             NearTermRefinedMaterialCommitment = GetNearTermRefinedMaterialCommitment();
             EnemyPlanets = BuildEnemyPlanets();
             NeutralPlanets = BuildNeutralPlanets();

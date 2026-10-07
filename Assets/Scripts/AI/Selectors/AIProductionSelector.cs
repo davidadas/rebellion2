@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Rebellion.AI.Demands;
 using Rebellion.AI.Proposals;
 using Rebellion.AI.Scorers;
@@ -34,7 +33,6 @@ namespace Rebellion.AI.Selectors
         );
         private readonly HashSet<string> _drainingProducerStreams = new(StringComparer.Ordinal);
         private int _selectedMaintenanceCost;
-        private int? _unfinishedPlanetStarfighterCount;
         private int _selectedIdleShipyardFighterCount;
 
         /// <summary>
@@ -163,17 +161,8 @@ namespace Rebellion.AI.Selectors
             if (proposal?.Demand?.UsesIdleShipyardCapacity != true)
                 return true;
 
-            if (!_unfinishedPlanetStarfighterCount.HasValue)
-            {
-                _unfinishedPlanetStarfighterCount = context
-                    .Assessment.OwnedPlanets.SelectMany(context.Assessment.GetPlanetStarfighters)
-                    .Count(starfighter =>
-                        starfighter.ManufacturingStatus != ManufacturingStatus.Complete
-                    );
-            }
-
             int limit = context.Game.Config.AI.Infrastructure.IdleShipyardFighterReserveCount;
-            return _unfinishedPlanetStarfighterCount.Value
+            return context.Assessment.UnfinishedPlanetStarfighterCount
                     + _selectedIdleShipyardFighterCount
                     + proposal.GetManufacturingCount()
                 <= limit;

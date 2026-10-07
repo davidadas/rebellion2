@@ -1581,7 +1581,7 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Plan_WithBombardmentAndEscortDeficits_SelectsEscortFirst()
+        public void Plan_WithBombardmentAndEscortDeficits_SelectsBombardmentFirst()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             game.Config.AI.Infrastructure.FleetProductionMinimumShipyardCount = 1;
@@ -1668,7 +1668,7 @@ namespace Rebellion.Tests.AI.Planners
                     && item.Destination == fleet
                 );
 
-            Assert.AreSame(carrier, proposal.Product.GetReference());
+            Assert.AreSame(bombardmentShip, proposal.Product.GetReference());
         }
 
         [Test]

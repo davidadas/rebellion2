@@ -16,6 +16,8 @@ namespace Rebellion.AI.Demands
     /// </summary>
     internal sealed class AIProductionDemandGenerator : IAIDemandGenerator
     {
+        private const int _completeDemandPercent = 100;
+
         /// <summary>
         /// Adds production-facility expansion demands.
         /// </summary>
@@ -1674,26 +1676,37 @@ namespace Rebellion.AI.Demands
             )
                 return;
 
-            int maximumDeficit = Math.Max(
-                Math.Max(
-                    Math.Max(combatDeficit, capitalFirepowerDeficit),
-                    Math.Max(starfighterFirepowerDeficit, regimentCapacityDeficit)
-                ),
-                Math.Max(
-                    Math.Max(bombardmentDeficit, starfighterCapacityDeficit),
-                    Math.Max(interdictionDeficit, escortDeficit)
-                )
+            double greatestDeficitRatio = 0;
+            greatestDeficitRatio = Math.Max(
+                greatestDeficitRatio,
+                Math.Max(0, combatDeficit) / (double)Math.Max(1, targetCombat)
             );
-            int maximumTarget = Math.Max(
-                Math.Max(
-                    Math.Max(targetCombat, targetCapitalFirepower),
-                    Math.Max(targetStarfighterFirepower, targetRegimentCapacity)
-                ),
-                Math.Max(
-                    Math.Max(targetBombardment, targetStarfighterCapacity),
-                    Math.Max(interdictionDeficit, escortDeficit)
-                )
+            greatestDeficitRatio = Math.Max(
+                greatestDeficitRatio,
+                Math.Max(0, capitalFirepowerDeficit) / (double)Math.Max(1, targetCapitalFirepower)
             );
+            greatestDeficitRatio = Math.Max(
+                greatestDeficitRatio,
+                Math.Max(0, starfighterFirepowerDeficit)
+                    / (double)Math.Max(1, targetStarfighterFirepower)
+            );
+            greatestDeficitRatio = Math.Max(
+                greatestDeficitRatio,
+                Math.Max(0, regimentCapacityDeficit) / (double)Math.Max(1, targetRegimentCapacity)
+            );
+            greatestDeficitRatio = Math.Max(
+                greatestDeficitRatio,
+                Math.Max(0, bombardmentDeficit) / (double)Math.Max(1, targetBombardment)
+            );
+            greatestDeficitRatio = Math.Max(
+                greatestDeficitRatio,
+                Math.Max(0, starfighterCapacityDeficit)
+                    / (double)Math.Max(1, targetStarfighterCapacity)
+            );
+            greatestDeficitRatio = Math.Max(greatestDeficitRatio, interdictionDeficit);
+            greatestDeficitRatio = Math.Max(greatestDeficitRatio, escortDeficit);
+            int deficitPercent = (int)
+                Math.Ceiling(Math.Min(1, greatestDeficitRatio) * _completeDemandPercent);
 
             demands.Add(
                 new AIProductionDemand(
@@ -1707,11 +1720,11 @@ namespace Rebellion.AI.Demands
                     BuildingType.None,
                     fleet,
                     quantityNeeded: 1,
-                    targetCount: maximumTarget,
+                    targetCount: _completeDemandPercent,
                     baseDemandPercent: isColonizationFleet
                         ? context.Game.Config.AI.Infrastructure.ColonizationFleetDemandPercent
                         : context.Game.Config.AI.Infrastructure.FleetCapitalShipDemandPercent,
-                    deficitCount: maximumDeficit,
+                    deficitCount: deficitPercent,
                     capitalFirepowerDeficit: capitalFirepowerDeficit,
                     starfighterFirepowerDeficit: starfighterFirepowerDeficit,
                     starfighterCapacityDeficit: starfighterCapacityDeficit,

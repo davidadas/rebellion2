@@ -14,8 +14,6 @@ namespace Rebellion.AI.Demands
     /// </summary>
     internal sealed class AIAttackDemandGenerator : IAIDemandGenerator
     {
-        private const int _assaultFleetCompositionReservePercent = 150;
-
         /// <summary>
         /// Generates attack demands for every planet in the faction view.
         /// </summary>
@@ -114,7 +112,7 @@ namespace Rebellion.AI.Demands
             int planetaryCount = context.Assessment.GetHostilePlanetaryStarfighterCount(planet);
             return IntegerMath.ScaleByPercent(
                 fleetCount + planetaryCount,
-                _assaultFleetCompositionReservePercent
+                context.Game.Config.AI.FleetDeployment.AssaultFleetCompositionReservePercent
             );
         }
 
@@ -132,11 +130,11 @@ namespace Rebellion.AI.Demands
                 context.Assessment.GetHostilePlanetaryFirepowerAgainstStarfighters(planet);
             return IntegerMath.ScaleByPercent(
                     fleetFirepower,
-                    _assaultFleetCompositionReservePercent
+                    context.Game.Config.AI.FleetDeployment.AssaultFleetCompositionReservePercent
                 )
                 + IntegerMath.ScaleByPercent(
                     planetaryFirepower,
-                    _assaultFleetCompositionReservePercent
+                    context.Game.Config.AI.FleetDeployment.AssaultFleetCompositionReservePercent
                 );
         }
 
@@ -150,7 +148,7 @@ namespace Rebellion.AI.Demands
         {
             return IntegerMath.ScaleByPercent(
                 context.Assessment.GetStrongestHostileFleetFirepowerAgainstCapitalShips(planet),
-                _assaultFleetCompositionReservePercent
+                context.Game.Config.AI.FleetDeployment.AssaultFleetCompositionReservePercent
             );
         }
 

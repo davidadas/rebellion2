@@ -1692,20 +1692,18 @@ namespace Rebellion.AI.Planners
             if (_producerPlanets.TryGetValue(key, out List<Planet> producers))
                 return producers;
 
-            IEnumerable<Planet> eligibleProducers = demand.UsesIdleShipyardCapacity
-                ? context.Assessment.OwnedPlanets.Where(planet =>
-                    planet == destinationPlanet
-                    && HasProductionFacility(context, planet, demand.ManufacturingType)
-                )
-                : context.Assessment.OwnedPlanets.Where(planet =>
-                    mode == ProducerMode.FacilityExpansion
-                        ? CanQueueFacilityExpansion(context, planet)
-                    : mode == ProducerMode.Distributed
-                        ? HasProductionFacility(context, planet, demand.ManufacturingType)
-                    : CanProduce(planet, demand.ManufacturingType)
-                );
+            IEnumerable<Planet> eligibleProducers = context.Assessment.OwnedPlanets.Where(planet =>
+                demand.UsesIdleShipyardCapacity
+                    ? planet == destinationPlanet
+                        && HasProductionFacility(context, planet, demand.ManufacturingType)
+                : mode == ProducerMode.FacilityExpansion
+                    ? CanQueueFacilityExpansion(context, planet)
+                : mode == ProducerMode.Distributed
+                    ? HasProductionFacility(context, planet, demand.ManufacturingType)
+                : CanProduce(planet, demand.ManufacturingType)
+            );
             eligibleProducers = eligibleProducers.Where(producer =>
-                CanAllocateProducerToDemand(context, producer, demand)
+                CanUseProducerForDemand(context, producer, demand)
             );
             if (mode == ProducerMode.FacilityExpansion && destinationPlanet != null)
             {
@@ -1887,25 +1885,7 @@ namespace Rebellion.AI.Planners
         /// <param name="producer">The prospective producing planet.</param>
         /// <param name="demand">The demand seeking production capacity.</param>
         /// <returns>True when the producer may serve the demand.</returns>
-        private static bool CanAllocateProducerToDemand(
-            AITurnContext context,
-            Planet producer,
-            AIProductionDemand demand
-        )
-        {
-            return CanUseShipProducerForDemand(context, producer, demand);
-        }
-
-        /// <summary>
-        /// Returns whether a ship-producing planet is dedicated to the requested strategic role.
-        /// Single-shipyard planets may defend planets with starfighters, while every shipyard may
-        /// manufacture fleet units.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="producer">The prospective producing planet.</param>
-        /// <param name="demand">The demand seeking production capacity.</param>
-        /// <returns>True when the producer may manufacture the requested demand.</returns>
-        private static bool CanUseShipProducerForDemand(
+        private static bool CanUseProducerForDemand(
             AITurnContext context,
             Planet producer,
             AIProductionDemand demand
