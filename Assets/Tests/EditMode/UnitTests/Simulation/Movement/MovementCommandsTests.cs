@@ -2217,6 +2217,32 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void RequestMove_CaptiveWithDestroyedSpecialForcesEscort_CaptiveRemainsAtOrigin()
+        {
+            (GameRoot game, Planet origin, Planet destination, MovementCommands movement) =
+                BuildBlockadeScene(new FixedRNG(0));
+            ConfigurePersonnelTransitEncounter(game, evasionProbability: 0);
+            AddPersonnelTransitDetector(game, origin);
+            SpecialForces escort = new SpecialForces
+            {
+                InstanceID = "escort",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Officer captive = EntityFactory.CreateOfficer("captive", "rebels");
+            captive.IsCaptured = true;
+            captive.CaptorInstanceID = "empire";
+            game.AttachNode(escort, origin);
+            game.AttachNode(captive, origin);
+
+            movement.RequestMove(new List<IMovable> { escort, captive }, destination);
+
+            Assert.IsNull(game.GetSceneNodeByInstanceID<SpecialForces>(escort.InstanceID));
+            Assert.AreSame(origin, captive.GetParent());
+            Assert.IsNull(captive.Movement);
+        }
+
+        [Test]
         public void ProcessTick_OfficerDetectedArrivingNearHostileFleet_FailsEvasionAndIsCaptured()
         {
             (GameRoot game, Planet origin, Planet destination, MovementCommands movement) =
@@ -2267,6 +2293,42 @@ namespace Rebellion.Tests.Simulation
 
             Assert.IsTrue(first.IsCaptured);
             Assert.IsTrue(second.IsCaptured);
+            Assert.IsNull(first.Movement);
+            Assert.IsNull(second.Movement);
+        }
+
+        [Test]
+        public void ProcessTick_GroupedSpecialForcesDestroyedOnArrival_ClearMovementState()
+        {
+            (GameRoot game, Planet origin, Planet destination, MovementCommands movement) =
+                BuildBlockadeScene(new FixedRNG(0));
+            ConfigurePersonnelTransitEncounter(game, evasionProbability: 0);
+            SpecialForces first = new SpecialForces
+            {
+                InstanceID = "first",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            SpecialForces second = new SpecialForces
+            {
+                InstanceID = "second",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(first, origin);
+            game.AttachNode(second, origin);
+
+            movement.RequestMove(new List<IMovable> { first, second }, destination);
+            Fleet hostile = game.GetSceneNodeByInstanceID<Fleet>("hostile");
+            game.MoveNode(hostile, destination);
+            AddPersonnelTransitDetector(game, destination);
+            first.Movement.TicksElapsed = first.Movement.TransitTicks - 1;
+            second.Movement.TicksElapsed = second.Movement.TransitTicks - 1;
+
+            Assert.DoesNotThrow(() => new MovementTickProcessor(movement).ProcessTick(game));
+
+            Assert.IsNull(first.GetParent());
+            Assert.IsNull(second.GetParent());
             Assert.IsNull(first.Movement);
             Assert.IsNull(second.Movement);
         }

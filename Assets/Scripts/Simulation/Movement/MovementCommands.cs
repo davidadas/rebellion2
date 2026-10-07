@@ -1245,6 +1245,7 @@ namespace Rebellion.Simulation
             ICollection<GameResult> results
         )
         {
+            specialForces.Movement = null;
             _game.DeleteNode(specialForces);
             results.Add(
                 new GameObjectDestroyedResult
@@ -1378,6 +1379,7 @@ namespace Rebellion.Simulation
                 && units.Any(unit =>
                     !ReferenceEquals(unit, captive)
                     && unit.GetOwnerInstanceID() == captive.CaptorInstanceID
+                    && unit.GetParent() != null
                     && IsFreePersonnel(unit)
                 );
         }
