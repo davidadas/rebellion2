@@ -906,6 +906,98 @@ namespace Rebellion.Tests.AI
         }
 
         [Test]
+        public void GetReadyFleetFirepowerAgainstStarfighters_WithTorpedoes_ExcludesTorpedoStrength()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet planet = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
+            Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
+            CapitalShip carrier = AITestSceneBuilder.CreateCapitalShip(
+                "carrier",
+                empire.InstanceID,
+                combatStrength: 0
+            );
+            Starfighter fighter = AITestSceneBuilder.CreateStarfighter(
+                "fighter",
+                empire.InstanceID,
+                laserCannon: 10
+            );
+            fighter.IonCannon = 5;
+            fighter.Torpedoes = 20;
+            fighter.CurrentSquadronSize = 6;
+            game.AttachNode(fleet, planet);
+            game.AttachNode(carrier, fleet);
+            game.AttachNode(fighter, carrier);
+            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+
+            Assert.AreEqual(60, assessment.GetReadyFleetFirepowerAgainstStarfighters(fleet));
+        }
+
+        [Test]
+        public void GetReadyFleetFirepowerAgainstCapitalShips_WithIonCannonsAndTorpedoes_UsesIonCannons()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet planet = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
+            Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
+            CapitalShip carrier = AITestSceneBuilder.CreateCapitalShip(
+                "carrier",
+                empire.InstanceID,
+                combatStrength: 0
+            );
+            Starfighter fighter = AITestSceneBuilder.CreateStarfighter(
+                "fighter",
+                empire.InstanceID,
+                laserCannon: 6
+            );
+            fighter.IonCannon = 6;
+            fighter.Torpedoes = 100;
+            fighter.CurrentSquadronSize = 12;
+            game.AttachNode(fleet, planet);
+            game.AttachNode(carrier, fleet);
+            game.AttachNode(fighter, carrier);
+            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+
+            Assert.AreEqual(700, assessment.GetReadyFleetFirepowerAgainstCapitalShips(fleet));
+        }
+
+        [Test]
+        public void GetStrongestHostileFleetFirepower_WithVisibleFleet_ReturnsKnownComposition()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
+            Fleet fleet = EntityFactory.CreateFleet("hostile-fleet", rebels.InstanceID);
+            CapitalShip carrier = AITestSceneBuilder.CreateCapitalShip(
+                "hostile-carrier",
+                rebels.InstanceID,
+                combatStrength: 100
+            );
+            Starfighter fighter = AITestSceneBuilder.CreateStarfighter(
+                "hostile-fighter",
+                rebels.InstanceID,
+                laserCannon: 10
+            );
+            fighter.CurrentSquadronSize = 6;
+            game.AttachNode(fleet, target);
+            game.AttachNode(carrier, fleet);
+            game.AttachNode(fighter, carrier);
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+
+            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+
+            Assert.Greater(
+                assessment.GetStrongestHostileFleetFirepowerAgainstCapitalShips(target),
+                0
+            );
+            Assert.Greater(
+                assessment.GetStrongestHostileFleetFirepowerAgainstStarfighters(target),
+                0
+            );
+            Assert.AreEqual(1, assessment.GetStrongestHostileFleetStarfighterCount(target));
+        }
+
+        [Test]
         public void GetProjectedFleetRegimentAttackStrength_WithCommittedRegiments_IncludesPendingStrength()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);

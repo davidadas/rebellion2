@@ -109,5 +109,25 @@ namespace Rebellion.Tests.AI.Demands
 
             Assert.AreEqual(1500, context.GetAttackDemand(target).CombatStrength);
         }
+
+        [Test]
+        public void BuildDemands_WithPlanetaryStarfighter_UsesAssaultCompositionTargets()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
+            Starfighter fighter = AITestSceneBuilder.CreateStarfighter(
+                "fighter",
+                rebels.InstanceID
+            );
+            game.AttachNode(fighter, target);
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            Assert.AreEqual(0, context.GetAttackDemand(target).CapitalShipFirepower);
+            Assert.AreEqual(180, context.GetAttackDemand(target).StarfighterFirepower);
+            Assert.AreEqual(1, context.GetAttackDemand(target).StarfighterCount);
+        }
     }
 }

@@ -10,6 +10,9 @@ namespace Rebellion.AI.Demands
         public Planet TargetPlanet { get; }
         public int CombatStrength { get; }
         public int OrbitalStrength { get; }
+        public int CapitalShipFirepower { get; }
+        public int StarfighterFirepower { get; }
+        public int StarfighterCount { get; }
         public int RegimentStrength { get; }
         public int RegimentCount { get; }
         public int OccupationRegimentCount { get; }
@@ -22,6 +25,9 @@ namespace Rebellion.AI.Demands
         /// <param name="targetPlanet">The known planet represented by the demand.</param>
         /// <param name="combatStrength">The system-level combat strength required to launch.</param>
         /// <param name="orbitalStrength">The orbital strength required at the planet.</param>
+        /// <param name="capitalShipFirepower">The capital-ship firepower required at the planet.</param>
+        /// <param name="starfighterFirepower">The starfighter firepower required at the planet.</param>
+        /// <param name="starfighterCount">The carried-starfighter capacity required at the planet.</param>
         /// <param name="regimentStrength">The ground attack strength required.</param>
         /// <param name="regimentCount">The regiment count required for combat and occupation.</param>
         /// <param name="occupationRegimentCount">The regiment count required after defenders are removed.</param>
@@ -31,6 +37,9 @@ namespace Rebellion.AI.Demands
             Planet targetPlanet,
             int combatStrength,
             int orbitalStrength,
+            int capitalShipFirepower,
+            int starfighterFirepower,
+            int starfighterCount,
             int regimentStrength,
             int regimentCount,
             int occupationRegimentCount,
@@ -41,6 +50,9 @@ namespace Rebellion.AI.Demands
             TargetPlanet = targetPlanet;
             CombatStrength = combatStrength;
             OrbitalStrength = orbitalStrength;
+            CapitalShipFirepower = capitalShipFirepower;
+            StarfighterFirepower = starfighterFirepower;
+            StarfighterCount = starfighterCount;
             RegimentStrength = regimentStrength;
             RegimentCount = regimentCount;
             OccupationRegimentCount = occupationRegimentCount;
