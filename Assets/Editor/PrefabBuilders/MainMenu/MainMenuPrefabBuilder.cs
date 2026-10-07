@@ -41,8 +41,8 @@ public static class MainMenuPrefabBuilder
     private const string _factionSelectSfxPath = "Application/MainMenu/Audio/faction-select";
     private const string _exitSelectSfxPath = _factionSelectSfxPath;
 
-    // Icon turntable speed: one full revolution per second (matched the original 2D flipbook loop).
-    private const float _iconTurnDegreesPerSecond = 360f;
+    // Icon turntable speed: one fifth of a revolution per second.
+    private const float _iconTurnDegreesPerSecond = 72f;
 
     // Spinning-planet backdrop.
     private const string _starfieldAddress = "Application/MainMenu/UI/starfield";
