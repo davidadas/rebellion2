@@ -2217,7 +2217,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void RequestMove_CaptiveWithDestroyedSpecialForcesEscort_CaptiveRemainsAtOrigin()
+        public void RequestMove_CaptiveWithDestroyedSpecialForcesEscort_CaptiveContinuesMovement()
         {
             (GameRoot game, Planet origin, Planet destination, MovementCommands movement) =
                 BuildBlockadeScene(new FixedRNG(0));
@@ -2238,8 +2238,8 @@ namespace Rebellion.Tests.Simulation
             movement.RequestMove(new List<IMovable> { escort, captive }, destination);
 
             Assert.IsNull(game.GetSceneNodeByInstanceID<SpecialForces>(escort.InstanceID));
-            Assert.AreSame(origin, captive.GetParent());
-            Assert.IsNull(captive.Movement);
+            Assert.AreSame(destination, captive.GetParent());
+            Assert.IsNotNull(captive.Movement);
         }
 
         [Test]

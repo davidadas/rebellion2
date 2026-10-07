@@ -895,13 +895,6 @@ namespace Rebellion.Simulation
             HashSet<IMovable> stopped = personnel
                 .Where(unit => !CanContinuePersonnelMovement(unit))
                 .ToHashSet();
-            foreach (
-                Officer captive in units.OfType<Officer>().Where(officer => officer.IsCaptured)
-            )
-            {
-                if (!HasAvailableEscort(captive, units))
-                    stopped.Add(captive);
-            }
 
             return stopped;
         }
@@ -1365,23 +1358,6 @@ namespace Rebellion.Simulation
                 SpecialForces specialForces => specialForces.IsActive(),
                 _ => false,
             };
-        }
-
-        /// <summary>
-        /// Returns whether a captive still has an eligible escort after a departure encounter.
-        /// </summary>
-        /// <param name="captive">The captured officer requiring an escort.</param>
-        /// <param name="units">The complete movement group.</param>
-        /// <returns>True when a surviving free escort remains in the group.</returns>
-        private static bool HasAvailableEscort(Officer captive, IReadOnlyList<IMovable> units)
-        {
-            return !string.IsNullOrEmpty(captive.CaptorInstanceID)
-                && units.Any(unit =>
-                    !ReferenceEquals(unit, captive)
-                    && unit.GetOwnerInstanceID() == captive.CaptorInstanceID
-                    && unit.GetParent() != null
-                    && IsFreePersonnel(unit)
-                );
         }
 
         /// <summary>
