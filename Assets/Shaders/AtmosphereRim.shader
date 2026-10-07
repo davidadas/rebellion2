@@ -8,52 +8,68 @@ Shader "Custom/AtmosphereRim"
     }
     SubShader
     {
-        Tags { "Queue" = "Transparent" "RenderType" = "Transparent" "IgnoreProjector" = "True" }
+        Tags
+        {
+            "RenderPipeline" = "UniversalPipeline"
+            "Queue" = "Transparent"
+            "RenderType" = "Transparent"
+            "IgnoreProjector" = "True"
+        }
         Blend SrcAlpha One
         ZWrite Off
         Cull Back
 
         Pass
         {
-            CGPROGRAM
-            #pragma vertex vert
-            #pragma fragment frag
-            #include "UnityCG.cginc"
+            Name "UniversalForward"
+            Tags { "LightMode" = "UniversalForward" }
 
-            struct appdata
+            HLSLPROGRAM
+            #pragma target 2.0
+            #pragma vertex Vert
+            #pragma fragment Frag
+
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+
+            struct Attributes
             {
-                float4 vertex : POSITION;
-                float3 normal : NORMAL;
+                float4 positionOS : POSITION;
+                float3 normalOS : NORMAL;
             };
 
-            struct v2f
+            struct Varyings
             {
-                float4 pos : SV_POSITION;
-                float3 worldNormal : TEXCOORD0;
-                float3 viewDir : TEXCOORD1;
+                float4 positionHCS : SV_POSITION;
+                float3 normalWS : TEXCOORD0;
+                float3 viewDirectionWS : TEXCOORD1;
             };
 
-            float4 _Color;
-            float _Power;
-            float _Intensity;
+            CBUFFER_START(UnityPerMaterial)
+                half4 _Color;
+                float _Power;
+                float _Intensity;
+            CBUFFER_END
 
-            v2f vert(appdata v)
+            Varyings Vert(Attributes input)
             {
-                v2f o;
-                o.pos = UnityObjectToClipPos(v.vertex);
-                o.worldNormal = UnityObjectToWorldNormal(v.normal);
-                float3 worldPos = mul(unity_ObjectToWorld, v.vertex).xyz;
-                o.viewDir = normalize(_WorldSpaceCameraPos - worldPos);
-                return o;
+                Varyings output;
+                VertexPositionInputs positionInputs = GetVertexPositionInputs(input.positionOS.xyz);
+                VertexNormalInputs normalInputs = GetVertexNormalInputs(input.normalOS);
+                output.positionHCS = positionInputs.positionCS;
+                output.normalWS = normalInputs.normalWS;
+                output.viewDirectionWS = GetWorldSpaceNormalizeViewDir(positionInputs.positionWS);
+                return output;
             }
 
-            fixed4 frag(v2f i) : SV_Target
+            half4 Frag(Varyings input) : SV_Target
             {
-                float rim = 1.0 - saturate(dot(normalize(i.worldNormal), normalize(i.viewDir)));
+                float rim = 1.0 - saturate(
+                    dot(normalize(input.normalWS), normalize(input.viewDirectionWS))
+                );
                 float glow = pow(rim, _Power) * _Intensity;
-                return fixed4(_Color.rgb, saturate(glow));
+                return half4(_Color.rgb, saturate(glow));
             }
-            ENDCG
+            ENDHLSL
         }
     }
 }
