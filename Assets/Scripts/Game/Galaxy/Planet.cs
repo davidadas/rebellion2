@@ -1179,11 +1179,7 @@ namespace Rebellion.Game.Galaxy
                             || building.ManufacturingStatus == ManufacturingStatus.Building
                         )
                         && building.GetOwnerInstanceID() == GetOwnerInstanceID()
-                        && GetAvailableEnergy() > 0
-                        && (
-                            building.BuildingType != BuildingType.Mine
-                            || GetUnminedResourceNodeCount() > 0
-                        );
+                        && GetAvailableEnergy() > 0;
                 default:
                     return false;
             }
