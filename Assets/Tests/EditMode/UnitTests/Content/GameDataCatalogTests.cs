@@ -1,5 +1,7 @@
+using System;
 using System.IO;
 using NUnit.Framework;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 
@@ -52,6 +54,119 @@ namespace Rebellion.Tests.Content
             );
 
             StringAssert.Contains("Duplicate battle map InstanceID 'SPACE_MAP'", exception.Message);
+        }
+
+        [Test]
+        public void ValidateBattleMapReferences_MissingDefaultSpaceMap_ThrowsInvalidDataException()
+        {
+            InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+                GameDataCatalog.ValidateBattleMapReferences(
+                    Array.Empty<BattleMap>(),
+                    Array.Empty<PlanetSector>(),
+                    new[] { "MISSING_MAP" }
+                )
+            );
+
+            StringAssert.Contains("reference missing map 'MISSING_MAP'", exception.Message);
+        }
+
+        [Test]
+        public void ValidateBattleMapReferences_GroundDefaultSpaceMap_ThrowsInvalidDataException()
+        {
+            BattleMap groundMap = new BattleMap
+            {
+                InstanceID = "GROUND_MAP",
+                Kind = BattleKind.Ground,
+            };
+
+            InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+                GameDataCatalog.ValidateBattleMapReferences(
+                    new[] { groundMap },
+                    Array.Empty<PlanetSector>(),
+                    new[] { groundMap.InstanceID }
+                )
+            );
+
+            StringAssert.Contains("is not a space map", exception.Message);
+        }
+
+        [Test]
+        public void GetBattleMapsForPlanet_NoSpaceOverride_ReturnsDefaultSpaceMaps()
+        {
+            BattleMap defaultMap = new BattleMap
+            {
+                InstanceID = "DEFAULT_SPACE",
+                Kind = BattleKind.Space,
+            };
+            BattleMap groundMap = new BattleMap
+            {
+                InstanceID = "GROUND_MAP",
+                Kind = BattleKind.Ground,
+            };
+            Planet planet = new Planet { InstanceID = "PLANET" };
+            planet.BattleMapInstanceIDs.Add(groundMap.InstanceID);
+            PlanetSector sector = CreateSector(planet);
+            GameDataCatalog catalog = TestGameData.Create(
+                planetSectors: new[] { sector },
+                battleMaps: new[] { defaultMap, groundMap },
+                defaultSpaceBattleMapInstanceIDs: new[] { defaultMap.InstanceID }
+            );
+
+            System.Collections.Generic.IReadOnlyList<BattleMap> maps =
+                catalog.GetBattleMapsForPlanet(planet, BattleKind.Space);
+
+            CollectionAssert.AreEqual(new[] { defaultMap }, maps);
+        }
+
+        [Test]
+        public void GetBattleMapsForPlanet_SpaceOverride_ReturnsPlanetSpaceMaps()
+        {
+            BattleMap defaultMap = new BattleMap
+            {
+                InstanceID = "DEFAULT_SPACE",
+                Kind = BattleKind.Space,
+            };
+            BattleMap planetMap = new BattleMap
+            {
+                InstanceID = "PLANET_SPACE",
+                Kind = BattleKind.Space,
+            };
+            Planet planet = new Planet { InstanceID = "PLANET" };
+            planet.BattleMapInstanceIDs.Add(planetMap.InstanceID);
+            PlanetSector sector = CreateSector(planet);
+            GameDataCatalog catalog = TestGameData.Create(
+                planetSectors: new[] { sector },
+                battleMaps: new[] { defaultMap, planetMap },
+                defaultSpaceBattleMapInstanceIDs: new[] { defaultMap.InstanceID }
+            );
+
+            System.Collections.Generic.IReadOnlyList<BattleMap> maps =
+                catalog.GetBattleMapsForPlanet(planet, BattleKind.Space);
+
+            CollectionAssert.AreEqual(new[] { planetMap }, maps);
+        }
+
+        [Test]
+        public void TryGetBattleMap_ExistingIdentifier_ReturnsAuthoredMap()
+        {
+            BattleMap map = new BattleMap { InstanceID = "SPACE_MAP", Kind = BattleKind.Space };
+            GameDataCatalog catalog = TestGameData.Create(battleMaps: new[] { map });
+
+            bool found = catalog.TryGetBattleMap(map.InstanceID, out BattleMap resolved);
+
+            Assert.IsTrue(found);
+            Assert.AreSame(map, resolved);
+        }
+
+        [Test]
+        public void TryGetBattleMap_MissingIdentifier_ReturnsFalse()
+        {
+            GameDataCatalog catalog = TestGameData.Create();
+
+            bool found = catalog.TryGetBattleMap("MISSING_MAP", out BattleMap resolved);
+
+            Assert.IsFalse(found);
+            Assert.IsNull(resolved);
         }
 
         [Test]

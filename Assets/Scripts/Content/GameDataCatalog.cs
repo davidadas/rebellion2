@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Rebellion.Game;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
@@ -15,6 +17,8 @@ using Rebellion.Generation;
 /// </summary>
 public sealed class GameDataCatalog
 {
+    private readonly IReadOnlyDictionary<string, BattleMap> _battleMapsByInstanceID;
+
     public GameConfig GameConfig { get; }
 
     public GameGenerationConfig GenerationConfig { get; }
@@ -24,6 +28,8 @@ public sealed class GameDataCatalog
     public PlanetSector[] PlanetSectors { get; }
 
     public BattleMap[] BattleMaps { get; }
+
+    public IReadOnlyList<string> DefaultSpaceBattleMapInstanceIDs { get; }
 
     public Building[] Buildings { get; }
 
@@ -63,6 +69,7 @@ public sealed class GameDataCatalog
     /// <param name="messageDefinitions">The message definitions.</param>
     /// <param name="encyclopediaEntries">The authored encyclopedia entries.</param>
     /// <param name="factionThemes">The neutral and faction presentation themes.</param>
+    /// <param name="defaultSpaceBattleMapInstanceIDs">The maps inherited by planets without space-map overrides.</param>
     public GameDataCatalog(
         GameConfig gameConfig,
         GameGenerationConfig generationConfig,
@@ -78,7 +85,8 @@ public sealed class GameDataCatalog
         GameEvent[] gameEvents,
         MessageDefinition[] messageDefinitions,
         EncyclopediaEntries encyclopediaEntries,
-        FactionThemes factionThemes
+        FactionThemes factionThemes,
+        IEnumerable<string> defaultSpaceBattleMapInstanceIDs = null
     )
     {
         GameConfig = gameConfig ?? throw new ArgumentNullException(nameof(gameConfig));
@@ -87,7 +95,14 @@ public sealed class GameDataCatalog
         Factions = factions ?? throw new ArgumentNullException(nameof(factions));
         PlanetSectors = planetSectors ?? throw new ArgumentNullException(nameof(planetSectors));
         BattleMaps = battleMaps ?? throw new ArgumentNullException(nameof(battleMaps));
-        ValidateBattleMapReferences(BattleMaps, PlanetSectors);
+        DefaultSpaceBattleMapInstanceIDs = (
+            defaultSpaceBattleMapInstanceIDs ?? Array.Empty<string>()
+        ).ToArray();
+        ValidateBattleMapReferences(BattleMaps, PlanetSectors, DefaultSpaceBattleMapInstanceIDs);
+        _battleMapsByInstanceID = BattleMaps.ToDictionary(
+            battleMap => battleMap.InstanceID,
+            StringComparer.Ordinal
+        );
         Buildings = buildings ?? throw new ArgumentNullException(nameof(buildings));
         ValidateBuildingUpgrades(Buildings);
         CapitalShips = capitalShips ?? throw new ArgumentNullException(nameof(capitalShips));
@@ -108,9 +123,11 @@ public sealed class GameDataCatalog
     /// </summary>
     /// <param name="battleMaps">The authored battle maps.</param>
     /// <param name="planetSectors">The planet sectors containing map references.</param>
+    /// <param name="defaultSpaceBattleMapInstanceIDs">The maps inherited for space battles without planet overrides.</param>
     internal static void ValidateBattleMapReferences(
         IReadOnlyCollection<BattleMap> battleMaps,
-        IReadOnlyCollection<PlanetSector> planetSectors
+        IReadOnlyCollection<PlanetSector> planetSectors,
+        IReadOnlyCollection<string> defaultSpaceBattleMapInstanceIDs = null
     )
     {
         if (battleMaps == null)
@@ -118,14 +135,39 @@ public sealed class GameDataCatalog
         if (planetSectors == null)
             throw new ArgumentNullException(nameof(planetSectors));
 
-        HashSet<string> battleMapInstanceIDs = new HashSet<string>(StringComparer.Ordinal);
+        Dictionary<string, BattleMap> battleMapsByInstanceID = new Dictionary<string, BattleMap>(
+            StringComparer.Ordinal
+        );
         foreach (BattleMap battleMap in battleMaps)
         {
             if (battleMap == null || string.IsNullOrWhiteSpace(battleMap.InstanceID))
                 throw new InvalidDataException("Every battle map requires an InstanceID.");
-            if (!battleMapInstanceIDs.Add(battleMap.InstanceID))
+            if (!battleMapsByInstanceID.TryAdd(battleMap.InstanceID, battleMap))
                 throw new InvalidDataException(
                     $"Duplicate battle map InstanceID '{battleMap.InstanceID}'."
+                );
+        }
+
+        HashSet<string> defaultSpaceMapInstanceIDs = new HashSet<string>(StringComparer.Ordinal);
+        foreach (
+            string battleMapInstanceID in defaultSpaceBattleMapInstanceIDs ?? Array.Empty<string>()
+        )
+        {
+            if (string.IsNullOrWhiteSpace(battleMapInstanceID))
+                throw new InvalidDataException(
+                    "Default space battle maps contain a blank InstanceID."
+                );
+            if (!defaultSpaceMapInstanceIDs.Add(battleMapInstanceID))
+                throw new InvalidDataException(
+                    $"Default space battle maps contain duplicate InstanceID '{battleMapInstanceID}'."
+                );
+            if (!battleMapsByInstanceID.TryGetValue(battleMapInstanceID, out BattleMap battleMap))
+                throw new InvalidDataException(
+                    $"Default space battle maps reference missing map '{battleMapInstanceID}'."
+                );
+            if (battleMap.Kind != BattleKind.Space)
+                throw new InvalidDataException(
+                    $"Default space battle map '{battleMapInstanceID}' is not a space map."
                 );
         }
 
@@ -152,13 +194,75 @@ public sealed class GameDataCatalog
                         throw new InvalidDataException(
                             $"Planet '{planet.InstanceID}' contains duplicate battle map InstanceID '{battleMapInstanceID}'."
                         );
-                    if (!battleMapInstanceIDs.Contains(battleMapInstanceID))
+                    if (!battleMapsByInstanceID.ContainsKey(battleMapInstanceID))
                         throw new InvalidDataException(
                             $"Planet '{planet.InstanceID}' references missing battle map '{battleMapInstanceID}'."
                         );
                 }
             }
         }
+    }
+
+    /// <summary>
+    /// Returns the maps eligible for a battle at one planet. Matching planet-specific maps
+    /// replace the content-pack defaults for that battle kind.
+    /// </summary>
+    /// <param name="planet">The battle location.</param>
+    /// <param name="kind">The requested battle kind.</param>
+    /// <returns>The eligible maps in authored order.</returns>
+    public IReadOnlyList<BattleMap> GetBattleMapsForPlanet(Planet planet, BattleKind kind)
+    {
+        if (planet == null)
+            throw new ArgumentNullException(nameof(planet));
+
+        List<BattleMap> planetMaps = ResolveBattleMaps(planet.BattleMapInstanceIDs, kind);
+        if (planetMaps.Count > 0)
+            return planetMaps;
+
+        return kind == BattleKind.Space
+            ? ResolveBattleMaps(DefaultSpaceBattleMapInstanceIDs, kind)
+            : Array.Empty<BattleMap>();
+    }
+
+    /// <summary>
+    /// Resolves one authored battle map by its stable identifier.
+    /// </summary>
+    /// <param name="battleMapInstanceID">The battle-map identifier.</param>
+    /// <param name="battleMap">The resolved battle map when found.</param>
+    /// <returns>True when the identifier belongs to a loaded battle map.</returns>
+    public bool TryGetBattleMap(string battleMapInstanceID, out BattleMap battleMap)
+    {
+        if (string.IsNullOrWhiteSpace(battleMapInstanceID))
+        {
+            battleMap = null;
+            return false;
+        }
+
+        return _battleMapsByInstanceID.TryGetValue(battleMapInstanceID, out battleMap);
+    }
+
+    /// <summary>
+    /// Resolves map identifiers of the requested kind while preserving authored order.
+    /// </summary>
+    /// <param name="battleMapInstanceIDs">The map identifiers to resolve.</param>
+    /// <param name="kind">The required battle kind.</param>
+    /// <returns>The matching maps.</returns>
+    private List<BattleMap> ResolveBattleMaps(
+        IEnumerable<string> battleMapInstanceIDs,
+        BattleKind kind
+    )
+    {
+        List<BattleMap> battleMaps = new List<BattleMap>();
+        foreach (string battleMapInstanceID in battleMapInstanceIDs ?? Array.Empty<string>())
+        {
+            if (
+                _battleMapsByInstanceID.TryGetValue(battleMapInstanceID, out BattleMap battleMap)
+                && battleMap.Kind == kind
+            )
+                battleMaps.Add(battleMap);
+        }
+
+        return battleMaps;
     }
 
     /// <summary>
