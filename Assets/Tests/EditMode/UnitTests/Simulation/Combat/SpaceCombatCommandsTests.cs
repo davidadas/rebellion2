@@ -2937,6 +2937,60 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void ResolvePendingRetreat_StrandedFleetCarriesNonHyperdriveFighter_DestroysFighter()
+        {
+            GameRoot game = CreateGame();
+            game.SetFactionController("empire", "player1", PlayerControllerType.Human);
+            (Planet combatPlanet, _) = CreatePlanet(game, "combat", owner: "empire");
+            CreatePlanet(game, "empireHome", owner: "empire");
+            CreatePlanet(game, "allianceHome", owner: "alliance");
+            CreateFleet(game, "retreating-fleet", "empire", combatPlanet, 1, 100, 1);
+            Fleet strandedFleet = CreateFleet(
+                game,
+                "stranded-fleet",
+                "empire",
+                combatPlanet,
+                1,
+                100,
+                1
+            );
+            CapitalShip strandedShip = strandedFleet.GetChildren<CapitalShip>().Single();
+            strandedShip.Hyperdrive = 0;
+            strandedShip.StarfighterCapacity = 1;
+            Starfighter strandedFighter = new Starfighter
+            {
+                InstanceID = "stranded-fighter",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaxSquadronSize = 12,
+                CurrentSquadronSize = 12,
+                Hyperdrive = 0,
+            };
+            game.AttachNode(strandedFighter, strandedShip);
+            CreateFleet(game, "opponent", "alliance", combatPlanet, 1, 1000, 100);
+            SpaceCombatCommands manager = MakeSpaceCombat(game);
+
+            new SpaceCombatTickProcessor(manager).ProcessTick(game);
+            List<GameResult> results = manager.ResolvePendingRetreat("empire");
+            PublishMovementReactions(game, results);
+            SpaceCombatResult combatResult = results.OfType<SpaceCombatResult>().Single();
+
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>(strandedFleet.InstanceID));
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Starfighter>(strandedFighter.InstanceID));
+            Assert.IsTrue(
+                combatResult.FighterLosses.Any(loss =>
+                    loss.Fighter == strandedFighter && loss.SquadsAfter == 0
+                )
+            );
+            Assert.IsTrue(
+                combatResult
+                    .AttackingUnits.Concat(combatResult.DefendingUnits)
+                    .Single(snapshot => snapshot.Unit.GetInstanceID() == strandedFighter.InstanceID)
+                    .Destroyed
+            );
+        }
+
+        [Test]
         public void ResolvePendingRetreat_MultipleColocatedFleets_RetreatsEveryFleetAndReportsEveryShip()
         {
             GameRoot game = CreateGame();

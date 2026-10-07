@@ -255,7 +255,7 @@ namespace Rebellion.Simulation
         /// <param name="retreatingFighters">Directly deployed fighters on the withdrawing side.</param>
         /// <param name="retreatableFighters">Directly deployed fighters that began evacuation.</param>
         /// <param name="attackerRetreated">Whether the withdrawing side initiated the encounter.</param>
-        private static void RecordStrandedWithdrawalLosses(
+        private void RecordStrandedWithdrawalLosses(
             SpaceCombatResult result,
             IReadOnlyList<Fleet> retreatingFleets,
             IReadOnlyList<Fleet> retreatableFleets,
@@ -285,6 +285,14 @@ namespace Rebellion.Simulation
                 .Where(fighter => fighter != null && !retreatableFighterSet.Contains(fighter))
                 .Distinct()
                 .ToList();
+            strandedFighters.AddRange(
+                GetUnrecoverableCarriedFighters(
+                    retreatingFleets,
+                    retreatableFleetSet,
+                    strandedShips
+                )
+            );
+            strandedFighters = strandedFighters.Distinct().ToList();
 
             result.ShipDamage.AddRange(
                 strandedShips.Select(ship => new ShipDamageResult
@@ -307,6 +315,92 @@ namespace Rebellion.Simulation
                 Enumerable.Empty<ISceneNode>(),
                 strandedShips.Cast<ISceneNode>().Concat(strandedFighters)
             );
+        }
+
+        /// <summary>
+        /// Returns fighters aboard stranded ships that cannot leave independently or recover
+        /// aboard a surviving carrier in the same fleet.
+        /// </summary>
+        /// <param name="retreatingFleets">Every fleet on the withdrawing side.</param>
+        /// <param name="retreatableFleets">The fleets that successfully began evacuation.</param>
+        /// <param name="strandedShips">The capital ships unable to withdraw.</param>
+        /// <returns>The carried fighters that are lost with their stranded ships.</returns>
+        private List<Starfighter> GetUnrecoverableCarriedFighters(
+            IReadOnlyList<Fleet> retreatingFleets,
+            ISet<Fleet> retreatableFleets,
+            IReadOnlyCollection<CapitalShip> strandedShips
+        )
+        {
+            HashSet<CapitalShip> strandedShipSet = (strandedShips ?? Array.Empty<CapitalShip>())
+                .Where(ship => ship != null)
+                .ToHashSet();
+            List<Starfighter> losses = new List<Starfighter>();
+
+            foreach (Fleet fleet in retreatingFleets ?? Array.Empty<Fleet>())
+            {
+                if (fleet == null)
+                    continue;
+
+                List<Starfighter> displacedFighters = SpaceCombatQueries
+                    .GetActiveCapitalShips(fleet)
+                    .Where(strandedShipSet.Contains)
+                    .SelectMany(ship => ship.GetChildren<Starfighter>())
+                    .Where(SpaceCombatQueries.IsActiveStarfighter)
+                    .OrderBy(fighter => fighter.Hyperdrive > 0 ? 1 : 0)
+                    .ToList();
+                if (displacedFighters.Count == 0)
+                    continue;
+
+                List<CapitalShip> recoveryCarriers = (
+                    retreatableFleets?.Contains(fleet) == true
+                        ? SpaceCombatQueries.GetActiveCapitalShips(fleet)
+                        : Enumerable.Empty<CapitalShip>()
+                )
+                    .Where(ship =>
+                        !strandedShipSet.Contains(ship)
+                        && ship.Hyperdrive > 0
+                        && ship.StarfighterCapacity > 0
+                    )
+                    .ToList();
+                Dictionary<CapitalShip, int> remainingCapacity = recoveryCarriers.ToDictionary(
+                    carrier => carrier,
+                    carrier => GetAvailableWithdrawalRecoveryCapacity(carrier)
+                );
+
+                foreach (Starfighter fighter in displacedFighters)
+                {
+                    if (_queries.CanRetreatFighter(fighter))
+                        continue;
+
+                    CapitalShip recoveryCarrier = recoveryCarriers.FirstOrDefault(carrier =>
+                        remainingCapacity[carrier] > 0
+                    );
+                    if (recoveryCarrier == null)
+                    {
+                        losses.Add(fighter);
+                        continue;
+                    }
+
+                    remainingCapacity[recoveryCarrier]--;
+                }
+            }
+
+            return losses;
+        }
+
+        /// <summary>
+        /// Calculates the bays available to recover stranded fighters during withdrawal.
+        /// Hyperdrive-capable occupants may evacuate independently and release their bays.
+        /// </summary>
+        /// <param name="carrier">The surviving carrier.</param>
+        /// <returns>The number of bays available for recovery.</returns>
+        private int GetAvailableWithdrawalRecoveryCapacity(CapitalShip carrier)
+        {
+            int releasableCapacity = carrier
+                .GetChildren<Starfighter>()
+                .Where(SpaceCombatQueries.IsActiveStarfighter)
+                .Count(_queries.CanRetreatFighter);
+            return Math.Max(carrier.GetExcessStarfighterCapacity() + releasableCapacity, 0);
         }
 
         /// <summary>

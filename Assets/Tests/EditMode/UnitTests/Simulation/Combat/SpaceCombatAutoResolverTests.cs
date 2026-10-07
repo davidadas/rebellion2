@@ -1417,6 +1417,63 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void Resolve_CarrierInOtherFleetHasRecoveryCapacity_DestroysNonHyperdriveFighter()
+        {
+            CapitalShip attacker = CreateShip("attacker", hull: 1000, weaponStrength: 10);
+            CapitalShip destroyedCarrier = CreateShip(
+                "destroyed-carrier",
+                hull: 1,
+                weaponStrength: 1
+            );
+            destroyedCarrier.StarfighterCapacity = 1;
+            destroyedCarrier.SublightSpeed = 10;
+            CapitalShip otherFleetCarrier = CreateShip(
+                "other-fleet-carrier",
+                hull: 1000,
+                weaponStrength: 1
+            );
+            otherFleetCarrier.StarfighterCapacity = 1;
+            otherFleetCarrier.SublightSpeed = 10;
+            Starfighter fighter = CreateFighter("fighter", squadronSize: 12, weaponStrength: 0);
+            fighter.Hyperdrive = 0;
+            fighter.ShieldStrength = 100;
+            fighter.SublightSpeed = 10;
+            Fleet strandedFleet = new Fleet();
+            Fleet recoveryFleet = new Fleet();
+            strandedFleet.AddChild(destroyedCarrier);
+            destroyedCarrier.SetParent(strandedFleet);
+            destroyedCarrier.AddChild(fighter);
+            fighter.SetParent(destroyedCarrier);
+            recoveryFleet.AddChild(otherFleetCarrier);
+            otherFleetCarrier.SetParent(recoveryFleet);
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveRetreatStrengthRatio = 1.01;
+            config.AutoResolveStartingDistance = 0;
+            config.AutoResolveWithdrawalDistance = 20;
+            config.AutoResolveTargetScanDivisor = 1;
+            IReadOnlyList<IReadOnlyCollection<ISceneNode>> defenderWithdrawalGroups =
+                new IReadOnlyCollection<ISceneNode>[]
+                {
+                    new ISceneNode[] { destroyedCarrier, otherFleetCarrier, fighter },
+                };
+
+            SpaceCombatResult result = CreateResolver(config, new ArcDamageRNG())
+                .Resolve(
+                    new[] { attacker },
+                    new List<Starfighter>(),
+                    new[] { destroyedCarrier, otherFleetCarrier },
+                    new[] { fighter },
+                    Array.Empty<IReadOnlyCollection<ISceneNode>>(),
+                    defenderWithdrawalGroups
+                );
+
+            Assert.AreEqual(0, GetShipOutcome(result, destroyedCarrier).HullAfter);
+            Assert.IsTrue(GetShipOutcome(result, otherFleetCarrier).Withdrew);
+            Assert.IsFalse(GetFighterOutcome(result, fighter).Withdrew);
+            Assert.AreEqual(0, GetFighterOutcome(result, fighter).SquadronSizeAfter);
+        }
+
+        [Test]
         public void Resolve_CarrierDestroyedWithoutRecoveryCapacity_DestroysNonHyperdriveFighter()
         {
             CapitalShip attacker = CreateShip("attacker", hull: 1000, weaponStrength: 10);
