@@ -900,19 +900,37 @@ namespace Rebellion.Simulation
             int defenderCombat = commander?.GetEffectiveRating(SkillRating.Combat) ?? 0;
             int score = participant.GetEffectiveRating(SkillRating.Combat) - defenderCombat;
             bool evaded = _provider.NextDouble() * 100 < _queries.GetEvasionProbability(score);
-            if (evaded)
-                return true;
-
             if (participant is SpecialForces specialForces)
             {
-                DestroySpecialForces(specialForces, planet, results);
-                return false;
+                if (!evaded)
+                    DestroySpecialForces(specialForces, planet, results);
+                return evaded;
             }
 
             if (participant is not Officer officer || officer.IsCaptured || officer.IsKilled)
                 return false;
 
-            CaptureOfficer(officer, detector.GetOwnerInstanceID(), planet, results, detector);
+            ISceneNode opposingUnit = commander ?? detector;
+            bool killed = Mission.ApplyEvasionInjury(
+                officer,
+                opposingUnit,
+                planet,
+                _game,
+                _provider,
+                results
+            );
+            if (killed)
+                return false;
+            if (evaded)
+                return true;
+
+            CaptureOfficer(
+                officer,
+                opposingUnit.GetOwnerInstanceID(),
+                planet,
+                results,
+                opposingUnit
+            );
             return false;
         }
 
@@ -954,6 +972,7 @@ namespace Rebellion.Simulation
                 {
                     DestroyedObject = specialForces,
                     Context = planet,
+                    Reason = UnitDestructionReason.Detection,
                     Tick = _game.CurrentTick,
                 }
             );

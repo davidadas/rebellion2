@@ -888,7 +888,7 @@ namespace Rebellion.Tests.Simulation
             SetFoilTable(game, new Dictionary<int, int> { { 0, 10 } });
             game.AttachNode(mission, planet);
             game.MoveNode(spy, mission);
-            mission.Initiate(1);
+            mission.Initiate(2);
 
             MissionCommands system = TestSystems.CreateMissionCommands(
                 game,
@@ -1770,6 +1770,28 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("rebels", spy.CaptorInstanceID);
             Assert.AreSame(
                 capturingUnit,
+                results.OfType<OfficerCaptureStateResult>().Single().CapturingUnit
+            );
+        }
+
+        [Test]
+        public void ProcessTick_CapturedByDetectorWithCommander_RecordsCommander()
+        {
+            (
+                GameRoot game,
+                Planet planet,
+                Officer spy,
+                Starfighter detector,
+                MovementCommands movement
+            ) = BuildOrbitalDetectionScene(planetOwnerId: "empire");
+            Officer commander = EntityFactory.CreateOfficer("fleet-commander", "rebels");
+            commander.CurrentRank = OfficerRank.Commander;
+            game.AttachNode(commander, detector.GetParentOfType<CapitalShip>());
+
+            List<GameResult> results = RunOrbitalCaptureMission(game, planet, spy, movement);
+
+            Assert.AreSame(
+                commander,
                 results.OfType<OfficerCaptureStateResult>().Single().CapturingUnit
             );
         }
@@ -2739,7 +2761,10 @@ namespace Rebellion.Tests.Simulation
 
             Assert.IsNull(sf.GetParent(), "SpecialForces should be detached when detected");
             Assert.IsTrue(
-                results.Any(r => r is GameObjectDestroyedResult),
+                results.Any(r =>
+                    r is GameObjectDestroyedResult destroyed
+                    && destroyed.Reason == UnitDestructionReason.Detection
+                ),
                 "Should produce GameObjectDestroyedResult for destroyed SpecialForces"
             );
         }
@@ -2783,7 +2808,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ProcessTick_OfficerEvadesDetector_EscapesWithoutInjury()
+        public void ProcessTick_OfficerEvadesDetector_EscapesAfterInjuryCheck()
         {
             (GameRoot game, Planet planet, Officer spy, Officer _, MovementCommands movement) =
                 BuildDetectionScene();
@@ -2809,12 +2834,12 @@ namespace Rebellion.Tests.Simulation
             List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.IsFalse(spy.IsCaptured);
-            Assert.AreEqual(0, spy.InjuryPoints);
-            Assert.IsEmpty(results.OfType<OfficerInjuredResult>());
+            Assert.Greater(spy.InjuryPoints, 0);
+            Assert.IsNotEmpty(results.OfType<OfficerInjuredResult>());
         }
 
         [Test]
-        public void ProcessTick_MinorOfficerEvadesDetector_DoesNotRollPostInjuryDeath()
+        public void ProcessTick_MinorOfficerEvadesDetector_DiesAfterInjuryCheck()
         {
             (GameRoot game, Planet planet, Officer spy, Officer _, MovementCommands movement) =
                 BuildDetectionScene();
@@ -2840,15 +2865,15 @@ namespace Rebellion.Tests.Simulation
 
             List<GameResult> results = system.ProcessMissionTick(game);
 
-            Assert.IsFalse(spy.IsKilled);
+            Assert.IsTrue(spy.IsKilled);
             Assert.IsFalse(spy.IsCaptured);
-            Assert.AreEqual(0, spy.InjuryPoints);
-            Assert.IsEmpty(results.OfType<OfficerInjuredResult>());
-            Assert.IsEmpty(results.OfType<OfficerKilledResult>());
+            Assert.Greater(spy.InjuryPoints, 0);
+            Assert.IsNotEmpty(results.OfType<OfficerInjuredResult>());
+            Assert.IsNotEmpty(results.OfType<OfficerKilledResult>());
         }
 
         [Test]
-        public void ProcessTick_OfficerFailsToEvadeDetector_CapturesWithoutInjury()
+        public void ProcessTick_OfficerFailsToEvadeDetector_CapturesAfterInjuryCheck()
         {
             (GameRoot game, Planet planet, Officer spy, Officer _, MovementCommands movement) =
                 BuildDetectionScene();
@@ -2875,8 +2900,8 @@ namespace Rebellion.Tests.Simulation
             List<GameResult> results = system.ProcessMissionTick(game);
 
             Assert.IsTrue(spy.IsCaptured);
-            Assert.AreEqual(0, spy.InjuryPoints);
-            Assert.IsEmpty(results.OfType<OfficerInjuredResult>());
+            Assert.Greater(spy.InjuryPoints, 0);
+            Assert.IsNotEmpty(results.OfType<OfficerInjuredResult>());
         }
 
         [Test]
@@ -2891,7 +2916,7 @@ namespace Rebellion.Tests.Simulation
             game.Config.DuelResolution.InjuryBase = 1;
             game.Config.DuelResolution.InjurySecondaryRollMaximum = 0;
             game.Config.Recovery.MaxInjuryPoints = 100;
-            game.Config.Assassination.KillProbability = 100;
+            game.Config.Assassination.KillProbability = 0;
             game.AttachNode(
                 new Regiment
                 {
@@ -2922,8 +2947,8 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(decoy.IsCaptured);
             Assert.IsFalse(decoy.IsKilled);
             Assert.AreSame(planet, decoy.GetParent());
-            Assert.AreEqual(0, decoy.InjuryPoints);
-            Assert.IsEmpty(results.OfType<OfficerInjuredResult>());
+            Assert.Greater(decoy.InjuryPoints, 0);
+            Assert.IsNotEmpty(results.OfType<OfficerInjuredResult>());
             Assert.AreEqual(
                 1,
                 results

@@ -1450,7 +1450,8 @@ namespace Rebellion.Simulation
         {
             if (participants == null || participants.Count == 0 || planet == null)
                 return new PersonnelMovementEncounterOdds(
-                    Array.Empty<PersonnelMovementDetectorOdds>()
+                    Array.Empty<PersonnelMovementDetectorOdds>(),
+                    Array.Empty<PersonnelMovementForceEncounterOdds>()
                 );
 
             string ownerInstanceId = participants[0]?.GetOwnerInstanceID();
@@ -1465,7 +1466,18 @@ namespace Rebellion.Simulation
                     nameof(participants)
                 );
 
-            List<ISceneNode> detectors = GetPersonnelDetectors(ownerInstanceId, planet);
+            if (HasPersonnelDetectionBlocker(ownerInstanceId, planet))
+                return new PersonnelMovementEncounterOdds(
+                    Array.Empty<PersonnelMovementDetectorOdds>(),
+                    Array.Empty<PersonnelMovementForceEncounterOdds>()
+                );
+
+            List<Fleet> hostileFleets = GetHostileStationaryFleets(ownerInstanceId, planet);
+            List<ISceneNode> detectors = GetPersonnelDetectors(
+                ownerInstanceId,
+                planet,
+                hostileFleets
+            );
             List<PersonnelMovementDetectorOdds> odds = detectors.ConvertAll(detector =>
             {
                 Officer commander = FindDetectorCommander(detector, planet);
@@ -1479,25 +1491,24 @@ namespace Rebellion.Simulation
                     )
                 );
             });
-            return new PersonnelMovementEncounterOdds(odds);
+            return new PersonnelMovementEncounterOdds(
+                odds,
+                GetPersonnelForceEncounterOdds(participants, hostileFleets)
+            );
         }
 
         /// <summary>Returns hostile units eligible to detect personnel in one system.</summary>
         /// <param name="ownerInstanceId">The traveling personnel's faction identifier.</param>
         /// <param name="planet">The planetary system being crossed.</param>
+        /// <param name="hostileFleets">The stationary hostile fleets at the planet.</param>
         /// <returns>The eligible detectors in scene traversal order.</returns>
-        private static List<ISceneNode> GetPersonnelDetectors(string ownerInstanceId, Planet planet)
+        private static List<ISceneNode> GetPersonnelDetectors(
+            string ownerInstanceId,
+            Planet planet,
+            IReadOnlyList<Fleet> hostileFleets
+        )
         {
             List<ISceneNode> detectors = new List<ISceneNode>();
-            if (HasPersonnelDetectionBlocker(ownerInstanceId, planet))
-                return detectors;
-
-            List<Fleet> hostileFleets = planet
-                .GetChildren<Fleet>()
-                .Where(fleet =>
-                    fleet.GetOwnerInstanceID() != ownerInstanceId && fleet.Movement == null
-                )
-                .ToList();
             if (hostileFleets.Count == 0)
                 return detectors;
 
@@ -1529,6 +1540,73 @@ namespace Rebellion.Simulation
             }
 
             return detectors;
+        }
+
+        /// <summary>Returns stationary hostile fleets in scene traversal order.</summary>
+        /// <param name="ownerInstanceId">The traveling personnel's faction identifier.</param>
+        /// <param name="planet">The planetary system being crossed.</param>
+        /// <returns>The stationary hostile fleets.</returns>
+        private static List<Fleet> GetHostileStationaryFleets(string ownerInstanceId, Planet planet)
+        {
+            return planet
+                .GetChildren<Fleet>()
+                .Where(fleet =>
+                    fleet.GetOwnerInstanceID() != ownerInstanceId && fleet.Movement == null
+                )
+                .ToList();
+        }
+
+        /// <summary>Builds eligible Force-user encounter probabilities for one movement group.</summary>
+        /// <param name="participants">The personnel crossing the system.</param>
+        /// <param name="hostileFleets">The stationary hostile fleets at the system.</param>
+        /// <returns>The eligible Force-user encounters in traversal order.</returns>
+        private List<PersonnelMovementForceEncounterOdds> GetPersonnelForceEncounterOdds(
+            IReadOnlyList<IMissionParticipant> participants,
+            IReadOnlyList<Fleet> hostileFleets
+        )
+        {
+            GameConfig.JediConfig config = _game.Config.Jedi;
+            string ownerInstanceId = participants[0].GetOwnerInstanceID();
+            List<Officer> travelers = participants
+                .OfType<Officer>()
+                .Where(officer => officer.ForceRank >= config.MissionParticipantEncounterMinimum)
+                .ToList();
+            if (travelers.Count == 0)
+                return new List<PersonnelMovementForceEncounterOdds>();
+
+            List<Officer> defenders = hostileFleets
+                .SelectMany(fleet => fleet.GetChildren<CapitalShip>())
+                .Where(ship =>
+                    ship.ManufacturingStatus == ManufacturingStatus.Complete
+                    && ship.Movement == null
+                )
+                .SelectMany(ship => ship.GetChildren<Officer>())
+                .Where(officer =>
+                    officer.GetOwnerInstanceID() != ownerInstanceId
+                    && officer.Movement == null
+                    && officer.GetParent() is not Mission
+                    && !officer.IsCaptured
+                    && !officer.IsKilled
+                    && officer.InjuryPoints == 0
+                    && officer.ForceRank >= config.MissionDefenderEncounterMinimum
+                )
+                .ToList();
+
+            return travelers
+                .SelectMany(traveler =>
+                    defenders.Select(defender => new PersonnelMovementForceEncounterOdds(
+                        traveler,
+                        defender,
+                        Math.Clamp(
+                            traveler.ForceRank
+                                + defender.ForceRank
+                                + config.EncounterProbabilityOffset,
+                            0,
+                            100
+                        )
+                    ))
+                )
+                .ToList();
         }
 
         /// <summary>Returns whether a completed friendly building suppresses the encounter.</summary>

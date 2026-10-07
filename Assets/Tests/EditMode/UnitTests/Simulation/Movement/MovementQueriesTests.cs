@@ -349,6 +349,37 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void GetPersonnelEncounterOdds_HostileFleetForceUser_ReturnsForceProjection()
+        {
+            GameConfig config = TestConfig.Create();
+            config.Jedi.MissionParticipantEncounterMinimum = 1;
+            config.Jedi.MissionDefenderEncounterMinimum = 1;
+            config.Jedi.EncounterProbabilityOffset = -10;
+            (
+                GameRoot game,
+                Planet _,
+                Planet destination,
+                Officer officer,
+                MovementQueries movement
+            ) = BuildScene(config);
+            officer.ForceValue = 20;
+            (_, CapitalShip ship) = AddBlockadingFleet(game, destination);
+            Officer defender = EntityFactory.CreateOfficer("force-defender", "rebels");
+            defender.ForceValue = 40;
+            game.AttachNode(defender, ship);
+
+            PersonnelMovementEncounterOdds odds = movement.GetPersonnelEncounterOdds(
+                new IMissionParticipant[] { officer },
+                destination
+            );
+
+            PersonnelMovementForceEncounterOdds forceOdds = odds.ForceEncounters.Single();
+            Assert.AreSame(officer, forceOdds.Participant);
+            Assert.AreSame(defender, forceOdds.Defender);
+            Assert.AreEqual(50, forceOdds.DetectionProbability);
+        }
+
+        [Test]
         public void GetPersonnelEncounterOdds_CompletedDetectionBlocker_ReturnsNoDetectors()
         {
             (
@@ -372,6 +403,10 @@ namespace Rebellion.Tests.Simulation
                 IsDetectionBlocker = true,
             };
             game.AttachNode(blocker, destination);
+            officer.ForceValue = 100;
+            Officer defender = EntityFactory.CreateOfficer("force-defender", "rebels");
+            defender.ForceValue = 100;
+            game.AttachNode(defender, ship);
 
             PersonnelMovementEncounterOdds odds = movement.GetPersonnelEncounterOdds(
                 new IMissionParticipant[] { officer },
@@ -379,6 +414,7 @@ namespace Rebellion.Tests.Simulation
             );
 
             Assert.IsEmpty(odds.Detectors);
+            Assert.IsEmpty(odds.ForceEncounters);
         }
 
         [Test]
