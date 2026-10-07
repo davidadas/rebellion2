@@ -41,8 +41,8 @@ public static class MainMenuPrefabBuilder
     private const string _factionSelectSfxPath = "Application/MainMenu/Audio/faction-select";
     private const string _exitSelectSfxPath = _factionSelectSfxPath;
 
-    // Icon turntable speed: two-thirds of a revolution per second.
-    private const float _iconTurnDegreesPerSecond = 240f;
+    // Icon turntable speed: one quarter of a revolution per second.
+    private const float _iconTurnDegreesPerSecond = 90f;
 
     // Spinning-planet backdrop.
     private const string _starfieldAddress = "Application/MainMenu/UI/starfield";
