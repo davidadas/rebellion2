@@ -460,6 +460,22 @@ public sealed class FleetWindowView : MonoBehaviour, IPointerClickHandler, IDrop
     }
 
     /// <summary>
+    /// Reports whether a pointer event falls within the displayed fleet-detail panel.
+    /// </summary>
+    /// <param name="eventData">The pointer event to inspect.</param>
+    /// <returns>True when the pointer is within the fleet-detail panel.</returns>
+    internal bool IsFleetDetailClick(PointerEventData eventData)
+    {
+        return eventData != null
+            && detailBackgroundImage != null
+            && RectTransformUtility.RectangleContainsScreenPoint(
+                detailBackgroundImage.rectTransform,
+                eventData.position,
+                eventData.pressEventCamera ?? eventData.enterEventCamera
+            );
+    }
+
+    /// <summary>
     /// Reports whether a row press began within the fleet row.
     /// </summary>
     /// <param name="index">The fleet-row index.</param>

@@ -225,6 +225,177 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         [Test]
+        public void TrySelectTarget_FleetRowPointer_SelectsExactFleet()
+        {
+            FleetWindowView view = OpenWindow(out UIWindow window);
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            _controller.RenderWindow(view, window, true);
+            FleetListRowView row = view.GetComponentsInChildren<FleetListRowView>(true)
+                .Single(item => item.Index == 0 && item.gameObject.activeInHierarchy);
+            RecordingTargetingReceiver receiver = new RecordingTargetingReceiver();
+            _targetingController.Begin(new TargetingRequest("Target", null, receiver));
+            PointerEventData eventData = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Left,
+                pointerCurrentRaycast = new RaycastResult
+                {
+                    gameObject = row.NameTextField.gameObject,
+                },
+            };
+
+            bool selected = _controller.TrySelectTarget(view, eventData);
+
+            Assert.IsTrue(selected);
+            Assert.IsFalse(_targetingController.IsTargeting);
+            Assert.IsInstanceOf<StrategyMissionTarget>(receiver.Target);
+            StrategyMissionTarget target = (StrategyMissionTarget)receiver.Target;
+            Assert.AreSame(_planet, target.Planet);
+            Assert.AreSame(_fleet, target.Item);
+        }
+
+        [Test]
+        public void TrySelectTarget_CreateMissionCapitalShipPointer_SelectsExactShip()
+        {
+            FleetWindowView view = OpenWindow(out UIWindow window);
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            _controller.RenderWindow(view, window, true);
+            CapitalShip ship = _fleet.GetChildren<CapitalShip>().Single();
+            StrategyUnitCardView card = view.GetComponentsInChildren<StrategyUnitCardView>(true)
+                .Single(item => item.gameObject.activeInHierarchy);
+            RecordingTargetingReceiver receiver = new RecordingTargetingReceiver();
+            _targetingController.Begin(
+                CreateTargetingRequest(window, StrategyMenuAction.CreateMission, receiver)
+            );
+            PointerEventData eventData = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Left,
+                pointerCurrentRaycast = new RaycastResult
+                {
+                    gameObject = card.NameTextField.gameObject,
+                },
+            };
+
+            bool selected = _controller.TrySelectTarget(view, eventData);
+
+            Assert.IsTrue(selected);
+            Assert.IsFalse(_targetingController.IsTargeting);
+            Assert.IsInstanceOf<StrategyMissionTarget>(receiver.Target);
+            StrategyMissionTarget target = (StrategyMissionTarget)receiver.Target;
+            Assert.AreSame(_planet, target.Planet);
+            Assert.AreSame(ship, target.Item);
+        }
+
+        [Test]
+        public void TrySelectTarget_CreateMissionStarfighterPointer_SelectsExactStarfighter()
+        {
+            CapitalShip ship = _fleet.GetChildren<CapitalShip>().Single();
+            ship.StarfighterCapacity = 1;
+            Starfighter starfighter = new Starfighter
+            {
+                InstanceID = "starfighter",
+                DisplayName = "Starfighter",
+                OwnerInstanceID = _playerFactionId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(starfighter, ship);
+            FleetWindowView view = OpenWindow(out UIWindow window);
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            _controller.SelectTarget(view, starfighter);
+            _controller.RenderWindow(view, window, true);
+            StrategyUnitCardView card = view.GetComponentsInChildren<StrategyUnitCardView>(true)
+                .Single(item => item.gameObject.activeInHierarchy);
+            RecordingTargetingReceiver receiver = new RecordingTargetingReceiver();
+            _targetingController.Begin(
+                CreateTargetingRequest(window, StrategyMenuAction.CreateMission, receiver)
+            );
+            PointerEventData eventData = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Left,
+                pointerCurrentRaycast = new RaycastResult
+                {
+                    gameObject = card.NameTextField.gameObject,
+                },
+            };
+
+            bool selected = _controller.TrySelectTarget(view, eventData);
+
+            Assert.IsTrue(selected);
+            Assert.IsFalse(_targetingController.IsTargeting);
+            Assert.IsInstanceOf<StrategyMissionTarget>(receiver.Target);
+            StrategyMissionTarget target = (StrategyMissionTarget)receiver.Target;
+            Assert.AreSame(_planet, target.Planet);
+            Assert.AreSame(starfighter, target.Item);
+        }
+
+        [Test]
+        public void TrySelectTarget_DestinationDetailPanelPointer_SelectsDisplayedFleet()
+        {
+            GameFleet secondFleet = CreateFleet("second-fleet", "Second Fleet", out _);
+            _planet.Planet.AddChild(secondFleet);
+            AttachFleetGraph(_planet.Planet, secondFleet);
+            FleetWindowView view = OpenWindow(out UIWindow window);
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            _controller.SelectTarget(view, secondFleet);
+            _controller.RenderWindow(view, window, true);
+            RectTransform detailPanel =
+                view.transform.Find("DetailBackgroundImage") as RectTransform;
+            Vector2 screenPosition = RectTransformUtility.WorldToScreenPoint(
+                null,
+                detailPanel.TransformPoint(detailPanel.rect.center)
+            );
+            RecordingTargetingReceiver receiver = new RecordingTargetingReceiver();
+            _targetingController.Begin(
+                CreateTargetingRequest(window, StrategyMenuAction.Destination, receiver)
+            );
+            PointerEventData eventData = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Left,
+                position = screenPosition,
+            };
+
+            bool selected = _controller.TrySelectTarget(view, eventData);
+
+            Assert.IsTrue(selected);
+            Assert.IsFalse(_targetingController.IsTargeting);
+            Assert.IsInstanceOf<StrategyMissionTarget>(receiver.Target);
+            StrategyMissionTarget target = (StrategyMissionTarget)receiver.Target;
+            Assert.AreSame(_planet, target.Planet);
+            Assert.AreSame(secondFleet, target.Item);
+        }
+
+        [Test]
+        public void TrySelectTarget_CreateMissionDetailPanelPointer_SelectsPlanet()
+        {
+            FleetWindowView view = OpenWindow(out UIWindow window);
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            _controller.RenderWindow(view, window, true);
+            RectTransform detailPanel =
+                view.transform.Find("DetailBackgroundImage") as RectTransform;
+            Vector2 screenPosition = RectTransformUtility.WorldToScreenPoint(
+                null,
+                detailPanel.TransformPoint(detailPanel.rect.center)
+            );
+            RecordingTargetingReceiver receiver = new RecordingTargetingReceiver();
+            _targetingController.Begin(
+                CreateTargetingRequest(window, StrategyMenuAction.CreateMission, receiver)
+            );
+            PointerEventData eventData = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Left,
+                position = screenPosition,
+            };
+
+            bool selected = _controller.TrySelectTarget(view, eventData);
+
+            Assert.IsTrue(selected);
+            Assert.IsFalse(_targetingController.IsTargeting);
+            Assert.IsInstanceOf<StrategyMissionTarget>(receiver.Target);
+            StrategyMissionTarget target = (StrategyMissionTarget)receiver.Target;
+            Assert.AreSame(_planet, target.Planet);
+            Assert.AreSame(_planet.Planet, target.Item);
+        }
+
+        [Test]
         public void WindowDrop_WithoutSelectedFleet_SelectsRepresentedPlanet()
         {
             _planet.Planet.RemoveChildren<Rebellion.Game.Units.Fleet>(_ => true);
@@ -828,6 +999,26 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                     gameObject = row.transform.GetChild(0).gameObject,
                 },
             };
+        }
+
+        /// <summary>
+        /// Creates a strategy-window targeting request for one action.
+        /// </summary>
+        /// <param name="window">The source window.</param>
+        /// <param name="action">The targeting action.</param>
+        /// <param name="receiver">The targeting result receiver.</param>
+        /// <returns>The created targeting request.</returns>
+        private static TargetingRequest CreateTargetingRequest(
+            UIWindow window,
+            StrategyMenuAction action,
+            ITargetingReceiver receiver
+        )
+        {
+            return new TargetingRequest(
+                StrategyWindowTargetingSource.GetPrompt(action),
+                new StrategyWindowTargetingSource(window, action, 0, 0, Array.Empty<ISceneNode>()),
+                receiver
+            );
         }
 
         private sealed class RecordingTargetingReceiver : ITargetingReceiver

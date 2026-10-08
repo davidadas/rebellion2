@@ -13,7 +13,7 @@ public sealed class StrategyScreenInputController : ICancelable
     private readonly TargetingController targetingController;
     private readonly StrategyContextMenuRouter strategyContextMenuRouter;
     private readonly UIWindowManager windowManager;
-    private readonly Func<UIWindow, bool> trySelectWindowPlanetTarget;
+    private readonly Func<UIWindow, PointerEventData, bool> trySelectWindowTarget;
     private readonly Func<UIWindow, bool> tryOpenStatusWindow;
     private readonly StrategyDragController strategyDragController;
     private readonly StrategyPointerPositionResolver tryGetSourcePosition;
@@ -32,7 +32,7 @@ public sealed class StrategyScreenInputController : ICancelable
     /// <param name="targetingController">The active targeting owner.</param>
     /// <param name="strategyContextMenuRouter">Routes strategy context commands.</param>
     /// <param name="windowManager">Owns window lookup, focus, and modal policy.</param>
-    /// <param name="trySelectWindowPlanetTarget">Attempts to complete targeting with a window's planet.</param>
+    /// <param name="trySelectWindowTarget">Attempts to complete targeting with the exact target under a window pointer.</param>
     /// <param name="tryOpenStatusWindow">Attempts to open status for a window selection.</param>
     /// <param name="strategyDragController">Owns strategy drag gestures.</param>
     /// <param name="tryGetSourcePosition">Resolves source-space pointer coordinates.</param>
@@ -43,7 +43,7 @@ public sealed class StrategyScreenInputController : ICancelable
         TargetingController targetingController,
         StrategyContextMenuRouter strategyContextMenuRouter,
         UIWindowManager windowManager,
-        Func<UIWindow, bool> trySelectWindowPlanetTarget,
+        Func<UIWindow, PointerEventData, bool> trySelectWindowTarget,
         Func<UIWindow, bool> tryOpenStatusWindow,
         StrategyDragController strategyDragController,
         StrategyPointerPositionResolver tryGetSourcePosition,
@@ -60,9 +60,8 @@ public sealed class StrategyScreenInputController : ICancelable
             ?? throw new ArgumentNullException(nameof(strategyContextMenuRouter));
         this.windowManager =
             windowManager ?? throw new ArgumentNullException(nameof(windowManager));
-        this.trySelectWindowPlanetTarget =
-            trySelectWindowPlanetTarget
-            ?? throw new ArgumentNullException(nameof(trySelectWindowPlanetTarget));
+        this.trySelectWindowTarget =
+            trySelectWindowTarget ?? throw new ArgumentNullException(nameof(trySelectWindowTarget));
         this.tryOpenStatusWindow =
             tryOpenStatusWindow ?? throw new ArgumentNullException(nameof(tryOpenStatusWindow));
         this.strategyDragController =
@@ -159,7 +158,7 @@ public sealed class StrategyScreenInputController : ICancelable
             if (eventData.button == PointerEventData.InputButton.Left)
             {
                 UIWindow targetWindow = windowManager.GetWindow(eventData);
-                if (trySelectWindowPlanetTarget(targetWindow))
+                if (trySelectWindowTarget(targetWindow, eventData))
                 {
                     suppressNextClick = true;
                     markDirty();

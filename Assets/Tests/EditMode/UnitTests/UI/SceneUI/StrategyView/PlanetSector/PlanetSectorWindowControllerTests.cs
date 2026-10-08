@@ -570,6 +570,47 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         }
 
         [Test]
+        public void PlanetReleased_FleetIconTargeting_SelectsFirstFleetInWindowOrder()
+        {
+            GameFleet secondFleet = new GameFleet
+            {
+                InstanceID = "second-fleet",
+                DisplayName = "Fleet Two",
+                OwnerInstanceID = _playerFactionId,
+            };
+            _game.AttachNode(secondFleet, _planet.Planet);
+            PlanetSectorWindowView view = OpenWindow(out UIWindow _);
+            _controller.RenderWindow(view, _windowManager.Windows.Single());
+            PlanetSectorPlanetView planetView =
+                view.GetComponentsInChildren<PlanetSectorPlanetView>(true)
+                    .Single(item => item.name == "Planet0");
+            TestTargetingReceiver receiver = new TestTargetingReceiver();
+            _targetingController.Begin(
+                new TargetingRequest(
+                    "Target",
+                    new StrategyWindowTargetingSource(
+                        null,
+                        StrategyMenuAction.Destination,
+                        0,
+                        0,
+                        Array.Empty<ISceneNode>()
+                    ),
+                    receiver
+                )
+            );
+
+            planetView.OnPointerClick(
+                CreateFleetPointerEvent(view, PointerEventData.InputButton.Left)
+            );
+
+            Assert.IsFalse(_targetingController.IsTargeting);
+            Assert.IsInstanceOf<StrategyMissionTarget>(receiver.Target);
+            StrategyMissionTarget target = (StrategyMissionTarget)receiver.Target;
+            Assert.AreSame(_planet, target.Planet);
+            Assert.AreSame(_fleet, target.Item);
+        }
+
+        [Test]
         public void PlanetPressed_MobileHeadquarters_BeginsDragWithHeadquartersSelectionAndPreview()
         {
             Faction player = _game.GetFactionByOwnerInstanceID(_playerFactionId);
@@ -665,7 +706,25 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         }
 
         [Test]
-        public void CreateTargetForHit_CreateMissionOnPlanetOverlayIcon_TargetsPlanet()
+        public void CreateTargetForHit_CreateMissionOnFleetOverlayIcon_TargetsPlanet()
+        {
+            PlanetSectorWindowHit hit = CreateHit(PlanetIcon.Fleet, false);
+            GameFleet fleet = new GameFleet();
+            TargetingRequest request = CreateRequest(StrategyMenuAction.CreateMission);
+
+            StrategyMissionTarget target = PlanetSectorWindowController.CreateTargetForHit(
+                hit,
+                request,
+                fleet
+            );
+
+            Assert.IsNotNull(target);
+            Assert.AreSame(hit.GalaxyMapPlanet, target.Planet);
+            Assert.AreSame(hit.GalaxyMapPlanet.Planet, target.Item);
+        }
+
+        [Test]
+        public void CreateTargetForHit_FacilityOverlayIcon_TargetsPlanet()
         {
             PlanetSectorWindowHit hit = CreateHit(PlanetIcon.Facility, false);
             GameFleet fleet = new GameFleet();
@@ -682,48 +741,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreSame(hit.GalaxyMapPlanet.Planet, target.Item);
         }
 
-        [Test]
-        public void CreateTargetForHit_DestinationOnFleetOverlayIcon_TargetsPlanet()
+        [TestCase(StrategyMenuAction.Destination)]
+        [TestCase(StrategyMenuAction.Move)]
+        [TestCase(StrategyMenuAction.MoveConfirm)]
+        [TestCase(StrategyMenuAction.WaypointMove)]
+        public void CreateTargetForHit_FleetContainerActionOnFleetOverlayIcon_TargetsFleet(
+            StrategyMenuAction action
+        )
         {
             PlanetSectorWindowHit hit = CreateHit(PlanetIcon.Fleet, false);
             GameFleet fleet = new GameFleet();
-            TargetingRequest request = CreateRequest(StrategyMenuAction.Destination);
-
-            StrategyMissionTarget target = PlanetSectorWindowController.CreateTargetForHit(
-                hit,
-                request,
-                fleet
-            );
-
-            Assert.IsNotNull(target);
-            Assert.AreSame(hit.GalaxyMapPlanet, target.Planet);
-            Assert.AreSame(hit.GalaxyMapPlanet.Planet, target.Item);
-        }
-
-        [Test]
-        public void CreateTargetForHit_MoveOnFleetOverlayIcon_TargetsFleet()
-        {
-            PlanetSectorWindowHit hit = CreateHit(PlanetIcon.Fleet, false);
-            GameFleet fleet = new GameFleet();
-            TargetingRequest request = CreateRequest(StrategyMenuAction.Move);
-
-            StrategyMissionTarget target = PlanetSectorWindowController.CreateTargetForHit(
-                hit,
-                request,
-                fleet
-            );
-
-            Assert.IsNotNull(target);
-            Assert.AreSame(hit.GalaxyMapPlanet, target.Planet);
-            Assert.AreSame(fleet, target.Item);
-        }
-
-        [Test]
-        public void CreateTargetForHit_MoveConfirmOnFleetOverlayIcon_TargetsFleet()
-        {
-            PlanetSectorWindowHit hit = CreateHit(PlanetIcon.Fleet, false);
-            GameFleet fleet = new GameFleet();
-            TargetingRequest request = CreateRequest(StrategyMenuAction.MoveConfirm);
+            TargetingRequest request = CreateRequest(action);
 
             StrategyMissionTarget target = PlanetSectorWindowController.CreateTargetForHit(
                 hit,
@@ -1073,12 +1101,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
 
         private sealed class TestTargetingReceiver : ITargetingReceiver
         {
+            public object Target { get; private set; }
+
             /// <summary>
             /// Executes on target selected.
             /// </summary>
             /// <param name="request">The request.</param>
             /// <param name="target">The target.</param>
-            public void OnTargetSelected(TargetingRequest request, object target) { }
+            public void OnTargetSelected(TargetingRequest request, object target)
+            {
+                Target = target;
+            }
 
             /// <summary>
             /// Executes on targeting cancelled.
