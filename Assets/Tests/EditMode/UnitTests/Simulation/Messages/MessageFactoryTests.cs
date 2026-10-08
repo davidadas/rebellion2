@@ -1406,6 +1406,10 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("X-wing Squadron Deployed at Coruscant", messages[2].Title);
             Assert.AreEqual("fighter-voice", messages[2].BackgroundAudioPath);
             Assert.AreEqual("fighter-encyclopedia-image", messages[2].DisplayImagePath);
+            Assert.AreEqual(
+                AdvisorNotificationType.None,
+                DeliveryFor(messages[2]).NotificationType
+            );
             Assert.AreEqual("Mon Calamari Regiment Deployed to Coruscant", messages[3].Title);
             Assert.AreEqual(
                 "The following units have been deployed to Coruscant:\n"
@@ -1414,7 +1418,7 @@ namespace Rebellion.Tests.Simulation
             );
             Assert.AreEqual("regiment-encyclopedia-image", messages[3].DisplayImagePath);
             Assert.AreEqual(
-                AdvisorNotificationType.Manufacturing,
+                AdvisorNotificationType.None,
                 DeliveryFor(messages[3]).NotificationType
             );
         }
@@ -1606,6 +1610,10 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("construction:Coruscant", message.Title);
             Assert.AreEqual("body:Coruscant", message.Body);
             Assert.AreEqual("construction-image", message.DisplayImagePath);
+            Assert.AreEqual(
+                AdvisorNotificationType.Manufacturing,
+                DeliveryFor(message).NotificationType
+            );
         }
 
         [Test]

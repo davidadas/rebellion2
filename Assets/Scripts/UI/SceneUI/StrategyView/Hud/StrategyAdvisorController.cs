@@ -8,7 +8,7 @@ using Rebellion.Game.Units;
 using UnityEngine;
 
 /// <summary>
-/// Owns advisor notification priority, expiry, cooldown, presentation projection, audio, and input routing.
+/// Owns advisor notification scheduling, presentation projection, audio, and input routing.
 /// </summary>
 public sealed class StrategyAdvisorController : IContextMenuReceiver
 {
@@ -20,8 +20,14 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     private readonly Func<int, int> selectRandomIndex;
     private readonly List<AudioPlaybackHandle> activeAudioPlaybacks =
         new List<AudioPlaybackHandle>();
-    private readonly Queue<StrategyAdvisorNotificationTheme> pendingNotifications =
-        new Queue<StrategyAdvisorNotificationTheme>();
+    private readonly Queue<
+        KeyValuePair<AdvisorNotificationType, StrategyAdvisorNotificationTheme>
+    > pendingNotifications =
+        new Queue<KeyValuePair<AdvisorNotificationType, StrategyAdvisorNotificationTheme>>();
+    private readonly HashSet<AdvisorNotificationType> queuedNotificationTypes =
+        new HashSet<AdvisorNotificationType>();
+    private readonly HashSet<AdvisorNotificationType> playbackNotificationTypes =
+        new HashSet<AdvisorNotificationType>();
 
     private IStrategyHudActions actions;
     private StrategyAdvisorTheme theme;
@@ -154,7 +160,25 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
         if (notification == null)
             return;
 
-        pendingNotifications.Enqueue(notification);
+        AdvisorNotificationType notificationType = GetCoalescedNotificationType(delivery);
+        if (
+            notificationType != AdvisorNotificationType.None
+            && (
+                queuedNotificationTypes.Contains(notificationType)
+                || playbackNotificationTypes.Contains(notificationType)
+            )
+        )
+            return;
+
+        if (notificationType != AdvisorNotificationType.None)
+            queuedNotificationTypes.Add(notificationType);
+
+        pendingNotifications.Enqueue(
+            new KeyValuePair<AdvisorNotificationType, StrategyAdvisorNotificationTheme>(
+                notificationType,
+                notification
+            )
+        );
     }
 
     /// <summary>
@@ -183,6 +207,18 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
             Protocol = MergeAnimation(preset?.Protocol, authored.Protocol),
         };
     }
+
+    /// <summary>
+    /// Gets the general notification type that remains unique while its presentation is scheduled.
+    /// </summary>
+    /// <param name="delivery">The delivered message and presentation request.</param>
+    /// <returns>The coalesced type, or <see cref="AdvisorNotificationType.None"/>.</returns>
+    private static AdvisorNotificationType GetCoalescedNotificationType(
+        MessageDeliveredResult delivery
+    ) =>
+        delivery.AdvisorSubjectNotification == AdvisorSubjectNotification.None
+            ? delivery.NotificationType
+            : AdvisorNotificationType.None;
 
     /// <summary>
     /// Merges authored advisor animation settings over a preset.
@@ -225,10 +261,11 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
         if (pendingNotifications.Count == 0)
             return;
 
-        StrategyAdvisorNotificationTheme notification = pendingNotifications.Peek();
+        KeyValuePair<AdvisorNotificationType, StrategyAdvisorNotificationTheme> pending =
+            pendingNotifications.Peek();
         if (
             !TryCreatePlaybackBatch(
-                notification,
+                pending.Value,
                 announcementsEnabled,
                 out IReadOnlyList<StrategyAdvisorAnimationViewData> playbackBatch
             )
@@ -236,6 +273,12 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
             return;
 
         pendingNotifications.Dequeue();
+        if (pending.Key != AdvisorNotificationType.None)
+        {
+            queuedNotificationTypes.Remove(pending.Key);
+            if (playbackBatch.Count > 0)
+                playbackNotificationTypes.Add(pending.Key);
+        }
         GetRequiredView().EnqueuePlaybacks(playbackBatch);
     }
 
@@ -346,6 +389,7 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     /// </summary>
     private void HandlePlaybackCompleted()
     {
+        playbackNotificationTypes.Clear();
         playbackStarted = null;
         Action completed = playbackCompleted;
         playbackCompleted = null;
@@ -358,6 +402,8 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     public void ResetSession()
     {
         pendingNotifications.Clear();
+        queuedNotificationTypes.Clear();
+        playbackNotificationTypes.Clear();
         playbackStarted = null;
         playbackCompleted = null;
         StopActiveAudioPlaybacks();
@@ -924,6 +970,7 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     private void ReleaseView()
     {
         StopActiveAudioPlaybacks();
+        playbackNotificationTypes.Clear();
         if (ReferenceEquals(view, null))
             return;
 
@@ -962,6 +1009,8 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     private void ClearNotificationState()
     {
         pendingNotifications.Clear();
+        queuedNotificationTypes.Clear();
+        playbackNotificationTypes.Clear();
     }
 
     /// <summary>

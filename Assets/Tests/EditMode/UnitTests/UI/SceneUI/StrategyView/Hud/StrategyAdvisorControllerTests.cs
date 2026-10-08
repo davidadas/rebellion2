@@ -690,7 +690,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         }
 
         [Test]
-        public void ProcessPending_MatchingNotifications_QueuesEachDelivery()
+        public void ProcessPending_MatchingGeneralNotificationDuringPlayback_CoalescesDelivery()
         {
             GameObject rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
             StrategyAdvisorView view = rootObject.GetComponentInChildren<StrategyAdvisorView>(true);
@@ -737,11 +737,100 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 Assert.AreEqual(1, playbackCount);
 
                 view.AdvanceAnimation(theme.FrameIntervalSeconds);
+                Assert.AreEqual(1, playbackCount);
+
+                controller.Notify(
+                    CreateAdvisorDelivery(AdvisorNotificationType.PositivePopularSupport),
+                    true
+                );
+                controller.ProcessPending(true);
+
                 Assert.AreEqual(2, playbackCount);
             }
             finally
             {
                 UnityEngine.Object.DestroyImmediate(supportFrame);
+                UnityEngine.Object.DestroyImmediate(idle);
+                UnityEngine.Object.DestroyImmediate(rootObject);
+            }
+        }
+
+        [Test]
+        public void ProcessPending_QueuedNotificationDuringPlaybackCompletion_RemainsCoalesced()
+        {
+            GameObject rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
+            StrategyAdvisorView view = rootObject.GetComponentInChildren<StrategyAdvisorView>(true);
+            StrategyAdvisorTheme theme = CreateTheme();
+            theme.Notifications.Add(
+                new StrategyAdvisorNotificationTheme
+                {
+                    NotificationType = AdvisorNotificationType.PositivePopularSupport,
+                    Droid = new StrategyAdvisorAnimationTheme
+                    {
+                        Animation = "First",
+                        FrameCount = 1,
+                    },
+                }
+            );
+            theme.Notifications.Add(
+                new StrategyAdvisorNotificationTheme
+                {
+                    NotificationType = AdvisorNotificationType.NegativePopularSupport,
+                    Droid = new StrategyAdvisorAnimationTheme
+                    {
+                        Animation = "Second",
+                        FrameCount = 1,
+                    },
+                }
+            );
+            Texture2D idle = new Texture2D(1, 1);
+            Texture2D firstFrame = new Texture2D(1, 1);
+            Texture2D secondFrame = new Texture2D(1, 1);
+            Dictionary<string, Texture2D> textures = new Dictionary<string, Texture2D>
+            {
+                [theme.GetFramePath(theme.ProtocolIdleAnimation, 0, false)] = idle,
+                [theme.GetFramePath(theme.DroidIdleAnimation, 0, true)] = idle,
+                [theme.GetFramePath("First", 0, true)] = firstFrame,
+            };
+            try
+            {
+                UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+                StrategyAdvisorController controller = CreateController(textures);
+                controller.BindView(view);
+                controller.Render(theme);
+                int playbackCount = 0;
+                view.PlaybackStarted += _ => playbackCount++;
+
+                controller.Notify(
+                    CreateAdvisorDelivery(AdvisorNotificationType.PositivePopularSupport),
+                    true
+                );
+                controller.ProcessPending(true);
+                controller.Notify(
+                    CreateAdvisorDelivery(AdvisorNotificationType.NegativePopularSupport),
+                    true
+                );
+                controller.ProcessPending(true);
+
+                view.AdvanceAnimation(theme.FrameIntervalSeconds);
+                controller.Notify(
+                    CreateAdvisorDelivery(AdvisorNotificationType.NegativePopularSupport),
+                    true
+                );
+                textures[theme.GetFramePath("Second", 0, true)] = secondFrame;
+                controller.ProcessPending(true);
+
+                Assert.AreEqual(2, playbackCount);
+
+                view.AdvanceAnimation(theme.FrameIntervalSeconds);
+                controller.ProcessPending(true);
+
+                Assert.AreEqual(2, playbackCount);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(secondFrame);
+                UnityEngine.Object.DestroyImmediate(firstFrame);
                 UnityEngine.Object.DestroyImmediate(idle);
                 UnityEngine.Object.DestroyImmediate(rootObject);
             }
