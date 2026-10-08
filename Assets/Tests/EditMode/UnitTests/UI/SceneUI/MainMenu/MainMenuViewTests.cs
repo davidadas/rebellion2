@@ -168,11 +168,11 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.Greater(model.GetComponent<MeshFilter>().sharedMesh.vertexCount, 1000);
 
             Transform atmosphere = model.Find("Atmosphere");
-            Assert.AreEqual(Vector3.one * 1.03f, atmosphere.localScale);
+            Assert.AreEqual(Vector3.one * 1.06f, atmosphere.localScale);
             Material atmosphereMaterial = atmosphere.GetComponent<Renderer>().sharedMaterial;
             Assert.AreEqual("Rebellion/MainMenu/PlanetAtmosphere", atmosphereMaterial.shader.name);
-            Assert.AreEqual(0.115f, atmosphereMaterial.GetFloat("_VertexOffset"));
-            Assert.AreEqual(2.8f, atmosphereMaterial.GetFloat("_ScatteringFactor"));
+            Assert.AreEqual(0.23f, atmosphereMaterial.GetFloat("_VertexOffset"));
+            Assert.AreEqual(4.3f, atmosphereMaterial.GetFloat("_ScatteringFactor"));
             Assert.AreEqual(8f, atmosphereMaterial.GetFloat("_ScatteringIntensity"));
             Assert.AreEqual(0.06f, atmosphereMaterial.GetFloat("_GlowIntensity"));
 
