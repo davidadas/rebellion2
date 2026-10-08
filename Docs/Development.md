@@ -18,7 +18,7 @@ or otherwise redistribute `rebellion2-media`, `Assets/Content`, or any copyright
 3. Copy `rebellion2-media/Models/MainMenu/` into
    `rebellion2/Assets/Art/Models/MainMenu/`.
 4. Overlay `rebellion2-media/UnityAssets/` onto `rebellion2/Assets/`, preserving `.meta` files.
-   This installs native Unity packages, including the main-menu planet, at their logical content
+   This installs native Unity packages, including the main-menu planet, at their logical art
    paths.
 5. Open `rebellion2` in Unity.
 6. Run **Rebellion > Build > Build All UI**.

@@ -47,18 +47,11 @@ public static class MainMenuPrefabBuilder
     // Spinning-planet backdrop.
     private const string _starfieldAddress = "Application/MainMenu/UI/starfield";
     private const string _planetCompositeShaderName = "Custom/PremultipliedTexture";
-    private const string _planetAssetRoot = "Assets/Content/Application/MainMenu/Models/Planet";
+    private const string _planetAssetRoot = "Assets/Art/MainMenu/Planet";
     private const string _renderTexturePath = _planetAssetRoot + "/Generated/Planet.renderTexture";
     private const string _planetCompositeMaterialPath =
         _planetAssetRoot + "/Generated/PlanetComposite.mat";
-    private const string _planetAtmosphereMaterialPath =
-        _planetAssetRoot + "/Generated/PlanetAtmosphere.mat";
     private const string _planetPrefabPath = _planetAssetRoot + "/Planet.prefab";
-    private const float _planetAtmosphereScale = 1.06f;
-    private const float _planetAtmosphereVertexOffset = 0.23f;
-    private const float _planetAtmosphereScatteringFactor = 2.8f;
-    private const float _planetAtmosphereScatteringIntensity = 8f;
-    private const float _planetAtmosphereGlowIntensity = 0.06f;
     private const string _citadelModelAddress = "Application/MainMenu/Models/citadel";
     private const string _citadelRenderTexturePath =
         "Assets/Art/Models/MainMenu/HqCitadel.renderTexture";
@@ -2071,16 +2064,6 @@ public static class MainMenuPrefabBuilder
         planet.transform.localPosition = Vector3.zero;
         planet.transform.localRotation = Quaternion.identity;
         planet.transform.localScale = Vector3.one * 2f;
-        Transform atmosphere = planet.transform.Find("Atmosphere");
-        if (atmosphere == null)
-            throw new InvalidOperationException("The authored planet prefab has no atmosphere.");
-        atmosphere.localScale = Vector3.one * _planetAtmosphereScale;
-        Renderer atmosphereRenderer = atmosphere.GetComponent<Renderer>();
-        if (atmosphereRenderer == null)
-            throw new InvalidOperationException("The authored atmosphere has no renderer.");
-        atmosphereRenderer.sharedMaterial = LoadOrCreateAtmosphereMaterial(
-            atmosphereRenderer.sharedMaterial
-        );
         foreach (Transform child in planet.GetComponentsInChildren<Transform>(true))
             child.gameObject.layer = planetLayer;
 
@@ -2172,38 +2155,6 @@ public static class MainMenuPrefabBuilder
             EditorUtility.SetDirty(material);
         }
 
-        return material;
-    }
-
-    /// <summary>
-    /// Creates or refreshes the generated atmosphere material from the authored source, then
-    /// narrows its scattering profile for the menu planet's large on-screen presentation.
-    /// </summary>
-    /// <param name="source">The authored atmosphere material to preserve as the baseline.</param>
-    /// <returns>The persistent tuned atmosphere material.</returns>
-    private static Material LoadOrCreateAtmosphereMaterial(Material source)
-    {
-        if (source == null)
-            throw new ArgumentNullException(nameof(source));
-
-        Material material = AssetDatabase.LoadAssetAtPath<Material>(_planetAtmosphereMaterialPath);
-        if (material == null)
-        {
-            material = new Material(source) { name = "PlanetAtmosphere" };
-            EnsureAssetFolder(Path.GetDirectoryName(_planetAtmosphereMaterialPath));
-            AssetDatabase.CreateAsset(material, _planetAtmosphereMaterialPath);
-        }
-        else
-        {
-            material.shader = source.shader;
-            material.CopyPropertiesFromMaterial(source);
-        }
-
-        material.SetFloat("_VertexOffset", _planetAtmosphereVertexOffset);
-        material.SetFloat("_ScatteringFactor", _planetAtmosphereScatteringFactor);
-        material.SetFloat("_ScatteringIntensity", _planetAtmosphereScatteringIntensity);
-        material.SetFloat("_GlowIntensity", _planetAtmosphereGlowIntensity);
-        EditorUtility.SetDirty(material);
         return material;
     }
 

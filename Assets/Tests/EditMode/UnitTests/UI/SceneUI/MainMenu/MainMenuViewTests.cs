@@ -198,10 +198,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
 
             Assert.IsTrue(
                 dependencies.Any(path =>
-                    path.StartsWith(
-                        "Assets/Content/Application/MainMenu/Models/Planet/",
-                        StringComparison.Ordinal
-                    )
+                    path.StartsWith("Assets/Art/MainMenu/Planet/", StringComparison.Ordinal)
                 )
             );
             Assert.IsFalse(

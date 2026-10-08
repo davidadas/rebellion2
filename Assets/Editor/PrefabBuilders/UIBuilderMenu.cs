@@ -276,7 +276,9 @@ public static class UIBuilderMenu
     private static bool IsDevelopmentContentReference(UnityEngine.Object value)
     {
         return value != null
-            && ContentPackEditor.IsExternalContentAssetPath(AssetDatabase.GetAssetPath(value));
+            && AssetDatabase
+                .GetAssetPath(value)
+                .StartsWith("Assets/Content/", StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -304,7 +306,7 @@ public static class UIBuilderMenu
                 continue;
 
             string assetPath = AssetDatabase.GetAssetPath(value);
-            if (!ContentPackEditor.IsExternalContentAssetPath(assetPath))
+            if (!assetPath.StartsWith("Assets/Content/", StringComparison.Ordinal))
                 continue;
 
             property.objectReferenceValue = null;

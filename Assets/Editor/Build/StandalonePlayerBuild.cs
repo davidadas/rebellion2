@@ -8,6 +8,7 @@ using System.Linq;
 /// </summary>
 public static class StandalonePlayerBuild
 {
+    private const string _developmentContentAssetPrefix = "Assets/Content/";
     private const string _developmentModelAssetPrefix = "Assets/Art/Models/MainMenu/";
     private const string _bootScenePath = "Assets/Scenes/BootScene.unity";
     private const string _mainMenuScenePath = "Assets/Scenes/MainMenu.unity";
@@ -289,7 +290,7 @@ public static class StandalonePlayerBuild
     /// <returns>True when the asset is stripped development content.</returns>
     private static bool IsStrippedDevelopmentAsset(string path)
     {
-        if (ContentPackEditor.IsExternalContentAssetPath(path))
+        if (path.StartsWith(_developmentContentAssetPrefix, StringComparison.Ordinal))
             return true;
 
         // Main-menu 3D models ship as GLB in the content pack; only their runtime-rendered
