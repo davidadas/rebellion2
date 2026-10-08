@@ -37,7 +37,7 @@ namespace Rebellion.Simulation
         private GameRoot _game;
         private ITickProcessor _jedi;
         private ITickProcessor _maintenance;
-        private ITickProcessor _manufacturing;
+        private ManufacturingTickProcessor _manufacturing;
         private ITickProcessor _messages;
         private ITickProcessor _missions;
         private MovementCommands _movementCommands;
@@ -58,6 +58,12 @@ namespace Rebellion.Simulation
         public bool IsBusy => _tickInProgress || !IsSettled;
 
         public event Action TickCompleted;
+
+        /// <summary>
+        /// Raised when an incremental tick step changes state that presentation may render.
+        /// </summary>
+        public event Action TickProgressed;
+
         public event Action CombatDecisionRequired;
         internal event Action CombatResumed;
 
@@ -195,7 +201,19 @@ namespace Rebellion.Simulation
 
             _factionAutomation.ProcessTick(_game);
             ProcessResults(_resourceProduction.ProcessTick(_game));
-            ProcessResults(_manufacturing.ProcessTick(_game));
+            foreach (
+                IReadOnlyList<GameResult> manufacturingStep in _manufacturing.ProcessTickIncrementally(
+                    _game
+                )
+            )
+            {
+                ProcessResults(manufacturingStep);
+                if (!manufacturingStep.OfType<ManufacturingPointsCompletedResult>().Any())
+                    continue;
+
+                TickProgressed?.Invoke();
+                yield return null;
+            }
             // Refill capacity released by completed orders before tick observers render idle lanes.
             _factionAutomation.ProcessTick(_game);
             ProcessResults(_maintenance.ProcessTick(_game));

@@ -366,6 +366,63 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void ProcessTick_CompletedQueueHeadBetweenFacilities_PreservesNextReadyPoint()
+        {
+            Building secondShipyard = new Building
+            {
+                InstanceID = "SHIPYARD2",
+                OwnerInstanceID = "EMPIRE",
+                BuildingType = BuildingType.ConstructionFacility,
+                ProductionType = ManufacturingType.Building,
+                ProcessRate = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(secondShipyard, _coruscant);
+            Building first = new Building
+            {
+                InstanceID = "MINE1",
+                OwnerInstanceID = "EMPIRE",
+                ConstructionCost = 1,
+                ManufacturingStatus = ManufacturingStatus.Building,
+                BuildingType = BuildingType.Mine,
+            };
+            Building completed = new Building
+            {
+                InstanceID = "MINE2",
+                OwnerInstanceID = "EMPIRE",
+                ConstructionCost = 0,
+                ManufacturingStatus = ManufacturingStatus.Building,
+                BuildingType = BuildingType.Mine,
+            };
+            Building next = new Building
+            {
+                InstanceID = "MINE3",
+                OwnerInstanceID = "EMPIRE",
+                ConstructionCost = 10,
+                ManufacturingStatus = ManufacturingStatus.Building,
+                BuildingType = BuildingType.Mine,
+            };
+            Assert.IsTrue(_manager.Enqueue(_coruscant, first, _coruscant));
+            Assert.IsTrue(_manager.Enqueue(_coruscant, completed, _coruscant));
+            Assert.IsTrue(_manager.Enqueue(_coruscant, next, _coruscant));
+
+            IReadOnlyList<GameResult> results = new ManufacturingTickProcessor(
+                _manager
+            ).ProcessTick(_game);
+
+            Assert.AreEqual(ManufacturingStatus.Complete, first.ManufacturingStatus);
+            Assert.AreEqual(ManufacturingStatus.Complete, completed.ManufacturingStatus);
+            Assert.AreEqual(1, next.ManufacturingProgress);
+            CollectionAssert.AreEqual(
+                new[] { 1, 1 },
+                results
+                    .OfType<ManufacturingPointsCompletedResult>()
+                    .Select(result => result.Points)
+                    .ToArray()
+            );
+        }
+
+        [Test]
         public void ProcessTick_ExactCompletion_DoesNotAdvanceNextItem()
         {
             // Test exact boundary: progress == required, should not over-advance

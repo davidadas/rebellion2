@@ -193,6 +193,7 @@ public sealed class StrategyController
         runtime.GameReplaced += HandleGameReplaced;
         session.Tick.CombatDecisionRequired += RefreshStrategyState;
         session.Tick.TickCompleted += RefreshStrategyState;
+        session.Tick.TickProgressed += RefreshStrategyState;
         session.Pipeline.MessageDelivered += HandleMessageDelivered;
         session.Pipeline.BombardmentCompleted += HandleBombardmentCompleted;
         session.Pipeline.PlanetaryAssaultsResolved += HandlePlanetaryAssaultsResolved;
@@ -960,6 +961,7 @@ public sealed class StrategyController
             runtime.GameReplaced -= HandleGameReplaced;
             session.Tick.CombatDecisionRequired -= RefreshStrategyState;
             session.Tick.TickCompleted -= RefreshStrategyState;
+            session.Tick.TickProgressed -= RefreshStrategyState;
             session.Pipeline.MessageDelivered -= HandleMessageDelivered;
             session.Pipeline.BombardmentCompleted -= HandleBombardmentCompleted;
             session.Pipeline.PlanetaryAssaultsResolved -= HandlePlanetaryAssaultsResolved;

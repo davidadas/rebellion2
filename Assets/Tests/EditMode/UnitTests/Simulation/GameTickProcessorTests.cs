@@ -4,7 +4,9 @@ using System.Collections.Generic;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
+using Rebellion.Game.Units;
 using Rebellion.Simulation;
 
 namespace Rebellion.Tests.Simulation
@@ -59,6 +61,69 @@ namespace Rebellion.Tests.Simulation
 
             Assert.AreEqual(1, completions);
             Assert.AreEqual(1, _game.CurrentTick);
+        }
+
+        [Test]
+        public void ProcessTickIncrementally_MultipleReadyFacilities_YieldsAfterEachProductionPoint()
+        {
+            const string factionId = "EMPIRE";
+            Faction faction = new Faction
+            {
+                InstanceID = factionId,
+                DisplayName = "Empire",
+                RefinedMaterialStockpile = 1000,
+            };
+            _game.GetFactions().Add(faction);
+            PlanetSector sector = new PlanetSector { InstanceID = "SECTOR" };
+            _game.AttachNode(sector, _game.Galaxy);
+            Planet planet = new Planet
+            {
+                InstanceID = "PLANET",
+                OwnerInstanceID = factionId,
+                IsColonized = true,
+                EnergyCapacity = 10,
+            };
+            _game.AttachNode(planet, sector);
+            for (int index = 0; index < 2; index++)
+            {
+                _game.AttachNode(
+                    new Building
+                    {
+                        InstanceID = $"SHIPYARD_{index}",
+                        OwnerInstanceID = factionId,
+                        BuildingType = BuildingType.ConstructionFacility,
+                        ProductionType = ManufacturingType.Building,
+                        ProcessRate = 1,
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                    },
+                    planet
+                );
+            }
+
+            Building order = new Building
+            {
+                InstanceID = "ORDER",
+                OwnerInstanceID = factionId,
+                BuildingType = BuildingType.Mine,
+                ConstructionCost = 100,
+            };
+            Assert.IsTrue(
+                _session.GetService<ManufacturingCommands>().Enqueue(planet, order, planet)
+            );
+            int progressNotifications = 0;
+            _tick.TickProgressed += () => progressNotifications++;
+            IEnumerator tick = _tick.ProcessTickIncrementally();
+
+            Assert.IsTrue(tick.MoveNext());
+            Assert.AreEqual(1, order.ManufacturingProgress);
+            Assert.AreEqual(1, progressNotifications);
+
+            Assert.IsTrue(tick.MoveNext());
+            Assert.AreEqual(2, order.ManufacturingProgress);
+            Assert.AreEqual(2, progressNotifications);
+
+            while (tick.MoveNext()) { }
+            Assert.IsTrue(_tick.IsSettled);
         }
 
         [Test]

@@ -29,11 +29,34 @@ namespace Rebellion.Simulation
         /// <returns>The manufacturing results produced during the tick.</returns>
         public IReadOnlyList<GameResult> ProcessTick(GameRoot game)
         {
-            List<GameResult> results = _commands.TakePendingResults();
-            foreach (Planet planet in game.GetSceneNodesByType<Planet>())
-                results.AddRange(_commands.ProcessPlanetManufacturing(planet));
+            List<GameResult> results = new List<GameResult>();
+            foreach (IReadOnlyList<GameResult> step in ProcessTickIncrementally(game))
+                results.AddRange(step);
 
             return results;
+        }
+
+        /// <summary>
+        /// Advances manufacturing while preserving a presentation boundary after each completed
+        /// production point.
+        /// </summary>
+        /// <param name="game">The game state being advanced.</param>
+        /// <returns>The ordered result batches produced during the tick.</returns>
+        internal IEnumerable<IReadOnlyList<GameResult>> ProcessTickIncrementally(GameRoot game)
+        {
+            List<GameResult> pendingResults = _commands.TakePendingResults();
+            if (pendingResults.Count > 0)
+                yield return pendingResults;
+
+            foreach (Planet planet in game.GetSceneNodesByType<Planet>())
+            {
+                foreach (
+                    IReadOnlyList<GameResult> step in _commands.ProcessPlanetManufacturingIncrementally(
+                        planet
+                    )
+                )
+                    yield return step;
+            }
         }
     }
 }
