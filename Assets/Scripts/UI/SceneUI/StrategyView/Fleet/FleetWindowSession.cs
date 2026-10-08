@@ -26,6 +26,7 @@ internal sealed class FleetWindowSession
     private ISceneNode contextDetailNode;
     private Fleet contextFleet;
     private ISceneNode contextFleetListNode;
+    private bool renameFleetListTarget;
     private ISceneNode renameTarget;
     private Fleet selectedFleet;
     private int selectedFleetIndexHint = -1;
@@ -114,6 +115,7 @@ internal sealed class FleetWindowSession
         EnforceFleetListFactionSelection();
         SelectRequiredFleetListItem();
         SynchronizeFleetSelection();
+        NormalizeActiveTabForFleetListSelection();
 
         RefreshDetailItems();
         ReconcileSelection(selectedDetailNodes, selectedDetailItems, detailItems);
@@ -371,6 +373,7 @@ internal sealed class FleetWindowSession
         EnforceFleetListFactionSelection();
         SetSelectedFleetFromListItem(rowItem);
         SynchronizeFleetSelection();
+        NormalizeActiveTabForFleetListSelection();
         RefreshDetailItems();
         selectedDetailNodes.Clear();
         selectedDetailItems.Clear();
@@ -463,8 +466,7 @@ internal sealed class FleetWindowSession
             CaptureSelection(selectedFleetListItems, fleetListItems, selectedFleetListNodes);
             EnforceFleetListFactionSelection();
             SynchronizeFleetSelection();
-            if (target is CapitalShip && ActiveTab == FleetWindowTab.CapitalShips)
-                ActiveTab = FleetWindowTab.Starfighters;
+            NormalizeActiveTabForFleetListSelection();
             selectedDetailNodes.Clear();
             selectedDetailItems.Clear();
             RefreshDetailItems();
@@ -513,6 +515,7 @@ internal sealed class FleetWindowSession
             return false;
 
         renameTarget = target;
+        renameFleetListTarget = ShouldRenameFleetListTarget(target);
         Reconcile();
         return renameTarget != null;
     }
@@ -523,6 +526,7 @@ internal sealed class FleetWindowSession
     public void EndRename()
     {
         renameTarget = null;
+        renameFleetListTarget = false;
         RenameFleetRowIndex = -1;
         RenameDetailItemIndex = -1;
     }
@@ -718,18 +722,44 @@ internal sealed class FleetWindowSession
     /// </summary>
     private void ReconcileRenameTarget()
     {
-        renameTarget = renameTarget switch
+        renameTarget = (renameTarget, renameFleetListTarget) switch
         {
-            Fleet fleet => ResolveNode(fleets, fleet),
-            CapitalShip ship when ActiveTab == FleetWindowTab.CapitalShips => ResolveNode(
+            (Fleet fleet, true) => ResolveNode(fleetListItems, fleet),
+            (CapitalShip ship, true) => ResolveNode(fleetListItems, ship),
+            (CapitalShip ship, false) when ActiveTab == FleetWindowTab.CapitalShips => ResolveNode(
                 detailItems,
                 ship
             ),
             _ => null,
         };
-        RenameFleetRowIndex = renameTarget is Fleet ? FindNodeIndex(fleets, renameTarget) : -1;
+        RenameFleetRowIndex =
+            renameTarget != null && renameFleetListTarget
+                ? FindNodeIndex(fleetListItems, renameTarget)
+                : -1;
         RenameDetailItemIndex =
-            renameTarget is CapitalShip ? FindNodeIndex(detailItems, renameTarget) : -1;
+            renameTarget != null && !renameFleetListTarget
+                ? FindNodeIndex(detailItems, renameTarget)
+                : -1;
+        if (renameTarget == null)
+            renameFleetListTarget = false;
+    }
+
+    /// <summary>
+    /// Determines whether a rename should be presented in the fleet list or detail grid.
+    /// </summary>
+    /// <param name="target">The requested rename target.</param>
+    /// <returns>True when the target should use its visible fleet-list row.</returns>
+    private bool ShouldRenameFleetListTarget(ISceneNode target)
+    {
+        if (target is Fleet)
+            return true;
+        if (HasSameIdentity(contextFleetListNode, target))
+            return true;
+        if (HasSameIdentity(contextDetailNode, target))
+            return false;
+
+        return ResolveNode(detailItems, target) == null
+            && ResolveNode(fleetListItems, target) != null;
     }
 
     /// <summary>
@@ -919,6 +949,18 @@ internal sealed class FleetWindowSession
             selectedFleetItems.Add(fleetIndex);
             selectedFleetNodes.Add(fleet);
         }
+    }
+
+    /// <summary>
+    /// Keeps the capital-ship tab disabled when the resulting row selection contains a ship.
+    /// </summary>
+    private void NormalizeActiveTabForFleetListSelection()
+    {
+        if (
+            ActiveTab == FleetWindowTab.CapitalShips
+            && GetSelectedFleetListSources().Any(source => source is CapitalShip)
+        )
+            ActiveTab = FleetWindowTab.Starfighters;
     }
 
     /// <summary>

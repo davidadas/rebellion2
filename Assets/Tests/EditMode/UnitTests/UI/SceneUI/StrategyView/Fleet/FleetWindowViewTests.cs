@@ -1,6 +1,5 @@
 using System;
 using System.Linq;
-using System.Reflection;
 using NUnit.Framework;
 using TMPro;
 using UnityEngine;
@@ -91,7 +90,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         [Test]
-        public void Render_TreeConnector_DrawsContinuousPixels()
+        public void Render_TreeConnector_DrawsTwoContinuousSegments()
         {
             _view.Render(
                 CreateRenderData(
@@ -113,23 +112,21 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                     "TreeConnectorView"
                 )
                 .GetComponent<FleetTreeConnectorView>();
-            MethodInfo populateMesh = typeof(FleetTreeConnectorView).GetMethod(
-                "OnPopulateMesh",
-                BindingFlags.Instance | BindingFlags.NonPublic,
-                binder: null,
-                types: new[] { typeof(VertexHelper) },
-                modifiers: null
-            );
-            using VertexHelper vertexHelper = new VertexHelper();
+            Mesh mesh = null;
+            try
+            {
+                connector.Rebuild(CanvasUpdate.PreRender);
+                mesh = connector.canvasRenderer.GetMesh();
 
-            populateMesh.Invoke(connector, new object[] { vertexHelper });
-            UIVertex firstPixelRight = default;
-            UIVertex secondPixelLeft = default;
-            vertexHelper.PopulateUIVertex(ref firstPixelRight, 2);
-            vertexHelper.PopulateUIVertex(ref secondPixelLeft, 4);
-
-            Assert.GreaterOrEqual(vertexHelper.currentVertCount, 8);
-            Assert.AreEqual(0f, secondPixelLeft.position.x - firstPixelRight.position.x);
+                Assert.AreEqual(8, mesh.vertexCount);
+                Assert.AreEqual(2f, mesh.vertices.Min(vertex => vertex.x));
+                Assert.AreEqual(6f, mesh.vertices.Max(vertex => vertex.x));
+            }
+            finally
+            {
+                if (mesh != null)
+                    UnityEngine.Object.DestroyImmediate(mesh);
+            }
         }
 
         [Test]
@@ -282,6 +279,33 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreEqual("Renamed Fleet", submitted);
             Assert.IsFalse(input.gameObject.activeSelf);
             Assert.IsTrue(row.NameTextField.enabled);
+        }
+
+        [Test]
+        public void Render_ExpandedCapitalShipRename_UsesFlattenedFleetRow()
+        {
+            FleetWindowRenderData data = CreateRenderData(
+                true,
+                new[]
+                {
+                    CreateFleetRow("Fleet"),
+                    CreateFleetRow("Capital Ship", isCapitalShip: true),
+                },
+                Array.Empty<StrategyUnitCardRenderData>(),
+                true,
+                null,
+                1,
+                -1,
+                "Capital Ship"
+            );
+
+            _view.Render(data);
+
+            TMP_InputField input = _viewObject.GetComponentInChildren<TMP_InputField>(true);
+            FleetListRowView[] rows = FindFleetRows();
+            Assert.IsTrue(input.gameObject.activeSelf);
+            Assert.IsTrue(rows[0].NameTextField.enabled);
+            Assert.IsFalse(rows[1].NameTextField.enabled);
         }
 
         [Test]
@@ -788,13 +812,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         /// <param name="showTreeBranch">Whether the row draws tree connector segments.</param>
         /// <param name="treeHasHorizontalBranch">Whether the connector reaches into the row.</param>
         /// <param name="treeContinuesAbove">Whether the connector reaches the row's top edge.</param>
+        /// <param name="isCapitalShip">Whether the row represents an expanded capital ship.</param>
         /// <returns>The created fleet row.</returns>
         private FleetListRowRenderData CreateFleetRow(
             string name,
             bool showOptionalImages = false,
             bool showTreeBranch = false,
             bool treeHasHorizontalBranch = false,
-            bool treeContinuesAbove = false
+            bool treeContinuesAbove = false,
+            bool isCapitalShip = false
         )
         {
             Texture optionalTexture = showOptionalImages ? _texture : null;
@@ -807,6 +833,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 optionalTexture,
                 optionalTexture,
                 optionalTexture,
+                isCapitalShip: isCapitalShip,
                 showTreeBranch: showTreeBranch,
                 treeContinuesAbove: treeContinuesAbove,
                 treeHasHorizontalBranch: treeHasHorizontalBranch

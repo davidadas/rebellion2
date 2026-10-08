@@ -34,7 +34,7 @@ public sealed class FleetTreeConnectorView : MaskableGraphic
     }
 
     /// <summary>
-    /// Builds solid one-pixel segments in source-layout coordinates.
+    /// Builds solid connector segments in source-layout coordinates.
     /// </summary>
     /// <param name="vertexHelper">The target UI mesh.</param>
     protected override void OnPopulateMesh(VertexHelper vertexHelper)
@@ -43,42 +43,52 @@ public sealed class FleetTreeConnectorView : MaskableGraphic
         if (!showBranch)
             return;
 
+        int height = Mathf.RoundToInt(rectTransform.rect.height);
+        bool hasVerticalStem = continuesAbove || continuesBelow;
+        if (hasVerticalStem)
+        {
+            int top = continuesAbove ? 0 : _branchY;
+            int bottom = continuesBelow ? height : _branchY + 1;
+            AddRectangle(vertexHelper, _stemX, top, 1, bottom - top);
+        }
+
         if (hasHorizontalBranch)
         {
-            for (int x = _stemX; x <= _branchEndX; x++)
-                AddPixel(vertexHelper, x, _branchY);
-        }
-
-        if (continuesAbove)
-        {
-            for (int y = 0; y <= _branchY; y++)
-                AddPixel(vertexHelper, _stemX, y);
-        }
-
-        if (continuesBelow)
-        {
-            for (int y = _branchY; y < Mathf.RoundToInt(rectTransform.rect.height); y++)
-                AddPixel(vertexHelper, _stemX, y);
+            int left = hasVerticalStem ? _stemX + 1 : _stemX;
+            AddRectangle(vertexHelper, left, _branchY, _branchEndX - left + 1, 1);
         }
     }
 
     /// <summary>
-    /// Adds one one-pixel quad at a top-left source coordinate.
+    /// Adds one rectangular quad at a top-left source coordinate.
     /// </summary>
     /// <param name="vertexHelper">The target UI mesh.</param>
-    /// <param name="sourceX">The source-layout horizontal coordinate.</param>
-    /// <param name="sourceY">The source-layout vertical coordinate.</param>
-    private void AddPixel(VertexHelper vertexHelper, int sourceX, int sourceY)
+    /// <param name="sourceX">The source-layout left coordinate.</param>
+    /// <param name="sourceY">The source-layout top coordinate.</param>
+    /// <param name="width">The rectangle width.</param>
+    /// <param name="height">The rectangle height.</param>
+    private void AddRectangle(
+        VertexHelper vertexHelper,
+        int sourceX,
+        int sourceY,
+        int width,
+        int height
+    )
     {
+        if (width <= 0 || height <= 0)
+            return;
+
         Rect rect = rectTransform.rect;
         float left = rect.xMin + sourceX;
         float top = rect.yMax - sourceY;
+        float right = left + width;
+        float bottom = top - height;
         int startIndex = vertexHelper.currentVertCount;
         Color32 vertexColor = color;
-        vertexHelper.AddVert(new Vector3(left, top - 1f), vertexColor, Vector2.zero);
+        vertexHelper.AddVert(new Vector3(left, bottom), vertexColor, Vector2.zero);
         vertexHelper.AddVert(new Vector3(left, top), vertexColor, Vector2.zero);
-        vertexHelper.AddVert(new Vector3(left + 1f, top), vertexColor, Vector2.zero);
-        vertexHelper.AddVert(new Vector3(left + 1f, top - 1f), vertexColor, Vector2.zero);
+        vertexHelper.AddVert(new Vector3(right, top), vertexColor, Vector2.zero);
+        vertexHelper.AddVert(new Vector3(right, bottom), vertexColor, Vector2.zero);
         vertexHelper.AddTriangle(startIndex, startIndex + 1, startIndex + 2);
         vertexHelper.AddTriangle(startIndex + 2, startIndex + 3, startIndex);
     }

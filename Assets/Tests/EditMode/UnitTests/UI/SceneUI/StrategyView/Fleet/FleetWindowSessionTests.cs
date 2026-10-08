@@ -406,6 +406,39 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         [Test]
+        public void SelectFleetListItem_ToggledShipLeavesFleetSelected_PreservesCapitalShipTab()
+        {
+            SelectionModifierState modifiers = new SelectionModifierState(true, false);
+            FleetWindowSession session = new FleetWindowSession(
+                new GalaxyMapPlanet(new GalaxyPlanetSector(), _planet, string.Empty),
+                _window,
+                () => modifiers
+            );
+            Assert.IsTrue(session.ToggleFleetExpanded(0));
+            Assert.IsTrue(session.SelectFleetListItem(_capitalShip));
+            Assert.IsTrue(session.SelectTab(FleetWindowTab.CapitalShips));
+
+            Assert.IsTrue(session.SelectFleetListItem(_capitalShip));
+
+            CollectionAssert.AreEqual(
+                new ISceneNode[] { _fleet },
+                session.SelectedFleetListSources
+            );
+            Assert.AreEqual(FleetWindowTab.CapitalShips, session.ActiveTab);
+        }
+
+        [Test]
+        public void CaptureFleetListContext_ExpandedCapitalShip_DisablesCapitalShipTab()
+        {
+            Assert.IsTrue(_session.ToggleFleetExpanded(0));
+
+            Assert.IsTrue(_session.CaptureFleetListContext(_capitalShip));
+
+            Assert.AreEqual(FleetWindowTab.Starfighters, _session.ActiveTab);
+            CollectionAssert.AreEqual(new ISceneNode[] { _starfighter }, _session.DetailItems);
+        }
+
+        [Test]
         public void SelectFleetListItem_MixedFactionModifierSelection_KeepsPlayerSideOnly()
         {
             SelectionModifierState modifiers = default;
@@ -507,6 +540,29 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreSame(_capitalShip, _session.RenameTarget);
             Assert.AreEqual(-1, _session.RenameFleetRowIndex);
             Assert.AreEqual(0, _session.RenameDetailItemIndex);
+        }
+
+        [Test]
+        public void BeginRename_FleetAfterExpandedRows_TracksFlattenedRowIndex()
+        {
+            Assert.IsTrue(_session.ToggleFleetExpanded(0));
+
+            Assert.IsTrue(_session.BeginRename(_secondFleet));
+
+            Assert.AreEqual(2, _session.RenameFleetRowIndex);
+            Assert.AreEqual(-1, _session.RenameDetailItemIndex);
+        }
+
+        [Test]
+        public void BeginRename_ExpandedCapitalShipContext_TracksFleetListRow()
+        {
+            Assert.IsTrue(_session.ToggleFleetExpanded(0));
+            Assert.IsTrue(_session.CaptureFleetListContext(_capitalShip));
+
+            Assert.IsTrue(_session.BeginRename(_capitalShip));
+
+            Assert.AreEqual(1, _session.RenameFleetRowIndex);
+            Assert.AreEqual(-1, _session.RenameDetailItemIndex);
         }
 
         [Test]

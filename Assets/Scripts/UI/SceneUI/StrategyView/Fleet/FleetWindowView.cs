@@ -734,9 +734,12 @@ public sealed class FleetWindowView : MonoBehaviour, IPointerClickHandler, IDrop
     /// <returns>The matching authored text field, or null.</returns>
     private TextMeshProUGUI GetRenameTextField(int fleetRowIndex, int detailItemIndex)
     {
-        FleetListRowView row = FindFleetRowView(fleetRowIndex);
-        if (row != null)
-            return row.NameTextField;
+        if (fleetRowIndex >= 0 && fleetRowIndex < fleetRowViews.Count)
+        {
+            FleetListRowView row = fleetRowViews[fleetRowIndex];
+            if (row.gameObject.activeInHierarchy)
+                return row.NameTextField;
+        }
         if (detailItemIndex >= 0 && detailItemIndex < detailItemViews.Count)
             return detailItemViews[detailItemIndex].NameTextField;
         return null;
