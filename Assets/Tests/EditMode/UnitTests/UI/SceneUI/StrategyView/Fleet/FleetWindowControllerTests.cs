@@ -573,6 +573,60 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         [Test]
+        public void FleetRowDoubleClick_CollapsedFleet_TogglesCapitalShipRowsAndTargetsShip()
+        {
+            FleetWindowView view = OpenWindow(out UIWindow window);
+            _controller.SelectTarget(view, _officer);
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            _controller.RenderWindow(view, window, true);
+            FleetListRowView row = view.GetComponentsInChildren<FleetListRowView>(true)
+                .Single(item => item.Index == 0 && item.gameObject.activeInHierarchy);
+            UIComponentTestHelper.InvokeLifecycle(row, "Awake");
+            PointerEventData eventData = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Left,
+                clickCount = 2,
+            };
+
+            row.GetComponent<UIPointerGestureRelay>().OnPointerClick(eventData);
+            _controller.RenderWindow(view, window, true);
+
+            Assert.AreEqual(0, _controller.GetSelectedFleetIndex(view));
+            Assert.AreEqual(FleetWindowTab.Personnel, _controller.GetActiveTab(view));
+            Assert.AreEqual(
+                "Fleet Officer",
+                view.GetComponentsInChildren<StrategyUnitCardView>(true)
+                    .Single(item => item.gameObject.activeInHierarchy)
+                    .NameTextField.text
+            );
+            FleetListRowView[] expandedRows = view.GetComponentsInChildren<FleetListRowView>(true)
+                .Where(item => item.gameObject.activeInHierarchy)
+                .OrderBy(item => item.Index)
+                .ToArray();
+            Assert.AreEqual(2, expandedRows.Length);
+            Assert.IsFalse(expandedRows[0].IsCapitalShip);
+            Assert.IsTrue(expandedRows[1].IsCapitalShip);
+            Assert.AreEqual("Capital Ship", expandedRows[1].NameTextField.text);
+            UIComponentTestHelper.InvokeLifecycle(expandedRows[1], "Awake");
+
+            CapitalShip ship = _fleet.GetChildren<CapitalShip>().Single();
+            RecordingTargetingReceiver receiver = new RecordingTargetingReceiver();
+            _targetingController.Begin(new TargetingRequest("Target", null, receiver));
+            expandedRows[1].GetComponent<UIPointerGestureRelay>().OnDrop(eventData);
+
+            Assert.AreSame(ship, ((StrategyMissionTarget)receiver.Target).Item);
+
+            row.GetComponent<UIPointerGestureRelay>().OnPointerClick(eventData);
+            _controller.RenderWindow(view, window, true);
+
+            Assert.AreEqual(
+                1,
+                view.GetComponentsInChildren<FleetListRowView>(true)
+                    .Count(item => item.gameObject.activeInHierarchy)
+            );
+        }
+
+        [Test]
         public void DetailItemRelease_ActiveTargeting_SelectsExactItemAndCompletesDrag()
         {
             int completedDragCount = 0;

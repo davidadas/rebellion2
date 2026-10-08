@@ -748,7 +748,7 @@ public sealed class FleetWindowController
         view.DetailItemReleased += HandleDetailItemReleased;
         view.FleetDestinationDropped += HandleFleetDestinationDropped;
         view.FleetListDropped += HandleFleetListDropped;
-        view.FleetRowDoubleClicked += HandleItemDoubleClicked;
+        view.FleetRowDoubleClicked += HandleFleetRowDoubleClicked;
         view.FleetRowDropped += HandleFleetRowDropped;
         view.FleetRowPressed += HandleFleetRowPressed;
         view.FleetRowReleased += HandleFleetRowReleased;
@@ -791,10 +791,10 @@ public sealed class FleetWindowController
         PointerEventData eventData
     )
     {
-        if (view.TryGetFleetRowIndex(eventData, out int fleetIndex))
+        if (view.TryGetFleetRowIndex(eventData, out int fleetListItemIndex))
         {
-            if (session.TryGetFleet(fleetIndex, out Fleet fleet))
-                session.CaptureContext(fleet);
+            if (session.TryGetFleetListItem(fleetListItemIndex, out ISceneNode item))
+                session.CaptureFleetListContext(item);
             return;
         }
 
@@ -820,10 +820,15 @@ public sealed class FleetWindowController
             return false;
 
         if (
-            view.TryGetFleetRowIndex(eventData, out int fleetIndex)
-            && session.TryGetFleet(fleetIndex, out Fleet fleet)
+            view.TryGetFleetRowIndex(eventData, out int fleetListItemIndex)
+            && session.TryGetFleetListItem(fleetListItemIndex, out ISceneNode fleetListItem)
         )
-            return TrySelectTarget(session, ResolveFleetContainerTarget(fleet));
+        {
+            ISceneNode target = fleetListItem is Fleet fleet
+                ? ResolveFleetContainerTarget(fleet)
+                : fleetListItem;
+            return TrySelectTarget(session, target);
+        }
 
         if (
             view.TryGetDetailItemIndex(eventData, out int itemIndex)
@@ -855,61 +860,127 @@ public sealed class FleetWindowController
     /// Handles a fleet-row press and starts selection, context, or drag flow.
     /// </summary>
     /// <param name="view">The source fleet view.</param>
-    /// <param name="fleetIndex">The pressed fleet-row index.</param>
+    /// <param name="fleetListItemIndex">The pressed fleet-list row index.</param>
     /// <param name="eventData">The pointer event.</param>
     private void HandleFleetRowPressed(
         FleetWindowView view,
-        int fleetIndex,
+        int fleetListItemIndex,
         PointerEventData eventData
     )
     {
         if (
             !TryGetSession(view, out FleetWindowSession session)
-            || !session.TryGetFleet(fleetIndex, out Fleet fleet)
+            || !session.TryGetFleetListItem(fleetListItemIndex, out ISceneNode item)
         )
             return;
 
-        HandleItemPressed(view, session, fleet, fleetIndex, eventData);
+        if (item is Fleet fleet)
+            HandleItemPressed(view, session, fleet, fleetListItemIndex, eventData);
+        else
+            HandleFleetListChildPressed(session, item, eventData);
     }
 
     /// <summary>
     /// Handles a fleet-row release and resolves targeting or final selection.
     /// </summary>
     /// <param name="view">The source fleet view.</param>
-    /// <param name="fleetIndex">The released fleet-row index.</param>
+    /// <param name="fleetListItemIndex">The released fleet-list row index.</param>
     /// <param name="eventData">The pointer event.</param>
     private void HandleFleetRowReleased(
         FleetWindowView view,
-        int fleetIndex,
+        int fleetListItemIndex,
         PointerEventData eventData
     )
     {
         if (
             !TryGetSession(view, out FleetWindowSession session)
-            || !session.TryGetFleet(fleetIndex, out Fleet fleet)
+            || !session.TryGetFleetListItem(fleetListItemIndex, out ISceneNode item)
         )
             return;
 
-        HandleItemReleased(view, session, fleet, eventData);
+        if (item is Fleet fleet)
+        {
+            HandleItemReleased(view, session, fleet, eventData);
+            return;
+        }
+
+        if (eventData?.button == PointerEventData.InputButton.Left)
+        {
+            TrySelectTarget(session, item);
+            endItemDrag(eventData);
+        }
+    }
+
+    /// <summary>
+    /// Toggles the capital-ship rows beneath a double-clicked fleet.
+    /// </summary>
+    /// <param name="view">The source fleet view.</param>
+    /// <param name="fleetListItemIndex">The double-clicked fleet-list row index.</param>
+    /// <param name="eventData">The pointer event.</param>
+    private void HandleFleetRowDoubleClicked(
+        FleetWindowView view,
+        int fleetListItemIndex,
+        PointerEventData eventData
+    )
+    {
+        if (
+            eventData?.button != PointerEventData.InputButton.Left
+            || targetingController.IsTargeting
+            || !TryGetSession(view, out FleetWindowSession session)
+            || !session.ToggleFleetExpanded(fleetListItemIndex)
+        )
+            return;
+
+        markDirty();
     }
 
     /// <summary>
     /// Handles a drop over one fleet row as a targeting selection.
     /// </summary>
     /// <param name="view">The source fleet view.</param>
-    /// <param name="fleetIndex">The drop fleet-row index.</param>
+    /// <param name="fleetListItemIndex">The drop fleet-list row index.</param>
     /// <param name="eventData">The pointer event.</param>
     private void HandleFleetRowDropped(
         FleetWindowView view,
-        int fleetIndex,
+        int fleetListItemIndex,
         PointerEventData eventData
     )
     {
         if (
             TryGetSession(view, out FleetWindowSession session)
-            && session.TryGetFleet(fleetIndex, out Fleet fleet)
+            && session.TryGetFleetListItem(fleetListItemIndex, out ISceneNode item)
         )
-            HandleItemDropped(session, fleet);
+            HandleItemDropped(session, item);
+    }
+
+    /// <summary>
+    /// Handles context and focus behavior for an expanded capital-ship row.
+    /// </summary>
+    /// <param name="session">The controller-owned fleet session.</param>
+    /// <param name="item">The expanded fleet-list item.</param>
+    /// <param name="eventData">The pointer event.</param>
+    private void HandleFleetListChildPressed(
+        FleetWindowSession session,
+        ISceneNode item,
+        PointerEventData eventData
+    )
+    {
+        if (eventData == null)
+            return;
+
+        if (eventData.button == PointerEventData.InputButton.Left)
+            session.Window.RequestFocus();
+        if (
+            targetingController.IsTargeting
+            && eventData.button == PointerEventData.InputButton.Left
+        )
+            return;
+        if (eventData.button != PointerEventData.InputButton.Right)
+            return;
+
+        session.CaptureFleetListContext(item);
+        markDirty();
+        session.Window.RequestContext(eventData);
     }
 
     /// <summary>
@@ -1020,10 +1091,9 @@ public sealed class FleetWindowController
             item is Fleet
                 ? view.FleetRowContainsDragSource(itemIndex, eventData)
                 : view.DetailItemContainsDragSource(itemIndex, eventData);
-        bool itemSelected =
-            item is Fleet
-                ? session.SelectedFleetItems.Contains(itemIndex)
-                : session.SelectedDetailItems.Contains(itemIndex);
+        bool itemSelected = item is Fleet fleet
+            ? session.IsFleetSelected(fleet)
+            : session.SelectedDetailItems.Contains(itemIndex);
         if (canStartDrag && itemSelected && containsDragSource)
         {
             startItemDrag(session.Window, eventData);
@@ -1113,7 +1183,7 @@ public sealed class FleetWindowController
     }
 
     /// <summary>
-    /// Handles a fleet or detail item double click as a status request.
+    /// Handles a detail-item double click as a status request.
     /// </summary>
     /// <param name="view">The source fleet view.</param>
     /// <param name="itemIndex">The double-clicked item's visual index.</param>
@@ -1355,7 +1425,7 @@ public sealed class FleetWindowController
         view.DetailItemReleased -= HandleDetailItemReleased;
         view.FleetDestinationDropped -= HandleFleetDestinationDropped;
         view.FleetListDropped -= HandleFleetListDropped;
-        view.FleetRowDoubleClicked -= HandleItemDoubleClicked;
+        view.FleetRowDoubleClicked -= HandleFleetRowDoubleClicked;
         view.FleetRowDropped -= HandleFleetRowDropped;
         view.FleetRowPressed -= HandleFleetRowPressed;
         view.FleetRowReleased -= HandleFleetRowReleased;

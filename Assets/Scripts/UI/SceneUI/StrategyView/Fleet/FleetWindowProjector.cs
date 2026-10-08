@@ -179,9 +179,50 @@ internal sealed class FleetWindowProjector
                         fleet.GetOfficers().Any() || fleet.GetSpecialForces().Any(),
                         badgeIcons => badgeIcons.FleetPersonnelBadgeImagePath
                     ),
-                    selected ? uiContext.GetTexture(icons?.FleetListSelectionImagePath) : null
+                    selected ? uiContext.GetTexture(icons?.FleetListSelectionImagePath) : null,
+                    i
                 )
             );
+
+            if (!session.IsFleetExpanded(fleet))
+                continue;
+
+            foreach (CapitalShip capitalShip in fleet.GetChildren<CapitalShip>())
+            {
+                UnitTileIcons shipIcons = uiContext
+                    .GetTheme(capitalShip.GetOwnerInstanceID())
+                    ?.PlanetOverlayTheme?.UnitTileIcons;
+                rows.Add(
+                    new FleetListRowRenderData(
+                        capitalShip.GetDisplayName(),
+                        uiContext.GetEntityTexture(capitalShip, true),
+                        GetDetailEnrouteOverlayTexture(uiContext, fleet, capitalShip),
+                        GetDetailDamagedOverlayTexture(uiContext, capitalShip),
+                        GetBadgeTexture(
+                            uiContext,
+                            shipIcons,
+                            capitalShip.GetChildren<Starfighter>().Any(),
+                            badgeIcons => badgeIcons.FleetStarfightersBadgeImagePath
+                        ),
+                        GetBadgeTexture(
+                            uiContext,
+                            shipIcons,
+                            capitalShip.GetChildren<Regiment>().Any(),
+                            badgeIcons => badgeIcons.FleetTroopsBadgeImagePath
+                        ),
+                        GetBadgeTexture(
+                            uiContext,
+                            shipIcons,
+                            capitalShip.GetChildren<Officer>().Any()
+                                || capitalShip.GetChildren<SpecialForces>().Any(),
+                            badgeIcons => badgeIcons.FleetPersonnelBadgeImagePath
+                        ),
+                        null,
+                        i,
+                        isCapitalShip: true
+                    )
+                );
+            }
         }
 
         return rows;

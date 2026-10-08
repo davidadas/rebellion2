@@ -61,6 +61,10 @@ public sealed class FleetListRowView : MonoBehaviour, IStrategyStatusDoubleClick
 
     public int Index { get; private set; }
 
+    public int FleetIndex { get; private set; }
+
+    public bool IsCapitalShip { get; private set; }
+
     internal TextMeshProUGUI NameTextField => nameTextField;
 
     /// <summary>
@@ -100,6 +104,8 @@ public sealed class FleetListRowView : MonoBehaviour, IStrategyStatusDoubleClick
             throw new ArgumentNullException(nameof(data));
 
         VerifyReferences();
+        FleetIndex = data.FleetIndex >= 0 ? data.FleetIndex : Index;
+        IsCapitalShip = data.IsCapitalShip;
         UILayout.SetImageTexture(selectionImage, data.SelectionTexture);
         UILayout.SetImageTexture(iconImage, data.IconTexture);
         UILayout.SetImageTexture(enrouteOverlayImage, data.EnrouteOverlayTexture);
