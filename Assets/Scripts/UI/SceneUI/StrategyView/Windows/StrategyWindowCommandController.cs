@@ -347,9 +347,11 @@ public sealed class StrategyWindowCommandController
     /// </summary>
     /// <param name="sourceWindow">The strategy window that owns the selection.</param>
     /// <param name="items">The selected queued items.</param>
+    /// <param name="onStopped">Runs after at least one selected item is successfully cancelled.</param>
     public void OpenStopConstructionConfirmWindow(
         UIWindow sourceWindow,
-        IReadOnlyList<ISceneNode> items
+        IReadOnlyList<ISceneNode> items,
+        Action onStopped = null
     )
     {
         List<ISceneNode> sourceItems = CopyItems(items);
@@ -367,6 +369,7 @@ public sealed class StrategyWindowCommandController
                         ?.CancelManufacturing(manufacturables, GetPlayerFactionID()) == true
                 )
                 {
+                    onStopped?.Invoke();
                     RefreshAfterMutation(sourceWindow);
                 }
             }
