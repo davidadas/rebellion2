@@ -12,8 +12,6 @@ using UnityEngine;
 /// </summary>
 public sealed class StrategyAdvisorController : IContextMenuReceiver
 {
-    private const string _customNotificationKey = "Notification:Custom";
-
     private readonly Func<Faction> getPlayerFaction;
     private readonly Func<string, float> getAudioDuration;
     private readonly Func<string, Texture2D> getTexture;
@@ -22,11 +20,8 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     private readonly Func<int, int> selectRandomIndex;
     private readonly List<AudioPlaybackHandle> activeAudioPlaybacks =
         new List<AudioPlaybackHandle>();
-    private readonly Dictionary<string, StrategyAdvisorNotificationTheme> pendingNotifications =
-        new Dictionary<string, StrategyAdvisorNotificationTheme>();
-    private readonly Dictionary<string, int> pendingExpirationTicks = new Dictionary<string, int>();
-    private readonly Dictionary<string, int> nextAllowedTicks = new Dictionary<string, int>();
-    private readonly List<string> notificationKeysByPriority = new List<string>();
+    private readonly Queue<StrategyAdvisorNotificationTheme> pendingNotifications =
+        new Queue<StrategyAdvisorNotificationTheme>();
 
     private IStrategyHudActions actions;
     private StrategyAdvisorTheme theme;
@@ -126,25 +121,6 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
 
         ClearNotificationState();
         theme = nextTheme;
-        if (theme != null)
-        {
-            for (int i = 0; i < theme.Notifications.Count; i++)
-            {
-                StrategyAdvisorNotificationTheme notification = theme.Notifications[i];
-                if (notification == null)
-                    throw new InvalidOperationException($"Advisor notification theme {i} is null.");
-                string notificationKey = StrategyAdvisorTheme.GetNotificationKey(notification);
-                if (notificationKey == null)
-                {
-                    throw new InvalidOperationException(
-                        $"Advisor notification theme {i} has no semantic selector."
-                    );
-                }
-                if (!notificationKeysByPriority.Contains(notificationKey))
-                    notificationKeysByPriority.Add(notificationKey);
-            }
-        }
-
         GetRequiredView().Render(CreateViewData(theme));
     }
 
@@ -165,48 +141,31 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     }
 
     /// <summary>
-    /// Queues or replaces a pending notification derived from a delivered message.
+    /// Queues a pending notification derived from a delivered message.
     /// </summary>
     /// <param name="delivery">The delivered message and transient presentation request.</param>
-    /// <param name="currentTick">The current game tick.</param>
     /// <param name="notificationEnabled">Whether its message category permits notification.</param>
-    public void Notify(MessageDeliveredResult delivery, int currentTick, bool notificationEnabled)
+    public void Notify(MessageDeliveredResult delivery, bool notificationEnabled)
     {
         if (delivery?.Message == null || theme == null || !notificationEnabled)
             return;
 
-        StrategyAdvisorNotificationTheme notification = ResolveNotification(
-            delivery,
-            out int lifetimeTicks,
-            out string notificationKey
-        );
+        StrategyAdvisorNotificationTheme notification = ResolveNotification(delivery);
         if (notification == null)
             return;
 
-        if (!notificationKeysByPriority.Contains(notificationKey))
-            notificationKeysByPriority.Add(notificationKey);
-
-        pendingNotifications[notificationKey] = notification;
-        pendingExpirationTicks[notificationKey] = currentTick + lifetimeTicks;
+        pendingNotifications.Enqueue(notification);
     }
 
     /// <summary>
     /// Resolves notification.
     /// </summary>
     /// <param name="delivery">The delivery.</param>
-    /// <param name="lifetimeTicks">Receives the lifetime ticks.</param>
-    /// <param name="notificationKey">Receives the notification key.</param>
     /// <returns>The resolved notification.</returns>
-    private StrategyAdvisorNotificationTheme ResolveNotification(
-        MessageDeliveredResult delivery,
-        out int lifetimeTicks,
-        out string notificationKey
-    )
+    private StrategyAdvisorNotificationTheme ResolveNotification(MessageDeliveredResult delivery)
     {
         AdvisorNotification authored = delivery.AdvisorNotification;
         StrategyAdvisorNotificationTheme preset = null;
-        lifetimeTicks = 0;
-        notificationKey = _customNotificationKey;
         if (authored?.Preset.HasValue != false)
         {
             preset = theme.GetNotification(
@@ -214,18 +173,12 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
                 delivery.AdvisorSubjectTypeID,
                 delivery.AdvisorSubjectNotification
             );
-            lifetimeTicks = preset?.LifetimeTicks ?? 0;
-            notificationKey = StrategyAdvisorTheme.GetNotificationKey(preset) ?? notificationKey;
         }
         if (authored?.HasOverrides != true)
             return preset;
 
-        lifetimeTicks = authored.LifetimeTicks ?? lifetimeTicks;
-        if (lifetimeTicks <= 0)
-            lifetimeTicks = 1;
         return new StrategyAdvisorNotificationTheme
         {
-            LifetimeTicks = lifetimeTicks,
             Droid = MergeAnimation(preset?.Droid, authored.Droid),
             Protocol = MergeAnimation(preset?.Protocol, authored.Protocol),
         };
@@ -261,56 +214,29 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     }
 
     /// <summary>
-    /// Consumes the highest-priority eligible pending notification for the current tick.
+    /// Consumes the next pending notification in delivery order.
     /// </summary>
-    /// <param name="currentTick">The current game tick.</param>
     /// <param name="announcementsEnabled">Whether gated protocol announcements may play.</param>
-    public void ProcessPending(int currentTick, bool announcementsEnabled)
+    public void ProcessPending(bool announcementsEnabled)
     {
         if (theme == null)
             return;
 
-        StrategyAdvisorView targetView = GetRequiredView();
-        for (int i = 0; i < notificationKeysByPriority.Count; i++)
-        {
-            string notificationKey = notificationKeysByPriority[i];
-            if (
-                !pendingNotifications.TryGetValue(
-                    notificationKey,
-                    out StrategyAdvisorNotificationTheme notification
-                )
+        if (pendingNotifications.Count == 0)
+            return;
+
+        StrategyAdvisorNotificationTheme notification = pendingNotifications.Peek();
+        if (
+            !TryCreatePlaybackBatch(
+                notification,
+                announcementsEnabled,
+                out IReadOnlyList<StrategyAdvisorAnimationViewData> playbackBatch
             )
-                continue;
+        )
+            return;
 
-            int expirationTick = pendingExpirationTicks[notificationKey];
-            if (expirationTick < currentTick)
-            {
-                pendingNotifications.Remove(notificationKey);
-                pendingExpirationTicks.Remove(notificationKey);
-                continue;
-            }
-
-            int nextAllowedTick = nextAllowedTicks.TryGetValue(notificationKey, out int tick)
-                ? tick
-                : int.MinValue;
-            if (nextAllowedTick > currentTick)
-                continue;
-
-            if (
-                !TryCreatePlaybackBatch(
-                    notification,
-                    announcementsEnabled,
-                    out IReadOnlyList<StrategyAdvisorAnimationViewData> playbackBatch
-                )
-            )
-                return;
-
-            pendingNotifications.Remove(notificationKey);
-            pendingExpirationTicks.Remove(notificationKey);
-            nextAllowedTicks[notificationKey] = currentTick + theme.RepeatCooldownTicks;
-            targetView.EnqueuePlaybacks(playbackBatch);
-            break;
-        }
+        pendingNotifications.Dequeue();
+        GetRequiredView().EnqueuePlaybacks(playbackBatch);
     }
 
     /// <summary>
@@ -432,8 +358,6 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     public void ResetSession()
     {
         pendingNotifications.Clear();
-        pendingExpirationTicks.Clear();
-        nextAllowedTicks.Clear();
         playbackStarted = null;
         playbackCompleted = null;
         StopActiveAudioPlaybacks();
@@ -1033,14 +957,11 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     }
 
     /// <summary>
-    /// Clears pending notification, expiry, cooldown, and priority state for a theme change.
+    /// Clears pending notification state for a theme change.
     /// </summary>
     private void ClearNotificationState()
     {
         pendingNotifications.Clear();
-        pendingExpirationTicks.Clear();
-        nextAllowedTicks.Clear();
-        notificationKeysByPriority.Clear();
     }
 
     /// <summary>
