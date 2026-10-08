@@ -906,8 +906,17 @@ public sealed class FleetWindowController
 
         if (eventData?.button == PointerEventData.InputButton.Left)
         {
-            TrySelectTarget(session, item);
+            bool targetSelected = TrySelectTarget(session, item);
             endItemDrag(eventData);
+            if (
+                targetSelected
+                || SelectableListSelection.HasSelectionModifier(getSelectionModifiers())
+            )
+                return;
+
+            session.SelectFleetListItem(item);
+            RenderWindow(view, session.Window, session.Window.ActiveWindow);
+            renderSelectionRoutes();
         }
     }
 
@@ -976,7 +985,17 @@ public sealed class FleetWindowController
         )
             return;
         if (eventData.button != PointerEventData.InputButton.Right)
+        {
+            if (
+                eventData.button == PointerEventData.InputButton.Left
+                && SelectableListSelection.HasSelectionModifier(getSelectionModifiers())
+            )
+            {
+                session.SelectFleetListItem(item);
+                markDirty();
+            }
             return;
+        }
 
         session.CaptureFleetListContext(item);
         markDirty();

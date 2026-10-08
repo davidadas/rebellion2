@@ -54,14 +54,24 @@ internal sealed class FleetWindowProjector
             if (session.ActiveTab == FleetWindowTab.Starfighters)
             {
                 showCapacity = true;
-                capacityLeft = selectedFleet.GetStarfighters().Count().ToString();
-                capacityRight = selectedFleet.GetStarfighterCapacity().ToString();
+                session.GetSelectedCapacity(
+                    FleetWindowTab.Starfighters,
+                    out int current,
+                    out int capacity
+                );
+                capacityLeft = current.ToString();
+                capacityRight = capacity.ToString();
             }
             else if (session.ActiveTab == FleetWindowTab.Regiments)
             {
                 showCapacity = true;
-                capacityLeft = selectedFleet.GetRegiments().Count().ToString();
-                capacityRight = selectedFleet.GetRegimentCapacity().ToString();
+                session.GetSelectedCapacity(
+                    FleetWindowTab.Regiments,
+                    out int current,
+                    out int capacity
+                );
+                capacityLeft = current.ToString();
+                capacityRight = capacity.ToString();
             }
         }
 
@@ -146,9 +156,9 @@ internal sealed class FleetWindowProjector
         for (int i = 0; i < fleets.Count; i++)
         {
             Fleet fleet = fleets[i];
-            bool selected =
-                session.SelectedFleetItems.Contains(i)
-                || session.SelectedFleetItems.Count == 0 && i == session.SelectedFleetIndex;
+            bool selected = session.IsFleetListItemSelected(fleet);
+            List<CapitalShip> capitalShips = fleet.GetChildren<CapitalShip>().ToList();
+            bool expanded = session.IsFleetExpanded(fleet) && capitalShips.Count > 0;
             FactionTheme theme = uiContext.GetTheme(fleet.OwnerInstanceID);
             UnitTileIcons icons = theme?.PlanetOverlayTheme?.UnitTileIcons;
             rows.Add(
@@ -180,15 +190,18 @@ internal sealed class FleetWindowProjector
                         badgeIcons => badgeIcons.FleetPersonnelBadgeImagePath
                     ),
                     selected ? uiContext.GetTexture(icons?.FleetListSelectionImagePath) : null,
-                    i
+                    i,
+                    showTreeBranch: expanded,
+                    treeContinuesBelow: expanded
                 )
             );
 
-            if (!session.IsFleetExpanded(fleet))
+            if (!expanded)
                 continue;
 
-            foreach (CapitalShip capitalShip in fleet.GetChildren<CapitalShip>())
+            for (int shipIndex = 0; shipIndex < capitalShips.Count; shipIndex++)
             {
+                CapitalShip capitalShip = capitalShips[shipIndex];
                 UnitTileIcons shipIcons = uiContext
                     .GetTheme(capitalShip.GetOwnerInstanceID())
                     ?.PlanetOverlayTheme?.UnitTileIcons;
@@ -217,9 +230,14 @@ internal sealed class FleetWindowProjector
                                 || capitalShip.GetChildren<SpecialForces>().Any(),
                             badgeIcons => badgeIcons.FleetPersonnelBadgeImagePath
                         ),
-                        null,
+                        session.IsFleetListItemSelected(capitalShip)
+                            ? uiContext.GetTexture(shipIcons?.FleetListSelectionImagePath)
+                            : null,
                         i,
-                        isCapitalShip: true
+                        isCapitalShip: true,
+                        showTreeBranch: true,
+                        treeContinuesAbove: true,
+                        treeContinuesBelow: shipIndex < capitalShips.Count - 1
                     )
                 );
             }

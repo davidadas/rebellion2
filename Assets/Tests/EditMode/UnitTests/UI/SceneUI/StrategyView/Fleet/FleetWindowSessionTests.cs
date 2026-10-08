@@ -367,6 +367,32 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         [Test]
+        public void SelectItem_ExpandedCapitalShip_FiltersDetailsToSelectedShip()
+        {
+            CapitalShip additionalShip = CreateCapitalShip("additional-ship", "Additional Ship");
+            Officer additionalOfficer = new Officer
+            {
+                InstanceID = "additional-officer",
+                DisplayName = "Additional Officer",
+                OwnerInstanceID = "owner",
+            };
+            additionalShip.AddTestChild(additionalOfficer);
+            _fleet.AddTestChild(additionalShip);
+            _session.Reconcile();
+
+            Assert.IsTrue(_session.ToggleFleetExpanded(0));
+            Assert.IsTrue(_session.SelectTab(FleetWindowTab.Personnel));
+            Assert.IsTrue(_session.SelectFleetListItem(_capitalShip));
+
+            CollectionAssert.AreEqual(
+                new ISceneNode[] { _officer, _specialForces },
+                _session.DetailItems
+            );
+            CollectionAssert.AreEqual(new[] { 1 }, _session.SelectedFleetListItems);
+            Assert.IsEmpty(_session.SelectedFleetItems);
+        }
+
+        [Test]
         public void SelectItem_InvalidDetail_ReturnsFalseWithoutChangingSelection()
         {
             bool selected = _session.SelectItem(CreateCapitalShip("missing-ship", "Missing Ship"));

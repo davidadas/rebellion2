@@ -22,6 +22,12 @@ public sealed class FleetListRowRenderData
 
     public bool IsCapitalShip { get; }
 
+    public bool ShowTreeBranch { get; }
+
+    public bool TreeContinuesAbove { get; }
+
+    public bool TreeContinuesBelow { get; }
+
     public string Name { get; }
 
     public Texture IconTexture { get; }
@@ -51,6 +57,9 @@ public sealed class FleetListRowRenderData
     /// <param name="selectionTexture">The optional selection frame.</param>
     /// <param name="fleetIndex">The represented fleet's collection index.</param>
     /// <param name="isCapitalShip">Whether this is an expanded capital-ship row.</param>
+    /// <param name="showTreeBranch">Whether the row draws a branch into its icon.</param>
+    /// <param name="treeContinuesAbove">Whether the branch stem reaches the row's top edge.</param>
+    /// <param name="treeContinuesBelow">Whether the branch stem reaches the row's bottom edge.</param>
     public FleetListRowRenderData(
         string name,
         Texture iconTexture,
@@ -61,11 +70,17 @@ public sealed class FleetListRowRenderData
         Texture personnelBadgeTexture,
         Texture selectionTexture,
         int fleetIndex = -1,
-        bool isCapitalShip = false
+        bool isCapitalShip = false,
+        bool showTreeBranch = false,
+        bool treeContinuesAbove = false,
+        bool treeContinuesBelow = false
     )
     {
         FleetIndex = fleetIndex;
         IsCapitalShip = isCapitalShip;
+        ShowTreeBranch = showTreeBranch;
+        TreeContinuesAbove = treeContinuesAbove;
+        TreeContinuesBelow = treeContinuesBelow;
         Name = name ?? string.Empty;
         IconTexture = iconTexture;
         EnrouteOverlayTexture = enrouteOverlayTexture;

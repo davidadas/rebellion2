@@ -170,6 +170,26 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         [Test]
+        public void Build_ExpandedFleet_ReturnsTerminatedShipTreeBranches()
+        {
+            Assert.IsTrue(_session.ToggleFleetExpanded(0));
+
+            FleetWindowRenderData data = _projector.Build(_session, _window, true);
+
+            Assert.AreEqual(3, data.FleetRows.Count);
+            FleetListRowRenderData fleetRow = data.FleetRows[0];
+            Assert.IsTrue(fleetRow.ShowTreeBranch);
+            Assert.IsFalse(fleetRow.TreeContinuesAbove);
+            Assert.IsTrue(fleetRow.TreeContinuesBelow);
+            FleetListRowRenderData shipRow = data.FleetRows[1];
+            Assert.IsTrue(shipRow.IsCapitalShip);
+            Assert.IsTrue(shipRow.ShowTreeBranch);
+            Assert.IsTrue(shipRow.TreeContinuesAbove);
+            Assert.IsFalse(shipRow.TreeContinuesBelow);
+            Assert.IsFalse(data.FleetRows[2].ShowTreeBranch);
+        }
+
+        [Test]
         public void Build_MovingFleet_ReturnsFleetAndDetailTransitPresentation()
         {
             _session.SelectItem(_secondFleet);
