@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -126,7 +127,12 @@ public interface IStrategyConfirmationActions
     /// </summary>
     /// <param name="sourceWindow">The strategy window that owns the selection.</param>
     /// <param name="items">The selected queued items.</param>
-    void OpenStopConstructionConfirmWindow(UIWindow sourceWindow, IReadOnlyList<ISceneNode> items);
+    /// <param name="onStopped">Runs after at least one selected item is successfully cancelled.</param>
+    void OpenStopConstructionConfirmWindow(
+        UIWindow sourceWindow,
+        IReadOnlyList<ISceneNode> items,
+        Action onStopped = null
+    );
 
     /// <summary>
     /// Opens retirement confirmation for selected personnel.

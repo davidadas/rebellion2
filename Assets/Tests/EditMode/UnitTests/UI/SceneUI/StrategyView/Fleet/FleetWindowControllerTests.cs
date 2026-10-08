@@ -1145,9 +1145,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             /// </summary>
             /// <param name="sourceWindow">The source window.</param>
             /// <param name="items">The items.</param>
+            /// <param name="onStopped">Runs after construction is stopped.</param>
             public void OpenStopConstructionConfirmWindow(
                 UIWindow sourceWindow,
-                IReadOnlyList<ISceneNode> items
+                IReadOnlyList<ISceneNode> items,
+                Action onStopped = null
             ) { }
 
             /// <summary>
