@@ -1666,9 +1666,14 @@ namespace Rebellion.Simulation
         /// Moves a unit to the nearest planet owned by its faction that accepts it.
         /// </summary>
         /// <param name="unit">The unit to evacuate.</param>
-        internal void EvacuateToNearestFriendlyPlanet(IMovable unit)
+        /// <param name="leaveOriginPlanet">Whether destinations at the current planet are excluded.</param>
+        internal void EvacuateToNearestFriendlyPlanet(IMovable unit, bool leaveOriginPlanet = false)
         {
-            TryEvacuateToNearestFriendlyPlanet(unit, _pendingResults);
+            TryEvacuateToNearestFriendlyPlanet(
+                unit,
+                _pendingResults,
+                leaveOriginPlanet: leaveOriginPlanet
+            );
         }
 
         /// <summary>
@@ -1676,17 +1681,19 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="unit">The unit to evacuate.</param>
         /// <param name="results">The collection receiving movement facts.</param>
-        /// <param name="force">Whether the relocation must leave its current planet.</param>
+        /// <param name="force">Whether the relocation may cross planets without its own mobility.</param>
         /// <param name="opposingBlockadeAtDeparture">
         /// Whether the unit faced an opposing blockade before a preceding state transition, or
         /// null to inspect the current planet state.
         /// </param>
+        /// <param name="leaveOriginPlanet">Whether destinations at the current planet are excluded.</param>
         /// <returns>True when a safe destination accepts the unit.</returns>
         internal bool TryEvacuateToNearestFriendlyPlanet(
             IMovable unit,
             ICollection<GameResult> results,
             bool force = false,
-            bool? opposingBlockadeAtDeparture = null
+            bool? opposingBlockadeAtDeparture = null,
+            bool leaveOriginPlanet = false
         )
         {
             if (unit == null)
@@ -1728,7 +1735,8 @@ namespace Rebellion.Simulation
                 ContainerNode fallback in _queries.FindSafeRelocationDestinations(
                     unit,
                     currentPlanet,
-                    forceInterplanetaryTravel: force
+                    forceInterplanetaryTravel: force,
+                    leaveOriginPlanet: leaveOriginPlanet
                 )
             )
             {
