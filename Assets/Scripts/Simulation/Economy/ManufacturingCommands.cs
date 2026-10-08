@@ -84,7 +84,92 @@ namespace Rebellion.Simulation
                 return false;
 
             CancelConflictingProject(producer, template);
+            return QueueManufacturingItems(producer, template, destination, count);
+        }
 
+        /// <summary>
+        /// Sets the product and total unfinished quantity for one manufacturing lane.
+        /// </summary>
+        /// <param name="producer">The planet performing the manufacturing.</param>
+        /// <param name="template">The unit or facility template to manufacture.</param>
+        /// <param name="destination">The node that receives completed items.</param>
+        /// <param name="count">The requested total number of unfinished copies.</param>
+        /// <param name="ownerInstanceId">The faction requesting the order.</param>
+        /// <returns>True when the manufacturing order was applied.</returns>
+        public bool SetManufacturingOrder(
+            Planet producer,
+            IManufacturable template,
+            ISceneNode destination,
+            int count,
+            string ownerInstanceId
+        )
+        {
+            if (
+                !_queries.CanSetManufacturingOrder(
+                    producer,
+                    template,
+                    destination,
+                    count,
+                    ownerInstanceId
+                )
+            )
+            {
+                return false;
+            }
+
+            ManufacturingType type = template.GetManufacturingType();
+            ManufacturingOrder activeOrder = ManufacturingQueries.GetManufacturingOrder(
+                producer,
+                type
+            );
+            producer.GetManufacturingQueue().TryGetValue(type, out List<IManufacturable> queue);
+            if (ManufacturingRules.MatchesProduct(activeOrder, template))
+            {
+                if (count < activeOrder.Quantity)
+                {
+                    TrimQueueItems(producer, queue, count);
+                    return true;
+                }
+
+                if (count == activeOrder.Quantity)
+                    return true;
+
+                return QueueManufacturingItems(
+                    producer,
+                    template,
+                    destination,
+                    count - activeOrder.Quantity
+                );
+            }
+
+            HashSet<Fleet> productionFleets = new HashSet<Fleet>();
+            if (queue?.Count > 0)
+            {
+                productionFleets = DetachQueueItems(producer, queue);
+                producer.GetManufacturingQueue().Remove(type);
+            }
+
+            bool started = QueueManufacturingItems(producer, template, destination, count);
+            RemoveEmptyFleets(productionFleets);
+
+            return started;
+        }
+
+        /// <summary>
+        /// Creates and queues copies after the requested order has been validated and prepared.
+        /// </summary>
+        /// <param name="producer">The planet performing the manufacturing.</param>
+        /// <param name="template">The unit or facility template to manufacture.</param>
+        /// <param name="destination">The node that receives completed items.</param>
+        /// <param name="count">The number of copies to queue.</param>
+        /// <returns>True when at least one copy was queued.</returns>
+        private bool QueueManufacturingItems(
+            Planet producer,
+            IManufacturable template,
+            ISceneNode destination,
+            int count
+        )
+        {
             bool started = false;
             Fleet capitalShipDestination = null;
             Planet destinationPlanet = destination as Planet;
@@ -145,6 +230,27 @@ namespace Rebellion.Simulation
             }
 
             return started;
+        }
+
+        /// <summary>
+        /// Removes items from the end of a manufacturing lane while preserving earlier work.
+        /// </summary>
+        /// <param name="planet">The planet whose lane is being shortened.</param>
+        /// <param name="items">The ordered lane items.</param>
+        /// <param name="retainedCount">The number of items to retain from the front.</param>
+        private void TrimQueueItems(Planet planet, List<IManufacturable> items, int retainedCount)
+        {
+            while (items.Count > retainedCount)
+            {
+                IManufacturable item = items[items.Count - 1];
+                items.RemoveAt(items.Count - 1);
+                item.ManufacturingQueueSequence = 0;
+                Fleet destinationFleet = DetachQueuedItem(item);
+                FleetLifecycle.RemoveEmptyFleet(_game, destinationFleet);
+                GameLogger.Debug(
+                    $"Cancelled manufacturing: {item.GetType().Name} at {planet.GetDisplayName()}"
+                );
+            }
         }
 
         /// <summary>
@@ -384,7 +490,7 @@ namespace Rebellion.Simulation
 
             if (
                 item is Starfighter or Regiment
-                && !ManufacturingQueries.IsManufacturingCarrierAvailable(destination)
+                && !ManufacturingRules.IsCarrierAvailable(destination)
             )
                 return false;
 
@@ -459,7 +565,7 @@ namespace Rebellion.Simulation
         /// <returns>True when the item can be queued.</returns>
         private bool HasMaintenanceHeadroom(Faction faction, IManufacturable item)
         {
-            if (item.GetMaintenanceCost() <= 0 || ManufacturingQueries.IsResourceFacility(item))
+            if (item.GetMaintenanceCost() <= 0 || ManufacturingRules.IsResourceFacility(item))
                 return true;
 
             int projectedHeadroom =
@@ -1113,7 +1219,8 @@ namespace Rebellion.Simulation
 
             queue.Remove(queuedItem);
             queuedItem.ManufacturingQueueSequence = 0;
-            DetachQueuedItem(queuedItem);
+            Fleet destinationFleet = DetachQueuedItem(queuedItem);
+            FleetLifecycle.RemoveEmptyFleet(_game, destinationFleet);
             if (queue.Count == 0)
             {
                 queues.Remove(type);
@@ -1150,23 +1257,40 @@ namespace Rebellion.Simulation
         /// <param name="items">The queued items to clear.</param>
         private void ClearQueueItems(Planet planet, List<IManufacturable> items)
         {
+            RemoveEmptyFleets(DetachQueueItems(planet, items));
+        }
+
+        /// <summary>
+        /// Detaches all items from a manufacturing queue and returns affected destination fleets.
+        /// </summary>
+        /// <param name="planet">The planet whose queued items are being detached.</param>
+        /// <param name="items">The queued items to detach.</param>
+        /// <returns>The destination fleets that may be empty after detachment.</returns>
+        private HashSet<Fleet> DetachQueueItems(Planet planet, List<IManufacturable> items)
+        {
+            HashSet<Fleet> destinationFleets = new HashSet<Fleet>();
             foreach (IManufacturable item in items.ToList())
             {
                 item.ManufacturingQueueSequence = 0;
-                DetachQueuedItem(item);
+                Fleet destinationFleet = DetachQueuedItem(item);
+                if (destinationFleet != null)
+                    destinationFleets.Add(destinationFleet);
+
                 GameLogger.Debug(
                     $"Cancelled manufacturing: {item.GetType().Name} at {planet.GetDisplayName()}"
                 );
             }
 
             items.Clear();
+            return destinationFleets;
         }
 
         /// <summary>
-        /// Detaches one queued item and removes an empty destination fleet.
+        /// Detaches one queued item from its destination.
         /// </summary>
         /// <param name="item">The queued item to detach.</param>
-        private void DetachQueuedItem(IManufacturable item)
+        /// <returns>The former destination fleet, or null for a non-fleet destination.</returns>
+        private Fleet DetachQueuedItem(IManufacturable item)
         {
             if (item is IMovable movable)
                 movable.Movement = null;
@@ -1176,7 +1300,19 @@ namespace Rebellion.Simulation
             if (parent != null)
                 _game.DetachNode(sceneNode);
 
-            if (parent is Fleet fleet)
+            return parent as Fleet;
+        }
+
+        /// <summary>
+        /// Removes destination fleets that remain empty after a manufacturing mutation.
+        /// </summary>
+        /// <param name="fleets">The destination fleets affected by the mutation.</param>
+        private void RemoveEmptyFleets(IEnumerable<Fleet> fleets)
+        {
+            if (fleets == null)
+                return;
+
+            foreach (Fleet fleet in fleets)
                 FleetLifecycle.RemoveEmptyFleet(_game, fleet);
         }
     }

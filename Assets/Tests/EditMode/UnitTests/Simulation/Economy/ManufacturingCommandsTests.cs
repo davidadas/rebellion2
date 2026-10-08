@@ -4777,6 +4777,169 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void SetManufacturingOrder_SameProductAndQuantity_PreservesEntireProductionLane()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet planet = CreateOrderTestConstructionPlanet(game, "p1", "empire");
+            ManufacturingCommands manager = new ManufacturingCommands(
+                game,
+                new FleetCommands(game),
+                new ManufacturingQueries(game)
+            );
+            Building template = CreateOrderTestBuildingTemplate("mine");
+            Assert.IsTrue(manager.StartManufacturing(planet, template, planet, 2, "empire"));
+            List<IManufacturable> originalItems = planet
+                .GetManufacturingQueue()[ManufacturingType.Building]
+                .ToList();
+            originalItems[0].ManufacturingProgress = 4;
+
+            bool set = manager.SetManufacturingOrder(planet, template, planet, 2, "empire");
+
+            Assert.IsTrue(set);
+            List<IManufacturable> queue = planet.GetManufacturingQueue()[
+                ManufacturingType.Building
+            ];
+            CollectionAssert.AreEqual(originalItems, queue);
+            Assert.AreEqual(4, queue[0].ManufacturingProgress);
+            Assert.IsTrue(originalItems.All(item => ReferenceEquals(item.GetParent(), planet)));
+        }
+
+        [Test]
+        public void SetManufacturingOrder_LowerQuantity_RemovesItemsFromQueueEnd()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet planet = CreateOrderTestConstructionPlanet(game, "p1", "empire");
+            ManufacturingCommands manager = new ManufacturingCommands(
+                game,
+                new FleetCommands(game),
+                new ManufacturingQueries(game)
+            );
+            Building template = CreateOrderTestBuildingTemplate("mine");
+            Assert.IsTrue(manager.StartManufacturing(planet, template, planet, 3, "empire"));
+            List<IManufacturable> originalItems = planet
+                .GetManufacturingQueue()[ManufacturingType.Building]
+                .ToList();
+            originalItems[0].ManufacturingProgress = 4;
+
+            bool set = manager.SetManufacturingOrder(planet, template, planet, 1, "empire");
+
+            Assert.IsTrue(set);
+            List<IManufacturable> queue = planet.GetManufacturingQueue()[
+                ManufacturingType.Building
+            ];
+            Assert.AreEqual(1, queue.Count);
+            Assert.AreSame(originalItems[0], queue[0]);
+            Assert.AreEqual(4, queue[0].ManufacturingProgress);
+            Assert.AreSame(planet, originalItems[0].GetParent());
+            Assert.IsTrue(originalItems.Skip(1).All(item => item.GetParent() == null));
+        }
+
+        [Test]
+        public void SetManufacturingOrder_HigherQuantity_AppendsOnlyAdditionalItems()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet planet = CreateOrderTestConstructionPlanet(game, "p1", "empire");
+            ManufacturingCommands manager = new ManufacturingCommands(
+                game,
+                new FleetCommands(game),
+                new ManufacturingQueries(game)
+            );
+            Building template = CreateOrderTestBuildingTemplate("mine");
+            Assert.IsTrue(manager.StartManufacturing(planet, template, planet, 2, "empire"));
+            List<IManufacturable> originalItems = planet
+                .GetManufacturingQueue()[ManufacturingType.Building]
+                .ToList();
+            originalItems[0].ManufacturingProgress = 4;
+
+            bool set = manager.SetManufacturingOrder(planet, template, planet, 4, "empire");
+
+            Assert.IsTrue(set);
+            List<IManufacturable> queue = planet.GetManufacturingQueue()[
+                ManufacturingType.Building
+            ];
+            Assert.AreEqual(4, queue.Count);
+            CollectionAssert.AreEqual(originalItems, queue.Take(2));
+            Assert.IsTrue(queue.Skip(2).All(item => !originalItems.Contains(item)));
+            Assert.AreEqual(4, queue[0].ManufacturingProgress);
+            Assert.IsTrue(originalItems.All(item => ReferenceEquals(item.GetParent(), planet)));
+        }
+
+        [Test]
+        public void SetManufacturingOrder_DifferentProduct_ReplacesEntireProductionLane()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet planet = CreateOrderTestConstructionPlanet(game, "p1", "empire");
+            ManufacturingCommands manager = new ManufacturingCommands(
+                game,
+                new FleetCommands(game),
+                new ManufacturingQueries(game)
+            );
+            Building mines = CreateOrderTestBuildingTemplate("mine");
+            Building refineries = CreateOrderTestBuildingTemplate("refinery");
+            Assert.IsTrue(manager.StartManufacturing(planet, mines, planet, 3, "empire"));
+            List<IManufacturable> replacedItems = planet
+                .GetManufacturingQueue()[ManufacturingType.Building]
+                .ToList();
+
+            bool set = manager.SetManufacturingOrder(planet, refineries, planet, 2, "empire");
+
+            Assert.IsTrue(set);
+            List<IManufacturable> queue = planet.GetManufacturingQueue()[
+                ManufacturingType.Building
+            ];
+            Assert.AreEqual(2, queue.Count);
+            Assert.IsTrue(queue.All(item => item.GetTypeID() == "refinery"));
+            Assert.IsTrue(replacedItems.All(item => item.GetParent() == null));
+        }
+
+        [Test]
+        public void SetManufacturingOrder_CapitalShipReplacement_ReusesProductionFleet()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet planet = CreateOrderTestShipyardPlanet(game, "p1", "empire");
+            ManufacturingCommands manager = new ManufacturingCommands(
+                game,
+                new FleetCommands(game),
+                new ManufacturingQueries(game)
+            );
+            CapitalShip originalTemplate = CreateOrderTestCapitalShipTemplate(
+                "old-ship",
+                "Old Ship",
+                0
+            );
+            CapitalShip replacementTemplate = CreateOrderTestCapitalShipTemplate(
+                "new-ship",
+                "New Ship",
+                0
+            );
+            Assert.IsTrue(
+                manager.StartManufacturing(planet, originalTemplate, planet, 1, "empire")
+            );
+            Fleet productionFleet = planet.GetChildren<Fleet>().Single();
+            IManufacturable original = planet
+                .GetManufacturingQueue()[ManufacturingType.Ship]
+                .Single();
+
+            bool set = manager.SetManufacturingOrder(
+                planet,
+                replacementTemplate,
+                planet,
+                1,
+                "empire"
+            );
+
+            Assert.IsTrue(set);
+            Assert.AreSame(productionFleet, planet.GetChildren<Fleet>().Single());
+            IManufacturable replacement = planet
+                .GetManufacturingQueue()[ManufacturingType.Ship]
+                .Single();
+            Assert.AreNotSame(original, replacement);
+            Assert.AreEqual("new-ship", replacement.GetTypeID());
+            Assert.AreSame(productionFleet, replacement.GetParent());
+            Assert.IsNull(original.GetParent());
+        }
+
+        [Test]
         public void StartManufacturing_DifferentProject_ReplacesEntireProductionLane()
         {
             GameRoot game = CreateOrderTestGame();

@@ -6,6 +6,7 @@ using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Simulation;
 using TMPro;
@@ -132,6 +133,36 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             _windowManager.TryGetWindowView(window, out ConstructionWindowView view);
             Assert.AreSame(_planet, _controller.GetPlanet(view));
             Assert.IsNotNull(_controller.GetStatusTarget(view));
+        }
+
+        [Test]
+        public void OpenFromAdvisor_ActiveManufacturingOrder_DisplaysProductQuantity()
+        {
+            IReadOnlyList<IManufacturable> templates = new ConstructionOrderController(
+                _session
+            ).GetBuildSelection(FacilityWindowTab.Shipyards, _playerFactionId);
+            IManufacturable template = templates.OfType<CapitalShip>().First();
+            Rebellion.Game.Units.Fleet fleet = EntityFactory.CreateFleet(
+                "production-fleet",
+                _playerFactionId
+            );
+            _session.Game.AttachNode(fleet, _planet.Planet);
+            for (int index = 0; index < 3; index++)
+            {
+                ISceneNode item = ((ISceneNode)template).CreateCopy();
+                item.InstanceID = $"queued-{index}";
+                item.OwnerInstanceID = _playerFactionId;
+                IManufacturable queued = (IManufacturable)item;
+                queued.ManufacturingStatus = ManufacturingStatus.Building;
+                _session.Game.AttachNode(item, fleet);
+                _planet.Planet.AddToManufacturingQueue(queued);
+            }
+
+            ConstructionWindowView view = OpenAdvisorWindow(out UIWindow window);
+            _controller.RenderWindow(view, window, true);
+
+            TMP_InputField input = view.GetComponentInChildren<TMP_InputField>(true);
+            Assert.AreEqual("3", input.text);
         }
 
         [Test]

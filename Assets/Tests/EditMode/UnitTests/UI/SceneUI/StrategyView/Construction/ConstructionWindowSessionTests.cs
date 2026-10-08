@@ -74,6 +74,35 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
         }
 
         [Test]
+        public void InitializeOrder_ActiveProduct_SelectsProductAndQuantity()
+        {
+            CapitalShip first = new CapitalShip { TypeID = "first" };
+            CapitalShip active = new CapitalShip { TypeID = "active" };
+            _session.SetItems(new IManufacturable[] { first, active });
+
+            _session.InitializeOrder(active.TypeID, 4);
+
+            Assert.AreSame(active, _session.SelectedItem);
+            Assert.AreEqual(4, _session.BuildCount);
+        }
+
+        [Test]
+        public void InitializeOrder_AfterUserEdit_PreservesEditedState()
+        {
+            CapitalShip first = new CapitalShip { TypeID = "first" };
+            CapitalShip active = new CapitalShip { TypeID = "active" };
+            _session.SetItems(new IManufacturable[] { first, active });
+            _session.InitializeOrder(active.TypeID, 4);
+            _session.SelectItem(0);
+            _session.SetBuildCount(7);
+
+            _session.InitializeOrder(active.TypeID, 4);
+
+            Assert.AreSame(first, _session.SelectedItem);
+            Assert.AreEqual(7, _session.BuildCount);
+        }
+
+        [Test]
         public void Reinitialize_DifferentManufacturingTab_ResetsDialogState()
         {
             _session.SetItems(new IManufacturable[] { new CapitalShip { TypeID = "ship" } });

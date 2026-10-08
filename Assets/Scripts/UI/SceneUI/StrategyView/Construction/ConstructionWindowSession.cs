@@ -10,6 +10,7 @@ internal sealed class ConstructionWindowSession
     private const int _minimumBuildCount = 1;
 
     private readonly List<IManufacturable> items = new List<IManufacturable>();
+    private bool orderInitialized;
     private string selectedItemTypeId;
 
     public int BuildCount { get; private set; } = _minimumBuildCount;
@@ -121,6 +122,26 @@ internal sealed class ConstructionWindowSession
     }
 
     /// <summary>
+    /// Initializes the editable selection from the active manufacturing order once.
+    /// </summary>
+    /// <param name="itemTypeId">The active product type identifier, or null for an empty lane.</param>
+    /// <param name="buildCount">The active unfinished quantity.</param>
+    public void InitializeOrder(string itemTypeId, int buildCount)
+    {
+        if (orderInitialized || items.Count == 0)
+            return;
+
+        orderInitialized = true;
+        int activeIndex = FindItemIndex(items, itemTypeId);
+        if (activeIndex < 0)
+            return;
+
+        SelectedItemIndex = activeIndex;
+        selectedItemTypeId = itemTypeId;
+        SetBuildCount(buildCount);
+    }
+
+    /// <summary>
     /// Selects an available build item and closes the dropdown.
     /// </summary>
     /// <param name="index">The requested item index.</param>
@@ -227,6 +248,7 @@ internal sealed class ConstructionWindowSession
     {
         items.Clear();
         selectedItemTypeId = null;
+        orderInitialized = false;
         SelectedItemIndex = 0;
         BuildCount = _minimumBuildCount;
         DropdownOpen = false;
