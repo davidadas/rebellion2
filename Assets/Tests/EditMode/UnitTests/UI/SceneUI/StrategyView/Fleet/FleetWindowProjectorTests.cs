@@ -179,7 +179,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreEqual(3, data.FleetRows.Count);
             FleetListRowRenderData fleetRow = data.FleetRows[0];
             Assert.IsTrue(fleetRow.ShowTreeBranch);
-            Assert.IsFalse(fleetRow.TreeHasHorizontalBranch);
+            Assert.IsTrue(fleetRow.TreeHasHorizontalBranch);
             Assert.IsFalse(fleetRow.TreeContinuesAbove);
             Assert.IsTrue(fleetRow.TreeContinuesBelow);
             FleetListRowRenderData shipRow = data.FleetRows[1];
@@ -188,7 +188,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsTrue(shipRow.TreeHasHorizontalBranch);
             Assert.IsTrue(shipRow.TreeContinuesAbove);
             Assert.IsFalse(shipRow.TreeContinuesBelow);
-            Assert.IsFalse(data.FleetRows[2].ShowTreeBranch);
+            Assert.IsTrue(data.FleetRows[2].ShowTreeBranch);
+            Assert.IsTrue(data.FleetRows[2].TreeHasHorizontalBranch);
+            Assert.IsFalse(data.FleetRows[2].TreeContinuesAbove);
+            Assert.IsFalse(data.FleetRows[2].TreeContinuesBelow);
         }
 
         [Test]
@@ -202,8 +205,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreEqual("Capital Ship", data.FleetName);
             Assert.AreSame(_uiContext.GetEntityTexture(_capitalShip, false), data.BannerTexture);
             Assert.IsNotNull(data.BannerDamagedOverlayTexture);
+            Assert.AreEqual(FleetWindowTab.Starfighters, data.ActiveTab);
+            Assert.IsNull(data.Tabs[(int)FleetWindowTab.CapitalShips].PressedTexture);
             CollectionAssert.AreEqual(
-                new[] { "Capital Ship" },
+                new[] { "Starfighter" },
                 data.DetailItems.Select(item => item.Name).ToArray()
             );
         }

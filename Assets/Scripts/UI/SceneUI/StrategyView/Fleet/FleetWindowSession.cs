@@ -463,6 +463,8 @@ internal sealed class FleetWindowSession
             CaptureSelection(selectedFleetListItems, fleetListItems, selectedFleetListNodes);
             EnforceFleetListFactionSelection();
             SynchronizeFleetSelection();
+            if (target is CapitalShip && ActiveTab == FleetWindowTab.CapitalShips)
+                ActiveTab = FleetWindowTab.Starfighters;
             selectedDetailNodes.Clear();
             selectedDetailItems.Clear();
             RefreshDetailItems();
@@ -480,7 +482,11 @@ internal sealed class FleetWindowSession
     /// <returns>True when the active tab changed.</returns>
     public bool SelectTab(FleetWindowTab tab)
     {
-        if (!FleetWindowRenderData.OrderedTabs.Contains(tab) || tab == ActiveTab)
+        if (
+            !FleetWindowRenderData.OrderedTabs.Contains(tab)
+            || tab == ActiveTab
+            || !HasDetailItems(tab)
+        )
             return false;
 
         ActiveTab = tab;
@@ -854,7 +860,7 @@ internal sealed class FleetWindowSession
                 .GetOfficers()
                 .Cast<ISceneNode>()
                 .Concat(fleet.GetSpecialForces()),
-            (CapitalShip ship, FleetWindowTab.CapitalShips) => new[] { ship },
+            (CapitalShip, FleetWindowTab.CapitalShips) => Enumerable.Empty<ISceneNode>(),
             (CapitalShip ship, FleetWindowTab.Starfighters) => ship.GetChildren<Starfighter>(),
             (CapitalShip ship, FleetWindowTab.Regiments) => ship.GetChildren<Regiment>(),
             (CapitalShip ship, FleetWindowTab.Personnel) => ship.GetChildren<Officer>()

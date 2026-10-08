@@ -393,6 +393,19 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         [Test]
+        public void SelectFleetListItem_ExpandedCapitalShip_DisablesCapitalShipTab()
+        {
+            Assert.IsTrue(_session.ToggleFleetExpanded(0));
+
+            Assert.IsTrue(_session.SelectFleetListItem(_capitalShip));
+
+            Assert.AreEqual(FleetWindowTab.Starfighters, _session.ActiveTab);
+            Assert.IsFalse(_session.HasDetailItems(FleetWindowTab.CapitalShips));
+            CollectionAssert.AreEqual(new ISceneNode[] { _starfighter }, _session.DetailItems);
+            Assert.IsFalse(_session.SelectTab(FleetWindowTab.CapitalShips));
+        }
+
+        [Test]
         public void SelectFleetListItem_MixedFactionModifierSelection_KeepsPlayerSideOnly()
         {
             SelectionModifierState modifiers = default;
