@@ -53,7 +53,7 @@ public static class MainMenuPrefabBuilder
         _planetAssetRoot + "/Generated/PlanetComposite.mat";
     private const string _planetAtmosphereMaterialPath =
         _planetAssetRoot + "/Generated/PlanetAtmosphere.mat";
-    private const string _earthLikePlanetPrefabPath = _planetAssetRoot + "/EarthLikePlanet.prefab";
+    private const string _planetPrefabPath = _planetAssetRoot + "/Planet.prefab";
     private const float _planetAtmosphereScale = 1.06f;
     private const float _planetAtmosphereVertexOffset = 0.23f;
     private const float _planetAtmosphereScatteringFactor = 2.8f;
@@ -2050,7 +2050,7 @@ public static class MainMenuPrefabBuilder
     }
 
     /// <summary>
-    /// Builds the off-screen Earth-like planet and camera rig from the authored planet prefab.
+    /// Builds the off-screen planet and camera rig from the authored planet prefab.
     /// </summary>
     /// <param name="root">The prefab root to parent the rig under.</param>
     /// <param name="renderTexture">The texture the rig camera renders into.</param>
@@ -2064,10 +2064,10 @@ public static class MainMenuPrefabBuilder
         pivot.transform.SetParent(rig.transform, false);
 
         const int planetLayer = 31;
-        GameObject planetPrefab = LoadRequiredAsset<GameObject>(_earthLikePlanetPrefabPath);
+        GameObject planetPrefab = LoadRequiredAsset<GameObject>(_planetPrefabPath);
         GameObject planet = (GameObject)
             PrefabUtility.InstantiatePrefab(planetPrefab, pivot.transform);
-        planet.name = "EarthLikePlanet";
+        planet.name = "Planet";
         planet.transform.localPosition = Vector3.zero;
         planet.transform.localRotation = Quaternion.identity;
         planet.transform.localScale = Vector3.one * 2f;

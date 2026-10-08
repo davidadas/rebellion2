@@ -151,9 +151,9 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         [Test]
-        public void AuthoredPrefab_PlanetRig_UsesAuthoredEarthLikePlanet()
+        public void AuthoredPrefab_PlanetRig_UsesAuthoredPlanet()
         {
-            Transform model = _prefabRoot.transform.Find("PlanetRig/Pivot/EarthLikePlanet");
+            Transform model = _prefabRoot.transform.Find("PlanetRig/Pivot/Planet");
             RawImage planet = _prefabRoot
                 .transform.Find("UI/Canvas/Viewport/SpaceBackdrop/Planet")
                 .GetComponent<RawImage>();
