@@ -272,13 +272,11 @@ public static class UIBuilderMenu
     /// Determines whether an object reference points into development-only installation content.
     /// </summary>
     /// <param name="value">The serialized object reference.</param>
-    /// <returns>True when the object is imported from Assets/Content.</returns>
+    /// <returns>True when the object is imported from external runtime content.</returns>
     private static bool IsDevelopmentContentReference(UnityEngine.Object value)
     {
         return value != null
-            && AssetDatabase
-                .GetAssetPath(value)
-                .StartsWith("Assets/Content/", StringComparison.Ordinal);
+            && ContentPackEditor.IsExternalContentAssetPath(AssetDatabase.GetAssetPath(value));
     }
 
     /// <summary>
@@ -306,7 +304,7 @@ public static class UIBuilderMenu
                 continue;
 
             string assetPath = AssetDatabase.GetAssetPath(value);
-            if (!assetPath.StartsWith("Assets/Content/", StringComparison.Ordinal))
+            if (!ContentPackEditor.IsExternalContentAssetPath(assetPath))
                 continue;
 
             property.objectReferenceValue = null;

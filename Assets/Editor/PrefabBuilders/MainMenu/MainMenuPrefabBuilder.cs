@@ -15,7 +15,7 @@ using Object = UnityEngine.Object;
 /// <summary>
 /// Builds the MainMenuRoot prefab from scratch in one pass: the base hierarchy is authored with
 /// <c>new GameObject(...)</c>, then the view bindings, the spinning-planet backdrop, and the
-/// spinning 3D icon rigs are installed, and the result is saved once. No authored prefab is loaded.
+/// spinning 3D icon rigs are installed, and the result is saved once.
 /// </summary>
 public static class MainMenuPrefabBuilder
 {
@@ -47,13 +47,13 @@ public static class MainMenuPrefabBuilder
     // Spinning-planet backdrop.
     private const string _starfieldAddress = "Application/MainMenu/UI/starfield";
     private const string _planetCompositeShaderName = "Custom/PremultipliedTexture";
-    private const string _renderTexturePath = "Assets/Art/Models/MainMenu/Planet.renderTexture";
+    private const string _planetAssetRoot = "Assets/Content/Application/MainMenu/Models/Planet";
+    private const string _renderTexturePath = _planetAssetRoot + "/Generated/Planet.renderTexture";
     private const string _planetCompositeMaterialPath =
-        "Assets/Art/Models/MainMenu/PlanetComposite.mat";
+        _planetAssetRoot + "/Generated/PlanetComposite.mat";
     private const string _planetAtmosphereMaterialPath =
-        "Assets/Art/Models/MainMenu/PlanetAtmosphere.mat";
-    private const string _earthLikePlanetPrefabPath =
-        "Assets/FORGE3D/Planets/Terrestrial/Planet_Terrestrial_01.prefab";
+        _planetAssetRoot + "/Generated/PlanetAtmosphere.mat";
+    private const string _earthLikePlanetPrefabPath = _planetAssetRoot + "/EarthLikePlanet.prefab";
     private const float _planetAtmosphereScale = 1.06f;
     private const float _planetAtmosphereVertexOffset = 0.23f;
     private const float _planetAtmosphereScatteringFactor = 2.8f;

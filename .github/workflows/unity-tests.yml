@@ -122,7 +122,7 @@ jobs:
           test -f .ci/rebellion2-media/Content/Application/Schemas/game-config.xsd
           rsync -a --delete --exclude=.DS_Store --exclude='*.meta' .ci/rebellion2-media/Content/ Assets/Content/
           rsync -a --delete --exclude=.DS_Store --exclude='*.meta' .ci/rebellion2-media/Models/MainMenu/ Assets/Art/Models/MainMenu/
-          rsync -a --delete --exclude=.DS_Store .ci/rebellion2-media/UnityAssets/ Assets/
+          rsync -a --exclude=.DS_Store .ci/rebellion2-media/UnityAssets/ Assets/
           rm -rf .ci
 
       - uses: actions/cache@v4
@@ -303,7 +303,7 @@ jobs:
           test -f .ci/rebellion2-media/Content/Application/Schemas/game-config.xsd
           rsync -a --delete --exclude=.DS_Store --exclude='*.meta' .ci/rebellion2-media/Content/ Assets/Content/
           rsync -a --delete --exclude=.DS_Store --exclude='*.meta' .ci/rebellion2-media/Models/MainMenu/ Assets/Art/Models/MainMenu/
-          rsync -a --delete --exclude=.DS_Store .ci/rebellion2-media/UnityAssets/ Assets/
+          rsync -a --exclude=.DS_Store .ci/rebellion2-media/UnityAssets/ Assets/
           rm -rf .ci
 
       - uses: actions/cache@v4

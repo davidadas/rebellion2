@@ -161,7 +161,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.IsNotNull(model);
             Renderer renderer = model.GetComponent<Renderer>();
             Material earthMaterial = renderer.sharedMaterial;
-            Assert.AreEqual("FORGE3D/Planets HD/Terrestrial", earthMaterial.shader.name);
+            Assert.AreEqual("Rebellion/MainMenu/PlanetSurface", earthMaterial.shader.name);
             Assert.IsNotNull(earthMaterial.GetTexture("_CloudsTop"));
             Assert.IsNotNull(earthMaterial.GetTexture("_LandMask"));
             Assert.IsNotNull(earthMaterial.GetTexture("_NormalMap"));
@@ -170,7 +170,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Transform atmosphere = model.Find("Atmosphere");
             Assert.AreEqual(Vector3.one * 1.06f, atmosphere.localScale);
             Material atmosphereMaterial = atmosphere.GetComponent<Renderer>().sharedMaterial;
-            Assert.AreEqual("FORGE3D/Planets/Atmosphere", atmosphereMaterial.shader.name);
+            Assert.AreEqual("Rebellion/MainMenu/PlanetAtmosphere", atmosphereMaterial.shader.name);
             Assert.AreEqual(0.23f, atmosphereMaterial.GetFloat("_VertexOffset"));
             Assert.AreEqual(2.8f, atmosphereMaterial.GetFloat("_ScatteringFactor"));
             Assert.AreEqual(8f, atmosphereMaterial.GetFloat("_ScatteringIntensity"));
@@ -186,6 +186,29 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.IsNotNull(camera.GetUniversalAdditionalCameraData());
             Assert.IsNotNull(planet.material);
             Assert.AreEqual("Custom/PremultipliedTexture", planet.material.shader.name);
+        }
+
+        [Test]
+        public void AuthoredPrefab_PlanetDependencies_UseMainMenuModelPackage()
+        {
+            string[] dependencies = AssetDatabase.GetDependencies(
+                "Assets/Prefabs/UI/MainMenu/MainMenuRoot.prefab",
+                true
+            );
+
+            Assert.IsTrue(
+                dependencies.Any(path =>
+                    path.StartsWith(
+                        "Assets/Content/Application/MainMenu/Models/Planet/",
+                        StringComparison.Ordinal
+                    )
+                )
+            );
+            Assert.IsFalse(
+                dependencies.Any(path =>
+                    path.StartsWith("Assets/FORGE3D/", StringComparison.Ordinal)
+                )
+            );
         }
 
         [Test]

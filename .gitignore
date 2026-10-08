@@ -94,10 +94,6 @@ Assets/Art/Models/**/*.fbx
 Assets/Art/Models/**/*.png
 Assets/Art/Models/MainMenu/
 
-# Unity-authored media assets are installed from rebellion2-media.
-Assets/FORGE3D/
-Assets/FORGE3D.meta
-
 # App icon lives in private rebellion2-media, not here
 /Assets/GameIcon/
 /Assets/GameIcon.meta
