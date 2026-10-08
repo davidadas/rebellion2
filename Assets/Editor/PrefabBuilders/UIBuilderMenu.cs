@@ -125,6 +125,8 @@ public static class UIBuilderMenu
     {
         if (build == null)
             throw new ArgumentNullException(nameof(build));
+        if (EditorApplication.isPlayingOrWillChangePlaymode)
+            throw new InvalidOperationException("Generated UI cannot be rebuilt in Play Mode.");
 
         if (
             !Application.isBatchMode && !EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()
