@@ -216,8 +216,8 @@ internal sealed class FleetWindowProjector
                     ),
                     selected ? uiContext.GetTexture(icons?.FleetListSelectionImagePath) : null,
                     i,
-                    showTreeBranch: true,
-                    treeHasHorizontalBranch: true,
+                    showTreeBranch: expanded,
+                    treeHasHorizontalBranch: expanded,
                     treeContinuesBelow: expanded
                 )
             );

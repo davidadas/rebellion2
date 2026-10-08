@@ -91,7 +91,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         [Test]
-        public void Render_TreeConnector_LeavesVisibleSpaceBetweenDots()
+        public void Render_TreeConnector_DrawsContinuousPixels()
         {
             _view.Render(
                 CreateRenderData(
@@ -123,13 +123,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             using VertexHelper vertexHelper = new VertexHelper();
 
             populateMesh.Invoke(connector, new object[] { vertexHelper });
-            UIVertex firstDotRight = default;
-            UIVertex secondDotLeft = default;
-            vertexHelper.PopulateUIVertex(ref firstDotRight, 2);
-            vertexHelper.PopulateUIVertex(ref secondDotLeft, 4);
+            UIVertex firstPixelRight = default;
+            UIVertex secondPixelLeft = default;
+            vertexHelper.PopulateUIVertex(ref firstPixelRight, 2);
+            vertexHelper.PopulateUIVertex(ref secondPixelLeft, 4);
 
             Assert.GreaterOrEqual(vertexHelper.currentVertCount, 8);
-            Assert.AreEqual(2f, secondDotLeft.position.x - firstDotRight.position.x);
+            Assert.AreEqual(0f, secondPixelLeft.position.x - firstPixelRight.position.x);
         }
 
         [Test]

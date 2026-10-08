@@ -188,8 +188,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsTrue(shipRow.TreeHasHorizontalBranch);
             Assert.IsTrue(shipRow.TreeContinuesAbove);
             Assert.IsFalse(shipRow.TreeContinuesBelow);
-            Assert.IsTrue(data.FleetRows[2].ShowTreeBranch);
-            Assert.IsTrue(data.FleetRows[2].TreeHasHorizontalBranch);
+            Assert.IsFalse(data.FleetRows[2].ShowTreeBranch);
+            Assert.IsFalse(data.FleetRows[2].TreeHasHorizontalBranch);
             Assert.IsFalse(data.FleetRows[2].TreeContinuesAbove);
             Assert.IsFalse(data.FleetRows[2].TreeContinuesBelow);
         }
