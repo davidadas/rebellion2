@@ -9,7 +9,7 @@ public sealed class FleetTreeConnectorView : MaskableGraphic
 {
     private const int _branchEndX = 5;
     private const int _branchY = 6;
-    private const int _dotSpacing = 2;
+    private const int _dotSpacing = 3;
     private const int _stemX = 2;
 
     private bool continuesAbove;

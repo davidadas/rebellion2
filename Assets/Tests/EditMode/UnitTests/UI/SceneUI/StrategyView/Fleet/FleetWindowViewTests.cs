@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Reflection;
 using NUnit.Framework;
 using TMPro;
 using UnityEngine;
@@ -87,6 +88,48 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             StrategyUnitCardView[] items = FindDetailItems();
             Assert.AreEqual(2, items.Length);
             Assert.AreEqual("First Ship", items[0].NameTextField.text);
+        }
+
+        [Test]
+        public void Render_TreeConnector_LeavesVisibleSpaceBetweenDots()
+        {
+            _view.Render(
+                CreateRenderData(
+                    true,
+                    new[]
+                    {
+                        CreateFleetRow(
+                            "Capital Ship",
+                            showTreeBranch: true,
+                            treeHasHorizontalBranch: true,
+                            treeContinuesAbove: true
+                        ),
+                    },
+                    Array.Empty<StrategyUnitCardRenderData>()
+                )
+            );
+            FleetTreeConnectorView connector = FindRowObject(
+                    FindFleetRows().Single(),
+                    "TreeConnectorView"
+                )
+                .GetComponent<FleetTreeConnectorView>();
+            MethodInfo populateMesh = typeof(FleetTreeConnectorView).GetMethod(
+                "OnPopulateMesh",
+                BindingFlags.Instance | BindingFlags.NonPublic,
+                binder: null,
+                types: new[] { typeof(VertexHelper) },
+                modifiers: null
+            );
+            using VertexHelper vertexHelper = new VertexHelper();
+
+            populateMesh.Invoke(connector, new object[] { vertexHelper });
+            UIVertex firstDotRight = default;
+            UIVertex secondDotLeft = default;
+            vertexHelper.PopulateUIVertex(ref firstDotRight, 2);
+            vertexHelper.PopulateUIVertex(ref secondDotLeft, 4);
+
+            Assert.GreaterOrEqual(vertexHelper.currentVertCount, 8);
+            Assert.AreEqual(2f, secondDotLeft.position.x - firstDotRight.position.x);
         }
 
         [Test]
@@ -742,8 +785,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         /// </summary>
         /// <param name="name">The name.</param>
         /// <param name="showOptionalImages">Whether show optional images.</param>
+        /// <param name="showTreeBranch">Whether the row draws tree connector segments.</param>
+        /// <param name="treeHasHorizontalBranch">Whether the connector reaches into the row.</param>
+        /// <param name="treeContinuesAbove">Whether the connector reaches the row's top edge.</param>
         /// <returns>The created fleet row.</returns>
-        private FleetListRowRenderData CreateFleetRow(string name, bool showOptionalImages = false)
+        private FleetListRowRenderData CreateFleetRow(
+            string name,
+            bool showOptionalImages = false,
+            bool showTreeBranch = false,
+            bool treeHasHorizontalBranch = false,
+            bool treeContinuesAbove = false
+        )
         {
             Texture optionalTexture = showOptionalImages ? _texture : null;
             return new FleetListRowRenderData(
@@ -754,7 +806,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 optionalTexture,
                 optionalTexture,
                 optionalTexture,
-                optionalTexture
+                optionalTexture,
+                showTreeBranch: showTreeBranch,
+                treeContinuesAbove: treeContinuesAbove,
+                treeHasHorizontalBranch: treeHasHorizontalBranch
             );
         }
 
