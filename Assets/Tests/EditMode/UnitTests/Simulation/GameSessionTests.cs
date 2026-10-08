@@ -1426,7 +1426,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void Tick_BlockadeStarts_ReroutesInboundStarfighter()
+        public void Tick_BlockadeStarts_DefenderOwnedInboundStarfighterContinuesToDestination()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
             Faction owner = new Faction { InstanceID = "OWNER" };
@@ -1489,7 +1489,7 @@ namespace Rebellion.Tests.Simulation
 
             manager.Tick.ProcessTick();
 
-            Assert.AreSame(origin, starfighter.GetParent());
+            Assert.AreSame(destination, starfighter.GetParent());
             Assert.IsNotNull(starfighter.Movement);
         }
 

@@ -1025,13 +1025,13 @@ namespace Rebellion.AI
         /// <param name="mission">The faction mission being estimated.</param>
         /// <param name="planet">The planet to inspect.</param>
         /// <param name="phase">The encounter checkpoint.</param>
-        /// <param name="mainParticipants">The primary participants present.</param>
+        /// <param name="objective">The observed objective whose container determines detector scope.</param>
         /// <returns>The detector candidates indexed for this AI turn.</returns>
         internal IReadOnlyList<ISceneNode> GetMissionDetectors(
             Mission mission,
             Planet planet,
             MissionEncounterPhase phase,
-            IReadOnlyList<IMissionParticipant> mainParticipants
+            ISceneNode objective
         )
         {
             if (
@@ -1041,7 +1041,16 @@ namespace Rebellion.AI
             )
                 return Array.Empty<ISceneNode>();
 
-            if (
+            bool planetaryEncounter = MissionQueries.UsesPlanetaryDetectors(phase, objective);
+            if (planetaryEncounter)
+            {
+                if (
+                    string.IsNullOrEmpty(planet.GetOwnerInstanceID())
+                    || planet.GetOwnerInstanceID() == mission.GetOwnerInstanceID()
+                )
+                    return Array.Empty<ISceneNode>();
+            }
+            else if (
                 phase != MissionEncounterPhase.PreObjective
                 && (
                     !_missionHostileFleetPlanetIds.Contains(planet.InstanceID)
@@ -1050,12 +1059,7 @@ namespace Rebellion.AI
             )
                 return Array.Empty<ISceneNode>();
 
-            bool includePlanetaryDetectors =
-                phase == MissionEncounterPhase.PreObjective
-                || mainParticipants.Any(participant =>
-                    participant.GetParentOfType<Planet>()?.InstanceID != planet.InstanceID
-                );
-            Dictionary<string, List<ISceneNode>> index = includePlanetaryDetectors
+            Dictionary<string, List<ISceneNode>> index = planetaryEncounter
                 ? _planetMissionDetectors
                 : _planetMissionFleetDetectors;
             return index.TryGetValue(planet.InstanceID, out List<ISceneNode> detectors)
@@ -1077,10 +1081,6 @@ namespace Rebellion.AI
                 string,
                 List<Starfighter>
             >(StringComparer.Ordinal);
-            Dictionary<string, List<Regiment>> regimentsByCapitalShip = new Dictionary<
-                string,
-                List<Regiment>
-            >(StringComparer.Ordinal);
 
             foreach (ISceneNode node in visibleNodes)
             {
@@ -1098,7 +1098,11 @@ namespace Rebellion.AI
                         IndexMissionDetector(starfighter, starfightersByCapitalShip);
                         break;
                     case Regiment regiment:
-                        IndexMissionDetector(regiment, regimentsByCapitalShip);
+                        if (
+                            regiment.GetParent() is Planet
+                            && Mission.IsEligibleDetectorForOwner(regiment, _faction.InstanceID)
+                        )
+                            AddMissionDetectorCandidate(regiment, false);
                         break;
                     case CapitalShip capitalShip:
                         capitalShips.Add(capitalShip);
@@ -1142,21 +1146,12 @@ namespace Rebellion.AI
                 )
                     continue;
 
+                if (Mission.IsEligibleDetectorForOwner(capitalShip, _faction.InstanceID))
+                    AddMissionDetectorCandidate(capitalShip, true);
                 if (containedStarfighters != null)
                 {
                     foreach (Starfighter starfighter in containedStarfighters)
                         AddMissionDetectorCandidate(starfighter, true);
-                }
-
-                if (
-                    regimentsByCapitalShip.TryGetValue(
-                        capitalShip.InstanceID,
-                        out List<Regiment> containedRegiments
-                    )
-                )
-                {
-                    foreach (Regiment regiment in containedRegiments)
-                        AddMissionDetectorCandidate(regiment, true);
                 }
             }
         }
@@ -1452,9 +1447,7 @@ namespace Rebellion.AI
                 return;
 
             CapitalShip capitalShip = detector.GetParentOfType<CapitalShip>();
-            if (capitalShip == null)
-                AddMissionDetectorCandidate(detector, false);
-            else
+            if (capitalShip != null)
                 AddIndexedValue(detectorsByCapitalShip, capitalShip.InstanceID, detector);
         }
 
@@ -1491,20 +1484,10 @@ namespace Rebellion.AI
             if (planet == null || !_knownPlanets.ContainsKey(planet.InstanceID))
                 return;
 
-            if (
-                !_planetMissionDetectors.TryGetValue(
-                    planet.InstanceID,
-                    out List<ISceneNode> detectors
-                )
-            )
-            {
-                detectors = new List<ISceneNode>();
-                _planetMissionDetectors.Add(planet.InstanceID, detectors);
-            }
-
-            detectors.Add(candidate);
             if (isFleetDetector)
                 AddIndexedValue(_planetMissionFleetDetectors, planet.InstanceID, candidate);
+            else
+                AddIndexedValue(_planetMissionDetectors, planet.InstanceID, candidate);
         }
 
         /// <summary>

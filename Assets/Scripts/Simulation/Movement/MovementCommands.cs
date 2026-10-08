@@ -24,7 +24,9 @@ namespace Rebellion.Simulation
         private readonly FogOfWarQueries _fogOfWarQueries;
         private readonly EvacuationLossResolver _evacuationLosses;
         private readonly FleetCommands _fleetSystem;
+        private readonly PersonnelCommands _personnelCommands;
         private readonly MovementQueries _queries;
+        private readonly IRandomNumberProvider _movementRandom;
         private readonly List<GameResult> _pendingResults = new List<GameResult>();
 
         /// <summary>
@@ -40,23 +42,28 @@ namespace Rebellion.Simulation
         /// <param name="fleetSystem">Owns fleet formation and empty-fleet cleanup.</param>
         /// <param name="fogOfWarQueries">The visibility rules for arrival observations.</param>
         /// <param name="queries">The shared movement eligibility and destination rules.</param>
-        /// <param name="evacuationRandom">The random source used for blockade evacuation losses.</param>
+        /// <param name="random">The random source used for movement consequences.</param>
+        /// <param name="personnelCommands">The personnel lifecycle operations.</param>
         public MovementCommands(
             GameRoot game,
             FogOfWarCommands fogOfWar,
             FleetCommands fleetSystem,
             FogOfWarQueries fogOfWarQueries,
             MovementQueries queries,
-            IRandomNumberProvider evacuationRandom = null
+            IRandomNumberProvider random = null,
+            PersonnelCommands personnelCommands = null
         )
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
             _fogOfWar = fogOfWar ?? throw new ArgumentNullException(nameof(fogOfWar));
             _fleetSystem = fleetSystem ?? throw new ArgumentNullException(nameof(fleetSystem));
-            _evacuationLosses = new EvacuationLossResolver(game, evacuationRandom ?? game.Random);
             _fogOfWarQueries =
                 fogOfWarQueries ?? throw new ArgumentNullException(nameof(fogOfWarQueries));
             _queries = queries ?? throw new ArgumentNullException(nameof(queries));
+            _movementRandom = random ?? game.Random;
+            _evacuationLosses = new EvacuationLossResolver(game, _movementRandom);
+            _personnelCommands =
+                personnelCommands ?? new PersonnelCommands(new PersonnelQueries(game));
         }
 
         /// <summary>
@@ -263,6 +270,18 @@ namespace Rebellion.Simulation
             Planet destinationPlanet = MovementQueries.RequireDestinationPlanet(destination);
 
             if (
+                unit is Starfighter
+                && destinationPlanet != origin
+                && MovementQueries.IsBlockedFromDestinationByBlockade(unit, destinationPlanet)
+            )
+            {
+                _game.MoveNode(unit, origin);
+                unit.Movement = null;
+                CompleteManufacturingDelivery(unit);
+                return;
+            }
+
+            if (
                 destinationPlanet.GetOwnerInstanceID() != unit.GetOwnerInstanceID()
                 && !MovementQueries.CanEnterHostileOrbit(unit, destination)
             )
@@ -434,21 +453,41 @@ namespace Rebellion.Simulation
 
             foreach (KeyValuePair<ContainerNode, List<IMovable>> returnGroup in returnGroups)
             {
+                List<IMovable> returningGroup = returnGroup.Value;
+                if (returningGroup.Count == 0)
+                    continue;
+
                 string movementGroupID = Guid.NewGuid().ToString("N");
                 int groupTransitTicks = CalculateGroupTransitTicks(
-                    returnGroup.Value,
-                    Enumerable.Repeat(returnGroup.Key, returnGroup.Value.Count).ToList()
+                    returningGroup,
+                    Enumerable.Repeat(returnGroup.Key, returningGroup.Count).ToList()
                 );
-                foreach (IMovable unit in returnGroup.Value)
+                List<IMovable> immediatePersonnel = new List<IMovable>();
+                foreach (IMovable unit in returningGroup)
                 {
-                    ExecuteMove(
+                    bool accepted = ExecuteReturnMove(
                         unit,
                         returnGroup.Key,
                         _pendingResults,
                         movementGroupID,
-                        transitTicksOverride: groupTransitTicks
+                        groupTransitTicks
                     );
+                    if (
+                        accepted
+                        && unit.Movement == null
+                        && IsFreePersonnel(unit)
+                        && unit.GetParentOfType<Planet>()
+                            == MovementQueries.RequireDestinationPlanet(returnGroup.Key)
+                    )
+                        immediatePersonnel.Add(unit);
                 }
+
+                if (immediatePersonnel.Count > 0)
+                    ResolvePersonnelEncounters(
+                        immediatePersonnel,
+                        MovementQueries.RequireDestinationPlanet(returnGroup.Key),
+                        _pendingResults
+                    );
             }
 
             return strandedUnits.Distinct().ToList();
@@ -929,31 +968,55 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Advances the movement of a single unit by one tick and handles arrival.
+        /// Advances all active movement by one tick and resolves completed arrival groups.
         /// </summary>
-        /// <param name="movable">The movable unit to update.</param>
+        /// <param name="movables">The movable units present at the start of the movement phase.</param>
         /// <param name="results">The results generated this tick.</param>
-        internal void UpdateMovement(IMovable movable, List<GameResult> results)
+        internal void UpdateMovements(IReadOnlyList<IMovable> movables, List<GameResult> results)
         {
-            if (movable.Movement == null)
-                return;
+            if (movables == null)
+                throw new ArgumentNullException(nameof(movables));
+            if (results == null)
+                throw new ArgumentNullException(nameof(results));
 
+            List<IMovable> arrivals = movables.Where(AdvanceMovement).ToList();
+            ResolvePersonnelArrivalGroups(arrivals, results);
+            foreach (IMovable movable in arrivals)
+            {
+                if (movable.Movement?.IsComplete() != true || movable.GetParent() == null)
+                    continue;
+
+                Planet destinationPlanet = movable.GetParentOfType<Planet>();
+                if (destinationPlanet == null)
+                    throw new InvalidOperationException(
+                        $"Unit {movable.GetDisplayName()} is in transit but has no parent planet."
+                    );
+
+                ContainerNode destination =
+                    movable.GetParent() as ContainerNode
+                    ?? throw new InvalidOperationException(
+                        $"Unit {movable.GetDisplayName()} is in transit but has no container destination."
+                    );
+                CheckArrival(movable, destination, destinationPlanet, results);
+            }
+        }
+
+        /// <summary>Advances one active unit and reports whether it reached its destination.</summary>
+        /// <param name="movable">The movable unit to advance.</param>
+        /// <returns>True when the unit completed transit during this update.</returns>
+        private bool AdvanceMovement(IMovable movable)
+        {
             if (
-                movable is IManufacturable m
-                && m.GetManufacturingStatus() == ManufacturingStatus.Building
+                movable?.Movement == null
+                || movable is IManufacturable m
+                    && m.GetManufacturingStatus() == ManufacturingStatus.Building
             )
-                return;
+                return false;
 
             Planet destinationPlanet = movable.GetParentOfType<Planet>();
             if (destinationPlanet == null)
                 throw new InvalidOperationException(
                     $"Unit {movable.GetDisplayName()} is in transit but has no parent planet."
-                );
-
-            ContainerNode destination =
-                movable.GetParent() as ContainerNode
-                ?? throw new InvalidOperationException(
-                    $"Unit {movable.GetDisplayName()} is in transit but has no container destination."
                 );
 
             movable.Movement.TicksElapsed++;
@@ -963,8 +1026,218 @@ namespace Rebellion.Simulation
                 $"{movable.GetDisplayName()} in transit ({movable.Movement.TicksElapsed}/{movable.Movement.TransitTicks} ticks)"
             );
 
-            if (movable.Movement.IsComplete())
-                CheckArrival(movable, destination, destinationPlanet, results);
+            return movable.Movement.IsComplete();
+        }
+
+        /// <summary>Resolves one arrival encounter for each completed personnel movement group.</summary>
+        /// <param name="arrivals">The units that completed transit this tick.</param>
+        /// <param name="results">The collection receiving encounter results.</param>
+        private void ResolvePersonnelArrivalGroups(
+            IReadOnlyList<IMovable> arrivals,
+            ICollection<GameResult> results
+        )
+        {
+            List<IMovable> personnel = arrivals
+                .Where(movable =>
+                    IsFreePersonnel(movable)
+                    && movable.GetParent() is not Mission
+                    && movable.Movement?.ResolveEncounterOnArrival == true
+                )
+                .ToList();
+            foreach (
+                IGrouping<(string GroupID, Planet Destination), IMovable> group in personnel
+                    .Where(movable => !string.IsNullOrEmpty(movable.Movement?.MovementGroupID))
+                    .GroupBy(movable =>
+                        (movable.Movement.MovementGroupID, movable.GetParentOfType<Planet>())
+                    )
+            )
+            {
+                ResolvePersonnelEncounters(group.ToList(), group.Key.Destination, results);
+            }
+
+            foreach (
+                IMovable movable in personnel.Where(movable =>
+                    string.IsNullOrEmpty(movable.Movement?.MovementGroupID)
+                )
+            )
+            {
+                ResolvePersonnelEncounters(
+                    new[] { movable },
+                    movable.GetParentOfType<Planet>(),
+                    results
+                );
+            }
+        }
+
+        /// <summary>Resolves hostile detection against personnel crossing one planetary system.</summary>
+        /// <param name="movables">The personnel crossing together.</param>
+        /// <param name="planet">The planetary system being crossed.</param>
+        /// <param name="results">The collection receiving encounter results.</param>
+        private void ResolvePersonnelEncounters(
+            IReadOnlyList<IMovable> movables,
+            Planet planet,
+            ICollection<GameResult> results
+        )
+        {
+            if (movables == null || planet == null || results == null)
+                return;
+
+            foreach (
+                IGrouping<string, IMissionParticipant> group in movables
+                    .OfType<IMissionParticipant>()
+                    .Where(IsEligibleEncounterParticipant)
+                    .GroupBy(participant => participant.GetOwnerInstanceID())
+            )
+                ResolvePersonnelEncounterGroup(group.ToList(), planet, results);
+        }
+
+        /// <summary>Returns whether personnel remain eligible for a movement encounter.</summary>
+        /// <param name="participant">The participant to inspect.</param>
+        /// <returns>True when the participant remains active and free.</returns>
+        private static bool IsEligibleEncounterParticipant(IMissionParticipant participant)
+        {
+            return participant switch
+            {
+                Officer officer => !officer.IsKilled && !officer.IsCaptured,
+                SpecialForces specialForces => specialForces.IsActive(),
+                _ => false,
+            };
+        }
+
+        /// <summary>Resolves detection and confrontation for one faction's personnel.</summary>
+        /// <param name="participants">The personnel crossing together.</param>
+        /// <param name="planet">The planetary system being crossed.</param>
+        /// <param name="results">The collection receiving encounter results.</param>
+        private void ResolvePersonnelEncounterGroup(
+            IReadOnlyList<IMissionParticipant> participants,
+            Planet planet,
+            ICollection<GameResult> results
+        )
+        {
+            PersonnelMovementEncounterOdds encounter = _queries.GetPersonnelEncounterOdds(
+                participants,
+                planet
+            );
+            bool detected = encounter.Detectors.Any(detector =>
+                RollMovementPercent(detector.DetectionProbability)
+            );
+            if (!detected)
+                return;
+
+            foreach (
+                IMissionParticipant participant in participants
+                    .OrderBy(participant =>
+                        participant is Officer { IsMain: true } ? 0
+                        : participant is Officer ? 1
+                        : 2
+                    )
+                    .ToList()
+            )
+            {
+                if (!IsEligibleEncounterParticipant(participant))
+                    continue;
+                PersonnelMovementDetectorOdds detector = encounter.Detectors[
+                    _movementRandom.NextInt(0, encounter.Detectors.Count)
+                ];
+                ResolveDetectedPersonnel(participant, detector, planet, results);
+            }
+        }
+
+        /// <summary>Resolves one detected participant's confrontation.</summary>
+        /// <param name="participant">The detected participant.</param>
+        /// <param name="encounter">The hostile detector and calculated probabilities.</param>
+        /// <param name="planet">The planetary system where the encounter occurs.</param>
+        /// <param name="results">The collection receiving encounter results.</param>
+        private void ResolveDetectedPersonnel(
+            IMissionParticipant participant,
+            PersonnelMovementDetectorOdds encounter,
+            Planet planet,
+            ICollection<GameResult> results
+        )
+        {
+            bool evaded = RollMovementPercent(encounter.GetEvasionProbability(participant));
+            if (participant is SpecialForces specialForces)
+            {
+                if (!evaded)
+                    DestroyDetectedSpecialForces(specialForces, planet, results);
+                return;
+            }
+
+            if (participant is not Officer officer)
+                return;
+
+            List<GameResult> injuryResults = new List<GameResult>();
+            bool killed = Mission.ApplyEvasionInjury(
+                officer,
+                encounter.Commander ?? encounter.Detector as IGameEntity,
+                planet,
+                _game,
+                _movementRandom,
+                injuryResults
+            );
+            foreach (GameResult injuryResult in injuryResults)
+                results.Add(injuryResult);
+
+            if (killed)
+            {
+                _personnelCommands.KillOfficer(officer);
+                return;
+            }
+            if (evaded)
+                return;
+
+            ISceneNode capturingUnit = encounter.Commander ?? encounter.Detector;
+            MovementState interruptedMovement = officer.Movement;
+            officer.Movement = null;
+            if (!officer.TryCapture(capturingUnit.GetOwnerInstanceID()))
+            {
+                officer.Movement = interruptedMovement;
+                return;
+            }
+
+            results.Add(
+                new OfficerCaptureStateResult
+                {
+                    TargetOfficer = officer,
+                    IsCaptured = true,
+                    CaptorInstanceID = capturingUnit.GetOwnerInstanceID(),
+                    ParentAtCapture = officer.GetParent(),
+                    CapturingUnit = capturingUnit,
+                    Context = planet,
+                    Tick = _game.CurrentTick,
+                }
+            );
+        }
+
+        /// <summary>Removes detected special forces that fail to evade.</summary>
+        /// <param name="specialForces">The unit to remove.</param>
+        /// <param name="planet">The planetary system where the unit was destroyed.</param>
+        /// <param name="results">The collection receiving the destruction result.</param>
+        private void DestroyDetectedSpecialForces(
+            SpecialForces specialForces,
+            Planet planet,
+            ICollection<GameResult> results
+        )
+        {
+            specialForces.Movement = null;
+            _game.DeleteNode(specialForces);
+            results.Add(
+                new GameObjectDestroyedResult
+                {
+                    DestroyedObject = specialForces,
+                    Context = planet,
+                    Reason = UnitDestructionReason.Detection,
+                    Tick = _game.CurrentTick,
+                }
+            );
+        }
+
+        /// <summary>Rolls against a movement encounter percentage.</summary>
+        /// <param name="probability">The percentage chance of success.</param>
+        /// <returns>True when the roll succeeds.</returns>
+        private bool RollMovementPercent(double probability)
+        {
+            return probability > 0 && _movementRandom.NextDouble() * 100 < probability;
         }
 
         /// <summary>
@@ -1003,9 +1276,6 @@ namespace Rebellion.Simulation
             string sourceEventInstanceID = movable.Movement?.SourceEventInstanceID;
             bool completesManufacturingDelivery =
                 movable is IManufacturable { ManufacturingStatus: ManufacturingStatus.Delivering };
-
-            if (TryFollowMovingFleetDestination(movable, destination))
-                return;
 
             if (destination is Mission)
             {
@@ -1055,25 +1325,18 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Redirects a unit when its fleet destination is still moving.
+        /// Returns whether a unit is free personnel eligible for a transit encounter.
         /// </summary>
-        /// <param name="movable">The moving unit.</param>
-        /// <param name="destination">The requested destination.</param>
-        /// <returns>True if the unit was redirected to continue chasing the fleet.</returns>
-        private bool TryFollowMovingFleetDestination(IMovable movable, ContainerNode destination)
+        /// <param name="movable">The unit to inspect.</param>
+        /// <returns>True for an active, uncaptured officer or special-forces unit.</returns>
+        private static bool IsFreePersonnel(IMovable movable)
         {
-            Fleet movingFleet = destination is Fleet fleet
-                ? fleet
-                : (destination is CapitalShip ship ? ship.GetParent() as Fleet : null);
-            if (movingFleet?.Movement == null)
-                return false;
-
-            Planet newDestination = movingFleet.GetParentOfType<Planet>();
-            if (newDestination == null)
-                return true;
-
-            RetargetMovement(movable, newDestination);
-            return true;
+            return movable switch
+            {
+                Officer officer => !officer.IsKilled && !officer.IsCaptured,
+                SpecialForces specialForces => specialForces.IsActive(),
+                _ => false,
+            };
         }
 
         /// <summary>
@@ -1638,6 +1901,41 @@ namespace Rebellion.Simulation
             );
         }
 
+        /// <summary>Starts return travel that resolves its personnel encounter on arrival.</summary>
+        /// <param name="unit">The unit to move.</param>
+        /// <param name="destination">The requested destination.</param>
+        /// <param name="results">The collection receiving movement results.</param>
+        /// <param name="movementGroupID">The shared movement group identifier.</param>
+        /// <param name="transitTicks">The common movement-group duration.</param>
+        /// <returns>True when the validated movement starts.</returns>
+        private bool ExecuteReturnMove(
+            IMovable unit,
+            ContainerNode destination,
+            ICollection<GameResult> results,
+            string movementGroupID,
+            int transitTicks
+        )
+        {
+            destination = _queries.ResolveLiveContainer(destination);
+            if (
+                !_queries.TryResolveAcceptedDestination(
+                    unit,
+                    destination,
+                    out ContainerNode resolvedDestination
+                )
+            )
+                return false;
+
+            return ExecuteAcceptedMove(
+                unit,
+                resolvedDestination,
+                results,
+                movementGroupID,
+                transitTicksOverride: transitTicks,
+                resolveEncounterOnArrival: true
+            );
+        }
+
         /// <summary>
         /// Executes a move whose destination and capacity have already been validated.
         /// </summary>
@@ -1651,6 +1949,7 @@ namespace Rebellion.Simulation
         /// Whether the unit faced an opposing blockade before a preceding state transition, or
         /// null to inspect the current planet state.
         /// </param>
+        /// <param name="resolveEncounterOnArrival">Whether personnel resolve a hostile encounter at arrival.</param>
         /// <returns>True when the movement order was accepted; otherwise false.</returns>
         private bool ExecuteAcceptedMove(
             IMovable unit,
@@ -1659,7 +1958,8 @@ namespace Rebellion.Simulation
             string movementGroupID,
             string sourceEventInstanceID = null,
             int? transitTicksOverride = null,
-            bool? opposingBlockadeAtDeparture = null
+            bool? opposingBlockadeAtDeparture = null,
+            bool resolveEncounterOnArrival = false
         )
         {
             Planet destinationPlanet = MovementQueries.RequireDestinationPlanet(destination);
@@ -1735,6 +2035,7 @@ namespace Rebellion.Simulation
                 TicksElapsed = 0,
                 MovementGroupID = movementGroupID,
                 SourceEventInstanceID = sourceEventInstanceID,
+                ResolveEncounterOnArrival = resolveEncounterOnArrival,
                 OriginPosition = originPosition,
                 CurrentPosition = originPosition,
             };
@@ -1787,6 +2088,7 @@ namespace Rebellion.Simulation
             Point currentPosition = movable.Movement.CurrentPosition;
             string movementGroupID = movable.Movement.MovementGroupID;
             string sourceEventInstanceID = movable.Movement.SourceEventInstanceID;
+            bool resolveEncounterOnArrival = movable.Movement.ResolveEncounterOnArrival;
             movable.Movement = new MovementState
             {
                 TransitTicks = _queries.CalculateTransitTicks(
@@ -1798,6 +2100,7 @@ namespace Rebellion.Simulation
                 TicksElapsed = 0,
                 MovementGroupID = movementGroupID,
                 SourceEventInstanceID = sourceEventInstanceID,
+                ResolveEncounterOnArrival = resolveEncounterOnArrival,
                 OriginPosition = currentPosition,
                 CurrentPosition = currentPosition,
             };

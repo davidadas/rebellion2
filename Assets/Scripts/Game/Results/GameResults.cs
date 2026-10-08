@@ -49,6 +49,7 @@ namespace Rebellion.Game.Results
         Maintenance,
         Sabotage,
         Combat,
+        Detection,
     }
 
     public enum CombatSide

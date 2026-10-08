@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
+using Rebellion.AI;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
@@ -65,7 +66,7 @@ namespace Rebellion.Tests.Simulation
             );
 
             Assert.IsNotNull(odds);
-            Assert.AreEqual(81.25, odds.FoilProbability, 0.001);
+            Assert.AreEqual(50, odds.FoilProbability, 0.001);
         }
 
         [Test]
@@ -105,7 +106,7 @@ namespace Rebellion.Tests.Simulation
             );
 
             Assert.IsNotNull(odds);
-            Assert.AreEqual(57.75, odds.FoilProbability, 0.001);
+            Assert.AreEqual(35, odds.FoilProbability, 0.001);
         }
 
         [Test]
@@ -179,7 +180,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void GetMissionOdds_TargetDetector_CombinesArrivalAndPreObjectiveChecks()
+        public void GetMissionOdds_GroundDetector_OnlyChecksBeforeObjective()
         {
             (GameRoot game, Planet planet, Officer spy, Officer _) = BuildDetectionScene();
             Regiment detector = planet.GetChildren<Regiment>().Single();
@@ -193,7 +194,7 @@ namespace Rebellion.Tests.Simulation
             );
 
             Assert.IsNotNull(odds);
-            Assert.AreEqual(75, odds.FoilProbability, 0.001);
+            Assert.AreEqual(50, odds.FoilProbability, 0.001);
         }
 
         [Test]
@@ -250,7 +251,7 @@ namespace Rebellion.Tests.Simulation
             );
 
             Assert.IsNotNull(odds);
-            Assert.AreEqual(69.058641975, odds.FoilProbability, 0.001);
+            Assert.AreEqual(100d * 19 / 36, odds.FoilProbability, 0.001);
         }
 
         [Test]
@@ -290,6 +291,72 @@ namespace Rebellion.Tests.Simulation
             );
             Assert.AreEqual(complete.FoilProbability, operational.FoilProbability, 0.001);
             Assert.AreEqual(0, operational.PersonnelLossProbability);
+        }
+
+        [TestCase((int)MissionEncounterPhase.DepartureStart, false)]
+        [TestCase((int)MissionEncounterPhase.DepartureComplete, false)]
+        [TestCase((int)MissionEncounterPhase.Arrival, false)]
+        [TestCase((int)MissionEncounterPhase.PreObjective, false)]
+        [TestCase((int)MissionEncounterPhase.PreObjective, true)]
+        public void GetDetectors_MixedDefenders_AgreesWithObservedAiCheckpoint(
+            int checkpoint,
+            bool orbitalTarget
+        )
+        {
+            MissionEncounterPhase phase = (MissionEncounterPhase)checkpoint;
+            (GameRoot game, Planet planet, Officer _, Officer _) = BuildDetectionScene();
+            Regiment groundRegiment = planet.GetChildren<Regiment>().Single();
+            Fleet fleet = planet.GetChildren<Fleet>().Single();
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "detector-ship",
+                OwnerInstanceID = "rebels",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                RegimentCapacity = 1,
+                StarfighterCapacity = 1,
+            };
+            Starfighter carriedFighter = new Starfighter
+            {
+                InstanceID = "carried-fighter",
+                OwnerInstanceID = "rebels",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Starfighter groundFighter = new Starfighter
+            {
+                InstanceID = "ground-fighter",
+                OwnerInstanceID = "rebels",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(ship, fleet);
+            game.AttachNode(carriedFighter, ship);
+            game.AttachNode(groundFighter, planet);
+            game.AttachNode(CreateCompletedRegiment("carried-regiment", "rebels"), ship);
+            Mission mission = orbitalTarget
+                ? new SabotageMission
+                {
+                    OwnerInstanceID = "empire",
+                    LocationInstanceID = planet.InstanceID,
+                    SabotageTargetInstanceID = ship.InstanceID,
+                }
+                : new StubMission("empire", planet.InstanceID);
+            ISceneNode objective = orbitalTarget ? ship : planet;
+            MissionQueries queries = new MissionQueries(game);
+            AIAssessment assessment = new AIAssessment(
+                game,
+                game.GetFactions().Single(faction => faction.InstanceID == "empire"),
+                game.Galaxy
+            );
+            ISceneNode[] expected =
+                phase == MissionEncounterPhase.DepartureStart
+                || phase == MissionEncounterPhase.PreObjective && !orbitalTarget
+                    ? new ISceneNode[] { groundRegiment }
+                    : new ISceneNode[] { ship, carriedFighter };
+
+            CollectionAssert.AreEqual(expected, queries.GetDetectors(mission, planet, phase));
+            CollectionAssert.AreEqual(
+                expected,
+                assessment.GetMissionDetectors(mission, planet, phase, objective)
+            );
         }
 
         [Test]
