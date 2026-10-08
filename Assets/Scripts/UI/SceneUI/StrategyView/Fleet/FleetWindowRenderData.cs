@@ -24,6 +24,8 @@ public sealed class FleetListRowRenderData
 
     public bool ShowTreeBranch { get; }
 
+    public bool TreeHasHorizontalBranch { get; }
+
     public bool TreeContinuesAbove { get; }
 
     public bool TreeContinuesBelow { get; }
@@ -60,6 +62,7 @@ public sealed class FleetListRowRenderData
     /// <param name="showTreeBranch">Whether the row draws a branch into its icon.</param>
     /// <param name="treeContinuesAbove">Whether the branch stem reaches the row's top edge.</param>
     /// <param name="treeContinuesBelow">Whether the branch stem reaches the row's bottom edge.</param>
+    /// <param name="treeHasHorizontalBranch">Whether the branch reaches horizontally into the row.</param>
     public FleetListRowRenderData(
         string name,
         Texture iconTexture,
@@ -73,12 +76,14 @@ public sealed class FleetListRowRenderData
         bool isCapitalShip = false,
         bool showTreeBranch = false,
         bool treeContinuesAbove = false,
-        bool treeContinuesBelow = false
+        bool treeContinuesBelow = false,
+        bool treeHasHorizontalBranch = false
     )
     {
         FleetIndex = fleetIndex;
         IsCapitalShip = isCapitalShip;
         ShowTreeBranch = showTreeBranch;
+        TreeHasHorizontalBranch = treeHasHorizontalBranch;
         TreeContinuesAbove = treeContinuesAbove;
         TreeContinuesBelow = treeContinuesBelow;
         Name = name ?? string.Empty;

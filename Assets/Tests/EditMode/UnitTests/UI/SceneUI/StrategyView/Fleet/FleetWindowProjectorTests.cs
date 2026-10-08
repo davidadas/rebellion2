@@ -179,14 +179,63 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreEqual(3, data.FleetRows.Count);
             FleetListRowRenderData fleetRow = data.FleetRows[0];
             Assert.IsTrue(fleetRow.ShowTreeBranch);
+            Assert.IsFalse(fleetRow.TreeHasHorizontalBranch);
             Assert.IsFalse(fleetRow.TreeContinuesAbove);
             Assert.IsTrue(fleetRow.TreeContinuesBelow);
             FleetListRowRenderData shipRow = data.FleetRows[1];
             Assert.IsTrue(shipRow.IsCapitalShip);
             Assert.IsTrue(shipRow.ShowTreeBranch);
+            Assert.IsTrue(shipRow.TreeHasHorizontalBranch);
             Assert.IsTrue(shipRow.TreeContinuesAbove);
             Assert.IsFalse(shipRow.TreeContinuesBelow);
             Assert.IsFalse(data.FleetRows[2].ShowTreeBranch);
+        }
+
+        [Test]
+        public void Build_SelectedExpandedShip_UsesShipHeaderArtworkAndContents()
+        {
+            Assert.IsTrue(_session.ToggleFleetExpanded(0));
+            Assert.IsTrue(_session.SelectFleetListItem(_capitalShip));
+
+            FleetWindowRenderData data = _projector.Build(_session, _window, true);
+
+            Assert.AreEqual("Capital Ship", data.FleetName);
+            Assert.AreSame(_uiContext.GetEntityTexture(_capitalShip, false), data.BannerTexture);
+            Assert.IsNotNull(data.BannerDamagedOverlayTexture);
+            CollectionAssert.AreEqual(
+                new[] { "Capital Ship" },
+                data.DetailItems.Select(item => item.Name).ToArray()
+            );
+        }
+
+        [Test]
+        public void Build_MultipleSelectedRows_UsesUnnamedFactionSummary()
+        {
+            SelectionModifierState modifiers = default;
+            FleetWindowSession session = new FleetWindowSession(
+                new GalaxyMapPlanet(new GalaxyPlanetSector(), _planet, string.Empty),
+                _window,
+                () => modifiers,
+                () => _ownerId
+            );
+            modifiers = new SelectionModifierState(true, false);
+            Assert.IsTrue(session.SelectFleetListItem(_secondFleet));
+
+            FleetWindowRenderData data = _projector.Build(session, _window, true);
+
+            Assert.AreEqual(string.Empty, data.FleetName);
+            Assert.AreSame(
+                _uiContext.GetTexture(
+                    _uiContext.GetTheme(_ownerId).StrategyWindows.Fleet.BannerImagePath
+                ),
+                data.BannerTexture
+            );
+            Assert.IsNotNull(data.BannerEnrouteOverlayTexture);
+            Assert.IsNull(data.BannerDamagedOverlayTexture);
+            CollectionAssert.AreEquivalent(
+                new[] { "Capital Ship", "Second Ship" },
+                data.DetailItems.Select(item => item.Name).ToArray()
+            );
         }
 
         [Test]

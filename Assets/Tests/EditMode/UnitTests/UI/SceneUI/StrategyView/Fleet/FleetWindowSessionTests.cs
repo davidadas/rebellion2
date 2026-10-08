@@ -393,6 +393,56 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         [Test]
+        public void SelectFleetListItem_MixedFactionModifierSelection_KeepsPlayerSideOnly()
+        {
+            SelectionModifierState modifiers = default;
+            CapitalShip enemyShip = new CapitalShip
+            {
+                InstanceID = "enemy-ship",
+                DisplayName = "Enemy Ship",
+                OwnerInstanceID = "enemy",
+            };
+            GameFleet enemyFleet = new GameFleet(
+                "enemy",
+                "Enemy Fleet",
+                new List<CapitalShip> { enemyShip }
+            )
+            {
+                InstanceID = "enemy-fleet",
+            };
+            _planet.AddTestChild(enemyFleet);
+            AttachFleetGraph(_planet, enemyFleet);
+            FleetWindowSession session = new FleetWindowSession(
+                new GalaxyMapPlanet(new GalaxyPlanetSector(), _planet, string.Empty),
+                _window,
+                () => modifiers,
+                () => "owner"
+            );
+
+            modifiers = new SelectionModifierState(true, false);
+            Assert.IsTrue(session.SelectFleetListItem(enemyFleet));
+
+            CollectionAssert.AreEqual(
+                new ISceneNode[] { _fleet },
+                session.SelectedFleetListSources
+            );
+
+            modifiers = default;
+            Assert.IsTrue(session.SelectFleetListItem(enemyFleet));
+            CollectionAssert.AreEqual(
+                new ISceneNode[] { enemyFleet },
+                session.SelectedFleetListSources
+            );
+
+            modifiers = new SelectionModifierState(true, false);
+            Assert.IsTrue(session.SelectFleetListItem(_fleet));
+            CollectionAssert.AreEqual(
+                new ISceneNode[] { _fleet },
+                session.SelectedFleetListSources
+            );
+        }
+
+        [Test]
         public void SelectItem_InvalidDetail_ReturnsFalseWithoutChangingSelection()
         {
             bool selected = _session.SelectItem(CreateCapitalShip("missing-ship", "Missing Ship"));

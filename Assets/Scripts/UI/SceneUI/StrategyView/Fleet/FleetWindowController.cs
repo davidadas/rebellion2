@@ -157,7 +157,12 @@ public sealed class FleetWindowController
             return false;
 
         BindWindow(view);
-        sessions[view] = new FleetWindowSession(planet, window, getSelectionModifiers);
+        sessions[view] = new FleetWindowSession(
+            planet,
+            window,
+            getSelectionModifiers,
+            () => getUIContext()?.GetPlayerFactionInstanceID()
+        );
         return true;
     }
 

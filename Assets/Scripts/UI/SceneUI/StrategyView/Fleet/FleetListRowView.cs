@@ -111,6 +111,7 @@ public sealed class FleetListRowView : MonoBehaviour, IStrategyStatusDoubleClick
         IsCapitalShip = data.IsCapitalShip;
         treeConnectorView.Render(
             data.ShowTreeBranch,
+            data.TreeHasHorizontalBranch,
             data.TreeContinuesAbove,
             data.TreeContinuesBelow
         );

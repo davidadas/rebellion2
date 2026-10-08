@@ -38,8 +38,20 @@ internal sealed class FleetWindowProjector
         UIContext uiContext = GetUIContext();
         IReadOnlyList<Fleet> fleets = session.Fleets;
         Fleet selectedFleet = session.SelectedFleet;
+        IReadOnlyList<ISceneNode> selectedSources = session.SelectedFleetListSources;
+        ISceneNode singleSelectedSource = selectedSources.Count == 1 ? selectedSources[0] : null;
+        ISceneNode bannerStatusSource = selectedSources.LastOrDefault();
+        Fleet bannerStatusFleet =
+            bannerStatusSource as Fleet
+            ?? bannerStatusSource?.GetParentOfType<Fleet>()
+            ?? selectedFleet;
+        bool usesSummaryBanner = selectedSources.Count > 1;
         string ownerFactionId = session.Planet.OwnerFactionId;
-        string selectedOwnerFactionId = selectedFleet?.OwnerInstanceID ?? ownerFactionId;
+        string selectedOwnerFactionId =
+            selectedSources.FirstOrDefault()?.GetOwnerInstanceID()
+            ?? selectedFleet?.OwnerInstanceID
+            ?? ownerFactionId;
+        bool hasSelection = selectedSources.Count > 0;
 
         List<FleetListRowRenderData> rows = BuildFleetRows(uiContext, session, fleets);
         List<FleetWindowTabRenderData> tabs = new List<FleetWindowTabRenderData>();
@@ -47,7 +59,7 @@ internal sealed class FleetWindowProjector
         bool showCapacity = false;
         string capacityLeft = string.Empty;
         string capacityRight = string.Empty;
-        if (selectedFleet != null)
+        if (hasSelection && selectedFleet != null)
         {
             tabs = BuildTabs(uiContext, selectedOwnerFactionId, session);
             detailItems = BuildDetailItems(uiContext, session, selectedFleet);
@@ -84,11 +96,24 @@ internal sealed class FleetWindowProjector
             rows,
             session.ActiveTab,
             session.SelectedFleetIndex,
-            selectedFleet != null,
-            GetFleetBannerTexture(uiContext, selectedFleet),
-            GetFleetBannerEnrouteOverlayTexture(uiContext, selectedFleet),
-            GetFleetBannerDamagedOverlayTexture(uiContext, selectedFleet),
-            selectedFleet?.GetDisplayName(),
+            hasSelection,
+            hasSelection
+                ? GetSelectionBannerTexture(uiContext, selectedOwnerFactionId, singleSelectedSource)
+                : null,
+            GetSelectionBannerEnrouteOverlayTexture(
+                uiContext,
+                bannerStatusFleet,
+                bannerStatusSource,
+                usesSummaryBanner,
+                selectedOwnerFactionId
+            ),
+            GetSelectionBannerDamagedOverlayTexture(
+                uiContext,
+                bannerStatusSource,
+                usesSummaryBanner,
+                selectedOwnerFactionId
+            ),
+            singleSelectedSource?.GetDisplayName(),
             GetFactionColor(uiContext, selectedOwnerFactionId),
             showCapacity,
             capacityLeft,
@@ -236,6 +261,7 @@ internal sealed class FleetWindowProjector
                         i,
                         isCapitalShip: true,
                         showTreeBranch: true,
+                        treeHasHorizontalBranch: true,
                         treeContinuesAbove: true,
                         treeContinuesBelow: shipIndex < capitalShips.Count - 1
                     )
@@ -520,52 +546,108 @@ internal sealed class FleetWindowProjector
     }
 
     /// <summary>
-    /// Resolves the selected fleet banner.
+    /// Resolves the current selection banner.
     /// </summary>
     /// <param name="uiContext">The current presentation context.</param>
-    /// <param name="fleet">The selected fleet.</param>
+    /// <param name="ownerFactionId">The selected rows' owner.</param>
+    /// <param name="singleSelectedSource">The single selected row, or null for a summary.</param>
     /// <returns>The resolved banner, or null.</returns>
-    private static Texture2D GetFleetBannerTexture(UIContext uiContext, Fleet fleet)
+    private static Texture2D GetSelectionBannerTexture(
+        UIContext uiContext,
+        string ownerFactionId,
+        ISceneNode singleSelectedSource
+    )
     {
-        return fleet == null
-            ? null
-            : uiContext.GetTexture(
-                uiContext.GetTheme(fleet.OwnerInstanceID)?.StrategyWindows?.Fleet?.BannerImagePath
-            );
-    }
-
-    /// <summary>
-    /// Resolves the selected fleet's in-transit banner overlay.
-    /// </summary>
-    /// <param name="uiContext">The current presentation context.</param>
-    /// <param name="fleet">The selected fleet.</param>
-    /// <returns>The resolved in-transit overlay, or null.</returns>
-    private static Texture2D GetFleetBannerEnrouteOverlayTexture(UIContext uiContext, Fleet fleet)
-    {
-        return !IsFleetInTransit(fleet)
-            ? null
-            : uiContext.GetTexture(
-                uiContext
-                    .GetTheme(fleet.OwnerInstanceID)
-                    ?.StrategyWindows?.Status?.FleetBannerEnrouteImagePath
-            );
-    }
-
-    /// <summary>
-    /// Resolves the selected fleet's damaged banner overlay.
-    /// </summary>
-    /// <param name="uiContext">The current presentation context.</param>
-    /// <param name="fleet">The selected fleet.</param>
-    /// <returns>The resolved damaged overlay, or null.</returns>
-    private static Texture2D GetFleetBannerDamagedOverlayTexture(UIContext uiContext, Fleet fleet)
-    {
-        if (fleet?.GetChildren<CapitalShip>().Any(ship => ship.IsDamaged()) != true)
-            return null;
+        if (singleSelectedSource is CapitalShip capitalShip)
+            return uiContext.GetEntityTexture(capitalShip, false);
 
         return uiContext.GetTexture(
-            uiContext
-                .GetTheme(fleet.OwnerInstanceID)
-                ?.StrategyWindows?.Status?.FleetBannerDamagedImagePath
+            uiContext.GetTheme(ownerFactionId)?.StrategyWindows?.Fleet?.BannerImagePath
+        );
+    }
+
+    /// <summary>
+    /// Resolves the current selection's in-transit banner overlay.
+    /// </summary>
+    /// <param name="uiContext">The current presentation context.</param>
+    /// <param name="fleet">The selected source's containing fleet.</param>
+    /// <param name="bannerStatusSource">The row supplying the summary status.</param>
+    /// <param name="usesSummaryBanner">Whether multiple rows contribute to the summary.</param>
+    /// <param name="ownerFactionId">The selected rows' owner.</param>
+    /// <returns>The resolved in-transit overlay, or null.</returns>
+    private static Texture2D GetSelectionBannerEnrouteOverlayTexture(
+        UIContext uiContext,
+        Fleet fleet,
+        ISceneNode bannerStatusSource,
+        bool usesSummaryBanner,
+        string ownerFactionId
+    )
+    {
+        if (bannerStatusSource is CapitalShip capitalShip)
+        {
+            if (!IsItemInTransit(fleet, capitalShip))
+                return null;
+
+            return usesSummaryBanner
+                ? GetFleetBannerStatusTexture(uiContext, ownerFactionId, damaged: false)
+                : uiContext.GetTexture(capitalShip.InTransitImagePath);
+        }
+
+        return bannerStatusSource is Fleet && IsFleetInTransit(fleet)
+            ? GetFleetBannerStatusTexture(uiContext, ownerFactionId, damaged: false)
+            : null;
+    }
+
+    /// <summary>
+    /// Resolves the current selection's damaged banner overlay.
+    /// </summary>
+    /// <param name="uiContext">The current presentation context.</param>
+    /// <param name="bannerStatusSource">The row supplying the summary status.</param>
+    /// <param name="usesSummaryBanner">Whether multiple rows contribute to the summary.</param>
+    /// <param name="ownerFactionId">The selected rows' owner.</param>
+    /// <returns>The resolved damaged overlay, or null.</returns>
+    private static Texture2D GetSelectionBannerDamagedOverlayTexture(
+        UIContext uiContext,
+        ISceneNode bannerStatusSource,
+        bool usesSummaryBanner,
+        string ownerFactionId
+    )
+    {
+        if (bannerStatusSource is CapitalShip capitalShip)
+        {
+            if (!capitalShip.IsDamaged())
+                return null;
+
+            return usesSummaryBanner
+                ? GetFleetBannerStatusTexture(uiContext, ownerFactionId, damaged: true)
+                : uiContext.GetTexture(capitalShip.DamagedImagePath);
+        }
+
+        if (
+            bannerStatusSource is not Fleet fleet
+            || fleet.GetChildren<CapitalShip>().Any(ship => ship.IsDamaged()) != true
+        )
+            return null;
+
+        return GetFleetBannerStatusTexture(uiContext, ownerFactionId, damaged: true);
+    }
+
+    /// <summary>
+    /// Resolves a fleet-summary status overlay for one faction.
+    /// </summary>
+    /// <param name="uiContext">The current presentation context.</param>
+    /// <param name="ownerFactionId">The selected rows' owner.</param>
+    /// <param name="damaged">Whether to return damage instead of transit artwork.</param>
+    /// <returns>The resolved status overlay, or null.</returns>
+    private static Texture2D GetFleetBannerStatusTexture(
+        UIContext uiContext,
+        string ownerFactionId,
+        bool damaged
+    )
+    {
+        StatusWindowTheme status = uiContext.GetTheme(ownerFactionId)?.StrategyWindows?.Status;
+        return uiContext.GetTexture(
+            damaged ? status?.FleetBannerDamagedImagePath : status?.FleetBannerEnrouteImagePath
         );
     }
 

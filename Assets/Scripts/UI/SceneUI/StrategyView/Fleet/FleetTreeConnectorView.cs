@@ -14,17 +14,20 @@ public sealed class FleetTreeConnectorView : MaskableGraphic
 
     private bool continuesAbove;
     private bool continuesBelow;
+    private bool hasHorizontalBranch;
     private bool showBranch;
 
     /// <summary>
     /// Applies one row's connector segments.
     /// </summary>
-    /// <param name="visible">Whether the row draws a horizontal branch.</param>
+    /// <param name="visible">Whether the row draws any connector segments.</param>
+    /// <param name="horizontal">Whether the connector reaches horizontally into the row.</param>
     /// <param name="above">Whether the vertical stem reaches the top edge.</param>
     /// <param name="below">Whether the vertical stem reaches the bottom edge.</param>
-    public void Render(bool visible, bool above, bool below)
+    public void Render(bool visible, bool horizontal, bool above, bool below)
     {
         showBranch = visible;
+        hasHorizontalBranch = horizontal;
         continuesAbove = above;
         continuesBelow = below;
         raycastTarget = false;
@@ -41,8 +44,11 @@ public sealed class FleetTreeConnectorView : MaskableGraphic
         if (!showBranch)
             return;
 
-        for (int x = _stemX; x <= _branchEndX; x += _dotSpacing)
-            AddDot(vertexHelper, x, _branchY);
+        if (hasHorizontalBranch)
+        {
+            for (int x = _stemX; x <= _branchEndX; x += _dotSpacing)
+                AddDot(vertexHelper, x, _branchY);
+        }
 
         if (continuesAbove)
         {

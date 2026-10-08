@@ -15,6 +15,7 @@ internal sealed class FleetWindowSession
     );
     private readonly List<ISceneNode> fleetListItems = new List<ISceneNode>();
     private readonly List<Fleet> fleets = new List<Fleet>();
+    private readonly Func<string> getPlayerFactionInstanceId;
     private readonly Func<SelectionModifierState> getSelectionModifiers;
     private readonly HashSet<ISceneNode> selectedDetailNodes = new HashSet<ISceneNode>();
     private readonly HashSet<int> selectedDetailItems = new HashSet<int>();
@@ -57,6 +58,8 @@ internal sealed class FleetWindowSession
 
     public IReadOnlyCollection<int> SelectedFleetListItems => selectedFleetListItems;
 
+    public IReadOnlyList<ISceneNode> SelectedFleetListSources => GetSelectedFleetListSources();
+
     public Fleet SelectedFleet => selectedFleet;
 
     public UIWindow Window { get; }
@@ -67,15 +70,18 @@ internal sealed class FleetWindowSession
     /// <param name="planet">The represented strategy planet.</param>
     /// <param name="window">The owning window shell.</param>
     /// <param name="getSelectionModifiers">Returns the configured modifiers currently held.</param>
+    /// <param name="getPlayerFactionInstanceId">Returns the current player's faction identifier.</param>
     public FleetWindowSession(
         GalaxyMapPlanet planet,
         UIWindow window,
-        Func<SelectionModifierState> getSelectionModifiers = null
+        Func<SelectionModifierState> getSelectionModifiers = null,
+        Func<string> getPlayerFactionInstanceId = null
     )
     {
         Planet = planet ?? throw new ArgumentNullException(nameof(planet));
         Window = window ?? throw new ArgumentNullException(nameof(window));
         this.getSelectionModifiers = getSelectionModifiers ?? (() => default);
+        this.getPlayerFactionInstanceId = getPlayerFactionInstanceId ?? (() => null);
         Reconcile();
     }
 
@@ -105,6 +111,7 @@ internal sealed class FleetWindowSession
         RefreshFleetListItems();
         ReconcileSelectedFleet();
         ReconcileSelection(selectedFleetListNodes, selectedFleetListItems, fleetListItems);
+        EnforceFleetListFactionSelection();
         SelectRequiredFleetListItem();
         SynchronizeFleetSelection();
 
@@ -320,6 +327,7 @@ internal sealed class FleetWindowSession
             int fleetListIndex = FindNodeIndex(fleetListItems, target);
             SelectContextItem(selectedFleetListItems, fleetListIndex);
             CaptureSelection(selectedFleetListItems, fleetListItems, selectedFleetListNodes);
+            EnforceFleetListFactionSelection();
             SynchronizeFleetSelection();
             RefreshDetailItems();
             selectedDetailNodes.Clear();
@@ -360,6 +368,7 @@ internal sealed class FleetWindowSession
         int itemIndex = FindNodeIndex(fleetListItems, rowItem);
         SelectContextItem(selectedFleetListItems, itemIndex);
         CaptureSelection(selectedFleetListItems, fleetListItems, selectedFleetListNodes);
+        EnforceFleetListFactionSelection();
         SetSelectedFleetFromListItem(rowItem);
         SynchronizeFleetSelection();
         RefreshDetailItems();
@@ -389,6 +398,7 @@ internal sealed class FleetWindowSession
                 fleetListItems,
                 selectedFleetListNodes
             );
+            EnforceFleetListFactionSelection();
             SynchronizeFleetSelection();
             RefreshDetailItems();
             selectedDetailNodes.Clear();
@@ -451,6 +461,7 @@ internal sealed class FleetWindowSession
                 getSelectionModifiers()
             );
             CaptureSelection(selectedFleetListItems, fleetListItems, selectedFleetListNodes);
+            EnforceFleetListFactionSelection();
             SynchronizeFleetSelection();
             selectedDetailNodes.Clear();
             selectedDetailItems.Clear();
@@ -782,6 +793,48 @@ internal sealed class FleetWindowSession
         if (sources.Count == 0 && selectedFleet != null)
             sources.Add(selectedFleet);
         return sources;
+    }
+
+    /// <summary>
+    /// Prevents one visual selection from combining player and opposing-faction rows.
+    /// </summary>
+    private void EnforceFleetListFactionSelection()
+    {
+        string playerFactionInstanceId = getPlayerFactionInstanceId();
+        if (
+            string.IsNullOrEmpty(playerFactionInstanceId)
+            || !selectedFleetListItems.Any(index =>
+                IsValidIndex(index, fleetListItems.Count)
+                && string.Equals(
+                    fleetListItems[index].GetOwnerInstanceID(),
+                    playerFactionInstanceId,
+                    StringComparison.Ordinal
+                )
+            )
+        )
+            return;
+
+        selectedFleetListItems.RemoveWhere(index =>
+            !IsValidIndex(index, fleetListItems.Count)
+            || !string.Equals(
+                fleetListItems[index].GetOwnerInstanceID(),
+                playerFactionInstanceId,
+                StringComparison.Ordinal
+            )
+        );
+        CaptureSelection(selectedFleetListItems, fleetListItems, selectedFleetListNodes);
+        if (
+            selectedFleet == null
+            || !string.Equals(
+                selectedFleet.OwnerInstanceID,
+                playerFactionInstanceId,
+                StringComparison.Ordinal
+            )
+        )
+        {
+            int firstSelectedIndex = selectedFleetListItems.Min();
+            SetSelectedFleetFromListItem(fleetListItems[firstSelectedIndex]);
+        }
     }
 
     /// <summary>
