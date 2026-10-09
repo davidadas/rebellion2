@@ -44,30 +44,47 @@ namespace Rebellion.Simulation
         /// <returns>The manufacturing results produced during the tick.</returns>
         public IReadOnlyList<GameResult> ProcessTick(GameRoot game)
         {
-            _game = game ?? throw new ArgumentNullException(nameof(game));
-            List<GameResult> results = _commands.TakePendingResults();
-            foreach (Planet planet in game.GetSceneNodesByType<Planet>())
-                results.AddRange(ProcessPlanet(planet));
+            List<GameResult> results = new List<GameResult>();
+            foreach (IReadOnlyList<GameResult> step in ProcessTickIncrementally(game))
+                results.AddRange(step);
 
             return results;
+        }
+
+        /// <summary>
+        /// Advances manufacturing and exposes each applied production point as a presentation step.
+        /// </summary>
+        /// <param name="game">The game state being advanced.</param>
+        /// <returns>The ordered result batches produced during the tick.</returns>
+        internal IEnumerable<IReadOnlyList<GameResult>> ProcessTickIncrementally(GameRoot game)
+        {
+            _game = game ?? throw new ArgumentNullException(nameof(game));
+            List<GameResult> pendingResults = _commands.TakePendingResults();
+            if (pendingResults.Count > 0)
+                yield return pendingResults;
+
+            foreach (Planet planet in game.GetSceneNodesByType<Planet>())
+            {
+                foreach (IReadOnlyList<GameResult> step in ProcessPlanetIncrementally(planet))
+                    yield return step;
+            }
         }
 
         /// <summary>
         /// Processes all manufacturing queues on one planet.
         /// </summary>
         /// <param name="planet">The planet whose queues are processed.</param>
-        /// <returns>Manufacturing results produced by the planet.</returns>
-        private List<GameResult> ProcessPlanet(Planet planet)
+        /// <returns>The ordered result batches produced while processing the planet.</returns>
+        private IEnumerable<IReadOnlyList<GameResult>> ProcessPlanetIncrementally(Planet planet)
         {
-            List<GameResult> results = new List<GameResult>();
             Dictionary<ManufacturingType, List<IManufacturable>> queue =
                 planet.GetManufacturingQueue();
             if (queue == null)
-                return results;
+                yield break;
 
             string ownerInstanceId = planet.GetOwnerInstanceID();
             if (string.IsNullOrEmpty(ownerInstanceId))
-                return results;
+                yield break;
 
             double cycleIncrement = GetProductionCycleIncrement(planet);
             foreach (ManufacturingType type in GetActiveManufacturingTypes(planet, queue))
@@ -81,7 +98,7 @@ namespace Rebellion.Simulation
                 if (hasQueuedItems && planet.GetProductionFacilityCount(type) == 0)
                 {
                     _commands.ClearQueue(planet, type);
-                    results.Add(CreateQueueIdleResult(planet, type));
+                    yield return new GameResult[] { CreateQueueIdleResult(planet, type) };
                     continue;
                 }
 
@@ -94,24 +111,50 @@ namespace Rebellion.Simulation
                 if (!hasQueuedItems)
                 {
                     if (queue.Remove(type) && hadQueuedItems)
-                        results.Add(CreateQueueIdleResult(planet, type));
+                        yield return new GameResult[] { CreateQueueIdleResult(planet, type) };
 
                     DiscardReadyProductionPoints(readyFacilities);
                     continue;
                 }
 
-                List<IManufacturable> completed = DistributeProgress(
-                    items,
-                    readyFacilities,
-                    planet,
-                    results
-                );
-                CompleteManufacturedItems(planet, type, completed, results);
+                Faction faction = _game.GetFactionByOwnerInstanceID(ownerInstanceId);
+                if (faction == null)
+                    continue;
+
+                List<IManufacturable> completed = new List<IManufacturable>();
+                MoveFinishedItemsToCompleted(items, completed);
+                int facilityIndex = 0;
+                while (facilityIndex < readyFacilities.Count && items.Count > 0)
+                {
+                    IManufacturable activeItem = items[0];
+                    if (GetRemainingProgress(activeItem) <= 0)
+                    {
+                        items.RemoveAt(0);
+                        completed.Add(activeItem);
+                        continue;
+                    }
+
+                    List<GameResult> stepResults = new List<GameResult>();
+                    ApplyStandardProgress(
+                        activeItem,
+                        readyFacilities[facilityIndex],
+                        faction,
+                        planet,
+                        stepResults
+                    );
+                    facilityIndex++;
+                    MoveCompletedActiveItem(items, completed, activeItem);
+                    yield return stepResults;
+                }
+
+                List<GameResult> completionResults = new List<GameResult>();
+                CompleteManufacturedItems(planet, type, completed, completionResults);
+                if (completionResults.Count > 0)
+                    yield return completionResults;
+
                 if (items.Count == 0)
                     DiscardReadyProductionPoints(readyFacilities);
             }
-
-            return results;
         }
 
         /// <summary>
@@ -315,53 +358,6 @@ namespace Rebellion.Simulation
         {
             foreach (Building facility in facilities)
                 facility.ProductionPointReady = false;
-        }
-
-        /// <summary>
-        /// Distributes ready production facility points across the queue for one manufacturing type.
-        /// </summary>
-        /// <param name="items">The ordered list of items in this type's queue.</param>
-        /// <param name="productionFacilities">Facilities with a ready production point.</param>
-        /// <param name="planet">The planet where production is occurring.</param>
-        /// <param name="results">Result list to append progress events to.</param>
-        /// <returns>Items that completed this tick.</returns>
-        private List<IManufacturable> DistributeProgress(
-            List<IManufacturable> items,
-            List<Building> productionFacilities,
-            Planet planet,
-            List<GameResult> results
-        )
-        {
-            List<IManufacturable> completed = new List<IManufacturable>();
-            Faction faction = _game.GetFactionByOwnerInstanceID(planet.GetOwnerInstanceID());
-            if (faction == null)
-                return completed;
-
-            MoveFinishedItemsToCompleted(items, completed);
-
-            int facilityIndex = 0;
-            while (facilityIndex < productionFacilities.Count && items.Count > 0)
-            {
-                IManufacturable activeItem = items[0];
-                if (GetRemainingProgress(activeItem) <= 0)
-                {
-                    items.RemoveAt(0);
-                    completed.Add(activeItem);
-                    continue;
-                }
-
-                ApplyStandardProgress(
-                    activeItem,
-                    productionFacilities[facilityIndex],
-                    faction,
-                    planet,
-                    results
-                );
-                facilityIndex++;
-                MoveCompletedActiveItem(items, completed, activeItem);
-            }
-
-            return completed;
         }
 
         /// <summary>

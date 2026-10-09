@@ -127,6 +127,74 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         }
 
         [Test]
+        public void Render_PositiveSubpixelManufacturingProgress_ShowsOnePixelFill()
+        {
+            ManufacturingLaneCardRenderData[] cards =
+            {
+                new ManufacturingLaneCardRenderData(
+                    _texture,
+                    _texture,
+                    1,
+                    1000,
+                    "Ship Construction",
+                    "No Ships",
+                    "Current Ship",
+                    "Building 1",
+                    "Destination: Corellia",
+                    "1:1"
+                ),
+            };
+
+            _view.Render(
+                CreateRenderData(
+                    FacilityWindowTab.Manufacturing,
+                    cards,
+                    Array.Empty<FacilityInventoryItemRenderData>()
+                )
+            );
+
+            ManufacturingLaneCardView card = FindCard("ShipyardsManufacturingLaneCard");
+            GameObject progressFill = FindCardObject(card, "ProgressFillImage");
+            RectInt progressRect = UILayout.GetSourceRect(progressFill.transform as RectTransform);
+            Assert.IsTrue(progressFill.activeSelf);
+            Assert.AreEqual(1, progressRect.width);
+        }
+
+        [Test]
+        public void Render_HalfManufacturingProgress_AppliesInclusiveFillWidth()
+        {
+            ManufacturingLaneCardRenderData[] cards =
+            {
+                new ManufacturingLaneCardRenderData(
+                    _texture,
+                    _texture,
+                    500,
+                    1000,
+                    "Ship Construction",
+                    "No Ships",
+                    "Current Ship",
+                    "Building 1",
+                    "Destination: Corellia",
+                    "1:1"
+                ),
+            };
+
+            _view.Render(
+                CreateRenderData(
+                    FacilityWindowTab.Manufacturing,
+                    cards,
+                    Array.Empty<FacilityInventoryItemRenderData>()
+                )
+            );
+
+            ManufacturingLaneCardView card = FindCard("ShipyardsManufacturingLaneCard");
+            RectInt progressRect = UILayout.GetSourceRect(
+                FindCardObject(card, "ProgressFillImage").transform as RectTransform
+            );
+            Assert.AreEqual(81, progressRect.width);
+        }
+
+        [Test]
         public void Render_InventoryMode_AppliesGridSelectionAndHidesManufacturingCards()
         {
             FacilityWindowRenderData initial = CreateRenderData(
