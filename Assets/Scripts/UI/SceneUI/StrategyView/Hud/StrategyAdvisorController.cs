@@ -26,12 +26,12 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
         new Queue<KeyValuePair<AdvisorNotificationType, StrategyAdvisorNotificationTheme>>();
     private readonly HashSet<AdvisorNotificationType> queuedNotificationTypes =
         new HashSet<AdvisorNotificationType>();
-    private readonly HashSet<AdvisorNotificationType> playbackNotificationTypes =
-        new HashSet<AdvisorNotificationType>();
 
     private IStrategyHudActions actions;
     private StrategyAdvisorTheme theme;
     private StrategyAdvisorView view;
+    private bool cancellingPlayback;
+    private bool notificationPlaybackSubmitted;
     private Action playbackCompleted;
     private Action playbackStarted;
 
@@ -163,10 +163,7 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
         AdvisorNotificationType notificationType = GetCoalescedNotificationType(delivery);
         if (
             notificationType != AdvisorNotificationType.None
-            && (
-                queuedNotificationTypes.Contains(notificationType)
-                || playbackNotificationTypes.Contains(notificationType)
-            )
+            && queuedNotificationTypes.Contains(notificationType)
         )
             return;
 
@@ -258,7 +255,7 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
         if (theme == null)
             return;
 
-        if (pendingNotifications.Count == 0)
+        if (pendingNotifications.Count == 0 || notificationPlaybackSubmitted)
             return;
 
         KeyValuePair<AdvisorNotificationType, StrategyAdvisorNotificationTheme> pending =
@@ -272,13 +269,13 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
         )
             return;
 
-        pendingNotifications.Dequeue();
-        if (pending.Key != AdvisorNotificationType.None)
+        if (playbackBatch.Count == 0)
         {
-            queuedNotificationTypes.Remove(pending.Key);
-            if (playbackBatch.Count > 0)
-                playbackNotificationTypes.Add(pending.Key);
+            CompletePendingNotification();
+            return;
         }
+
+        notificationPlaybackSubmitted = true;
         GetRequiredView().EnqueuePlaybacks(playbackBatch);
     }
 
@@ -344,7 +341,7 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
         playbackStarted = null;
         playbackCompleted = null;
         StopActiveAudioPlaybacks();
-        targetView.CancelPlayback();
+        CancelViewPlayback(targetView);
 
         if (animation == null || animation.Frames.Count == 0)
         {
@@ -365,7 +362,7 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
         playbackStarted = null;
         playbackCompleted = null;
         StopActiveAudioPlaybacks();
-        GetRequiredView().CancelPlayback();
+        CancelViewPlayback(GetRequiredView());
     }
 
     /// <summary>
@@ -389,11 +386,45 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     /// </summary>
     private void HandlePlaybackCompleted()
     {
-        playbackNotificationTypes.Clear();
+        if (notificationPlaybackSubmitted)
+        {
+            notificationPlaybackSubmitted = false;
+            if (!cancellingPlayback && pendingNotifications.Count > 0)
+                CompletePendingNotification();
+        }
+
         playbackStarted = null;
         Action completed = playbackCompleted;
         playbackCompleted = null;
         completed?.Invoke();
+    }
+
+    /// <summary>
+    /// Releases the notification at the head of the controller-owned delivery queue.
+    /// </summary>
+    private void CompletePendingNotification()
+    {
+        KeyValuePair<AdvisorNotificationType, StrategyAdvisorNotificationTheme> completed =
+            pendingNotifications.Dequeue();
+        if (completed.Key != AdvisorNotificationType.None)
+            queuedNotificationTypes.Remove(completed.Key);
+    }
+
+    /// <summary>
+    /// Cancels view playback while retaining an interrupted advisor notification for replay.
+    /// </summary>
+    /// <param name="targetView">The bound advisor view.</param>
+    private void CancelViewPlayback(StrategyAdvisorView targetView)
+    {
+        cancellingPlayback = true;
+        try
+        {
+            targetView.CancelPlayback();
+        }
+        finally
+        {
+            cancellingPlayback = false;
+        }
     }
 
     /// <summary>
@@ -403,7 +434,7 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     {
         pendingNotifications.Clear();
         queuedNotificationTypes.Clear();
-        playbackNotificationTypes.Clear();
+        notificationPlaybackSubmitted = false;
         playbackStarted = null;
         playbackCompleted = null;
         StopActiveAudioPlaybacks();
@@ -970,7 +1001,7 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     private void ReleaseView()
     {
         StopActiveAudioPlaybacks();
-        playbackNotificationTypes.Clear();
+        notificationPlaybackSubmitted = false;
         if (ReferenceEquals(view, null))
             return;
 
@@ -1010,7 +1041,7 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     {
         pendingNotifications.Clear();
         queuedNotificationTypes.Clear();
-        playbackNotificationTypes.Clear();
+        notificationPlaybackSubmitted = false;
     }
 
     /// <summary>

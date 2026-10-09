@@ -613,7 +613,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         }
 
         [Test]
-        public void ProcessPending_ActivePlayback_QueuesNotificationForAutomaticPlayback()
+        public void ProcessPending_ActivePlayback_RetainsNextNotificationUntilNextProcessingPass()
         {
             GameObject rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
             StrategyAdvisorView view = rootObject.GetComponentInChildren<StrategyAdvisorView>(true);
@@ -676,6 +676,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
 
                 controller.ProcessPending(true);
                 view.AdvanceAnimation(theme.FrameIntervalSeconds);
+                controller.ProcessPending(true);
 
                 Assert.AreEqual(2, started.Count);
                 Assert.AreSame(secondFrame, started[1].Frames.Single());
@@ -931,6 +932,68 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             finally
             {
                 UnityEngine.Object.DestroyImmediate(rejectedFrame);
+                UnityEngine.Object.DestroyImmediate(idle);
+                UnityEngine.Object.DestroyImmediate(rootObject);
+            }
+        }
+
+        [Test]
+        public void ProcessPending_ReplacementInterruptsNotification_ReplaysNotificationAfterReplacement()
+        {
+            GameObject rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
+            StrategyAdvisorView view = rootObject.GetComponentInChildren<StrategyAdvisorView>(true);
+            StrategyAdvisorTheme theme = CreateTheme();
+            theme.Notifications.Add(
+                new StrategyAdvisorNotificationTheme
+                {
+                    NotificationType = AdvisorNotificationType.PositivePopularSupport,
+                    Droid = new StrategyAdvisorAnimationTheme
+                    {
+                        Animation = "Notification",
+                        FrameCount = 1,
+                    },
+                }
+            );
+            Texture2D idle = new Texture2D(1, 1);
+            Texture2D notificationFrame = new Texture2D(1, 1);
+            Texture2D replacementFrame = new Texture2D(1, 1);
+            Dictionary<string, Texture2D> textures = new Dictionary<string, Texture2D>
+            {
+                [theme.GetFramePath(theme.ProtocolIdleAnimation, 0, false)] = idle,
+                [theme.GetFramePath(theme.DroidIdleAnimation, 0, true)] = idle,
+                [theme.GetFramePath("Notification", 0, true)] = notificationFrame,
+            };
+            try
+            {
+                UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+                StrategyAdvisorController controller = CreateController(textures);
+                controller.BindView(view);
+                controller.Render(theme);
+                List<Texture2D> startedFrames = new List<Texture2D>();
+                view.PlaybackStarted += playback => startedFrames.Add(playback.Frames.Single());
+
+                controller.Notify(
+                    CreateAdvisorDelivery(AdvisorNotificationType.PositivePopularSupport),
+                    true
+                );
+                controller.ProcessPending(true);
+                controller.ReplaceAnimation(
+                    new StrategyAdvisorAnimationViewData(new[] { replacementFrame }, false, null),
+                    null,
+                    null
+                );
+                view.AdvanceAnimation(theme.FrameIntervalSeconds);
+                controller.ProcessPending(true);
+
+                CollectionAssert.AreEqual(
+                    new[] { notificationFrame, replacementFrame, notificationFrame },
+                    startedFrames
+                );
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(replacementFrame);
+                UnityEngine.Object.DestroyImmediate(notificationFrame);
                 UnityEngine.Object.DestroyImmediate(idle);
                 UnityEngine.Object.DestroyImmediate(rootObject);
             }
