@@ -3240,6 +3240,9 @@ public sealed class StrategyController
         if (row?.Planet == null)
             return false;
 
+        if (mode == FinderMode.Systems)
+            return OpenPlanetSectorWindow(row.Planet.Sector);
+
         Vector2Int position = GetSectorSourcePosition(row.Planet.Sector);
         UIWindow window = OpenPlanetWindowAt(row.Planet, row.TargetIcon, position.x, position.y);
         switch (row.TargetIcon)
