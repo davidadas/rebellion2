@@ -200,6 +200,16 @@ public sealed class AppBootstrap : MonoBehaviour
     }
 
     /// <summary>
+    /// Confirms that application-owned content services are ready for the tactical scene. Tactical
+    /// models are loaded on demand through the application model cache.
+    /// </summary>
+    /// <returns>A completed task because the content catalog and model cache are created at bootstrap.</returns>
+    internal Task InitializeTacticalContentAsync()
+    {
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
     /// Transitions to another application scene.
     /// </summary>
     /// <param name="sceneAddress">The Unity scene name to load.</param>

@@ -25,6 +25,7 @@ public static class UIBuilderMenu
             RebuildOptionsMenuAndDependencies();
             MainMenuPrefabBuilder.Rebuild();
             StrategyViewPrefabBuilder.Rebuild();
+            TacticalViewPrefabBuilder.Rebuild();
         });
         SaveAndRefresh();
     }
@@ -49,6 +50,7 @@ public static class UIBuilderMenu
                 "Assets/Prefabs/UI/MainMenu",
                 "Assets/Prefabs/UI/OptionsMenu",
                 "Assets/Prefabs/UI/StrategyView",
+                "Assets/Prefabs/UI/TacticalView",
             }
         );
         foreach (string prefabGuid in prefabGuids)
@@ -96,9 +98,19 @@ public static class UIBuilderMenu
     }
 
     /// <summary>
+    /// Rebuilds the generated tactical scene and its root prefab.
+    /// </summary>
+    [MenuItem("Rebellion/Build/Build Tactical View", false, 23)]
+    public static void BuildTacticalView()
+    {
+        RunInAuthoringScene(TacticalViewPrefabBuilder.Rebuild);
+        SaveAndRefresh();
+    }
+
+    /// <summary>
     /// Rebuilds the boot scene and its generated prefabs.
     /// </summary>
-    [MenuItem("Rebellion/Build/Build Boot UI", false, 23)]
+    [MenuItem("Rebellion/Build/Build Boot UI", false, 24)]
     public static void BuildBoot()
     {
         RunInAuthoringScene(BootPrefabBuilder.Rebuild);
@@ -113,6 +125,8 @@ public static class UIBuilderMenu
     {
         if (build == null)
             throw new ArgumentNullException(nameof(build));
+        if (EditorApplication.isPlayingOrWillChangePlaymode)
+            throw new InvalidOperationException("Generated UI cannot be rebuilt in Play Mode.");
 
         if (
             !Application.isBatchMode && !EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()
@@ -258,7 +272,7 @@ public static class UIBuilderMenu
     /// Determines whether an object reference points into development-only installation content.
     /// </summary>
     /// <param name="value">The serialized object reference.</param>
-    /// <returns>True when the object is imported from Assets/Content.</returns>
+    /// <returns>True when the object is imported from external runtime content.</returns>
     private static bool IsDevelopmentContentReference(UnityEngine.Object value)
     {
         return value != null

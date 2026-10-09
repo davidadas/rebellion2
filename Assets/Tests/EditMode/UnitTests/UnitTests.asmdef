@@ -8,6 +8,7 @@
         "Unity.InputSystem",
         "Unity.InputSystem.TestFramework",
         "Unity.TextMeshPro",
+        "Unity.RenderPipelines.Universal.Runtime",
         "UnityEditor.TestRunner",
         "UnityEngine.TestRunner"
     ],

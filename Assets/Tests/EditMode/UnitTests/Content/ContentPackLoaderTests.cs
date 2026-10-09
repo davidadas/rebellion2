@@ -131,6 +131,39 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        public void DiscoverPacks_DefaultSpaceBattleMaps_DeserializesMapIdentifiers()
+        {
+            string contentRoot = Path.Combine(
+                Path.GetTempPath(),
+                "content-pack-default-space-maps-" + Guid.NewGuid().ToString("N")
+            );
+            try
+            {
+                string packRoot = Path.Combine(contentRoot, "Packs", "Fixture");
+                Directory.CreateDirectory(packRoot);
+                File.WriteAllText(
+                    Path.Combine(packRoot, "pack.xml"),
+                    "<ContentPack><ID>fixture</ID><DefaultSpaceBattleMaps>"
+                        + "<MapID>deep-space</MapID></DefaultSpaceBattleMaps></ContentPack>"
+                );
+
+                ContentPackDefinition definition = ContentPackLoader
+                    .DiscoverPacks(contentRoot)
+                    .Single();
+
+                CollectionAssert.AreEqual(
+                    new[] { "deep-space" },
+                    definition.DefaultSpaceBattleMapInstanceIDs
+                );
+            }
+            finally
+            {
+                if (Directory.Exists(contentRoot))
+                    Directory.Delete(contentRoot, true);
+            }
+        }
+
+        [Test]
         public void LoadGameConfig_NoPackOverridePath_UsesApplicationDefaults()
         {
             GameConfig config = LoadGameConfigFromFixture(

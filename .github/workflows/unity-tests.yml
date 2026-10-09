@@ -5,8 +5,6 @@ on:
     branches:
       - master
   pull_request:
-    branches:
-      - master
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -102,7 +100,7 @@ jobs:
           git config lfs.concurrenttransfers 3
           git config lfs.transfer.batchSize 20
           for attempt in 1 2 3 4; do
-            if git lfs pull --include="Content/**,Models/MainMenu/**" --exclude=""; then
+            if git lfs pull --include="Content/**,Models/MainMenu/**,UnityAssets/**" --exclude=""; then
               break
             fi
             if [ "$attempt" = "4" ]; then
@@ -113,7 +111,7 @@ jobs:
             echo "Media LFS download attempt $attempt failed; retrying in ${delay}s..."
             sleep "$delay"
           done
-          if grep -RIl '^version https://git-lfs.github.com/spec/v1$' Content Models/MainMenu; then
+          if grep -RIl '^version https://git-lfs.github.com/spec/v1$' Content Models/MainMenu UnityAssets; then
             echo "Media checkout still contains Git LFS pointers."
             exit 1
           fi
@@ -124,6 +122,7 @@ jobs:
           test -f .ci/rebellion2-media/Content/Application/Schemas/game-config.xsd
           rsync -a --delete --exclude=.DS_Store --exclude='*.meta' .ci/rebellion2-media/Content/ Assets/Content/
           rsync -a --delete --exclude=.DS_Store --exclude='*.meta' .ci/rebellion2-media/Models/MainMenu/ Assets/Art/Models/MainMenu/
+          rsync -a --exclude=.DS_Store .ci/rebellion2-media/UnityAssets/ Assets/
           rm -rf .ci
 
       - uses: actions/cache@v4
@@ -282,7 +281,7 @@ jobs:
           git config lfs.concurrenttransfers 3
           git config lfs.transfer.batchSize 20
           for attempt in 1 2 3 4; do
-            if git lfs pull --include="Content/**,Models/MainMenu/**" --exclude=""; then
+            if git lfs pull --include="Content/**,Models/MainMenu/**,UnityAssets/**" --exclude=""; then
               break
             fi
             if [ "$attempt" = "4" ]; then
@@ -293,7 +292,7 @@ jobs:
             echo "Media LFS download attempt $attempt failed; retrying in ${delay}s..."
             sleep "$delay"
           done
-          if grep -RIl '^version https://git-lfs.github.com/spec/v1$' Content Models/MainMenu; then
+          if grep -RIl '^version https://git-lfs.github.com/spec/v1$' Content Models/MainMenu UnityAssets; then
             echo "Media checkout still contains Git LFS pointers."
             exit 1
           fi
@@ -304,6 +303,7 @@ jobs:
           test -f .ci/rebellion2-media/Content/Application/Schemas/game-config.xsd
           rsync -a --delete --exclude=.DS_Store --exclude='*.meta' .ci/rebellion2-media/Content/ Assets/Content/
           rsync -a --delete --exclude=.DS_Store --exclude='*.meta' .ci/rebellion2-media/Models/MainMenu/ Assets/Art/Models/MainMenu/
+          rsync -a --exclude=.DS_Store .ci/rebellion2-media/UnityAssets/ Assets/
           rm -rf .ci
 
       - uses: actions/cache@v4

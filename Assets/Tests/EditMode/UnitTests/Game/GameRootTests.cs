@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Xml.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
@@ -192,6 +194,84 @@ namespace Rebellion.Tests.Game
             Assert.AreEqual(0, _game.CurrentTick, "Current tick should be initialized to 0");
             Assert.IsEmpty(_game.GetEventPool(), "Event pool should be empty initially");
             Assert.IsEmpty(_game.EventRuntime.States, "Event states should be empty initially");
+            Assert.IsNull(_game.GetActiveBattle());
+        }
+
+        [TestCase(BattleKind.Space)]
+        [TestCase(BattleKind.Ground)]
+        public void ActiveBattle_WhenPresent_RoundTripsDirectlyUnderGame(BattleKind kind)
+        {
+            string battleMapInstanceID = $"{kind.ToString().ToUpperInvariant()}_MAP";
+            ActiveBattle activeBattle = new ActiveBattle
+            {
+                BattleMapInstanceID = battleMapInstanceID,
+                Kind = kind,
+                PlanetInstanceID = "PLANET1",
+            };
+            activeBattle
+                .GetParticipants()
+                .Add(
+                    new BattleParticipant
+                    {
+                        FactionInstanceID = "FACTION1",
+                        BattleMapSlotID = "attacker",
+                    }
+                );
+            activeBattle
+                .GetParticipants()
+                .Add(
+                    new BattleParticipant
+                    {
+                        FactionInstanceID = "FACTION2",
+                        BattleMapSlotID = "defender",
+                    }
+                );
+            _game.SetActiveBattle(activeBattle);
+
+            string xml = SerializationHelper.Serialize(_game);
+            XElement gameElement = XDocument.Parse(xml).Root;
+            Assert.IsNotNull(gameElement);
+            XElement battleElement = gameElement.Element("ActiveBattle");
+            Assert.IsNotNull(battleElement);
+            Assert.AreEqual(
+                battleMapInstanceID,
+                battleElement.Element("BattleMapInstanceID")?.Value
+            );
+            Assert.AreEqual(kind.ToString(), battleElement.Element("Kind")?.Value);
+            Assert.IsNull(battleElement.Element("Map"));
+            Assert.AreEqual("PLANET1", battleElement.Element("PlanetInstanceID")?.Value);
+
+            GameRoot restored = SerializationHelper.Deserialize<GameRoot>(xml);
+            Assert.IsNotNull(restored.GetActiveBattle());
+            Assert.AreEqual(battleMapInstanceID, restored.GetActiveBattle().BattleMapInstanceID);
+            Assert.AreEqual(kind, restored.GetActiveBattle().Kind);
+            Assert.AreEqual(2, restored.GetActiveBattle().GetParticipants().Count);
+            Assert.AreEqual(
+                "FACTION1",
+                restored.GetActiveBattle().GetParticipants()[0].FactionInstanceID
+            );
+            Assert.AreEqual(
+                "FACTION2",
+                restored.GetActiveBattle().GetParticipants()[1].FactionInstanceID
+            );
+            Assert.AreEqual("PLANET1", restored.GetActiveBattle().PlanetInstanceID);
+        }
+
+        [Test]
+        public void ActiveBattle_WhenAbsent_IsOmittedFromSave()
+        {
+            string xml = SerializationHelper.Serialize(_game);
+
+            Assert.IsNull(XDocument.Parse(xml).Root?.Element("ActiveBattle"));
+        }
+
+        [Test]
+        public void ActiveBattle_SaveWithoutActiveBattle_RemainsNull()
+        {
+            string xml = SerializationHelper.Serialize(_game);
+            GameRoot restored = SerializationHelper.Deserialize<GameRoot>(xml);
+
+            Assert.IsNull(restored.GetActiveBattle());
         }
 
         [Test]

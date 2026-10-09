@@ -93,6 +93,8 @@ CLAUDE.md
 Assets/Art/Models/**/*.fbx
 Assets/Art/Models/**/*.png
 Assets/Art/Models/MainMenu/
+/Assets/Art/MainMenu/
 
 # App icon lives in private rebellion2-media, not here
 /Assets/GameIcon/
+/Assets/GameIcon.meta

@@ -15,7 +15,7 @@ using Object = UnityEngine.Object;
 /// <summary>
 /// Builds the MainMenuRoot prefab from scratch in one pass: the base hierarchy is authored with
 /// <c>new GameObject(...)</c>, then the view bindings, the spinning-planet backdrop, and the
-/// spinning 3D icon rigs are installed, and the result is saved once. No authored prefab is loaded.
+/// spinning 3D icon rigs are installed, and the result is saved once.
 /// </summary>
 public static class MainMenuPrefabBuilder
 {
@@ -46,23 +46,18 @@ public static class MainMenuPrefabBuilder
 
     // Spinning-planet backdrop.
     private const string _starfieldAddress = "Application/MainMenu/UI/starfield";
-    private const string _cloudTextureAddress = "Application/MainMenu/UI/clouds";
-    private const string _cloudShaderName = "Custom/PlanetClouds";
-    private const string _atmosphereShaderName = "Custom/AtmosphereRim";
-    private const string _planetDayNightShaderName = "Custom/PlanetDayNightShade";
-    private const string _renderTexturePath = "Assets/Art/Models/MainMenu/Planet.renderTexture";
+    private const string _planetCompositeShaderName = "Custom/PremultipliedTexture";
+    private const string _planetAssetRoot = "Assets/Art/MainMenu/Planet";
+    private const string _renderTexturePath = _planetAssetRoot + "/Generated/Planet.renderTexture";
+    private const string _planetCompositeMaterialPath =
+        _planetAssetRoot + "/Generated/PlanetComposite.mat";
+    private const string _planetPrefabPath = _planetAssetRoot + "/Planet.prefab";
     private const string _citadelModelAddress = "Application/MainMenu/Models/citadel";
     private const string _citadelRenderTexturePath =
         "Assets/Art/Models/MainMenu/HqCitadel.renderTexture";
     private const string _rigName = "PlanetRig";
     private const string _backdropName = "SpaceBackdrop";
     private const string _foregroundName = "Cockpit";
-    private const float _cloudSpinDegreesPerSecond = 1f / 3f;
-    private static readonly Vector3 _planetSunDirection = new Vector3(
-        0.80f,
-        0.46f,
-        -0.38f
-    ).normalized;
     private static readonly Vector3 _planetRigOrigin = new Vector3(12000f, 12000f, 12000f);
 
     // Spinning 3D icon rigs.
@@ -2024,6 +2019,10 @@ public static class MainMenuPrefabBuilder
         FillParent(stars.rectTransform);
 
         RawImage planet = NewRawImage(backdrop.transform, "Planet", rt);
+        planet.material = LoadOrCreateMaterial(
+            _planetCompositeMaterialPath,
+            _planetCompositeShaderName
+        );
         // Tilted and positioned in the windshield canopy; values tuned in the editor.
         ApplyPlanetBackdropRect(planet.rectTransform);
     }
@@ -2038,14 +2037,13 @@ public static class MainMenuPrefabBuilder
         rect.anchorMin = new Vector2(0.5f, 0.63f);
         rect.anchorMax = new Vector2(0.5f, 0.63f);
         rect.pivot = new Vector2(0.5f, 0.5f);
-        rect.sizeDelta = new Vector2(3770.957f, 3526.246f);
-        rect.anchoredPosition = new Vector2(74f, -734f);
+        rect.sizeDelta = new Vector2(2400f, 2280f);
+        rect.anchoredPosition = new Vector2(60f, -135f);
         rect.localRotation = Quaternion.identity;
     }
 
     /// <summary>
-    /// Builds the off-screen planet model, lighting, and camera rig. The model is normalized and
-    /// recentered before spinning because its exported scale and origin are arbitrary.
+    /// Builds the off-screen planet and camera rig from the authored planet prefab.
     /// </summary>
     /// <param name="root">The prefab root to parent the rig under.</param>
     /// <param name="renderTexture">The texture the rig camera renders into.</param>
@@ -2057,72 +2055,27 @@ public static class MainMenuPrefabBuilder
 
         GameObject pivot = new GameObject("Pivot");
         pivot.transform.SetParent(rig.transform, false);
-        // The planet stays still; only the cloud layer drifts.
 
-        // The planet ships as a pre-skinned GLB in the content pack. Load it at runtime and apply
-        // the same pole-forward rotation, unit normalization, centering, and render layer the baked
-        // model used. Posing stays here in code; only the model travels inside the GLB.
         const int planetLayer = 31;
-        GameObject planetModelNode = new GameObject("Model");
-        planetModelNode.transform.SetParent(pivot.transform, false);
-        planetModelNode
-            .AddComponent<ContentModelBinding>()
-            .SetModel(
-                "Application/MainMenu/Models/planet",
-                1f,
-                new Vector3(0f, 180f, 0f),
-                overwrite: true,
-                normalize: true,
-                center: true,
-                layer: planetLayer
-            );
+        GameObject planetPrefab = LoadRequiredAsset<GameObject>(_planetPrefabPath);
+        GameObject planet = (GameObject)
+            PrefabUtility.InstantiatePrefab(planetPrefab, pivot.transform);
+        planet.name = "Planet";
+        planet.transform.localPosition = Vector3.zero;
+        planet.transform.localRotation = Quaternion.identity;
+        planet.transform.localScale = Vector3.one * 2f;
+        foreach (Transform child in planet.GetComponentsInChildren<Transform>(true))
+            child.gameObject.layer = planetLayer;
 
-        // Cloud layer: a slightly larger sphere on its own pivot so the clouds drift in the
-        // planet's spin direction while the planet itself stays still.
-        GameObject cloudPivot = new GameObject("CloudPivot");
-        cloudPivot.transform.SetParent(rig.transform, false);
-        cloudPivot.AddComponent<AutoRotate>().Configure(-_cloudSpinDegreesPerSecond, Vector3.up);
-        GameObject clouds = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        clouds.name = "Clouds";
-        UnityEngine.Object.DestroyImmediate(clouds.GetComponent<Collider>());
-        clouds.transform.SetParent(cloudPivot.transform, false);
-        clouds.transform.localScale = Vector3.one * 2.020f; // primitive radius 0.5 -> ~1.010
-        clouds.layer = planetLayer;
-        clouds
-            .AddComponent<RuntimeMaterialBinding>()
-            .Configure(_cloudShaderName, _cloudTextureAddress);
-
-        // Atmosphere: a static shell just outside the clouds with a Fresnel rim glow, so the limb
-        // reads as a lit atmosphere. Built from a primitive with the custom rim shader assigned here.
-        GameObject atmosphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        atmosphere.name = "Atmosphere";
-        UnityEngine.Object.DestroyImmediate(atmosphere.GetComponent<Collider>());
-        atmosphere.transform.SetParent(rig.transform, false);
-        atmosphere.transform.localScale = Vector3.one * 2.025f; // primitive radius 0.5 -> ~1.0125
-        atmosphere.layer = planetLayer;
-        atmosphere.AddComponent<RuntimeMaterialBinding>().Configure(_atmosphereShaderName);
-
-        // A final multiply shell reproduces the prototype's world-space day/night terminator over
-        // the complete composited globe, including the asynchronously loaded surface and clouds.
-        GameObject dayNightShade = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        dayNightShade.name = "DayNightShade";
-        UnityEngine.Object.DestroyImmediate(dayNightShade.GetComponent<Collider>());
-        dayNightShade.transform.SetParent(rig.transform, false);
-        dayNightShade.transform.localScale = Vector3.one * 2.040f;
-        dayNightShade.layer = planetLayer;
-        dayNightShade.AddComponent<RuntimeMaterialBinding>().Configure(_planetDayNightShaderName);
-
-        // Dedicated sun for the planet, masked to their layer so it never touches the icons.
-        // Gives the rocky surface real directional shading; the emission only lifts the night side.
         GameObject sunObject = new GameObject("PlanetSun", typeof(Light));
         sunObject.transform.SetParent(rig.transform, false);
-        sunObject.transform.localRotation = Quaternion.LookRotation(-_planetSunDirection);
+        sunObject.transform.localRotation = Quaternion.Euler(23.84f, -35f, 0f);
         Light sun = sunObject.GetComponent<Light>();
         sun.type = LightType.Directional;
-        sun.intensity = 0.6f;
-        sun.color = new Color(1f, 0.94f, 0.88f);
+        sun.color = new Color(1f, 0.98389596f, 0.8726415f, 1f);
+        sun.intensity = 1f;
         sun.cullingMask = 1 << planetLayer;
-        sun.shadows = LightShadows.None;
+        sun.shadows = LightShadows.Soft;
 
         GameObject cameraObject = new GameObject("Camera", typeof(Camera));
         cameraObject.transform.SetParent(rig.transform, false);
@@ -2131,11 +2084,13 @@ public static class MainMenuPrefabBuilder
         camera.clearFlags = CameraClearFlags.SolidColor;
         camera.backgroundColor = new Color(0f, 0f, 0f, 0f);
         camera.orthographic = true;
-        camera.orthographicSize = 1.75f; // frame the globe (radius 1) with margin
+        camera.orthographicSize = 1.75f;
         camera.nearClipPlane = 0.1f;
         camera.farClipPlane = 50f;
         camera.cullingMask = 1 << planetLayer;
+        camera.allowHDR = true;
         camera.targetTexture = renderTexture;
+        cameraObject.AddComponent<UnityEngine.Rendering.Universal.UniversalAdditionalCameraData>();
     }
 
     /// <summary>
@@ -2148,17 +2103,22 @@ public static class MainMenuPrefabBuilder
         RenderTexture existing = AssetDatabase.LoadAssetAtPath<RenderTexture>(_renderTexturePath);
         if (existing != null)
         {
-            if (existing.width != size || existing.height != size)
+            if (
+                existing.width != size
+                || existing.height != size
+                || existing.format != RenderTextureFormat.ARGBHalf
+            )
             {
                 existing.Release();
                 existing.width = size;
                 existing.height = size;
+                existing.format = RenderTextureFormat.ARGBHalf;
                 EditorUtility.SetDirty(existing);
             }
             return existing;
         }
 
-        RenderTexture created = new RenderTexture(size, size, 16, RenderTextureFormat.ARGB32)
+        RenderTexture created = new RenderTexture(size, size, 16, RenderTextureFormat.ARGBHalf)
         {
             name = "Planet",
             antiAliasing = 4,
@@ -2166,6 +2126,36 @@ public static class MainMenuPrefabBuilder
         EnsureAssetFolder(Path.GetDirectoryName(_renderTexturePath));
         AssetDatabase.CreateAsset(created, _renderTexturePath);
         return created;
+    }
+
+    /// <summary>
+    /// Loads a generated material asset, creating or updating it to use the required shader.
+    /// </summary>
+    /// <param name="path">The project-relative material asset path.</param>
+    /// <param name="shaderName">The shader the material must use.</param>
+    /// <returns>The persistent material asset.</returns>
+    private static Material LoadOrCreateMaterial(string path, string shaderName)
+    {
+        Shader shader = Shader.Find(shaderName);
+        if (shader == null)
+            throw new InvalidOperationException($"Shader not found: {shaderName}");
+
+        Material material = AssetDatabase.LoadAssetAtPath<Material>(path);
+        if (material == null)
+        {
+            material = new Material(shader) { name = Path.GetFileNameWithoutExtension(path) };
+            EnsureAssetFolder(Path.GetDirectoryName(path));
+            AssetDatabase.CreateAsset(material, path);
+            return material;
+        }
+
+        if (material.shader != shader)
+        {
+            material.shader = shader;
+            EditorUtility.SetDirty(material);
+        }
+
+        return material;
     }
 
     /// <summary>

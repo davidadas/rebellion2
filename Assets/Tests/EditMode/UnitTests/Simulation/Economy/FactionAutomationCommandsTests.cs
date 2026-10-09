@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
@@ -964,6 +965,7 @@ namespace Rebellion.Tests.Simulation
                     },
                 },
                 Array.Empty<PlanetSector>(),
+                Array.Empty<BattleMap>(),
                 new[] { mine, refinery },
                 Array.Empty<CapitalShip>(),
                 Array.Empty<Starfighter>(),

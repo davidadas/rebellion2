@@ -13,6 +13,7 @@ public static class StandalonePlayerBuild
     private const string _bootScenePath = "Assets/Scenes/BootScene.unity";
     private const string _mainMenuScenePath = "Assets/Scenes/MainMenu.unity";
     private const string _strategyScenePath = "Assets/Scenes/StrategyView.unity";
+    private const string _tacticalScenePath = "Assets/Scenes/TacticalView.unity";
     private const string _buildTargetArgument = "-buildTarget";
     private const string _buildPlayerPathArgument = "-buildPlayerPath";
     private const string _gameCIBuildPathArgument = "-customBuildPath";
@@ -178,7 +179,13 @@ public static class StandalonePlayerBuild
         {
             Directory.CreateDirectory(outputDirectory);
         }
-        string[] scenes = { _bootScenePath, _mainMenuScenePath, _strategyScenePath };
+        string[] scenes =
+        {
+            _bootScenePath,
+            _mainMenuScenePath,
+            _strategyScenePath,
+            _tacticalScenePath,
+        };
         string missingScene = scenes.FirstOrDefault(path => !File.Exists(path));
         if (missingScene != null)
             throw new FileNotFoundException("Generated player scene not found.", missingScene);
