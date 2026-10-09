@@ -428,6 +428,37 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         [Test]
+        public void GetSelectedCapacity_ParentFleetAndExpandedShip_CountsCarrierOnce()
+        {
+            _capitalShip.StarfighterCapacity = 4;
+            _capitalShip.RegimentCapacity = 3;
+            SelectionModifierState modifiers = new SelectionModifierState(true, false);
+            FleetWindowSession session = new FleetWindowSession(
+                new GalaxyMapPlanet(new GalaxyPlanetSector(), _planet, string.Empty),
+                _window,
+                () => modifiers
+            );
+            Assert.IsTrue(session.ToggleFleetExpanded(0));
+            Assert.IsTrue(session.SelectFleetListItem(_capitalShip));
+            CollectionAssert.AreEqual(
+                new ISceneNode[] { _fleet, _capitalShip },
+                session.SelectedFleetListSources
+            );
+
+            session.GetSelectedCapacity(
+                FleetWindowTab.Starfighters,
+                out int fighters,
+                out int bays
+            );
+            session.GetSelectedCapacity(FleetWindowTab.Regiments, out int regiments, out int holds);
+
+            Assert.AreEqual(1, fighters);
+            Assert.AreEqual(4, bays);
+            Assert.AreEqual(1, regiments);
+            Assert.AreEqual(3, holds);
+        }
+
+        [Test]
         public void CaptureFleetListContext_ExpandedCapitalShip_DisablesCapitalShipTab()
         {
             Assert.IsTrue(_session.ToggleFleetExpanded(0));

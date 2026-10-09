@@ -241,6 +241,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 new[] { "Capital Ship", "Second Ship" },
                 data.DetailItems.Select(item => item.Name).ToArray()
             );
+            StrategyUnitCardRenderData stationaryCard = data.DetailItems.Single(item =>
+                item.Name == "Capital Ship"
+            );
+            StrategyUnitCardRenderData movingCard = data.DetailItems.Single(item =>
+                item.Name == "Second Ship"
+            );
+            Assert.IsNull(stationaryCard.EnrouteOverlayTexture);
+            Assert.IsNotNull(movingCard.EnrouteOverlayTexture);
         }
 
         [Test]

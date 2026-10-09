@@ -604,8 +604,16 @@ internal sealed class FleetWindowSession
     {
         current = 0;
         capacity = 0;
-        foreach (ISceneNode source in GetSelectedFleetListSources())
+        List<ISceneNode> sources = GetSelectedFleetListSources();
+        HashSet<Fleet> selectedFleets = sources.OfType<Fleet>().ToHashSet();
+        foreach (ISceneNode source in sources)
         {
+            if (
+                source is CapitalShip selectedShip
+                && selectedFleets.Contains(selectedShip.GetParentOfType<Fleet>())
+            )
+                continue;
+
             switch (source)
             {
                 case Fleet fleet when tab == FleetWindowTab.Starfighters:

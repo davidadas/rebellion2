@@ -326,15 +326,18 @@ internal sealed class FleetWindowProjector
     {
         IReadOnlyList<ISceneNode> items = session.DetailItems;
         List<StrategyUnitCardRenderData> data = new List<StrategyUnitCardRenderData>();
-        FleetWindowTheme theme = uiContext.GetTheme(fleet.OwnerInstanceID)?.StrategyWindows?.Fleet;
         for (int i = 0; i < items.Count; i++)
         {
             ISceneNode item = items[i];
+            Fleet itemFleet = item.GetParentOfType<Fleet>() ?? fleet;
             CapitalShip capitalShip = item as CapitalShip;
             bool selected = session.SelectedDetailItems.Contains(i);
             UnitTileIcons icons = uiContext
                 .GetTheme(item.GetOwnerInstanceID())
                 ?.PlanetOverlayTheme?.UnitTileIcons;
+            FleetWindowTheme theme = uiContext
+                .GetTheme(itemFleet.OwnerInstanceID)
+                ?.StrategyWindows?.Fleet;
             data.Add(
                 new StrategyUnitCardRenderData(
                     name: item.GetDisplayName(),
@@ -346,11 +349,15 @@ internal sealed class FleetWindowProjector
                     backgroundTexture: GetDetailItemBackgroundTexture(
                         uiContext,
                         theme,
-                        fleet,
+                        itemFleet,
                         item,
                         session.ActiveTab
                     ),
-                    enrouteOverlayTexture: GetDetailEnrouteOverlayTexture(uiContext, fleet, item),
+                    enrouteOverlayTexture: GetDetailEnrouteOverlayTexture(
+                        uiContext,
+                        itemFleet,
+                        item
+                    ),
                     damagedOverlayTexture: GetDetailDamagedOverlayTexture(uiContext, item),
                     entityTexture: uiContext.GetEntityTexture(item, true),
                     capturedOverlayTexture: uiContext.GetEntityCapturedOverlayTexture(item),
