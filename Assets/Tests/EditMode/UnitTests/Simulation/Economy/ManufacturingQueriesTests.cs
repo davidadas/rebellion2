@@ -250,6 +250,89 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void CanSetManufacturingOrder_ReplacementFighterOnTravelingCarrier_DoesNotReleaseCapacity()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet producer = CreateOrderTestShipyardPlanet(game, "producer", "empire");
+            Planet destination = CreateOrderTestPlanet(game, "destination", "empire");
+            Fleet fleet = EntityFactory.CreateFleet("fleet", "empire");
+            CapitalShip carrier = new CapitalShip
+            {
+                InstanceID = "carrier",
+                OwnerInstanceID = "empire",
+                StarfighterCapacity = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, destination);
+            game.AttachNode(carrier, fleet);
+            Starfighter activeTemplate = CreateOrderTestStarfighterTemplate(
+                "old-fighter",
+                "empire"
+            );
+            Starfighter replacementTemplate = CreateOrderTestStarfighterTemplate(
+                "new-fighter",
+                "empire"
+            );
+            ManufacturingCommands manager = new ManufacturingCommands(
+                game,
+                new FleetCommands(game),
+                new ManufacturingQueries(game)
+            );
+            Assert.IsTrue(manager.StartManufacturing(producer, activeTemplate, fleet, 1, "empire"));
+            carrier.Movement = new MovementState { TransitTicks = 10 };
+
+            bool canSet = new ManufacturingQueries(game).CanSetManufacturingOrder(
+                producer,
+                replacementTemplate,
+                fleet,
+                1,
+                "empire"
+            );
+
+            Assert.IsFalse(canSet);
+        }
+
+        [Test]
+        public void CanSetManufacturingOrder_ReplacementRegimentOnTravelingCarrier_DoesNotReleaseCapacity()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet producer = CreateOrderTestTrainingPlanet(game, "producer", "empire");
+            Planet destination = CreateOrderTestPlanet(game, "destination", "empire");
+            Fleet fleet = EntityFactory.CreateFleet("fleet", "empire");
+            CapitalShip carrier = new CapitalShip
+            {
+                InstanceID = "carrier",
+                OwnerInstanceID = "empire",
+                RegimentCapacity = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, destination);
+            game.AttachNode(carrier, fleet);
+            Regiment activeTemplate = CreateOrderTestRegimentTemplate("old-regiment", "empire");
+            Regiment replacementTemplate = CreateOrderTestRegimentTemplate(
+                "new-regiment",
+                "empire"
+            );
+            ManufacturingCommands manager = new ManufacturingCommands(
+                game,
+                new FleetCommands(game),
+                new ManufacturingQueries(game)
+            );
+            Assert.IsTrue(manager.StartManufacturing(producer, activeTemplate, fleet, 1, "empire"));
+            carrier.Movement = new MovementState { TransitTicks = 10 };
+
+            bool canSet = new ManufacturingQueries(game).CanSetManufacturingOrder(
+                producer,
+                replacementTemplate,
+                fleet,
+                1,
+                "empire"
+            );
+
+            Assert.IsFalse(canSet);
+        }
+
+        [Test]
         public void CanStartManufacturing_DifferentProject_DoesNotCancelExistingWork()
         {
             GameRoot game = CreateOrderTestGame();
@@ -825,6 +908,25 @@ namespace Rebellion.Tests.Simulation
         )
         {
             return new Starfighter
+            {
+                TypeID = typeId,
+                DisplayName = typeId,
+                ConstructionCost = 10,
+                MaintenanceCost = 0,
+                BaseBuildSpeed = 1,
+                ManufacturingFactionInstanceIDs = new List<string> { factionId },
+            };
+        }
+
+        /// <summary>
+        /// Creates an order test regiment template.
+        /// </summary>
+        /// <param name="typeId">The type id.</param>
+        /// <param name="factionId">The manufacturing faction id.</param>
+        /// <returns>The created regiment template.</returns>
+        private static Regiment CreateOrderTestRegimentTemplate(string typeId, string factionId)
+        {
+            return new Regiment
             {
                 TypeID = typeId,
                 DisplayName = typeId,

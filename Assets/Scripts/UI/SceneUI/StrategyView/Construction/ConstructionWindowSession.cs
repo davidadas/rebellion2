@@ -8,8 +8,10 @@ using Rebellion.Game.Units;
 internal sealed class ConstructionWindowSession
 {
     private const int _minimumBuildCount = 1;
+    private const int _defaultMaximumBuildCount = byte.MaxValue;
 
     private readonly List<IManufacturable> items = new List<IManufacturable>();
+    private int maximumBuildCount = _defaultMaximumBuildCount;
     private bool orderInitialized;
     private string selectedItemTypeId;
 
@@ -138,6 +140,7 @@ internal sealed class ConstructionWindowSession
 
         SelectedItemIndex = activeIndex;
         selectedItemTypeId = itemTypeId;
+        maximumBuildCount = Math.Max(_defaultMaximumBuildCount, buildCount);
         SetBuildCount(buildCount);
     }
 
@@ -158,11 +161,12 @@ internal sealed class ConstructionWindowSession
     }
 
     /// <summary>
-    /// Increments the build count within the supported byte range.
+    /// Increments the build count without exceeding the session's supported maximum.
     /// </summary>
     public void IncrementBuildCount()
     {
-        BuildCount = Math.Min(byte.MaxValue, BuildCount + 1);
+        if (BuildCount < maximumBuildCount)
+            BuildCount++;
     }
 
     /// <summary>
@@ -174,12 +178,12 @@ internal sealed class ConstructionWindowSession
     }
 
     /// <summary>
-    /// Sets the build count within the supported non-empty byte range.
+    /// Sets the build count within the session's supported non-empty range.
     /// </summary>
     /// <param name="buildCount">The requested build count.</param>
     public void SetBuildCount(int buildCount)
     {
-        BuildCount = Math.Max(_minimumBuildCount, Math.Min(byte.MaxValue, buildCount));
+        BuildCount = Math.Max(_minimumBuildCount, Math.Min(maximumBuildCount, buildCount));
     }
 
     /// <summary>
@@ -251,6 +255,7 @@ internal sealed class ConstructionWindowSession
         orderInitialized = false;
         SelectedItemIndex = 0;
         BuildCount = _minimumBuildCount;
+        maximumBuildCount = _defaultMaximumBuildCount;
         DropdownOpen = false;
     }
 

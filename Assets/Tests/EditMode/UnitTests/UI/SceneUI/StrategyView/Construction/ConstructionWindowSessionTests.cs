@@ -87,6 +87,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
         }
 
         [Test]
+        public void InitializeOrder_QuantityAboveDefaultMaximum_PreservesQuantity()
+        {
+            CapitalShip active = new CapitalShip { TypeID = "active" };
+            _session.SetItems(new IManufacturable[] { active });
+
+            _session.InitializeOrder(active.TypeID, 300);
+
+            Assert.AreEqual(300, _session.BuildCount);
+        }
+
+        [Test]
         public void InitializeOrder_AfterUserEdit_PreservesEditedState()
         {
             CapitalShip first = new CapitalShip { TypeID = "first" };

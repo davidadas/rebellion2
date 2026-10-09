@@ -367,7 +367,7 @@ namespace Rebellion.Simulation
                 return carriers.Sum(ship => ship.GetExcessStarfighterCapacity())
                         + CountReplacedItems<Starfighter>(
                             replacedItems,
-                            item => ReferenceEquals(item.GetParentOfType<Fleet>(), fleet)
+                            item => IsOnAvailableCarrierInFleet(item, fleet)
                         )
                     >= count;
 
@@ -375,9 +375,22 @@ namespace Rebellion.Simulation
                 && carriers.Sum(ship => ship.GetExcessRegimentCapacity())
                     + CountReplacedItems<Regiment>(
                         replacedItems,
-                        item => ReferenceEquals(item.GetParentOfType<Fleet>(), fleet)
+                        item => IsOnAvailableCarrierInFleet(item, fleet)
                     )
                     >= count;
+        }
+
+        /// <summary>
+        /// Determines whether a queued unit occupies capacity on a carrier that can receive its replacement.
+        /// </summary>
+        /// <param name="item">The queued unit being replaced.</param>
+        /// <param name="fleet">The requested destination fleet.</param>
+        /// <returns>True when removing the unit releases usable capacity in the destination fleet.</returns>
+        private static bool IsOnAvailableCarrierInFleet(IManufacturable item, Fleet fleet)
+        {
+            CapitalShip carrier = item?.GetParentOfType<CapitalShip>();
+            return ManufacturingRules.IsCarrierAvailable(carrier)
+                && ReferenceEquals(carrier.GetParentOfType<Fleet>(), fleet);
         }
 
         /// <summary>
