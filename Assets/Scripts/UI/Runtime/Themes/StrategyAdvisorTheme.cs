@@ -191,10 +191,6 @@ public class StrategyAdvisorNotificationTheme
 
     public AdvisorSubjectNotification SubjectNotification { get; set; }
 
-    public AdvisorNotificationType QueueGroup { get; set; }
-
-    public int LifetimeTicks { get; set; }
-
     public StrategyAdvisorAnimationTheme Droid { get; set; }
 
     public StrategyAdvisorAnimationTheme Protocol { get; set; }
@@ -219,8 +215,6 @@ public class StrategyAdvisorTheme
     public string DroidIdleAnimation { get; set; }
 
     public float FrameIntervalSeconds { get; set; }
-
-    public int RepeatCooldownTicks { get; set; }
 
     public StrategyAdvisorAnimationTheme PlanetaryGarrisonManagementEnabled { get; set; }
 
@@ -272,31 +266,6 @@ public class StrategyAdvisorTheme
                 && notification.SubjectNotification == subjectNotification
                 && string.IsNullOrEmpty(notification.SubjectTypeID)
             );
-    }
-
-    /// <summary>
-    /// Builds the stable semantic queue key for one notification presentation.
-    /// </summary>
-    /// <param name="notification">The authored notification presentation.</param>
-    /// <returns>A semantic key, or <see langword="null"/> for an invalid entry.</returns>
-    public static string GetNotificationKey(StrategyAdvisorNotificationTheme notification)
-    {
-        if (notification == null)
-            return null;
-
-        if (notification.QueueGroup != AdvisorNotificationType.None)
-            return $"Group:{notification.QueueGroup}";
-
-        if (notification.SubjectNotification == AdvisorSubjectNotification.None)
-        {
-            return notification.NotificationType == AdvisorNotificationType.None
-                ? null
-                : $"Notification:{notification.NotificationType}";
-        }
-
-        return string.IsNullOrEmpty(notification.SubjectTypeID)
-            ? $"Subject:{notification.SubjectNotification}"
-            : $"Subject:{notification.SubjectTypeID}:{notification.SubjectNotification}";
     }
 
     /// <summary>

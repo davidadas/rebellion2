@@ -1011,10 +1011,8 @@ public sealed class StrategyController
                 PauseForGameplayOption(UserGameplayOption.PauseWhenSpaceBattleBegins);
         }
 
-        int currentTick = session.Game.CurrentTick;
         Faction playerFaction = session.Game.GetPlayerFaction();
         strategyHudController.ProcessAdvisor(
-            currentTick,
             messagesWindowController?.IsOpen != true && playerFaction?.TranslateCounterpart == true
         );
         if (dirty)
@@ -1813,7 +1811,6 @@ public sealed class StrategyController
         messagesWindowController.ReconcileWindows();
         strategyHudController.NotifyAdvisor(
             delivery,
-            session.Game.CurrentTick,
             delivery.Recipient.IsAdvisorMessageNotificationEnabled(delivery.Message.Type)
         );
         MarkDirty();

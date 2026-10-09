@@ -11,12 +11,9 @@ namespace Rebellion.Game.Messages
         [PersistableAttribute]
         public AdvisorNotificationPreset? Preset { get; set; }
 
-        [PersistableAttribute]
-        public int? LifetimeTicks { get; set; }
-
         public AdvisorAnimation Droid { get; set; }
         public AdvisorAnimation Protocol { get; set; }
 
-        public bool HasOverrides => LifetimeTicks.HasValue || Droid != null || Protocol != null;
+        public bool HasOverrides => Droid != null || Protocol != null;
     }
 }

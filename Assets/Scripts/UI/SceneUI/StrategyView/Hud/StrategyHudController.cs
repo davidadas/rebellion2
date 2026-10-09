@@ -108,25 +108,19 @@ public sealed class StrategyHudController : IContextMenuReceiver
     /// Queues an advisor notification derived from a newly delivered player message.
     /// </summary>
     /// <param name="delivery">The delivered message and presentation request.</param>
-    /// <param name="currentTick">The current game tick.</param>
     /// <param name="notificationEnabled">Whether its message category permits notification.</param>
-    public void NotifyAdvisor(
-        MessageDeliveredResult delivery,
-        int currentTick,
-        bool notificationEnabled
-    )
+    public void NotifyAdvisor(MessageDeliveredResult delivery, bool notificationEnabled)
     {
-        advisorController.Notify(delivery, currentTick, notificationEnabled);
+        advisorController.Notify(delivery, notificationEnabled);
     }
 
     /// <summary>
-    /// Processes the highest-priority pending advisor notification for the current tick.
+    /// Processes the next pending advisor notification.
     /// </summary>
-    /// <param name="currentTick">The current game tick.</param>
     /// <param name="announcementsEnabled">Whether gated protocol announcements may play.</param>
-    public void ProcessAdvisor(int currentTick, bool announcementsEnabled)
+    public void ProcessAdvisor(bool announcementsEnabled)
     {
-        advisorController.ProcessPending(currentTick, announcementsEnabled);
+        advisorController.ProcessPending(announcementsEnabled);
     }
 
     /// <summary>
