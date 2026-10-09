@@ -27,6 +27,7 @@ namespace Rebellion.Tests.Simulation
         private GameDataCatalog _gameData;
         private Faction _faction;
         private ManufacturingCommands _manufacturing;
+        private MovementCommands _movement;
         private Planet _producer;
         private Planet _destination;
         private FactionAutomationCommands _automation;
@@ -61,7 +62,7 @@ namespace Rebellion.Tests.Simulation
             AddResourcePairs(_producer, 1);
             SatisfyGarrison(_producer);
 
-            MovementCommands movement = new MovementCommands(
+            _movement = new MovementCommands(
                 _game,
                 new FogOfWarCommands(_game),
                 new FleetCommands(_game),
@@ -72,7 +73,7 @@ namespace Rebellion.Tests.Simulation
                 _game,
                 new FleetCommands(_game),
                 new ManufacturingQueries(_game),
-                movement
+                _movement
             );
             _automation = new FactionAutomationCommands(
                 _game,
@@ -635,7 +636,7 @@ namespace Rebellion.Tests.Simulation
             );
 
             _automation.ProcessFaction(_faction);
-            new ManufacturingTickProcessor(_manufacturing).ProcessTick(_game);
+            new ManufacturingTickProcessor(_manufacturing, _movement).ProcessTick(_game);
             _automation.ProcessFaction(_faction);
 
             Assert.AreEqual(1, GetQueueCount(_producer, ManufacturingType.Troop));
@@ -654,7 +655,7 @@ namespace Rebellion.Tests.Simulation
             AddProductionInfrastructure();
 
             _automation.ProcessFaction(_faction);
-            new ManufacturingTickProcessor(_manufacturing).ProcessTick(_game);
+            new ManufacturingTickProcessor(_manufacturing, _movement).ProcessTick(_game);
             _automation.ProcessFaction(_faction);
 
             Assert.AreEqual(2, GetQueueCount(_producer, ManufacturingType.Building));
