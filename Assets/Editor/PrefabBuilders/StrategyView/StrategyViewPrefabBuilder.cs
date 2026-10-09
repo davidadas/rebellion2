@@ -2696,6 +2696,18 @@ public static class StrategyViewPrefabBuilder
             new Color(1f, 1f, 1f, 0f)
         );
         SetSourceRect(hitArea.rectTransform, 0, 0, 90, 52);
+        GameObject treeConnectorObject = new GameObject(
+            "TreeConnectorView",
+            typeof(RectTransform),
+            typeof(CanvasRenderer)
+        );
+        treeConnectorObject.transform.SetParent(row.transform, false);
+        FleetTreeConnectorView treeConnector = EnableRuntimeComponent(
+            treeConnectorObject.AddComponent<FleetTreeConnectorView>()
+        );
+        treeConnector.color = Color.white;
+        treeConnector.raycastTarget = false;
+        SetSourceRect(treeConnector.rectTransform, 0, 0, 90, 52);
         RawImage selection = CreateRawImage(
             "SelectionImage",
             row.transform,
@@ -2762,6 +2774,7 @@ public static class StrategyViewPrefabBuilder
         SetSourceRect(nameText.rectTransform, 7, 5, 78, 14);
 
         AssignReference(view, "hitAreaImage", hitArea);
+        AssignReference(view, "treeConnectorView", treeConnector);
         AssignReference(view, "iconImage", icon);
         AssignReference(view, "enrouteOverlayImage", enrouteOverlay);
         AssignReference(view, "damagedOverlayImage", damagedOverlay);

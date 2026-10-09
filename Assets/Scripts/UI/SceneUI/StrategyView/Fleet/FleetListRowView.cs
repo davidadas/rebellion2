@@ -14,6 +14,9 @@ public sealed class FleetListRowView : MonoBehaviour, IStrategyStatusDoubleClick
     private RawImage hitAreaImage;
 
     [SerializeField]
+    private FleetTreeConnectorView treeConnectorView;
+
+    [SerializeField]
     private RawImage iconImage;
 
     [SerializeField]
@@ -61,6 +64,10 @@ public sealed class FleetListRowView : MonoBehaviour, IStrategyStatusDoubleClick
 
     public int Index { get; private set; }
 
+    public int FleetIndex { get; private set; }
+
+    public bool IsCapitalShip { get; private set; }
+
     internal TextMeshProUGUI NameTextField => nameTextField;
 
     /// <summary>
@@ -100,6 +107,14 @@ public sealed class FleetListRowView : MonoBehaviour, IStrategyStatusDoubleClick
             throw new ArgumentNullException(nameof(data));
 
         VerifyReferences();
+        FleetIndex = data.FleetIndex >= 0 ? data.FleetIndex : Index;
+        IsCapitalShip = data.IsCapitalShip;
+        treeConnectorView.Render(
+            data.ShowTreeBranch,
+            data.TreeHasHorizontalBranch,
+            data.TreeContinuesAbove,
+            data.TreeContinuesBelow
+        );
         UILayout.SetImageTexture(selectionImage, data.SelectionTexture);
         UILayout.SetImageTexture(iconImage, data.IconTexture);
         UILayout.SetImageTexture(enrouteOverlayImage, data.EnrouteOverlayTexture);
@@ -202,6 +217,8 @@ public sealed class FleetListRowView : MonoBehaviour, IStrategyStatusDoubleClick
     {
         if (hitAreaImage == null)
             throw new MissingReferenceException($"{name}/HitAreaImage is missing.");
+        if (treeConnectorView == null)
+            throw new MissingReferenceException($"{name}/TreeConnectorView is missing.");
         if (iconImage == null)
             throw new MissingReferenceException($"{name}/IconImage is missing.");
         if (enrouteOverlayImage == null)

@@ -90,6 +90,46 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         [Test]
+        public void Render_TreeConnector_DrawsTwoContinuousSegments()
+        {
+            _view.Render(
+                CreateRenderData(
+                    true,
+                    new[]
+                    {
+                        CreateFleetRow(
+                            "Capital Ship",
+                            showTreeBranch: true,
+                            treeHasHorizontalBranch: true,
+                            treeContinuesAbove: true
+                        ),
+                    },
+                    Array.Empty<StrategyUnitCardRenderData>()
+                )
+            );
+            FleetTreeConnectorView connector = FindRowObject(
+                    FindFleetRows().Single(),
+                    "TreeConnectorView"
+                )
+                .GetComponent<FleetTreeConnectorView>();
+            Mesh mesh = null;
+            try
+            {
+                connector.Rebuild(CanvasUpdate.PreRender);
+                mesh = connector.canvasRenderer.GetMesh();
+
+                Assert.AreEqual(8, mesh.vertexCount);
+                Assert.AreEqual(2f, mesh.vertices.Min(vertex => vertex.x));
+                Assert.AreEqual(6f, mesh.vertices.Max(vertex => vertex.x));
+            }
+            finally
+            {
+                if (mesh != null)
+                    UnityEngine.Object.DestroyImmediate(mesh);
+            }
+        }
+
+        [Test]
         public void Render_NoSelectedFleet_HidesSelectedFleetPresentationAndDetailItems()
         {
             _view.Render(
@@ -239,6 +279,33 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreEqual("Renamed Fleet", submitted);
             Assert.IsFalse(input.gameObject.activeSelf);
             Assert.IsTrue(row.NameTextField.enabled);
+        }
+
+        [Test]
+        public void Render_ExpandedCapitalShipRename_UsesFlattenedFleetRow()
+        {
+            FleetWindowRenderData data = CreateRenderData(
+                true,
+                new[]
+                {
+                    CreateFleetRow("Fleet"),
+                    CreateFleetRow("Capital Ship", isCapitalShip: true),
+                },
+                Array.Empty<StrategyUnitCardRenderData>(),
+                true,
+                null,
+                1,
+                -1,
+                "Capital Ship"
+            );
+
+            _view.Render(data);
+
+            TMP_InputField input = _viewObject.GetComponentInChildren<TMP_InputField>(true);
+            FleetListRowView[] rows = FindFleetRows();
+            Assert.IsTrue(input.gameObject.activeSelf);
+            Assert.IsTrue(rows[0].NameTextField.enabled);
+            Assert.IsFalse(rows[1].NameTextField.enabled);
         }
 
         [Test]
@@ -742,8 +809,19 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         /// </summary>
         /// <param name="name">The name.</param>
         /// <param name="showOptionalImages">Whether show optional images.</param>
+        /// <param name="showTreeBranch">Whether the row draws tree connector segments.</param>
+        /// <param name="treeHasHorizontalBranch">Whether the connector reaches into the row.</param>
+        /// <param name="treeContinuesAbove">Whether the connector reaches the row's top edge.</param>
+        /// <param name="isCapitalShip">Whether the row represents an expanded capital ship.</param>
         /// <returns>The created fleet row.</returns>
-        private FleetListRowRenderData CreateFleetRow(string name, bool showOptionalImages = false)
+        private FleetListRowRenderData CreateFleetRow(
+            string name,
+            bool showOptionalImages = false,
+            bool showTreeBranch = false,
+            bool treeHasHorizontalBranch = false,
+            bool treeContinuesAbove = false,
+            bool isCapitalShip = false
+        )
         {
             Texture optionalTexture = showOptionalImages ? _texture : null;
             return new FleetListRowRenderData(
@@ -754,7 +832,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 optionalTexture,
                 optionalTexture,
                 optionalTexture,
-                optionalTexture
+                optionalTexture,
+                isCapitalShip: isCapitalShip,
+                showTreeBranch: showTreeBranch,
+                treeContinuesAbove: treeContinuesAbove,
+                treeHasHorizontalBranch: treeHasHorizontalBranch
             );
         }
 

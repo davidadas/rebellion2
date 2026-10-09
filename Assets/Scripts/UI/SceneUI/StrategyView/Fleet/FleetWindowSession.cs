@@ -10,14 +10,23 @@ using Rebellion.SceneGraph;
 internal sealed class FleetWindowSession
 {
     private readonly List<ISceneNode> detailItems = new List<ISceneNode>();
+    private readonly HashSet<string> expandedFleetInstanceIds = new HashSet<string>(
+        StringComparer.Ordinal
+    );
+    private readonly List<ISceneNode> fleetListItems = new List<ISceneNode>();
     private readonly List<Fleet> fleets = new List<Fleet>();
+    private readonly Func<string> getPlayerFactionInstanceId;
     private readonly Func<SelectionModifierState> getSelectionModifiers;
     private readonly HashSet<ISceneNode> selectedDetailNodes = new HashSet<ISceneNode>();
     private readonly HashSet<int> selectedDetailItems = new HashSet<int>();
+    private readonly HashSet<ISceneNode> selectedFleetListNodes = new HashSet<ISceneNode>();
+    private readonly HashSet<int> selectedFleetListItems = new HashSet<int>();
     private readonly HashSet<ISceneNode> selectedFleetNodes = new HashSet<ISceneNode>();
     private readonly HashSet<int> selectedFleetItems = new HashSet<int>();
     private ISceneNode contextDetailNode;
     private Fleet contextFleet;
+    private ISceneNode contextFleetListNode;
+    private bool renameFleetListTarget;
     private ISceneNode renameTarget;
     private Fleet selectedFleet;
     private int selectedFleetIndexHint = -1;
@@ -31,6 +40,8 @@ internal sealed class FleetWindowSession
     public IReadOnlyList<ISceneNode> DetailItems => detailItems;
 
     public IReadOnlyList<Fleet> Fleets => fleets;
+
+    public IReadOnlyList<ISceneNode> FleetListItems => fleetListItems;
 
     public GalaxyMapPlanet Planet { get; private set; }
 
@@ -46,6 +57,10 @@ internal sealed class FleetWindowSession
 
     public IReadOnlyCollection<int> SelectedFleetItems => selectedFleetItems;
 
+    public IReadOnlyCollection<int> SelectedFleetListItems => selectedFleetListItems;
+
+    public IReadOnlyList<ISceneNode> SelectedFleetListSources => GetSelectedFleetListSources();
+
     public Fleet SelectedFleet => selectedFleet;
 
     public UIWindow Window { get; }
@@ -56,15 +71,18 @@ internal sealed class FleetWindowSession
     /// <param name="planet">The represented strategy planet.</param>
     /// <param name="window">The owning window shell.</param>
     /// <param name="getSelectionModifiers">Returns the configured modifiers currently held.</param>
+    /// <param name="getPlayerFactionInstanceId">Returns the current player's faction identifier.</param>
     public FleetWindowSession(
         GalaxyMapPlanet planet,
         UIWindow window,
-        Func<SelectionModifierState> getSelectionModifiers = null
+        Func<SelectionModifierState> getSelectionModifiers = null,
+        Func<string> getPlayerFactionInstanceId = null
     )
     {
         Planet = planet ?? throw new ArgumentNullException(nameof(planet));
         Window = window ?? throw new ArgumentNullException(nameof(window));
         this.getSelectionModifiers = getSelectionModifiers ?? (() => default);
+        this.getPlayerFactionInstanceId = getPlayerFactionInstanceId ?? (() => null);
         Reconcile();
     }
 
@@ -90,14 +108,21 @@ internal sealed class FleetWindowSession
     public void Reconcile()
     {
         RefreshFleets();
+        ReconcileExpandedFleets();
+        RefreshFleetListItems();
         ReconcileSelectedFleet();
-        ReconcileSelection(selectedFleetNodes, selectedFleetItems, fleets);
+        ReconcileSelection(selectedFleetListNodes, selectedFleetListItems, fleetListItems);
+        EnforceFleetListFactionSelection();
+        SelectRequiredFleetListItem();
+        SynchronizeFleetSelection();
+        NormalizeActiveTabForFleetListSelection();
 
         RefreshDetailItems();
         ReconcileSelection(selectedDetailNodes, selectedDetailItems, detailItems);
         SelectRequiredItems();
 
         contextFleet = ResolveNode(fleets, contextFleet);
+        contextFleetListNode = ResolveNode(fleetListItems, contextFleetListNode);
         ContextFleetIndex = FindNodeIndex(fleets, contextFleet);
         contextDetailNode = ResolveNode(detailItems, contextDetailNode);
         ContextDetailItemIndex = FindNodeIndex(detailItems, contextDetailNode);
@@ -123,6 +148,7 @@ internal sealed class FleetWindowSession
 
         ActiveTab = tab;
         SetSelectedFleet(fleets[fleetIndex], fleetIndex);
+        SelectOnlyFleetListItem(fleets[fleetIndex]);
         selectedFleetNodes.Clear();
         selectedFleetItems.Clear();
         selectedDetailNodes.Clear();
@@ -148,8 +174,13 @@ internal sealed class FleetWindowSession
     {
         selectedFleetNodes.Clear();
         selectedFleetItems.Clear();
+        selectedFleetListNodes.Clear();
+        selectedFleetListItems.Clear();
         selectedDetailNodes.Clear();
         selectedDetailItems.Clear();
+        SelectRequiredFleetListItem();
+        SynchronizeFleetSelection();
+        RefreshDetailItems();
         SelectRequiredItems();
         ClearContext();
     }
@@ -170,6 +201,98 @@ internal sealed class FleetWindowSession
 
         fleet = null;
         return false;
+    }
+
+    /// <summary>
+    /// Gets one fleet-list item from the current flattened collection.
+    /// </summary>
+    /// <param name="itemIndex">The current visual row index.</param>
+    /// <param name="item">Receives the represented fleet or capital ship.</param>
+    /// <returns>True when the row exists.</returns>
+    public bool TryGetFleetListItem(int itemIndex, out ISceneNode item)
+    {
+        if (IsValidIndex(itemIndex, fleetListItems.Count))
+        {
+            item = fleetListItems[itemIndex];
+            return true;
+        }
+
+        item = null;
+        return false;
+    }
+
+    /// <summary>
+    /// Reports whether one fleet currently exposes its capital ships in the fleet list.
+    /// </summary>
+    /// <param name="fleet">The fleet to inspect.</param>
+    /// <returns>True when the fleet is expanded.</returns>
+    public bool IsFleetExpanded(Fleet fleet)
+    {
+        return fleet != null && expandedFleetInstanceIds.Contains(fleet.InstanceID);
+    }
+
+    /// <summary>
+    /// Reports whether one fleet belongs to the current row selection.
+    /// </summary>
+    /// <param name="fleet">The fleet to inspect.</param>
+    /// <returns>True when the fleet is selected.</returns>
+    public bool IsFleetSelected(Fleet fleet)
+    {
+        int itemIndex = FindNodeIndex(fleetListItems, fleet);
+        return itemIndex >= 0 && selectedFleetListItems.Contains(itemIndex);
+    }
+
+    /// <summary>
+    /// Reports whether one flattened fleet-list item belongs to the current row selection.
+    /// </summary>
+    /// <param name="item">The fleet or expanded capital ship to inspect.</param>
+    /// <returns>True when the represented row is selected.</returns>
+    public bool IsFleetListItemSelected(ISceneNode item)
+    {
+        int itemIndex = FindNodeIndex(fleetListItems, item);
+        return itemIndex >= 0 && selectedFleetListItems.Contains(itemIndex);
+    }
+
+    /// <summary>
+    /// Toggles the capital-ship rows beneath one fleet-list row.
+    /// </summary>
+    /// <param name="itemIndex">The current visual row index.</param>
+    /// <returns>True when expansion state changed.</returns>
+    public bool ToggleFleetExpanded(int itemIndex)
+    {
+        if (!TryGetFleetListItem(itemIndex, out ISceneNode item) || item is not Fleet clickedFleet)
+            return false;
+
+        IReadOnlyList<Fleet> targetFleets = IsFleetSelected(clickedFleet)
+            ? selectedFleetListItems
+                .OrderBy(index => index)
+                .Select(index => fleetListItems[index])
+                .OfType<Fleet>()
+                .ToList()
+            : new List<Fleet> { clickedFleet };
+        bool changed = false;
+        foreach (Fleet fleet in targetFleets)
+        {
+            if (fleet.GetChildren<CapitalShip>().Count == 0)
+                continue;
+
+            if (!expandedFleetInstanceIds.Add(fleet.InstanceID))
+                expandedFleetInstanceIds.Remove(fleet.InstanceID);
+            changed = true;
+        }
+
+        if (changed)
+        {
+            RefreshFleetListItems();
+            ReconcileSelection(selectedFleetListNodes, selectedFleetListItems, fleetListItems);
+            SelectRequiredFleetListItem();
+            SynchronizeFleetSelection();
+            RefreshDetailItems();
+            selectedDetailNodes.Clear();
+            selectedDetailItems.Clear();
+            SelectRequiredItems();
+        }
+        return changed;
     }
 
     /// <summary>
@@ -203,10 +326,15 @@ internal sealed class FleetWindowSession
             if (!TrySetFleetInteractionTarget(fleetIndex))
                 return false;
 
-            SelectContextItem(selectedFleetItems, fleetIndex);
-            CaptureSelection(selectedFleetItems, fleets, selectedFleetNodes);
+            int fleetListIndex = FindNodeIndex(fleetListItems, target);
+            SelectContextItem(selectedFleetListItems, fleetListIndex);
+            CaptureSelection(selectedFleetListItems, fleetListItems, selectedFleetListNodes);
+            EnforceFleetListFactionSelection();
+            SynchronizeFleetSelection();
+            RefreshDetailItems();
             selectedDetailNodes.Clear();
             selectedDetailItems.Clear();
+            SelectRequiredItems();
             return true;
         }
 
@@ -216,6 +344,40 @@ internal sealed class FleetWindowSession
 
         SelectContextItem(selectedDetailItems, itemIndex);
         CaptureSelection(selectedDetailItems, detailItems, selectedDetailNodes);
+        return true;
+    }
+
+    /// <summary>
+    /// Captures one fleet-list row as the current context target.
+    /// </summary>
+    /// <param name="target">The current fleet or expanded capital ship.</param>
+    /// <returns>True when the target belongs to the current fleet list.</returns>
+    public bool CaptureFleetListContext(ISceneNode target)
+    {
+        if (target is Fleet)
+            return CaptureContext(target);
+        if (
+            target is not CapitalShip
+            || ResolveNode(fleetListItems, target) is not ISceneNode rowItem
+        )
+            return false;
+
+        contextFleet = null;
+        ContextFleetIndex = -1;
+        contextFleetListNode = rowItem;
+        contextDetailNode = null;
+        ContextDetailItemIndex = -1;
+        int itemIndex = FindNodeIndex(fleetListItems, rowItem);
+        SelectContextItem(selectedFleetListItems, itemIndex);
+        CaptureSelection(selectedFleetListItems, fleetListItems, selectedFleetListNodes);
+        EnforceFleetListFactionSelection();
+        SetSelectedFleetFromListItem(rowItem);
+        SynchronizeFleetSelection();
+        NormalizeActiveTabForFleetListSelection();
+        RefreshDetailItems();
+        selectedDetailNodes.Clear();
+        selectedDetailItems.Clear();
+        SelectRequiredItems();
         return true;
     }
 
@@ -232,7 +394,16 @@ internal sealed class FleetWindowSession
             if (!TrySetFleetInteractionTarget(fleetIndex))
                 return false;
 
-            PrepareDragSelection(selectedFleetItems, fleetIndex, fleets, selectedFleetNodes);
+            int fleetListIndex = FindNodeIndex(fleetListItems, target);
+            PrepareDragSelection(
+                selectedFleetListItems,
+                fleetListIndex,
+                fleetListItems,
+                selectedFleetListNodes
+            );
+            EnforceFleetListFactionSelection();
+            SynchronizeFleetSelection();
+            RefreshDetailItems();
             selectedDetailNodes.Clear();
             selectedDetailItems.Clear();
             SelectRequiredItems();
@@ -256,23 +427,7 @@ internal sealed class FleetWindowSession
     public bool SelectItem(ISceneNode target)
     {
         if (target is Fleet)
-        {
-            int fleetIndex = FindNodeIndex(fleets, target);
-            if (!TrySetFleetInteractionTarget(fleetIndex))
-                return false;
-
-            SelectableListSelection.SelectIndexedItem(
-                selectedFleetItems,
-                fleetIndex,
-                fleets.Count,
-                getSelectionModifiers()
-            );
-            CaptureSelection(selectedFleetItems, fleets, selectedFleetNodes);
-            selectedDetailNodes.Clear();
-            selectedDetailItems.Clear();
-            SelectRequiredItems();
-            return true;
-        }
+            return SelectFleetListItem(target);
 
         int itemIndex = FindNodeIndex(detailItems, target);
         if (!TrySetDetailInteractionTarget(itemIndex))
@@ -290,13 +445,50 @@ internal sealed class FleetWindowSession
     }
 
     /// <summary>
+    /// Applies final selection rules to a fleet or expanded capital-ship row.
+    /// </summary>
+    /// <param name="target">The released fleet-list item.</param>
+    /// <returns>True when the item belongs to the current flattened fleet list.</returns>
+    public bool SelectFleetListItem(ISceneNode target)
+    {
+        if ((target is Fleet or CapitalShip) && FindNodeIndex(fleetListItems, target) >= 0)
+        {
+            int fleetListIndex = FindNodeIndex(fleetListItems, target);
+            if (!TrySetFleetListInteractionTarget(fleetListIndex))
+                return false;
+
+            SelectableListSelection.SelectIndexedItem(
+                selectedFleetListItems,
+                fleetListIndex,
+                fleetListItems.Count,
+                getSelectionModifiers()
+            );
+            CaptureSelection(selectedFleetListItems, fleetListItems, selectedFleetListNodes);
+            EnforceFleetListFactionSelection();
+            SynchronizeFleetSelection();
+            NormalizeActiveTabForFleetListSelection();
+            selectedDetailNodes.Clear();
+            selectedDetailItems.Clear();
+            RefreshDetailItems();
+            SelectRequiredItems();
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// Changes the detail tab and clears state owned by the previous tab.
     /// </summary>
     /// <param name="tab">The requested detail tab.</param>
     /// <returns>True when the active tab changed.</returns>
     public bool SelectTab(FleetWindowTab tab)
     {
-        if (!FleetWindowRenderData.OrderedTabs.Contains(tab) || tab == ActiveTab)
+        if (
+            !FleetWindowRenderData.OrderedTabs.Contains(tab)
+            || tab == ActiveTab
+            || !HasDetailItems(tab)
+        )
             return false;
 
         ActiveTab = tab;
@@ -323,6 +515,7 @@ internal sealed class FleetWindowSession
             return false;
 
         renameTarget = target;
+        renameFleetListTarget = ShouldRenameFleetListTarget(target);
         Reconcile();
         return renameTarget != null;
     }
@@ -333,6 +526,7 @@ internal sealed class FleetWindowSession
     public void EndRename()
     {
         renameTarget = null;
+        renameFleetListTarget = false;
         RenameFleetRowIndex = -1;
         RenameDetailItemIndex = -1;
     }
@@ -343,6 +537,7 @@ internal sealed class FleetWindowSession
     public void ClearContext()
     {
         contextFleet = null;
+        contextFleetListNode = null;
         ContextFleetIndex = -1;
         contextDetailNode = null;
         ContextDetailItemIndex = -1;
@@ -355,6 +550,9 @@ internal sealed class FleetWindowSession
     public List<ISceneNode> GetContextItems()
     {
         Reconcile();
+        if (contextFleetListNode is CapitalShip)
+            return new List<ISceneNode> { contextFleetListNode };
+
         if (ContextFleetIndex >= 0)
         {
             if (selectedFleetItems.Contains(ContextFleetIndex))
@@ -393,15 +591,49 @@ internal sealed class FleetWindowSession
     /// <returns>True when the selected fleet has matching items.</returns>
     public bool HasDetailItems(FleetWindowTab tab)
     {
-        return tab switch
+        return GetSelectedFleetListSources().Any(source => HasDetailItems(source, tab));
+    }
+
+    /// <summary>
+    /// Gets the selected carriers' current and maximum capacity for one carried-unit tab.
+    /// </summary>
+    /// <param name="tab">The carried-unit tab to summarize.</param>
+    /// <param name="current">Receives the current carried-unit count.</param>
+    /// <param name="capacity">Receives the total carrier capacity.</param>
+    public void GetSelectedCapacity(FleetWindowTab tab, out int current, out int capacity)
+    {
+        current = 0;
+        capacity = 0;
+        List<ISceneNode> sources = GetSelectedFleetListSources();
+        HashSet<Fleet> selectedFleets = sources.OfType<Fleet>().ToHashSet();
+        foreach (ISceneNode source in sources)
         {
-            FleetWindowTab.CapitalShips => selectedFleet?.GetChildren<CapitalShip>().Count > 0,
-            FleetWindowTab.Starfighters => selectedFleet?.GetStarfighters().Any() == true,
-            FleetWindowTab.Regiments => selectedFleet?.GetRegiments().Any() == true,
-            FleetWindowTab.Personnel => selectedFleet?.GetOfficers().Any() == true
-                || selectedFleet?.GetSpecialForces().Any() == true,
-            _ => false,
-        };
+            if (
+                source is CapitalShip selectedShip
+                && selectedFleets.Contains(selectedShip.GetParentOfType<Fleet>())
+            )
+                continue;
+
+            switch (source)
+            {
+                case Fleet fleet when tab == FleetWindowTab.Starfighters:
+                    current += fleet.GetStarfighters().Count();
+                    capacity += fleet.GetStarfighterCapacity();
+                    break;
+                case Fleet fleet when tab == FleetWindowTab.Regiments:
+                    current += fleet.GetRegiments().Count();
+                    capacity += fleet.GetRegimentCapacity();
+                    break;
+                case CapitalShip ship when tab == FleetWindowTab.Starfighters:
+                    current += ship.GetChildren<Starfighter>().Count;
+                    capacity += ship.GetStarfighterCapacity();
+                    break;
+                case CapitalShip ship when tab == FleetWindowTab.Regiments:
+                    current += ship.GetChildren<Regiment>().Count;
+                    capacity += ship.GetRegimentCapacity();
+                    break;
+            }
+        }
     }
 
     /// <summary>
@@ -445,10 +677,34 @@ internal sealed class FleetWindowSession
         SetSelectedFleet(fleets[fleetIndex], fleetIndex);
         RefreshDetailItems();
         contextFleet = fleets[fleetIndex];
+        contextFleetListNode = fleets[fleetIndex];
         ContextFleetIndex = fleetIndex;
         contextDetailNode = null;
         ContextDetailItemIndex = -1;
         return true;
+    }
+
+    /// <summary>
+    /// Sets the displayed fleet and context target from one flattened fleet-list row.
+    /// </summary>
+    /// <param name="itemIndex">The current flattened row index.</param>
+    /// <returns>True when the row represents a fleet or expanded capital ship.</returns>
+    private bool TrySetFleetListInteractionTarget(int itemIndex)
+    {
+        if (!IsValidIndex(itemIndex, fleetListItems.Count))
+            return false;
+
+        ISceneNode item = fleetListItems[itemIndex];
+        if (item is not Fleet and not CapitalShip)
+            return false;
+
+        SetSelectedFleetFromListItem(item);
+        contextFleet = item as Fleet;
+        ContextFleetIndex = FindNodeIndex(fleets, contextFleet);
+        contextFleetListNode = item;
+        contextDetailNode = null;
+        ContextDetailItemIndex = -1;
+        return selectedFleet != null;
     }
 
     /// <summary>
@@ -462,6 +718,7 @@ internal sealed class FleetWindowSession
             return false;
 
         contextFleet = null;
+        contextFleetListNode = null;
         ContextFleetIndex = -1;
         contextDetailNode = detailItems[itemIndex];
         ContextDetailItemIndex = itemIndex;
@@ -473,18 +730,44 @@ internal sealed class FleetWindowSession
     /// </summary>
     private void ReconcileRenameTarget()
     {
-        renameTarget = renameTarget switch
+        renameTarget = (renameTarget, renameFleetListTarget) switch
         {
-            Fleet fleet => ResolveNode(fleets, fleet),
-            CapitalShip ship when ActiveTab == FleetWindowTab.CapitalShips => ResolveNode(
+            (Fleet fleet, true) => ResolveNode(fleetListItems, fleet),
+            (CapitalShip ship, true) => ResolveNode(fleetListItems, ship),
+            (CapitalShip ship, false) when ActiveTab == FleetWindowTab.CapitalShips => ResolveNode(
                 detailItems,
                 ship
             ),
             _ => null,
         };
-        RenameFleetRowIndex = renameTarget is Fleet ? FindNodeIndex(fleets, renameTarget) : -1;
+        RenameFleetRowIndex =
+            renameTarget != null && renameFleetListTarget
+                ? FindNodeIndex(fleetListItems, renameTarget)
+                : -1;
         RenameDetailItemIndex =
-            renameTarget is CapitalShip ? FindNodeIndex(detailItems, renameTarget) : -1;
+            renameTarget != null && !renameFleetListTarget
+                ? FindNodeIndex(detailItems, renameTarget)
+                : -1;
+        if (renameTarget == null)
+            renameFleetListTarget = false;
+    }
+
+    /// <summary>
+    /// Determines whether a rename should be presented in the fleet list or detail grid.
+    /// </summary>
+    /// <param name="target">The requested rename target.</param>
+    /// <returns>True when the target should use its visible fleet-list row.</returns>
+    private bool ShouldRenameFleetListTarget(ISceneNode target)
+    {
+        if (target is Fleet)
+            return true;
+        if (HasSameIdentity(contextFleetListNode, target))
+            return true;
+        if (HasSameIdentity(contextDetailNode, target))
+            return false;
+
+        return ResolveNode(detailItems, target) == null
+            && ResolveNode(fleetListItems, target) != null;
     }
 
     /// <summary>
@@ -493,24 +776,14 @@ internal sealed class FleetWindowSession
     private void RefreshDetailItems()
     {
         detailItems.Clear();
-        if (selectedFleet == null)
-            return;
-
-        switch (ActiveTab)
+        foreach (ISceneNode source in GetSelectedFleetListSources())
         {
-            case FleetWindowTab.CapitalShips:
-                detailItems.AddRange(selectedFleet.GetChildren<CapitalShip>());
-                break;
-            case FleetWindowTab.Starfighters:
-                detailItems.AddRange(selectedFleet.GetStarfighters());
-                break;
-            case FleetWindowTab.Regiments:
-                detailItems.AddRange(selectedFleet.GetRegiments());
-                break;
-            case FleetWindowTab.Personnel:
-                detailItems.AddRange(selectedFleet.GetOfficers());
-                detailItems.AddRange(selectedFleet.GetSpecialForces());
-                break;
+            IEnumerable<ISceneNode> sourceItems = GetDetailItems(source, ActiveTab);
+            foreach (ISceneNode item in sourceItems)
+            {
+                if (!detailItems.Any(existing => HasSameIdentity(existing, item)))
+                    detailItems.Add(item);
+            }
         }
     }
 
@@ -525,16 +798,212 @@ internal sealed class FleetWindowSession
     }
 
     /// <summary>
+    /// Removes expansion state for fleets that no longer exist or contain capital ships.
+    /// </summary>
+    private void ReconcileExpandedFleets()
+    {
+        HashSet<string> expandableFleetIds = fleets
+            .Where(fleet => fleet.GetChildren<CapitalShip>().Count > 0)
+            .Select(fleet => fleet.InstanceID)
+            .ToHashSet(StringComparer.Ordinal);
+        expandedFleetInstanceIds.RemoveWhere(id => !expandableFleetIds.Contains(id));
+    }
+
+    /// <summary>
+    /// Rebuilds the fleet list with capital ships nested beneath expanded fleets.
+    /// </summary>
+    private void RefreshFleetListItems()
+    {
+        fleetListItems.Clear();
+        foreach (Fleet fleet in fleets)
+        {
+            fleetListItems.Add(fleet);
+            if (IsFleetExpanded(fleet))
+                fleetListItems.AddRange(fleet.GetChildren<CapitalShip>());
+        }
+    }
+
+    /// <summary>
+    /// Resolves the current fleet-list selection in visual order.
+    /// </summary>
+    /// <returns>The selected fleets and expanded capital ships.</returns>
+    private List<ISceneNode> GetSelectedFleetListSources()
+    {
+        List<ISceneNode> sources = selectedFleetListItems
+            .Where(index => IsValidIndex(index, fleetListItems.Count))
+            .OrderBy(index => index)
+            .Select(index => fleetListItems[index])
+            .ToList();
+        if (sources.Count == 0 && selectedFleet != null)
+            sources.Add(selectedFleet);
+        return sources;
+    }
+
+    /// <summary>
+    /// Prevents one visual selection from combining player and opposing-faction rows.
+    /// </summary>
+    private void EnforceFleetListFactionSelection()
+    {
+        string playerFactionInstanceId = getPlayerFactionInstanceId();
+        if (
+            string.IsNullOrEmpty(playerFactionInstanceId)
+            || !selectedFleetListItems.Any(index =>
+                IsValidIndex(index, fleetListItems.Count)
+                && string.Equals(
+                    fleetListItems[index].GetOwnerInstanceID(),
+                    playerFactionInstanceId,
+                    StringComparison.Ordinal
+                )
+            )
+        )
+            return;
+
+        selectedFleetListItems.RemoveWhere(index =>
+            !IsValidIndex(index, fleetListItems.Count)
+            || !string.Equals(
+                fleetListItems[index].GetOwnerInstanceID(),
+                playerFactionInstanceId,
+                StringComparison.Ordinal
+            )
+        );
+        CaptureSelection(selectedFleetListItems, fleetListItems, selectedFleetListNodes);
+        if (
+            selectedFleet == null
+            || !string.Equals(
+                selectedFleet.OwnerInstanceID,
+                playerFactionInstanceId,
+                StringComparison.Ordinal
+            )
+        )
+        {
+            int firstSelectedIndex = selectedFleetListItems.Min();
+            SetSelectedFleetFromListItem(fleetListItems[firstSelectedIndex]);
+        }
+    }
+
+    /// <summary>
+    /// Gets the detail items contributed by one selected fleet-list source.
+    /// </summary>
+    /// <param name="source">The selected fleet or capital ship.</param>
+    /// <param name="tab">The active detail tab.</param>
+    /// <returns>The matching ordered detail items.</returns>
+    private static IEnumerable<ISceneNode> GetDetailItems(ISceneNode source, FleetWindowTab tab)
+    {
+        return (source, tab) switch
+        {
+            (Fleet fleet, FleetWindowTab.CapitalShips) => fleet.GetChildren<CapitalShip>(),
+            (Fleet fleet, FleetWindowTab.Starfighters) => fleet.GetStarfighters(),
+            (Fleet fleet, FleetWindowTab.Regiments) => fleet.GetRegiments(),
+            (Fleet fleet, FleetWindowTab.Personnel) => fleet
+                .GetOfficers()
+                .Cast<ISceneNode>()
+                .Concat(fleet.GetSpecialForces()),
+            (CapitalShip, FleetWindowTab.CapitalShips) => Enumerable.Empty<ISceneNode>(),
+            (CapitalShip ship, FleetWindowTab.Starfighters) => ship.GetChildren<Starfighter>(),
+            (CapitalShip ship, FleetWindowTab.Regiments) => ship.GetChildren<Regiment>(),
+            (CapitalShip ship, FleetWindowTab.Personnel) => ship.GetChildren<Officer>()
+                .Cast<ISceneNode>()
+                .Concat(ship.GetChildren<SpecialForces>()),
+            _ => Enumerable.Empty<ISceneNode>(),
+        };
+    }
+
+    /// <summary>
+    /// Reports whether one selected fleet-list source contributes items to a detail tab.
+    /// </summary>
+    /// <param name="source">The selected fleet or capital ship.</param>
+    /// <param name="tab">The detail tab to inspect.</param>
+    /// <returns>True when the source contributes at least one detail item.</returns>
+    private static bool HasDetailItems(ISceneNode source, FleetWindowTab tab)
+    {
+        return GetDetailItems(source, tab).Any();
+    }
+
+    /// <summary>
+    /// Selects the displayed fleet's parent row when no flattened row remains selected.
+    /// </summary>
+    private void SelectRequiredFleetListItem()
+    {
+        if (selectedFleet == null || selectedFleetListItems.Count != 0)
+            return;
+
+        int itemIndex = FindNodeIndex(fleetListItems, selectedFleet);
+        if (itemIndex < 0)
+            return;
+
+        selectedFleetListItems.Add(itemIndex);
+        selectedFleetListNodes.Add(fleetListItems[itemIndex]);
+    }
+
+    /// <summary>
+    /// Rebuilds the fleet-only selection used by fleet dragging from selected parent rows.
+    /// </summary>
+    private void SynchronizeFleetSelection()
+    {
+        selectedFleetNodes.Clear();
+        selectedFleetItems.Clear();
+        foreach (int itemIndex in selectedFleetListItems.OrderBy(index => index))
+        {
+            if (
+                !IsValidIndex(itemIndex, fleetListItems.Count)
+                || fleetListItems[itemIndex] is not Fleet fleet
+            )
+                continue;
+
+            int fleetIndex = FindNodeIndex(fleets, fleet);
+            if (fleetIndex < 0)
+                continue;
+
+            selectedFleetItems.Add(fleetIndex);
+            selectedFleetNodes.Add(fleet);
+        }
+    }
+
+    /// <summary>
+    /// Keeps the capital-ship tab disabled when the resulting row selection contains a ship.
+    /// </summary>
+    private void NormalizeActiveTabForFleetListSelection()
+    {
+        if (
+            ActiveTab == FleetWindowTab.CapitalShips
+            && GetSelectedFleetListSources().Any(source => source is CapitalShip)
+        )
+            ActiveTab = FleetWindowTab.Starfighters;
+    }
+
+    /// <summary>
+    /// Replaces the flattened row selection with one current fleet-list item.
+    /// </summary>
+    /// <param name="item">The fleet or expanded capital ship to select.</param>
+    private void SelectOnlyFleetListItem(ISceneNode item)
+    {
+        selectedFleetListNodes.Clear();
+        selectedFleetListItems.Clear();
+        int itemIndex = FindNodeIndex(fleetListItems, item);
+        if (itemIndex < 0)
+            return;
+
+        selectedFleetListNodes.Add(fleetListItems[itemIndex]);
+        selectedFleetListItems.Add(itemIndex);
+    }
+
+    /// <summary>
+    /// Sets the displayed fleet from a selected fleet or capital-ship row.
+    /// </summary>
+    /// <param name="item">The current fleet-list item.</param>
+    private void SetSelectedFleetFromListItem(ISceneNode item)
+    {
+        Fleet fleet = item as Fleet ?? item?.GetParentOfType<Fleet>();
+        int fleetIndex = FindNodeIndex(fleets, fleet);
+        if (fleetIndex >= 0)
+            SetSelectedFleet(fleets[fleetIndex], fleetIndex);
+    }
+
+    /// <summary>
     /// Restores the required fleet and detail selections after an interaction or refresh.
     /// </summary>
     private void SelectRequiredItems()
     {
-        if (selectedFleet != null && selectedFleetItems.Count == 0)
-        {
-            selectedFleetItems.Add(selectedFleetIndexHint);
-            selectedFleetNodes.Add(selectedFleet);
-        }
-
         if (detailItems.Count == 0 || selectedDetailItems.Count != 0)
             return;
 
