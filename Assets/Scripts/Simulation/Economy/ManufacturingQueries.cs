@@ -22,6 +22,34 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
+        /// Gets the active order assigned to one manufacturing lane.
+        /// </summary>
+        /// <param name="producer">The planet performing the manufacturing.</param>
+        /// <param name="type">The manufacturing lane to inspect.</param>
+        /// <returns>The active order, or null when the lane is empty.</returns>
+        public static ManufacturingOrder GetManufacturingOrder(
+            Planet producer,
+            ManufacturingType type
+        )
+        {
+            if (
+                producer?.GetManufacturingQueue().TryGetValue(type, out List<IManufacturable> items)
+                    != true
+                || items == null
+                || items.Count == 0
+            )
+            {
+                return null;
+            }
+
+            return new ManufacturingOrder(
+                type,
+                ManufacturingRules.GetProductTypeID(items),
+                items.Count
+            );
+        }
+
+        /// <summary>
         /// Determines whether an owner can queue copies of a manufacturing template for one destination.
         /// </summary>
         /// <param name="producer">The planet performing the manufacturing.</param>
@@ -56,6 +84,107 @@ namespace Rebellion.Simulation
                 count,
                 GetMaintenanceRefund(producer, template)
             );
+        }
+
+        /// <summary>
+        /// Determines whether an owner can set the total order for one manufacturing lane.
+        /// </summary>
+        /// <param name="producer">The planet performing the manufacturing.</param>
+        /// <param name="template">The unit or facility template to manufacture.</param>
+        /// <param name="destination">The node that receives completed items.</param>
+        /// <param name="count">The requested total number of unfinished copies.</param>
+        /// <param name="ownerInstanceId">The faction requesting the order.</param>
+        /// <returns>True when the lane can be adjusted to the requested order.</returns>
+        public bool CanSetManufacturingOrder(
+            Planet producer,
+            IManufacturable template,
+            ISceneNode destination,
+            int count,
+            string ownerInstanceId
+        )
+        {
+            if (
+                !HasValidManufacturingOrderContext(
+                    producer,
+                    template,
+                    destination,
+                    count,
+                    ownerInstanceId
+                )
+            )
+                return false;
+
+            ManufacturingType type = template.GetManufacturingType();
+            producer
+                .GetManufacturingQueue()
+                .TryGetValue(type, out List<IManufacturable> activeItems);
+            ManufacturingOrder activeOrder = GetManufacturingOrder(producer, type);
+            Faction faction = _game.GetFactionByOwnerInstanceID(ownerInstanceId);
+            if (faction == null)
+                return false;
+
+            if (ManufacturingRules.MatchesProduct(activeOrder, template))
+            {
+                int addedCount = count - activeOrder.Quantity;
+                return addedCount <= 0
+                    || (
+                        HasDestinationCapacity(producer, destination, template, addedCount)
+                        && HasMaintenanceHeadroom(faction, template, addedCount)
+                    );
+            }
+
+            if (!HasDestinationCapacity(producer, destination, template, count, activeItems))
+                return false;
+
+            return HasMaintenanceHeadroom(
+                faction,
+                template,
+                count,
+                GetReplacementMaintenanceRefund(activeItems)
+            );
+        }
+
+        /// <summary>
+        /// Validates the invariant parts of a manufacturing order without reserving capacity.
+        /// </summary>
+        /// <param name="producer">The planet performing the manufacturing.</param>
+        /// <param name="template">The unit or facility template to manufacture.</param>
+        /// <param name="destination">The node that receives completed items.</param>
+        /// <param name="count">The requested total number of unfinished copies.</param>
+        /// <param name="ownerInstanceId">The faction requesting the order.</param>
+        /// <returns>True when the order context is valid.</returns>
+        private static bool HasValidManufacturingOrderContext(
+            Planet producer,
+            IManufacturable template,
+            ISceneNode destination,
+            int count,
+            string ownerInstanceId
+        )
+        {
+            return producer != null
+                && template != null
+                && destination != null
+                && count > 0
+                && !string.IsNullOrEmpty(ownerInstanceId)
+                && string.Equals(
+                    producer.GetOwnerInstanceID(),
+                    ownerInstanceId,
+                    StringComparison.Ordinal
+                )
+                && IManufacturable.CanBeManufacturedBy(template, ownerInstanceId)
+                && producer.GetProductionFacilityCount(template.GetManufacturingType()) > 0;
+        }
+
+        /// <summary>
+        /// Returns maintenance released when the active lane is replaced.
+        /// </summary>
+        /// <param name="items">The unfinished items removed from the lane.</param>
+        /// <returns>The non-negative maintenance released by removing the items.</returns>
+        private static int GetReplacementMaintenanceRefund(
+            IReadOnlyCollection<IManufacturable> items
+        )
+        {
+            return items?.Sum(item => Math.Max(0, item?.GetMaintenanceCost() ?? 0)) ?? 0;
         }
 
         /// <summary>
@@ -101,19 +230,13 @@ namespace Rebellion.Simulation
             string ownerInstanceId
         )
         {
-            return producer != null
-                && template != null
-                && destination != null
-                && count > 0
-                && !string.IsNullOrEmpty(ownerInstanceId)
-                && string.Equals(
-                    producer.GetOwnerInstanceID(),
-                    ownerInstanceId,
-                    StringComparison.Ordinal
-                )
-                && IManufacturable.CanBeManufacturedBy(template, ownerInstanceId)
-                && producer.GetProductionFacilityCount(template.GetManufacturingType()) > 0
-                && HasDestinationCapacity(producer, destination, template, count);
+            return HasValidManufacturingOrderContext(
+                    producer,
+                    template,
+                    destination,
+                    count,
+                    ownerInstanceId
+                ) && HasDestinationCapacity(producer, destination, template, count);
         }
 
         /// <summary>
@@ -123,12 +246,14 @@ namespace Rebellion.Simulation
         /// <param name="destination">The node that receives completed items.</param>
         /// <param name="template">The unit or facility template to manufacture.</param>
         /// <param name="count">The number of copies to queue.</param>
+        /// <param name="replacedItems">The active lane items removed before capacity is consumed.</param>
         /// <returns>True when the destination has sufficient capacity.</returns>
         private static bool HasDestinationCapacity(
             Planet producer,
             ISceneNode destination,
             IManufacturable template,
-            int count
+            int count,
+            IReadOnlyCollection<IManufacturable> replacedItems = null
         )
         {
             string ownerInstanceId = producer.GetOwnerInstanceID();
@@ -152,20 +277,54 @@ namespace Rebellion.Simulation
                     SpecialForces _ => planet.CanHostOwnedUnits(),
                     Starfighter _ => planet.CanHostOwnedUnits()
                         && !planet.IsBlockadedFor(ownerInstanceId),
-                    Building building => planet.GetAvailableEnergy() >= count
+                    Building building => planet.GetAvailableEnergy()
+                        + CountReplacedItems<Building>(
+                            replacedItems,
+                            item => ReferenceEquals(item.GetParent(), planet)
+                        )
+                        >= count
                         && (
                             building.BuildingType != BuildingType.Mine
-                            || planet.GetUnminedResourceNodeCount() >= count
+                            || planet.GetUnminedResourceNodeCount()
+                                + CountReplacedItems<Building>(
+                                    replacedItems,
+                                    item =>
+                                        item.BuildingType == BuildingType.Mine
+                                        && ReferenceEquals(item.GetParent(), planet)
+                                )
+                                >= count
                         ),
                     _ => false,
                 };
             }
 
             if (destination is Fleet fleet)
-                return HasFleetCapacity(fleet, template, count, ownerInstanceId);
+                return HasFleetCapacity(fleet, template, count, ownerInstanceId, replacedItems);
 
             return destination is CapitalShip capitalShip
-                && HasCapitalShipCapacity(capitalShip, template, count, ownerInstanceId);
+                && HasCapitalShipCapacity(
+                    capitalShip,
+                    template,
+                    count,
+                    ownerInstanceId,
+                    replacedItems
+                );
+        }
+
+        /// <summary>
+        /// Counts replaced items of one type that satisfy a destination predicate.
+        /// </summary>
+        /// <typeparam name="T">The item type to count.</typeparam>
+        /// <param name="items">The items removed by the replacement order.</param>
+        /// <param name="isAtDestination">Tests whether an item consumes the requested destination's capacity.</param>
+        /// <returns>The matching item count.</returns>
+        private static int CountReplacedItems<T>(
+            IReadOnlyCollection<IManufacturable> items,
+            Func<T, bool> isAtDestination
+        )
+            where T : class, IManufacturable
+        {
+            return items?.OfType<T>().Count(isAtDestination) ?? 0;
         }
 
         /// <summary>
@@ -175,12 +334,14 @@ namespace Rebellion.Simulation
         /// <param name="template">The unit template to manufacture.</param>
         /// <param name="count">The number of copies to queue.</param>
         /// <param name="ownerInstanceId">The faction requesting the order.</param>
+        /// <param name="replacedItems">The active lane items removed before capacity is consumed.</param>
         /// <returns>True when the fleet has sufficient capacity.</returns>
         private static bool HasFleetCapacity(
             Fleet fleet,
             IManufacturable template,
             int count,
-            string ownerInstanceId
+            string ownerInstanceId,
+            IReadOnlyCollection<IManufacturable> replacedItems = null
         )
         {
             if (
@@ -201,12 +362,35 @@ namespace Rebellion.Simulation
 
             IEnumerable<CapitalShip> carriers = fleet
                 .GetChildren<CapitalShip>()
-                .Where(IsManufacturingCarrierAvailable);
+                .Where(ManufacturingRules.IsCarrierAvailable);
             if (template is Starfighter)
-                return carriers.Sum(ship => ship.GetExcessStarfighterCapacity()) >= count;
+                return carriers.Sum(ship => ship.GetExcessStarfighterCapacity())
+                        + CountReplacedItems<Starfighter>(
+                            replacedItems,
+                            item => IsOnAvailableCarrierInFleet(item, fleet)
+                        )
+                    >= count;
 
             return template is Regiment
-                && carriers.Sum(ship => ship.GetExcessRegimentCapacity()) >= count;
+                && carriers.Sum(ship => ship.GetExcessRegimentCapacity())
+                    + CountReplacedItems<Regiment>(
+                        replacedItems,
+                        item => IsOnAvailableCarrierInFleet(item, fleet)
+                    )
+                    >= count;
+        }
+
+        /// <summary>
+        /// Determines whether a queued unit occupies capacity on a carrier that can receive its replacement.
+        /// </summary>
+        /// <param name="item">The queued unit being replaced.</param>
+        /// <param name="fleet">The requested destination fleet.</param>
+        /// <returns>True when removing the unit releases usable capacity in the destination fleet.</returns>
+        private static bool IsOnAvailableCarrierInFleet(IManufacturable item, Fleet fleet)
+        {
+            CapitalShip carrier = item?.GetParentOfType<CapitalShip>();
+            return ManufacturingRules.IsCarrierAvailable(carrier)
+                && ReferenceEquals(carrier.GetParentOfType<Fleet>(), fleet);
         }
 
         /// <summary>
@@ -216,12 +400,14 @@ namespace Rebellion.Simulation
         /// <param name="template">The unit template to manufacture.</param>
         /// <param name="count">The number of copies to queue.</param>
         /// <param name="ownerInstanceId">The faction requesting the order.</param>
+        /// <param name="replacedItems">The active lane items removed before capacity is consumed.</param>
         /// <returns>True when the capital ship has sufficient capacity.</returns>
         private static bool HasCapitalShipCapacity(
             CapitalShip capitalShip,
             IManufacturable template,
             int count,
-            string ownerInstanceId
+            string ownerInstanceId,
+            IReadOnlyCollection<IManufacturable> replacedItems = null
         )
         {
             if (
@@ -229,7 +415,7 @@ namespace Rebellion.Simulation
                     capitalShip.GetOwnerInstanceID(),
                     ownerInstanceId,
                     StringComparison.Ordinal
-                ) || !IsManufacturingCarrierAvailable(capitalShip)
+                ) || !ManufacturingRules.IsCarrierAvailable(capitalShip)
             )
                 return false;
 
@@ -237,9 +423,20 @@ namespace Rebellion.Simulation
                 return true;
 
             if (template is Starfighter)
-                return capitalShip.GetExcessStarfighterCapacity() >= count;
+                return capitalShip.GetExcessStarfighterCapacity()
+                        + CountReplacedItems<Starfighter>(
+                            replacedItems,
+                            item => ReferenceEquals(item.GetParent(), capitalShip)
+                        )
+                    >= count;
 
-            return template is Regiment && capitalShip.GetExcessRegimentCapacity() >= count;
+            return template is Regiment
+                && capitalShip.GetExcessRegimentCapacity()
+                    + CountReplacedItems<Regiment>(
+                        replacedItems,
+                        item => ReferenceEquals(item.GetParent(), capitalShip)
+                    )
+                    >= count;
         }
 
         /// <summary>
@@ -264,7 +461,7 @@ namespace Rebellion.Simulation
             return fleet
                 .GetChildren<CapitalShip>()
                 .FirstOrDefault(ship =>
-                    IsManufacturingCarrierAvailable(ship)
+                    ManufacturingRules.IsCarrierAvailable(ship)
                     && string.Equals(
                         ship.GetOwnerInstanceID(),
                         ownerInstanceId,
@@ -295,6 +492,42 @@ namespace Rebellion.Simulation
                 template.GetManufacturingType(),
                 requiredProgress
             );
+        }
+
+        /// <summary>
+        /// Estimates completion after setting the total order for one manufacturing lane.
+        /// </summary>
+        /// <param name="producer">The planet performing the manufacturing.</param>
+        /// <param name="template">The requested product template.</param>
+        /// <param name="count">The requested total number of unfinished copies.</param>
+        /// <returns>The estimated completion ticks, or null when no facility can produce the item.</returns>
+        public static int? EstimateManufacturingOrderTicks(
+            Planet producer,
+            IManufacturable template,
+            int count
+        )
+        {
+            if (producer == null || template == null || count <= 0)
+                return null;
+
+            ManufacturingType type = template.GetManufacturingType();
+            producer
+                .GetManufacturingQueue()
+                .TryGetValue(type, out List<IManufacturable> activeItems);
+            ManufacturingOrder activeOrder = GetManufacturingOrder(producer, type);
+            if (!ManufacturingRules.MatchesProduct(activeOrder, template))
+                return EstimateManufacturingTicks(producer, template, count);
+
+            int retainedCount = Math.Min(count, activeOrder.Quantity);
+            long requiredProgress = activeItems
+                .Take(retainedCount)
+                .Sum(item =>
+                    (long)Math.Max(item.GetConstructionCost() - item.GetManufacturingProgress(), 0)
+                );
+            requiredProgress +=
+                (long)Math.Max(template.GetConstructionCost(), 0)
+                * Math.Max(count - activeOrder.Quantity, 0);
+            return EstimateManufacturingTicks(producer, type, requiredProgress);
         }
 
         /// <summary>
@@ -502,27 +735,6 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Returns whether a capital ship can receive manufacturing output.
-        /// </summary>
-        /// <param name="ship">The destination ship to inspect.</param>
-        /// <returns>True when the ship is complete and not in transit.</returns>
-        internal static bool IsManufacturingCarrierAvailable(CapitalShip ship)
-        {
-            return ship?.ManufacturingStatus == ManufacturingStatus.Complete
-                && ((IMovable)ship).GetTransitMovement() == null;
-        }
-
-        /// <summary>
-        /// Returns whether an item expands the resource facilities that supply maintenance.
-        /// </summary>
-        /// <param name="item">The prospective manufacturing item.</param>
-        /// <returns>True for mines and refineries.</returns>
-        internal static bool IsResourceFacility(IManufacturable item)
-        {
-            return item is Building { BuildingType: BuildingType.Mine or BuildingType.Refinery };
-        }
-
-        /// <summary>
         /// Determines whether a faction can afford a complete manufacturing order.
         /// </summary>
         /// <param name="faction">The faction committing the order.</param>
@@ -541,7 +753,7 @@ namespace Rebellion.Simulation
                 return false;
 
             int maintenanceCost = item.GetMaintenanceCost();
-            if (maintenanceCost <= 0 || IsResourceFacility(item))
+            if (maintenanceCost <= 0 || ManufacturingRules.IsResourceFacility(item))
                 return true;
 
             int projectedHeadroom =

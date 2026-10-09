@@ -104,7 +104,8 @@ namespace Rebellion.Simulation
             SmugglingTickProcessor smuggling = new(smugglingCommands);
             _resourceProduction = new ResourceProductionTickProcessor(smuggling, smugglingCommands);
             _manufacturing = new ManufacturingTickProcessor(
-                services.GetService<ManufacturingCommands>()
+                services.GetService<ManufacturingCommands>(),
+                _movementCommands
             );
             _maintenance = new MaintenanceTickProcessor(services.GetService<MaintenanceCommands>());
             _recovery = new RecoveryTickProcessor();
