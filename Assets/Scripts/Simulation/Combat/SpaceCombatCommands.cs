@@ -31,6 +31,7 @@ namespace Rebellion.Simulation
         private readonly SpaceCombatQueries _queries;
         private readonly MovementCommands _movement;
         private readonly SpaceCombatAutoResolver _autoResolver;
+        private readonly SpaceCombatWithdrawalResolver _withdrawalResolver;
         private SpaceCombatDecision _pendingDecision;
 
         /// <summary>
@@ -71,6 +72,7 @@ namespace Rebellion.Simulation
                 game.Random
             );
             _queries = queries ?? throw new ArgumentNullException(nameof(queries));
+            _withdrawalResolver = new SpaceCombatWithdrawalResolver(game, _queries);
         }
 
         /// <summary>
@@ -184,24 +186,6 @@ namespace Rebellion.Simulation
                 retreatingFactionInstanceId == decision.AttackerOwnerInstanceID;
             List<Fleet> retreatingFleets = attackerRetreated ? attackerFleets : defenderFleets;
             List<Fleet> opposingFleets = attackerRetreated ? defenderFleets : attackerFleets;
-            List<Starfighter> retreatingFighters = SpaceCombatQueries
-                .GetActivePlanetStarfighters(planet, retreatingFactionInstanceId)
-                .ToList();
-
-            if (
-                !_queries.CanRetreatForces(
-                    retreatingFleets,
-                    opposingFleets,
-                    planet,
-                    retreatingFactionInstanceId
-                )
-            )
-                return false;
-            if (
-                retreatingFleets.Count > 0
-                && !TryRetreatFleets(retreatingFleets, opposingFleets, ignoreGravityWell: false)
-            )
-                return false;
 
             SpaceCombatResult result = BuildRetreatResult(
                 decision,
@@ -210,20 +194,32 @@ namespace Rebellion.Simulation
                 defenderFleets,
                 planet
             );
-            foreach (Starfighter fighter in retreatingFighters)
-                _movement.EvacuateToNearestFriendlyPlanet(fighter);
-            string retreatPlanetInstanceId = GetRetreatPlanetInstanceID(
+            SpaceCombatWithdrawalPlan withdrawalPlan = _withdrawalResolver.ResolveManualWithdrawal(
+                result,
                 retreatingFleets,
-                retreatingFighters,
-                planet,
-                SpaceCombatSideOutcome.Withdrawn
+                opposingFleets,
+                retreatingFactionInstanceId,
+                attackerRetreated,
+                planet
             );
+            if (withdrawalPlan == null)
+                return false;
+
+            result.Events = ApplyCombatResult(
+                result,
+                attackerFleets,
+                defenderFleets,
+                attackerRetreated ? withdrawalPlan : new SpaceCombatWithdrawalPlan(),
+                attackerRetreated ? new SpaceCombatWithdrawalPlan() : withdrawalPlan
+            );
+            string retreatPlanetInstanceId = withdrawalPlan.GetRetreatPlanetInstanceID();
             if (attackerRetreated)
                 result.AttackerRetreatPlanetInstanceID = retreatPlanetInstanceId;
             else
                 result.DefenderRetreatPlanetInstanceID = retreatPlanetInstanceId;
 
             results.Add(result);
+            results.AddRange(result.Events.OfType<GameObjectDestroyedResult>());
             ClearCombatFlags(decision);
             return true;
         }
@@ -547,64 +543,6 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Attempts to evacuate a fleet to the nearest friendly planet.
-        /// </summary>
-        /// <param name="fleet">Fleet attempting to retreat.</param>
-        /// <returns>True when the fleet leaves or begins movement away from the planet.</returns>
-        private bool TryRetreatFleet(Fleet fleet)
-        {
-            if (fleet == null)
-                return false;
-
-            Planet originalPlanet = fleet.GetParentOfType<Planet>();
-            _movement.EvacuateToNearestFriendlyPlanet(fleet);
-            bool retreated =
-                fleet.Movement != null || fleet.GetParentOfType<Planet>() != originalPlanet;
-            if (
-                retreated
-                && (
-                    fleet.Order?.OrderType == FleetOrderType.Attack
-                    || fleet.Order?.OrderType == FleetOrderType.Engage
-                )
-                && fleet.Order.TargetPlanetId == originalPlanet?.InstanceID
-            )
-                fleet.Order = null;
-
-            return retreated;
-        }
-
-        /// <summary>
-        /// Attempts to evacuate every fleet on one combat side.
-        /// </summary>
-        /// <param name="fleets">The fleets attempting to retreat.</param>
-        /// <param name="opponents">The opposing fleets that may block retreat.</param>
-        /// <param name="ignoreGravityWell">Whether gravity-well interdiction is ignored.</param>
-        /// <returns>True when every fleet leaves or begins movement away from the planet.</returns>
-        private bool TryRetreatFleets(
-            IReadOnlyList<Fleet> fleets,
-            IReadOnlyList<Fleet> opponents,
-            bool ignoreGravityWell
-        )
-        {
-            if (fleets == null || fleets.Count == 0)
-                return false;
-
-            if (
-                !ignoreGravityWell
-                && SpaceCombatQueries.IsRetreatBlockedByGravityWell(fleets, opponents)
-            )
-                return false;
-            if (fleets.Any(fleet => !SpaceCombatQueries.HasHyperdriveCapableShip(fleet)))
-                return false;
-
-            bool allRetreated = true;
-            foreach (Fleet fleet in fleets)
-                allRetreated &= TryRetreatFleet(fleet);
-
-            return allRetreated;
-        }
-
-        /// <summary>
         /// Resolves one complete space-combat encounter and applies it to the game state.
         /// </summary>
         /// <param name="decision">The combat decision identifying both sides.</param>
@@ -631,10 +569,16 @@ namespace Rebellion.Simulation
                 decision.DefenderOwnerInstanceID,
                 planet,
                 _game.CurrentTick,
-                out HashSet<ISceneNode> withdrawnUnits
+                out SpaceCombatWithdrawalPlan attackerWithdrawalPlan,
+                out SpaceCombatWithdrawalPlan defenderWithdrawalPlan
             );
-            result.Events = ApplyCombatResult(result, attackerFleets, defenderFleets);
-            CompleteAutomaticWithdrawals(attackerFleets, defenderFleets, planet, withdrawnUnits);
+            result.Events = ApplyCombatResult(
+                result,
+                attackerFleets,
+                defenderFleets,
+                attackerWithdrawalPlan,
+                defenderWithdrawalPlan
+            );
 
             GameLogger.Log(
                 $"Combat at {planet.GetDisplayName()}: "
@@ -647,54 +591,40 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Moves forces that the automatic resolver withdrew away from the battle planet.
+        /// Moves withdrawn fighters to their reserved destinations after losses are applied.
         /// </summary>
-        /// <param name="attackerFleets">The attacking fleets.</param>
-        /// <param name="defenderFleets">The defending fleets.</param>
-        /// <param name="planet">The planet where combat occurred.</param>
-        /// <param name="withdrawnUnits">The units that escaped during tactical resolution.</param>
-        private void CompleteAutomaticWithdrawals(
-            IReadOnlyList<Fleet> attackerFleets,
-            IReadOnlyList<Fleet> defenderFleets,
-            Planet planet,
-            ISet<ISceneNode> withdrawnUnits
-        )
-        {
-            CompleteAutomaticWithdrawal(attackerFleets, planet, withdrawnUnits);
-            CompleteAutomaticWithdrawal(defenderFleets, planet, withdrawnUnits);
-        }
-
-        /// <summary>
-        /// Evacuates the surviving fleets and independently deployed fighters that can withdraw.
-        /// </summary>
-        /// <param name="fleets">The withdrawing fleets.</param>
-        /// <param name="planet">The combat planet.</param>
-        /// <param name="withdrawnUnits">The units that completed tactical withdrawal.</param>
-        private void CompleteAutomaticWithdrawal(
-            IReadOnlyList<Fleet> fleets,
-            Planet planet,
-            ISet<ISceneNode> withdrawnUnits
-        )
+        /// <param name="plan">The reserved withdrawal plan.</param>
+        private void CompleteFighterWithdrawal(SpaceCombatWithdrawalPlan plan)
         {
             foreach (
-                Fleet fleet in (fleets ?? Array.Empty<Fleet>()).Where(fleet =>
-                    fleet != null
-                    && SpaceCombatQueries.GetActiveCapitalShips(fleet).Any(withdrawnUnits.Contains)
-                )
+                KeyValuePair<Starfighter, ContainerNode> assignment in plan.FighterDestinations
             )
             {
-                TryRetreatFleet(fleet);
+                _movement.TryRequestMove(assignment.Key, assignment.Value);
             }
 
-            foreach (
-                Starfighter fighter in planet
-                    .GetChildren<Starfighter>()
-                    .Where(SpaceCombatQueries.IsActiveStarfighter)
-                    .Where(withdrawnUnits.Contains)
-                    .ToList()
-            )
+            _withdrawalResolver.ApplyFighterRecovery(plan);
+        }
+
+        /// <summary>Moves withdrawing fleets to their reserved planets.</summary>
+        /// <param name="plan">The reserved withdrawal plan.</param>
+        private void CompleteFleetWithdrawal(SpaceCombatWithdrawalPlan plan)
+        {
+            foreach (KeyValuePair<Fleet, Planet> assignment in plan.FleetDestinations)
             {
-                _movement.EvacuateToNearestFriendlyPlanet(fighter);
+                Fleet fleet = assignment.Key;
+                Planet originalPlanet = fleet.GetParentOfType<Planet>();
+                if (!_movement.TryRequestMove(fleet, assignment.Value))
+                    continue;
+
+                if (
+                    (
+                        fleet.Order?.OrderType == FleetOrderType.Attack
+                        || fleet.Order?.OrderType == FleetOrderType.Engage
+                    )
+                    && fleet.Order.TargetPlanetId == originalPlanet?.InstanceID
+                )
+                    fleet.Order = null;
             }
         }
 
@@ -712,7 +642,8 @@ namespace Rebellion.Simulation
         /// <param name="defenderOwnerInstanceId">The defending owner identifier.</param>
         /// <param name="planet">Planet where combat occurs.</param>
         /// <param name="tick">Current game tick (recorded on the result).</param>
-        /// <param name="withdrawnUnits">Receives the units that escaped tactical combat.</param>
+        /// <param name="attackerWithdrawalPlan">Receives the attacking side's reserved withdrawal.</param>
+        /// <param name="defenderWithdrawalPlan">Receives the defending side's reserved withdrawal.</param>
         /// <returns>The combat result with winner, per-ship damage, and fighter losses.</returns>
         private SpaceCombatResult ResolveSpace(
             IReadOnlyList<Fleet> attackerFleets,
@@ -721,7 +652,8 @@ namespace Rebellion.Simulation
             string defenderOwnerInstanceId,
             Planet planet,
             int tick,
-            out HashSet<ISceneNode> withdrawnUnits
+            out SpaceCombatWithdrawalPlan attackerWithdrawalPlan,
+            out SpaceCombatWithdrawalPlan defenderWithdrawalPlan
         )
         {
             List<CapitalShip> attackerShips = attackerFleets
@@ -750,20 +682,18 @@ namespace Rebellion.Simulation
                 .Where(SpaceCombatQueries.IsActiveStarfighter)
                 .Distinct()
                 .ToList();
-            List<IReadOnlyCollection<ISceneNode>> attackerWithdrawalGroups =
-                _queries.GetAutomaticWithdrawalGroups(
-                    attackerFleets,
-                    defenderFleets,
-                    planet,
-                    attackerOwnerInstanceId
-                );
-            List<IReadOnlyCollection<ISceneNode>> defenderWithdrawalGroups =
-                _queries.GetAutomaticWithdrawalGroups(
-                    defenderFleets,
-                    attackerFleets,
-                    planet,
-                    defenderOwnerInstanceId
-                );
+            bool attackerCanWithdraw = _withdrawalResolver.CanAutomaticallyWithdraw(
+                attackerFleets,
+                defenderFleets,
+                planet,
+                attackerOwnerInstanceId
+            );
+            bool defenderCanWithdraw = _withdrawalResolver.CanAutomaticallyWithdraw(
+                defenderFleets,
+                attackerFleets,
+                planet,
+                defenderOwnerInstanceId
+            );
             SpaceCombatCommandModifiers attackerCommand = GetCommandModifiers(
                 attackerFleets,
                 planet,
@@ -779,8 +709,8 @@ namespace Rebellion.Simulation
                 attackerFighters,
                 defenderShips,
                 defenderFighters,
-                attackerWithdrawalGroups,
-                defenderWithdrawalGroups,
+                attackerCanWithdraw,
+                defenderCanWithdraw,
                 attackerCommand,
                 defenderCommand
             );
@@ -791,7 +721,29 @@ namespace Rebellion.Simulation
             result.Planet = planet;
             result.PlanetOwnerInstanceID = planet.OwnerInstanceID;
             result.Tick = tick;
-            withdrawnUnits = result.WithdrawnUnits.ToHashSet();
+            HashSet<ISceneNode> tacticallyWithdrawnUnits = result.WithdrawnUnits.ToHashSet();
+            attackerWithdrawalPlan =
+                result.AttackerOutcome == SpaceCombatSideOutcome.Withdrawn
+                    ? _withdrawalResolver.ResolveAutomaticWithdrawal(
+                        result,
+                        attackerFleets,
+                        attackerOwnerInstanceId,
+                        attackerRetreated: true,
+                        planet,
+                        tacticallyWithdrawnUnits
+                    )
+                    : new SpaceCombatWithdrawalPlan();
+            defenderWithdrawalPlan =
+                result.DefenderOutcome == SpaceCombatSideOutcome.Withdrawn
+                    ? _withdrawalResolver.ResolveAutomaticWithdrawal(
+                        result,
+                        defenderFleets,
+                        defenderOwnerInstanceId,
+                        attackerRetreated: false,
+                        planet,
+                        tacticallyWithdrawnUnits
+                    )
+                    : new SpaceCombatWithdrawalPlan();
             return result;
         }
 
@@ -930,42 +882,56 @@ namespace Rebellion.Simulation
         /// <param name="result">The combat result to apply.</param>
         /// <param name="attackerFleets">The attacking fleets to clean up.</param>
         /// <param name="defenderFleets">The defending fleets to clean up.</param>
+        /// <param name="attackerWithdrawalPlan">The attacking side's reserved withdrawal.</param>
+        /// <param name="defenderWithdrawalPlan">The defending side's reserved withdrawal.</param>
         /// <returns>Events generated from ship damage and destruction.</returns>
         private List<GameResult> ApplyCombatResult(
             SpaceCombatResult result,
             IReadOnlyList<Fleet> attackerFleets,
-            IReadOnlyList<Fleet> defenderFleets
+            IReadOnlyList<Fleet> defenderFleets,
+            SpaceCombatWithdrawalPlan attackerWithdrawalPlan,
+            SpaceCombatWithdrawalPlan defenderWithdrawalPlan
         )
         {
-            return ApplyCombatLosses(
-                result.ShipDamage,
+            List<GameResult> events = ApplyFighterSquadronLosses(
                 result.FighterLosses,
-                attackerFleets,
-                defenderFleets,
                 result.Planet
             );
+            CompleteFighterWithdrawal(attackerWithdrawalPlan);
+            CompleteFighterWithdrawal(defenderWithdrawalPlan);
+            events.AddRange(ApplyShipDamage(result.ShipDamage, result.Planet));
+            RemoveEmptyFleets(attackerFleets, defenderFleets);
+            CompleteFleetWithdrawal(attackerWithdrawalPlan);
+            CompleteFleetWithdrawal(defenderWithdrawalPlan);
+
+            List<ISceneNode> destroyedUnits = events
+                .OfType<GameObjectDestroyedResult>()
+                .Select(destruction => destruction.DestroyedObject)
+                .OfType<ISceneNode>()
+                .ToList();
+            CombatUnitSnapshot.RecordOutcomes(
+                result.AttackingUnits,
+                Enumerable.Empty<ISceneNode>(),
+                destroyedUnits
+            );
+            CombatUnitSnapshot.RecordOutcomes(
+                result.DefendingUnits,
+                Enumerable.Empty<ISceneNode>(),
+                destroyedUnits
+            );
+            return events;
         }
 
         /// <summary>
-        /// Applies ship and fighter losses and removes fleet containers left without capital ships.
+        /// Removes fleet containers left without capital ships.
         /// </summary>
-        /// <param name="shipDamage">Ship damage to apply.</param>
-        /// <param name="fighterLosses">Fighter losses to apply.</param>
         /// <param name="attackerFleets">The attacking fleets to clean up.</param>
         /// <param name="defenderFleets">The defending fleets to clean up.</param>
-        /// <param name="planet">The planet where combat occurred.</param>
-        /// <returns>Events generated from ship damage and destruction.</returns>
-        private List<GameResult> ApplyCombatLosses(
-            List<ShipDamageResult> shipDamage,
-            List<FighterLossResult> fighterLosses,
+        private void RemoveEmptyFleets(
             IReadOnlyList<Fleet> attackerFleets,
-            IReadOnlyList<Fleet> defenderFleets,
-            Planet planet
+            IReadOnlyList<Fleet> defenderFleets
         )
         {
-            List<GameResult> events = ApplyFighterSquadronLosses(fighterLosses, planet);
-            events.AddRange(ApplyShipDamage(shipDamage, planet));
-
             foreach (
                 Fleet fleet in attackerFleets
                     .Concat(defenderFleets)
@@ -975,8 +941,6 @@ namespace Rebellion.Simulation
             {
                 RemoveFleetFromScene(fleet);
             }
-
-            return events;
         }
 
         /// <summary>
@@ -1012,6 +976,23 @@ namespace Rebellion.Simulation
 
                 if (damage.HullAfter <= 0)
                 {
+                    foreach (
+                        IGameEntity unit in ship.GetChildren<Regiment>(includeDisabled: true)
+                            .Cast<IGameEntity>()
+                            .Concat(ship.GetChildren<SpecialForces>(includeDisabled: true))
+                    )
+                    {
+                        events.Add(
+                            new GameObjectDestroyedResult
+                            {
+                                DestroyedObject = unit,
+                                Context = planet,
+                                Reason = UnitDestructionReason.Combat,
+                                Tick = _game.CurrentTick,
+                            }
+                        );
+                    }
+
                     _game.DeleteNode(ship);
                     events.Add(
                         new GameObjectDestroyedResult

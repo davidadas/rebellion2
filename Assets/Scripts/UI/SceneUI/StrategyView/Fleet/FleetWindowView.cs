@@ -323,17 +323,14 @@ public sealed class FleetWindowView : MonoBehaviour, IPointerClickHandler, IDrop
         for (int index = 0; index < orderedIndexes.Count; index++)
         {
             int fleetIndex = orderedIndexes[index];
+            FleetListRowView row = FindFleetRowView(fleetIndex);
             if (
-                fleetIndex < 0
-                || fleetIndex >= fleetRowViews.Count
-                || !fleetRowViews[fleetIndex]
-                    .TryGetDragImage(out Texture texture, out RectTransform imageTransform)
+                row == null
+                || !row.TryGetDragImage(out Texture texture, out RectTransform imageTransform)
             )
                 return false;
 
-            RectInt rowRect = UILayout.GetSourceRect(
-                fleetRowViews[fleetIndex].transform as RectTransform
-            );
+            RectInt rowRect = UILayout.GetSourceRect(row.transform as RectTransform);
             RectInt sourceRect = GetScrolledContentSourceRect(
                 fleetListScrollArea,
                 rowRect,
@@ -457,6 +454,22 @@ public sealed class FleetWindowView : MonoBehaviour, IPointerClickHandler, IDrop
     internal bool IsSelectionItemClick(PointerEventData eventData)
     {
         return TryGetFleetRowIndex(eventData, out _) || TryGetDetailItemIndex(eventData, out _);
+    }
+
+    /// <summary>
+    /// Reports whether a pointer event falls within the displayed fleet-detail panel.
+    /// </summary>
+    /// <param name="eventData">The pointer event to inspect.</param>
+    /// <returns>True when the pointer is within the fleet-detail panel.</returns>
+    internal bool IsFleetDetailClick(PointerEventData eventData)
+    {
+        return eventData != null
+            && detailBackgroundImage != null
+            && RectTransformUtility.RectangleContainsScreenPoint(
+                detailBackgroundImage.rectTransform,
+                eventData.position,
+                eventData.pressEventCamera ?? eventData.enterEventCamera
+            );
     }
 
     /// <summary>
@@ -722,9 +735,34 @@ public sealed class FleetWindowView : MonoBehaviour, IPointerClickHandler, IDrop
     private TextMeshProUGUI GetRenameTextField(int fleetRowIndex, int detailItemIndex)
     {
         if (fleetRowIndex >= 0 && fleetRowIndex < fleetRowViews.Count)
-            return fleetRowViews[fleetRowIndex].NameTextField;
+        {
+            FleetListRowView row = fleetRowViews[fleetRowIndex];
+            if (row.gameObject.activeInHierarchy)
+                return row.NameTextField;
+        }
         if (detailItemIndex >= 0 && detailItemIndex < detailItemViews.Count)
             return detailItemViews[detailItemIndex].NameTextField;
+        return null;
+    }
+
+    /// <summary>
+    /// Finds the visible parent row for one fleet collection index.
+    /// </summary>
+    /// <param name="fleetIndex">The fleet collection index.</param>
+    /// <returns>The matching visible fleet row, or null.</returns>
+    private FleetListRowView FindFleetRowView(int fleetIndex)
+    {
+        for (int i = 0; i < fleetRowViews.Count; i++)
+        {
+            FleetListRowView row = fleetRowViews[i];
+            if (
+                row.gameObject.activeInHierarchy
+                && !row.IsCapitalShip
+                && row.FleetIndex == fleetIndex
+            )
+                return row;
+        }
+
         return null;
     }
 

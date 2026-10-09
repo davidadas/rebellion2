@@ -5,7 +5,6 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.SceneGraph;
 using Rebellion.Simulation;
 using Rebellion.Util.Random;
 
@@ -1187,78 +1186,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void Resolve_OnlyEligibleUnitsCanWithdraw_LeavesOtherUnitsInCombat()
-        {
-            CapitalShip attacker = CreateShip("attacker", hull: 10000, weaponStrength: 100);
-            CapitalShip withdrawingDefender = CreateShip(
-                "withdrawing-defender",
-                hull: 1000,
-                weaponStrength: 1
-            );
-            withdrawingDefender.SublightSpeed = 10;
-            CapitalShip trappedDefender = CreateShip(
-                "trapped-defender",
-                hull: 10,
-                weaponStrength: 1
-            );
-            GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.AutoResolveRetreatStrengthRatio = 1.01;
-            config.AutoResolveStartingDistance = 0;
-            config.AutoResolveTargetScanDivisor = 1;
-            IReadOnlyList<IReadOnlyCollection<ISceneNode>> defenderWithdrawalGroups =
-                new IReadOnlyCollection<ISceneNode>[] { new ISceneNode[] { withdrawingDefender } };
-
-            SpaceCombatResult result = CreateResolver(config, new ArcDamageRNG())
-                .Resolve(
-                    new[] { attacker },
-                    new List<Starfighter>(),
-                    new[] { withdrawingDefender, trappedDefender },
-                    new List<Starfighter>(),
-                    Array.Empty<IReadOnlyCollection<ISceneNode>>(),
-                    defenderWithdrawalGroups
-                );
-
-            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
-            Assert.IsTrue(GetShipOutcome(result, withdrawingDefender).Withdrew);
-            Assert.Greater(GetShipOutcome(result, withdrawingDefender).HullAfter, 0);
-            Assert.IsFalse(GetShipOutcome(result, trappedDefender).Withdrew);
-            Assert.AreEqual(0, GetShipOutcome(result, trappedDefender).HullAfter);
-        }
-
-        [Test]
-        public void Resolve_WithdrawalRequiredWithoutHyperdrive_ContinuesFighting()
-        {
-            CapitalShip attacker = CreatePassiveTarget("attacker", hull: 1);
-            CapitalShip defender = CreateShip("defender", hull: 100, weaponStrength: 100);
-            defender.Hyperdrive = 0;
-            defender.SublightSpeed = 10;
-            GameConfig.SpaceCombatConfig config = CreateConfig();
-            config.AutoResolveRetreatStrengthRatio = 1.01;
-            config.AutoResolveStartingDistance = 0;
-            config.AutoResolveWithdrawalDistance = 10;
-            config.AutoResolveTargetScanDivisor = 1;
-            IReadOnlyList<IReadOnlyCollection<ISceneNode>> defenderWithdrawalGroups =
-                new IReadOnlyCollection<ISceneNode>[] { new ISceneNode[] { defender } };
-
-            SpaceCombatResult result = CreateResolver(config, new ArcDamageRNG())
-                .Resolve(
-                    new[] { attacker },
-                    new List<Starfighter>(),
-                    new[] { defender },
-                    new List<Starfighter>(),
-                    Array.Empty<IReadOnlyCollection<ISceneNode>>(),
-                    defenderWithdrawalGroups
-                );
-
-            Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, result.AttackerOutcome);
-            Assert.AreEqual(SpaceCombatSideOutcome.Active, result.DefenderOutcome);
-            Assert.AreEqual(0, GetShipOutcome(result, attacker).HullAfter);
-            Assert.IsFalse(GetShipOutcome(result, defender).Withdrew);
-            Assert.Greater(GetShipOutcome(result, defender).HullAfter, 0);
-        }
-
-        [Test]
-        public void Resolve_ThreeCapitalShipsWithdrawWithOneWithoutHyperdrive_DestroysStrandedShip()
+        public void Resolve_ThreeCapitalShipsWithdrawWithSlowNonHyperdriveShip_DoesNotDelayWithdrawal()
         {
             CapitalShip attacker = CreateShip("attacker", hull: 1000, weaponStrength: 10);
             CapitalShip firstWithdrawingShip = CreateShip(
@@ -1275,34 +1203,29 @@ namespace Rebellion.Tests.Simulation
             secondWithdrawingShip.SublightSpeed = 10;
             CapitalShip strandedShip = CreateShip("stranded-ship", hull: 100, weaponStrength: 1);
             strandedShip.Hyperdrive = 0;
-            strandedShip.SublightSpeed = 10;
+            strandedShip.SublightSpeed = 1;
             GameConfig.SpaceCombatConfig config = CreateConfig();
             config.AutoResolveRetreatStrengthRatio = 1.01;
             config.AutoResolveStartingDistance = 0;
             config.AutoResolveWithdrawalDistance = 10;
             config.AutoResolveTargetScanDivisor = 1;
-            IReadOnlyList<IReadOnlyCollection<ISceneNode>> defenderWithdrawalGroups =
-                new IReadOnlyCollection<ISceneNode>[]
-                {
-                    new ISceneNode[] { firstWithdrawingShip, secondWithdrawingShip, strandedShip },
-                };
-
             SpaceCombatResult result = CreateResolver(config, new ArcDamageRNG())
                 .Resolve(
                     new[] { attacker },
                     new List<Starfighter>(),
                     new[] { firstWithdrawingShip, secondWithdrawingShip, strandedShip },
                     new List<Starfighter>(),
-                    Array.Empty<IReadOnlyCollection<ISceneNode>>(),
-                    defenderWithdrawalGroups
+                    attackerCanWithdraw: false,
+                    defenderCanWithdraw: true
                 );
 
             Assert.IsTrue(GetShipOutcome(result, firstWithdrawingShip).Withdrew);
             Assert.IsTrue(GetShipOutcome(result, secondWithdrawingShip).Withdrew);
             Assert.IsFalse(GetShipOutcome(result, strandedShip).Withdrew);
             Assert.AreEqual(0, GetShipOutcome(result, strandedShip).HullAfter);
-            Assert.Less(GetShipOutcome(result, attacker).HullAfter, 1000);
+            Assert.AreEqual(1000, GetShipOutcome(result, attacker).HullAfter);
             Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
+            Assert.AreEqual(2, result.IterationsCompleted);
         }
 
         [Test]
@@ -1330,20 +1253,14 @@ namespace Rebellion.Tests.Simulation
             config.AutoResolveStartingDistance = 0;
             config.AutoResolveWithdrawalDistance = 20;
             config.AutoResolveTargetScanDivisor = 1;
-            IReadOnlyList<IReadOnlyCollection<ISceneNode>> defenderWithdrawalGroups =
-                new IReadOnlyCollection<ISceneNode>[]
-                {
-                    new ISceneNode[] { fastFleetShip, slowFleetShip, carriedFighter },
-                };
-
             SpaceCombatResult result = CreateResolver(config, new ArcDamageRNG())
                 .Resolve(
                     new[] { attacker },
                     new List<Starfighter>(),
                     new[] { fastFleetShip, slowFleetShip, coveringShip },
                     new[] { carriedFighter },
-                    Array.Empty<IReadOnlyCollection<ISceneNode>>(),
-                    defenderWithdrawalGroups
+                    attackerCanWithdraw: false,
+                    defenderCanWithdraw: true
                 );
 
             Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, result.AttackerOutcome);
@@ -1354,7 +1271,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void Resolve_ForceBeginsWithdrawal_RemainsVulnerableUntilItEscapes()
+        public void Resolve_ForceBeginsWithdrawal_CannotBeTargeted()
         {
             CapitalShip attacker = CreateShip("attacker", hull: 100, weaponStrength: 5);
             CapitalShip defender = CreateShip("defender", hull: 100, weaponStrength: 1);
@@ -1376,7 +1293,61 @@ namespace Rebellion.Tests.Simulation
             );
 
             Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
-            Assert.AreEqual(90, GetShipOutcome(result, defender).HullAfter);
+            Assert.AreEqual(100, GetShipOutcome(result, defender).HullAfter);
+        }
+
+        [Test]
+        public void Resolve_UnitsReachWithdrawalBoundaryAtDifferentTimes_CompletesEachUnitIndependently()
+        {
+            CapitalShip attacker = CreateShip("attacker", hull: 100, weaponStrength: 5);
+            CapitalShip fastDefender = CreateShip("fast-defender", hull: 100, weaponStrength: 1);
+            fastDefender.SublightSpeed = 20;
+            CapitalShip slowDefender = CreateShip("slow-defender", hull: 100, weaponStrength: 1);
+            slowDefender.SublightSpeed = 10;
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveMaximumIterations = 1;
+            config.AutoResolveRetreatStrengthRatio = 1.01;
+            config.AutoResolveStartingDistance = 0;
+            config.AutoResolveWithdrawalDistance = 20;
+
+            SpaceCombatResult result = Resolve(
+                config,
+                new[] { attacker },
+                new List<Starfighter>(),
+                new[] { fastDefender, slowDefender },
+                new List<Starfighter>(),
+                defenderCanWithdraw: true
+            );
+
+            Assert.IsTrue(GetShipOutcome(result, fastDefender).Withdrew);
+            Assert.IsFalse(GetShipOutcome(result, slowDefender).Withdrew);
+        }
+
+        [Test]
+        public void Resolve_WithdrawalCannotAdvance_DoesNotWithdrawOpposingForce()
+        {
+            CapitalShip attacker = CreateShip("attacker", hull: 100, weaponStrength: 10);
+            CapitalShip defender = CreateShip("defender", hull: 100, weaponStrength: 1);
+            defender.SublightSpeed = 0;
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveMaximumIterations = 2;
+            config.AutoResolveStagnationIterations = 2;
+            config.AutoResolveRetreatStrengthRatio = 0.33;
+            config.AutoResolveStartingDistance = 0;
+            config.AutoResolveWithdrawalDistance = 20;
+
+            SpaceCombatResult result = Resolve(
+                config,
+                new[] { attacker },
+                new List<Starfighter>(),
+                new[] { defender },
+                new List<Starfighter>(),
+                defenderCanWithdraw: true
+            );
+
+            Assert.AreEqual(SpaceCombatSideOutcome.Active, result.AttackerOutcome);
+            Assert.IsFalse(GetShipOutcome(result, attacker).Withdrew);
+            Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, result.DefenderOutcome);
         }
 
         [Test]
@@ -1397,20 +1368,69 @@ namespace Rebellion.Tests.Simulation
             GameConfig.SpaceCombatConfig config = CreateConfig();
             config.AutoResolveRetreatStrengthRatio = 1.01;
             config.AutoResolveStartingDistance = 0;
-            IReadOnlyList<IReadOnlyCollection<ISceneNode>> withdrawalGroups =
-                new IReadOnlyCollection<ISceneNode>[] { new ISceneNode[] { carrier, fighter } };
-
             SpaceCombatResult result = CreateResolver(config)
                 .Resolve(
                     new[] { attacker },
                     new List<Starfighter>(),
                     new[] { carrier },
                     new[] { fighter },
-                    Array.Empty<IReadOnlyCollection<ISceneNode>>(),
-                    withdrawalGroups
+                    attackerCanWithdraw: false,
+                    defenderCanWithdraw: true
                 );
 
             Assert.IsTrue(GetShipOutcome(result, carrier).Withdrew);
+            Assert.IsTrue(GetFighterOutcome(result, fighter).Withdrew);
+            Assert.AreEqual(12, GetFighterOutcome(result, fighter).SquadronSizeAfter);
+        }
+
+        [Test]
+        public void Resolve_CarrierInOtherFleetHasRecoveryCapacity_PreservesNonHyperdriveFighter()
+        {
+            CapitalShip attacker = CreateShip("attacker", hull: 1000, weaponStrength: 10);
+            CapitalShip destroyedCarrier = CreateShip(
+                "destroyed-carrier",
+                hull: 1,
+                weaponStrength: 1
+            );
+            destroyedCarrier.StarfighterCapacity = 1;
+            destroyedCarrier.SublightSpeed = 10;
+            destroyedCarrier.CurrentHullStrength = 0;
+            CapitalShip otherFleetCarrier = CreateShip(
+                "other-fleet-carrier",
+                hull: 1000,
+                weaponStrength: 1
+            );
+            otherFleetCarrier.StarfighterCapacity = 1;
+            otherFleetCarrier.SublightSpeed = 10;
+            Starfighter fighter = CreateFighter("fighter", squadronSize: 12, weaponStrength: 0);
+            fighter.Hyperdrive = 0;
+            fighter.ShieldStrength = 100;
+            fighter.SublightSpeed = 10;
+            Fleet strandedFleet = new Fleet();
+            Fleet recoveryFleet = new Fleet();
+            strandedFleet.AddChild(destroyedCarrier);
+            destroyedCarrier.SetParent(strandedFleet);
+            destroyedCarrier.AddChild(fighter);
+            fighter.SetParent(destroyedCarrier);
+            recoveryFleet.AddChild(otherFleetCarrier);
+            otherFleetCarrier.SetParent(recoveryFleet);
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.AutoResolveRetreatStrengthRatio = 1.01;
+            config.AutoResolveStartingDistance = 0;
+            config.AutoResolveWithdrawalDistance = 20;
+            config.AutoResolveTargetScanDivisor = 1;
+            SpaceCombatResult result = CreateResolver(config, new ArcDamageRNG())
+                .Resolve(
+                    new[] { attacker },
+                    new List<Starfighter>(),
+                    new[] { destroyedCarrier, otherFleetCarrier },
+                    new[] { fighter },
+                    attackerCanWithdraw: false,
+                    defenderCanWithdraw: true
+                );
+
+            Assert.AreEqual(0, GetShipOutcome(result, destroyedCarrier).HullAfter);
+            Assert.IsTrue(GetShipOutcome(result, otherFleetCarrier).Withdrew);
             Assert.IsTrue(GetFighterOutcome(result, fighter).Withdrew);
             Assert.AreEqual(12, GetFighterOutcome(result, fighter).SquadronSizeAfter);
         }
@@ -1422,6 +1442,7 @@ namespace Rebellion.Tests.Simulation
             CapitalShip carrier = CreateShip("carrier", hull: 1, weaponStrength: 1);
             carrier.StarfighterCapacity = 1;
             carrier.SublightSpeed = 10;
+            carrier.CurrentHullStrength = 0;
             CapitalShip escapeShip = CreateShip("escape-ship", hull: 1000, weaponStrength: 1);
             escapeShip.StarfighterCapacity = 0;
             escapeShip.SublightSpeed = 10;
@@ -1441,20 +1462,14 @@ namespace Rebellion.Tests.Simulation
             config.AutoResolveStartingDistance = 0;
             config.AutoResolveWithdrawalDistance = 20;
             config.AutoResolveTargetScanDivisor = 1;
-            IReadOnlyList<IReadOnlyCollection<ISceneNode>> withdrawalGroups =
-                new IReadOnlyCollection<ISceneNode>[]
-                {
-                    new ISceneNode[] { carrier, escapeShip, fighter },
-                };
-
             SpaceCombatResult result = CreateResolver(config, new ArcDamageRNG())
                 .Resolve(
                     new[] { attacker },
                     new List<Starfighter>(),
                     new[] { carrier, escapeShip },
                     new[] { fighter },
-                    Array.Empty<IReadOnlyCollection<ISceneNode>>(),
-                    withdrawalGroups
+                    attackerCanWithdraw: false,
+                    defenderCanWithdraw: true
                 );
 
             Assert.IsTrue(GetShipOutcome(result, escapeShip).Withdrew);
@@ -1463,7 +1478,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void Resolve_TwoCarriersDestroyedWithNonHyperdriveFighters_DestroysFightersAfterTheyFight()
+        public void Resolve_TwoCarriersDestroyedWithNonHyperdriveFighters_DestroysFightersWithoutReturnFire()
         {
             CapitalShip attacker = CreateShip("attacker", hull: 1000, weaponStrength: 100);
             attacker.WeaponRecharge = 100;
@@ -1473,6 +1488,8 @@ namespace Rebellion.Tests.Simulation
             CapitalShip secondCarrier = CreatePassiveTarget("second-carrier", hull: 1);
             secondCarrier.StarfighterCapacity = 1;
             secondCarrier.SublightSpeed = 1;
+            firstCarrier.CurrentHullStrength = 0;
+            secondCarrier.CurrentHullStrength = 0;
             Starfighter firstFighter = CreateFighter(
                 "first-fighter",
                 squadronSize: 12,
@@ -1501,20 +1518,14 @@ namespace Rebellion.Tests.Simulation
             config.AutoResolveStartingDistance = 0;
             config.AutoResolveWithdrawalDistance = 10;
             config.AutoResolveTargetScanDivisor = 1;
-            IReadOnlyList<IReadOnlyCollection<ISceneNode>> defenderWithdrawalGroups =
-                new IReadOnlyCollection<ISceneNode>[]
-                {
-                    new ISceneNode[] { firstCarrier, secondCarrier, firstFighter, secondFighter },
-                };
-
             SpaceCombatResult result = CreateResolver(config, new ArcDamageRNG())
                 .Resolve(
                     new[] { attacker },
                     new List<Starfighter>(),
                     new[] { firstCarrier, secondCarrier },
                     new[] { firstFighter, secondFighter },
-                    Array.Empty<IReadOnlyCollection<ISceneNode>>(),
-                    defenderWithdrawalGroups
+                    attackerCanWithdraw: false,
+                    defenderCanWithdraw: true
                 );
 
             Assert.AreEqual(0, GetShipOutcome(result, firstCarrier).HullAfter);
@@ -1523,7 +1534,7 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(GetFighterOutcome(result, secondFighter).Withdrew);
             Assert.AreEqual(0, GetFighterOutcome(result, firstFighter).SquadronSizeAfter);
             Assert.AreEqual(0, GetFighterOutcome(result, secondFighter).SquadronSizeAfter);
-            Assert.Less(GetShipOutcome(result, attacker).HullAfter, 1000);
+            Assert.AreEqual(1000, GetShipOutcome(result, attacker).HullAfter);
         }
 
         [Test]
@@ -1537,6 +1548,7 @@ namespace Rebellion.Tests.Simulation
             );
             destroyedCarrier.StarfighterCapacity = 1;
             destroyedCarrier.SublightSpeed = 10;
+            destroyedCarrier.CurrentHullStrength = 0;
             CapitalShip recoveryCarrier = CreateShip(
                 "recovery-carrier",
                 hull: 1000,
@@ -1572,20 +1584,14 @@ namespace Rebellion.Tests.Simulation
             config.AutoResolveStartingDistance = 0;
             config.AutoResolveWithdrawalDistance = 20;
             config.AutoResolveTargetScanDivisor = 1;
-            IReadOnlyList<IReadOnlyCollection<ISceneNode>> withdrawalGroups =
-                new IReadOnlyCollection<ISceneNode>[]
-                {
-                    new ISceneNode[] { destroyedCarrier, recoveryCarrier, strandedFighter },
-                };
-
             SpaceCombatResult result = CreateResolver(config, new ArcDamageRNG())
                 .Resolve(
                     new[] { attacker },
                     new List<Starfighter>(),
                     new[] { destroyedCarrier, recoveryCarrier },
                     new[] { strandedFighter },
-                    Array.Empty<IReadOnlyCollection<ISceneNode>>(),
-                    withdrawalGroups
+                    attackerCanWithdraw: false,
+                    defenderCanWithdraw: true
                 );
 
             Assert.AreEqual(0, GetShipOutcome(result, destroyedCarrier).HullAfter);
@@ -1605,6 +1611,7 @@ namespace Rebellion.Tests.Simulation
             );
             destroyedCarrier.StarfighterCapacity = 1;
             destroyedCarrier.SublightSpeed = 10;
+            destroyedCarrier.CurrentHullStrength = 0;
             CapitalShip recoveryCarrier = CreateShip(
                 "recovery-carrier",
                 hull: 1000,
@@ -1628,20 +1635,14 @@ namespace Rebellion.Tests.Simulation
             config.AutoResolveStartingDistance = 0;
             config.AutoResolveWithdrawalDistance = 20;
             config.AutoResolveTargetScanDivisor = 1;
-            IReadOnlyList<IReadOnlyCollection<ISceneNode>> withdrawalGroups =
-                new IReadOnlyCollection<ISceneNode>[]
-                {
-                    new ISceneNode[] { destroyedCarrier, recoveryCarrier, fighter },
-                };
-
             SpaceCombatResult result = CreateResolver(config, new ArcDamageRNG())
                 .Resolve(
                     new[] { attacker },
                     new List<Starfighter>(),
                     new[] { destroyedCarrier, recoveryCarrier },
                     new[] { fighter },
-                    Array.Empty<IReadOnlyCollection<ISceneNode>>(),
-                    withdrawalGroups
+                    attackerCanWithdraw: false,
+                    defenderCanWithdraw: true
                 );
 
             Assert.AreEqual(0, GetShipOutcome(result, destroyedCarrier).HullAfter);
@@ -1661,6 +1662,7 @@ namespace Rebellion.Tests.Simulation
             );
             destroyedCarrier.StarfighterCapacity = 1;
             destroyedCarrier.SublightSpeed = 10;
+            destroyedCarrier.CurrentHullStrength = 0;
             CapitalShip recoveryCarrier = CreateShip(
                 "recovery-carrier",
                 hull: 1000,
@@ -1698,26 +1700,14 @@ namespace Rebellion.Tests.Simulation
             config.AutoResolveStartingDistance = 0;
             config.AutoResolveWithdrawalDistance = 20;
             config.AutoResolveTargetScanDivisor = 1;
-            IReadOnlyList<IReadOnlyCollection<ISceneNode>> withdrawalGroups =
-                new IReadOnlyCollection<ISceneNode>[]
-                {
-                    new ISceneNode[]
-                    {
-                        destroyedCarrier,
-                        recoveryCarrier,
-                        hyperdriveFighter,
-                        nonHyperdriveFighter,
-                    },
-                };
-
             SpaceCombatResult result = CreateResolver(config, new ArcDamageRNG())
                 .Resolve(
                     new[] { attacker },
                     new List<Starfighter>(),
                     new[] { destroyedCarrier, recoveryCarrier },
                     new[] { hyperdriveFighter, nonHyperdriveFighter },
-                    Array.Empty<IReadOnlyCollection<ISceneNode>>(),
-                    withdrawalGroups
+                    attackerCanWithdraw: false,
+                    defenderCanWithdraw: true
                 );
 
             Assert.AreEqual(0, GetShipOutcome(result, destroyedCarrier).HullAfter);
@@ -1871,8 +1861,8 @@ namespace Rebellion.Tests.Simulation
                     attackerFighters,
                     defenderShips,
                     defenderFighters,
-                    CreateWithdrawalGroups(attackerCanWithdraw, attackerShips, attackerFighters),
-                    CreateWithdrawalGroups(defenderCanWithdraw, defenderShips, defenderFighters),
+                    attackerCanWithdraw,
+                    defenderCanWithdraw,
                     attackerCommand,
                     defenderCommand
                 );
@@ -1903,29 +1893,6 @@ namespace Rebellion.Tests.Simulation
                 AutoResolveComponentDelayMaximum = 50,
                 AutoResolveComponentDelayRecovery = 1,
             };
-        }
-
-        /// <summary>
-        /// Creates withdrawal groups.
-        /// </summary>
-        /// <param name="canWithdraw">Whether can withdraw.</param>
-        /// <param name="ships">The ships.</param>
-        /// <param name="fighters">The fighters.</param>
-        /// <returns>The created withdrawal groups.</returns>
-        private static IReadOnlyList<IReadOnlyCollection<ISceneNode>> CreateWithdrawalGroups(
-            bool canWithdraw,
-            IReadOnlyList<CapitalShip> ships,
-            IReadOnlyList<Starfighter> fighters
-        )
-        {
-            if (!canWithdraw)
-                return Array.Empty<IReadOnlyCollection<ISceneNode>>();
-
-            return ships
-                .Cast<ISceneNode>()
-                .Concat(fighters.Cast<ISceneNode>())
-                .Select(unit => (IReadOnlyCollection<ISceneNode>)new ISceneNode[] { unit })
-                .ToList();
         }
 
         /// <summary>

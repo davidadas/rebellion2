@@ -948,7 +948,7 @@ public sealed class PlanetSectorWindowController
     /// </summary>
     /// <param name="hit">The semantic planet-sector hit.</param>
     /// <param name="request">The active targeting request.</param>
-    /// <param name="fleetTarget">The player-controlled fleet target.</param>
+    /// <param name="fleetTarget">The first fleet represented by the fleet overlay.</param>
     /// <returns>The strategy mission target, or null.</returns>
     internal static StrategyMissionTarget CreateTargetForHit(
         PlanetSectorWindowHit hit,
@@ -958,7 +958,7 @@ public sealed class PlanetSectorWindowController
     {
         if (hit?.GalaxyMapPlanet == null)
             return null;
-        if (hit.Icon == PlanetIcon.Fleet && IsMoveTargetingRequest(request))
+        if (hit.Icon == PlanetIcon.Fleet && fleetTarget != null && TargetsFleetContainer(request))
             return new StrategyMissionTarget(hit.GalaxyMapPlanet, fleetTarget);
         if (hit.Icon != PlanetIcon.None || hit.PlanetImage)
             return new StrategyMissionTarget(hit.GalaxyMapPlanet, hit.GalaxyMapPlanet.Planet);
@@ -1111,7 +1111,7 @@ public sealed class PlanetSectorWindowController
             StrategyMissionTarget target = CreateTargetForHit(
                 hit,
                 targetingController.ActiveRequest,
-                GetPlayerFleetTarget(hit.Planet)
+                GetFirstFleetTarget(hit.Planet)
             );
             if (target != null)
                 targetingController.TrySelectTarget(target);
@@ -1177,18 +1177,13 @@ public sealed class PlanetSectorWindowController
     }
 
     /// <summary>
-    /// Gets the first player-controlled fleet at one planet.
+    /// Gets the first fleet represented by a planet's fleet window.
     /// </summary>
     /// <param name="planet">The represented planet.</param>
-    /// <returns>The player-controlled fleet, or null.</returns>
-    private Fleet GetPlayerFleetTarget(Planet planet)
+    /// <returns>The first fleet in fleet-window order, or null.</returns>
+    private static Fleet GetFirstFleetTarget(Planet planet)
     {
-        string playerFactionId = GetUIContext().GetPlayerFactionInstanceID();
-        return planet
-            ?.GetChildren<Fleet>()
-            .FirstOrDefault(fleet =>
-                StrategyContextMenuAvailability.PlayerControlsItem(fleet, playerFactionId)
-            );
+        return planet?.GetChildren<Fleet>().FirstOrDefault();
     }
 
     /// <summary>
@@ -1210,15 +1205,16 @@ public sealed class PlanetSectorWindowController
     }
 
     /// <summary>
-    /// Determines whether the current request needs a concrete fleet target.
+    /// Determines whether a targeting action treats a fleet overlay as its first fleet container.
     /// </summary>
     /// <param name="request">The active targeting request.</param>
-    /// <returns>True for immediate and confirmed move requests.</returns>
-    private static bool IsMoveTargetingRequest(TargetingRequest request)
+    /// <returns>True when the request accepts a fleet container.</returns>
+    private static bool TargetsFleetContainer(TargetingRequest request)
     {
-        return request?.Source is StrategyWindowTargetingSource source
+        return request?.Source is IStrategyTargetingSource source
             && source.Action
-                is StrategyMenuAction.Move
+                is StrategyMenuAction.Destination
+                    or StrategyMenuAction.Move
                     or StrategyMenuAction.MoveConfirm
                     or StrategyMenuAction.WaypointMove;
     }

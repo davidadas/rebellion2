@@ -17,12 +17,15 @@ or otherwise redistribute `rebellion2-media`, `Assets/Content`, or any copyright
 2. Copy `rebellion2-media/Content/` into `rebellion2/Assets/Content/`.
 3. Copy `rebellion2-media/Models/MainMenu/` into
    `rebellion2/Assets/Art/Models/MainMenu/`.
-4. Open `rebellion2` in Unity.
-5. Run **Rebellion > Build > Build All UI**.
+4. Overlay `rebellion2-media/UnityAssets/` onto `rebellion2/Assets/`, preserving `.meta` files.
+   This installs native Unity packages, including the main-menu planet, at their logical art
+   paths.
+5. Open `rebellion2` in Unity.
+6. Run **Rebellion > Build > Build All UI**.
 
-The copied content and models, all generated prefabs, and all generated scenes are local development
-artifacts and are ignored by Git. This includes the boot scene and cutscene playback assets. Manage
-the media checkout and refresh these local copies outside Unity.
+The copied content, models, Unity assets, all generated prefabs, and all generated scenes are local
+development artifacts and are ignored by Git. This includes the boot scene and cutscene playback
+assets. Manage the media checkout and refresh these local copies outside Unity.
 
 CI installs clean media mirrors automatically with `rsync --delete` before Unity builds and tests.
 

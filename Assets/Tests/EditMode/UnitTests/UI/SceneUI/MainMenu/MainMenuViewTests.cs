@@ -7,6 +7,7 @@ using TMPro;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.Rendering.Universal;
 using UnityEngine.UI;
 
 namespace Rebellion.Tests.UI.SceneUI.MainMenu
@@ -134,23 +135,76 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.IsNotNull(viewport.Find("SpaceBackdrop/Planet"));
             Assert.IsNotNull(viewport.Find("Cockpit"));
             Assert.AreSame(viewport, viewport.Find("MainMenuControls").parent);
-            Assert.AreEqual(7, _prefabRoot.GetComponentsInChildren<AutoRotate>(true).Length);
+            Assert.AreEqual(6, _prefabRoot.GetComponentsInChildren<AutoRotate>(true).Length);
         }
 
         [Test]
-        public void AuthoredPrefab_PlanetRig_UsesDayNightShade()
+        public void AuthoredPrefab_RuntimeBehaviours_AreEnabled()
         {
-            Transform shade = _prefabRoot.transform.Find("PlanetRig/DayNightShade");
-            Assert.IsNotNull(shade);
-            Assert.AreEqual(Vector3.one * 2.04f, shade.localScale);
+            Assert.IsTrue(_prefabRoot.GetComponentInChildren<MainMenuController>(true).enabled);
+            Assert.IsTrue(_prefabRoot.GetComponentInChildren<MainMenuView>(true).enabled);
+            Assert.IsTrue(_prefabRoot.GetComponentInChildren<AppBootstrap>(true).enabled);
 
-            RuntimeMaterialBinding binding = shade.GetComponent<RuntimeMaterialBinding>();
-            Assert.IsNotNull(binding);
-            Assert.AreEqual(
-                "Custom/PlanetDayNightShade",
-                typeof(RuntimeMaterialBinding)
-                    .GetField("shaderName", BindingFlags.Instance | BindingFlags.NonPublic)
-                    .GetValue(binding)
+            AudioManager audioManager = _prefabRoot.GetComponentInChildren<AudioManager>(true);
+            Assert.IsTrue(audioManager.enabled);
+            Assert.IsTrue(audioManager.GetComponents<AudioSource>().All(source => source.enabled));
+        }
+
+        [Test]
+        public void AuthoredPrefab_PlanetRig_UsesAuthoredPlanet()
+        {
+            Transform model = _prefabRoot.transform.Find("PlanetRig/Pivot/Planet");
+            RawImage planet = _prefabRoot
+                .transform.Find("UI/Canvas/Viewport/SpaceBackdrop/Planet")
+                .GetComponent<RawImage>();
+
+            Assert.IsNotNull(model);
+            Renderer renderer = model.GetComponent<Renderer>();
+            Material earthMaterial = renderer.sharedMaterial;
+            Assert.AreEqual("Rebellion/MainMenu/PlanetSurface", earthMaterial.shader.name);
+            Assert.IsNotNull(earthMaterial.GetTexture("_CloudsTop"));
+            Assert.IsNotNull(earthMaterial.GetTexture("_LandMask"));
+            Assert.IsNotNull(earthMaterial.GetTexture("_NormalMap"));
+            Assert.Greater(model.GetComponent<MeshFilter>().sharedMesh.vertexCount, 1000);
+
+            Transform atmosphere = model.Find("Atmosphere");
+            Assert.AreEqual(Vector3.one * 1.062f, atmosphere.localScale);
+            Material atmosphereMaterial = atmosphere.GetComponent<Renderer>().sharedMaterial;
+            Assert.AreEqual("Rebellion/MainMenu/PlanetAtmosphere", atmosphereMaterial.shader.name);
+            Assert.AreEqual(0.23f, atmosphereMaterial.GetFloat("_VertexOffset"));
+            Assert.AreEqual(4.3f, atmosphereMaterial.GetFloat("_ScatteringFactor"));
+            Assert.AreEqual(8f, atmosphereMaterial.GetFloat("_ScatteringIntensity"));
+            Assert.AreEqual(0.06f, atmosphereMaterial.GetFloat("_GlowIntensity"));
+
+            Light sun = _prefabRoot.transform.Find("PlanetRig/PlanetSun").GetComponent<Light>();
+            Assert.AreEqual(LightType.Directional, sun.type);
+            Assert.AreEqual(1f, sun.intensity);
+            Assert.AreEqual(1 << 31, sun.cullingMask);
+
+            Camera camera = _prefabRoot.transform.Find("PlanetRig/Camera").GetComponent<Camera>();
+            Assert.IsTrue(camera.allowHDR);
+            Assert.IsNotNull(camera.GetUniversalAdditionalCameraData());
+            Assert.IsNotNull(planet.material);
+            Assert.AreEqual("Custom/PremultipliedTexture", planet.material.shader.name);
+        }
+
+        [Test]
+        public void AuthoredPrefab_PlanetDependencies_UseMainMenuModelPackage()
+        {
+            string[] dependencies = AssetDatabase.GetDependencies(
+                "Assets/Prefabs/UI/MainMenu/MainMenuRoot.prefab",
+                true
+            );
+
+            Assert.IsTrue(
+                dependencies.Any(path =>
+                    path.StartsWith("Assets/Art/MainMenu/Planet/", StringComparison.Ordinal)
+                )
+            );
+            Assert.IsFalse(
+                dependencies.Any(path =>
+                    path.StartsWith("Assets/FORGE3D/", StringComparison.Ordinal)
+                )
             );
         }
 

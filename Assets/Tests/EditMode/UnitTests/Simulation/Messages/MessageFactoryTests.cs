@@ -1406,6 +1406,10 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("X-wing Squadron Deployed at Coruscant", messages[2].Title);
             Assert.AreEqual("fighter-voice", messages[2].BackgroundAudioPath);
             Assert.AreEqual("fighter-encyclopedia-image", messages[2].DisplayImagePath);
+            Assert.AreEqual(
+                AdvisorNotificationType.None,
+                DeliveryFor(messages[2]).NotificationType
+            );
             Assert.AreEqual("Mon Calamari Regiment Deployed to Coruscant", messages[3].Title);
             Assert.AreEqual(
                 "The following units have been deployed to Coruscant:\n"
@@ -1414,7 +1418,7 @@ namespace Rebellion.Tests.Simulation
             );
             Assert.AreEqual("regiment-encyclopedia-image", messages[3].DisplayImagePath);
             Assert.AreEqual(
-                AdvisorNotificationType.Manufacturing,
+                AdvisorNotificationType.None,
                 DeliveryFor(messages[3]).NotificationType
             );
         }
@@ -1606,6 +1610,10 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("construction:Coruscant", message.Title);
             Assert.AreEqual("body:Coruscant", message.Body);
             Assert.AreEqual("construction-image", message.DisplayImagePath);
+            Assert.AreEqual(
+                AdvisorNotificationType.Manufacturing,
+                DeliveryFor(message).NotificationType
+            );
         }
 
         [Test]
@@ -3166,8 +3174,6 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(2, deliveries.Count);
             Assert.AreEqual("owner:Target:Empire:Coruscant", ownerMessage.Body);
             Assert.AreEqual("captor:Target:Coruscant", captorMessage.Body);
-            Assert.AreEqual("alliance-image", ownerMessage.DisplayImagePath);
-            Assert.AreEqual("empire-image", captorMessage.DisplayImagePath);
             Assert.IsNull(ownerMessage.OverlayImagePath);
             Assert.IsNull(captorMessage.OverlayImagePath);
             Assert.AreEqual(
@@ -3175,6 +3181,53 @@ namespace Rebellion.Tests.Simulation
                 DeliveryFor(captorMessage).AdvisorSubjectNotification
             );
             Assert.AreEqual(target.TypeID, DeliveryFor(captorMessage).AdvisorSubjectTypeID);
+        }
+
+        [Test]
+        public void CreateMessages_OfficerCapture_UsesCapturedOfficerFactionImageForBothRecipients()
+        {
+            (GameRoot game, Faction alliance, Faction empire, Planet origin, _) =
+                BuildTwoFactionMessageScene();
+            Officer target = new Officer
+            {
+                DisplayName = "Target",
+                OwnerInstanceID = alliance.InstanceID,
+                CaptorInstanceID = empire.InstanceID,
+            };
+            game.AttachNode(target, origin);
+
+            List<MessageDelivery> deliveries = CreateMessages(
+                game,
+                new[]
+                {
+                    Definition(
+                        MessageResultType.OfficerCaptured,
+                        MessageType.Mission,
+                        "owner",
+                        "owner",
+                        imagePaths: FactionImages()
+                    ),
+                    Definition(
+                        MessageResultType.EnemyOfficerCaptured,
+                        MessageType.Mission,
+                        "captor",
+                        "captor",
+                        imagePaths: FactionImages()
+                    ),
+                },
+                new OfficerCaptureStateResult
+                {
+                    TargetOfficer = target,
+                    IsCaptured = true,
+                    Context = origin,
+                }
+            );
+
+            Assert.AreEqual(
+                "alliance-image",
+                FirstMessageFor(deliveries, alliance).DisplayImagePath
+            );
+            Assert.AreEqual("alliance-image", FirstMessageFor(deliveries, empire).DisplayImagePath);
         }
 
         [Test]

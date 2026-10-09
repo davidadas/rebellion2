@@ -112,7 +112,7 @@ namespace Rebellion.Simulation
                     continue;
                 }
 
-                if (!ShouldAutorouteFromBlockade(unit))
+                if (!ShouldAutorouteFromBlockade(unit, result.Planet))
                     continue;
 
                 ContainerNode destination = _queries.FindBlockadeAutorouteDestination(
@@ -137,12 +137,17 @@ namespace Rebellion.Simulation
 
         /// <summary>Returns whether an inbound unit must seek another destination.</summary>
         /// <param name="unit">The inbound unit.</param>
+        /// <param name="planet">The blockaded destination.</param>
         /// <returns>True when the blockade forces autorouting.</returns>
-        private static bool ShouldAutorouteFromBlockade(IMovable unit)
+        private static bool ShouldAutorouteFromBlockade(IMovable unit, Planet planet)
         {
-            return unit is Starfighter
-                || unit is Regiment
-                || unit is SpecialForces specialForces && !specialForces.IsOnMission();
+            return unit switch
+            {
+                Starfighter => unit.GetOwnerInstanceID() != planet.GetOwnerInstanceID(),
+                Regiment => true,
+                SpecialForces specialForces => !specialForces.IsOnMission(),
+                _ => false,
+            };
         }
 
         /// <summary>Destroys an inbound unit that cannot enter or route around a blockade.</summary>
@@ -184,6 +189,7 @@ namespace Rebellion.Simulation
                 TicksElapsed = 0,
                 MovementGroupID = movement.MovementGroupID,
                 SourceEventInstanceID = movement.SourceEventInstanceID,
+                ResolveEncounterOnArrival = movement.ResolveEncounterOnArrival,
                 OriginPosition = currentPosition,
                 CurrentPosition = currentPosition,
             };

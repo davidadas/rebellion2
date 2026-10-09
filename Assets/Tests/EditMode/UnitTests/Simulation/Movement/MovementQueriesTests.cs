@@ -53,7 +53,7 @@ namespace Rebellion.Tests.Simulation
                     MinTransitTicks = 1,
                     SameSectorMinTransitTicks = 1,
                     DefaultFighterHyperdrive = 60,
-                    DefaultOfficerHyperdrive = 100,
+                    DefaultPersonnelHyperdrive = 100,
                 },
             };
             (
@@ -106,7 +106,7 @@ namespace Rebellion.Tests.Simulation
                     MinTransitTicks = 1,
                     SameSectorMinTransitTicks = 1,
                     DefaultFighterHyperdrive = 60,
-                    DefaultOfficerHyperdrive = 100,
+                    DefaultPersonnelHyperdrive = 100,
                 },
             };
             (_, Planet origin, Planet destination, _, MovementQueries movement) = BuildScene(
@@ -145,7 +145,7 @@ namespace Rebellion.Tests.Simulation
                     MinTransitTicks = 1,
                     SameSectorMinTransitTicks = 1,
                     DefaultFighterHyperdrive = 60,
-                    DefaultOfficerHyperdrive = 100,
+                    DefaultPersonnelHyperdrive = 100,
                 },
             };
             (_, Planet origin, Planet destination, Officer officer, MovementQueries movement) =
@@ -154,6 +154,37 @@ namespace Rebellion.Tests.Simulation
             destination.PositionY = 0;
 
             int transitTicks = movement.CalculateTransitTicks(officer, origin, destination);
+
+            Assert.AreEqual(20, transitTicks);
+        }
+
+        [Test]
+        public void CalculateTransitTicks_SpecialForces_UsesConfiguredOfficerHyperdrive()
+        {
+            GameConfig config = new GameConfig
+            {
+                Movement = new GameConfig.MovementConfig
+                {
+                    DistanceDivisor = 5,
+                    MinTransitTicks = 1,
+                    SameSectorMinTransitTicks = 1,
+                    DefaultFighterHyperdrive = 50,
+                    DefaultPersonnelHyperdrive = 100,
+                },
+            };
+            (GameRoot game, Planet origin, Planet destination, _, MovementQueries movement) =
+                BuildScene(config);
+            destination.PositionX = 100;
+            destination.PositionY = 0;
+            SpecialForces specialForces = new SpecialForces
+            {
+                InstanceID = "special-forces",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(specialForces, origin);
+
+            int transitTicks = movement.CalculateTransitTicks(specialForces, origin, destination);
 
             Assert.AreEqual(20, transitTicks);
         }
@@ -169,7 +200,7 @@ namespace Rebellion.Tests.Simulation
                     MinTransitTicks = 1,
                     SameSectorMinTransitTicks = 1,
                     DefaultFighterHyperdrive = 60,
-                    DefaultOfficerHyperdrive = 100,
+                    DefaultPersonnelHyperdrive = 100,
                 },
             };
             (_, Planet origin, Planet destination, _, MovementQueries movement) = BuildScene(
@@ -285,6 +316,147 @@ namespace Rebellion.Tests.Simulation
             );
 
             Assert.IsFalse(estimated);
+        }
+
+        [Test]
+        public void GetPersonnelEncounterOdds_HostileDetector_ReturnsCompleteProjection()
+        {
+            GameConfig config = TestConfig.Create();
+            config.ProbabilityTables.Mission.Foil = new Dictionary<int, int> { { -1000, 73 } };
+            config.ProbabilityTables.Mission.Evasion = new Dictionary<int, int> { { -1000, 41 } };
+            (
+                GameRoot game,
+                Planet _,
+                Planet destination,
+                Officer officer,
+                MovementQueries movement
+            ) = BuildScene(config);
+            (_, CapitalShip ship) = AddBlockadingFleet(game, destination, starfighterCapacity: 1);
+            Starfighter detector = EntityFactory.CreateStarfighter("detector", "rebels");
+            detector.DetectionRating = 100;
+            detector.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(detector, ship);
+
+            PersonnelMovementEncounterOdds odds = movement.GetPersonnelEncounterOdds(
+                new IMissionParticipant[] { officer },
+                destination
+            );
+
+            CollectionAssert.AreEqual(
+                new ISceneNode[] { ship, detector },
+                odds.Detectors.Select(odds => odds.Detector)
+            );
+            PersonnelMovementDetectorOdds detectorOdds = odds.Detectors.Single(odds =>
+                odds.Detector == detector
+            );
+            Assert.AreSame(detector, detectorOdds.Detector);
+            Assert.AreEqual(73, detectorOdds.DetectionProbability);
+            Assert.AreEqual(41, detectorOdds.GetEvasionProbability(officer));
+        }
+
+        [Test]
+        public void GetPersonnelEncounterOdds_MixedDefenders_UsesOnlyCapitalShipsAndCarriedFighters()
+        {
+            (
+                GameRoot game,
+                Planet _,
+                Planet destination,
+                Officer officer,
+                MovementQueries movement
+            ) = BuildScene();
+            destination.OwnerInstanceID = "rebels";
+            (_, CapitalShip ship) = AddBlockadingFleet(game, destination, starfighterCapacity: 1);
+            Starfighter carriedFighter = EntityFactory.CreateStarfighter(
+                "carried-fighter",
+                "rebels"
+            );
+            Starfighter groundFighter = EntityFactory.CreateStarfighter("ground-fighter", "rebels");
+            Regiment carriedRegiment = EntityFactory.CreateRegiment("carried-regiment", "rebels");
+            Regiment groundRegiment = EntityFactory.CreateRegiment("ground-regiment", "rebels");
+            carriedFighter.ManufacturingStatus = ManufacturingStatus.Complete;
+            groundFighter.ManufacturingStatus = ManufacturingStatus.Complete;
+            carriedRegiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            groundRegiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            ship.RegimentCapacity = 1;
+            game.AttachNode(carriedFighter, ship);
+            game.AttachNode(carriedRegiment, ship);
+            game.AttachNode(groundFighter, destination);
+            game.AttachNode(groundRegiment, destination);
+
+            PersonnelMovementEncounterOdds odds = movement.GetPersonnelEncounterOdds(
+                new IMissionParticipant[] { officer },
+                destination
+            );
+
+            CollectionAssert.AreEqual(
+                new ISceneNode[] { ship, carriedFighter },
+                odds.Detectors.Select(entry => entry.Detector)
+            );
+        }
+
+        [Test]
+        public void GetPersonnelEncounterOdds_HostileFleetForceUser_ReturnsOnlyShipDetector()
+        {
+            GameConfig config = TestConfig.Create();
+            config.Jedi.MissionParticipantEncounterMinimum = 1;
+            config.Jedi.MissionDefenderEncounterMinimum = 1;
+            config.Jedi.EncounterProbabilityOffset = -10;
+            (
+                GameRoot game,
+                Planet _,
+                Planet destination,
+                Officer officer,
+                MovementQueries movement
+            ) = BuildScene(config);
+            officer.ForceValue = 20;
+            (_, CapitalShip ship) = AddBlockadingFleet(game, destination);
+            Officer defender = EntityFactory.CreateOfficer("force-defender", "rebels");
+            defender.ForceValue = 40;
+            game.AttachNode(defender, ship);
+
+            PersonnelMovementEncounterOdds odds = movement.GetPersonnelEncounterOdds(
+                new IMissionParticipant[] { officer },
+                destination
+            );
+
+            Assert.AreSame(ship, odds.Detectors.Single().Detector);
+        }
+
+        [Test]
+        public void GetPersonnelEncounterOdds_CompletedDetectionBlocker_ReturnsNoDetectors()
+        {
+            (
+                GameRoot game,
+                Planet _,
+                Planet destination,
+                Officer officer,
+                MovementQueries movement
+            ) = BuildScene(TestConfig.Create());
+            (_, CapitalShip ship) = AddBlockadingFleet(game, destination, starfighterCapacity: 1);
+            Starfighter detector = EntityFactory.CreateStarfighter("detector", "rebels");
+            detector.DetectionRating = 100;
+            detector.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(detector, ship);
+            destination.EnergyCapacity = 1;
+            Building blocker = new Building
+            {
+                InstanceID = "detection-blocker",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                IsDetectionBlocker = true,
+            };
+            game.AttachNode(blocker, destination);
+            officer.ForceValue = 100;
+            Officer defender = EntityFactory.CreateOfficer("force-defender", "rebels");
+            defender.ForceValue = 100;
+            game.AttachNode(defender, ship);
+
+            PersonnelMovementEncounterOdds odds = movement.GetPersonnelEncounterOdds(
+                new IMissionParticipant[] { officer },
+                destination
+            );
+
+            Assert.IsEmpty(odds.Detectors);
         }
 
         [Test]
@@ -555,7 +727,7 @@ namespace Rebellion.Tests.Simulation
                     MinTransitTicks = 1,
                     SameSectorMinTransitTicks = 1,
                     DefaultFighterHyperdrive = 60,
-                    DefaultOfficerHyperdrive = 100,
+                    DefaultPersonnelHyperdrive = 100,
                 },
             };
         }

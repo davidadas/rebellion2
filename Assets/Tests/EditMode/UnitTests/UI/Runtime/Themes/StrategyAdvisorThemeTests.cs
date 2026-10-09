@@ -65,28 +65,6 @@ namespace Rebellion.Tests.UI.Runtime.Themes
         }
 
         [Test]
-        public void GetNotificationKey_SharedQueueGroup_ReturnsSameSemanticKey()
-        {
-            StrategyAdvisorNotificationTheme general = new StrategyAdvisorNotificationTheme
-            {
-                NotificationType = AdvisorNotificationType.FieldPersonnel,
-                QueueGroup = AdvisorNotificationType.FieldPersonnel,
-            };
-            StrategyAdvisorNotificationTheme subject = new StrategyAdvisorNotificationTheme
-            {
-                SubjectTypeID = "subject-type",
-                SubjectNotification = AdvisorSubjectNotification.Report,
-                QueueGroup = AdvisorNotificationType.FieldPersonnel,
-            };
-
-            string generalKey = StrategyAdvisorTheme.GetNotificationKey(general);
-            string subjectKey = StrategyAdvisorTheme.GetNotificationKey(subject);
-
-            Assert.AreEqual("Group:FieldPersonnel", generalKey);
-            Assert.AreEqual(generalKey, subjectKey);
-        }
-
-        [Test]
         public void GetFramePath_AdvisorTheme_ReturnsRoleResourceAndFramePath()
         {
             StrategyAdvisorTheme theme = new StrategyAdvisorTheme

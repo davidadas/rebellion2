@@ -16,6 +16,8 @@ namespace Rebellion.AI.Demands
     /// </summary>
     internal sealed class AIProductionDemandGenerator : IAIDemandGenerator
     {
+        private const int _completeDemandPercent = 100;
+
         /// <summary>
         /// Adds production-facility expansion demands.
         /// </summary>
@@ -737,7 +739,7 @@ namespace Rebellion.AI.Demands
                     || context.Assessment.GetPlanetProductionFacilityCount(
                         planet,
                         ManufacturingType.Ship
-                    ) <= 0
+                    ) <= 1
                     || planet
                         .GetManufacturingQueue()
                         .TryGetValue(ManufacturingType.Ship, out List<IManufacturable> queue)
@@ -745,11 +747,8 @@ namespace Rebellion.AI.Demands
                 )
                     continue;
 
-                int targetCount =
-                    GetPlanetaryStarfighterCount(context, planet)
-                    + context.Game.Config.AI.Infrastructure.IdleShipyardFighterReserveCount;
-                if (GetOwnedStarfighterCount(context, planet) >= targetCount)
-                    continue;
+                int ownedCount = GetOwnedStarfighterCount(context, planet);
+                int targetCount = ownedCount + 1;
 
                 requirements.Add(
                     new AIProductionDemand(
@@ -770,7 +769,8 @@ namespace Rebellion.AI.Demands
                             .Config
                             .AI
                             .Infrastructure
-                            .IdleShipyardFighterDemandPercent
+                            .IdleShipyardFighterDemandPercent,
+                        usesIdleShipyardCapacity: true
                     )
                 );
             }
@@ -1609,6 +1609,26 @@ namespace Rebellion.AI.Demands
                 : isColonizationFleet || isColonizationOrder ? projectedCombat
                 : context.StrategicPlan.AssemblyFleetCombatStrength;
             int combatDeficit = targetCombat - projectedCombat;
+            int targetCapitalFirepower =
+                targetPlanet != null
+                    ? context.GetAttackDemand(targetPlanet)?.CapitalShipFirepower ?? 0
+                : isColonizationFleet || isColonizationOrder
+                    ? context.Assessment.GetProjectedFleetFirepowerAgainstCapitalShips(fleet)
+                : targetCombat;
+            int measuredCapitalFirepowerDeficit =
+                targetCapitalFirepower
+                - context.Assessment.GetProjectedFleetFirepowerAgainstCapitalShips(fleet);
+            int capitalFirepowerDeficit =
+                targetPlanet == null
+                    ? combatDeficit
+                    : Math.Max(measuredCapitalFirepowerDeficit, combatDeficit);
+            int targetStarfighterFirepower =
+                targetPlanet == null
+                    ? 0
+                    : context.GetAttackDemand(targetPlanet)?.StarfighterFirepower ?? 0;
+            int starfighterFirepowerDeficit =
+                targetStarfighterFirepower
+                - context.Assessment.GetProjectedFleetFirepowerAgainstStarfighters(fleet);
             int targetRegimentCapacity =
                 isDefenseOrder ? 0
                 : isColonizationFleet || isColonizationOrder
@@ -1625,50 +1645,96 @@ namespace Rebellion.AI.Demands
                     ? 0
                     : context.GetAttackDemand(targetPlanet)?.BombardmentStrength ?? 0;
             int bombardmentDeficit = targetBombardment - projectedBombardment;
-            AICapitalShipProductionRole capitalShipRole;
-            int deficit;
-            int target;
-            if (regimentCapacityDeficit > 0)
-            {
-                capitalShipRole = AICapitalShipProductionRole.TroopTransport;
-                deficit = regimentCapacityDeficit;
-                target = targetRegimentCapacity;
-            }
-            else if (bombardmentDeficit > 0)
-            {
-                capitalShipRole = AICapitalShipProductionRole.Bombardment;
-                deficit = bombardmentDeficit;
-                target = targetBombardment;
-            }
-            else if (combatDeficit > 0)
-            {
-                capitalShipRole = AICapitalShipProductionRole.General;
-                deficit = combatDeficit;
-                target = targetCombat;
-            }
-            else if (!isColonizationFleet && NeedsInterdictionCapitalShip(context, fleet))
-            {
-                capitalShipRole = AICapitalShipProductionRole.Interdiction;
-                deficit = 1;
-                target = 1;
-            }
-            else
-            {
+            int targetStarfighterCapacity =
+                targetPlanet == null
+                    ? (combatDeficit > 0 ? 1 : 0)
+                    : context.GetAttackDemand(targetPlanet)?.StarfighterCount ?? 0;
+            int starfighterCapacityDeficit =
+                targetStarfighterCapacity - fleet.GetStarfighterCapacity();
+            int interdictionDeficit =
+                !isColonizationFleet && NeedsInterdictionCapitalShip(context, fleet) ? 1 : 0;
+            int embarkedRegimentDeficit = Math.Max(
+                0,
+                targetRegimentCapacity - fleet.GetCurrentRegimentCount()
+            );
+            int targetStarfighterCount = GetTargetStarfighterCount(context, fleet);
+            int embarkedStarfighterDeficit = Math.Max(
+                0,
+                targetStarfighterCount - fleet.GetCurrentStarfighterCount()
+            );
+            int escortDeficit =
+                context.Assessment.GetProjectedFleetArmedEscortCount(fleet) > 0 ? 0 : 1;
+            if (
+                combatDeficit <= 0
+                && capitalFirepowerDeficit <= 0
+                && starfighterFirepowerDeficit <= 0
+                && starfighterCapacityDeficit <= 0
+                && regimentCapacityDeficit <= 0
+                && bombardmentDeficit <= 0
+                && interdictionDeficit <= 0
+                && escortDeficit <= 0
+            )
                 return;
-            }
+
+            double greatestDeficitRatio = 0;
+            greatestDeficitRatio = Math.Max(
+                greatestDeficitRatio,
+                Math.Max(0, combatDeficit) / (double)Math.Max(1, targetCombat)
+            );
+            greatestDeficitRatio = Math.Max(
+                greatestDeficitRatio,
+                Math.Max(0, measuredCapitalFirepowerDeficit)
+                    / (double)Math.Max(1, targetCapitalFirepower)
+            );
+            greatestDeficitRatio = Math.Max(
+                greatestDeficitRatio,
+                Math.Max(0, starfighterFirepowerDeficit)
+                    / (double)Math.Max(1, targetStarfighterFirepower)
+            );
+            greatestDeficitRatio = Math.Max(
+                greatestDeficitRatio,
+                Math.Max(0, regimentCapacityDeficit) / (double)Math.Max(1, targetRegimentCapacity)
+            );
+            greatestDeficitRatio = Math.Max(
+                greatestDeficitRatio,
+                Math.Max(0, bombardmentDeficit) / (double)Math.Max(1, targetBombardment)
+            );
+            greatestDeficitRatio = Math.Max(
+                greatestDeficitRatio,
+                Math.Max(0, starfighterCapacityDeficit)
+                    / (double)Math.Max(1, targetStarfighterCapacity)
+            );
+            greatestDeficitRatio = Math.Max(greatestDeficitRatio, interdictionDeficit);
+            greatestDeficitRatio = Math.Max(greatestDeficitRatio, escortDeficit);
+            int deficitPercent = (int)
+                Math.Ceiling(Math.Min(1, greatestDeficitRatio) * _completeDemandPercent);
 
             demands.Add(
-                CreateFleetDemand(
-                    context,
+                new AIProductionDemand(
+                    AIProductionDemand.CreateId(
+                        context.Faction.InstanceID,
+                        AIProductionDemandKind.FleetCapitalShip,
+                        fleet.InstanceID
+                    ),
                     AIProductionDemandKind.FleetCapitalShip,
                     ManufacturingType.Ship,
+                    BuildingType.None,
                     fleet,
-                    deficit,
-                    target,
-                    isColonizationFleet
+                    quantityNeeded: 1,
+                    targetCount: _completeDemandPercent,
+                    baseDemandPercent: isColonizationFleet
                         ? context.Game.Config.AI.Infrastructure.ColonizationFleetDemandPercent
                         : context.Game.Config.AI.Infrastructure.FleetCapitalShipDemandPercent,
-                    capitalShipRole
+                    deficitCount: deficitPercent,
+                    capitalFirepowerDeficit: capitalFirepowerDeficit,
+                    starfighterFirepowerDeficit: starfighterFirepowerDeficit,
+                    starfighterCapacityDeficit: starfighterCapacityDeficit,
+                    regimentCapacityDeficit: regimentCapacityDeficit,
+                    bombardmentDeficit: bombardmentDeficit,
+                    interdictionDeficit: interdictionDeficit,
+                    embarkedRegimentDeficit: embarkedRegimentDeficit,
+                    embarkedStarfighterDeficit: embarkedStarfighterDeficit,
+                    escortDeficit: escortDeficit
                 )
             );
         }
@@ -1686,7 +1752,7 @@ namespace Rebellion.AI.Demands
                 || fleet.Order.OrderType is FleetOrderType.Attack or FleetOrderType.Defend;
             if (
                 !supportsInterdiction
-                || fleet.GetChildren<CapitalShip>().Any(capitalShip => capitalShip.HasGravityWell)
+                || context.Assessment.GetProjectedFleetInterdictionCount(fleet) > 0
             )
                 return false;
 

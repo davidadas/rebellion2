@@ -1232,7 +1232,7 @@ namespace Rebellion.Game.Galaxy
         /// <returns>
         /// True when the planet is colonized or has a friendly unit stationed directly on it.
         /// </returns>
-        private bool CanHostOwnedUnits()
+        internal bool CanHostOwnedUnits()
         {
             return IsColonized || HasStationedUnit(GetOwnerInstanceID());
         }

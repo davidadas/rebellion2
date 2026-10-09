@@ -3,11 +3,9 @@ using UnityEngine;
 
 /// <summary>
 /// Builds a material at composition time from a named shader and an optional content texture, then
-/// assigns it to this object's renderer. Materials baked into the generated prefab at build time do
-/// not render here (custom-shader materials come through as the error shader, and glTFast's imported
-/// transparent materials don't draw in the built-in pipeline), so rig layers that need a specific
-/// shader or a content-sourced texture are materialised at runtime. Applied during the content
-/// binding pass via <see cref="IContentInitializable"/>.
+/// assigns it to this object's renderer. Generated prefabs retain shader and content addresses rather
+/// than transient materials, so rig layers that need a custom shader or installation-sourced texture
+/// are materialised during the content binding pass via <see cref="IContentInitializable"/>.
 /// </summary>
 [RequireComponent(typeof(Renderer))]
 public sealed class RuntimeMaterialBinding : MonoBehaviour, IContentInitializable

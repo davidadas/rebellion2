@@ -592,6 +592,29 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         }
 
         [Test]
+        public void OpenStopConstructionConfirmWindow_ConfirmedCancellation_InvokesSuccessCallback()
+        {
+            Planet producer = _specialForces.GetParentOfType<Planet>();
+            _specialForces.ManufacturingStatus = ManufacturingStatus.Building;
+            _specialForces.ProducerPlanetID = producer.InstanceID;
+            producer.GetManufacturingQueue()[ManufacturingType.Troop] = new List<IManufacturable>
+            {
+                _specialForces,
+            };
+            int callbackCount = 0;
+            _controller.OpenStopConstructionConfirmWindow(
+                _sourceWindow,
+                new ISceneNode[] { _specialForces },
+                () => callbackCount++
+            );
+
+            ConfirmOpenDialog();
+
+            Assert.AreEqual(1, callbackCount);
+            Assert.IsFalse(producer.GetManufacturingQueue().ContainsKey(ManufacturingType.Troop));
+        }
+
+        [Test]
         public void OpenRetireConfirmWindow_WithoutSourceWindow_OpensConfirmationWindow()
         {
             _controller.OpenRetireConfirmWindow(null, new ISceneNode[] { _officer });

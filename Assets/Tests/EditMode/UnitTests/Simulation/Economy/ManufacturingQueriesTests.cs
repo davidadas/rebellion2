@@ -24,6 +24,30 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void GetManufacturingOrder_PopulatedLane_ReturnsProductAndQuantity()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet planet = CreateOrderTestConstructionPlanet(game, "p1", "empire");
+            Building template = CreateOrderTestBuildingTemplate("mine");
+            ManufacturingCommands manager = new ManufacturingCommands(
+                game,
+                new FleetCommands(game),
+                new ManufacturingQueries(game)
+            );
+            Assert.IsTrue(manager.StartManufacturing(planet, template, planet, 3, "empire"));
+
+            ManufacturingOrder order = ManufacturingQueries.GetManufacturingOrder(
+                planet,
+                ManufacturingType.Building
+            );
+
+            Assert.IsNotNull(order);
+            Assert.AreEqual(ManufacturingType.Building, order.ManufacturingType);
+            Assert.AreEqual(template.TypeID, order.ProductTypeID);
+            Assert.AreEqual(3, order.Quantity);
+        }
+
+        [Test]
         public void EstimateQueueCompletionTicks_NoQueuedWork_ReturnsNull()
         {
             GameRoot game = CreateOrderTestGame();
@@ -70,6 +94,242 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(4, first.ManufacturingProgress);
             Assert.AreEqual(8, second.ManufacturingProgress);
             Assert.AreEqual(1, facility.ProductionCycleProgress);
+        }
+
+        [TestCase(1, 6)]
+        [TestCase(3, 26)]
+        public void EstimateManufacturingOrderTicks_SameProduct_PreservesRetainedProgress(
+            int requestedCount,
+            int expectedTicks
+        )
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet planet = CreateOrderTestPlanet(game, "p1", "empire");
+            game.AttachNode(CreateOrderTestConstructionFacility("yard", "empire", 1), planet);
+            Building template = CreateOrderTestBuildingTemplate("mine");
+            ManufacturingCommands manager = new ManufacturingCommands(
+                game,
+                new FleetCommands(game),
+                new ManufacturingQueries(game)
+            );
+            Assert.IsTrue(manager.StartManufacturing(planet, template, planet, 2, "empire"));
+            planet.GetManufacturingQueue()[ManufacturingType.Building][0].ManufacturingProgress = 4;
+
+            int? estimate = ManufacturingQueries.EstimateManufacturingOrderTicks(
+                planet,
+                template,
+                requestedCount
+            );
+
+            Assert.AreEqual(expectedTicks, estimate);
+        }
+
+        [Test]
+        public void CanSetManufacturingOrder_DifferentBuildingAtDestinationCapacity_ReleasesReplacementCapacity()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet planet = CreateOrderTestConstructionPlanet(game, "p1", "empire");
+            planet.EnergyCapacity = 2;
+            planet.NumRawResourceNodes = 1;
+            Building activeTemplate = CreateOrderTestBuildingTemplate("mine");
+            Building replacementTemplate = CreateOrderTestBuildingTemplate("refinery");
+            replacementTemplate.BuildingType = BuildingType.Refinery;
+            ManufacturingCommands manager = new ManufacturingCommands(
+                game,
+                new FleetCommands(game),
+                new ManufacturingQueries(game)
+            );
+            Assert.IsTrue(manager.StartManufacturing(planet, activeTemplate, planet, 1, "empire"));
+
+            bool canSet = new ManufacturingQueries(game).CanSetManufacturingOrder(
+                planet,
+                replacementTemplate,
+                planet,
+                1,
+                "empire"
+            );
+
+            Assert.IsTrue(canSet);
+        }
+
+        [Test]
+        public void CanSetManufacturingOrder_ExistingOrderConsumesMaintenance_ReleasesReservation()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Faction faction = game.GetFactions().Single();
+            faction.Settings.ResourceProcessingPointsPerFacility = 10;
+            Planet planet = CreateOrderTestShipyardPlanet(game, "p1", "empire");
+            game.AttachNode(
+                new Building
+                {
+                    InstanceID = "mine",
+                    OwnerInstanceID = "empire",
+                    BuildingType = BuildingType.Mine,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                planet
+            );
+            game.AttachNode(
+                new Building
+                {
+                    InstanceID = "refinery",
+                    OwnerInstanceID = "empire",
+                    BuildingType = BuildingType.Refinery,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                planet
+            );
+            CapitalShip activeTemplate = CreateOrderTestCapitalShipTemplate(
+                "old-ship",
+                "Old Ship",
+                10
+            );
+            CapitalShip replacementTemplate = CreateOrderTestCapitalShipTemplate(
+                "new-ship",
+                "New Ship",
+                10
+            );
+            ManufacturingCommands manager = new ManufacturingCommands(
+                game,
+                new FleetCommands(game),
+                new ManufacturingQueries(game)
+            );
+            Assert.IsTrue(manager.StartManufacturing(planet, activeTemplate, planet, 1, "empire"));
+
+            bool canSet = new ManufacturingQueries(game).CanSetManufacturingOrder(
+                planet,
+                replacementTemplate,
+                planet,
+                1,
+                "empire"
+            );
+
+            Assert.IsTrue(canSet);
+        }
+
+        [Test]
+        public void CanSetManufacturingOrder_ExistingFighterFillsCarrier_ReleasesCarrierCapacity()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet producer = CreateOrderTestShipyardPlanet(game, "producer", "empire");
+            Planet destination = CreateOrderTestPlanet(game, "destination", "empire");
+            Fleet fleet = EntityFactory.CreateFleet("fleet", "empire");
+            CapitalShip carrier = new CapitalShip
+            {
+                InstanceID = "carrier",
+                OwnerInstanceID = "empire",
+                StarfighterCapacity = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, destination);
+            game.AttachNode(carrier, fleet);
+            Starfighter activeTemplate = CreateOrderTestStarfighterTemplate(
+                "old-fighter",
+                "empire"
+            );
+            Starfighter replacementTemplate = CreateOrderTestStarfighterTemplate(
+                "new-fighter",
+                "empire"
+            );
+            ManufacturingCommands manager = new ManufacturingCommands(
+                game,
+                new FleetCommands(game),
+                new ManufacturingQueries(game)
+            );
+            Assert.IsTrue(manager.StartManufacturing(producer, activeTemplate, fleet, 1, "empire"));
+
+            bool canSet = new ManufacturingQueries(game).CanSetManufacturingOrder(
+                producer,
+                replacementTemplate,
+                fleet,
+                1,
+                "empire"
+            );
+
+            Assert.IsTrue(canSet);
+        }
+
+        [Test]
+        public void CanSetManufacturingOrder_ReplacementFighterOnTravelingCarrier_DoesNotReleaseCapacity()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet producer = CreateOrderTestShipyardPlanet(game, "producer", "empire");
+            Planet destination = CreateOrderTestPlanet(game, "destination", "empire");
+            Fleet fleet = EntityFactory.CreateFleet("fleet", "empire");
+            CapitalShip carrier = new CapitalShip
+            {
+                InstanceID = "carrier",
+                OwnerInstanceID = "empire",
+                StarfighterCapacity = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, destination);
+            game.AttachNode(carrier, fleet);
+            Starfighter activeTemplate = CreateOrderTestStarfighterTemplate(
+                "old-fighter",
+                "empire"
+            );
+            Starfighter replacementTemplate = CreateOrderTestStarfighterTemplate(
+                "new-fighter",
+                "empire"
+            );
+            ManufacturingCommands manager = new ManufacturingCommands(
+                game,
+                new FleetCommands(game),
+                new ManufacturingQueries(game)
+            );
+            Assert.IsTrue(manager.StartManufacturing(producer, activeTemplate, fleet, 1, "empire"));
+            carrier.Movement = new MovementState { TransitTicks = 10 };
+
+            bool canSet = new ManufacturingQueries(game).CanSetManufacturingOrder(
+                producer,
+                replacementTemplate,
+                fleet,
+                1,
+                "empire"
+            );
+
+            Assert.IsFalse(canSet);
+        }
+
+        [Test]
+        public void CanSetManufacturingOrder_ReplacementRegimentOnTravelingCarrier_DoesNotReleaseCapacity()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet producer = CreateOrderTestTrainingPlanet(game, "producer", "empire");
+            Planet destination = CreateOrderTestPlanet(game, "destination", "empire");
+            Fleet fleet = EntityFactory.CreateFleet("fleet", "empire");
+            CapitalShip carrier = new CapitalShip
+            {
+                InstanceID = "carrier",
+                OwnerInstanceID = "empire",
+                RegimentCapacity = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, destination);
+            game.AttachNode(carrier, fleet);
+            Regiment activeTemplate = CreateOrderTestRegimentTemplate("old-regiment", "empire");
+            Regiment replacementTemplate = CreateOrderTestRegimentTemplate(
+                "new-regiment",
+                "empire"
+            );
+            ManufacturingCommands manager = new ManufacturingCommands(
+                game,
+                new FleetCommands(game),
+                new ManufacturingQueries(game)
+            );
+            Assert.IsTrue(manager.StartManufacturing(producer, activeTemplate, fleet, 1, "empire"));
+            carrier.Movement = new MovementState { TransitTicks = 10 };
+
+            bool canSet = new ManufacturingQueries(game).CanSetManufacturingOrder(
+                producer,
+                replacementTemplate,
+                fleet,
+                1,
+                "empire"
+            );
+
+            Assert.IsFalse(canSet);
         }
 
         [Test]
@@ -144,6 +404,37 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void CanAcceptManufacturingOrder_StarfighterForBlockadedPlanet_ReturnsFalse()
+        {
+            GameRoot game = CreateOrderTestGame();
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
+            Planet producer = CreateOrderTestShipyardPlanet(game, "producer", "empire");
+            Planet destination = CreateOrderTestPlanet(game, "destination", "empire");
+            Fleet blockadingFleet = EntityFactory.CreateFleet("blockading-fleet", "rebels");
+            CapitalShip blockadingShip = new CapitalShip
+            {
+                InstanceID = "blockading-ship",
+                OwnerInstanceID = "rebels",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaxHullStrength = 100,
+                CurrentHullStrength = 100,
+            };
+            game.AttachNode(blockadingFleet, destination);
+            game.AttachNode(blockadingShip, blockadingFleet);
+            Starfighter template = CreateOrderTestStarfighterTemplate("fighter", "empire");
+
+            bool canAccept = ManufacturingQueries.CanAcceptManufacturingOrder(
+                producer,
+                template,
+                destination,
+                1,
+                "empire"
+            );
+
+            Assert.IsFalse(canAccept);
+        }
+
+        [Test]
         public void CanStartManufacturing_ResourceFacilityWithoutMaintenanceHeadroom_ReturnsTrue()
         {
             GameRoot game = CreateOrderTestGame();
@@ -154,6 +445,103 @@ namespace Rebellion.Tests.Simulation
             bool canStart = new ManufacturingQueries(game).CanStartManufacturing(
                 planet,
                 mine,
+                planet,
+                1,
+                "empire"
+            );
+
+            Assert.IsTrue(canStart);
+        }
+
+        [Test]
+        public void CanStartManufacturing_MineAtRawResourceNodeCapacity_ReturnsFalse()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet planet = CreateOrderTestConstructionPlanet(game, "p1", "empire");
+            planet.NumRawResourceNodes = 2;
+            game.AttachNode(
+                new Building
+                {
+                    InstanceID = "mine1",
+                    OwnerInstanceID = "empire",
+                    BuildingType = BuildingType.Mine,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                planet
+            );
+            game.AttachNode(
+                new Building
+                {
+                    InstanceID = "mine2",
+                    OwnerInstanceID = "empire",
+                    BuildingType = BuildingType.Mine,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                planet
+            );
+
+            bool canStart = new ManufacturingQueries(game).CanStartManufacturing(
+                planet,
+                CreateOrderTestBuildingTemplate("mine"),
+                planet,
+                1,
+                "empire"
+            );
+
+            Assert.IsFalse(canStart);
+        }
+
+        [Test]
+        public void CanStartManufacturing_MineWithAvailableResourceNodes_ReturnsTrue()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet planet = CreateOrderTestConstructionPlanet(game, "p1", "empire");
+            planet.NumRawResourceNodes = 3;
+            game.AttachNode(
+                new Building
+                {
+                    InstanceID = "mine1",
+                    OwnerInstanceID = "empire",
+                    BuildingType = BuildingType.Mine,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                planet
+            );
+
+            bool canStart = new ManufacturingQueries(game).CanStartManufacturing(
+                planet,
+                CreateOrderTestBuildingTemplate("mine"),
+                planet,
+                1,
+                "empire"
+            );
+
+            Assert.IsTrue(canStart);
+        }
+
+        [Test]
+        public void CanStartManufacturing_NonMineBuildingAtRawResourceNodeCapacity_ReturnsTrue()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet planet = CreateOrderTestConstructionPlanet(game, "p1", "empire");
+            planet.NumRawResourceNodes = 1;
+            game.AttachNode(
+                new Building
+                {
+                    InstanceID = "mine1",
+                    OwnerInstanceID = "empire",
+                    BuildingType = BuildingType.Mine,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                planet
+            );
+
+            Building refinery = CreateOrderTestBuildingTemplate("refinery");
+            refinery.BuildingType = BuildingType.Refinery;
+
+            bool canStart = new ManufacturingQueries(game).CanStartManufacturing(
+                planet,
+                refinery,
                 planet,
                 1,
                 "empire"
@@ -505,6 +893,47 @@ namespace Rebellion.Tests.Simulation
                 ConstructionCost = 10,
                 MaintenanceCost = maintenanceCost,
                 BaseBuildSpeed = 1,
+            };
+        }
+
+        /// <summary>
+        /// Creates an order test starfighter template.
+        /// </summary>
+        /// <param name="typeId">The type id.</param>
+        /// <param name="factionId">The manufacturing faction id.</param>
+        /// <returns>The created starfighter template.</returns>
+        private static Starfighter CreateOrderTestStarfighterTemplate(
+            string typeId,
+            string factionId
+        )
+        {
+            return new Starfighter
+            {
+                TypeID = typeId,
+                DisplayName = typeId,
+                ConstructionCost = 10,
+                MaintenanceCost = 0,
+                BaseBuildSpeed = 1,
+                ManufacturingFactionInstanceIDs = new List<string> { factionId },
+            };
+        }
+
+        /// <summary>
+        /// Creates an order test regiment template.
+        /// </summary>
+        /// <param name="typeId">The type id.</param>
+        /// <param name="factionId">The manufacturing faction id.</param>
+        /// <returns>The created regiment template.</returns>
+        private static Regiment CreateOrderTestRegimentTemplate(string typeId, string factionId)
+        {
+            return new Regiment
+            {
+                TypeID = typeId,
+                DisplayName = typeId,
+                ConstructionCost = 10,
+                MaintenanceCost = 0,
+                BaseBuildSpeed = 1,
+                ManufacturingFactionInstanceIDs = new List<string> { factionId },
             };
         }
 
