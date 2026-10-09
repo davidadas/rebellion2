@@ -367,6 +367,159 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         [Test]
+        public void SelectItem_ExpandedCapitalShip_FiltersDetailsToSelectedShip()
+        {
+            CapitalShip additionalShip = CreateCapitalShip("additional-ship", "Additional Ship");
+            Officer additionalOfficer = new Officer
+            {
+                InstanceID = "additional-officer",
+                DisplayName = "Additional Officer",
+                OwnerInstanceID = "owner",
+            };
+            additionalShip.AddTestChild(additionalOfficer);
+            _fleet.AddTestChild(additionalShip);
+            _session.Reconcile();
+
+            Assert.IsTrue(_session.ToggleFleetExpanded(0));
+            Assert.IsTrue(_session.SelectTab(FleetWindowTab.Personnel));
+            Assert.IsTrue(_session.SelectFleetListItem(_capitalShip));
+
+            CollectionAssert.AreEqual(
+                new ISceneNode[] { _officer, _specialForces },
+                _session.DetailItems
+            );
+            CollectionAssert.AreEqual(new[] { 1 }, _session.SelectedFleetListItems);
+            Assert.IsEmpty(_session.SelectedFleetItems);
+        }
+
+        [Test]
+        public void SelectFleetListItem_ExpandedCapitalShip_DisablesCapitalShipTab()
+        {
+            Assert.IsTrue(_session.ToggleFleetExpanded(0));
+
+            Assert.IsTrue(_session.SelectFleetListItem(_capitalShip));
+
+            Assert.AreEqual(FleetWindowTab.Starfighters, _session.ActiveTab);
+            Assert.IsFalse(_session.HasDetailItems(FleetWindowTab.CapitalShips));
+            CollectionAssert.AreEqual(new ISceneNode[] { _starfighter }, _session.DetailItems);
+            Assert.IsFalse(_session.SelectTab(FleetWindowTab.CapitalShips));
+        }
+
+        [Test]
+        public void SelectFleetListItem_ToggledShipLeavesFleetSelected_PreservesCapitalShipTab()
+        {
+            SelectionModifierState modifiers = new SelectionModifierState(true, false);
+            FleetWindowSession session = new FleetWindowSession(
+                new GalaxyMapPlanet(new GalaxyPlanetSector(), _planet, string.Empty),
+                _window,
+                () => modifiers
+            );
+            Assert.IsTrue(session.ToggleFleetExpanded(0));
+            Assert.IsTrue(session.SelectFleetListItem(_capitalShip));
+            Assert.IsTrue(session.SelectTab(FleetWindowTab.CapitalShips));
+
+            Assert.IsTrue(session.SelectFleetListItem(_capitalShip));
+
+            CollectionAssert.AreEqual(
+                new ISceneNode[] { _fleet },
+                session.SelectedFleetListSources
+            );
+            Assert.AreEqual(FleetWindowTab.CapitalShips, session.ActiveTab);
+        }
+
+        [Test]
+        public void GetSelectedCapacity_ParentFleetAndExpandedShip_CountsCarrierOnce()
+        {
+            _capitalShip.StarfighterCapacity = 4;
+            _capitalShip.RegimentCapacity = 3;
+            SelectionModifierState modifiers = new SelectionModifierState(true, false);
+            FleetWindowSession session = new FleetWindowSession(
+                new GalaxyMapPlanet(new GalaxyPlanetSector(), _planet, string.Empty),
+                _window,
+                () => modifiers
+            );
+            Assert.IsTrue(session.ToggleFleetExpanded(0));
+            Assert.IsTrue(session.SelectFleetListItem(_capitalShip));
+            CollectionAssert.AreEqual(
+                new ISceneNode[] { _fleet, _capitalShip },
+                session.SelectedFleetListSources
+            );
+
+            session.GetSelectedCapacity(
+                FleetWindowTab.Starfighters,
+                out int fighters,
+                out int bays
+            );
+            session.GetSelectedCapacity(FleetWindowTab.Regiments, out int regiments, out int holds);
+
+            Assert.AreEqual(1, fighters);
+            Assert.AreEqual(4, bays);
+            Assert.AreEqual(1, regiments);
+            Assert.AreEqual(3, holds);
+        }
+
+        [Test]
+        public void CaptureFleetListContext_ExpandedCapitalShip_DisablesCapitalShipTab()
+        {
+            Assert.IsTrue(_session.ToggleFleetExpanded(0));
+
+            Assert.IsTrue(_session.CaptureFleetListContext(_capitalShip));
+
+            Assert.AreEqual(FleetWindowTab.Starfighters, _session.ActiveTab);
+            CollectionAssert.AreEqual(new ISceneNode[] { _starfighter }, _session.DetailItems);
+        }
+
+        [Test]
+        public void SelectFleetListItem_MixedFactionModifierSelection_KeepsPlayerSideOnly()
+        {
+            SelectionModifierState modifiers = default;
+            CapitalShip enemyShip = new CapitalShip
+            {
+                InstanceID = "enemy-ship",
+                DisplayName = "Enemy Ship",
+                OwnerInstanceID = "enemy",
+            };
+            GameFleet enemyFleet = new GameFleet(
+                "enemy",
+                "Enemy Fleet",
+                new List<CapitalShip> { enemyShip }
+            )
+            {
+                InstanceID = "enemy-fleet",
+            };
+            _planet.AddTestChild(enemyFleet);
+            AttachFleetGraph(_planet, enemyFleet);
+            FleetWindowSession session = new FleetWindowSession(
+                new GalaxyMapPlanet(new GalaxyPlanetSector(), _planet, string.Empty),
+                _window,
+                () => modifiers,
+                () => "owner"
+            );
+
+            modifiers = new SelectionModifierState(true, false);
+            Assert.IsTrue(session.SelectFleetListItem(enemyFleet));
+
+            CollectionAssert.AreEqual(
+                new ISceneNode[] { _fleet },
+                session.SelectedFleetListSources
+            );
+
+            modifiers = default;
+            Assert.IsTrue(session.SelectFleetListItem(enemyFleet));
+            CollectionAssert.AreEqual(
+                new ISceneNode[] { enemyFleet },
+                session.SelectedFleetListSources
+            );
+
+            modifiers = new SelectionModifierState(true, false);
+            Assert.IsTrue(session.SelectFleetListItem(_fleet));
+            CollectionAssert.AreEqual(
+                new ISceneNode[] { _fleet },
+                session.SelectedFleetListSources
+            );
+        }
+
+        [Test]
         public void SelectItem_InvalidDetail_ReturnsFalseWithoutChangingSelection()
         {
             bool selected = _session.SelectItem(CreateCapitalShip("missing-ship", "Missing Ship"));
@@ -418,6 +571,29 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreSame(_capitalShip, _session.RenameTarget);
             Assert.AreEqual(-1, _session.RenameFleetRowIndex);
             Assert.AreEqual(0, _session.RenameDetailItemIndex);
+        }
+
+        [Test]
+        public void BeginRename_FleetAfterExpandedRows_TracksFlattenedRowIndex()
+        {
+            Assert.IsTrue(_session.ToggleFleetExpanded(0));
+
+            Assert.IsTrue(_session.BeginRename(_secondFleet));
+
+            Assert.AreEqual(2, _session.RenameFleetRowIndex);
+            Assert.AreEqual(-1, _session.RenameDetailItemIndex);
+        }
+
+        [Test]
+        public void BeginRename_ExpandedCapitalShipContext_TracksFleetListRow()
+        {
+            Assert.IsTrue(_session.ToggleFleetExpanded(0));
+            Assert.IsTrue(_session.CaptureFleetListContext(_capitalShip));
+
+            Assert.IsTrue(_session.BeginRename(_capitalShip));
+
+            Assert.AreEqual(1, _session.RenameFleetRowIndex);
+            Assert.AreEqual(-1, _session.RenameDetailItemIndex);
         }
 
         [Test]

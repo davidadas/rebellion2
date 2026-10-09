@@ -553,7 +553,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 new StrategyAdvisorNotificationTheme
                 {
                     NotificationType = AdvisorNotificationType.PositivePopularSupport,
-                    LifetimeTicks = 20,
                     Droid = new StrategyAdvisorAnimationTheme
                     {
                         Animation = "Alert",
@@ -588,18 +587,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                         ),
                         NotificationType = AdvisorNotificationType.PositivePopularSupport,
                     },
-                    0,
                     true
                 );
 
-                controller.ProcessPending(0, true);
+                controller.ProcessPending(true);
 
                 Assert.AreEqual(0, playbackCount);
                 Assert.AreSame(droidIdleTexture, GetImage(rootObject, "DroidImage").texture);
 
                 textures[theme.GetFramePath("Alert", 0, true)] = firstFrame;
                 textures[theme.GetFramePath("Alert", 1, true)] = secondFrame;
-                controller.ProcessPending(0, true);
+                controller.ProcessPending(true);
 
                 Assert.AreEqual(1, playbackCount);
                 Assert.AreSame(firstFrame, GetImage(rootObject, "DroidImage").texture);
@@ -615,7 +613,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         }
 
         [Test]
-        public void ProcessPending_ActivePlayback_QueuesNotificationForAutomaticPlayback()
+        public void ProcessPending_ActivePlayback_RetainsNextNotificationUntilNextProcessingPass()
         {
             GameObject rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
             StrategyAdvisorView view = rootObject.GetComponentInChildren<StrategyAdvisorView>(true);
@@ -624,7 +622,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 new StrategyAdvisorNotificationTheme
                 {
                     NotificationType = AdvisorNotificationType.PositivePopularSupport,
-                    LifetimeTicks = 20,
                     Droid = new StrategyAdvisorAnimationTheme
                     {
                         Animation = "First",
@@ -636,7 +633,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 new StrategyAdvisorNotificationTheme
                 {
                     NotificationType = AdvisorNotificationType.NegativePopularSupport,
-                    LifetimeTicks = 1,
                     Droid = new StrategyAdvisorAnimationTheme
                     {
                         Animation = "Second",
@@ -666,25 +662,171 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
 
                 controller.Notify(
                     CreateAdvisorDelivery(AdvisorNotificationType.PositivePopularSupport),
-                    0,
                     true
                 );
-                controller.ProcessPending(0, true);
+                controller.ProcessPending(true);
                 controller.Notify(
                     CreateAdvisorDelivery(AdvisorNotificationType.NegativePopularSupport),
-                    1,
                     true
                 );
-                controller.ProcessPending(1, true);
+                controller.ProcessPending(true);
 
                 Assert.AreEqual(1, started.Count);
                 Assert.AreSame(firstFrame, started[0].Frames.Single());
 
-                controller.ProcessPending(20, true);
+                controller.ProcessPending(true);
                 view.AdvanceAnimation(theme.FrameIntervalSeconds);
+                controller.ProcessPending(true);
 
                 Assert.AreEqual(2, started.Count);
                 Assert.AreSame(secondFrame, started[1].Frames.Single());
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(secondFrame);
+                UnityEngine.Object.DestroyImmediate(firstFrame);
+                UnityEngine.Object.DestroyImmediate(idle);
+                UnityEngine.Object.DestroyImmediate(rootObject);
+            }
+        }
+
+        [Test]
+        public void ProcessPending_MatchingGeneralNotificationDuringPlayback_CoalescesDelivery()
+        {
+            GameObject rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
+            StrategyAdvisorView view = rootObject.GetComponentInChildren<StrategyAdvisorView>(true);
+            StrategyAdvisorTheme theme = CreateTheme();
+            theme.Notifications.Add(
+                new StrategyAdvisorNotificationTheme
+                {
+                    NotificationType = AdvisorNotificationType.PositivePopularSupport,
+                    Droid = new StrategyAdvisorAnimationTheme
+                    {
+                        Animation = "Support",
+                        FrameCount = 1,
+                    },
+                }
+            );
+            Texture2D idle = new Texture2D(1, 1);
+            Texture2D supportFrame = new Texture2D(1, 1);
+            Dictionary<string, Texture2D> textures = new Dictionary<string, Texture2D>
+            {
+                [theme.GetFramePath(theme.ProtocolIdleAnimation, 0, false)] = idle,
+                [theme.GetFramePath(theme.DroidIdleAnimation, 0, true)] = idle,
+                [theme.GetFramePath("Support", 0, true)] = supportFrame,
+            };
+            try
+            {
+                UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+                StrategyAdvisorController controller = CreateController(textures);
+                controller.BindView(view);
+                controller.Render(theme);
+                int playbackCount = 0;
+                view.PlaybackStarted += _ => playbackCount++;
+
+                controller.Notify(
+                    CreateAdvisorDelivery(AdvisorNotificationType.PositivePopularSupport),
+                    true
+                );
+                controller.ProcessPending(true);
+                controller.Notify(
+                    CreateAdvisorDelivery(AdvisorNotificationType.PositivePopularSupport),
+                    true
+                );
+
+                controller.ProcessPending(true);
+                Assert.AreEqual(1, playbackCount);
+
+                view.AdvanceAnimation(theme.FrameIntervalSeconds);
+                Assert.AreEqual(1, playbackCount);
+
+                controller.Notify(
+                    CreateAdvisorDelivery(AdvisorNotificationType.PositivePopularSupport),
+                    true
+                );
+                controller.ProcessPending(true);
+
+                Assert.AreEqual(2, playbackCount);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(supportFrame);
+                UnityEngine.Object.DestroyImmediate(idle);
+                UnityEngine.Object.DestroyImmediate(rootObject);
+            }
+        }
+
+        [Test]
+        public void ProcessPending_QueuedNotificationDuringPlaybackCompletion_RemainsCoalesced()
+        {
+            GameObject rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
+            StrategyAdvisorView view = rootObject.GetComponentInChildren<StrategyAdvisorView>(true);
+            StrategyAdvisorTheme theme = CreateTheme();
+            theme.Notifications.Add(
+                new StrategyAdvisorNotificationTheme
+                {
+                    NotificationType = AdvisorNotificationType.PositivePopularSupport,
+                    Droid = new StrategyAdvisorAnimationTheme
+                    {
+                        Animation = "First",
+                        FrameCount = 1,
+                    },
+                }
+            );
+            theme.Notifications.Add(
+                new StrategyAdvisorNotificationTheme
+                {
+                    NotificationType = AdvisorNotificationType.NegativePopularSupport,
+                    Droid = new StrategyAdvisorAnimationTheme
+                    {
+                        Animation = "Second",
+                        FrameCount = 1,
+                    },
+                }
+            );
+            Texture2D idle = new Texture2D(1, 1);
+            Texture2D firstFrame = new Texture2D(1, 1);
+            Texture2D secondFrame = new Texture2D(1, 1);
+            Dictionary<string, Texture2D> textures = new Dictionary<string, Texture2D>
+            {
+                [theme.GetFramePath(theme.ProtocolIdleAnimation, 0, false)] = idle,
+                [theme.GetFramePath(theme.DroidIdleAnimation, 0, true)] = idle,
+                [theme.GetFramePath("First", 0, true)] = firstFrame,
+            };
+            try
+            {
+                UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+                StrategyAdvisorController controller = CreateController(textures);
+                controller.BindView(view);
+                controller.Render(theme);
+                int playbackCount = 0;
+                view.PlaybackStarted += _ => playbackCount++;
+
+                controller.Notify(
+                    CreateAdvisorDelivery(AdvisorNotificationType.PositivePopularSupport),
+                    true
+                );
+                controller.ProcessPending(true);
+                controller.Notify(
+                    CreateAdvisorDelivery(AdvisorNotificationType.NegativePopularSupport),
+                    true
+                );
+                controller.ProcessPending(true);
+
+                view.AdvanceAnimation(theme.FrameIntervalSeconds);
+                controller.Notify(
+                    CreateAdvisorDelivery(AdvisorNotificationType.NegativePopularSupport),
+                    true
+                );
+                textures[theme.GetFramePath("Second", 0, true)] = secondFrame;
+                controller.ProcessPending(true);
+
+                Assert.AreEqual(2, playbackCount);
+
+                view.AdvanceAnimation(theme.FrameIntervalSeconds);
+                controller.ProcessPending(true);
+
+                Assert.AreEqual(2, playbackCount);
             }
             finally
             {
@@ -725,7 +867,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                         Message = new StatusMessage(MessageType.Advice, "Custom", "Custom"),
                         AdvisorNotification = new AdvisorNotification
                         {
-                            LifetimeTicks = 20,
                             Droid = new AdvisorAnimation
                             {
                                 AnimationPath = "Pack/Custom/Advisor",
@@ -734,10 +875,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                             },
                         },
                     },
-                    1,
                     true
                 );
-                controller.ProcessPending(1, true);
+                controller.ProcessPending(true);
 
                 Assert.IsNotNull(playback);
                 Assert.AreSame(customFrame, playback.Frames.Single());
@@ -792,6 +932,68 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             finally
             {
                 UnityEngine.Object.DestroyImmediate(rejectedFrame);
+                UnityEngine.Object.DestroyImmediate(idle);
+                UnityEngine.Object.DestroyImmediate(rootObject);
+            }
+        }
+
+        [Test]
+        public void ProcessPending_ReplacementInterruptsNotification_ReplaysNotificationAfterReplacement()
+        {
+            GameObject rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
+            StrategyAdvisorView view = rootObject.GetComponentInChildren<StrategyAdvisorView>(true);
+            StrategyAdvisorTheme theme = CreateTheme();
+            theme.Notifications.Add(
+                new StrategyAdvisorNotificationTheme
+                {
+                    NotificationType = AdvisorNotificationType.PositivePopularSupport,
+                    Droid = new StrategyAdvisorAnimationTheme
+                    {
+                        Animation = "Notification",
+                        FrameCount = 1,
+                    },
+                }
+            );
+            Texture2D idle = new Texture2D(1, 1);
+            Texture2D notificationFrame = new Texture2D(1, 1);
+            Texture2D replacementFrame = new Texture2D(1, 1);
+            Dictionary<string, Texture2D> textures = new Dictionary<string, Texture2D>
+            {
+                [theme.GetFramePath(theme.ProtocolIdleAnimation, 0, false)] = idle,
+                [theme.GetFramePath(theme.DroidIdleAnimation, 0, true)] = idle,
+                [theme.GetFramePath("Notification", 0, true)] = notificationFrame,
+            };
+            try
+            {
+                UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+                StrategyAdvisorController controller = CreateController(textures);
+                controller.BindView(view);
+                controller.Render(theme);
+                List<Texture2D> startedFrames = new List<Texture2D>();
+                view.PlaybackStarted += playback => startedFrames.Add(playback.Frames.Single());
+
+                controller.Notify(
+                    CreateAdvisorDelivery(AdvisorNotificationType.PositivePopularSupport),
+                    true
+                );
+                controller.ProcessPending(true);
+                controller.ReplaceAnimation(
+                    new StrategyAdvisorAnimationViewData(new[] { replacementFrame }, false, null),
+                    null,
+                    null
+                );
+                view.AdvanceAnimation(theme.FrameIntervalSeconds);
+                controller.ProcessPending(true);
+
+                CollectionAssert.AreEqual(
+                    new[] { notificationFrame, replacementFrame, notificationFrame },
+                    startedFrames
+                );
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(replacementFrame);
+                UnityEngine.Object.DestroyImmediate(notificationFrame);
                 UnityEngine.Object.DestroyImmediate(idle);
                 UnityEngine.Object.DestroyImmediate(rootObject);
             }
@@ -982,7 +1184,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 ProtocolIdleAnimation = "Idle",
                 DroidIdleAnimation = "Standard",
                 FrameIntervalSeconds = 0.5f,
-                RepeatCooldownTicks = 10,
             };
         }
 

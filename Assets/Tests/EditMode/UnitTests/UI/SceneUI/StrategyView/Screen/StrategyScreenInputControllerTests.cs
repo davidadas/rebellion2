@@ -36,6 +36,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         private int _openStatusCount;
         private int _dirtyCount;
         private int _overlayCount;
+        private PointerEventData _selectedWindowEvent;
 
         /// <summary>
         /// Sets up.
@@ -69,6 +70,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             _openStatusCount = 0;
             _dirtyCount = 0;
             _overlayCount = 0;
+            _selectedWindowEvent = null;
             _dragController = CreateDragController();
             _controller = CreateController();
             _window = CreateRegisteredWindow("Window", 1);
@@ -304,6 +306,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             _controller.OnPointerClick(eventData);
 
             Assert.AreEqual(1, _selectWindowTargetCount);
+            Assert.AreSame(eventData, _selectedWindowEvent);
             Assert.AreEqual(1, _dirtyCount);
             Assert.AreEqual(0, _openStatusCount);
             Assert.AreEqual(0, _receiver.CancelledCount);
@@ -707,10 +710,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         /// Attempts select window target.
         /// </summary>
         /// <param name="window">The window.</param>
+        /// <param name="eventData">The pointer event used to resolve the target.</param>
         /// <returns>True when the operation succeeds; otherwise false.</returns>
-        private bool TrySelectWindowTarget(UIWindow window)
+        private bool TrySelectWindowTarget(UIWindow window, PointerEventData eventData)
         {
             _selectWindowTargetCount++;
+            _selectedWindowEvent = eventData;
             return _selectWindowTarget;
         }
 

@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
@@ -16,7 +15,7 @@ namespace Rebellion.Simulation
     public sealed class SpaceCombatQueries
     {
         private readonly GameRoot _game;
-        private readonly MovementQueries _movement;
+        private readonly SpaceCombatWithdrawalPlanner _withdrawalPlanner;
 
         /// <summary>
         /// Creates space-combat queries for the current game.
@@ -26,7 +25,7 @@ namespace Rebellion.Simulation
         public SpaceCombatQueries(GameRoot game, MovementQueries movement)
         {
             _game = game;
-            _movement = movement;
+            _withdrawalPlanner = new SpaceCombatWithdrawalPlanner(movement);
         }
 
         /// <summary>
@@ -162,13 +161,13 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Reports whether every force on one side can withdraw from its opponent.
+        /// Reports whether at least one force on one side can withdraw from its opponent.
         /// </summary>
         /// <param name="fleets">The fleets requesting withdrawal.</param>
         /// <param name="opponents">The opposing fleets.</param>
         /// <param name="planet">The combat planet.</param>
         /// <param name="ownerInstanceId">The withdrawing faction identifier.</param>
-        /// <returns>True when every fleet and directly deployed fighter can evacuate.</returns>
+        /// <returns>True when at least one capital ship or fighter can evacuate.</returns>
         public bool CanRetreatForces(
             IReadOnlyList<Fleet> fleets,
             IReadOnlyList<Fleet> opponents,
@@ -176,79 +175,28 @@ namespace Rebellion.Simulation
             string ownerInstanceId
         )
         {
-            IReadOnlyList<Fleet> retreatingFleets = fleets ?? Array.Empty<Fleet>();
-            List<Starfighter> retreatingFighters = GetActivePlanetStarfighters(
-                    planet,
-                    ownerInstanceId
-                )
-                .ToList();
-            return (retreatingFleets.Count > 0 || retreatingFighters.Count > 0)
-                && !IsRetreatBlockedByGravityWell(planet, opponents)
-                && retreatingFleets.All(fleet =>
-                    HasHyperdriveCapableShip(fleet)
-                    && _movement.CanEvacuateToNearestFriendlyPlanet(fleet)
-                )
-                && retreatingFighters.All(fighter =>
-                    fighter.Hyperdrive > 0 && _movement.CanEvacuateToNearestFriendlyPlanet(fighter)
-                );
+            return !IsRetreatBlockedByGravityWell(planet, opponents)
+                && GetWithdrawalPlan(fleets, planet, ownerInstanceId).CanWithdraw;
         }
 
         /// <summary>
-        /// Returns the tactical unit groups capable of leaving an automatically resolved battle.
+        /// Builds a capacity-aware withdrawal plan without mutating combat or movement state.
         /// </summary>
-        /// <param name="fleets">The fleets on the withdrawing side.</param>
-        /// <param name="opponents">The opposing fleets.</param>
+        /// <param name="fleets">The side's participating fleets.</param>
         /// <param name="planet">The combat planet.</param>
-        /// <param name="ownerInstanceId">The withdrawing owner identifier.</param>
-        /// <returns>The fleets and independent fighter squadrons that can withdraw.</returns>
-        internal List<IReadOnlyCollection<ISceneNode>> GetAutomaticWithdrawalGroups(
+        /// <param name="ownerInstanceId">The withdrawing faction identifier.</param>
+        /// <param name="eligibleUnits">
+        /// The units that completed tactical withdrawal, or null to consider every participant.
+        /// </param>
+        /// <returns>The reserved withdrawal plan.</returns>
+        internal SpaceCombatWithdrawalPlan GetWithdrawalPlan(
             IReadOnlyList<Fleet> fleets,
-            IReadOnlyList<Fleet> opponents,
             Planet planet,
-            string ownerInstanceId
+            string ownerInstanceId,
+            ISet<ISceneNode> eligibleUnits = null
         )
         {
-            List<IReadOnlyCollection<ISceneNode>> groups =
-                new List<IReadOnlyCollection<ISceneNode>>();
-            Faction faction =
-                planet == null || string.IsNullOrEmpty(ownerInstanceId)
-                    ? null
-                    : _game?.GetFactionByOwnerInstanceID(ownerInstanceId);
-            if (
-                (
-                    faction != null
-                    && _game.IsFactionAIControlled(faction)
-                    && planet.GetOwnerInstanceID() == faction.InstanceID
-                    && planet.GetInstanceID() == faction.HQInstanceID
-                ) || IsRetreatBlockedByGravityWell(planet, opponents)
-            )
-                return groups;
-
-            foreach (
-                Fleet fleet in (fleets ?? Array.Empty<Fleet>()).Where(fleet =>
-                    HasHyperdriveCapableShip(fleet)
-                    && _movement.CanEvacuateToNearestFriendlyPlanet(fleet)
-                )
-            )
-            {
-                List<ISceneNode> fleetUnits = GetActiveCapitalShips(fleet)
-                    .Cast<ISceneNode>()
-                    .Concat(GetActiveStarfighters(fleet))
-                    .Distinct()
-                    .ToList();
-                if (fleetUnits.Count > 0)
-                    groups.Add(fleetUnits);
-            }
-
-            foreach (Starfighter fighter in GetActivePlanetStarfighters(planet, ownerInstanceId))
-            {
-                if (fighter.Hyperdrive > 0 && _movement.CanEvacuateToNearestFriendlyPlanet(fighter))
-                {
-                    groups.Add(new ISceneNode[] { fighter });
-                }
-            }
-
-            return groups;
+            return _withdrawalPlanner.CreatePlan(fleets, planet, ownerInstanceId, eligibleUnits);
         }
 
         /// <summary>

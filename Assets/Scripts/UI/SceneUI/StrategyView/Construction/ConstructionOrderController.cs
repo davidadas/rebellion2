@@ -54,14 +54,14 @@ public sealed class ConstructionOrderController
     }
 
     /// <summary>
-    /// Gets the selectable item indexes that can currently begin construction.
+    /// Gets the selectable item indexes that can currently be assigned to the production lane.
     /// </summary>
     /// <param name="producer">The planet performing the manufacturing.</param>
     /// <param name="destination">The node that will receive manufactured units.</param>
     /// <param name="items">The available build templates.</param>
     /// <param name="buildCount">The requested quantity.</param>
     /// <param name="playerFactionId">The player faction identifier.</param>
-    /// <returns>The indexes whose templates can begin construction.</returns>
+    /// <returns>The indexes whose templates can be assigned to the production lane.</returns>
     public HashSet<int> GetCanStartSelections(
         Planet producer,
         ISceneNode destination,
@@ -79,7 +79,7 @@ public sealed class ConstructionOrderController
             if (
                 services
                     .GetService<ManufacturingQueries>()
-                    .CanStartManufacturing(
+                    .CanSetManufacturingOrder(
                         producer,
                         items[index],
                         destination,
@@ -129,15 +129,15 @@ public sealed class ConstructionOrderController
     }
 
     /// <summary>
-    /// Starts an eligible construction order.
+    /// Sets an eligible construction order.
     /// </summary>
     /// <param name="producer">The planet performing the manufacturing.</param>
     /// <param name="destination">The node that will receive manufactured units.</param>
     /// <param name="selected">The selected build template.</param>
     /// <param name="buildCount">The requested quantity.</param>
     /// <param name="playerFactionId">The player faction identifier.</param>
-    /// <returns>True when the order was accepted by the game manager.</returns>
-    public bool TryStartConstruction(
+    /// <returns>True when the production lane accepted the order.</returns>
+    public bool TrySetConstructionOrder(
         Planet producer,
         ISceneNode destination,
         IManufacturable selected,
@@ -147,7 +147,7 @@ public sealed class ConstructionOrderController
     {
         return services
             .GetService<ManufacturingCommands>()
-            .StartManufacturing(producer, selected, destination, buildCount, playerFactionId);
+            .SetManufacturingOrder(producer, selected, destination, buildCount, playerFactionId);
     }
 
     /// <summary>
@@ -185,7 +185,7 @@ public sealed class ConstructionOrderController
         int buildCount
     )
     {
-        return ManufacturingQueries.EstimateManufacturingTicks(producer, selected, buildCount);
+        return ManufacturingQueries.EstimateManufacturingOrderTicks(producer, selected, buildCount);
     }
 
     /// <summary>

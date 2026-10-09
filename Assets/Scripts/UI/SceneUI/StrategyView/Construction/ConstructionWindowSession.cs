@@ -8,8 +8,11 @@ using Rebellion.Game.Units;
 internal sealed class ConstructionWindowSession
 {
     private const int _minimumBuildCount = 1;
+    private const int _defaultMaximumBuildCount = byte.MaxValue;
 
     private readonly List<IManufacturable> items = new List<IManufacturable>();
+    private int maximumBuildCount = _defaultMaximumBuildCount;
+    private bool orderInitialized;
     private string selectedItemTypeId;
 
     public int BuildCount { get; private set; } = _minimumBuildCount;
@@ -121,6 +124,27 @@ internal sealed class ConstructionWindowSession
     }
 
     /// <summary>
+    /// Initializes the editable selection from the active manufacturing order once.
+    /// </summary>
+    /// <param name="itemTypeId">The active product type identifier, or null for an empty lane.</param>
+    /// <param name="buildCount">The active unfinished quantity.</param>
+    public void InitializeOrder(string itemTypeId, int buildCount)
+    {
+        if (orderInitialized || items.Count == 0)
+            return;
+
+        orderInitialized = true;
+        int activeIndex = FindItemIndex(items, itemTypeId);
+        if (activeIndex < 0)
+            return;
+
+        SelectedItemIndex = activeIndex;
+        selectedItemTypeId = itemTypeId;
+        maximumBuildCount = Math.Max(_defaultMaximumBuildCount, buildCount);
+        SetBuildCount(buildCount);
+    }
+
+    /// <summary>
     /// Selects an available build item and closes the dropdown.
     /// </summary>
     /// <param name="index">The requested item index.</param>
@@ -137,11 +161,12 @@ internal sealed class ConstructionWindowSession
     }
 
     /// <summary>
-    /// Increments the build count within the supported byte range.
+    /// Increments the build count without exceeding the session's supported maximum.
     /// </summary>
     public void IncrementBuildCount()
     {
-        BuildCount = Math.Min(byte.MaxValue, BuildCount + 1);
+        if (BuildCount < maximumBuildCount)
+            BuildCount++;
     }
 
     /// <summary>
@@ -153,12 +178,12 @@ internal sealed class ConstructionWindowSession
     }
 
     /// <summary>
-    /// Sets the build count within the supported non-empty byte range.
+    /// Sets the build count within the session's supported non-empty range.
     /// </summary>
     /// <param name="buildCount">The requested build count.</param>
     public void SetBuildCount(int buildCount)
     {
-        BuildCount = Math.Max(_minimumBuildCount, Math.Min(byte.MaxValue, buildCount));
+        BuildCount = Math.Max(_minimumBuildCount, Math.Min(maximumBuildCount, buildCount));
     }
 
     /// <summary>
@@ -227,8 +252,10 @@ internal sealed class ConstructionWindowSession
     {
         items.Clear();
         selectedItemTypeId = null;
+        orderInitialized = false;
         SelectedItemIndex = 0;
         BuildCount = _minimumBuildCount;
+        maximumBuildCount = _defaultMaximumBuildCount;
         DropdownOpen = false;
     }
 

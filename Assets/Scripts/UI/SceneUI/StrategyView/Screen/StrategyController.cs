@@ -837,7 +837,7 @@ public sealed class StrategyController
             targetingController,
             strategyContextMenuRouter,
             strategyWindowManager,
-            TrySelectWindowPlanetTarget,
+            TrySelectWindowTarget,
             TryOpenStatusWindow,
             strategyDragController,
             TryGetSourcePosition,
@@ -1011,10 +1011,8 @@ public sealed class StrategyController
                 PauseForGameplayOption(UserGameplayOption.PauseWhenSpaceBattleBegins);
         }
 
-        int currentTick = session.Game.CurrentTick;
         Faction playerFaction = session.Game.GetPlayerFaction();
         strategyHudController.ProcessAdvisor(
-            currentTick,
             messagesWindowController?.IsOpen != true && playerFaction?.TranslateCounterpart == true
         );
         if (dirty)
@@ -1813,7 +1811,6 @@ public sealed class StrategyController
         messagesWindowController.ReconcileWindows();
         strategyHudController.NotifyAdvisor(
             delivery,
-            session.Game.CurrentTick,
             delivery.Recipient.IsAdvisorMessageNotificationEnabled(delivery.Message.Type)
         );
         MarkDirty();
@@ -2937,14 +2934,18 @@ public sealed class StrategyController
     }
 
     /// <summary>
-    /// Completes active targeting with the planet represented by a feature window.
+    /// Completes active targeting with the exact item under a feature-window pointer.
     /// </summary>
     /// <param name="window">The candidate target window.</param>
-    /// <returns>True when the represented planet completed targeting.</returns>
-    private bool TrySelectWindowPlanetTarget(UIWindow window)
+    /// <param name="eventData">The pointer event used to resolve an exact window item.</param>
+    /// <returns>True when the window completed targeting.</returns>
+    private bool TrySelectWindowTarget(UIWindow window, PointerEventData eventData)
     {
         if (targetingController?.IsTargeting != true)
             return false;
+
+        if (strategyWindowManager.TryGetWindowView(window, out FleetWindowView fleetView))
+            return fleetWindowController.TrySelectTarget(fleetView, eventData);
 
         GalaxyMapPlanet planet = GetWindowPlanet(window);
         return planet?.Planet != null

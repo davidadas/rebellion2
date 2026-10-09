@@ -17,7 +17,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
         private const int _destinationEnergyCapacity = 2;
 
         [Test]
-        public void TryStartConstruction_BuildCountExceedsFacilityCount_UsesDestinationCapacity()
+        public void TrySetConstructionOrder_BuildCountExceedsFacilityCount_UsesDestinationCapacity()
         {
             Building template = TestContent
                 .Data.Buildings.Where(building =>
@@ -63,7 +63,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             );
             ConstructionOrderController controller = CreateController(game, manufacturing);
 
-            bool started = controller.TryStartConstruction(
+            bool started = controller.TrySetConstructionOrder(
                 producer,
                 destination,
                 template,

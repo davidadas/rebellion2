@@ -327,11 +327,20 @@ public sealed class FacilityWindowController
                 OpenConstruction(context.Window);
                 break;
             case StrategyMenuAction.Stop:
+            {
+                Action onStopped = TryGetContextManufacturingType(
+                    view,
+                    out ManufacturingType manufacturingType
+                )
+                    ? () => ResetManufacturingDestination(view, manufacturingType)
+                    : null;
                 confirmationActions.OpenStopConstructionConfirmWindow(
                     context.Window,
-                    GetStopConstructionItems(view)
+                    GetStopConstructionItems(view),
+                    onStopped
                 );
                 break;
+            }
             case StrategyMenuAction.Destination:
                 BeginContextTargeting(context, strategyCommand.Action);
                 break;
@@ -789,6 +798,29 @@ public sealed class FacilityWindowController
     }
 
     /// <summary>
+    /// Resets one manufacturing lane to deliver completed items to its producing planet.
+    /// </summary>
+    /// <param name="view">The facility view that owns the manufacturing lane.</param>
+    /// <param name="type">The manufacturing category whose destination is reset.</param>
+    private void ResetManufacturingDestination(FacilityWindowView view, ManufacturingType type)
+    {
+        if (!TryGetSession(view, out FacilityWindowSession session))
+            return;
+
+        string destinationPlanetId = session.Planet?.Planet?.InstanceID;
+        if (string.IsNullOrEmpty(destinationPlanetId))
+            return;
+
+        session.SetDestination(type, destinationPlanetId, null);
+        constructionWindowController.UpdateOpenConstructionDestination(
+            session.Window,
+            type,
+            destinationPlanetId,
+            null
+        );
+    }
+
+    /// <summary>
     /// Gets display names for the current manufacturing destinations.
     /// </summary>
     /// <param name="session">The facility session that owns the destinations.</param>
@@ -1142,8 +1174,10 @@ public sealed class FacilityWindowController
     /// <summary>
     /// Identifies the facility window and lane that began destination targeting.
     /// </summary>
-    private sealed class FacilityDestinationTargetingSource
+    private sealed class FacilityDestinationTargetingSource : IStrategyTargetingSource
     {
+        StrategyMenuAction IStrategyTargetingSource.Action => StrategyMenuAction.Destination;
+
         public UIWindow Window { get; }
 
         public FacilityWindowView View { get; }

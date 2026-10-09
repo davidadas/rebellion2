@@ -3,10 +3,21 @@ using System.Linq;
 using Rebellion.SceneGraph;
 
 /// <summary>
+/// Exposes the strategy action that determines how a pointer target is interpreted.
+/// </summary>
+public interface IStrategyTargetingSource
+{
+    /// <summary>
+    /// Gets the semantic strategy action represented by this targeting source.
+    /// </summary>
+    StrategyMenuAction Action { get; }
+}
+
+/// <summary>
 /// Captures the source window, hotspot, command, selection, and transient waypoint plan for
 /// one targeting session.
 /// </summary>
-public sealed class StrategyWindowTargetingSource
+public sealed class StrategyWindowTargetingSource : IStrategyTargetingSource
 {
     private readonly List<string> _waypointPlanetIds = new List<string>();
 

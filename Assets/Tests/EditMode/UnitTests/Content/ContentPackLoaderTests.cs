@@ -4,6 +4,7 @@ using System.Linq;
 using System.Xml.Schema;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Units;
 using UnityEngine;
 
 namespace Rebellion.Tests.Content
@@ -76,6 +77,21 @@ namespace Rebellion.Tests.Content
             + "<DetectionRatingMultiplier>1.375</DetectionRatingMultiplier>"
             + "<MaintenanceCapacityPercent>150</MaintenanceCapacityPercent>"
             + "</GameModifier></Value></Entry></DifficultyModifiers></GameConfig>";
+
+        [Test]
+        public void OpenActive_DetectionBlockingFacilities_LoadExpectedFlags()
+        {
+            Building ionCannon = TestContent.Pack.GameData.Buildings.Single(building =>
+                building.TypeID == "BDDF03"
+            );
+            Building[] turbolasers = TestContent
+                .Pack.GameData.Buildings.Where(building => building.TypeID is "BDDF01" or "BDDF05")
+                .ToArray();
+
+            Assert.IsTrue(ionCannon.IsDetectionBlocker);
+            Assert.AreEqual(2, turbolasers.Length);
+            Assert.IsTrue(turbolasers.All(building => !building.IsDetectionBlocker));
+        }
 
         [TestCase(RuntimePlatform.OSXPlayer, "Game.app/Contents/Resources/Data")]
         [TestCase(RuntimePlatform.OSXPlayer, "Game.app/Contents")]

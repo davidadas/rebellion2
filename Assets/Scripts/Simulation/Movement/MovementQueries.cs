@@ -4,10 +4,12 @@ using System.Drawing;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Logging;
 using Rebellion.Util.Mathematics;
+using Rebellion.Util.Random;
 
 namespace Rebellion.Simulation
 {
@@ -54,10 +56,24 @@ namespace Rebellion.Simulation
                 participant.MissionReturnParentInstanceID
             );
 
-            if (CanUseSafeRelocationDestination(participant, returnParent, missionPlanet))
+            if (
+                CanUseSafeRelocationDestination(
+                    participant,
+                    returnParent,
+                    missionPlanet,
+                    allowOriginPlanet: true
+                )
+            )
                 return returnParent;
 
-            if (CanUseSafeRelocationDestination(participant, returnLocation, missionPlanet))
+            if (
+                CanUseSafeRelocationDestination(
+                    participant,
+                    returnLocation,
+                    missionPlanet,
+                    allowOriginPlanet: true
+                )
+            )
                 return returnLocation;
 
             return FindSafeRelocationDestinations(participant, missionPlanet).FirstOrDefault();
@@ -928,8 +944,12 @@ namespace Rebellion.Simulation
         /// Determines whether a unit has a valid friendly evacuation destination.
         /// </summary>
         /// <param name="unit">The unit that would evacuate.</param>
+        /// <param name="leaveOriginPlanet">Whether destinations at the current planet are excluded.</param>
         /// <returns>True when at least one safe container can receive the unit.</returns>
-        internal bool CanEvacuateToNearestFriendlyPlanet(IMovable unit)
+        internal bool CanEvacuateToNearestFriendlyPlanet(
+            IMovable unit,
+            bool leaveOriginPlanet = false
+        )
         {
             if (unit == null)
                 return false;
@@ -937,7 +957,12 @@ namespace Rebellion.Simulation
                 return false;
 
             Planet currentPlanet = unit.GetParentOfType<Planet>();
-            return FindSafeRelocationDestinations(unit, currentPlanet).Any();
+            return FindSafeRelocationDestinations(
+                    unit,
+                    currentPlanet,
+                    leaveOriginPlanet: leaveOriginPlanet
+                )
+                .Any();
         }
 
         /// <summary>
@@ -979,12 +1004,14 @@ namespace Rebellion.Simulation
         /// <param name="allowOriginPlanet">
         /// Whether the origin planet itself may receive the unit without interplanetary travel.
         /// </param>
+        /// <param name="leaveOriginPlanet">Whether every destination at the origin is excluded.</param>
         /// <returns>The valid relocation destinations, nearest first.</returns>
         internal IReadOnlyList<ContainerNode> FindSafeRelocationDestinations(
             IMovable unit,
             Planet originPlanet,
             bool forceInterplanetaryTravel = false,
-            bool allowOriginPlanet = false
+            bool allowOriginPlanet = false,
+            bool leaveOriginPlanet = false
         )
         {
             if (unit == null)
@@ -1009,6 +1036,9 @@ namespace Rebellion.Simulation
                 .Concat(_game.GetSceneNodesByType<CapitalShip>());
 
             return destinations
+                .Where(destination =>
+                    !leaveOriginPlanet || RequireDestinationPlanet(destination) != originPlanet
+                )
                 .Where(destination =>
                     CanUseSafeRelocationDestination(
                         unit,
@@ -1401,8 +1431,8 @@ namespace Rebellion.Simulation
             if (unit is CapitalShip capitalShip)
                 return Math.Max(capitalShip.Hyperdrive, 1);
 
-            if (unit is Officer)
-                return Math.Max(_game.GetConfig().Movement.DefaultOfficerHyperdrive, 1);
+            if (unit is Officer or SpecialForces)
+                return Math.Max(_game.GetConfig().Movement.DefaultPersonnelHyperdrive, 1);
 
             return Math.Max(_game.GetConfig().Movement.DefaultFighterHyperdrive, 1);
         }
@@ -1418,6 +1448,260 @@ namespace Rebellion.Simulation
             PlanetSector originSector = origin?.GetParentOfType<PlanetSector>();
             PlanetSector destinationSector = destination?.GetParentOfType<PlanetSector>();
             return originSector != null && ReferenceEquals(originSector, destinationSector);
+        }
+
+        /// <summary>
+        /// Calculates every hostile detection and evasion probability facing one personnel
+        /// movement group at a planetary system.
+        /// </summary>
+        /// <param name="participants">The active personnel crossing together for one faction.</param>
+        /// <param name="planet">The planetary system being crossed.</param>
+        /// <returns>The complete encounter odds in scene traversal order.</returns>
+        public PersonnelMovementEncounterOdds GetPersonnelEncounterOdds(
+            IReadOnlyList<IMissionParticipant> participants,
+            Planet planet
+        )
+        {
+            if (participants == null || participants.Count == 0 || planet == null)
+                return new PersonnelMovementEncounterOdds(
+                    Array.Empty<PersonnelMovementDetectorOdds>()
+                );
+
+            string ownerInstanceId = participants[0]?.GetOwnerInstanceID();
+            if (
+                string.IsNullOrEmpty(ownerInstanceId)
+                || participants.Any(participant =>
+                    participant?.GetOwnerInstanceID() != ownerInstanceId
+                )
+            )
+                throw new ArgumentException(
+                    "Personnel encounter queries require active participants from one faction.",
+                    nameof(participants)
+                );
+
+            if (HasPersonnelDetectionBlocker(ownerInstanceId, planet))
+                return new PersonnelMovementEncounterOdds(
+                    Array.Empty<PersonnelMovementDetectorOdds>()
+                );
+
+            List<Fleet> hostileFleets = GetHostileStationaryFleets(ownerInstanceId, planet);
+            List<ISceneNode> detectors = GetPersonnelDetectors(ownerInstanceId, hostileFleets);
+            List<PersonnelMovementDetectorOdds> odds = detectors.ConvertAll(detector =>
+            {
+                Officer commander = FindDetectorCommander(detector, planet);
+                return new PersonnelMovementDetectorOdds(
+                    detector,
+                    commander,
+                    GetPersonnelDetectionProbability(participants, detector, commander),
+                    participants.ToDictionary(
+                        participant => participant,
+                        participant => GetPersonnelEvasionProbability(participant, commander)
+                    )
+                );
+            });
+            return new PersonnelMovementEncounterOdds(odds);
+        }
+
+        /// <summary>Returns hostile units eligible to detect personnel in one system.</summary>
+        /// <param name="ownerInstanceId">The traveling personnel's faction identifier.</param>
+        /// <param name="hostileFleets">The stationary hostile fleets at the planet.</param>
+        /// <returns>The eligible detectors in scene traversal order.</returns>
+        private static List<ISceneNode> GetPersonnelDetectors(
+            string ownerInstanceId,
+            IReadOnlyList<Fleet> hostileFleets
+        )
+        {
+            List<ISceneNode> detectors = new List<ISceneNode>();
+            if (hostileFleets.Count == 0)
+                return detectors;
+
+            foreach (Fleet fleet in hostileFleets)
+            {
+                foreach (CapitalShip capitalShip in fleet.GetChildren<CapitalShip>())
+                {
+                    if (Mission.IsEligibleDetectorForOwner(capitalShip, ownerInstanceId))
+                        detectors.Add(capitalShip);
+                    AddEligiblePersonnelDetectors(
+                        ownerInstanceId,
+                        capitalShip.GetChildren<Starfighter>(),
+                        detectors
+                    );
+                }
+            }
+
+            return detectors;
+        }
+
+        /// <summary>Returns stationary hostile fleets in scene traversal order.</summary>
+        /// <param name="ownerInstanceId">The traveling personnel's faction identifier.</param>
+        /// <param name="planet">The planetary system being crossed.</param>
+        /// <returns>The stationary hostile fleets.</returns>
+        private static List<Fleet> GetHostileStationaryFleets(string ownerInstanceId, Planet planet)
+        {
+            return planet
+                .GetChildren<Fleet>()
+                .Where(fleet =>
+                    fleet.GetOwnerInstanceID() != ownerInstanceId && fleet.Movement == null
+                )
+                .ToList();
+        }
+
+        /// <summary>Returns whether a completed friendly building suppresses the encounter.</summary>
+        /// <param name="ownerInstanceId">The faction receiving protection.</param>
+        /// <param name="planet">The planet containing candidate buildings.</param>
+        /// <returns>True when an eligible building is present.</returns>
+        private static bool HasPersonnelDetectionBlocker(string ownerInstanceId, Planet planet)
+        {
+            return planet
+                .GetChildren<Building>()
+                .Any(building =>
+                    building.IsDetectionBlocker
+                    && building.OwnerInstanceID == ownerInstanceId
+                    && building.ManufacturingStatus == ManufacturingStatus.Complete
+                    && building.Movement == null
+                );
+        }
+
+        /// <summary>Appends eligible hostile detectors without changing scene order.</summary>
+        /// <param name="ownerInstanceId">The faction attempting to avoid detection.</param>
+        /// <param name="candidates">The candidate detector units.</param>
+        /// <param name="detectors">The collection receiving eligible detectors.</param>
+        private static void AddEligiblePersonnelDetectors(
+            string ownerInstanceId,
+            IEnumerable<ISceneNode> candidates,
+            ICollection<ISceneNode> detectors
+        )
+        {
+            foreach (ISceneNode candidate in candidates)
+            {
+                if (Mission.IsEligibleDetectorForOwner(candidate, ownerInstanceId))
+                    detectors.Add(candidate);
+            }
+        }
+
+        /// <summary>Finds the assigned commander paired with a detector.</summary>
+        /// <param name="detector">The detector whose commander is requested.</param>
+        /// <param name="planet">The planet containing the detector.</param>
+        /// <returns>The eligible commander, or null when none is assigned.</returns>
+        private static Officer FindDetectorCommander(ISceneNode detector, Planet planet)
+        {
+            OfficerRank requiredRank = detector switch
+            {
+                Starfighter => OfficerRank.Commander,
+                CapitalShip => OfficerRank.Admiral,
+                Regiment => OfficerRank.General,
+                _ => OfficerRank.None,
+            };
+            if (requiredRank == OfficerRank.None)
+                return null;
+
+            Fleet fleet = detector.GetParentOfType<Fleet>();
+            IEnumerable<Officer> candidates =
+                fleet != null
+                    ? fleet.GetChildren<Officer>(recursive: true)
+                    : planet
+                        .GetChildren<Officer>(recursive: true)
+                        .Where(officer => officer.GetParentOfType<Fleet>() == null);
+            string defenderOwnerId = detector.GetOwnerInstanceID();
+            return candidates.FirstOrDefault(officer =>
+                officer.GetOwnerInstanceID() == defenderOwnerId
+                && officer.CurrentRank == requiredRank
+                && IsEligibleDetectorCommander(officer)
+            );
+        }
+
+        /// <summary>Returns whether an officer can support a detector.</summary>
+        /// <param name="officer">The officer to inspect.</param>
+        /// <returns>True when the officer can command the detector.</returns>
+        private static bool IsEligibleDetectorCommander(Officer officer)
+        {
+            return officer?.Movement == null
+                && officer.GetParent() is not Mission
+                && !officer.IsCaptured
+                && !officer.IsKilled
+                && officer.InjuryPoints == 0;
+        }
+
+        /// <summary>Returns one detector's chance to detect a personnel movement group.</summary>
+        /// <param name="participants">The personnel crossing together.</param>
+        /// <param name="detector">The hostile detector making the attempt.</param>
+        /// <param name="commander">The eligible officer supporting the detector.</param>
+        /// <returns>The detection percentage.</returns>
+        private int GetPersonnelDetectionProbability(
+            IReadOnlyList<IMissionParticipant> participants,
+            ISceneNode detector,
+            Officer commander
+        )
+        {
+            GameConfig.MissionProbabilityTablesConfig config = GetMissionProbabilityTables();
+            int averageEspionage =
+                participants.Sum(participant =>
+                    participant.GetEffectiveRating(SkillRating.Espionage)
+                ) / participants.Count;
+            int commanderEspionage =
+                (commander?.GetEffectiveRating(SkillRating.Espionage) ?? 0)
+                * config.FoilDefenderScalingPercent
+                / 100;
+            int score =
+                averageEspionage
+                - commanderEspionage
+                - GetAuthoredDetectionRating(detector)
+                - participants.OfType<SpecialForces>().Count()
+                - config.FoilFlatScoreAdjustment;
+            return Math.Clamp(LookupProbability(config.Foil, score), 0, 100);
+        }
+
+        /// <summary>Returns a detector's authored rating.</summary>
+        /// <param name="detector">The detector whose rating is requested.</param>
+        /// <returns>The stored detection rating.</returns>
+        private static int GetAuthoredDetectionRating(ISceneNode detector)
+        {
+            return detector switch
+            {
+                Regiment regiment => regiment.DetectionRating,
+                Starfighter starfighter => starfighter.DetectionRating,
+                CapitalShip capitalShip => capitalShip.DetectionRating,
+                _ => 0,
+            };
+        }
+
+        /// <summary>Returns one participant's chance to evade a detector.</summary>
+        /// <param name="participant">The participant attempting to evade.</param>
+        /// <param name="commander">The eligible officer supporting the detector.</param>
+        /// <returns>The evasion percentage.</returns>
+        private double GetPersonnelEvasionProbability(
+            IMissionParticipant participant,
+            Officer commander
+        )
+        {
+            int defenderCombat = commander?.GetEffectiveRating(SkillRating.Combat) ?? 0;
+            int score = participant.GetEffectiveRating(SkillRating.Combat) - defenderCombat;
+            GameConfig.MissionProbabilityTablesConfig config = GetMissionProbabilityTables();
+            return LookupProbability(config.Evasion, score, config.DefaultEvasionProbability);
+        }
+
+        /// <summary>Returns the active mission probability-table configuration.</summary>
+        /// <returns>The configured probability tables.</returns>
+        private GameConfig.MissionProbabilityTablesConfig GetMissionProbabilityTables()
+        {
+            return _game.Config?.ProbabilityTables?.Mission
+                ?? new GameConfig.MissionProbabilityTablesConfig();
+        }
+
+        /// <summary>Returns the configured probability for a score.</summary>
+        /// <param name="entries">The configured probability entries.</param>
+        /// <param name="score">The score to look up.</param>
+        /// <param name="defaultValue">The value returned when no entries exist.</param>
+        /// <returns>The configured percentage.</returns>
+        private static int LookupProbability(
+            Dictionary<int, int> entries,
+            int score,
+            int defaultValue = 0
+        )
+        {
+            return entries == null || entries.Count == 0
+                ? defaultValue
+                : new ProbabilityTable(entries).Lookup(score);
         }
 
         /// <summary>

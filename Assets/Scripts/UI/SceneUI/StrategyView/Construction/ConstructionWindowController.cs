@@ -5,6 +5,7 @@ using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Simulation;
 using Rebellion.Util.DependencyInjection;
 using UnityEngine;
 
@@ -531,7 +532,7 @@ public sealed class ConstructionWindowController
         session.Window.RequestFocus();
         string playerFactionId = GetPlayerFactionID();
         IManufacturable selected = session.SelectedItem;
-        bool started = orderController.TryStartConstruction(
+        bool started = orderController.TrySetConstructionOrder(
             GetAuthoritativePlanet(session.Planet),
             GetConstructionDestination(session),
             selected,
@@ -795,5 +796,19 @@ public sealed class ConstructionWindowController
         session.SetItems(
             orderController.GetBuildSelection(session.ManufacturingTab, GetPlayerFactionID())
         );
+        ManufacturingType? type = FacilityManufacturingLaneCatalog.GetManufacturingType(
+            session.ManufacturingTab
+        );
+        Planet producer = GetAuthoritativePlanet(session.Planet);
+        ManufacturingOrder activeOrder = type.HasValue
+            ? ManufacturingQueries.GetManufacturingOrder(producer, type.Value)
+            : null;
+        if (activeOrder != null)
+        {
+            session.InitializeOrder(activeOrder.ProductTypeID, activeOrder.Quantity);
+            return;
+        }
+
+        session.InitializeOrder(null, 1);
     }
 }
