@@ -15,7 +15,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         private const string _prefabPath = "Assets/Prefabs/UI/StrategyView/StrategyViewRoot.prefab";
 
         private Texture2D _backgroundTexture;
-        private Texture2D _displayTexture;
         private Texture2D _notificationTexture;
         private Texture2D _pressedTexture;
         private GameObject _rootObject;
@@ -32,7 +31,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             _rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
             _view = _rootObject.GetComponentInChildren<StrategyHudView>(true);
             _backgroundTexture = new Texture2D(853, 480);
-            _displayTexture = new Texture2D(45, 45);
             _notificationTexture = new Texture2D(24, 24);
             _pressedTexture = new Texture2D(40, 40);
             _speedTexture = new Texture2D(50, 16);
@@ -51,7 +49,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             UnityEngine.Object.DestroyImmediate(_pressedTexture);
             UnityEngine.Object.DestroyImmediate(_upTexture);
             UnityEngine.Object.DestroyImmediate(_notificationTexture);
-            UnityEngine.Object.DestroyImmediate(_displayTexture);
             UnityEngine.Object.DestroyImmediate(_backgroundTexture);
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
@@ -87,10 +84,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.AreEqual(
                 new RectInt(100, 20, 50, 16),
                 UILayout.GetSourceRect(GetField<RawImage>("speedIndicatorImage").rectTransform)
-            );
-            Assert.AreSame(
-                _displayTexture,
-                GetField<RawImage>("galacticInformationDisplayImage").texture
             );
             UIRaycastArea[] buttons = GetField<UIRaycastArea[]>("buttonViews");
             RawImage[] buttonImages = GetField<RawImage[]>("mainButtonImages");
@@ -256,8 +249,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 null,
                 null,
                 null,
-                null,
-                null,
                 Array.Empty<StrategyHudButtonViewData>(),
                 new[]
                 {
@@ -273,9 +264,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
 
             Assert.IsFalse(GetField<RawImage>("backgroundImage").enabled);
             Assert.IsFalse(GetField<RawImage>("speedIndicatorImage").gameObject.activeSelf);
-            Assert.IsFalse(
-                GetField<RawImage>("galacticInformationDisplayImage").gameObject.activeSelf
-            );
             Assert.IsFalse(GetField<RawImage>("pressedMainButtonImage").gameObject.activeSelf);
             Assert.IsFalse(GetField<RawImage[]>("mainButtonImages")[0].gameObject.activeSelf);
             Assert.IsFalse(GetField<UIRaycastArea[]>("buttonViews")[0].gameObject.activeSelf);
@@ -520,8 +508,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 ),
                 _speedTexture,
                 new RectInt(100, 20, 50, 16),
-                _displayTexture,
-                new RectInt(160, 20, 45, 45),
                 speedContextBounds,
                 buttons,
                 notifications

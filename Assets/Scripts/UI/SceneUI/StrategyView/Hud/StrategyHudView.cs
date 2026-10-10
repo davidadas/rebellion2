@@ -36,9 +36,6 @@ public sealed class StrategyHudView : MonoBehaviour
     private RawImage speedIndicatorImage;
 
     [SerializeField]
-    private RawImage galacticInformationDisplayImage;
-
-    [SerializeField]
     private RawImage pressedMainButtonImage;
 
     [SerializeField]
@@ -170,11 +167,6 @@ public sealed class StrategyHudView : MonoBehaviour
             speedIndicatorImage,
             data.SpeedIndicatorTexture,
             data.SpeedIndicatorBounds
-        );
-        SetImageAtSourceRect(
-            galacticInformationDisplayImage,
-            data.GalacticInformationDisplayTexture,
-            data.GalacticInformationDisplayBounds
         );
         RenderMessageNotifications(data.MessageNotifications);
         RenderButtons(data.Buttons, data.SpeedContextBounds);
@@ -714,10 +706,6 @@ public sealed class StrategyHudView : MonoBehaviour
             throw new MissingReferenceException($"{name}/MaintenanceTextField is missing.");
         if (speedIndicatorImage == null)
             throw new MissingReferenceException($"{name}/SpeedIndicatorImage is missing.");
-        if (galacticInformationDisplayImage == null)
-            throw new MissingReferenceException(
-                $"{name}/GalacticInformationDisplayImage is missing."
-            );
         if (pressedMainButtonImage == null)
             throw new MissingReferenceException($"{name}/PressedMainButtonImage is missing.");
         if (

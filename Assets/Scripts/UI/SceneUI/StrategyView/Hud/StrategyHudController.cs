@@ -273,12 +273,6 @@ public sealed class StrategyHudController : IContextMenuReceiver
                 GetSpeedIndicatorPath(hudTheme?.SpeedIndicators, data.Speed)
             ),
             speedIndicatorBounds: ToRect(hudTheme?.SpeedIndicatorSourceLayout),
-            galacticInformationDisplayTexture: ResolveTexture(
-                hudTheme?.GalacticInformationDisplayImagePath
-            ),
-            galacticInformationDisplayBounds: ToRect(
-                hudTheme?.GalacticInformationDisplayImageLayout
-            ),
             speedContextBounds: ToRect(hudTheme?.SpeedContextSourceLayout),
             buttons: CreateButtons(hudTheme?.Buttons),
             messageNotifications: CreateMessageNotifications(hudTheme?.MessageNotifications, data)
