@@ -109,11 +109,11 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Expands score-free facility-capacity deficits into destination-specific alternatives.
+        /// Expands score-free facility-capacity deficits into destination-specific hub demands.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demands">The score-free demands generated for the turn.</param>
-        /// <returns>The production demands with facility alternatives expanded in original order.</returns>
+        /// <returns>The production demands with facility hubs expanded in original order.</returns>
         private List<AIProductionDemand> ExpandFacilityDemands(
             AITurnContext context,
             IEnumerable<AIProductionDemand> demands
@@ -126,7 +126,7 @@ namespace Rebellion.AI.Planners
             foreach (AIProductionDemand demand in demands)
             {
                 if (IsFacilityExpansionDemand(demand) && demand.Destination == null)
-                    AddFacilityAlternatives(context, expanded, demand, placementScorer);
+                    AddFacilityExpansionDemands(context, expanded, demand, placementScorer);
                 else
                     expanded.Add(demand);
             }
@@ -135,13 +135,13 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Adds the ranked destination alternatives for one faction-wide facility deficit.
+        /// Adds sector-hub expansion demands for one faction-wide facility deficit.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="expanded">The expanded demand list accumulated so far.</param>
         /// <param name="capacityDemand">The score-free facility-capacity deficit.</param>
         /// <param name="placementScorer">The turn-scoped destination scorer.</param>
-        private void AddFacilityAlternatives(
+        private void AddFacilityExpansionDemands(
             AITurnContext context,
             List<AIProductionDemand> expanded,
             AIProductionDemand capacityDemand,
@@ -162,23 +162,14 @@ namespace Rebellion.AI.Planners
                 )
                 .ThenBy(demand => demand.Id, StringComparer.Ordinal)
                 .ToList();
-            int hubTarget =
-                capacityDemand.BuildingType == BuildingType.Shipyard
-                    ? context.Game.Config.AI.Infrastructure.ShipyardSectorHubTargetCount
-                    : context.Game.Config.AI.Infrastructure.FacilitySectorHubTargetCount;
             List<IGrouping<string, Planet>> sectors = context
-                .Assessment.OwnedPlanets.Where(planet =>
-                    planet?.IsColonized == true && !planet.IsDestroyed
-                    || (
-                        capacityDemand.BuildingType == BuildingType.ConstructionFacility
-                        && planet?.IsDestroyed == false
-                        && planet.GetParentOfType<PlanetSector>()?.SectorType
-                            == PlanetSectorType.OuterRim
-                    )
-                )
+                .StrategicPlan.GetInfrastructurePlanets(capacityDemand.BuildingType)
                 .GroupBy(context.Assessment.GetPlanetSystemId)
                 .OrderByDescending(sector =>
-                    GetSectorFacilityDeficit(sector, capacityDemand.BuildingType, hubTarget)
+                    context.StrategicPlan.GetInfrastructureDeficit(
+                        sector,
+                        capacityDemand.BuildingType
+                    )
                 )
                 .ThenByDescending(sector =>
                     GetColonyFoundationInput(sector, capacityDemand.BuildingType)
@@ -191,9 +182,7 @@ namespace Rebellion.AI.Planners
                 if (remainingFacilityCount == 0)
                     break;
 
-                List<Planet> sectorPlanets = sector
-                    .Where(planet => GetAvailableFacilityExpansionEnergy(planet) > 0)
-                    .ToList();
+                List<Planet> sectorPlanets = sector.ToList();
                 if (sectorPlanets.Count == 0)
                     continue;
 
@@ -203,46 +192,54 @@ namespace Rebellion.AI.Planners
                         == sector.Key
                     ) ?? productionDemands.FirstOrDefault();
                 Planet demandPlanet = GetDestinationPlanet(context, sectorDemand) ?? sector.First();
-                IReadOnlyList<(Planet Planet, double Score)> rankedDestinations =
-                    placementScorer.ScoreDestinations(
+                List<(Planet Planet, double Score)> rankedDestinations = placementScorer
+                    .ScoreDestinations(
                         sectorPlanets,
                         demandPlanet,
                         supportedType,
                         capacityDemand.BuildingType,
                         GetAvailableFacilityExpansionEnergy
-                    );
+                    )
+                    .OrderByDescending(candidate =>
+                        candidate.Planet.GetTotalBuildingTypeCount(capacityDemand.BuildingType)
+                    )
+                    .ThenByDescending(candidate => candidate.Score)
+                    .ThenBy(candidate => candidate.Planet.InstanceID, StringComparer.Ordinal)
+                    .ToList();
                 if (rankedDestinations.Count == 0)
                     continue;
 
-                int sectorFacilityCount = sector.Sum(planet =>
-                    planet.GetTotalBuildingTypeCount(capacityDemand.BuildingType)
+                IReadOnlyList<int> hubTargets = context.StrategicPlan.GetInfrastructureHubTargets(
+                    capacityDemand.BuildingType
                 );
-                int targetCount = sectorFacilityCount > 0 ? hubTarget : 1;
-                int sectorDeficit = GetSectorFacilityDeficit(
-                    sector,
-                    capacityDemand.BuildingType,
-                    hubTarget
-                );
-                if (GetColonyFoundationInput(sector, capacityDemand.BuildingType) > 0)
-                    sectorDeficit = Math.Max(1, sectorDeficit);
-                int requestedQuantity = Math.Min(remainingFacilityCount, sectorDeficit);
-                if (requestedQuantity <= 0)
-                    continue;
-
-                string demandId = AIProductionDemand.CreateId(
-                    context.Faction.InstanceID,
-                    capacityDemand.Kind,
-                    sector.Key,
-                    "capacity"
-                );
-                int alternativeCount = Math.Max(
-                    1,
-                    context.Game.Config.AI.Infrastructure.FacilityPlanetsPerSector
-                );
-                bool addedAlternative = false;
-                foreach ((Planet destination, _) in rankedDestinations.Take(alternativeCount))
+                int hubCount = Math.Min(rankedDestinations.Count, hubTargets.Count);
+                for (int hubIndex = 0; hubIndex < hubCount; hubIndex++)
                 {
-                    addedAlternative |= AddSectorFacilityDemand(
+                    Planet destination = rankedDestinations[hubIndex].Planet;
+                    int targetCount = hubTargets[hubIndex];
+                    int requestedQuantity = Math.Min(
+                        remainingFacilityCount,
+                        Math.Min(
+                            Math.Max(
+                                0,
+                                targetCount
+                                    - destination.GetTotalBuildingTypeCount(
+                                        capacityDemand.BuildingType
+                                    )
+                            ),
+                            GetAvailableFacilityExpansionEnergy(destination)
+                        )
+                    );
+                    if (requestedQuantity <= 0)
+                        continue;
+
+                    string demandId = AIProductionDemand.CreateId(
+                        context.Faction.InstanceID,
+                        capacityDemand.Kind,
+                        sector.Key,
+                        $"hub-{hubIndex + 1}"
+                    );
+                    bool added = AddSectorFacilityDemand(
                         expanded,
                         sectorDemand,
                         capacityDemand,
@@ -252,15 +249,16 @@ namespace Rebellion.AI.Planners
                         demandId,
                         demandPlanet
                     );
+                    if (added)
+                        remainingFacilityCount -= requestedQuantity;
+                    if (remainingFacilityCount == 0)
+                        break;
                 }
-
-                if (addedAlternative)
-                    remainingFacilityCount -= requestedQuantity;
             }
         }
 
         /// <summary>
-        /// Adds one destination-specific facility alternative.
+        /// Adds one destination-specific facility hub demand.
         /// </summary>
         /// <param name="demands">The expanded demand list.</param>
         /// <param name="primaryDemand">The production need served by the facility.</param>
@@ -268,9 +266,9 @@ namespace Rebellion.AI.Planners
         /// <param name="target">The candidate destination.</param>
         /// <param name="targetCount">The desired facility count at the destination.</param>
         /// <param name="maximumQuantity">The remaining facility deficit.</param>
-        /// <param name="demandId">The shared alternative identifier.</param>
+        /// <param name="demandId">The facility hub demand identifier.</param>
         /// <param name="referencePlanet">The planet anchoring placement utility.</param>
-        /// <returns>True when an alternative was added.</returns>
+        /// <returns>True when a hub demand was added.</returns>
         private static bool AddSectorFacilityDemand(
             ICollection<AIProductionDemand> demands,
             AIProductionDemand primaryDemand,
@@ -312,29 +310,6 @@ namespace Rebellion.AI.Planners
                 )
             );
             return true;
-        }
-
-        /// <summary>
-        /// Returns the outstanding facility quantity for one sector hub.
-        /// </summary>
-        /// <param name="sector">The planets in one sector.</param>
-        /// <param name="buildingType">The facility category.</param>
-        /// <param name="hubTarget">The desired concentrated facility count.</param>
-        /// <returns>The outstanding facility quantity.</returns>
-        private static int GetSectorFacilityDeficit(
-            IEnumerable<Planet> sector,
-            BuildingType buildingType,
-            int hubTarget
-        )
-        {
-            List<Planet> planets = sector.ToList();
-            if (planets.Count == 0)
-                return 0;
-
-            int strongestCluster = planets.Max(planet =>
-                planet.GetTotalBuildingTypeCount(buildingType)
-            );
-            return strongestCluster == 0 ? 1 : Math.Max(0, hubTarget - strongestCluster);
         }
 
         /// <summary>

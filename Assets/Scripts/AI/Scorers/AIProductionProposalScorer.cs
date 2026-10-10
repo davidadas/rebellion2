@@ -168,15 +168,7 @@ namespace Rebellion.AI.Scorers
             GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
             string systemId = context.Assessment.GetPlanetSystemId(destination);
             List<IGrouping<string, Planet>> sectors = context
-                .Assessment.OwnedPlanets.Where(planet =>
-                    planet?.IsColonized == true && !planet.IsDestroyed
-                    || (
-                        demand.BuildingType == BuildingType.ConstructionFacility
-                        && planet?.IsDestroyed == false
-                        && planet.GetParentOfType<PlanetSector>()?.SectorType
-                            == PlanetSectorType.OuterRim
-                    )
-                )
+                .StrategicPlan.GetInfrastructurePlanets(demand.BuildingType)
                 .GroupBy(context.Assessment.GetPlanetSystemId)
                 .OrderBy(group => group.Key, StringComparer.Ordinal)
                 .ToList();
@@ -207,10 +199,9 @@ namespace Rebellion.AI.Scorers
             double colonyFoundation = GetColonyFoundationInput(sector, demand.BuildingType);
             if (colonyFoundation <= 0)
                 pressure += GetPortfolioPressure(context, demand.Kind);
-            int hubTarget =
-                demand.BuildingType == BuildingType.Shipyard
-                    ? config.ShipyardSectorHubTargetCount
-                    : config.FacilitySectorHubTargetCount;
+            IReadOnlyList<int> hubTargets = context.StrategicPlan.GetInfrastructureHubTargets(
+                demand.BuildingType
+            );
             int sectorFacilityCount = sector.Sum(planet =>
                 planet.GetTotalBuildingTypeCount(demand.BuildingType)
             );
@@ -229,7 +220,7 @@ namespace Rebellion.AI.Scorers
             pressure += GetFacilityCategoryBalancePressure(
                 sectors,
                 demand.BuildingType,
-                hubTarget,
+                hubTargets,
                 config.DemandUtility.FacilityBalance
             );
             pressure += demand.BaseDemandPercent * placementUtility;
@@ -299,17 +290,9 @@ namespace Rebellion.AI.Scorers
                 return new List<Planet>();
             string systemId = context.Assessment.GetPlanetSystemId(destination);
             return context
-                .Assessment.OwnedPlanets.Where(planet =>
+                .StrategicPlan.GetInfrastructurePlanets(demand.BuildingType)
+                .Where(planet =>
                     context.Assessment.GetPlanetSystemId(planet) == systemId
-                    && (
-                        planet?.IsColonized == true && !planet.IsDestroyed
-                        || (
-                            demand.BuildingType == BuildingType.ConstructionFacility
-                            && planet?.IsDestroyed == false
-                            && planet.GetParentOfType<PlanetSector>()?.SectorType
-                                == PlanetSectorType.OuterRim
-                        )
-                    )
                     && planet.GetAvailableEnergy() > 0
                 )
                 .ToList();
@@ -346,26 +329,36 @@ namespace Rebellion.AI.Scorers
         /// </summary>
         /// <param name="sectors">Owned planets grouped by system.</param>
         /// <param name="buildingType">The facility category.</param>
-        /// <param name="hubTarget">The desired facility count per established hub.</param>
+        /// <param name="hubTargets">The ordered desired facility counts for sector hubs.</param>
         /// <param name="consideration">The configured category-balance consideration.</param>
         /// <returns>The centered category-balance pressure.</returns>
         private static double GetFacilityCategoryBalancePressure(
             IReadOnlyCollection<IGrouping<string, Planet>> sectors,
             BuildingType buildingType,
-            int hubTarget,
+            IReadOnlyList<int> hubTargets,
             GameConfig.AIConsiderationConfig consideration
         )
         {
-            if (sectors.Count == 0 || hubTarget <= 0)
+            if (sectors.Count == 0 || hubTargets == null || hubTargets.Count == 0)
                 return 0;
-            int progress = sectors.Sum(sector =>
-                Math.Min(
-                    hubTarget,
-                    sector.Max(planet => planet.GetTotalBuildingTypeCount(buildingType))
-                )
-            );
-            double target = sectors.Count * (double)hubTarget;
-            return AIUtility.EvaluateCenteredPressure(1 - progress / target, consideration);
+            int progress = 0;
+            int target = 0;
+            foreach (IGrouping<string, Planet> sector in sectors)
+            {
+                List<int> facilityCounts = sector
+                    .Select(planet => planet.GetTotalBuildingTypeCount(buildingType))
+                    .OrderByDescending(count => count)
+                    .ToList();
+                int hubCount = Math.Min(facilityCounts.Count, hubTargets.Count);
+                for (int index = 0; index < hubCount; index++)
+                {
+                    progress += Math.Min(hubTargets[index], facilityCounts[index]);
+                    target += hubTargets[index];
+                }
+            }
+            if (target <= 0)
+                return 0;
+            return AIUtility.EvaluateCenteredPressure(1 - progress / (double)target, consideration);
         }
 
         /// <summary>

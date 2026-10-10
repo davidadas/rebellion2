@@ -416,10 +416,11 @@ namespace Rebellion.Tests.AI.Demands
         }
 
         [Test]
-        public void BuildDemands_WithMultipleShipyardDestinations_AddsScoreFreeCapacityDemand()
+        public void BuildDemands_WithTwoShipyardHubPlanets_AddsCombinedHubDeficit()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            game.Config.AI.Infrastructure.FacilityPlanetsPerSector = 2;
+            game.Config.AI.Infrastructure.ShipyardPrimaryHubTargetCount = 6;
+            game.Config.AI.Infrastructure.ShipyardSecondaryHubTargetCount = 4;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet demandPlanet = AITestSceneBuilder.AddPlanet(
                 game,
@@ -450,7 +451,7 @@ namespace Rebellion.Tests.AI.Demands
 
             Assert.AreEqual(1, demands.Count);
             Assert.IsNull(demands[0].Destination);
-            Assert.AreEqual(1, demands[0].QuantityNeeded);
+            Assert.AreEqual(9, demands[0].QuantityNeeded);
         }
 
         [Test]
@@ -628,11 +629,11 @@ namespace Rebellion.Tests.AI.Demands
                 .Single(item => item.Kind == AIProductionDemandKind.Shipyard);
 
             Assert.IsNull(demand.DestinationPlanet);
-            Assert.AreEqual(1, demand.QuantityNeeded);
+            Assert.AreEqual(6, demand.QuantityNeeded);
         }
 
         [Test]
-        public void BuildDemands_WithFacilityCountBelowPlanetFloor_AddsFacilityDemand()
+        public void BuildDemands_WithScatteredShipyardCount_AddsHubFacilityDemand()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
@@ -649,11 +650,7 @@ namespace Rebellion.Tests.AI.Demands
                 BuildingType.Shipyard,
                 ManufacturingType.Ship
             );
-            for (
-                int index = 1;
-                index < game.Config.AI.Infrastructure.PlanetsPerShipyard + 1;
-                index++
-            )
+            for (int index = 1; index < 3; index++)
             {
                 AITestSceneBuilder.AddPlanet(game, system, $"colony-{index}", empire.InstanceID);
             }
