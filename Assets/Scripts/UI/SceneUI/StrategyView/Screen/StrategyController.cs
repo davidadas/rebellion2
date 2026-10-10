@@ -193,6 +193,7 @@ public sealed class StrategyController
         runtime.GameReplaced += HandleGameReplaced;
         session.Tick.CombatDecisionRequired += RefreshStrategyState;
         session.Tick.TickCompleted += RefreshStrategyState;
+        session.Tick.TickProgressed += RefreshStrategyState;
         session.Pipeline.MessageDelivered += HandleMessageDelivered;
         session.Pipeline.BombardmentCompleted += HandleBombardmentCompleted;
         session.Pipeline.PlanetaryAssaultsResolved += HandlePlanetaryAssaultsResolved;
@@ -960,6 +961,7 @@ public sealed class StrategyController
             runtime.GameReplaced -= HandleGameReplaced;
             session.Tick.CombatDecisionRequired -= RefreshStrategyState;
             session.Tick.TickCompleted -= RefreshStrategyState;
+            session.Tick.TickProgressed -= RefreshStrategyState;
             session.Pipeline.MessageDelivered -= HandleMessageDelivered;
             session.Pipeline.BombardmentCompleted -= HandleBombardmentCompleted;
             session.Pipeline.PlanetaryAssaultsResolved -= HandlePlanetaryAssaultsResolved;
@@ -3237,6 +3239,9 @@ public sealed class StrategyController
     {
         if (row?.Planet == null)
             return false;
+
+        if (mode == FinderMode.Systems)
+            return OpenPlanetSectorWindow(row.Planet.Sector);
 
         Vector2Int position = GetSectorSourcePosition(row.Planet.Sector);
         UIWindow window = OpenPlanetWindowAt(row.Planet, row.TargetIcon, position.x, position.y);

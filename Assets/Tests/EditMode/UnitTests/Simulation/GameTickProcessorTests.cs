@@ -1,10 +1,13 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
+using Rebellion.Game.Units;
 using Rebellion.Simulation;
 
 namespace Rebellion.Tests.Simulation
@@ -59,6 +62,71 @@ namespace Rebellion.Tests.Simulation
 
             Assert.AreEqual(1, completions);
             Assert.AreEqual(1, _game.CurrentTick);
+        }
+
+        [Test]
+        public void ProcessTickIncrementally_MultipleReadyFacilities_YieldsAfterEachProductionPoint()
+        {
+            Building order = CreateManufacturingScenario();
+            int progressNotifications = 0;
+            _tick.TickProgressed += () => progressNotifications++;
+            IEnumerator tick = _tick.ProcessTickIncrementally();
+
+            Assert.IsTrue(tick.MoveNext());
+            Assert.AreEqual(1, order.ManufacturingProgress);
+            Assert.AreEqual(1, progressNotifications);
+
+            Assert.IsTrue(tick.MoveNext());
+            Assert.AreEqual(2, order.ManufacturingProgress);
+            Assert.AreEqual(2, progressNotifications);
+
+            while (tick.MoveNext()) { }
+            Assert.IsTrue(_tick.IsSettled);
+        }
+
+        [Test]
+        public void ProcessTickIncrementally_ManufacturingPresentationYield_BuffersResults()
+        {
+            CreateManufacturingScenario();
+            int deliveredPoints = 0;
+            using IDisposable observation =
+                _session.Results.Observe<ManufacturingPointsCompletedResult>(results =>
+                    deliveredPoints += results.Sum(result => result.Points)
+                );
+            IEnumerator tick = _tick.ProcessTickIncrementally();
+
+            Assert.IsTrue(tick.MoveNext());
+            Assert.AreEqual(0, deliveredPoints);
+            Assert.IsTrue(tick.MoveNext());
+            Assert.AreEqual(0, deliveredPoints);
+
+            while (tick.MoveNext()) { }
+            Assert.AreEqual(2, deliveredPoints);
+        }
+
+        [Test]
+        public void ProcessTickIncrementally_CompletedManufacturingYield_BuffersLifecycleResults()
+        {
+            CreateManufacturingScenario(1);
+            int createdCount = 0;
+            int deployedCount = 0;
+            using IDisposable creationObservation =
+                _session.Results.Observe<GameObjectCreatedResult>(results =>
+                    createdCount += results.Count
+                );
+            using IDisposable deploymentObservation =
+                _session.Results.Observe<GameObjectDeployedResult>(results =>
+                    deployedCount += results.Count
+                );
+            IEnumerator tick = _tick.ProcessTickIncrementally();
+
+            Assert.IsTrue(tick.MoveNext());
+            Assert.AreEqual(0, createdCount);
+            Assert.AreEqual(0, deployedCount);
+
+            while (tick.MoveNext()) { }
+            Assert.AreEqual(1, createdCount);
+            Assert.AreEqual(1, deployedCount);
         }
 
         [Test]
@@ -138,6 +206,60 @@ namespace Rebellion.Tests.Simulation
             GameTickProcessor tick = new GameTickProcessor(_processResults, _ => { });
             tick.ConnectRuntime(_session);
             return tick;
+        }
+
+        /// <summary>
+        /// Creates one manufacturing order served by two facilities that each complete a point.
+        /// </summary>
+        /// <param name="constructionCost">The production points required by the order.</param>
+        /// <returns>The queued manufacturing order.</returns>
+        private Building CreateManufacturingScenario(int constructionCost = 100)
+        {
+            const string factionId = "EMPIRE";
+            Faction faction = new Faction
+            {
+                InstanceID = factionId,
+                DisplayName = "Empire",
+                RefinedMaterialStockpile = 1000,
+            };
+            _game.GetFactions().Add(faction);
+            PlanetSector sector = new PlanetSector { InstanceID = "SECTOR" };
+            _game.AttachNode(sector, _game.Galaxy);
+            Planet planet = new Planet
+            {
+                InstanceID = "PLANET",
+                OwnerInstanceID = factionId,
+                IsColonized = true,
+                EnergyCapacity = 10,
+            };
+            _game.AttachNode(planet, sector);
+            for (int index = 0; index < 2; index++)
+            {
+                _game.AttachNode(
+                    new Building
+                    {
+                        InstanceID = $"SHIPYARD_{index}",
+                        OwnerInstanceID = factionId,
+                        BuildingType = BuildingType.ConstructionFacility,
+                        ProductionType = ManufacturingType.Building,
+                        ProcessRate = 1,
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                    },
+                    planet
+                );
+            }
+
+            Building order = new Building
+            {
+                InstanceID = "ORDER",
+                OwnerInstanceID = factionId,
+                BuildingType = BuildingType.Mine,
+                ConstructionCost = constructionCost,
+            };
+            Assert.IsTrue(
+                _session.GetService<ManufacturingCommands>().Enqueue(planet, order, planet)
+            );
+            return order;
         }
     }
 }

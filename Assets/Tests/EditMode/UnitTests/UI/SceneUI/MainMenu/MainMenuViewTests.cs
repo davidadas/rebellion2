@@ -139,6 +139,18 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         [Test]
+        public void AuthoredPrefab_ModelTurntables_UsePresentationSpeeds()
+        {
+            float[] speeds = _prefabRoot
+                .GetComponentsInChildren<AutoRotate>(true)
+                .Select(spinner => Mathf.Abs(spinner.DegreesPerSecond))
+                .OrderBy(speed => speed)
+                .ToArray();
+
+            CollectionAssert.AreEqual(new[] { 120f, 240f, 240f, 240f, 240f, 240f }, speeds);
+        }
+
+        [Test]
         public void AuthoredPrefab_RuntimeBehaviours_AreEnabled()
         {
             Assert.IsTrue(_prefabRoot.GetComponentInChildren<MainMenuController>(true).enabled);
