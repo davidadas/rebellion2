@@ -137,6 +137,7 @@ public sealed class AppBootstrap : MonoBehaviour
         Cursor.SetCursor(cursorTexture, Vector2.zero, CursorMode.Auto);
         _contentModelCache = new ContentModelCache(_contentAssets);
         GameLaunchContext.Reset(_contentPack);
+        TacticalBattleLaunchContext.Reset(_contentPack);
         audioManager = AudioManager.EnsureExists(transform);
         audioManager.InitializeContent(_contentAssets);
 
