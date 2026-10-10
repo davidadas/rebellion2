@@ -484,11 +484,7 @@ internal sealed class FleetWindowSession
     /// <returns>True when the active tab changed.</returns>
     public bool SelectTab(FleetWindowTab tab)
     {
-        if (
-            !FleetWindowRenderData.OrderedTabs.Contains(tab)
-            || tab == ActiveTab
-            || !HasDetailItems(tab)
-        )
+        if (!FleetWindowRenderData.OrderedTabs.Contains(tab) || tab == ActiveTab)
             return false;
 
         ActiveTab = tab;
@@ -960,7 +956,7 @@ internal sealed class FleetWindowSession
     }
 
     /// <summary>
-    /// Keeps the capital-ship tab disabled when the resulting row selection contains a ship.
+    /// Opens the fighter tab when a capital ship is selected from the fleet list.
     /// </summary>
     private void NormalizeActiveTabForFleetListSelection()
     {

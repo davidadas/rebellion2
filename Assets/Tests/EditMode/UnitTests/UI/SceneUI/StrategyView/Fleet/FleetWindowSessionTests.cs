@@ -393,16 +393,16 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         [Test]
-        public void SelectFleetListItem_ExpandedCapitalShip_DisablesCapitalShipTab()
+        public void SelectTab_ExpandedCapitalShipCapitalShips_SelectsEmptyTab()
         {
             Assert.IsTrue(_session.ToggleFleetExpanded(0));
-
             Assert.IsTrue(_session.SelectFleetListItem(_capitalShip));
 
             Assert.AreEqual(FleetWindowTab.Starfighters, _session.ActiveTab);
             Assert.IsFalse(_session.HasDetailItems(FleetWindowTab.CapitalShips));
-            CollectionAssert.AreEqual(new ISceneNode[] { _starfighter }, _session.DetailItems);
-            Assert.IsFalse(_session.SelectTab(FleetWindowTab.CapitalShips));
+            Assert.IsTrue(_session.SelectTab(FleetWindowTab.CapitalShips));
+            Assert.AreEqual(FleetWindowTab.CapitalShips, _session.ActiveTab);
+            Assert.IsEmpty(_session.DetailItems);
         }
 
         [Test]
@@ -553,6 +553,20 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsFalse(_session.SelectTab(FleetWindowTab.CapitalShips));
             Assert.IsFalse(_session.SelectTab((FleetWindowTab)99));
             Assert.AreEqual(FleetWindowTab.CapitalShips, _session.ActiveTab);
+        }
+
+        [TestCase(FleetWindowTab.Starfighters)]
+        [TestCase(FleetWindowTab.Regiments)]
+        [TestCase(FleetWindowTab.Personnel)]
+        public void SelectTab_EmptyTab_SelectsTab(FleetWindowTab tab)
+        {
+            Assert.IsTrue(_session.SelectItem(_secondFleet));
+
+            bool selected = _session.SelectTab(tab);
+
+            Assert.IsTrue(selected);
+            Assert.AreEqual(tab, _session.ActiveTab);
+            Assert.IsEmpty(_session.DetailItems);
         }
 
         [Test]
