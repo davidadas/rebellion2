@@ -53,10 +53,8 @@ public sealed class TacticalViewController : MonoBehaviour
         AppBootstrap bootstrap = AppBootstrap.EnsureExists();
         GameRuntime runtime = bootstrap.GetRuntime();
         GameRoot game = runtime?.GetActiveGame();
-        if (game == null)
-            throw new InvalidOperationException("TacticalView requires an active game.");
-
-        ActiveBattle activeBattle = game.GetActiveBattle();
+        ActiveBattle activeBattle =
+            game == null ? TacticalBattleLaunchContext.ActiveBattle : game.GetActiveBattle();
         if (activeBattle == null)
             throw new InvalidOperationException("TacticalView requires an active battle.");
 
