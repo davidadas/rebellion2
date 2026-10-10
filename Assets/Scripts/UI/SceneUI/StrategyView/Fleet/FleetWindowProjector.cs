@@ -299,11 +299,9 @@ internal sealed class FleetWindowProjector
                 new FleetWindowTabRenderData(
                     tab,
                     uiContext.GetTexture(tabTheme?.GetImagePathForContent(!empty, active)),
-                    empty
-                        ? null
-                        : uiContext.GetTexture(
-                            tabTheme?.GetImagePathForContent(hasItems: true, active: true)
-                        )
+                    uiContext.GetTexture(
+                        tabTheme?.GetImagePathForContent(hasItems: true, active: true)
+                    )
                 )
             );
         }
