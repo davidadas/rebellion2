@@ -2070,8 +2070,20 @@ namespace Rebellion.Tests.AI.Planners
                 demands.Single(demand => demand.DestinationPlanet == pendingPlanet).QuantityNeeded
             );
             Assert.AreEqual(
+                0,
+                demands
+                    .Single(demand => demand.DestinationPlanet == pendingPlanet)
+                    .InfrastructureHubIndex
+            );
+            Assert.AreEqual(
                 4,
                 demands.Single(demand => demand.DestinationPlanet == demandPlanet).QuantityNeeded
+            );
+            Assert.AreEqual(
+                1,
+                demands
+                    .Single(demand => demand.DestinationPlanet == demandPlanet)
+                    .InfrastructureHubIndex
             );
         }
 

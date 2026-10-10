@@ -247,7 +247,8 @@ namespace Rebellion.AI.Planners
                         targetCount,
                         requestedQuantity,
                         demandId,
-                        demandPlanet
+                        demandPlanet,
+                        hubIndex
                     );
                     if (added)
                         remainingFacilityCount -= requestedQuantity;
@@ -268,6 +269,7 @@ namespace Rebellion.AI.Planners
         /// <param name="maximumQuantity">The remaining facility deficit.</param>
         /// <param name="demandId">The facility hub demand identifier.</param>
         /// <param name="referencePlanet">The planet anchoring placement utility.</param>
+        /// <param name="hubIndex">The zero-based position of this hub within its sector.</param>
         /// <returns>True when a hub demand was added.</returns>
         private static bool AddSectorFacilityDemand(
             ICollection<AIProductionDemand> demands,
@@ -277,7 +279,8 @@ namespace Rebellion.AI.Planners
             int targetCount,
             int maximumQuantity,
             string demandId,
-            Planet referencePlanet
+            Planet referencePlanet,
+            int hubIndex
         )
         {
             if (target == null || target.GetAvailableEnergy() <= 0 || targetCount <= 0)
@@ -306,7 +309,8 @@ namespace Rebellion.AI.Planners
                     primaryDemand?.CapitalShipRole ?? AICapitalShipProductionRole.None,
                     targetCount: targetCount,
                     baseDemandPercent: capacityDemand.BaseDemandPercent,
-                    referencePlanet: referencePlanet
+                    referencePlanet: referencePlanet,
+                    infrastructureHubIndex: hubIndex
                 )
             );
             return true;

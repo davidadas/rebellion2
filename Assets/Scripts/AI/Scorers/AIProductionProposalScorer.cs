@@ -210,7 +210,7 @@ namespace Rebellion.AI.Scorers
                 config.DemandUtility.SectorCoverage
             );
             pressure += AIUtility.EvaluatePressure(
-                sectorFacilityCount > 0 ? 1 : 0,
+                demand.InfrastructureHubIndex == 0 ? 1 : 0,
                 config.DemandUtility.PrimaryHub
             );
             pressure += AIUtility.EvaluatePressure(

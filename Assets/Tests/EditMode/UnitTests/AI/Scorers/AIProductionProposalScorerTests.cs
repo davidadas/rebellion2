@@ -215,6 +215,54 @@ namespace Rebellion.Tests.AI.Scorers
             Assert.Greater(score, 0);
         }
 
+        [Test]
+        public void GetDemandPressure_WithPrimaryFacilityHub_AddsPrimaryHubPriority()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Infrastructure.DemandUtility.PrimaryHub.Weight = 0.5;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector1");
+            Planet destination = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "training-hub",
+                empire.InstanceID
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIProductionDemand primaryDemand = new AIProductionDemand(
+                "primary-training-hub",
+                AIProductionDemandKind.TrainingFacility,
+                ManufacturingType.Building,
+                BuildingType.TrainingFacility,
+                destination,
+                4,
+                targetCount: 4,
+                baseDemandPercent: 100,
+                infrastructureHubIndex: 0
+            );
+            AIProductionDemand secondaryDemand = new AIProductionDemand(
+                "secondary-training-hub",
+                AIProductionDemandKind.TrainingFacility,
+                ManufacturingType.Building,
+                BuildingType.TrainingFacility,
+                destination,
+                4,
+                targetCount: 4,
+                baseDemandPercent: 100,
+                infrastructureHubIndex: 1
+            );
+
+            double primaryPressure = AIProductionProposalScorer.GetDemandPressure(
+                context,
+                primaryDemand
+            );
+            double secondaryPressure = AIProductionProposalScorer.GetDemandPressure(
+                context,
+                secondaryDemand
+            );
+
+            Assert.AreEqual(50, primaryPressure - secondaryPressure);
+        }
+
         /// <summary>
         /// Creates a building-production proposal for a test scenario.
         /// </summary>
