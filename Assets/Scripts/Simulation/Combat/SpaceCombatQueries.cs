@@ -60,6 +60,8 @@ namespace Rebellion.Simulation
             {
                 AttackerFleet = attacker,
                 DefenderFleet = defender,
+                AttackerFleets = attackerFleets,
+                DefenderFleets = defenderFleets,
                 AttackerOwnerInstanceID = decision.AttackerOwnerInstanceID,
                 DefenderOwnerInstanceID = decision.DefenderOwnerInstanceID,
                 Planet = planet,

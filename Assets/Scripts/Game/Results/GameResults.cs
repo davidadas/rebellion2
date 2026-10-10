@@ -785,6 +785,8 @@ namespace Rebellion.Game.Results
     {
         public Fleet AttackerFleet { get; set; }
         public Fleet DefenderFleet { get; set; }
+        public List<Fleet> AttackerFleets { get; set; } = new List<Fleet>();
+        public List<Fleet> DefenderFleets { get; set; } = new List<Fleet>();
         public string AttackerOwnerInstanceID { get; set; }
         public string DefenderOwnerInstanceID { get; set; }
         public Planet Planet { get; set; }
