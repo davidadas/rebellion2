@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game.Combat;
@@ -26,9 +27,6 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             TacticalBattleLaunchContext.Reset(TestContent.Pack);
         }
 
-        /// <summary>
-        /// Verifies that the default battle contains one capital ship for every playable faction.
-        /// </summary>
         [Test]
         public void Reset_DefaultContent_CreatesOneCapitalShipForEachPlayableFaction()
         {
@@ -47,9 +45,6 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             );
         }
 
-        /// <summary>
-        /// Verifies that default combatants occupy the authored deployment slots and centers.
-        /// </summary>
         [Test]
         public void Reset_DefaultContent_AssignsMapSlotsAndDeploymentCenters()
         {
@@ -78,12 +73,19 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                     (region.Bounds.MinimumZ + region.Bounds.MaximumZ) / 2f,
                     combatant.Position.Z
                 );
+                Assert.AreEqual(
+                    (float)Math.Sin(region.Facing.Y * Math.PI / 180d),
+                    combatant.Forward.X,
+                    0.0001f
+                );
+                Assert.AreEqual(
+                    (float)Math.Cos(region.Facing.Y * Math.PI / 180d),
+                    combatant.Forward.Z,
+                    0.0001f
+                );
             }
         }
 
-        /// <summary>
-        /// Verifies that resetting discards the previously materialized default battle.
-        /// </summary>
         [Test]
         public void Reset_ExistingBattle_ReplacesBattleWhenNextRequested()
         {

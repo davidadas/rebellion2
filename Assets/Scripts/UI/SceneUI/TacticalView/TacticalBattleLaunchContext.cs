@@ -89,6 +89,7 @@ public static class TacticalBattleLaunchContext
             BattleParticipant participant = battle.GetParticipants()[factionIndex];
             participant.BattleMapSlotID = deploymentRegion.ParticipantSlotID;
             combatant.Position = GetCenter(deploymentRegion.Bounds);
+            combatant.Forward = GetForward(deploymentRegion.Facing);
         }
 
         return battle;
@@ -109,6 +110,27 @@ public static class TacticalBattleLaunchContext
             X = (bounds.MinimumX + bounds.MaximumX) / 2f,
             Y = (bounds.MinimumY + bounds.MaximumY) / 2f,
             Z = (bounds.MinimumZ + bounds.MaximumZ) / 2f,
+        };
+    }
+
+    /// <summary>
+    /// Converts an authored Euler facing into a forward direction.
+    /// </summary>
+    /// <param name="facing">The authored Euler rotation in degrees.</param>
+    /// <returns>The corresponding forward direction.</returns>
+    private static BattleVector3 GetForward(BattleMapVector3 facing)
+    {
+        if (facing == null)
+            throw new ArgumentNullException(nameof(facing));
+
+        double pitch = facing.X * Math.PI / 180d;
+        double yaw = facing.Y * Math.PI / 180d;
+        double pitchCosine = Math.Cos(pitch);
+        return new BattleVector3
+        {
+            X = (float)(Math.Sin(yaw) * pitchCosine),
+            Y = (float)-Math.Sin(pitch),
+            Z = (float)(Math.Cos(yaw) * pitchCosine),
         };
     }
 }

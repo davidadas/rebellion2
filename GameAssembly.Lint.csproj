@@ -129,6 +129,20 @@
       <HintPath>$(UnityManagedAssembliesPath)/UnityEngine.AnimationModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <Reference
+      Include="UnityEngine.ParticleSystemModule"
+      Condition="Exists('$(UnityManagedAssembliesPath)/UnityEngine.ParticleSystemModule.dll')"
+    >
+      <HintPath>$(UnityManagedAssembliesPath)/UnityEngine.ParticleSystemModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference
+      Include="UnityEngine.PhysicsModule"
+      Condition="Exists('$(UnityManagedAssembliesPath)/UnityEngine.PhysicsModule.dll')"
+    >
+      <HintPath>$(UnityManagedAssembliesPath)/UnityEngine.PhysicsModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
     <Reference Include="Unity.TextMeshPro" Condition="'$(TextMeshProHintPath)' != ''">
       <HintPath>$(TextMeshProHintPath)</HintPath>
       <Private>false</Private>

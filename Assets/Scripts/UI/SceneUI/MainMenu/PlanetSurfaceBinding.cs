@@ -13,6 +13,7 @@ public sealed class PlanetSurfaceBinding : MonoBehaviour, IContentInitializable
     private static readonly int _cloudRotationSpeedProperty = Shader.PropertyToID(
         "_CloudRotationSpeed"
     );
+    private static readonly int _sunDirectionProperty = Shader.PropertyToID("_SunDirection");
 
     [SerializeField]
     private string shaderName;
@@ -23,6 +24,10 @@ public sealed class PlanetSurfaceBinding : MonoBehaviour, IContentInitializable
     [SerializeField]
     private float cloudRotationSpeed;
 
+    [SerializeField]
+    private Vector3 sunDirection;
+
+    private Texture2D suppliedCloudTexture;
     private Material surfaceMaterial;
 
     /// <summary>
@@ -45,7 +50,57 @@ public sealed class PlanetSurfaceBinding : MonoBehaviour, IContentInitializable
 
         shaderName = shader;
         cloudTextureAddress = textureAddress;
+        suppliedCloudTexture = null;
         cloudRotationSpeed = rotationSpeed;
+    }
+
+    /// <summary>
+    /// Configures the shader, cloud texture, cloud drift, and world-space direction toward the sun.
+    /// </summary>
+    /// <param name="shader">The unified planet shader name.</param>
+    /// <param name="textureAddress">The content address for the cloud coverage texture.</param>
+    /// <param name="rotationSpeed">The cloud rotation speed in degrees per second.</param>
+    /// <param name="directionToSun">The world-space direction from the planet to the sun.</param>
+    public void Configure(
+        string shader,
+        string textureAddress,
+        float rotationSpeed,
+        Vector3 directionToSun
+    )
+    {
+        if (directionToSun.sqrMagnitude <= Mathf.Epsilon)
+            throw new ArgumentException("A sun direction is required.", nameof(directionToSun));
+
+        Configure(shader, textureAddress, rotationSpeed);
+        sunDirection = directionToSun.normalized;
+    }
+
+    /// <summary>
+    /// Configures the shader with a caller-owned cloud texture and world-space sun direction.
+    /// </summary>
+    /// <param name="shader">The unified planet shader name.</param>
+    /// <param name="cloudTexture">The already loaded cloud coverage texture.</param>
+    /// <param name="rotationSpeed">The cloud rotation speed in degrees per second.</param>
+    /// <param name="directionToSun">The world-space direction from the planet to the sun.</param>
+    public void Configure(
+        string shader,
+        Texture2D cloudTexture,
+        float rotationSpeed,
+        Vector3 directionToSun
+    )
+    {
+        if (string.IsNullOrWhiteSpace(shader))
+            throw new ArgumentException("A planet surface shader is required.", nameof(shader));
+        if (cloudTexture == null)
+            throw new ArgumentNullException(nameof(cloudTexture));
+        if (directionToSun.sqrMagnitude <= Mathf.Epsilon)
+            throw new ArgumentException("A sun direction is required.", nameof(directionToSun));
+
+        shaderName = shader;
+        cloudTextureAddress = null;
+        suppliedCloudTexture = cloudTexture;
+        cloudRotationSpeed = rotationSpeed;
+        sunDirection = directionToSun.normalized;
     }
 
     /// <summary>
@@ -80,13 +135,22 @@ public sealed class PlanetSurfaceBinding : MonoBehaviour, IContentInitializable
         surfaceMaterial.SetTextureScale("_BaseMap", sourceMaterial.mainTextureScale);
         surfaceMaterial.SetTextureOffset("_BaseMap", sourceMaterial.mainTextureOffset);
         surfaceMaterial.SetColor(_baseColorProperty, ResolveBaseColor(sourceMaterial));
-        Texture2D cloudMap = ContentBindings.RequireTexture(contentAssets, cloudTextureAddress);
+        Texture2D cloudMap =
+            suppliedCloudTexture
+            ?? ContentBindings.RequireTexture(contentAssets, cloudTextureAddress);
         cloudMap.wrapModeU = TextureWrapMode.Repeat;
         cloudMap.wrapModeV = TextureWrapMode.Clamp;
         cloudMap.filterMode = FilterMode.Bilinear;
         cloudMap.anisoLevel = 8;
         surfaceMaterial.SetTexture(_cloudMapProperty, cloudMap);
         surfaceMaterial.SetFloat(_cloudRotationSpeedProperty, cloudRotationSpeed);
+        if (sunDirection.sqrMagnitude > Mathf.Epsilon)
+        {
+            surfaceMaterial.SetVector(
+                _sunDirectionProperty,
+                new Vector4(sunDirection.x, sunDirection.y, sunDirection.z, 0f)
+            );
+        }
         renderers[0].sharedMaterial = surfaceMaterial;
     }
 

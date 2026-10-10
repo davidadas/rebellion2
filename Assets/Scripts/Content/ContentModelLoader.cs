@@ -44,6 +44,52 @@ public static class ContentModelLoader
             throw new InvalidOperationException($"Failed to load GLB model: {filePath}", exception);
         }
     }
+
+    /// <summary>
+    /// Parses an in-memory GLB into a reusable model resource without instantiating its scene.
+    /// </summary>
+    /// <param name="bytes">The complete GLB payload.</param>
+    /// <param name="assetName">The diagnostic name of the packaged model.</param>
+    /// <param name="cancellationToken">Cancels GLB loading.</param>
+    /// <returns>A task containing the parsed model resource.</returns>
+    internal static async Task<ContentModelResource> LoadResourceAsync(
+        byte[] bytes,
+        string assetName,
+        CancellationToken cancellationToken
+    )
+    {
+        if (bytes == null || bytes.Length == 0)
+            throw new ArgumentException("A GLB payload is required.", nameof(bytes));
+        if (string.IsNullOrWhiteSpace(assetName))
+            throw new ArgumentException(
+                "A packaged GLB asset name is required.",
+                nameof(assetName)
+            );
+
+        GLTFast.IDeferAgent deferAgent = Application.isPlaying
+            ? null
+            : new GLTFast.UninterruptedDeferAgent();
+        GLTFast.GltfImport gltf = new GLTFast.GltfImport(deferAgent: deferAgent);
+        try
+        {
+            bool loaded = await gltf.Load(bytes, null, null, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!loaded)
+                throw new InvalidOperationException($"glTFast rejected the GLB asset: {assetName}");
+
+            return new ContentModelResource(gltf, assetName);
+        }
+        catch (Exception exception)
+        {
+            gltf.Dispose();
+            if (exception is OperationCanceledException)
+                throw;
+            throw new InvalidOperationException(
+                $"Failed to load packaged GLB model: {assetName}",
+                exception
+            );
+        }
+    }
 }
 
 /// <summary>
@@ -160,6 +206,44 @@ public sealed class ContentModelInstance : IDisposable
     }
 
     /// <summary>
+    /// Applies authored posing to the instantiated model hierarchy.
+    /// </summary>
+    /// <param name="pivot">The transform whose origin receives the centered model.</param>
+    /// <param name="modelScale">The uniform scale applied after optional normalization.</param>
+    /// <param name="rotationEuler">The local Euler rotation applied when overwrite is enabled.</param>
+    /// <param name="overwriteRotation">Whether the imported rotation is replaced.</param>
+    /// <param name="normalizeToUnitDiameter">Whether the model is first normalized to a diameter of two.</param>
+    /// <param name="centerOnPivot">Whether the rendered bounds are centered on the pivot.</param>
+    /// <param name="contentLayer">The layer assigned recursively, or a negative value to preserve layers.</param>
+    internal void ApplyPose(
+        Transform pivot,
+        float modelScale,
+        Vector3 rotationEuler,
+        bool overwriteRotation,
+        bool normalizeToUnitDiameter,
+        bool centerOnPivot,
+        int contentLayer
+    )
+    {
+        if (pivot == null)
+            throw new ArgumentNullException(nameof(pivot));
+        if (ModelRoot == null)
+            throw new ObjectDisposedException(nameof(ContentModelInstance));
+
+        ModelRoot.localPosition = Vector3.zero;
+        if (overwriteRotation)
+            ModelRoot.localRotation = Quaternion.Euler(rotationEuler);
+        if (normalizeToUnitDiameter)
+            NormalizeToUnitDiameter(ModelRoot);
+        if (!Mathf.Approximately(modelScale, 1f))
+            ModelRoot.localScale *= modelScale;
+        if (centerOnPivot)
+            CenterOnPivot(pivot, ModelRoot);
+        if (contentLayer >= 0)
+            SetLayerRecursively(ModelRoot.gameObject, contentLayer);
+    }
+
+    /// <summary>
     /// Destroys the instantiated hierarchy and releases all imported resources.
     /// </summary>
     public void Dispose()
@@ -183,5 +267,63 @@ public sealed class ContentModelInstance : IDisposable
             UnityEngine.Object.Destroy(root.gameObject);
         else
             UnityEngine.Object.DestroyImmediate(root.gameObject);
+    }
+
+    /// <summary>
+    /// Scales a model so its largest bounds dimension spans two units.
+    /// </summary>
+    /// <param name="model">The model to scale.</param>
+    private static void NormalizeToUnitDiameter(Transform model)
+    {
+        if (!TryGetBounds(model, out Bounds bounds))
+            return;
+
+        float maxExtent = Mathf.Max(bounds.size.x, bounds.size.y, bounds.size.z);
+        if (maxExtent > 0f)
+            model.localScale *= 2f / maxExtent;
+    }
+
+    /// <summary>
+    /// Offsets a model so its bounds center aligns with the pivot.
+    /// </summary>
+    /// <param name="pivot">The transform to center on.</param>
+    /// <param name="model">The model to recenter.</param>
+    private static void CenterOnPivot(Transform pivot, Transform model)
+    {
+        if (TryGetBounds(model, out Bounds bounds))
+            model.position += pivot.position - bounds.center;
+    }
+
+    /// <summary>
+    /// Computes the combined world bounds of a model's renderers.
+    /// </summary>
+    /// <param name="model">The model to measure.</param>
+    /// <param name="bounds">The combined world bounds when renderers exist.</param>
+    /// <returns>True when the model has at least one renderer.</returns>
+    private static bool TryGetBounds(Transform model, out Bounds bounds)
+    {
+        Renderer[] renderers = model.GetComponentsInChildren<Renderer>();
+        if (renderers.Length == 0)
+        {
+            bounds = default;
+            return false;
+        }
+
+        bounds = renderers[0].bounds;
+        for (int index = 1; index < renderers.Length; index++)
+            bounds.Encapsulate(renderers[index].bounds);
+        return true;
+    }
+
+    /// <summary>
+    /// Assigns a layer to a model and every descendant.
+    /// </summary>
+    /// <param name="model">The model root.</param>
+    /// <param name="layer">The layer to assign.</param>
+    private static void SetLayerRecursively(GameObject model, int layer)
+    {
+        model.layer = layer;
+        foreach (Transform child in model.transform)
+            SetLayerRecursively(child.gameObject, layer);
     }
 }
