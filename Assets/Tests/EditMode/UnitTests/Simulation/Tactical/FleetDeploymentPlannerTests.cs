@@ -224,41 +224,6 @@ namespace Rebellion.Tests.Simulation.Tactical
         }
 
         [Test]
-        public void Deploy_ActiveContentCatalog_DeploysEveryModeledShip()
-        {
-            ActiveBattle battle = new ActiveBattle
-            {
-                BattleMapInstanceID = "MAP",
-                Kind = BattleKind.Space,
-            };
-            IEnumerable<BaseSceneNode> templates = TestContent
-                .Pack.GameData.CapitalShips.Cast<BaseSceneNode>()
-                .Concat(TestContent.Pack.GameData.Starfighters);
-            foreach (
-                BaseSceneNode template in templates.Where(unit =>
-                    !string.IsNullOrWhiteSpace(unit.ModelPath)
-                )
-            )
-            {
-                BaseSceneNode unit = (BaseSceneNode)template.CreateCopy();
-                unit.OwnerInstanceID = "FACTION";
-                unit.InstanceID = template.TypeID;
-                TestContent.Pack.ModelMetadata.ResolveSize(unit);
-                if (unit is Starfighter fighter)
-                    fighter.CurrentSquadronSize = 12;
-                battle.AddCombatants(unit);
-            }
-            battle.GetParticipants().Single().BattleMapSlotID = "fleet";
-
-            FleetDeploymentPlanner.Deploy(battle, CreateMap());
-
-            AssertContainedAndSeparated(
-                battle.GetParticipants().Single(),
-                CreateMap().PlayableBounds
-            );
-        }
-
-        [Test]
         public void Deploy_LargeMixedFleet_CompletesDeploymentWithinSetupBudget()
         {
             ActiveBattle battle = CreateBattle(200, 100, 12);

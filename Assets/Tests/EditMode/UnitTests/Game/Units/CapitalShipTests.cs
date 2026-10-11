@@ -569,6 +569,7 @@ namespace Rebellion.Tests.Game.Units
         public void CreateCopy_WithComponentsAndHardpointGroups_CreatesIndependentCopies()
         {
             _capitalShip.ModelPath = "Pack/Units/TestCapitalShip/Models/model";
+            _capitalShip.ModelScale = 2.5f;
             _capitalShip.ModelSize = new ModelDimensions
             {
                 Width = 100f,
@@ -606,6 +607,7 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreNotSame(originalComponent, copiedComponent);
             Assert.AreEqual(_capitalShip.ModelPath, copy.ModelPath);
             Assert.AreNotSame(_capitalShip.ModelSize, copy.ModelSize);
+            Assert.AreEqual(_capitalShip.ModelScale, copy.ModelScale);
             Assert.AreEqual(100f, copy.ModelSize.Width);
             Assert.AreEqual(40f, copy.ModelSize.Height);
             Assert.AreEqual(250f, copy.ModelSize.Depth);

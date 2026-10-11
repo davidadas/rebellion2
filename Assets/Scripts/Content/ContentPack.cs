@@ -26,9 +26,6 @@ public sealed class ContentPack
     /// </summary>
     public ContentFileResolver FileResolver { get; }
 
-    /// <summary>Gets generated model dimensions shared by deployment and presentation.</summary>
-    public ContentModelMetadata ModelMetadata { get; }
-
     /// <summary>
     /// Gets this pack's definition.
     /// </summary>
@@ -75,7 +72,6 @@ public sealed class ContentPack
             contentRootPath ?? throw new ArgumentNullException(nameof(contentRootPath));
         PackRootPath = packRootPath ?? throw new ArgumentNullException(nameof(packRootPath));
         FileResolver = fileResolver ?? throw new ArgumentNullException(nameof(fileResolver));
-        ModelMetadata = new ContentModelMetadata(FileResolver);
         Definition = definition ?? throw new ArgumentNullException(nameof(definition));
         Scenario = scenario ?? throw new ArgumentNullException(nameof(scenario));
         Factions = factions ?? throw new ArgumentNullException(nameof(factions));

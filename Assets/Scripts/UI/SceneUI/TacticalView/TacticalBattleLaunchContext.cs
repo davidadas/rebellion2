@@ -3,7 +3,6 @@ using System.Linq;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Simulation.Tactical;
 
 /// <summary>
 /// Carries the standalone tactical-scene battle created from the active content defaults.
@@ -99,7 +98,6 @@ public static class TacticalBattleLaunchContext
                 BaseSceneNode ship = (BaseSceneNode)template.CreateCopy();
                 ship.InstanceID = null;
                 ship.OwnerInstanceID = factionInstanceID;
-                activeContentPack.ModelMetadata.ResolveSize(ship);
                 battle.AddCombatants(ship);
             }
             BattleMapDeploymentRegion deploymentRegion = deploymentRegions[factionIndex];
@@ -107,7 +105,6 @@ public static class TacticalBattleLaunchContext
             participant.BattleMapSlotID = deploymentRegion.ParticipantSlotID;
         }
 
-        FleetDeploymentPlanner.Deploy(battle, battleMap);
         return battle;
     }
 }

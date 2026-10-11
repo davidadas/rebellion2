@@ -115,7 +115,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         }
 
         [Test]
-        public void Reset_DefaultContent_AssignsMapSlotsAndDeploysEveryShip()
+        public void Reset_DefaultContent_AssignsMapSlotsBeforeModelLoading()
         {
             ActiveBattle battle = TacticalBattleLaunchContext.ActiveBattle;
             BattleMap map = TestContent.Pack.GameData.BattleMaps.Single(candidate =>
@@ -131,28 +131,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                 Assert.AreEqual(region.ParticipantSlotID, participant.BattleMapSlotID);
                 foreach (CombatUnit combatant in participant.GetCombatants())
                 {
-                    Assert.That(
-                        combatant.Position.X,
-                        Is.InRange(region.Bounds.MinimumX, region.Bounds.MaximumX)
-                    );
-                    Assert.That(
-                        combatant.Position.Y,
-                        Is.InRange(region.Bounds.MinimumY, region.Bounds.MaximumY)
-                    );
-                    Assert.That(
-                        combatant.Position.Z,
-                        Is.InRange(region.Bounds.MinimumZ, region.Bounds.MaximumZ)
-                    );
-                    Assert.AreEqual(
-                        (float)Math.Sin(region.Facing.Y * Math.PI / 180d),
-                        combatant.Forward.X,
-                        0.0001f
-                    );
-                    Assert.AreEqual(
-                        (float)Math.Cos(region.Facing.Y * Math.PI / 180d),
-                        combatant.Forward.Z,
-                        0.0001f
-                    );
+                    Assert.AreEqual(0f, combatant.Position.X);
+                    Assert.AreEqual(0f, combatant.Position.Y);
+                    Assert.AreEqual(0f, combatant.Position.Z);
                 }
             }
         }

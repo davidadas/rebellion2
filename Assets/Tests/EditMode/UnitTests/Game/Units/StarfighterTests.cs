@@ -480,6 +480,7 @@ namespace Rebellion.Tests.Game.Units
         [Test]
         public void CreateCopy_WithModelSize_CreatesIndependentSize()
         {
+            _starfighter.ModelScale = 2.5f;
             _starfighter.ModelSize = new ModelDimensions
             {
                 Width = 12f,
@@ -490,6 +491,7 @@ namespace Rebellion.Tests.Game.Units
             Starfighter copy = (Starfighter)_starfighter.CreateCopy();
 
             Assert.AreNotSame(_starfighter.ModelSize, copy.ModelSize);
+            Assert.AreEqual(2.5f, copy.ModelScale);
             Assert.AreEqual(12f, copy.ModelSize.Width);
             Assert.AreEqual(4f, copy.ModelSize.Height);
             Assert.AreEqual(18f, copy.ModelSize.Depth);

@@ -302,9 +302,9 @@ public sealed class ContentModelInstance : IDisposable
     /// <param name="reference">The coordinate frame in which to measure the model.</param>
     /// <param name="bounds">The combined reference-local bounds when renderers exist.</param>
     /// <returns>True when the model has at least one renderer.</returns>
-    private static bool TryGetBounds(Transform model, Transform reference, out Bounds bounds)
+    internal static bool TryGetBounds(Transform model, Transform reference, out Bounds bounds)
     {
-        Renderer[] renderers = model.GetComponentsInChildren<Renderer>();
+        Renderer[] renderers = model.GetComponentsInChildren<Renderer>(true);
         if (renderers.Length == 0)
         {
             bounds = default;

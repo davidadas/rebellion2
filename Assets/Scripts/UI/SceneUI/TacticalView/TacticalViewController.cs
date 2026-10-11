@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Rebellion.Game;
 using Rebellion.Game.Combat;
 using Rebellion.SceneGraph;
+using Rebellion.Simulation.Tactical;
 using UnityEngine;
 
 /// <summary>
@@ -23,6 +25,9 @@ public sealed class TacticalViewController : MonoBehaviour
 
     [SerializeField]
     private Rect initialFleetViewport = new Rect(0.05f, 0.05f, 0.9f, 0.9f);
+
+    private readonly List<ContentModelInstance> modelInstances = new List<ContentModelInstance>();
+    private CancellationTokenSource modelLoading;
 
     /// <summary>
     /// Gets the active battle presented by this scene.
@@ -90,20 +95,18 @@ public sealed class TacticalViewController : MonoBehaviour
             }
 
             string viewerFactionInstanceID = game?.GetPlayerFaction().InstanceID;
-            foreach (BattleParticipant participant in activeBattle.GetParticipants())
-            foreach (CombatUnit combatant in participant.GetCombatants())
-                bootstrap.GetContentPack().ModelMetadata.ResolveSize(combatant.GetUnit());
-            Initialize(activeBattle, battleMap, viewerFactionInstanceID);
-            Task[] modelLoads = transform
-                .GetComponentsInChildren<ContentModelBinding>(true)
-                .Select(binding => binding.Ready)
-                .Append(mapRoot.GetComponent<TacticalMapRenderer>().Ready)
-                .ToArray();
-            await Task.WhenAll(modelLoads);
+            await InitializeAsync(
+                activeBattle,
+                battleMap,
+                bootstrap.GetContentModelCache(),
+                viewerFactionInstanceID,
+                game == null
+            );
             if (this == null)
                 return;
             ContentBindings.Apply(mapRoot.gameObject, bootstrap.GetContentAssets());
         }
+        catch (OperationCanceledException) { }
         catch (Exception exception)
         {
             Debug.LogException(exception);
@@ -111,23 +114,30 @@ public sealed class TacticalViewController : MonoBehaviour
     }
 
     /// <summary>
-    /// Binds one active battle to its matching authored map.
+    /// Loads one battle's models, measures their rendered geometry, and prepares its presentation.
     /// </summary>
     /// <param name="activeBattle">The persistent tactical-battle state.</param>
     /// <param name="battleMap">The authored map selected for the battle.</param>
+    /// <param name="models">The existing cache owning the parsed models used by this scene.</param>
     /// <param name="viewerFactionInstanceID">
     /// The faction whose authored starting camera should be used, or null to use the first participant.
     /// </param>
-    public void Initialize(
+    /// <param name="deployFleet">Whether this is a new battle requiring initial deployment; false preserves saved poses.</param>
+    /// <returns>A task completing after models, deployment, and camera framing are ready.</returns>
+    public async Task InitializeAsync(
         ActiveBattle activeBattle,
         BattleMap battleMap,
-        string viewerFactionInstanceID = null
+        ContentModelCache models,
+        string viewerFactionInstanceID = null,
+        bool deployFleet = false
     )
     {
         if (activeBattle == null)
             throw new ArgumentNullException(nameof(activeBattle));
         if (battleMap == null)
             throw new ArgumentNullException(nameof(battleMap));
+        if (models == null)
+            throw new ArgumentNullException(nameof(models));
         if (
             !string.Equals(
                 activeBattle.BattleMapInstanceID,
@@ -151,9 +161,102 @@ public sealed class TacticalViewController : MonoBehaviour
 
         ActiveBattle = activeBattle;
         BattleMap = battleMap;
-        ConfigureCamera(viewerFactionInstanceID);
         mapRoot.GetComponent<TacticalMapRenderer>().Render(battleMap, battleCamera);
-        RenderCombatants();
+        Dictionary<CombatUnit, Transform> presentations = RenderCombatants();
+        battleRoot.gameObject.SetActive(false);
+        await Task.WhenAll(
+            presentations
+                .Select(presentation =>
+                    LoadCombatantModelAsync(
+                        presentation.Key,
+                        presentation.Value,
+                        models,
+                        modelLoading.Token
+                    )
+                )
+                .Append(mapRoot.GetComponent<TacticalMapRenderer>().Ready)
+        );
+        if (this == null)
+            return;
+        foreach (KeyValuePair<CombatUnit, Transform> presentation in presentations)
+        {
+            if (
+                !ContentModelInstance.TryGetBounds(
+                    presentation.Value,
+                    presentation.Value,
+                    out Bounds bounds
+                )
+            )
+                throw new InvalidOperationException(
+                    $"Tactical unit '{presentation.Key.GetUnit().TypeID}' has no loaded model geometry."
+                );
+            presentation.Key.GetUnit().ModelSize = new ModelDimensions
+            {
+                Width = bounds.size.x,
+                Height = bounds.size.y,
+                Depth = bounds.size.z,
+            };
+        }
+        if (deployFleet)
+            FleetDeploymentPlanner.Deploy(activeBattle, battleMap);
+        foreach (KeyValuePair<CombatUnit, Transform> presentation in presentations)
+        {
+            presentation.Value.localPosition = ToUnityVector(presentation.Key.Position);
+            Vector3 forward = ToUnityVector(presentation.Key.Forward);
+            if (forward.sqrMagnitude > Mathf.Epsilon)
+                presentation.Value.localRotation = Quaternion.LookRotation(forward.normalized);
+        }
+        ConfigureCamera(viewerFactionInstanceID);
+        battleRoot.gameObject.SetActive(true);
+    }
+
+    /// <summary>Releases scene instances and cancels model loads when the tactical view closes.</summary>
+    private void OnDestroy()
+    {
+        ReleaseModels();
+    }
+
+    /// <summary>Loads and centers a combatant's Unity model with its intentional uniform scale.</summary>
+    /// <param name="combatant">The unit whose model is loaded.</param>
+    /// <param name="presentation">The root receiving the model hierarchy.</param>
+    /// <param name="models">The application-owned model cache.</param>
+    /// <param name="cancellationToken">Cancels loading when the scene is closed or rebound.</param>
+    /// <returns>A task completing when the model has been posed.</returns>
+    private async Task LoadCombatantModelAsync(
+        CombatUnit combatant,
+        Transform presentation,
+        ContentModelCache models,
+        CancellationToken cancellationToken
+    )
+    {
+        float scale = combatant.GetUnit().ModelScale;
+        if (!(scale > 0f) || float.IsInfinity(scale))
+            throw new InvalidOperationException(
+                "Tactical model scale must be finite and positive."
+            );
+        ContentModelInstance instance = await models.InstantiateAsync(
+            combatant.GetUnit().ModelPath,
+            presentation,
+            cancellationToken
+        );
+        if (cancellationToken.IsCancellationRequested)
+        {
+            instance.Dispose();
+            cancellationToken.ThrowIfCancellationRequested();
+        }
+        modelInstances.Add(instance);
+        instance.ApplyPose(presentation, scale, Vector3.zero, false, false, true, -1);
+    }
+
+    /// <summary>Releases only the instantiated models owned by this tactical view.</summary>
+    private void ReleaseModels()
+    {
+        modelLoading?.Cancel();
+        modelLoading?.Dispose();
+        modelLoading = null;
+        foreach (ContentModelInstance instance in modelInstances)
+            instance.Dispose();
+        modelInstances.Clear();
     }
 
     /// <summary>
@@ -213,7 +316,6 @@ public sealed class TacticalViewController : MonoBehaviour
             foreach (CombatUnit combatant in viewer.GetCombatants())
             {
                 ModelDimensions size = combatant.GetUnit().ModelSize;
-                GetModelScale(combatant.GetUnit());
                 Quaternion rotation = Quaternion.LookRotation(
                     ToUnityVector(combatant.Forward).normalized
                 );
@@ -299,9 +401,11 @@ public sealed class TacticalViewController : MonoBehaviour
     /// <summary>
     /// Rebuilds the unit-presentation hierarchy from the active battle snapshot.
     /// </summary>
-    private void RenderCombatants()
+    /// <returns>The presentation root for each combatant, used after its model finishes loading.</returns>
+    private Dictionary<CombatUnit, Transform> RenderCombatants()
     {
         ClearBattleRoot();
+        Dictionary<CombatUnit, Transform> presentations = new Dictionary<CombatUnit, Transform>();
         foreach (BattleParticipant participant in ActiveBattle.GetParticipants())
         {
             GameObject participantObject = new GameObject(
@@ -309,16 +413,21 @@ public sealed class TacticalViewController : MonoBehaviour
             );
             participantObject.transform.SetParent(battleRoot, false);
             foreach (CombatUnit combatant in participant.GetCombatants())
-                RenderCombatant(combatant, participantObject.transform);
+                presentations.Add(
+                    combatant,
+                    RenderCombatant(combatant, participantObject.transform)
+                );
         }
+        return presentations;
     }
 
     /// <summary>
-    /// Creates one presentation root and external-model binding for a combatant.
+    /// Creates one presentation root for a combatant's model.
     /// </summary>
     /// <param name="combatant">The battle unit to present.</param>
     /// <param name="participantRoot">The owning participant's presentation root.</param>
-    private void RenderCombatant(CombatUnit combatant, Transform participantRoot)
+    /// <returns>The combatant's presentation root.</returns>
+    private Transform RenderCombatant(CombatUnit combatant, Transform participantRoot)
     {
         if (combatant == null)
             throw new InvalidOperationException("A battle participant contains a null combatant.");
@@ -337,19 +446,7 @@ public sealed class TacticalViewController : MonoBehaviour
         if (forward.sqrMagnitude > Mathf.Epsilon)
             unitObject.transform.localRotation = Quaternion.LookRotation(forward.normalized);
 
-        if (string.IsNullOrWhiteSpace(unit.ModelPath))
-            return;
-
-        ContentModelBinding modelBinding = unitObject.AddComponent<ContentModelBinding>();
-        modelBinding.SetModel(
-            unit.ModelPath,
-            GetModelScale(unit),
-            Vector3.zero,
-            false,
-            false,
-            true,
-            -1
-        );
+        return unitObject.transform;
     }
 
     /// <summary>
@@ -357,6 +454,8 @@ public sealed class TacticalViewController : MonoBehaviour
     /// </summary>
     private void ClearBattleRoot()
     {
+        ReleaseModels();
+        modelLoading = new CancellationTokenSource();
         for (int childIndex = battleRoot.childCount - 1; childIndex >= 0; childIndex--)
         {
             GameObject child = battleRoot.GetChild(childIndex).gameObject;
@@ -366,32 +465,6 @@ public sealed class TacticalViewController : MonoBehaviour
                 DestroyImmediate(child);
         }
     }
-
-    /// <summary>
-    /// Validates resolved dimensions and returns the intentional scale used with imported model geometry.
-    /// </summary>
-    /// <param name="unit">The unit with resolved dimensions and an intentional model scale.</param>
-    /// <returns>The uniform scale applied without unit-diameter normalization.</returns>
-    private static float GetModelScale(BaseSceneNode unit)
-    {
-        ModelDimensions modelSize = unit.ModelSize;
-        if (
-            modelSize == null
-            || !IsPositive(unit.ModelScale)
-            || !IsPositive(modelSize.Width)
-            || !IsPositive(modelSize.Height)
-            || !IsPositive(modelSize.Depth)
-        )
-            throw new InvalidOperationException(
-                "Tactical models require finite, positive ModelSize dimensions."
-            );
-        return unit.ModelScale;
-    }
-
-    /// <summary>Checks an authored dimension before using it for rendering and framing.</summary>
-    /// <param name="value">The authored dimension.</param>
-    /// <returns>True for finite positive dimensions.</returns>
-    private static bool IsPositive(float value) => value > 0f && !float.IsInfinity(value);
 
     /// <summary>
     /// Computes a far clipping plane that contains every corner of the playable volume.
