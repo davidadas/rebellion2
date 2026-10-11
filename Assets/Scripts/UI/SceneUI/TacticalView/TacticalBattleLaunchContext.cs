@@ -2,6 +2,8 @@ using System;
 using System.Linq;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
+using Rebellion.Simulation.Tactical;
 
 /// <summary>
 /// Carries the standalone tactical-scene battle created from the active content defaults.
@@ -34,7 +36,7 @@ public static class TacticalBattleLaunchContext
     }
 
     /// <summary>
-    /// Creates a space battle containing one capital ship for every playable faction.
+    /// Creates a space battle containing modeled conventional capital ships and fighter squadrons for each playable faction.
     /// </summary>
     /// <param name="activeContentPack">The active content pack.</param>
     /// <returns>The default tactical battle.</returns>
@@ -67,70 +69,44 @@ public static class TacticalBattleLaunchContext
             BattleMapInstanceID = battleMap.InstanceID,
             Kind = BattleKind.Space,
         };
+        BaseSceneNode[] templates = gameData
+            .CapitalShips.Cast<BaseSceneNode>()
+            .Concat(gameData.Starfighters)
+            .Where(unit =>
+                !string.IsNullOrWhiteSpace(unit.ModelPath)
+                && unit is not CapitalShip { CanDestroyPlanets: true }
+            )
+            .ToArray();
         for (int factionIndex = 0; factionIndex < factionInstanceIDs.Length; factionIndex++)
         {
             string factionInstanceID = factionInstanceIDs[factionIndex];
-            CapitalShip template = gameData.CapitalShips.FirstOrDefault(ship =>
-                ship.ManufacturingFactionInstanceIDs?.Contains(factionInstanceID) == true
-                && !string.IsNullOrWhiteSpace(ship.ModelPath)
-            );
-            if (template == null)
+            BaseSceneNode[] factionTemplates = templates
+                .Where(unit =>
+                    ((IManufacturable)unit).ManufacturingFactionInstanceIDs?.Contains(
+                        factionInstanceID
+                    ) == true
+                )
+                .ToArray();
+            if (factionTemplates.Length == 0)
             {
                 throw new InvalidOperationException(
-                    $"Playable faction '{factionInstanceID}' does not define a capital ship with a model."
+                    $"Playable faction '{factionInstanceID}' does not define any ships with models."
                 );
             }
 
-            CapitalShip ship = (CapitalShip)template.CreateCopy();
-            ship.InstanceID = null;
-            ship.OwnerInstanceID = factionInstanceID;
-            CombatUnit combatant = battle.AddCombatants(ship).Single();
+            foreach (BaseSceneNode template in factionTemplates)
+            {
+                BaseSceneNode ship = (BaseSceneNode)template.CreateCopy();
+                ship.InstanceID = null;
+                ship.OwnerInstanceID = factionInstanceID;
+                battle.AddCombatants(ship);
+            }
             BattleMapDeploymentRegion deploymentRegion = deploymentRegions[factionIndex];
             BattleParticipant participant = battle.GetParticipants()[factionIndex];
             participant.BattleMapSlotID = deploymentRegion.ParticipantSlotID;
-            combatant.Position = GetCenter(deploymentRegion.Bounds);
-            combatant.Forward = GetForward(deploymentRegion.Facing);
         }
 
+        FleetDeploymentPlanner.Deploy(battle, battleMap);
         return battle;
-    }
-
-    /// <summary>
-    /// Returns the center of a deployment region in battle coordinates.
-    /// </summary>
-    /// <param name="bounds">The deployment bounds.</param>
-    /// <returns>The center position.</returns>
-    private static BattleVector3 GetCenter(BattleMapBounds bounds)
-    {
-        if (bounds == null)
-            throw new ArgumentNullException(nameof(bounds));
-
-        return new BattleVector3
-        {
-            X = (bounds.MinimumX + bounds.MaximumX) / 2f,
-            Y = (bounds.MinimumY + bounds.MaximumY) / 2f,
-            Z = (bounds.MinimumZ + bounds.MaximumZ) / 2f,
-        };
-    }
-
-    /// <summary>
-    /// Converts an authored Euler facing into a forward direction.
-    /// </summary>
-    /// <param name="facing">The authored Euler rotation in degrees.</param>
-    /// <returns>The corresponding forward direction.</returns>
-    private static BattleVector3 GetForward(BattleMapVector3 facing)
-    {
-        if (facing == null)
-            throw new ArgumentNullException(nameof(facing));
-
-        double pitch = facing.X * Math.PI / 180d;
-        double yaw = facing.Y * Math.PI / 180d;
-        double pitchCosine = Math.Cos(pitch);
-        return new BattleVector3
-        {
-            X = (float)(Math.Sin(yaw) * pitchCosine),
-            Y = (float)-Math.Sin(pitch),
-            Z = (float)(Math.Cos(yaw) * pitchCosine),
-        };
     }
 }

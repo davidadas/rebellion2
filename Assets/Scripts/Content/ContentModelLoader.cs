@@ -234,7 +234,7 @@ public sealed class ContentModelInstance : IDisposable
         if (overwriteRotation)
             ModelRoot.localRotation = Quaternion.Euler(rotationEuler);
         if (normalizeToUnitDiameter)
-            NormalizeToUnitDiameter(ModelRoot);
+            NormalizeToUnitDiameter(ModelRoot, pivot);
         if (!Mathf.Approximately(modelScale, 1f))
             ModelRoot.localScale *= modelScale;
         if (centerOnPivot)
@@ -270,12 +270,13 @@ public sealed class ContentModelInstance : IDisposable
     }
 
     /// <summary>
-    /// Scales a model so its largest bounds dimension spans two units.
+    /// Scales a model so its largest pivot-local dimension spans two units, independent of heading.
     /// </summary>
     /// <param name="model">The model to scale.</param>
-    private static void NormalizeToUnitDiameter(Transform model)
+    /// <param name="pivot">The reference frame for authored model dimensions.</param>
+    private static void NormalizeToUnitDiameter(Transform model, Transform pivot)
     {
-        if (!TryGetBounds(model, out Bounds bounds))
+        if (!TryGetBounds(model, pivot, out Bounds bounds))
             return;
 
         float maxExtent = Mathf.Max(bounds.size.x, bounds.size.y, bounds.size.z);
@@ -290,17 +291,18 @@ public sealed class ContentModelInstance : IDisposable
     /// <param name="model">The model to recenter.</param>
     private static void CenterOnPivot(Transform pivot, Transform model)
     {
-        if (TryGetBounds(model, out Bounds bounds))
-            model.position += pivot.position - bounds.center;
+        if (TryGetBounds(model, pivot, out Bounds bounds))
+            model.position -= pivot.TransformVector(bounds.center);
     }
 
     /// <summary>
-    /// Computes the combined world bounds of a model's renderers.
+    /// Computes renderer envelopes in the reference frame before its world rotation is applied.
     /// </summary>
     /// <param name="model">The model to measure.</param>
-    /// <param name="bounds">The combined world bounds when renderers exist.</param>
+    /// <param name="reference">The coordinate frame in which to measure the model.</param>
+    /// <param name="bounds">The combined reference-local bounds when renderers exist.</param>
     /// <returns>True when the model has at least one renderer.</returns>
-    private static bool TryGetBounds(Transform model, out Bounds bounds)
+    private static bool TryGetBounds(Transform model, Transform reference, out Bounds bounds)
     {
         Renderer[] renderers = model.GetComponentsInChildren<Renderer>();
         if (renderers.Length == 0)
@@ -309,9 +311,34 @@ public sealed class ContentModelInstance : IDisposable
             return false;
         }
 
-        bounds = renderers[0].bounds;
-        for (int index = 1; index < renderers.Length; index++)
-            bounds.Encapsulate(renderers[index].bounds);
+        bounds = default;
+        bool initialized = false;
+        foreach (Renderer renderer in renderers)
+        {
+            Bounds local = renderer.localBounds;
+            Matrix4x4 matrix = reference.worldToLocalMatrix * renderer.localToWorldMatrix;
+            for (int corner = 0; corner < 8; corner++)
+            {
+                Vector3 point = matrix.MultiplyPoint3x4(
+                    local.center
+                        + Vector3.Scale(
+                            local.extents,
+                            new Vector3(
+                                (corner & 1) == 0 ? -1f : 1f,
+                                (corner & 2) == 0 ? -1f : 1f,
+                                (corner & 4) == 0 ? -1f : 1f
+                            )
+                        )
+                );
+                if (!initialized)
+                {
+                    bounds = new Bounds(point, Vector3.zero);
+                    initialized = true;
+                }
+                else
+                    bounds.Encapsulate(point);
+            }
+        }
         return true;
     }
 

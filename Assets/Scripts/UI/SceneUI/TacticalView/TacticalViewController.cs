@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Rebellion.Game;
@@ -11,8 +12,6 @@ using UnityEngine;
 /// </summary>
 public sealed class TacticalViewController : MonoBehaviour
 {
-    private const float _fallbackModelDiameterFraction = 0.01f;
-
     [SerializeField]
     private Camera battleCamera;
 
@@ -21,6 +20,9 @@ public sealed class TacticalViewController : MonoBehaviour
 
     [SerializeField]
     private Transform mapRoot;
+
+    [SerializeField]
+    private Rect initialFleetViewport = new Rect(0.05f, 0.05f, 0.9f, 0.9f);
 
     /// <summary>
     /// Gets the active battle presented by this scene.
@@ -95,6 +97,8 @@ public sealed class TacticalViewController : MonoBehaviour
                 .Append(mapRoot.GetComponent<TacticalMapRenderer>().Ready)
                 .ToArray();
             await Task.WhenAll(modelLoads);
+            if (this == null)
+                return;
             ContentBindings.Apply(mapRoot.gameObject, bootstrap.GetContentAssets());
         }
         catch (Exception exception)
@@ -200,7 +204,31 @@ public sealed class TacticalViewController : MonoBehaviour
         }
 
         cameraController.Configure(BattleMap.PlayableBounds, ResolveCameraPivot(cameraStart));
+        List<Bounds> hulls = new List<Bounds>();
+        if (viewer != null)
+        {
+            foreach (CombatUnit combatant in viewer.GetCombatants())
+            {
+                ModelDimensions size = combatant.GetUnit().ModelSize;
+                GetModelScale(size);
+                Quaternion rotation = Quaternion.LookRotation(
+                    ToUnityVector(combatant.Forward).normalized
+                );
+                Vector3 worldSize =
+                    Abs(rotation * Vector3.right) * size.Width
+                    + Abs(rotation * Vector3.up) * size.Height
+                    + Abs(rotation * Vector3.forward) * size.Depth;
+                hulls.Add(new Bounds(ToUnityVector(combatant.Position), worldSize));
+            }
+        }
+        cameraController.Frame(hulls, initialFleetViewport);
     }
+
+    /// <summary>Returns absolute component magnitudes for rotated hull dimensions.</summary>
+    /// <param name="value">The rotated axis.</param>
+    /// <returns>The absolute axis.</returns>
+    private static Vector3 Abs(Vector3 value) =>
+        new Vector3(Mathf.Abs(value.x), Mathf.Abs(value.y), Mathf.Abs(value.z));
 
     /// <summary>
     /// Resolves the orbit pivot where the authored starting view crosses the participant's battle plane.
@@ -337,26 +365,28 @@ public sealed class TacticalViewController : MonoBehaviour
     }
 
     /// <summary>
-    /// Calculates the normalized model scale from authored dimensions or the map presentation fallback.
+    /// Calculates the normalized model scale from the same authored dimensions used for deployment.
     /// </summary>
-    /// <param name="modelSize">The authored model dimensions, when available.</param>
+    /// <param name="modelSize">The required authored model dimensions.</param>
     /// <returns>The scale applied after unit-diameter normalization.</returns>
-    private float GetModelScale(ModelDimensions modelSize)
+    private static float GetModelScale(ModelDimensions modelSize)
     {
-        float modelDiameter =
-            modelSize == null ? 0f : Mathf.Max(modelSize.Width, modelSize.Height, modelSize.Depth);
-        if (modelDiameter <= 0f)
-        {
-            float mapWidth = BattleMap.PlayableBounds.MaximumX - BattleMap.PlayableBounds.MinimumX;
-            float mapDepth = BattleMap.PlayableBounds.MaximumZ - BattleMap.PlayableBounds.MinimumZ;
-            modelDiameter = Mathf.Max(
-                1f,
-                Mathf.Min(Mathf.Abs(mapWidth), Mathf.Abs(mapDepth)) * _fallbackModelDiameterFraction
+        if (
+            modelSize == null
+            || !IsPositive(modelSize.Width)
+            || !IsPositive(modelSize.Height)
+            || !IsPositive(modelSize.Depth)
+        )
+            throw new InvalidOperationException(
+                "Tactical models require finite, positive ModelSize dimensions."
             );
-        }
-
-        return modelDiameter / 2f;
+        return Mathf.Max(modelSize.Width, modelSize.Height, modelSize.Depth) / 2f;
     }
+
+    /// <summary>Checks an authored dimension before using it for rendering and framing.</summary>
+    /// <param name="value">The authored dimension.</param>
+    /// <returns>True for finite positive dimensions.</returns>
+    private static bool IsPositive(float value) => value > 0f && !float.IsInfinity(value);
 
     /// <summary>
     /// Computes a far clipping plane that contains every corner of the playable volume.

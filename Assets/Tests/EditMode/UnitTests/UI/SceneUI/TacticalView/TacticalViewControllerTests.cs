@@ -95,18 +95,19 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             );
         }
 
+        /// <summary>Checks that fleet fitting retains the authored participant viewing angle.</summary>
         [Test]
-        public void Initialize_ViewerFaction_AppliesParticipantCameraStart()
+        public void Initialize_ViewerFaction_FramesFleetUsingParticipantViewingAngle()
         {
             ActiveBattle battle = CreateBattleWithCombatant(out _);
             BattleMap map = CreateBattleMap();
 
             controller.Initialize(battle, map, "FACTION");
 
-            Assert.AreEqual(
-                new Vector3(0f, 120f, -2250f),
-                controller.BattleCamera.transform.position
-            );
+            Vector3 projected = controller.BattleCamera.WorldToViewportPoint(Vector3.zero);
+            Assert.That(projected.x, Is.InRange(0.05f, 0.95f));
+            Assert.That(projected.y, Is.InRange(0.05f, 0.95f));
+            Assert.That(projected.z, Is.GreaterThan(controller.BattleCamera.nearClipPlane));
             Assert.That(
                 Quaternion.Angle(
                     Quaternion.Euler(12f, 0f, 0f),
@@ -119,6 +120,55 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             Assert.IsTrue(
                 controller.BattleCamera.GetComponent<TacticalViewCameraController>().IsConfigured
             );
+        }
+
+        /// <summary>Checks that the catalog demo creates presentation objects for every fleet member.</summary>
+        [Test]
+        public void Initialize_DefaultFleet_CreatesModelPresentationForEveryCombatant()
+        {
+            TacticalBattleLaunchContext.Reset(TestContent.Pack);
+            ActiveBattle battle = TacticalBattleLaunchContext.ActiveBattle;
+            BattleMap map = CreateBattleMap();
+            map.InstanceID = battle.BattleMapInstanceID;
+
+            controller.Initialize(battle, map);
+
+            Assert.That(
+                controller.BattleRoot.childCount,
+                Is.EqualTo(battle.GetParticipants().Count)
+            );
+            for (
+                int participantIndex = 0;
+                participantIndex < battle.GetParticipants().Count;
+                participantIndex++
+            )
+            {
+                BattleParticipant participant = battle.GetParticipants()[participantIndex];
+                Transform participantRoot = controller.BattleRoot.GetChild(participantIndex);
+                Assert.That(
+                    participantRoot.childCount,
+                    Is.EqualTo(participant.GetCombatants().Count)
+                );
+                for (int unitIndex = 0; unitIndex < participant.GetCombatants().Count; unitIndex++)
+                {
+                    CombatUnit combatant = participant.GetCombatants()[unitIndex];
+                    Transform presentation = participantRoot.GetChild(unitIndex);
+                    Assert.That(
+                        presentation.GetComponent<ContentModelBinding>().Address,
+                        Is.EqualTo(combatant.GetUnit().ModelPath)
+                    );
+                    Assert.That(
+                        presentation.localPosition,
+                        Is.EqualTo(
+                            new Vector3(
+                                combatant.Position.X,
+                                combatant.Position.Y,
+                                combatant.Position.Z
+                            )
+                        )
+                    );
+                }
+            }
         }
 
         [Test]

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
@@ -38,6 +39,11 @@ public sealed class TacticalViewCameraController : MonoBehaviour
     private bool _configured;
     private bool _rightPointerDragging;
     private bool _rightPointerGestureActive;
+    private Camera _controlledCamera;
+    private Vector3[] _framingCorners;
+    private Rect _framingViewport;
+    private float _framingAspect;
+    private float _framingFieldOfView;
 
     internal bool IsConfigured => _configured;
     internal float Distance => _distance;
@@ -48,7 +54,8 @@ public sealed class TacticalViewCameraController : MonoBehaviour
     /// </summary>
     private void Awake()
     {
-        if (GetComponent<Camera>() == null)
+        _controlledCamera = GetComponent<Camera>();
+        if (_controlledCamera == null)
             throw new MissingComponentException($"{name} requires a Camera component.");
     }
 
@@ -60,6 +67,14 @@ public sealed class TacticalViewCameraController : MonoBehaviour
         if (!_configured)
             return;
 
+        if (
+            _framingCorners != null
+            && (
+                !Mathf.Approximately(_framingAspect, _controlledCamera.aspect)
+                || !Mathf.Approximately(_framingFieldOfView, _controlledCamera.fieldOfView)
+            )
+        )
+            ApplyFraming();
         HandlePointerInput();
         HandleKeyboardInput();
     }
@@ -108,8 +123,8 @@ public sealed class TacticalViewCameraController : MonoBehaviour
 
         Vector3 playableSize = _playableMaximum - _playableMinimum;
         float largestDimension = Mathf.Max(playableSize.x, playableSize.y, playableSize.z);
-        Camera controlledCamera = GetComponent<Camera>();
-        _minimumDistance = Mathf.Max(controlledCamera.nearClipPlane * 2f, largestDimension / 600f);
+        _controlledCamera = GetComponent<Camera>();
+        _minimumDistance = Mathf.Max(_controlledCamera.nearClipPlane * 2f, largestDimension / 600f);
         _minimumPanSpeed = largestDimension / 6f;
 
         Vector3 eyeOffset = transform.position - _pivot;
@@ -125,7 +140,132 @@ public sealed class TacticalViewCameraController : MonoBehaviour
             _maximumElevation
         );
         _configured = true;
+        _framingCorners = null;
     }
+
+    /// <summary>
+    /// Fits every supplied hull inside the usable viewport without changing the authored viewing angle.
+    /// Reframes on projection changes until the player navigates; never changes deployment positions.
+    /// </summary>
+    /// <param name="hulls">World-space hull envelopes to include in the opening view.</param>
+    /// <param name="usableViewport">The normalized unobstructed rectangle containing the screen center.</param>
+    public void Frame(IReadOnlyList<Bounds> hulls, Rect usableViewport)
+    {
+        RequireConfiguration();
+        if (hulls == null)
+            throw new ArgumentNullException(nameof(hulls));
+        if (
+            !(
+                usableViewport.xMin >= 0f
+                && usableViewport.yMin >= 0f
+                && usableViewport.xMax <= 1f
+                && usableViewport.yMax <= 1f
+                && usableViewport.xMin < 0.5f
+                && usableViewport.yMin < 0.5f
+                && usableViewport.xMax > 0.5f
+                && usableViewport.yMax > 0.5f
+            )
+        )
+            throw new ArgumentException(
+                "The usable viewport must contain the projection center inside the camera viewport.",
+                nameof(usableViewport)
+            );
+        _framingCorners = null;
+        if (hulls.Count == 0)
+            return;
+        Bounds combined = hulls[0];
+        Vector3[] corners = new Vector3[hulls.Count * 8];
+        for (int index = 0; index < hulls.Count; index++)
+        {
+            Bounds hull = hulls[index];
+            if (
+                !IsFinite(hull.center)
+                || !IsFinite(hull.size)
+                || hull.size.x <= 0f
+                || hull.size.y <= 0f
+                || hull.size.z <= 0f
+            )
+                throw new ArgumentException(
+                    "Framing requires finite, positive hull bounds.",
+                    nameof(hulls)
+                );
+            combined.Encapsulate(hull);
+            for (int corner = 0; corner < 8; corner++)
+                corners[index * 8 + corner] =
+                    hull.center
+                    + Vector3.Scale(
+                        hull.extents,
+                        new Vector3(
+                            (corner & 1) == 0 ? -1f : 1f,
+                            (corner & 2) == 0 ? -1f : 1f,
+                            (corner & 4) == 0 ? -1f : 1f
+                        )
+                    );
+        }
+        _pivot = ClampToPlayableVolume(combined.center);
+        _framingViewport = usableViewport;
+        _framingCorners = corners;
+        ApplyFraming();
+    }
+
+    /// <summary>Fits cached hull corners using the actual perspective projection.</summary>
+    private void ApplyFraming()
+    {
+        _framingAspect = _controlledCamera.aspect;
+        _framingFieldOfView = _controlledCamera.fieldOfView;
+        float verticalSlope = Mathf.Tan(_framingFieldOfView * Mathf.Deg2Rad * 0.5f);
+        float horizontalSlope = verticalSlope * _framingAspect;
+        float left = (_framingViewport.xMin * 2f - 1f) * horizontalSlope;
+        float right = (_framingViewport.xMax * 2f - 1f) * horizontalSlope;
+        float bottom = (_framingViewport.yMin * 2f - 1f) * verticalSlope;
+        float top = (_framingViewport.yMax * 2f - 1f) * verticalSlope;
+        Quaternion inverse = Quaternion.Inverse(transform.rotation);
+        float distance = _minimumDistance;
+        foreach (Vector3 corner in _framingCorners)
+        {
+            Vector3 local = inverse * (corner - _pivot);
+            distance = Mathf.Max(
+                distance,
+                local.x / left - local.z,
+                local.x / right - local.z,
+                local.y / bottom - local.z,
+                local.y / top - local.z,
+                _controlledCamera.nearClipPlane - local.z
+            );
+        }
+        // A small numerical margin keeps corners off the clipping planes after float projection.
+        _distance = distance + Mathf.Max(0.001f, distance * 0.00001f);
+        _maximumDistance = Mathf.Max(_maximumDistance, _distance);
+        transform.position = _pivot - transform.forward * _distance;
+        Vector3 eyeDirection = -transform.forward;
+        _yaw = NormalizeRadians(Mathf.Atan2(eyeDirection.z, eyeDirection.x));
+        _elevation = Mathf.Asin(Mathf.Clamp(eyeDirection.y, -1f, 1f));
+        Vector3 farthest = Vector3.Max(
+            Abs(_playableMinimum - transform.position),
+            Abs(_playableMaximum - transform.position)
+        );
+        _controlledCamera.farClipPlane = Mathf.Max(
+            _controlledCamera.farClipPlane,
+            farthest.magnitude + 100f
+        );
+    }
+
+    /// <summary>Returns component magnitudes for clipping-plane calculations.</summary>
+    /// <param name="value">The corner displacement.</param>
+    /// <returns>The absolute displacement.</returns>
+    private static Vector3 Abs(Vector3 value) =>
+        new Vector3(Mathf.Abs(value.x), Mathf.Abs(value.y), Mathf.Abs(value.z));
+
+    /// <summary>Checks whether all coordinates are finite.</summary>
+    /// <param name="value">The coordinates to validate.</param>
+    /// <returns>True when no coordinate is NaN or infinite.</returns>
+    private static bool IsFinite(Vector3 value) =>
+        !float.IsNaN(value.x)
+        && !float.IsInfinity(value.x)
+        && !float.IsNaN(value.y)
+        && !float.IsInfinity(value.y)
+        && !float.IsNaN(value.z)
+        && !float.IsInfinity(value.z);
 
     /// <summary>
     /// Orbits the camera around its current pivot using a pointer delta.
@@ -134,6 +274,9 @@ public sealed class TacticalViewCameraController : MonoBehaviour
     internal void Orbit(Vector2 pointerDelta)
     {
         RequireConfiguration();
+        if (pointerDelta.sqrMagnitude <= Mathf.Epsilon)
+            return;
+        _framingCorners = null;
         _yaw = NormalizeRadians(_yaw - pointerDelta.x * _pointerRadiansPerPixel);
         _elevation = Mathf.Clamp(
             _elevation - pointerDelta.y * _pointerRadiansPerPixel,
@@ -157,6 +300,7 @@ public sealed class TacticalViewCameraController : MonoBehaviour
         if (input.sqrMagnitude <= Mathf.Epsilon || deltaTime <= 0f)
             return;
 
+        _framingCorners = null;
         Vector3 forward = _pivot - transform.position;
         forward.y = 0f;
         forward = forward.sqrMagnitude <= Mathf.Epsilon ? Vector3.forward : forward.normalized;
@@ -185,6 +329,7 @@ public sealed class TacticalViewCameraController : MonoBehaviour
         if (Mathf.Approximately(input, 0f) || deltaTime <= 0f)
             return;
 
+        _framingCorners = null;
         _yaw = NormalizeRadians(
             _yaw + Mathf.Clamp(input, -1f, 1f) * _yawRadiansPerSecond * deltaTime
         );
@@ -303,6 +448,7 @@ public sealed class TacticalViewCameraController : MonoBehaviour
         if (multiplier <= 0f)
             throw new ArgumentOutOfRangeException(nameof(multiplier));
 
+        _framingCorners = null;
         _distance = Mathf.Clamp(_distance * multiplier, _minimumDistance, _maximumDistance);
         ApplyTransform();
     }
