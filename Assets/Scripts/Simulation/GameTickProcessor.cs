@@ -39,7 +39,7 @@ namespace Rebellion.Simulation
         private ITickProcessor _maintenance;
         private ManufacturingTickProcessor _manufacturing;
         private ITickProcessor _messages;
-        private ITickProcessor _missions;
+        private MissionTickProcessor _missions;
         private MovementCommands _movementCommands;
         private ITickProcessor _movement;
         private ITickProcessor _naming;
@@ -260,7 +260,7 @@ namespace Rebellion.Simulation
         /// <returns>A sequence containing one step per completed AI phase.</returns>
         private IEnumerable<object> ProcessRemainingTickPhases()
         {
-            ProcessResults(_missions.ProcessTick(_game));
+            ProcessMissionPhase();
             ProcessResults(_gameEvents.ProcessTick(_game));
             _naming.ProcessTick(_game);
             List<GameResult> aiResults = new List<GameResult>();
@@ -278,6 +278,22 @@ namespace Rebellion.Simulation
             _fogOfWarObserver.RefreshVisibleKnowledge();
             _tickState = TickExecutionState.Idle;
             TickCompleted?.Invoke();
+        }
+
+        /// <summary>
+        /// Settles each mission before advancing the next while deferring their messages until the phase ends.
+        /// </summary>
+        private void ProcessMissionPhase()
+        {
+            List<GameResult> missionResults = new List<GameResult>();
+            foreach (
+                IReadOnlyList<GameResult> missionStep in _missions.ProcessTickIncrementally(_game)
+            )
+            {
+                missionResults.AddRange(ProcessResults(missionStep, processMessages: false));
+            }
+
+            _processMessages(missionResults);
         }
 
         /// <summary>

@@ -36,18 +36,48 @@ namespace Rebellion.Simulation
         /// <returns>The mission results produced during the tick.</returns>
         public IReadOnlyList<GameResult> ProcessTick(GameRoot game)
         {
+            List<GameResult> results = new List<GameResult>();
+            foreach (IReadOnlyList<GameResult> step in ProcessTickIncrementally(game))
+                results.AddRange(step);
+
+            return results;
+        }
+
+        /// <summary>
+        /// Advances active missions in scene order and exposes each mission's completed result batch.
+        /// </summary>
+        /// <param name="game">The game state being advanced.</param>
+        /// <returns>The ordered result batches produced during the tick.</returns>
+        internal IEnumerable<IReadOnlyList<GameResult>> ProcessTickIncrementally(GameRoot game)
+        {
             List<GameResult> results = _commands.TakePendingResults();
             Dictionary<string, bool> recruitmentAvailabilityBefore =
                 GetRecruitmentAvailabilityByFaction(game);
+            if (results.Count > 0)
+                yield return results.ToList();
 
             foreach (Mission mission in game.GetSceneNodesByType<Mission>())
             {
-                if (mission.GetParent() != null)
-                    results.AddRange(AdvanceMission(game, mission));
+                if (mission.GetParent() == null)
+                    continue;
+
+                List<GameResult> missionResults = AdvanceMission(game, mission);
+                if (missionResults.Count == 0)
+                    continue;
+
+                results.AddRange(missionResults);
+                yield return missionResults;
             }
 
+            int resultCountBeforeRecruitment = results.Count;
             AddRecruitmentExhaustedResults(game, results, recruitmentAvailabilityBefore);
-            return results;
+            if (results.Count > resultCountBeforeRecruitment)
+            {
+                yield return results.GetRange(
+                    resultCountBeforeRecruitment,
+                    results.Count - resultCountBeforeRecruitment
+                );
+            }
         }
 
         /// <summary>
