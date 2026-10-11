@@ -34,8 +34,6 @@ namespace Rebellion.Tests.Content
             Object.DestroyImmediate(pivot);
         }
 
-        /// <summary>Checks that heading cannot alter authored local model dimensions.</summary>
-        /// <param name="yaw">The parent heading in degrees.</param>
         [TestCase(0f)]
         [TestCase(45f)]
         [TestCase(90f)]
@@ -67,7 +65,6 @@ namespace Rebellion.Tests.Content
             );
         }
 
-        /// <summary>Checks that repeated posing with normalization does not accumulate scale.</summary>
         [Test]
         public void ApplyPose_RepeatedNormalizedPose_PreservesScale()
         {

@@ -14,8 +14,6 @@ namespace Rebellion.Tests.Simulation.Tactical
     [TestFixture]
     public sealed class FleetDeploymentPlannerTests
     {
-        /// <summary>Checks hull containment and separation for mixed dimensions and facings.</summary>
-        /// <param name="yaw">The deployment heading.</param>
         [TestCase(0f)]
         [TestCase(45f)]
         [TestCase(90f)]
@@ -33,8 +31,6 @@ namespace Rebellion.Tests.Simulation.Tactical
             );
         }
 
-        /// <summary>Checks that the entire fighter hull screen precedes every capital hull.</summary>
-        /// <param name="yaw">The participant heading.</param>
         [TestCase(0f)]
         [TestCase(180f)]
         public void Deploy_MixedFleet_PlacesWholeFighterScreenAheadOfCapitalHulls(float yaw)
@@ -60,7 +56,6 @@ namespace Rebellion.Tests.Simulation.Tactical
             Assert.That(fighterRear - capitalFront, Is.GreaterThanOrEqualTo(18f));
         }
 
-        /// <summary>Checks that equivalent input ordering does not change placement identities.</summary>
         [Test]
         public void Deploy_ReorderedCombatants_PreservesPositions()
         {
@@ -77,7 +72,6 @@ namespace Rebellion.Tests.Simulation.Tactical
                 Assert.That(ToVector(unit.Position), Is.EqualTo(expected[unit.InstanceID]));
         }
 
-        /// <summary>Checks that repeated squadron members occupy one compact, exclusive group.</summary>
         [Test]
         public void Deploy_MultipleSquadrons_KeepsEachSquadronTogether()
         {
@@ -96,7 +90,6 @@ namespace Rebellion.Tests.Simulation.Tactical
                 Assert.IsFalse(groups[first].Intersects(groups[second]));
         }
 
-        /// <summary>Checks that a narrow region uses depth layers rather than overlapping ships.</summary>
         [Test]
         public void Deploy_NarrowDeepRegion_UsesMultipleDepthLayers()
         {
@@ -124,7 +117,6 @@ namespace Rebellion.Tests.Simulation.Tactical
             );
         }
 
-        /// <summary>Checks that missing physical dimensions are an explicit content failure.</summary>
         [Test]
         public void Deploy_MissingDimensions_RejectsInsteadOfInventingSize()
         {
@@ -136,8 +128,6 @@ namespace Rebellion.Tests.Simulation.Tactical
             );
         }
 
-        /// <summary>Checks finite, positive dimensions before modifying battle state.</summary>
-        /// <param name="width">An invalid width.</param>
         [TestCase(0f)]
         [TestCase(-1f)]
         [TestCase(float.NaN)]
@@ -155,7 +145,6 @@ namespace Rebellion.Tests.Simulation.Tactical
             Assert.AreSame(initial, unit.Position);
         }
 
-        /// <summary>Checks that an overflowing participant cannot partially deploy another participant.</summary>
         [Test]
         public void Deploy_SecondParticipantOverflows_LeavesAllPositionsUntouched()
         {
@@ -191,7 +180,6 @@ namespace Rebellion.Tests.Simulation.Tactical
             CollectionAssert.AreEqual(initial, GetCombatants(battle).Select(unit => unit.Position));
         }
 
-        /// <summary>Checks global participant separation before committing positions.</summary>
         [Test]
         public void Deploy_OverlappingParticipantHulls_RejectsDeployment()
         {
@@ -224,7 +212,6 @@ namespace Rebellion.Tests.Simulation.Tactical
             );
         }
 
-        /// <summary>Checks map identity rather than deploying against unrelated content.</summary>
         [Test]
         public void Deploy_MismatchedMap_RejectsDeployment()
         {
@@ -236,7 +223,6 @@ namespace Rebellion.Tests.Simulation.Tactical
             );
         }
 
-        /// <summary>Checks every modeled ship in the active content has usable dimensions and deploys.</summary>
         [Test]
         public void Deploy_ActiveContentCatalog_DeploysEveryModeledShip()
         {
@@ -271,7 +257,6 @@ namespace Rebellion.Tests.Simulation.Tactical
             );
         }
 
-        /// <summary>Measures a large mixed fleet without adding recurring simulation work.</summary>
         [Test]
         public void Deploy_LargeMixedFleet_CompletesDeploymentWithinSetupBudget()
         {

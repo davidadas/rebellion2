@@ -79,8 +79,6 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView.Camera
             Assert.That(planarOffset.normalized.x, Is.EqualTo(1f).Within(0.001f));
         }
 
-        /// <summary>Checks real viewport projection of every hull corner at different aspect ratios.</summary>
-        /// <param name="aspect">The camera aspect ratio.</param>
         [TestCase(4f / 3f)]
         [TestCase(16f / 9f)]
         [TestCase(21f / 9f)]
@@ -100,7 +98,6 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView.Camera
             Assert.That(Quaternion.Angle(rotation, camera.transform.rotation), Is.LessThan(0.001f));
         }
 
-        /// <summary>Checks that rendering window changes retain the opening fleet fit.</summary>
         [UnityTest]
         public IEnumerator Frame_AspectRatioChanges_RefitsOpeningView()
         {
@@ -123,7 +120,6 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView.Camera
             yield return new ExitPlayMode();
         }
 
-        /// <summary>Checks that reframing does not fight subsequent player navigation.</summary>
         [UnityTest]
         public IEnumerator Frame_PlayerNavigates_StopsAutomaticReframing()
         {
@@ -143,7 +139,6 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView.Camera
             yield return new ExitPlayMode();
         }
 
-        /// <summary>Checks that initial fitting leaves orbit state consistent with the rendered pose.</summary>
         [Test]
         public void Frame_FirstZoom_PreservesViewingAngle()
         {
@@ -158,7 +153,6 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView.Camera
             );
         }
 
-        /// <summary>Checks that absent combatants retain the authored camera pose.</summary>
         [Test]
         public void Frame_EmptyFleet_PreservesCameraPose()
         {
@@ -169,7 +163,6 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView.Camera
             Assert.AreEqual(position, cameraObject.transform.position);
         }
 
-        /// <summary>Checks that framing rejects a viewport without the projection center.</summary>
         [Test]
         public void Frame_ViewportExcludesProjectionCenter_RejectsInvalidViewport()
         {

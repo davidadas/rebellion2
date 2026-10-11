@@ -28,7 +28,6 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             TacticalBattleLaunchContext.Reset(TestContent.Pack);
         }
 
-        /// <summary>Checks that every faction receives exactly one of each modeled conventional capital-ship type.</summary>
         [Test]
         public void Reset_DefaultContent_CreatesEveryConventionalCapitalShipTypeForEachPlayableFaction()
         {
@@ -61,7 +60,6 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             }
         }
 
-        /// <summary>Checks that planet-destroying battle stations stay in the catalog but out of the demo fleet.</summary>
         [Test]
         public void Reset_DefaultContent_ExcludesPlanetDestroyingBattleStations()
         {
@@ -79,7 +77,6 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             );
         }
 
-        /// <summary>Checks that every faction receives one complete squadron of each modeled fighter type.</summary>
         [Test]
         public void Reset_DefaultContent_CreatesEveryFighterSquadronTypeForEachPlayableFaction()
         {
@@ -117,7 +114,6 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             }
         }
 
-        /// <summary>Checks the default fleet placements and headings inside their assigned map slots.</summary>
         [Test]
         public void Reset_DefaultContent_AssignsMapSlotsAndDeploysEveryShip()
         {
@@ -161,7 +157,6 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             }
         }
 
-        /// <summary>Checks that making a demo fleet never changes its shared catalog templates.</summary>
         [Test]
         public void Reset_DefaultContent_PreservesCatalogTemplates()
         {

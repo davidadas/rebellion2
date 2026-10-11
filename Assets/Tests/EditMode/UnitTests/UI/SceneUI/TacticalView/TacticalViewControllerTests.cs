@@ -95,7 +95,6 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             );
         }
 
-        /// <summary>Checks that fleet fitting retains the authored participant viewing angle.</summary>
         [Test]
         public void Initialize_ViewerFaction_FramesFleetUsingParticipantViewingAngle()
         {
@@ -122,7 +121,6 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             );
         }
 
-        /// <summary>Checks that the catalog demo creates presentation objects for every fleet member.</summary>
         [Test]
         public void Initialize_DefaultFleet_CreatesModelPresentationForEveryCombatant()
         {
