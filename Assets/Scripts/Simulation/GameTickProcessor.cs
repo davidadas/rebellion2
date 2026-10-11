@@ -285,15 +285,44 @@ namespace Rebellion.Simulation
         /// </summary>
         private void ProcessMissionPhase()
         {
-            List<GameResult> missionResults = new List<GameResult>();
+            List<GameResult> orderedResults = new List<GameResult>();
+            List<GameResult> reactionResults = new List<GameResult>();
+            List<GameResult> deferredResults = new List<GameResult>();
             foreach (
-                IReadOnlyList<GameResult> missionStep in _missions.ProcessTickIncrementally(_game)
+                (
+                    IReadOnlyList<GameResult> Results,
+                    bool RequiresImmediateSettlement
+                ) batch in _missions.ProcessTickIncrementally(_game)
             )
             {
-                missionResults.AddRange(ProcessResults(missionStep, processMessages: false));
+                List<GameResult> sourceResults = batch
+                    .Results.Where(result => result != null)
+                    .ToList();
+                orderedResults.AddRange(sourceResults);
+                if (!batch.RequiresImmediateSettlement)
+                {
+                    deferredResults.AddRange(sourceResults);
+                    continue;
+                }
+
+                List<GameResult> settledResults = ProcessResults(
+                    sourceResults,
+                    processMessages: false
+                );
+                reactionResults.AddRange(settledResults.Skip(sourceResults.Count));
             }
 
-            _processMessages(missionResults);
+            if (deferredResults.Count > 0)
+            {
+                List<GameResult> settledDeferredResults = ProcessResults(
+                    deferredResults,
+                    processMessages: false
+                );
+                reactionResults.AddRange(settledDeferredResults.Skip(deferredResults.Count));
+            }
+
+            orderedResults.AddRange(reactionResults);
+            _processMessages(orderedResults);
         }
 
         /// <summary>

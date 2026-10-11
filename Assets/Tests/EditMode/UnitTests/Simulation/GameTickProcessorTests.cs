@@ -175,29 +175,56 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ProcessTick_OpposingDiplomacyCompletesOnSameTick_PreservesFirstControlChange()
+        public void ProcessTick_OpposingDiplomacyCompletesOnSameTick_DoesNotReverseFirstControlChange()
         {
             (Faction firstFaction, Faction secondFaction, Planet planet) =
                 CreateOpposingDiplomacyScenario();
-            Mission firstMission = CreateReadyDiplomacyMission(firstFaction, planet);
-            Mission secondMission = CreateReadyDiplomacyMission(secondFaction, planet);
-            List<MissionCompletedResult> completions = new();
-            using IDisposable observation = _session.Results.Observe<MissionCompletedResult>(
-                results => completions.AddRange(results)
-            );
+            CreateReadyDiplomacyMission(firstFaction, planet);
+            CreateReadyDiplomacyMission(secondFaction, planet);
 
             _tick.ProcessTick();
 
             Assert.AreEqual(firstFaction.InstanceID, planet.GetOwnerInstanceID());
-            MissionCompletedResult secondCompletion = completions.Single(result =>
-                result.MissionInstanceID == secondMission.InstanceID
+        }
+
+        [Test]
+        public void ProcessTick_PendingMissionStartedResult_ObservesAdvancedMissionState()
+        {
+            (Faction faction, _, Planet planet) = CreateOpposingDiplomacyScenario();
+            CreateReadyDiplomacyMission(faction, planet);
+            Planet origin = new Planet
+            {
+                InstanceID = "PENDING_MISSION_ORIGIN",
+                OwnerInstanceID = faction.InstanceID,
+                IsColonized = true,
+                PositionX = 100,
+            };
+            _game.AttachNode(origin, planet.GetParent());
+            Officer officer = EntityFactory.CreateOfficer("PENDING_DIPLOMAT", faction.InstanceID);
+            officer.SetBaseRating(SkillRating.Diplomacy, 100);
+            _game.AttachNode(officer, origin);
+            MissionCommands commands = _session.GetService<MissionCommands>();
+            Assert.IsTrue(
+                commands.InitiateMission(
+                    new MissionContext
+                    {
+                        Game = _game,
+                        MissionTypeID = DiplomacyMission.MissionTypeID,
+                        OwnerInstanceId = faction.InstanceID,
+                        Location = planet,
+                        MainParticipants = new List<IMissionParticipant> { officer },
+                        DecoyParticipants = new List<IMissionParticipant>(),
+                    }
+                )
             );
-            Assert.AreEqual(
-                MissionCompletionReason.TargetChangedSides,
-                secondCompletion.CompletionReason
+            bool advancedStateObserved = false;
+            using IDisposable observation = _session.Results.Observe<MissionStartedResult>(_ =>
+                advancedStateObserved = planet.GetOwnerInstanceID() == faction.InstanceID
             );
-            Assert.IsNull(secondMission.GetParent());
-            Assert.AreSame(planet, firstMission.GetParent());
+
+            _tick.ProcessTick();
+
+            Assert.IsTrue(advancedStateObserved);
         }
 
         [Test]

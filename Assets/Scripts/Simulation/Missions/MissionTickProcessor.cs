@@ -37,24 +37,33 @@ namespace Rebellion.Simulation
         public IReadOnlyList<GameResult> ProcessTick(GameRoot game)
         {
             List<GameResult> results = new List<GameResult>();
-            foreach (IReadOnlyList<GameResult> step in ProcessTickIncrementally(game))
-                results.AddRange(step);
+            foreach (
+                (
+                    IReadOnlyList<GameResult> Results,
+                    bool RequiresImmediateSettlement
+                ) step in ProcessTickIncrementally(game)
+            )
+                results.AddRange(step.Results);
 
             return results;
         }
 
         /// <summary>
-        /// Advances active missions in scene order and exposes each mission's completed result batch.
+        /// Advances active missions in scene order and identifies the batches that must settle before
+        /// the next mission observes the game state.
         /// </summary>
         /// <param name="game">The game state being advanced.</param>
-        /// <returns>The ordered result batches produced during the tick.</returns>
-        internal IEnumerable<IReadOnlyList<GameResult>> ProcessTickIncrementally(GameRoot game)
+        /// <returns>The ordered result batches and their settlement requirement.</returns>
+        internal IEnumerable<(
+            IReadOnlyList<GameResult> Results,
+            bool RequiresImmediateSettlement
+        )> ProcessTickIncrementally(GameRoot game)
         {
             List<GameResult> results = _commands.TakePendingResults();
             Dictionary<string, bool> recruitmentAvailabilityBefore =
                 GetRecruitmentAvailabilityByFaction(game);
             if (results.Count > 0)
-                yield return results.ToList();
+                yield return (results.ToList(), false);
 
             foreach (Mission mission in game.GetSceneNodesByType<Mission>())
             {
@@ -66,16 +75,19 @@ namespace Rebellion.Simulation
                     continue;
 
                 results.AddRange(missionResults);
-                yield return missionResults;
+                yield return (missionResults, true);
             }
 
             int resultCountBeforeRecruitment = results.Count;
             AddRecruitmentExhaustedResults(game, results, recruitmentAvailabilityBefore);
             if (results.Count > resultCountBeforeRecruitment)
             {
-                yield return results.GetRange(
-                    resultCountBeforeRecruitment,
-                    results.Count - resultCountBeforeRecruitment
+                yield return (
+                    results.GetRange(
+                        resultCountBeforeRecruitment,
+                        results.Count - resultCountBeforeRecruitment
+                    ),
+                    false
                 );
             }
         }
