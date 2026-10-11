@@ -134,6 +134,7 @@ namespace Rebellion.Tests.Game.Combat
                 OwnerInstanceID = "FACTION_1",
                 CurrentHullStrength = 75,
                 ModelPath = "Pack/Units/TestCapitalShip/Models/model",
+                ModelScale = 2.5f,
                 ModelSize = new ModelDimensions
                 {
                     Width = 100f,
@@ -184,6 +185,7 @@ namespace Rebellion.Tests.Game.Combat
             Assert.AreEqual(1f, restoredCombatUnit.Forward.Y);
             Assert.AreEqual(0f, restoredCombatUnit.Forward.Z);
             Assert.AreEqual(source.ModelPath, restoredShip.ModelPath);
+            Assert.AreEqual(2.5f, restoredShip.ModelScale);
             Assert.AreEqual(100f, restoredShip.ModelSize.Width);
             Assert.AreEqual(40f, restoredShip.ModelSize.Height);
             Assert.AreEqual(250f, restoredShip.ModelSize.Depth);

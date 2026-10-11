@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Units;
@@ -16,6 +17,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
 
         private GameObject instance;
         private TacticalViewController controller;
+        private ContentModelCache models;
 
         /// <summary>
         /// Loads an isolated generated tactical root for each test.
@@ -27,6 +29,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             Assert.IsNotNull(prefab, $"Missing generated tactical prefab: {_prefabPath}");
             instance = UnityEngine.Object.Instantiate(prefab);
             controller = instance.GetComponent<TacticalViewController>();
+            models = new ContentModelCache(TestContent.Assets);
         }
 
         /// <summary>
@@ -36,6 +39,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         public void TearDown()
         {
             UnityEngine.Object.DestroyImmediate(instance);
+            models.Dispose();
         }
 
         [Test]
@@ -50,7 +54,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         }
 
         [Test]
-        public void Initialize_MatchingBattleAndMap_BindsPresentationState()
+        public async Task InitializeAsync_MatchingBattleAndMap_BindsPresentationStateAsync()
         {
             ActiveBattle battle = new ActiveBattle
             {
@@ -59,14 +63,14 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             };
             BattleMap map = new BattleMap { InstanceID = "SPACE_MAP", Kind = BattleKind.Space };
 
-            controller.Initialize(battle, map);
+            await controller.InitializeAsync(battle, map, models);
 
             Assert.AreSame(battle, controller.ActiveBattle);
             Assert.AreSame(map, controller.BattleMap);
         }
 
         [Test]
-        public void Initialize_BattleCombatant_CreatesModelPresentation()
+        public async Task InitializeAsync_BattleCombatant_CreatesModelPresentationAsync()
         {
             ActiveBattle battle = CreateBattleWithCombatant(out CombatUnit combatant);
             combatant.Position = new BattleVector3
@@ -78,35 +82,30 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             combatant.Forward = new BattleVector3 { X = 1f };
             BattleMap map = CreateBattleMap();
 
-            controller.Initialize(battle, map, "FACTION");
+            await controller.InitializeAsync(battle, map, models, "FACTION");
 
             Transform participantRoot = controller.BattleRoot.GetChild(0);
             Transform unitRoot = participantRoot.GetChild(0);
-            ContentModelBinding modelBinding = unitRoot.GetComponent<ContentModelBinding>();
             Assert.AreEqual(new Vector3(25f, 10f, -100f), unitRoot.localPosition);
             Assert.That(
                 Quaternion.Angle(Quaternion.LookRotation(Vector3.right), unitRoot.localRotation),
                 Is.LessThan(0.01f)
             );
-            Assert.IsNotNull(modelBinding);
-            Assert.AreEqual(
-                "Pack/Factions/Test/Units/CapitalShips/TEST/Models/model",
-                modelBinding.Address
-            );
+            Assert.That(unitRoot.GetComponentsInChildren<Renderer>(), Is.Not.Empty);
         }
 
         [Test]
-        public void Initialize_ViewerFaction_AppliesParticipantCameraStart()
+        public async Task InitializeAsync_ViewerFaction_FramesFleetUsingParticipantViewingAngleAsync()
         {
             ActiveBattle battle = CreateBattleWithCombatant(out _);
             BattleMap map = CreateBattleMap();
 
-            controller.Initialize(battle, map, "FACTION");
+            await controller.InitializeAsync(battle, map, models, "FACTION");
 
-            Assert.AreEqual(
-                new Vector3(0f, 120f, -2250f),
-                controller.BattleCamera.transform.position
-            );
+            Vector3 projected = controller.BattleCamera.WorldToViewportPoint(Vector3.zero);
+            Assert.That(projected.x, Is.InRange(0.05f, 0.95f));
+            Assert.That(projected.y, Is.InRange(0.05f, 0.95f));
+            Assert.That(projected.z, Is.GreaterThan(controller.BattleCamera.nearClipPlane));
             Assert.That(
                 Quaternion.Angle(
                     Quaternion.Euler(12f, 0f, 0f),
@@ -122,7 +121,53 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         }
 
         [Test]
-        public void Initialize_AuthoredMapObjects_CreatesMapPresentation()
+        public async Task InitializeAsync_DefaultFleet_LoadsAndDeploysEveryCombatantAsync()
+        {
+            TacticalBattleLaunchContext.Reset(TestContent.Pack);
+            ActiveBattle battle = TacticalBattleLaunchContext.ActiveBattle;
+            BattleMap map = TestContent.Data.BattleMaps.Single(candidate =>
+                candidate.InstanceID == battle.BattleMapInstanceID
+            );
+
+            await controller.InitializeAsync(battle, map, models, deployFleet: true);
+
+            Assert.That(
+                controller.BattleRoot.childCount,
+                Is.EqualTo(battle.GetParticipants().Count)
+            );
+            for (
+                int participantIndex = 0;
+                participantIndex < battle.GetParticipants().Count;
+                participantIndex++
+            )
+            {
+                BattleParticipant participant = battle.GetParticipants()[participantIndex];
+                Transform participantRoot = controller.BattleRoot.GetChild(participantIndex);
+                Assert.That(
+                    participantRoot.childCount,
+                    Is.EqualTo(participant.GetCombatants().Count)
+                );
+                for (int unitIndex = 0; unitIndex < participant.GetCombatants().Count; unitIndex++)
+                {
+                    CombatUnit combatant = participant.GetCombatants()[unitIndex];
+                    Transform presentation = participantRoot.GetChild(unitIndex);
+                    Assert.That(presentation.GetComponentsInChildren<Renderer>(), Is.Not.Empty);
+                    Assert.That(
+                        presentation.localPosition,
+                        Is.EqualTo(
+                            new Vector3(
+                                combatant.Position.X,
+                                combatant.Position.Y,
+                                combatant.Position.Z
+                            )
+                        )
+                    );
+                }
+            }
+        }
+
+        [Test]
+        public async Task InitializeAsync_AuthoredMapObjects_CreatesMapPresentationAsync()
         {
             ActiveBattle battle = CreateBattleWithCombatant(out _);
             BattleMap map = CreateBattleMap();
@@ -171,7 +216,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                     }
                 );
 
-            controller.Initialize(battle, map, "FACTION");
+            await controller.InitializeAsync(battle, map, models, "FACTION");
 
             Transform stars = controller.MapRoot.Find("Distant Stars");
             Light starlight = controller.MapRoot.Find("Starlight Key")?.GetComponent<Light>();
@@ -183,7 +228,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         }
 
         [Test]
-        public void Initialize_MismatchedMapIdentifier_ThrowsArgumentException()
+        public void InitializeAsync_MismatchedMapIdentifier_ThrowsArgumentException()
         {
             ActiveBattle battle = new ActiveBattle
             {
@@ -192,11 +237,13 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             };
             BattleMap map = new BattleMap { InstanceID = "OTHER_MAP", Kind = BattleKind.Space };
 
-            Assert.Throws<ArgumentException>(() => controller.Initialize(battle, map));
+            Assert.ThrowsAsync<ArgumentException>(() =>
+                controller.InitializeAsync(battle, map, models)
+            );
         }
 
         [Test]
-        public void Initialize_MismatchedBattleKind_ThrowsArgumentException()
+        public void InitializeAsync_MismatchedBattleKind_ThrowsArgumentException()
         {
             ActiveBattle battle = new ActiveBattle
             {
@@ -205,7 +252,172 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             };
             BattleMap map = new BattleMap { InstanceID = "MAP", Kind = BattleKind.Ground };
 
-            Assert.Throws<ArgumentException>(() => controller.Initialize(battle, map));
+            Assert.ThrowsAsync<ArgumentException>(() =>
+                controller.InitializeAsync(battle, map, models)
+            );
+        }
+
+        [Test]
+        public async Task InitializeAsync_StaleDimensions_ReplacesSnapshotWithRenderedSizeAsync()
+        {
+            ActiveBattle battle = CreateBattleWithCombatant(out CombatUnit combatant);
+
+            await controller.InitializeAsync(battle, CreateBattleMap(), models, "FACTION");
+
+            Transform root = controller.BattleRoot.GetChild(0).GetChild(0);
+            Renderer[] renderers = root.GetComponentsInChildren<Renderer>();
+            Bounds expected = renderers[0].bounds;
+            foreach (Renderer renderer in renderers.Skip(1))
+                expected.Encapsulate(renderer.bounds);
+            ModelDimensions measured = combatant.GetUnit().ModelSize;
+            Assert.That(measured.Width, Is.EqualTo(expected.size.x).Within(0.0001f));
+            Assert.That(measured.Height, Is.EqualTo(expected.size.y).Within(0.0001f));
+            Assert.That(measured.Depth, Is.EqualTo(expected.size.z).Within(0.0001f));
+            Assert.That(measured.Depth, Is.Not.EqualTo(60f));
+        }
+
+        [TestCase(0.5f)]
+        [TestCase(2f)]
+        public async Task InitializeAsync_ModelScale_ScalesRenderedGeometryAndMeasuredSizeAsync(
+            float scale
+        )
+        {
+            ActiveBattle battle = CreateBattleWithCombatant(out CombatUnit combatant);
+            BattleMap map = CreateBattleMap();
+            Assert.AreEqual(1f, combatant.GetUnit().ModelScale);
+            await controller.InitializeAsync(battle, map, models);
+            ModelDimensions unscaled = combatant.GetUnit().ModelSize;
+            combatant.GetUnit().ModelScale = scale;
+
+            await controller.InitializeAsync(battle, map, models);
+
+            ModelDimensions measured = combatant.GetUnit().ModelSize;
+            Assert.That(measured.Width, Is.EqualTo(unscaled.Width * scale).Within(0.0001f));
+            Assert.That(measured.Height, Is.EqualTo(unscaled.Height * scale).Within(0.0001f));
+            Assert.That(measured.Depth, Is.EqualTo(unscaled.Depth * scale).Within(0.0001f));
+            Renderer[] renderers = controller.BattleRoot.GetComponentsInChildren<Renderer>();
+            Bounds actual = renderers[0].bounds;
+            foreach (Renderer renderer in renderers.Skip(1))
+                actual.Encapsulate(renderer.bounds);
+            Assert.That(actual.size.x, Is.EqualTo(measured.Width).Within(0.0001f));
+            Assert.That(actual.size.y, Is.EqualTo(measured.Height).Within(0.0001f));
+            Assert.That(actual.size.z, Is.EqualTo(measured.Depth).Within(0.0001f));
+        }
+
+        [TestCase(0f)]
+        [TestCase(-1f)]
+        [TestCase(float.NaN)]
+        [TestCase(float.PositiveInfinity)]
+        public void InitializeAsync_InvalidModelScale_ThrowsInvalidOperationException(float scale)
+        {
+            ActiveBattle battle = CreateBattleWithCombatant(out CombatUnit combatant);
+            combatant.GetUnit().ModelScale = scale;
+
+            Assert.ThrowsAsync<InvalidOperationException>(() =>
+                controller.InitializeAsync(battle, CreateBattleMap(), models)
+            );
+        }
+
+        [Test]
+        public async Task InitializeAsync_RestoredBattle_PreservesSavedPoseAsync()
+        {
+            ActiveBattle battle = CreateBattleWithCombatant(out CombatUnit combatant);
+            combatant.Position = new BattleVector3
+            {
+                X = 42f,
+                Y = 6f,
+                Z = -80f,
+            };
+            combatant.Forward = new BattleVector3 { X = 1f };
+            combatant.GetUnit().ModelScale = 2.5f;
+            ActiveBattle restored = SerializationHelper.Deserialize<ActiveBattle>(
+                SerializationHelper.Serialize(battle)
+            );
+
+            await controller.InitializeAsync(restored, CreateBattleMap(), models, "FACTION");
+
+            CombatUnit restoredUnit = restored.GetParticipants().Single().GetCombatants().Single();
+            Assert.AreEqual(42f, restoredUnit.Position.X);
+            Assert.AreEqual(6f, restoredUnit.Position.Y);
+            Assert.AreEqual(-80f, restoredUnit.Position.Z);
+            Assert.AreEqual(1f, restoredUnit.Forward.X);
+            Assert.AreEqual(0f, restoredUnit.Forward.Y);
+            Assert.AreEqual(0f, restoredUnit.Forward.Z);
+            Assert.AreEqual(2.5f, restoredUnit.GetUnit().ModelScale);
+        }
+
+        [Test]
+        public async Task InitializeAsync_ReboundBattle_ReleasesPreviousModelInstancesAsync()
+        {
+            ActiveBattle battle = CreateBattleWithCombatant(out _);
+            BattleMap map = CreateBattleMap();
+            await controller.InitializeAsync(battle, map, models);
+            Renderer previous = controller.BattleRoot.GetComponentsInChildren<Renderer>().First();
+
+            await controller.InitializeAsync(battle, map, models);
+
+            Assert.IsTrue(previous == null);
+            Assert.That(controller.BattleRoot.GetComponentsInChildren<Renderer>(), Is.Not.Empty);
+        }
+
+        [Test]
+        public async Task InitializeAsync_ModeledShipCatalog_MeasuresAndDeploysEveryShipAsync()
+        {
+            ActiveBattle battle = new ActiveBattle
+            {
+                BattleMapInstanceID = "SPACE_MAP",
+                Kind = BattleKind.Space,
+            };
+            BaseSceneNode[] templates = TestContent
+                .Data.CapitalShips.Cast<BaseSceneNode>()
+                .Concat(TestContent.Data.Starfighters)
+                .Where(unit => !string.IsNullOrWhiteSpace(unit.ModelPath))
+                .ToArray();
+            foreach (BaseSceneNode template in templates)
+            {
+                BaseSceneNode ship = (BaseSceneNode)template.CreateCopy();
+                ship.InstanceID = template.TypeID;
+                ship.OwnerInstanceID = "FACTION";
+                battle.AddCombatants(ship);
+            }
+            battle.GetParticipants().Single().BattleMapSlotID = "attacker";
+            BattleMap map = CreateBattleMap();
+            map.GetDeploymentRegions()
+                .Add(
+                    new BattleMapDeploymentRegion
+                    {
+                        ParticipantSlotID = "attacker",
+                        Bounds = map.PlayableBounds,
+                        Facing = new BattleMapVector3(),
+                    }
+                );
+
+            await controller.InitializeAsync(battle, map, models, "FACTION", deployFleet: true);
+
+            CombatUnit[] combatants = battle.GetParticipants().Single().GetCombatants().ToArray();
+            CollectionAssert.AreEquivalent(
+                templates.Select(unit => unit.TypeID),
+                combatants.Select(unit => unit.GetUnit().TypeID).Distinct()
+            );
+            for (int index = 0; index < combatants.Length; index++)
+            {
+                Transform root = controller.BattleRoot.GetChild(0).GetChild(index);
+                Renderer[] renderers = root.GetComponentsInChildren<Renderer>();
+                Assert.That(renderers, Is.Not.Empty);
+                Bounds actual = renderers[0].bounds;
+                foreach (Renderer renderer in renderers.Skip(1))
+                    actual.Encapsulate(renderer.bounds);
+                ModelDimensions measured = combatants[index].GetUnit().ModelSize;
+                Assert.That(actual.size.x, Is.EqualTo(measured.Width).Within(0.0001f));
+                Assert.That(actual.size.y, Is.EqualTo(measured.Height).Within(0.0001f));
+                Assert.That(actual.size.z, Is.EqualTo(measured.Depth).Within(0.0001f));
+                Assert.That(actual.min.x, Is.GreaterThanOrEqualTo(map.PlayableBounds.MinimumX));
+                Assert.That(actual.max.x, Is.LessThanOrEqualTo(map.PlayableBounds.MaximumX));
+                Assert.That(actual.min.y, Is.GreaterThanOrEqualTo(map.PlayableBounds.MinimumY));
+                Assert.That(actual.max.y, Is.LessThanOrEqualTo(map.PlayableBounds.MaximumY));
+                Assert.That(actual.min.z, Is.GreaterThanOrEqualTo(map.PlayableBounds.MinimumZ));
+                Assert.That(actual.max.z, Is.LessThanOrEqualTo(map.PlayableBounds.MaximumZ));
+            }
         }
 
         /// <summary>
@@ -225,7 +437,11 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                 OwnerInstanceID = "FACTION",
                 TypeID = "TEST",
                 DisplayName = "Test Ship",
-                ModelPath = "Pack/Factions/Test/Units/CapitalShips/TEST/Models/model",
+                ModelPath = TestContent
+                    .Data.CapitalShips.First(ship =>
+                        !string.IsNullOrWhiteSpace(ship.ModelPath) && !ship.CanDestroyPlanets
+                    )
+                    .ModelPath,
                 ModelSize = new ModelDimensions
                 {
                     Width = 20f,

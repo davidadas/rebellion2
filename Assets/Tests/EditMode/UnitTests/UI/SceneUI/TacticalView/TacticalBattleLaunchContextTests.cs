@@ -3,6 +3,7 @@ using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 
 namespace Rebellion.Tests.UI.SceneUI.TacticalView
 {
@@ -28,7 +29,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         }
 
         [Test]
-        public void Reset_DefaultContent_CreatesOneCapitalShipForEachPlayableFaction()
+        public void Reset_DefaultContent_CreatesEveryConventionalCapitalShipTypeForEachPlayableFaction()
         {
             ActiveBattle battle = TacticalBattleLaunchContext.ActiveBattle;
 
@@ -36,17 +37,85 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                 TestContent.Pack.Scenario.PlayableFactionIDs,
                 battle.GetParticipants().Select(participant => participant.FactionInstanceID)
             );
-            Assert.That(
-                battle.GetParticipants(),
-                Has.All.Matches<BattleParticipant>(participant =>
-                    participant.GetCombatants().Count == 1
-                    && participant.GetCombatants()[0].GetUnit() is CapitalShip
-                )
+            foreach (BattleParticipant participant in battle.GetParticipants())
+            {
+                string[] expected = TestContent
+                    .Data.CapitalShips.Where(ship =>
+                        ship.ManufacturingFactionInstanceIDs?.Contains(
+                            participant.FactionInstanceID
+                        ) == true
+                        && !string.IsNullOrWhiteSpace(ship.ModelPath)
+                        && !ship.CanDestroyPlanets
+                    )
+                    .Select(ship => ship.TypeID)
+                    .ToArray();
+                CollectionAssert.AreEquivalent(
+                    expected,
+                    participant
+                        .GetCombatants()
+                        .Select(combatant => combatant.GetUnit())
+                        .OfType<CapitalShip>()
+                        .Select(ship => ship.TypeID)
+                );
+            }
+        }
+
+        [Test]
+        public void Reset_DefaultContent_ExcludesPlanetDestroyingBattleStations()
+        {
+            Assert.IsTrue(TestContent.Data.CapitalShips.Any(ship => ship.CanDestroyPlanets));
+
+            ActiveBattle battle = TacticalBattleLaunchContext.ActiveBattle;
+
+            Assert.IsFalse(
+                battle
+                    .GetParticipants()
+                    .SelectMany(participant => participant.GetCombatants())
+                    .Any(combatant =>
+                        combatant.GetUnit() is CapitalShip { CanDestroyPlanets: true }
+                    )
             );
         }
 
         [Test]
-        public void Reset_DefaultContent_AssignsMapSlotsAndDeploymentCenters()
+        public void Reset_DefaultContent_CreatesEveryFighterSquadronTypeForEachPlayableFaction()
+        {
+            ActiveBattle battle = TacticalBattleLaunchContext.ActiveBattle;
+            foreach (BattleParticipant participant in battle.GetParticipants())
+            {
+                Starfighter[] expected = TestContent
+                    .Data.Starfighters.Where(ship =>
+                        ship.ManufacturingFactionInstanceIDs?.Contains(
+                            participant.FactionInstanceID
+                        ) == true
+                        && !string.IsNullOrWhiteSpace(ship.ModelPath)
+                    )
+                    .ToArray();
+                IGrouping<string, CombatUnit>[] groups = participant
+                    .GetCombatants()
+                    .Where(combatant => combatant.GetUnit() is Starfighter)
+                    .GroupBy(combatant => combatant.SourceUnitInstanceID)
+                    .ToArray();
+                CollectionAssert.AreEquivalent(
+                    expected.Select(ship => ship.TypeID),
+                    groups.Select(group => group.First().GetUnit().TypeID)
+                );
+                foreach (Starfighter template in expected)
+                {
+                    CombatUnit[] squadron = groups
+                        .Single(group => group.First().GetUnit().TypeID == template.TypeID)
+                        .ToArray();
+                    Assert.That(squadron.Length, Is.EqualTo(template.CurrentSquadronSize));
+                    Assert.That(
+                        squadron.Select(combatant => (Starfighter)combatant.GetUnit()),
+                        Has.All.Matches<Starfighter>(fighter => fighter.CurrentSquadronSize == 1)
+                    );
+                }
+            }
+        }
+
+        [Test]
+        public void Reset_DefaultContent_AssignsMapSlotsBeforeModelLoading()
         {
             ActiveBattle battle = TacticalBattleLaunchContext.ActiveBattle;
             BattleMap map = TestContent.Pack.GameData.BattleMaps.Single(candidate =>
@@ -59,31 +128,30 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             {
                 BattleParticipant participant = battle.GetParticipants()[index];
                 BattleMapDeploymentRegion region = map.GetDeploymentRegions()[index];
-                CombatUnit combatant = participant.GetCombatants().Single();
                 Assert.AreEqual(region.ParticipantSlotID, participant.BattleMapSlotID);
-                Assert.AreEqual(
-                    (region.Bounds.MinimumX + region.Bounds.MaximumX) / 2f,
-                    combatant.Position.X
-                );
-                Assert.AreEqual(
-                    (region.Bounds.MinimumY + region.Bounds.MaximumY) / 2f,
-                    combatant.Position.Y
-                );
-                Assert.AreEqual(
-                    (region.Bounds.MinimumZ + region.Bounds.MaximumZ) / 2f,
-                    combatant.Position.Z
-                );
-                Assert.AreEqual(
-                    (float)Math.Sin(region.Facing.Y * Math.PI / 180d),
-                    combatant.Forward.X,
-                    0.0001f
-                );
-                Assert.AreEqual(
-                    (float)Math.Cos(region.Facing.Y * Math.PI / 180d),
-                    combatant.Forward.Z,
-                    0.0001f
-                );
+                foreach (CombatUnit combatant in participant.GetCombatants())
+                {
+                    Assert.AreEqual(0f, combatant.Position.X);
+                    Assert.AreEqual(0f, combatant.Position.Y);
+                    Assert.AreEqual(0f, combatant.Position.Z);
+                }
             }
+        }
+
+        [Test]
+        public void Reset_DefaultContent_PreservesCatalogTemplates()
+        {
+            BaseSceneNode[] templates = TestContent
+                .Data.CapitalShips.Cast<BaseSceneNode>()
+                .Concat(TestContent.Data.Starfighters)
+                .ToArray();
+            string[] identities = templates.Select(ship => ship.InstanceID).ToArray();
+            string[] owners = templates.Select(ship => ship.OwnerInstanceID).ToArray();
+
+            _ = TacticalBattleLaunchContext.ActiveBattle;
+
+            CollectionAssert.AreEqual(identities, templates.Select(ship => ship.InstanceID));
+            CollectionAssert.AreEqual(owners, templates.Select(ship => ship.OwnerInstanceID));
         }
 
         [Test]

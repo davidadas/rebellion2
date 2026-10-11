@@ -480,6 +480,7 @@ namespace Rebellion.Tests.Game.Units
         [Test]
         public void CreateCopy_WithModelSize_CreatesIndependentSize()
         {
+            _starfighter.ModelScale = 2.5f;
             _starfighter.ModelSize = new ModelDimensions
             {
                 Width = 12f,
@@ -490,6 +491,7 @@ namespace Rebellion.Tests.Game.Units
             Starfighter copy = (Starfighter)_starfighter.CreateCopy();
 
             Assert.AreNotSame(_starfighter.ModelSize, copy.ModelSize);
+            Assert.AreEqual(2.5f, copy.ModelScale);
             Assert.AreEqual(12f, copy.ModelSize.Width);
             Assert.AreEqual(4f, copy.ModelSize.Height);
             Assert.AreEqual(18f, copy.ModelSize.Depth);
@@ -500,6 +502,7 @@ namespace Rebellion.Tests.Game.Units
         {
             _starfighter.ManufacturingQueueSequence = 7;
             _starfighter.ModelPath = "Pack/Units/TestStarfighter/Models/model";
+            _starfighter.ModelScale = 2.5f;
             _starfighter.ModelSize = new ModelDimensions
             {
                 Width = 12f,
@@ -528,6 +531,7 @@ namespace Rebellion.Tests.Game.Units
                 "InstanceID should be correctly deserialized."
             );
             Assert.AreEqual(_starfighter.ModelPath, deserialized.ModelPath);
+            Assert.AreEqual(2.5f, deserialized.ModelScale);
             Assert.AreEqual(12f, deserialized.ModelSize.Width);
             Assert.AreEqual(4f, deserialized.ModelSize.Height);
             Assert.AreEqual(18f, deserialized.ModelSize.Depth);
