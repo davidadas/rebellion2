@@ -46,6 +46,8 @@ namespace Rebellion.SceneGraph
     public interface ISceneNode : IGameEntity
     {
         public string ModelPath { get; set; }
+        public float ModelScale { get; set; }
+
         public ModelDimensions ModelSize { get; set; }
 
         // Parent Info.

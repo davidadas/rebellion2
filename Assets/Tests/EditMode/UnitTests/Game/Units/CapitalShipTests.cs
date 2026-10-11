@@ -353,6 +353,7 @@ namespace Rebellion.Tests.Game.Units
         {
             _capitalShip.ManufacturingQueueSequence = 7;
             _capitalShip.ModelPath = "Pack/Units/TestCapitalShip/Models/model";
+            _capitalShip.ModelScale = 2.5f;
             _capitalShip.ModelSize = new ModelDimensions
             {
                 Width = 100f,
@@ -448,6 +449,7 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(_capitalShip.UprisingDefense, deserialized.UprisingDefense);
             Assert.AreEqual("POOL", deserialized.ShipNamePoolID);
             Assert.AreEqual(_capitalShip.ModelPath, deserialized.ModelPath);
+            Assert.AreEqual(2.5f, deserialized.ModelScale);
             Assert.AreEqual(100f, deserialized.ModelSize.Width);
             Assert.AreEqual(40f, deserialized.ModelSize.Height);
             Assert.AreEqual(250f, deserialized.ModelSize.Depth);

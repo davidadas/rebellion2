@@ -11,6 +11,9 @@ namespace Rebellion.SceneGraph
     public abstract class BaseSceneNode : BaseGameEntity, ISceneNode
     {
         public string ModelPath { get; set; }
+        public float ModelScale { get; set; } = 1f;
+
+        /// <summary>Gets or sets resolved dimensions refreshed from model metadata before presentation.</summary>
         public ModelDimensions ModelSize { get; set; }
 
         // Parent Info.
@@ -286,6 +289,7 @@ namespace Rebellion.SceneGraph
             copy.InjuredImagePath = InjuredImagePath;
             copy.Description = Description;
             copy.ModelPath = ModelPath;
+            copy.ModelScale = ModelScale;
             copy.ModelSize = ModelSize?.CreateCopy();
             copy.OwnerInstanceID = OwnerInstanceID;
             copy.IsEnabled = IsEnabled;

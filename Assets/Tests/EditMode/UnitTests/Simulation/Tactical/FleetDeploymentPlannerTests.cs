@@ -243,6 +243,7 @@ namespace Rebellion.Tests.Simulation.Tactical
                 BaseSceneNode unit = (BaseSceneNode)template.CreateCopy();
                 unit.OwnerInstanceID = "FACTION";
                 unit.InstanceID = template.TypeID;
+                TestContent.Pack.ModelMetadata.ResolveSize(unit);
                 if (unit is Starfighter fighter)
                     fighter.CurrentSquadronSize = 12;
                 battle.AddCombatants(unit);

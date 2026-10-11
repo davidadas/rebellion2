@@ -99,6 +99,7 @@ public static class TacticalBattleLaunchContext
                 BaseSceneNode ship = (BaseSceneNode)template.CreateCopy();
                 ship.InstanceID = null;
                 ship.OwnerInstanceID = factionInstanceID;
+                activeContentPack.ModelMetadata.ResolveSize(ship);
                 battle.AddCombatants(ship);
             }
             BattleMapDeploymentRegion deploymentRegion = deploymentRegions[factionIndex];

@@ -90,6 +90,9 @@ public sealed class TacticalViewController : MonoBehaviour
             }
 
             string viewerFactionInstanceID = game?.GetPlayerFaction().InstanceID;
+            foreach (BattleParticipant participant in activeBattle.GetParticipants())
+            foreach (CombatUnit combatant in participant.GetCombatants())
+                bootstrap.GetContentPack().ModelMetadata.ResolveSize(combatant.GetUnit());
             Initialize(activeBattle, battleMap, viewerFactionInstanceID);
             Task[] modelLoads = transform
                 .GetComponentsInChildren<ContentModelBinding>(true)
@@ -210,7 +213,7 @@ public sealed class TacticalViewController : MonoBehaviour
             foreach (CombatUnit combatant in viewer.GetCombatants())
             {
                 ModelDimensions size = combatant.GetUnit().ModelSize;
-                GetModelScale(size);
+                GetModelScale(combatant.GetUnit());
                 Quaternion rotation = Quaternion.LookRotation(
                     ToUnityVector(combatant.Forward).normalized
                 );
@@ -340,10 +343,10 @@ public sealed class TacticalViewController : MonoBehaviour
         ContentModelBinding modelBinding = unitObject.AddComponent<ContentModelBinding>();
         modelBinding.SetModel(
             unit.ModelPath,
-            GetModelScale(unit.ModelSize),
+            GetModelScale(unit),
             Vector3.zero,
             false,
-            true,
+            false,
             true,
             -1
         );
@@ -365,14 +368,16 @@ public sealed class TacticalViewController : MonoBehaviour
     }
 
     /// <summary>
-    /// Calculates the normalized model scale from the same authored dimensions used for deployment.
+    /// Validates resolved dimensions and returns the intentional scale used with imported model geometry.
     /// </summary>
-    /// <param name="modelSize">The required authored model dimensions.</param>
-    /// <returns>The scale applied after unit-diameter normalization.</returns>
-    private static float GetModelScale(ModelDimensions modelSize)
+    /// <param name="unit">The unit with resolved dimensions and an intentional model scale.</param>
+    /// <returns>The uniform scale applied without unit-diameter normalization.</returns>
+    private static float GetModelScale(BaseSceneNode unit)
     {
+        ModelDimensions modelSize = unit.ModelSize;
         if (
             modelSize == null
+            || !IsPositive(unit.ModelScale)
             || !IsPositive(modelSize.Width)
             || !IsPositive(modelSize.Height)
             || !IsPositive(modelSize.Depth)
@@ -380,7 +385,7 @@ public sealed class TacticalViewController : MonoBehaviour
             throw new InvalidOperationException(
                 "Tactical models require finite, positive ModelSize dimensions."
             );
-        return Mathf.Max(modelSize.Width, modelSize.Height, modelSize.Depth) / 2f;
+        return unit.ModelScale;
     }
 
     /// <summary>Checks an authored dimension before using it for rendering and framing.</summary>
