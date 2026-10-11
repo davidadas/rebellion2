@@ -6,6 +6,7 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Simulation;
@@ -174,6 +175,32 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void ProcessTick_OpposingDiplomacyCompletesOnSameTick_PreservesFirstControlChange()
+        {
+            (Faction firstFaction, Faction secondFaction, Planet planet) =
+                CreateOpposingDiplomacyScenario();
+            Mission firstMission = CreateReadyDiplomacyMission(firstFaction, planet);
+            Mission secondMission = CreateReadyDiplomacyMission(secondFaction, planet);
+            List<MissionCompletedResult> completions = new();
+            using IDisposable observation = _session.Results.Observe<MissionCompletedResult>(
+                results => completions.AddRange(results)
+            );
+
+            _tick.ProcessTick();
+
+            Assert.AreEqual(firstFaction.InstanceID, planet.GetOwnerInstanceID());
+            MissionCompletedResult secondCompletion = completions.Single(result =>
+                result.MissionInstanceID == secondMission.InstanceID
+            );
+            Assert.AreEqual(
+                MissionCompletionReason.TargetChangedSides,
+                secondCompletion.CompletionReason
+            );
+            Assert.IsNull(secondMission.GetParent());
+            Assert.AreSame(planet, firstMission.GetParent());
+        }
+
+        [Test]
         public void Reset_SuspendedIterator_PreservesBusyGuardUntilDisposal()
         {
             _game.GetFactions().Add(new Faction { InstanceID = "AI", DisplayName = "AI" });
@@ -260,6 +287,90 @@ namespace Rebellion.Tests.Simulation
                 _session.GetService<ManufacturingCommands>().Enqueue(planet, order, planet)
             );
             return order;
+        }
+
+        /// <summary>
+        /// Creates two human factions and one evenly divided neutral diplomacy target.
+        /// </summary>
+        /// <returns>The opposing factions and their shared diplomacy target.</returns>
+        private (
+            Faction FirstFaction,
+            Faction SecondFaction,
+            Planet Planet
+        ) CreateOpposingDiplomacyScenario()
+        {
+            Faction firstFaction = new Faction { InstanceID = "FIRST", DisplayName = "First" };
+            Faction secondFaction = new Faction { InstanceID = "SECOND", DisplayName = "Second" };
+            _game.GetFactions().Add(firstFaction);
+            _game.GetFactions().Add(secondFaction);
+            _game.SetFactionController(
+                firstFaction.InstanceID,
+                "FIRST_PLAYER",
+                PlayerControllerType.Human
+            );
+            _game.SetFactionController(
+                secondFaction.InstanceID,
+                "SECOND_PLAYER",
+                PlayerControllerType.Human
+            );
+            _game.Config.ProbabilityTables.Mission.Diplomacy = new Dictionary<int, int>
+            {
+                { -10000, 100 },
+            };
+            _game.Config.ProbabilityTables.Mission.Foil = new Dictionary<int, int>
+            {
+                { -10000, 0 },
+            };
+            _game.Config.SupportShift.OwnershipTransferThreshold = 60;
+            _game.Config.SupportShift.DiplomacyNeutralPlanetSupportBase = 10;
+            _game.Config.SupportShift.DiplomacyNeutralPlanetSupportRange = 0;
+            _game.Config.SupportShift.ControlChangeSupportShift = 0;
+
+            PlanetSector sector = new PlanetSector { InstanceID = "DIPLOMACY_SECTOR" };
+            _game.AttachNode(sector, _game.Galaxy);
+            Planet planet = new Planet
+            {
+                InstanceID = "DIPLOMACY_PLANET",
+                DisplayName = "Diplomacy Planet",
+                IsColonized = true,
+                PopularSupport = new Dictionary<string, int>
+                {
+                    { firstFaction.InstanceID, 50 },
+                    { secondFaction.InstanceID, 50 },
+                },
+            };
+            planet.AddVisitor(firstFaction.InstanceID);
+            planet.AddVisitor(secondFaction.InstanceID);
+            _game.AttachNode(planet, sector);
+            return (firstFaction, secondFaction, planet);
+        }
+
+        /// <summary>
+        /// Creates an attached diplomacy mission that will resolve on the next tick.
+        /// </summary>
+        /// <param name="faction">The faction conducting diplomacy.</param>
+        /// <param name="planet">The neutral target planet.</param>
+        /// <returns>The ready diplomacy mission.</returns>
+        private Mission CreateReadyDiplomacyMission(Faction faction, Planet planet)
+        {
+            Officer officer = EntityFactory.CreateOfficer(
+                $"{faction.InstanceID}_DIPLOMAT",
+                faction.InstanceID
+            );
+            officer.SetBaseRating(SkillRating.Diplomacy, 100);
+            Mission mission = MissionTestFactory.TryCreate(
+                DiplomacyMission.MissionTypeID,
+                _game,
+                faction.InstanceID,
+                planet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            Assert.IsNotNull(mission);
+            _game.AttachNode(mission, planet);
+            _game.AttachNode(officer, mission);
+            mission.Initiate(0);
+            return mission;
         }
     }
 }
