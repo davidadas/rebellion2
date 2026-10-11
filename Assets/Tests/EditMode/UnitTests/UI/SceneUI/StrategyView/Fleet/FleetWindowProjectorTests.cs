@@ -206,7 +206,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreSame(_uiContext.GetEntityTexture(_capitalShip, false), data.BannerTexture);
             Assert.IsNotNull(data.BannerDamagedOverlayTexture);
             Assert.AreEqual(FleetWindowTab.Starfighters, data.ActiveTab);
-            Assert.IsNull(data.Tabs[(int)FleetWindowTab.CapitalShips].PressedTexture);
+            Assert.IsNotNull(data.Tabs[(int)FleetWindowTab.CapitalShips].PressedTexture);
             CollectionAssert.AreEqual(
                 new[] { "Starfighter" },
                 data.DetailItems.Select(item => item.Name).ToArray()
@@ -344,6 +344,40 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreEqual("Regiment", data.DetailItems[0].Name);
             Assert.IsNotNull(data.DetailItems[0].BackgroundTexture);
             Assert.IsNull(data.DetailItems[0].EnrouteOverlayTexture);
+        }
+
+        [TestCase(FleetWindowTab.Starfighters, "4")]
+        [TestCase(FleetWindowTab.Regiments, "3")]
+        public void Build_EmptyCarrierTab_ReturnsMaximumCapacity(
+            FleetWindowTab tab,
+            string capacity
+        )
+        {
+            _capitalShip.RemoveChild(_starfighter);
+            _capitalShip.RemoveChild(_regiment);
+            _session.Reconcile();
+            Assert.IsTrue(_session.SelectTab(tab));
+
+            FleetWindowRenderData data = _projector.Build(_session, _window, true);
+
+            Assert.IsTrue(data.ShowCapacity);
+            Assert.AreEqual("0", data.CapacityLeft);
+            Assert.AreEqual(capacity, data.CapacityRight);
+            Assert.IsNotNull(data.Tabs[(int)tab].PressedTexture);
+            Assert.IsEmpty(data.DetailItems);
+        }
+
+        [Test]
+        public void Build_EmptyTabs_ReturnPressedTextures()
+        {
+            Assert.IsTrue(_session.SelectItem(_secondFleet));
+
+            FleetWindowRenderData data = _projector.Build(_session, _window, true);
+
+            Assert.IsTrue(
+                data.Tabs.Where(tab => tab.Tab != FleetWindowTab.CapitalShips)
+                    .All(tab => tab.PressedTexture != null)
+            );
         }
 
         [Test]
