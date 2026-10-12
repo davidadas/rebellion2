@@ -169,7 +169,9 @@ namespace Rebellion.Simulation
             return false;
         }
 
-        /// <summary>Interrupts a selected mission and appends its teardown consequences.</summary>
+        /// <summary>
+        /// Interrupts a selected mission and appends its teardown consequences.
+        /// </summary>
         /// <param name="mission">The mission selected while its participants still belong to it.</param>
         /// <param name="results">The batch receiving interruption and teardown results.</param>
         internal void InterruptMission(Mission mission, List<GameResult> results)

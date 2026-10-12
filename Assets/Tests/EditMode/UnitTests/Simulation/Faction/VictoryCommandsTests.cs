@@ -335,7 +335,9 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(empire, victory.Loser);
         }
 
-        /// <summary>Captures the single victory published by an operation.</summary>
+        /// <summary>
+        /// Captures the single victory published by an operation.
+        /// </summary>
         /// <param name="commands">The victory commands publishing the outcome.</param>
         /// <param name="operation">The operation expected to declare victory.</param>
         /// <returns>The published victory.</returns>
@@ -349,7 +351,9 @@ namespace Rebellion.Tests.Simulation
             return published.Single();
         }
 
-        /// <summary>Creates tick processing with the configured victory rules.</summary>
+        /// <summary>
+        /// Creates tick processing with the configured victory rules.
+        /// </summary>
         /// <param name="game">The active game graph.</param>
         /// <param name="commands">The victory declaration commands.</param>
         /// <returns>The configured tick processor.</returns>

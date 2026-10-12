@@ -10,7 +10,9 @@ namespace Rebellion.Tests.Content
         private ContentModelInstance instance;
         private Transform mesh;
 
-        /// <summary>Creates a model hierarchy with a nonuniform, off-center mesh.</summary>
+        /// <summary>
+        /// Creates a model hierarchy with a nonuniform, off-center mesh.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -26,7 +28,9 @@ namespace Rebellion.Tests.Content
             instance = new ContentModelInstance(scene, model);
         }
 
-        /// <summary>Disposes the model and its isolated scene objects.</summary>
+        /// <summary>
+        /// Disposes the model and its isolated scene objects.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {

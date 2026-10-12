@@ -1255,7 +1255,9 @@ namespace Rebellion.Tests.Simulation
             new FogOfWarCommands(_game).ObservePlanet(faction, planet);
         }
 
-        /// <summary>Transfers a planet and resolves the resulting lifecycle reactions.</summary>
+        /// <summary>
+        /// Transfers a planet and resolves the resulting lifecycle reactions.
+        /// </summary>
         /// <param name="planet">The planet to transfer.</param>
         /// <param name="newOwner">The faction receiving control.</param>
         /// <returns>The initial ownership change.</returns>
@@ -1266,7 +1268,9 @@ namespace Rebellion.Tests.Simulation
             return result;
         }
 
-        /// <summary>Reconciles a planet and resolves the resulting lifecycle reactions.</summary>
+        /// <summary>
+        /// Reconciles a planet and resolves the resulting lifecycle reactions.
+        /// </summary>
         /// <param name="planet">The planet whose control is reconciled.</param>
         /// <returns>All settled reconciliation results.</returns>
         private List<GameResult> ReconcilePlanet(Planet planet)
@@ -1274,7 +1278,9 @@ namespace Rebellion.Tests.Simulation
             return PublishResults(_commands, _commands.ReconcilePlanet(planet));
         }
 
-        /// <summary>Advances planetary control and resolves the resulting lifecycle reactions.</summary>
+        /// <summary>
+        /// Advances planetary control and resolves the resulting lifecycle reactions.
+        /// </summary>
         /// <param name="commands">The control service to advance.</param>
         /// <returns>All settled tick results.</returns>
         private List<GameResult> ProcessTick(PlanetaryControlCommands commands)
@@ -1285,7 +1291,9 @@ namespace Rebellion.Tests.Simulation
             return PublishResults(commands, results);
         }
 
-        /// <summary>Publishes control results through the relevant runtime observers.</summary>
+        /// <summary>
+        /// Publishes control results through the relevant runtime observers.
+        /// </summary>
         /// <param name="commands">The control service that produced the results.</param>
         /// <param name="results">The results to settle.</param>
         /// <returns>The settled result sequence.</returns>

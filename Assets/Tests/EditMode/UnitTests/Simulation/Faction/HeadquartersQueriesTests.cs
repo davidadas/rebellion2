@@ -69,7 +69,9 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(new HeadquartersQueries(game).CanRelocate(hq, destination));
         }
 
-        /// <summary>Creates a faction with headquarters and two registered planets.</summary>
+        /// <summary>
+        /// Creates a faction with headquarters and two registered planets.
+        /// </summary>
         /// <param name="isMobile">Whether the headquarters may relocate.</param>
         /// <returns>The game, faction, origin, destination and headquarters building.</returns>
         private static (GameRoot, Faction, Planet, Planet, Building) CreateGame(bool isMobile)

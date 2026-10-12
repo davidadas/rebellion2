@@ -13,7 +13,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
     {
         private GameObject _instance;
 
-        /// <summary>Enters an isolated scene so actual Unity button lifecycle runs.</summary>
+        /// <summary>
+        /// Enters an isolated scene so actual Unity button lifecycle runs.
+        /// </summary>
         /// <returns>The play-mode transition.</returns>
         [UnitySetUp]
         public IEnumerator SetUp()
@@ -29,7 +31,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             yield return null;
         }
 
-        /// <summary>Releases the generated scene and restores edit mode.</summary>
+        /// <summary>
+        /// Releases the generated scene and restores edit mode.
+        /// </summary>
         /// <returns>The edit-mode transition.</returns>
         [UnityTearDown]
         public IEnumerator TearDown()
@@ -38,7 +42,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             yield return new ExitPlayMode();
         }
 
-        /// <summary>Checks every command key depresses and restores through actual pointer handlers.</summary>
+        /// <summary>
+        /// Checks every command key depresses and restores through actual pointer handlers.
+        /// </summary>
         /// <returns>The frame allowing transition feedback to settle.</returns>
         [UnityTest]
         public IEnumerator OnPointerDown_AllCommands_DepressesAndRestoresFace()
@@ -66,7 +72,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             yield return null;
         }
 
-        /// <summary>Checks placeholder clicks have no persistent callback or game-state side effect.</summary>
+        /// <summary>
+        /// Checks placeholder clicks have no persistent callback or game-state side effect.
+        /// </summary>
         /// <returns>The frame following the click.</returns>
         [UnityTest]
         public IEnumerator OnPointerClick_PlaceholderCommand_DoesNotCreateBattleState()
@@ -87,7 +95,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             yield return null;
         }
 
-        /// <summary>Checks disabled controls do not display a physical key depression.</summary>
+        /// <summary>
+        /// Checks disabled controls do not display a physical key depression.
+        /// </summary>
         /// <returns>The frame following the input.</returns>
         [UnityTest]
         public IEnumerator OnPointerDown_DisabledKey_DoesNotDepressFace()

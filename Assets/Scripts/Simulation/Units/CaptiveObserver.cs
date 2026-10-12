@@ -12,7 +12,9 @@ using Rebellion.Util.Random;
 
 namespace Rebellion.Simulation
 {
-    /// <summary>Routes capture and ownership changes to custody operations in batch order.</summary>
+    /// <summary>
+    /// Routes capture and ownership changes to custody operations in batch order.
+    /// </summary>
     public sealed class CaptiveObserver : IResultObserver, IDisposable
     {
         private readonly GameRoot _game;
@@ -22,7 +24,9 @@ namespace Rebellion.Simulation
         private readonly GameConfig.TickRangeConfig _escapeAttemptInterval;
         private IDisposable[] _subscriptions;
 
-        /// <summary>Creates the custody listener for the active game.</summary>
+        /// <summary>
+        /// Creates the custody listener for the active game.
+        /// </summary>
         /// <param name="game">The authoritative game used to resolve officer ownership.</param>
         /// <param name="movement">The movement operations used to transfer captives.</param>
         /// <param name="movementQueries">The movement destination rules.</param>
@@ -42,7 +46,9 @@ namespace Rebellion.Simulation
             _escapeAttemptInterval = game.Config.Captive.EscapeAttemptInterval;
         }
 
-        /// <summary>Registers capture and ownership callbacks with the result bus.</summary>
+        /// <summary>
+        /// Registers capture and ownership callbacks with the result bus.
+        /// </summary>
         /// <param name="results">The bus that delivers capture and ownership changes.</param>
         public void Connect(GameResultBus results)
         {
@@ -58,7 +64,9 @@ namespace Rebellion.Simulation
             };
         }
 
-        /// <summary>Stops receiving capture and ownership changes.</summary>
+        /// <summary>
+        /// Stops receiving capture and ownership changes.
+        /// </summary>
         public void Dispose()
         {
             foreach (IDisposable subscription in _subscriptions ?? Array.Empty<IDisposable>())
@@ -151,7 +159,9 @@ namespace Rebellion.Simulation
             return reactions;
         }
 
-        /// <summary>Transfers a newly captured officer into captor-controlled custody.</summary>
+        /// <summary>
+        /// Transfers a newly captured officer into captor-controlled custody.
+        /// </summary>
         /// <param name="officer">The captured officer.</param>
         /// <param name="context">The capture location.</param>
         /// <param name="capturingUnit">The unit responsible for the capture, if present.</param>
@@ -188,7 +198,9 @@ namespace Rebellion.Simulation
                 ScheduleEscapeAttempt(officer);
         }
 
-        /// <summary>Reveals established custody to the officer's owner and captor.</summary>
+        /// <summary>
+        /// Reveals established custody to the officer's owner and captor.
+        /// </summary>
         /// <param name="officer">The officer whose custody was established.</param>
         /// <param name="tick">The tick when custody was established.</param>
         /// <param name="reactions">The collection receiving intelligence results.</param>
@@ -225,7 +237,9 @@ namespace Rebellion.Simulation
             }
         }
 
-        /// <summary>Transfers a captured officer into a validated captor-controlled container.</summary>
+        /// <summary>
+        /// Transfers a captured officer into a validated captor-controlled container.
+        /// </summary>
         /// <param name="officer">The captured officer.</param>
         /// <param name="destination">The requested custody destination.</param>
         /// <param name="escort">The capturing unit accompanying a remote transfer.</param>
@@ -271,7 +285,9 @@ namespace Rebellion.Simulation
             );
         }
 
-        /// <summary>Schedules the next escape attempt for a newly established captive.</summary>
+        /// <summary>
+        /// Schedules the next escape attempt for a newly established captive.
+        /// </summary>
         /// <param name="officer">The captive officer.</param>
         private void ScheduleEscapeAttempt(Officer officer)
         {
@@ -282,7 +298,9 @@ namespace Rebellion.Simulation
             );
         }
 
-        /// <summary>Finds the captor-controlled container that should receive an officer.</summary>
+        /// <summary>
+        /// Finds the captor-controlled container that should receive an officer.
+        /// </summary>
         /// <param name="context">The capture location.</param>
         /// <param name="capturingUnit">The capturing unit, if present.</param>
         /// <param name="officer">The captured officer.</param>
@@ -331,13 +349,17 @@ namespace Rebellion.Simulation
                 .FirstOrDefault();
         }
 
-        /// <summary>Gets the planet containing a capture context.</summary>
+        /// <summary>
+        /// Gets the planet containing a capture context.
+        /// </summary>
         /// <param name="context">The capture context.</param>
         /// <returns>The capture planet, or null.</returns>
         private static Planet GetCapturePlanet(IGameEntity context) =>
             context as Planet ?? (context as ISceneNode)?.GetParentOfType<Planet>();
 
-        /// <summary>Finds captor-controlled custody associated with the capturing unit.</summary>
+        /// <summary>
+        /// Finds captor-controlled custody associated with the capturing unit.
+        /// </summary>
         /// <param name="capturingUnit">The capturing unit.</param>
         /// <param name="captorInstanceId">The captor faction identifier.</param>
         /// <param name="officer">The captured officer.</param>
@@ -361,7 +383,9 @@ namespace Rebellion.Simulation
                 );
         }
 
-        /// <summary>Gets the movable escort represented by a capturing unit.</summary>
+        /// <summary>
+        /// Gets the movable escort represented by a capturing unit.
+        /// </summary>
         /// <param name="capturingUnit">The capturing unit.</param>
         /// <returns>The escort, or null.</returns>
         private static IMovable GetCustodyEscort(ISceneNode capturingUnit) =>
@@ -372,7 +396,9 @@ namespace Rebellion.Simulation
                 _ => null,
             };
 
-        /// <summary>Returns an eligible captor-controlled custody container.</summary>
+        /// <summary>
+        /// Returns an eligible captor-controlled custody container.
+        /// </summary>
         /// <param name="container">The possible custody container.</param>
         /// <param name="captorInstanceId">The captor faction identifier.</param>
         /// <param name="officer">The captured officer.</param>
@@ -391,7 +417,9 @@ namespace Rebellion.Simulation
                 : null;
         }
 
-        /// <summary>Determines whether a custody container is usable by a faction.</summary>
+        /// <summary>
+        /// Determines whether a custody container is usable by a faction.
+        /// </summary>
         /// <param name="node">The container to inspect.</param>
         /// <param name="captorInstanceId">The captor faction identifier.</param>
         /// <returns>True when the container is controlled and operational.</returns>

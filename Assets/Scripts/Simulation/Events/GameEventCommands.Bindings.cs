@@ -246,7 +246,9 @@ namespace Rebellion.Simulation
             return roll.Minimum * (1 - sample) + roll.Maximum * sample;
         }
 
-        /// <summary>Gets the scalar type exposed by an authored source.</summary>
+        /// <summary>
+        /// Gets the scalar type exposed by an authored source.
+        /// </summary>
         /// <param name="source">The authored source.</param>
         /// <returns>The source's scalar value type.</returns>
         private static Type GetSourceValueType(GameEventBindingSource source) =>
@@ -262,7 +264,9 @@ namespace Rebellion.Simulation
                 ),
             };
 
-        /// <summary>Resolves an authored scalar source against the current evaluation.</summary>
+        /// <summary>
+        /// Resolves an authored scalar source against the current evaluation.
+        /// </summary>
         /// <param name="source">The authored scalar source.</param>
         /// <param name="game">The active game state.</param>
         /// <param name="provider">The random source supplied to selectors.</param>

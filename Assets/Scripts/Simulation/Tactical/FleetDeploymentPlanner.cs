@@ -81,7 +81,9 @@ namespace Rebellion.Simulation.Tactical
             }
         }
 
-        /// <summary>Plans one participant in the local frame of its authored facing.</summary>
+        /// <summary>
+        /// Plans one participant in the local frame of its authored facing.
+        /// </summary>
         /// <param name="participant">The participant to deploy.</param>
         /// <param name="region">The assigned region.</param>
         /// <param name="playableBounds">The map's outer playable bounds.</param>
@@ -211,7 +213,9 @@ namespace Rebellion.Simulation.Tactical
             );
         }
 
-        /// <summary>Packs squadron members and orders groups by size with stable identity tie breaks.</summary>
+        /// <summary>
+        /// Packs squadron members and orders groups by size with stable identity tie breaks.
+        /// </summary>
         /// <param name="groups">The groups to prepare.</param>
         /// <param name="capacity">The available local volume.</param>
         private static void PrepareGroups(List<Group> groups, Vector3 capacity)
@@ -237,7 +241,9 @@ namespace Rebellion.Simulation.Tactical
             );
         }
 
-        /// <summary>Returns group envelopes in their stable placement order.</summary>
+        /// <summary>
+        /// Returns group envelopes in their stable placement order.
+        /// </summary>
         /// <param name="groups">The groups to measure.</param>
         /// <returns>The occupied sizes.</returns>
         private static List<Vector3> GetSizes(List<Group> groups)
@@ -290,7 +296,9 @@ namespace Rebellion.Simulation.Tactical
             return BuildLayout(sizes, bestColumns, bestRows, bestSize);
         }
 
-        /// <summary>Measures actual row widths, row heights, and layer depths.</summary>
+        /// <summary>
+        /// Measures actual row widths, row heights, and layer depths.
+        /// </summary>
         /// <param name="sizes">The occupied item sizes.</param>
         /// <param name="columns">The maximum items per row.</param>
         /// <param name="rows">The maximum rows per depth layer.</param>
@@ -326,7 +334,9 @@ namespace Rebellion.Simulation.Tactical
             return result;
         }
 
-        /// <summary>Builds the winning rows with larger items and rows nearest the center.</summary>
+        /// <summary>
+        /// Builds the winning rows with larger items and rows nearest the center.
+        /// </summary>
         /// <param name="sizes">The occupied item sizes.</param>
         /// <param name="columns">The items per row.</param>
         /// <param name="rows">The rows per depth layer.</param>
@@ -372,7 +382,9 @@ namespace Rebellion.Simulation.Tactical
             return new Layout(size, positions);
         }
 
-        /// <summary>Places variable-width intervals from the center outward without overlap.</summary>
+        /// <summary>
+        /// Places variable-width intervals from the center outward without overlap.
+        /// </summary>
         /// <param name="lengths">The lengths ordered from largest priority to smallest.</param>
         /// <returns>The interval centers in the original order.</returns>
         private static float[] GetCenters(float[] lengths)
@@ -399,7 +411,9 @@ namespace Rebellion.Simulation.Tactical
             return centers;
         }
 
-        /// <summary>Transforms group and member positions into battle space.</summary>
+        /// <summary>
+        /// Transforms group and member positions into battle space.
+        /// </summary>
         /// <param name="groups">The packed groups.</param>
         /// <param name="layout">The group arrangement.</param>
         /// <param name="offset">The core or screen offset.</param>
@@ -442,7 +456,9 @@ namespace Rebellion.Simulation.Tactical
             }
         }
 
-        /// <summary>Rejects intersecting occupied hulls before any persistent position changes.</summary>
+        /// <summary>
+        /// Rejects intersecting occupied hulls before any persistent position changes.
+        /// </summary>
         /// <param name="placements">All pending placements.</param>
         private static void ValidateSeparation(List<Placement> placements)
         {
@@ -473,7 +489,9 @@ namespace Rebellion.Simulation.Tactical
             }
         }
 
-        /// <summary>Tests oriented hulls on their face normals and cross-product separating axes.</summary>
+        /// <summary>
+        /// Tests oriented hulls on their face normals and cross-product separating axes.
+        /// </summary>
         /// <param name="first">The first occupied hull.</param>
         /// <param name="second">The second occupied hull.</param>
         /// <returns>True when no separating axis exists.</returns>
@@ -501,7 +519,9 @@ namespace Rebellion.Simulation.Tactical
             return true;
         }
 
-        /// <summary>Returns one hull orientation axis.</summary>
+        /// <summary>
+        /// Returns one hull orientation axis.
+        /// </summary>
         /// <param name="placement">The occupied hull.</param>
         /// <param name="axis">The axis index.</param>
         /// <returns>The unit orientation axis.</returns>
@@ -510,7 +530,9 @@ namespace Rebellion.Simulation.Tactical
             : axis == 1 ? placement.Up
             : placement.Forward;
 
-        /// <summary>Checks whether projected hull intervals touch or separate on one axis.</summary>
+        /// <summary>
+        /// Checks whether projected hull intervals touch or separate on one axis.
+        /// </summary>
         /// <param name="first">The first occupied hull.</param>
         /// <param name="second">The second occupied hull.</param>
         /// <param name="delta">The displacement between centers.</param>
@@ -530,7 +552,9 @@ namespace Rebellion.Simulation.Tactical
             return Math.Abs(Vector3.Dot(delta, axis)) >= radius - 0.0001f;
         }
 
-        /// <summary>Projects an occupied hull's half dimensions onto an axis.</summary>
+        /// <summary>
+        /// Projects an occupied hull's half dimensions onto an axis.
+        /// </summary>
         /// <param name="placement">The occupied hull.</param>
         /// <param name="axis">The unit projection axis.</param>
         /// <returns>The projected half length.</returns>
@@ -539,7 +563,9 @@ namespace Rebellion.Simulation.Tactical
             + Math.Abs(Vector3.Dot(placement.Up, axis)) * placement.LocalExtent.Y
             + Math.Abs(Vector3.Dot(placement.Forward, axis)) * placement.LocalExtent.Z;
 
-        /// <summary>Compares occupied size and then stable identity.</summary>
+        /// <summary>
+        /// Compares occupied size and then stable identity.
+        /// </summary>
         /// <param name="left">The first size.</param>
         /// <param name="right">The second size.</param>
         /// <param name="leftId">The first identity.</param>
@@ -556,7 +582,9 @@ namespace Rebellion.Simulation.Tactical
                 : comparison;
         }
 
-        /// <summary>Computes the world-aligned size of a rotated box.</summary>
+        /// <summary>
+        /// Computes the world-aligned size of a rotated box.
+        /// </summary>
         /// <param name="size">The local dimensions.</param>
         /// <param name="right">The right axis.</param>
         /// <param name="up">The up axis.</param>
@@ -569,7 +597,9 @@ namespace Rebellion.Simulation.Tactical
                 + Vector3.Abs(forward) * size.Z;
         }
 
-        /// <summary>Validates a finite, positive map volume.</summary>
+        /// <summary>
+        /// Validates a finite, positive map volume.
+        /// </summary>
         /// <param name="bounds">The bounds to inspect.</param>
         private static void ValidateBounds(BattleMapBounds bounds)
         {
@@ -591,30 +621,40 @@ namespace Rebellion.Simulation.Tactical
                 );
         }
 
-        /// <summary>Returns whether a value is finite.</summary>
+        /// <summary>
+        /// Returns whether a value is finite.
+        /// </summary>
         /// <param name="value">The value to inspect.</param>
         /// <returns>True for finite values.</returns>
         private static bool IsFinite(float value) =>
             !float.IsNaN(value) && !float.IsInfinity(value);
 
-        /// <summary>Returns whether a value is finite and positive.</summary>
+        /// <summary>
+        /// Returns whether a value is finite and positive.
+        /// </summary>
         /// <param name="value">The value to inspect.</param>
         /// <returns>True for positive finite values.</returns>
         private static bool IsPositive(float value) => IsFinite(value) && value > 0f;
 
-        /// <summary>Returns the minimum corner.</summary>
+        /// <summary>
+        /// Returns the minimum corner.
+        /// </summary>
         /// <param name="bounds">The source bounds.</param>
         /// <returns>The minimum corner.</returns>
         private static Vector3 GetMinimum(BattleMapBounds bounds) =>
             new Vector3(bounds.MinimumX, bounds.MinimumY, bounds.MinimumZ);
 
-        /// <summary>Returns the maximum corner.</summary>
+        /// <summary>
+        /// Returns the maximum corner.
+        /// </summary>
         /// <param name="bounds">The source bounds.</param>
         /// <returns>The maximum corner.</returns>
         private static Vector3 GetMaximum(BattleMapBounds bounds) =>
             new Vector3(bounds.MaximumX, bounds.MaximumY, bounds.MaximumZ);
 
-        /// <summary>Converts a calculation result into persistent battle coordinates.</summary>
+        /// <summary>
+        /// Converts a calculation result into persistent battle coordinates.
+        /// </summary>
         /// <param name="value">The calculated vector.</param>
         /// <returns>The persistent vector.</returns>
         private static BattleVector3 ToBattleVector(Vector3 value) =>
@@ -631,7 +671,9 @@ namespace Rebellion.Simulation.Tactical
             internal readonly List<Ship> Ships;
             internal Layout Layout;
 
-            /// <summary>Creates an independently packed ship or squadron.</summary>
+            /// <summary>
+            /// Creates an independently packed ship or squadron.
+            /// </summary>
             /// <param name="id">The stable group identifier.</param>
             /// <param name="ships">The group members.</param>
             internal Group(string id, List<Ship> ships)
@@ -646,7 +688,9 @@ namespace Rebellion.Simulation.Tactical
             internal readonly CombatUnit Combatant;
             internal readonly Vector3 Size;
 
-            /// <summary>Captures one combatant's occupied envelope.</summary>
+            /// <summary>
+            /// Captures one combatant's occupied envelope.
+            /// </summary>
             /// <param name="combatant">The persistent combatant.</param>
             /// <param name="size">The hull dimensions with clearance.</param>
             internal Ship(CombatUnit combatant, Vector3 size)
@@ -661,7 +705,9 @@ namespace Rebellion.Simulation.Tactical
             internal readonly Vector3 Size;
             internal readonly Vector3[] Positions;
 
-            /// <summary>Captures one centered arrangement.</summary>
+            /// <summary>
+            /// Captures one centered arrangement.
+            /// </summary>
             /// <param name="size">The occupied dimensions.</param>
             /// <param name="positions">The ordered item positions.</param>
             internal Layout(Vector3 size, Vector3[] positions)
@@ -681,7 +727,9 @@ namespace Rebellion.Simulation.Tactical
             internal readonly Vector3 LocalExtent;
             internal readonly Vector3 Extent;
 
-            /// <summary>Captures a pending world-space placement.</summary>
+            /// <summary>
+            /// Captures a pending world-space placement.
+            /// </summary>
             /// <param name="combatant">The persistent combatant.</param>
             /// <param name="position">The world position.</param>
             /// <param name="right">The right axis.</param>

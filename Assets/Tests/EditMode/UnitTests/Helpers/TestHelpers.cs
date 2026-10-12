@@ -231,7 +231,9 @@ public class QueueRNG : IRandomNumberProvider
 /// </summary>
 public class StubMission : Mission
 {
-    /// <summary>Creates an empty stub mission copy.</summary>
+    /// <summary>
+    /// Creates an empty stub mission copy.
+    /// </summary>
     /// <returns>An empty stub mission.</returns>
     protected override BaseSceneNode CreateNodeCopy() => new StubMission();
 
@@ -678,7 +680,9 @@ public static class TestSystems
         return CreateMissionCommands(game, provider, movement, uprising);
     }
 
-    /// <summary>Creates mission commands around a supplied uprising resolver.</summary>
+    /// <summary>
+    /// Creates mission commands around a supplied uprising resolver.
+    /// </summary>
     /// <param name="game">The game state used by every system in the graph.</param>
     /// <param name="provider">The random number provider used by mission resolution.</param>
     /// <param name="movement">The movement system used by mission behavior.</param>
@@ -709,7 +713,9 @@ public static class TestSystems
         return commands;
     }
 
-    /// <summary>Gets the lifecycle resolver paired with test mission commands.</summary>
+    /// <summary>
+    /// Gets the lifecycle resolver paired with test mission commands.
+    /// </summary>
     /// <param name="commands">The mission commands created by this helper.</param>
     /// <returns>The paired lifecycle resolver.</returns>
     internal static MissionResolver GetMissionResolver(MissionCommands commands)
@@ -721,7 +727,9 @@ public static class TestSystems
             );
     }
 
-    /// <summary>Gets the officer-command service paired with test mission commands.</summary>
+    /// <summary>
+    /// Gets the officer-command service paired with test mission commands.
+    /// </summary>
     /// <param name="commands">The mission commands created by this helper.</param>
     /// <returns>The paired officer-command service.</returns>
     internal static OfficerCommandCommands GetOfficerCommands(MissionCommands commands)

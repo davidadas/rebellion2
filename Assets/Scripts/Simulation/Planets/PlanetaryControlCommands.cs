@@ -21,10 +21,14 @@ namespace Rebellion.Simulation
         private readonly FogOfWarQueries _fogOfWarQueries;
         private readonly HashSet<string> _controlChangesInProgress = new HashSet<string>();
 
-        /// <summary>Raised before a planet's registered owner is changed.</summary>
+        /// <summary>
+        /// Raised before a planet's registered owner is changed.
+        /// </summary>
         internal event Action<PlanetOwnershipChangedResult> OwnershipChanging;
 
-        /// <summary>Raised immediately after a planet's registered owner is changed.</summary>
+        /// <summary>
+        /// Raised immediately after a planet's registered owner is changed.
+        /// </summary>
         internal event Action<PlanetOwnershipChangedResult> OwnershipChanged;
 
         /// <summary>

@@ -307,11 +307,15 @@ namespace Rebellion.Game.Units
         /// </summary>
         public CapitalShip() { }
 
-        /// <summary>Creates an empty capital-ship copy.</summary>
+        /// <summary>
+        /// Creates an empty capital-ship copy.
+        /// </summary>
         /// <returns>The created node copy.</returns>
         protected override BaseSceneNode CreateNodeCopy() => new CapitalShip();
 
-        /// <summary>Copies capital-ship state into an empty destination.</summary>
+        /// <summary>
+        /// Copies capital-ship state into an empty destination.
+        /// </summary>
         /// <param name="destination">The destination.</param>
         protected override void CopyStateTo(BaseSceneNode destination)
         {
@@ -524,7 +528,9 @@ namespace Rebellion.Game.Units
             return CalculateCombatValue(CurrentHullStrength);
         }
 
-        /// <summary>Returns combat value at full manufactured durability.</summary>
+        /// <summary>
+        /// Returns combat value at full manufactured durability.
+        /// </summary>
         /// <returns>The projected combat value.</returns>
         internal int GetProjectedCombatValue()
         {

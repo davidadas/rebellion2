@@ -1,7 +1,9 @@
 using TMPro;
 using UnityEngine;
 
-/// <summary>Displays the tactical view's frame rate independently of game speed or pause state.</summary>
+/// <summary>
+/// Displays the tactical view's frame rate independently of game speed or pause state.
+/// </summary>
 [RequireComponent(typeof(TextMeshProUGUI))]
 public sealed class TacticalFrameRateView : MonoBehaviour
 {
@@ -9,7 +11,9 @@ public sealed class TacticalFrameRateView : MonoBehaviour
     private float _elapsed;
     private int _frames;
 
-    /// <summary>Resets the sampling window when the counter becomes visible.</summary>
+    /// <summary>
+    /// Resets the sampling window when the counter becomes visible.
+    /// </summary>
     private void OnEnable()
     {
         _label = GetComponent<TMP_Text>();
@@ -18,7 +22,9 @@ public sealed class TacticalFrameRateView : MonoBehaviour
         _label.text = "-- FPS";
     }
 
-    /// <summary>Refreshes the display twice per second using unscaled frame time.</summary>
+    /// <summary>
+    /// Refreshes the display twice per second using unscaled frame time.
+    /// </summary>
     private void Update()
     {
         _elapsed += Time.unscaledDeltaTime;

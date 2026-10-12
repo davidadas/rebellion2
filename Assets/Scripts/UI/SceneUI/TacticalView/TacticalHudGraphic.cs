@@ -1,7 +1,9 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-/// <summary>Flat panels and resolution-independent symbols for the tactical HUD.</summary>
+/// <summary>
+/// Flat panels and resolution-independent symbols for the tactical HUD.
+/// </summary>
 [RequireComponent(typeof(CanvasRenderer))]
 public sealed class TacticalHudGraphic : MaskableGraphic
 {
@@ -25,7 +27,9 @@ public sealed class TacticalHudGraphic : MaskableGraphic
     [SerializeField]
     private Artwork artwork;
 
-    /// <summary>Changes the authored vector artwork.</summary>
+    /// <summary>
+    /// Changes the authored vector artwork.
+    /// </summary>
     /// <param name="value">The artwork to display.</param>
     public void SetArtwork(Artwork value)
     {
@@ -33,7 +37,9 @@ public sealed class TacticalHudGraphic : MaskableGraphic
         SetVerticesDirty();
     }
 
-    /// <summary>Builds a flat, thin-bordered panel or a command symbol.</summary>
+    /// <summary>
+    /// Builds a flat, thin-bordered panel or a command symbol.
+    /// </summary>
     /// <param name="mesh">The canvas mesh to populate.</param>
     protected override void OnPopulateMesh(VertexHelper mesh)
     {
@@ -140,7 +146,9 @@ public sealed class TacticalHudGraphic : MaskableGraphic
         }
     }
 
-    /// <summary>Insets a rectangle without changing its center.</summary>
+    /// <summary>
+    /// Insets a rectangle without changing its center.
+    /// </summary>
     /// <param name="r">The original rectangle.</param>
     /// <param name="amount">The inset on each edge.</param>
     /// <returns>The inset rectangle.</returns>
@@ -152,7 +160,9 @@ public sealed class TacticalHudGraphic : MaskableGraphic
             Mathf.Max(0f, r.height - amount * 2f)
         );
 
-    /// <summary>Adds a chamfered, convex panel.</summary>
+    /// <summary>
+    /// Adds a chamfered, convex panel.
+    /// </summary>
     /// <param name="mesh">The destination mesh.</param>
     /// <param name="r">The panel rectangle.</param>
     /// <param name="cut">The corner chamfer size.</param>
@@ -174,7 +184,9 @@ public sealed class TacticalHudGraphic : MaskableGraphic
             mesh.AddTriangle(start, start + i + 1, start + (i + 1) % 8 + 1);
     }
 
-    /// <summary>Adds a filled rectangle.</summary>
+    /// <summary>
+    /// Adds a filled rectangle.
+    /// </summary>
     /// <param name="mesh">The destination mesh.</param>
     /// <param name="r">The rectangle.</param>
     /// <param name="tint">The color.</param>
@@ -189,7 +201,9 @@ public sealed class TacticalHudGraphic : MaskableGraphic
         mesh.AddTriangle(i, i + 2, i + 3);
     }
 
-    /// <summary>Adds a thick line segment.</summary>
+    /// <summary>
+    /// Adds a thick line segment.
+    /// </summary>
     /// <param name="mesh">The destination mesh.</param>
     /// <param name="a">The start point.</param>
     /// <param name="b">The end point.</param>
@@ -208,7 +222,9 @@ public sealed class TacticalHudGraphic : MaskableGraphic
         mesh.AddTriangle(i, i + 2, i + 3);
     }
 
-    /// <summary>Adds a filled contact or arrow triangle.</summary>
+    /// <summary>
+    /// Adds a filled contact or arrow triangle.
+    /// </summary>
     /// <param name="mesh">The destination mesh.</param>
     /// <param name="a">The first corner.</param>
     /// <param name="b">The second corner.</param>
@@ -223,7 +239,9 @@ public sealed class TacticalHudGraphic : MaskableGraphic
         mesh.AddTriangle(i, i + 1, i + 2);
     }
 
-    /// <summary>Adds a circular instrument line.</summary>
+    /// <summary>
+    /// Adds a circular instrument line.
+    /// </summary>
     /// <param name="mesh">The destination mesh.</param>
     /// <param name="center">The circle center.</param>
     /// <param name="radius">The radius.</param>

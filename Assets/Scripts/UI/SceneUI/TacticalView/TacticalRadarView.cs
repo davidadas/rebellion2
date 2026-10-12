@@ -4,7 +4,9 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-/// <summary>Displays loaded battle contacts on an X/Z instrument and navigates the battle camera.</summary>
+/// <summary>
+/// Displays loaded battle contacts on an X/Z instrument and navigates the battle camera.
+/// </summary>
 [RequireComponent(typeof(CanvasRenderer))]
 public sealed class TacticalRadarView : MaskableGraphic, IPointerDownHandler, IDragHandler
 {
@@ -17,7 +19,9 @@ public sealed class TacticalRadarView : MaskableGraphic, IPointerDownHandler, ID
     private Color _friendly = new Color(0.55f, 0.85f, 0.72f);
     private readonly HashSet<CombatUnit> _selectedContacts = new HashSet<CombatUnit>();
 
-    /// <summary>Binds contacts to this battle's already loaded presentation index.</summary>
+    /// <summary>
+    /// Binds contacts to this battle's already loaded presentation index.
+    /// </summary>
     /// <param name="presentations">The loaded combatants and roots.</param>
     /// <param name="bounds">The authored playable bounds.</param>
     /// <param name="camera">The navigable battle camera.</param>
@@ -39,7 +43,9 @@ public sealed class TacticalRadarView : MaskableGraphic, IPointerDownHandler, ID
         SetVerticesDirty();
     }
 
-    /// <summary>Changes the faction's friendly-contact color.</summary>
+    /// <summary>
+    /// Changes the faction's friendly-contact color.
+    /// </summary>
     /// <param name="tint">The contact tint.</param>
     public void SetContactColor(Color tint)
     {
@@ -47,7 +53,9 @@ public sealed class TacticalRadarView : MaskableGraphic, IPointerDownHandler, ID
         SetVerticesDirty();
     }
 
-    /// <summary>Samples the presentation index at five hertz, independently of simulation ticks.</summary>
+    /// <summary>
+    /// Samples the presentation index at five hertz, independently of simulation ticks.
+    /// </summary>
     private void Update()
     {
         if (_presentations == null || Time.unscaledTime < _nextRefresh)
@@ -56,7 +64,9 @@ public sealed class TacticalRadarView : MaskableGraphic, IPointerDownHandler, ID
         SetVerticesDirty();
     }
 
-    /// <summary>Draws battle contacts on a plain minimap background.</summary>
+    /// <summary>
+    /// Draws battle contacts on a plain minimap background.
+    /// </summary>
     /// <param name="mesh">The canvas mesh.</param>
     protected override void OnPopulateMesh(VertexHelper mesh)
     {
@@ -90,7 +100,9 @@ public sealed class TacticalRadarView : MaskableGraphic, IPointerDownHandler, ID
         }
     }
 
-    /// <summary>Projects a battle location into the instrument rectangle.</summary>
+    /// <summary>
+    /// Projects a battle location into the instrument rectangle.
+    /// </summary>
     /// <param name="world">The world point.</param>
     /// <param name="rect">The instrument rectangle.</param>
     /// <returns>The local radar point.</returns>
@@ -108,7 +120,9 @@ public sealed class TacticalRadarView : MaskableGraphic, IPointerDownHandler, ID
             )
         );
 
-    /// <summary>Moves the camera pivot to a clicked location without moving ships.</summary>
+    /// <summary>
+    /// Moves the camera pivot to a clicked location without moving ships.
+    /// </summary>
     /// <param name="eventData">The pointer input.</param>
     public void OnPointerDown(PointerEventData eventData)
     {
@@ -141,7 +155,9 @@ public sealed class TacticalRadarView : MaskableGraphic, IPointerDownHandler, ID
         SetVerticesDirty();
     }
 
-    /// <summary>Supports dragging the radar camera position.</summary>
+    /// <summary>
+    /// Supports dragging the radar camera position.
+    /// </summary>
     /// <param name="eventData">The drag input.</param>
     public void OnDrag(PointerEventData eventData) => OnPointerDown(eventData);
 }

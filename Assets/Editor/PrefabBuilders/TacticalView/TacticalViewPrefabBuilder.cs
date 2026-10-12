@@ -81,7 +81,9 @@ public static class TacticalViewPrefabBuilder
         SceneBuilder.Build(_scenePath, _prefabPath, _sceneInstanceName);
     }
 
-    /// <summary>Authors the shared Options window's modal surface above the tactical HUD.</summary>
+    /// <summary>
+    /// Authors the shared Options window's modal surface above the tactical HUD.
+    /// </summary>
     /// <param name="root">The tactical scene root.</param>
     /// <param name="selection">The world-selection input owner suspended by the menu.</param>
     /// <param name="cameraInput">The camera input owner suspended by the menu.</param>
@@ -127,7 +129,9 @@ public static class TacticalViewPrefabBuilder
         overlay.gameObject.SetActive(false);
     }
 
-    /// <summary>Authors a compact bottom HUD and reusable selection presentation.</summary>
+    /// <summary>
+    /// Authors a compact bottom HUD and reusable selection presentation.
+    /// </summary>
     /// <param name="parent">The tactical scene root.</param>
     /// <returns>The authored dock and selection view.</returns>
     private static TacticalSelectionView BuildSelectionView(Transform parent)
@@ -320,7 +324,9 @@ public static class TacticalViewPrefabBuilder
         return view;
     }
 
-    /// <summary>Authors a reusable roster card with an independently bound portrait and bars.</summary>
+    /// <summary>
+    /// Authors a reusable roster card with an independently bound portrait and bars.
+    /// </summary>
     /// <param name="parent">The template owner.</param>
     /// <returns>The inactive card template.</returns>
     private static TacticalUnitCardView BuildCard(Transform parent)
@@ -416,7 +422,9 @@ public static class TacticalViewPrefabBuilder
         return card;
     }
 
-    /// <summary>Authors the grouped card's individual-member selection pips.</summary>
+    /// <summary>
+    /// Authors the grouped card's individual-member selection pips.
+    /// </summary>
     /// <param name="parent">The roster card.</param>
     /// <returns>The reusable member buttons, limited to the card's fifteen visible positions.</returns>
     private static Button[] BuildMemberButtons(Transform parent)
@@ -434,7 +442,9 @@ public static class TacticalViewPrefabBuilder
         return buttons;
     }
 
-    /// <summary>Authors one tactile command key with standard pointer and keyboard-submit feedback.</summary>
+    /// <summary>
+    /// Authors one tactile command key with standard pointer and keyboard-submit feedback.
+    /// </summary>
     /// <param name="parent">The command housing.</param>
     /// <param name="name">The command object name.</param>
     /// <param name="text">The visible label, or empty for an unassigned slot.</param>
@@ -500,7 +510,9 @@ public static class TacticalViewPrefabBuilder
         return face;
     }
 
-    /// <summary>Authors the dock's time-control placeholders without changing global simulation time.</summary>
+    /// <summary>
+    /// Authors the dock's time-control placeholders without changing global simulation time.
+    /// </summary>
     /// <param name="parent">The instrument housing.</param>
     private static void BuildTimeControls(Transform parent)
     {
@@ -536,7 +548,9 @@ public static class TacticalViewPrefabBuilder
         }
     }
 
-    /// <summary>Creates a compact durability fill inside its recessed track.</summary>
+    /// <summary>
+    /// Creates a compact durability fill inside its recessed track.
+    /// </summary>
     /// <param name="name">The track name.</param>
     /// <param name="parent">The card owner.</param>
     /// <param name="y">The track position.</param>
@@ -556,7 +570,9 @@ public static class TacticalViewPrefabBuilder
         return fill.rectTransform;
     }
 
-    /// <summary>Creates an authored rectangle in bottom-left local coordinates.</summary>
+    /// <summary>
+    /// Creates an authored rectangle in bottom-left local coordinates.
+    /// </summary>
     /// <param name="name">The object name.</param>
     /// <param name="parent">The owner.</param>
     /// <param name="bounds">The local position and size.</param>
@@ -572,7 +588,9 @@ public static class TacticalViewPrefabBuilder
         return rect;
     }
 
-    /// <summary>Creates vector artwork without coupling the HUD to fixed-resolution bitmaps.</summary>
+    /// <summary>
+    /// Creates vector artwork without coupling the HUD to fixed-resolution bitmaps.
+    /// </summary>
     /// <param name="name">The object name.</param>
     /// <param name="parent">The owning transform.</param>
     /// <param name="artwork">The vector artwork.</param>
@@ -595,7 +613,9 @@ public static class TacticalViewPrefabBuilder
         return graphic;
     }
 
-    /// <summary>Stretches a rectangle between its parent's edges.</summary>
+    /// <summary>
+    /// Stretches a rectangle between its parent's edges.
+    /// </summary>
     /// <param name="rect">The rectangle.</param>
     /// <param name="minimum">The bottom-left inset.</param>
     /// <param name="maximum">The top-right inset.</param>
@@ -607,7 +627,9 @@ public static class TacticalViewPrefabBuilder
         rect.offsetMax = maximum;
     }
 
-    /// <summary>Anchors a full-width region to the bottom without scaling it to ultrawide width.</summary>
+    /// <summary>
+    /// Anchors a full-width region to the bottom without scaling it to ultrawide width.
+    /// </summary>
     /// <param name="rect">The rectangle.</param>
     /// <param name="left">The left inset.</param>
     /// <param name="right">The right inset.</param>
@@ -627,7 +649,9 @@ public static class TacticalViewPrefabBuilder
         rect.offsetMax = new Vector2(-right, bottom + height);
     }
 
-    /// <summary>Authors a noninteractive label using the application font.</summary>
+    /// <summary>
+    /// Authors a noninteractive label using the application font.
+    /// </summary>
     /// <param name="name">The object name.</param>
     /// <param name="parent">The owner.</param>
     /// <param name="bounds">The local rectangle.</param>
@@ -661,14 +685,18 @@ public static class TacticalViewPrefabBuilder
         return label;
     }
 
-    /// <summary>Assigns one authored component reference.</summary>
+    /// <summary>
+    /// Assigns one authored component reference.
+    /// </summary>
     /// <param name="serialized">The component being authored.</param>
     /// <param name="name">The serialized field.</param>
     /// <param name="value">The authored reference.</param>
     private static void SetReference(SerializedObject serialized, string name, Object value) =>
         serialized.FindProperty(name).objectReferenceValue = value;
 
-    /// <summary>Assigns an authored component-reference array.</summary>
+    /// <summary>
+    /// Assigns an authored component-reference array.
+    /// </summary>
     /// <param name="serialized">The component being authored.</param>
     /// <param name="name">The serialized field.</param>
     /// <param name="values">The authored references.</param>

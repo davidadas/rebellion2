@@ -10,7 +10,9 @@ using Rebellion.Game.Units;
 
 namespace Rebellion.Simulation
 {
-    /// <summary>Routes garrison, support, and ownership changes to planetary control operations.</summary>
+    /// <summary>
+    /// Routes garrison, support, and ownership changes to planetary control operations.
+    /// </summary>
     public sealed class PlanetaryControlObserver : IResultObserver, IDisposable
     {
         private readonly GameRoot _game;
@@ -25,7 +27,9 @@ namespace Rebellion.Simulation
         private IDisposable[] _subscriptions;
         private int _controlShiftTick = -1;
 
-        /// <summary>Creates the planetary control listener.</summary>
+        /// <summary>
+        /// Creates the planetary control listener.
+        /// </summary>
         /// <param name="game">The active game state and planetary-control configuration.</param>
         /// <param name="commands">The ownership and support operations.</param>
         /// <param name="movement">The movement operations used to evacuate displaced units.</param>
@@ -43,7 +47,9 @@ namespace Rebellion.Simulation
             _queries = queries ?? throw new ArgumentNullException(nameof(queries));
         }
 
-        /// <summary>Registers garrison, support, and ownership callbacks with the result bus.</summary>
+        /// <summary>
+        /// Registers garrison, support, and ownership callbacks with the result bus.
+        /// </summary>
         /// <param name="results">The bus that delivers garrison, support, and ownership changes.</param>
         public void Connect(GameResultBus results)
         {
@@ -64,7 +70,9 @@ namespace Rebellion.Simulation
             };
         }
 
-        /// <summary>Stops receiving garrison, support, and ownership changes.</summary>
+        /// <summary>
+        /// Stops receiving garrison, support, and ownership changes.
+        /// </summary>
         public void Dispose()
         {
             foreach (IDisposable subscription in _subscriptions ?? Array.Empty<IDisposable>())
@@ -178,7 +186,9 @@ namespace Rebellion.Simulation
             return controlResults;
         }
 
-        /// <summary>Applies support changes in their incoming batch order.</summary>
+        /// <summary>
+        /// Applies support changes in their incoming batch order.
+        /// </summary>
         /// <param name="results">The requested support shifts.</param>
         /// <returns>The completed stat and ownership changes.</returns>
         public List<GameResult> HandleResults(IReadOnlyList<PopularSupportShiftResult> results)
@@ -198,7 +208,9 @@ namespace Rebellion.Simulation
             return reactions;
         }
 
-        /// <summary>Applies sector support reactions in ownership-change order.</summary>
+        /// <summary>
+        /// Applies sector support reactions in ownership-change order.
+        /// </summary>
         /// <param name="results">The completed ownership changes.</param>
         /// <returns>Any ownership changes caused by the resulting support reactions.</returns>
         public List<GameResult> HandleResults(IReadOnlyList<PlanetOwnershipChangedResult> results)
@@ -516,7 +528,9 @@ namespace Rebellion.Simulation
             return results;
         }
 
-        /// <summary>Evacuates units that cannot remain after a planet changes ownership.</summary>
+        /// <summary>
+        /// Evacuates units that cannot remain after a planet changes ownership.
+        /// </summary>
         /// <param name="change">The completed ownership change.</param>
         /// <param name="results">The collection receiving destruction facts.</param>
         private void EvictDisplacedUnits(

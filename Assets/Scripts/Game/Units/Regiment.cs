@@ -44,11 +44,15 @@ namespace Rebellion.Game.Units
         /// </summary>
         public Regiment() { }
 
-        /// <summary>Creates an empty regiment copy.</summary>
+        /// <summary>
+        /// Creates an empty regiment copy.
+        /// </summary>
         /// <returns>The created node copy.</returns>
         protected override BaseSceneNode CreateNodeCopy() => new Regiment();
 
-        /// <summary>Copies regiment state into an empty destination.</summary>
+        /// <summary>
+        /// Copies regiment state into an empty destination.
+        /// </summary>
         /// <param name="destination">The destination.</param>
         protected override void CopyStateTo(BaseSceneNode destination)
         {

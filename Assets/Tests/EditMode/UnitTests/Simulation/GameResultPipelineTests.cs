@@ -14,7 +14,9 @@ namespace Rebellion.Tests.Simulation
         private MessageObserver _messages;
         private GameResultPipeline _pipeline;
 
-        /// <summary>Creates a delivery pipeline with no authored automatic messages.</summary>
+        /// <summary>
+        /// Creates a delivery pipeline with no authored automatic messages.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {

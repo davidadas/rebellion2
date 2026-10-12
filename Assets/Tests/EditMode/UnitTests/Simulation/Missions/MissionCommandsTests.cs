@@ -13,7 +13,9 @@ using Rebellion.SceneGraph;
 using Rebellion.Simulation;
 using Rebellion.Util.Random;
 
-/// <summary>Verifies mission execution and participant cleanup.</summary>
+/// <summary>
+/// Verifies mission execution and participant cleanup.
+/// </summary>
 namespace Rebellion.Tests.Simulation
 {
     [TestFixture]

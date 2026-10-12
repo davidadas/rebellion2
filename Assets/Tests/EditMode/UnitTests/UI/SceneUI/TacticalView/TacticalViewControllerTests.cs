@@ -55,7 +55,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             Assert.IsNotNull(instance.GetComponentInChildren<TacticalSelectionView>());
         }
 
-        /// <summary>Checks loaded geometry participates in world selection.</summary>
+        /// <summary>
+        /// Checks loaded geometry participates in world selection.
+        /// </summary>
         /// <returns>The asynchronous model-loading and selection check.</returns>
         [Test]
         public async Task InitializeAsync_LoadedHull_CanBeSelectedAsync()
@@ -70,7 +72,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             Assert.AreSame(combatant, selection.SelectedCombatant);
         }
 
-        /// <summary>Checks real content connects the dock to multiple deployed ships.</summary>
+        /// <summary>
+        /// Checks real content connects the dock to multiple deployed ships.
+        /// </summary>
         /// <returns>The asynchronous integration check.</returns>
         [Test]
         public async Task InitializeAsync_ContentFleet_ConnectsRosterAndRadarAsync()

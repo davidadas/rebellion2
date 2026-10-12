@@ -1,6 +1,8 @@
 using Rebellion.Util.Serialization;
 
-/// <summary>Faction-specific presentation colors for the tactical battle dock.</summary>
+/// <summary>
+/// Faction-specific presentation colors for the tactical battle dock.
+/// </summary>
 [PersistableObject]
 public sealed class BattleHudTheme
 {

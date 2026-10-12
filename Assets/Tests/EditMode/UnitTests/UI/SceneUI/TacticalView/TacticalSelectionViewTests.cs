@@ -20,7 +20,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         private Transform _presentation;
         private CombatUnit _combatant;
 
-        /// <summary>Creates the generated overlay and an independently mutable battle ship.</summary>
+        /// <summary>
+        /// Creates the generated overlay and an independently mutable battle ship.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -57,14 +59,18 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             );
         }
 
-        /// <summary>Releases the generated overlay and test presentation.</summary>
+        /// <summary>
+        /// Releases the generated overlay and test presentation.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
             UnityEngine.Object.DestroyImmediate(_instance);
         }
 
-        /// <summary>Verifies the selected-unit presentation contract.</summary>
+        /// <summary>
+        /// Verifies the selected-unit presentation contract.
+        /// </summary>
         [Test]
         public void Render_SelectedShip_ShowsNameAndCurrentDurability()
         {
@@ -79,7 +85,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             Assert.That(FindFill("ShieldBar").anchorMax.x, Is.EqualTo(0.4f));
         }
 
-        /// <summary>Verifies the selected-unit presentation contract.</summary>
+        /// <summary>
+        /// Verifies the selected-unit presentation contract.
+        /// </summary>
         [Test]
         public void Render_ChangedBattleStats_RefreshesExistingSelection()
         {
@@ -95,7 +103,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             Assert.That(FindFill("ShieldBar").anchorMax.x, Is.Zero);
         }
 
-        /// <summary>Verifies the selected-unit presentation contract.</summary>
+        /// <summary>
+        /// Verifies the selected-unit presentation contract.
+        /// </summary>
         [Test]
         public void Render_ConfiguredFighter_UsesPerFighterHullAndBattleShields()
         {
@@ -121,7 +131,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             Assert.AreEqual("Shields: 3 / 5", FindLabel("ShieldLabel").text);
         }
 
-        /// <summary>Verifies the selected-unit presentation contract.</summary>
+        /// <summary>
+        /// Verifies the selected-unit presentation contract.
+        /// </summary>
         [Test]
         public void Render_UnconfiguredFighterHull_DoesNotShowInventedHealth()
         {
@@ -143,7 +155,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             Assert.That(FindFill("HullBar").anchorMax.x, Is.Zero);
         }
 
-        /// <summary>Verifies the selected-unit presentation contract.</summary>
+        /// <summary>
+        /// Verifies the selected-unit presentation contract.
+        /// </summary>
         [Test]
         public void Render_UnchangedDurability_DoesNotDirtyText()
         {
@@ -159,7 +173,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             Assert.IsFalse(shields.havePropertiesChanged);
         }
 
-        /// <summary>Verifies the selected-unit presentation contract.</summary>
+        /// <summary>
+        /// Verifies the selected-unit presentation contract.
+        /// </summary>
         [Test]
         public void Render_NoShieldCapacity_ShowsNoShields()
         {
@@ -171,7 +187,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             Assert.That(FindFill("ShieldBar").anchorMax.x, Is.Zero);
         }
 
-        /// <summary>Verifies the selected-unit presentation contract.</summary>
+        /// <summary>
+        /// Verifies the selected-unit presentation contract.
+        /// </summary>
         [Test]
         public void Render_UnrecordedShields_DistinguishesUnknownFromDepleted()
         {
@@ -183,7 +201,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             Assert.That(FindFill("ShieldBar").anchorMax.x, Is.Zero);
         }
 
-        /// <summary>Verifies the selected-unit presentation contract.</summary>
+        /// <summary>
+        /// Verifies the selected-unit presentation contract.
+        /// </summary>
         /// <param name="value">The recorded durability.</param>
         /// <param name="fraction">The clamped fill fraction.</param>
         [TestCase(-10, 0f)]
@@ -204,7 +224,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             Assert.AreEqual(value, _combatant.CurrentShieldStrength);
         }
 
-        /// <summary>Verifies the selected-unit presentation contract.</summary>
+        /// <summary>
+        /// Verifies the selected-unit presentation contract.
+        /// </summary>
         [Test]
         public void Render_NoSelection_HidesBracketsAndKeepsEmptyDock()
         {
@@ -217,7 +239,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             Assert.AreEqual(0, _view.GetComponentsInChildren<TacticalUnitCardView>().Length);
         }
 
-        /// <summary>Verifies the selected-unit presentation contract.</summary>
+        /// <summary>
+        /// Verifies the selected-unit presentation contract.
+        /// </summary>
         [Test]
         public void Render_CameraMoves_UpdatesProjectedBrackets()
         {
@@ -231,7 +255,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             Assert.That(frame.anchoredPosition.x, Is.LessThan(previous.x));
         }
 
-        /// <summary>Verifies projected bracket geometry at multiple aspect ratios.</summary>
+        /// <summary>
+        /// Verifies projected bracket geometry at multiple aspect ratios.
+        /// </summary>
         /// <param name="aspect">The camera aspect ratio.</param>
         [TestCase(4f / 3f)]
         [TestCase(16f / 9f)]
@@ -262,7 +288,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             }
         }
 
-        /// <summary>Verifies offscreen selection retains the roster card.</summary>
+        /// <summary>
+        /// Verifies offscreen selection retains the roster card.
+        /// </summary>
         /// <param name="x">The hull X coordinate.</param>
         /// <param name="y">The hull Y coordinate.</param>
         /// <param name="z">The hull Z coordinate.</param>
@@ -278,7 +306,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             Assert.IsTrue(_view.transform.Find("BattleDock").gameObject.activeSelf);
         }
 
-        /// <summary>Verifies the selected-unit presentation contract.</summary>
+        /// <summary>
+        /// Verifies the selected-unit presentation contract.
+        /// </summary>
         [Test]
         public void Render_SelectionGraphics_DoNotInterceptClicksOutsidePanel()
         {
@@ -299,7 +329,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             );
         }
 
-        /// <summary>Verifies the selected-unit presentation contract.</summary>
+        /// <summary>
+        /// Verifies the selected-unit presentation contract.
+        /// </summary>
         [Test]
         public void RenderSelection_TwoThenThreeShips_KeepsRosterWellWidth()
         {
@@ -326,7 +358,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             Assert.AreEqual(width, well.rect.width);
         }
 
-        /// <summary>Verifies fixed-height, edge-anchored hardware on wide screens.</summary>
+        /// <summary>
+        /// Verifies fixed-height, edge-anchored hardware on wide screens.
+        /// </summary>
         /// <param name="width">The target width.</param>
         /// <param name="height">The target height.</param>
         [TestCase(1280, 720)]
@@ -379,7 +413,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             }
         }
 
-        /// <summary>Verifies all nine placeholder buttons fit in a regular three-by-three grid.</summary>
+        /// <summary>
+        /// Verifies all nine placeholder buttons fit in a regular three-by-three grid.
+        /// </summary>
         [Test]
         public void RenderSelection_CommandGrid_KeepsNineButtonsInsidePanel()
         {
@@ -420,7 +456,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             }
         }
 
-        /// <summary>Verifies reserved controls do not advertise unimplemented commands.</summary>
+        /// <summary>
+        /// Verifies reserved controls do not advertise unimplemented commands.
+        /// </summary>
         [Test]
         public void RenderSelection_ReservedCommandSlots_KeepLabelsBlank()
         {
@@ -434,7 +472,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             }
         }
 
-        /// <summary>Verifies scrolling uses authored card widths rather than an obsolete fixed stride.</summary>
+        /// <summary>
+        /// Verifies scrolling uses authored card widths rather than an obsolete fixed stride.
+        /// </summary>
         [Test]
         public void RenderSelection_LargeSelection_ScrollContentEnclosesLastCard()
         {
@@ -460,7 +500,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             );
         }
 
-        /// <summary>Verifies equal ship definitions share one roster card with averaged durability.</summary>
+        /// <summary>
+        /// Verifies equal ship definitions share one roster card with averaged durability.
+        /// </summary>
         [Test]
         public void RenderSelection_SameShipType_GroupsMembersAndAveragesBars()
         {
@@ -480,7 +522,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             Assert.That(FindFill("ShieldBar").anchorMax.x, Is.EqualTo(0.5f));
         }
 
-        /// <summary>Verifies a new selection cannot reuse stale grouped membership.</summary>
+        /// <summary>
+        /// Verifies a new selection cannot reuse stale grouped membership.
+        /// </summary>
         [Test]
         public void RenderSelection_ChangedGroupMembers_RebindsCardAndUpdatesCount()
         {
@@ -496,7 +540,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             Assert.AreEqual("x01", FindLabel("UnitCount").text);
         }
 
-        /// <summary>Verifies equal definitions owned by opponents stay in separate cards.</summary>
+        /// <summary>
+        /// Verifies equal definitions owned by opponents stay in separate cards.
+        /// </summary>
         [Test]
         public void RenderSelection_OpposingOwners_DoesNotMergeCards()
         {
@@ -510,7 +556,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             Assert.AreEqual(2, _view.GetComponentsInChildren<TacticalUnitCardView>().Length);
         }
 
-        /// <summary>Verifies fighters from different source squadrons stay in separate cards.</summary>
+        /// <summary>
+        /// Verifies fighters from different source squadrons stay in separate cards.
+        /// </summary>
         [Test]
         public void RenderSelection_DifferentFighterSquadrons_DoesNotMergeCards()
         {
@@ -528,7 +576,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             Assert.AreEqual(2, _view.GetComponentsInChildren<TacticalUnitCardView>().Length);
         }
 
-        /// <summary>Verifies the roster matches the command-panel height without blocking the upper dock.</summary>
+        /// <summary>
+        /// Verifies the roster matches the command-panel height without blocking the upper dock.
+        /// </summary>
         [Test]
         public void RenderSelection_EmptyDock_MatchesCommandHeight()
         {
@@ -542,7 +592,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             Assert.IsFalse(dock.GetComponent<Graphic>().enabled);
         }
 
-        /// <summary>Checks the roster fills two rows before starting the next column.</summary>
+        /// <summary>
+        /// Checks the roster fills two rows before starting the next column.
+        /// </summary>
         [Test]
         public void RenderSelection_FourCards_UsesTwoRows()
         {
@@ -566,7 +618,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             Assert.That(cards[2].anchoredPosition.x, Is.GreaterThan(cards[0].anchoredPosition.x));
         }
 
-        /// <summary>Checks drag selection retains an opaque white outline.</summary>
+        /// <summary>
+        /// Checks drag selection retains an opaque white outline.
+        /// </summary>
         [Test]
         public void RenderMarquee_VisibleDrag_UsesWhiteRectangle()
         {
@@ -590,18 +644,24 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             }
         }
 
-        /// <summary>Returns the active selected-unit card.</summary>
+        /// <summary>
+        /// Returns the active selected-unit card.
+        /// </summary>
         /// <returns>The visible roster card.</returns>
         private TacticalUnitCardView FindCard() =>
             _view.GetComponentsInChildren<TacticalUnitCardView>().Single();
 
-        /// <summary>Returns one authored status label without accessing private view state.</summary>
+        /// <summary>
+        /// Returns one authored status label without accessing private view state.
+        /// </summary>
         /// <param name="name">The label name.</param>
         /// <returns>The authored text component.</returns>
         private TMP_Text FindLabel(string name) =>
             FindCard().GetComponentsInChildren<TMP_Text>(true).Single(label => label.name == name);
 
-        /// <summary>Returns one authored durability fill without accessing private view state.</summary>
+        /// <summary>
+        /// Returns one authored durability fill without accessing private view state.
+        /// </summary>
         /// <param name="name">The bar name.</param>
         /// <returns>The fill rectangle.</returns>
         private RectTransform FindFill(string name) =>

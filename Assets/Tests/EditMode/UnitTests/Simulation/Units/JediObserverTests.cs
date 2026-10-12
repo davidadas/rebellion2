@@ -15,7 +15,9 @@ namespace Rebellion.Tests.Simulation
         private GameRoot _game;
         private JediObserver _observer;
 
-        /// <summary>Creates a mission-growth listener with the active game configuration.</summary>
+        /// <summary>
+        /// Creates a mission-growth listener with the active game configuration.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {

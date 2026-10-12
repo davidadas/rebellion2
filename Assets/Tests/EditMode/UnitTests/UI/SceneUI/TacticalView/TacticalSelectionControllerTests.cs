@@ -23,7 +23,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         private UnityEngine.Camera _camera;
         private Dictionary<CombatUnit, Transform> _presentations;
 
-        /// <summary>Creates an isolated generated tactical root and simple measured hulls.</summary>
+        /// <summary>
+        /// Creates an isolated generated tactical root and simple measured hulls.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -46,14 +48,18 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             _presentations = new Dictionary<CombatUnit, Transform>();
         }
 
-        /// <summary>Releases the scene-owned model roots and selection overlay.</summary>
+        /// <summary>
+        /// Releases the scene-owned model roots and selection overlay.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
             UnityEngine.Object.DestroyImmediate(_instance);
         }
 
-        /// <summary>Checks valid scene starts without selection.</summary>
+        /// <summary>
+        /// Checks valid scene starts without selection.
+        /// </summary>
         [Test]
         public void Initialize_ValidScene_StartsWithoutSelection()
         {
@@ -65,7 +71,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             );
         }
 
-        /// <summary>Checks null camera throws argument null exception.</summary>
+        /// <summary>
+        /// Checks null camera throws argument null exception.
+        /// </summary>
         [Test]
         public void Initialize_NullCamera_ThrowsArgumentNullException()
         {
@@ -74,14 +82,18 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             );
         }
 
-        /// <summary>Checks null presentations throws argument null exception.</summary>
+        /// <summary>
+        /// Checks null presentations throws argument null exception.
+        /// </summary>
         [Test]
         public void Initialize_NullPresentations_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _controller.Initialize(_camera, null));
         }
 
-        /// <summary>Checks hull center selects combatant and shows overlay.</summary>
+        /// <summary>
+        /// Checks hull center selects combatant and shows overlay.
+        /// </summary>
         [Test]
         public void SelectAt_HullCenter_SelectsCombatantAndShowsOverlay()
         {
@@ -99,7 +111,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             );
         }
 
-        /// <summary>Checks overlapping hulls selects nearest regardless of enumeration order.</summary>
+        /// <summary>
+        /// Checks overlapping hulls selects nearest regardless of enumeration order.
+        /// </summary>
         [Test]
         public void SelectAt_OverlappingHulls_SelectsNearestRegardlessOfEnumerationOrder()
         {
@@ -112,7 +126,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             Assert.AreSame(nearest, _controller.SelectedCombatant);
         }
 
-        /// <summary>Checks empty space clears selection.</summary>
+        /// <summary>
+        /// Checks empty space clears selection.
+        /// </summary>
         [Test]
         public void SelectAt_EmptySpace_ClearsSelection()
         {
@@ -128,7 +144,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             );
         }
 
-        /// <summary>Checks outside camera viewport preserves selection.</summary>
+        /// <summary>
+        /// Checks outside camera viewport preserves selection.
+        /// </summary>
         [Test]
         public void SelectAt_OutsideCameraViewport_PreservesSelection()
         {
@@ -141,7 +159,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             Assert.AreSame(combatant, _controller.SelectedCombatant);
         }
 
-        /// <summary>Checks enemy hull allows inspection.</summary>
+        /// <summary>
+        /// Checks enemy hull allows inspection.
+        /// </summary>
         [Test]
         public void SelectAt_EnemyHull_AllowsInspection()
         {
@@ -154,7 +174,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             Assert.AreSame(combatant, _controller.SelectedCombatant);
         }
 
-        /// <summary>Checks rotated long hull uses its oriented envelope.</summary>
+        /// <summary>
+        /// Checks rotated long hull uses its oriented envelope.
+        /// </summary>
         [Test]
         public void SelectAt_RotatedLongHull_UsesItsOrientedEnvelope()
         {
@@ -173,7 +195,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             Assert.AreSame(combatant, _controller.SelectedCombatant);
         }
 
-        /// <summary>Checks outside clip planes does not select hull.</summary>
+        /// <summary>
+        /// Checks outside clip planes does not select hull.
+        /// </summary>
         /// <param name="depth">The depth under test.</param>
         [TestCase(-60f)]
         [TestCase(1100f)]
@@ -187,7 +211,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             Assert.IsNull(_controller.SelectedCombatant);
         }
 
-        /// <summary>Checks inactive hull does not select hull.</summary>
+        /// <summary>
+        /// Checks inactive hull does not select hull.
+        /// </summary>
         [Test]
         public void SelectAt_InactiveHull_DoesNotSelectHull()
         {
@@ -200,7 +226,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             Assert.IsNull(_controller.SelectedCombatant);
         }
 
-        /// <summary>Checks destroyed hull does not select hull.</summary>
+        /// <summary>
+        /// Checks destroyed hull does not select hull.
+        /// </summary>
         [Test]
         public void SelectAt_DestroyedHull_DoesNotSelectHull()
         {
@@ -213,7 +241,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             Assert.IsNull(_controller.SelectedCombatant);
         }
 
-        /// <summary>Checks status panel preserves selection.</summary>
+        /// <summary>
+        /// Checks status panel preserves selection.
+        /// </summary>
         /// <returns>The runtime interaction and mode transitions.</returns>
         [UnityTest]
         public IEnumerator SelectAt_StatusPanel_PreservesSelection()
@@ -242,7 +272,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             yield return new ExitPlayMode();
         }
 
-        /// <summary>Checks rebound battle discards previous targets and selection.</summary>
+        /// <summary>
+        /// Checks rebound battle discards previous targets and selection.
+        /// </summary>
         [Test]
         public void Initialize_ReboundBattle_DiscardsPreviousTargetsAndSelection()
         {
@@ -256,7 +288,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             Assert.IsNull(_controller.SelectedCombatant);
         }
 
-        /// <summary>Checks selected hull discards battle binding.</summary>
+        /// <summary>
+        /// Checks selected hull discards battle binding.
+        /// </summary>
         [Test]
         public void Clear_SelectedHull_DiscardsBattleBinding()
         {
@@ -270,7 +304,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             Assert.IsNull(_controller.SelectedCombatant);
         }
 
-        /// <summary>Checks left click selects hull.</summary>
+        /// <summary>
+        /// Checks left click selects hull.
+        /// </summary>
         /// <returns>The runtime interaction and mode transitions.</returns>
         [UnityTest]
         public IEnumerator SelectedCombatants_LeftClick_SelectsHull()
@@ -305,7 +341,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             yield return new ExitPlayMode();
         }
 
-        /// <summary>Checks escape preserves selection for menu.</summary>
+        /// <summary>
+        /// Checks escape preserves selection for menu.
+        /// </summary>
         /// <returns>The runtime interaction and mode transitions.</returns>
         [UnityTest]
         public IEnumerator SelectedCombatants_Escape_PreservesSelectionForMenu()
@@ -335,7 +373,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             yield return new ExitPlayMode();
         }
 
-        /// <summary>Checks two button camera gesture does not select hull.</summary>
+        /// <summary>
+        /// Checks two button camera gesture does not select hull.
+        /// </summary>
         /// <returns>The runtime interaction and mode transitions.</returns>
         [UnityTest]
         public IEnumerator SelectedCombatants_TwoButtonCameraGesture_DoesNotSelectHull()
@@ -370,7 +410,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             yield return new ExitPlayMode();
         }
 
-        /// <summary>Verifies additive world selection and toggle removal.</summary>
+        /// <summary>
+        /// Verifies additive world selection and toggle removal.
+        /// </summary>
         [Test]
         public void SelectAt_AdditiveClicks_SelectsTwoAndTogglesOneOff()
         {
@@ -386,7 +428,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             CollectionAssert.AreEqual(new[] { right }, _controller.SelectedCombatants);
         }
 
-        /// <summary>Verifies drag selection includes every visible hull center in its bounds.</summary>
+        /// <summary>
+        /// Verifies drag selection includes every visible hull center in its bounds.
+        /// </summary>
         [Test]
         public void SelectWithin_VisibleHullCenters_SelectsAllInsideRectangle()
         {
@@ -399,7 +443,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             CollectionAssert.AreEqual(new[] { left, right }, _controller.SelectedCombatants);
         }
 
-        /// <summary>Verifies retired combatants cannot be selected.</summary>
+        /// <summary>
+        /// Verifies retired combatants cannot be selected.
+        /// </summary>
         [Test]
         public void SelectAt_RetreatedHull_DoesNotSelectHull()
         {
@@ -412,7 +458,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             Assert.IsEmpty(_controller.SelectedCombatants);
         }
 
-        /// <summary>Checks authored roster buttons change the actual shared selection.</summary>
+        /// <summary>
+        /// Checks authored roster buttons change the actual shared selection.
+        /// </summary>
         /// <returns>The play-mode interaction and cleanup.</returns>
         [UnityTest]
         public IEnumerator SelectedCombatants_RosterClick_SelectsClickedCombatant()
@@ -452,7 +500,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             yield return new ExitPlayMode();
         }
 
-        /// <summary>Checks grouped roster buttons select all represented members, not just the first ship.</summary>
+        /// <summary>
+        /// Checks grouped roster buttons select all represented members, not just the first ship.
+        /// </summary>
         /// <returns>The play-mode interaction and cleanup.</returns>
         [UnityTest]
         public IEnumerator SelectedCombatants_GroupedRosterClick_SelectsAllGroupMembers()
@@ -484,7 +534,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             yield return new ExitPlayMode();
         }
 
-        /// <summary>Checks an individual pip selects its member without selecting its entire type group.</summary>
+        /// <summary>
+        /// Checks an individual pip selects its member without selecting its entire type group.
+        /// </summary>
         /// <returns>The play-mode interaction and cleanup.</returns>
         [UnityTest]
         public IEnumerator SelectedCombatants_MemberPipClick_SelectsOnlyThatMember()
@@ -508,7 +560,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             yield return new ExitPlayMode();
         }
 
-        /// <summary>Isolates runtime tests from application startup scenes and their input infrastructure.</summary>
+        /// <summary>
+        /// Isolates runtime tests from application startup scenes and their input infrastructure.
+        /// </summary>
         private void PreparePlayMode()
         {
             UnityEngine.Object.DestroyImmediate(_instance);
@@ -519,7 +573,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             EditorSceneManager.MarkSceneDirty(scene);
         }
 
-        /// <summary>Adds a detached combatant and a measured presentation root.</summary>
+        /// <summary>
+        /// Adds a detached combatant and a measured presentation root.
+        /// </summary>
         /// <param name="position">The hull position.</param>
         /// <returns>The combatant paired with the new root.</returns>
         private CombatUnit AddHull(Vector3 position)
