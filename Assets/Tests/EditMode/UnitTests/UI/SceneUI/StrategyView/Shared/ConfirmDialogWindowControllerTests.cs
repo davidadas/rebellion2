@@ -31,6 +31,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         private List<string> _playedSounds;
         private UIWindow _requestedCloseWindow;
         private CapitalShip _sourceShip;
+        private Dictionary<string, Texture2D> _textures;
         private UIContext _uiContext;
         private StrategyWindowLayerView _windowLayer;
         private UIWindowManager _windowManager;
@@ -45,10 +46,16 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             _dirtyCount = 0;
             _requestedCloseWindow = null;
             GameRoot game = CreateGame();
-            _uiContext = TestContent.CreateUIContext(
+            _textures = new Dictionary<string, Texture2D>
+            {
+                { "confirm-background", new Texture2D(1, 1) },
+                { "scrap-title", new Texture2D(1, 1) },
+            };
+            _uiContext = new UIContext(
                 game,
-                TestContent.CreateThemeLibrary(),
-                new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
+                CreateThemeLibrary(),
+                new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>()),
+                path => _textures.TryGetValue(path, out Texture2D texture) ? texture : null
             );
             _rootObject = UIComponentTestHelper.InstantiatePrefab(_strategyViewPrefabPath);
             _windowLayer = _rootObject.GetComponentInChildren<StrategyWindowLayerView>(true);
@@ -65,6 +72,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         public void TearDown()
         {
             UnityEngine.Object.DestroyImmediate(_rootObject);
+            foreach (Texture2D texture in _textures.Values)
+                UnityEngine.Object.DestroyImmediate(texture);
         }
 
         [Test]
@@ -138,6 +147,63 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
                 FindImage(view, "BackgroundImage").texture
             );
             Assert.IsTrue(view.gameObject.activeSelf);
+        }
+
+        [Test]
+        public void RenderWindows_OpenScrapWithCarriedUnits_ListsDestroyedChildrenAndOmitsOfficer()
+        {
+            _sourceShip.StarfighterCapacity = 1;
+            _sourceShip.RegimentCapacity = 1;
+            Starfighter fighter = new Starfighter
+            {
+                InstanceID = "fighter",
+                DisplayName = "X-wing Squadron",
+                OwnerInstanceID = _playerFactionId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "regiment",
+                DisplayName = "SpecForce Regiment",
+                OwnerInstanceID = _playerFactionId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            SpecialForces specialForces = new SpecialForces
+            {
+                InstanceID = "special-forces",
+                DisplayName = "Infiltrators",
+                OwnerInstanceID = _playerFactionId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Officer officer = new Officer
+            {
+                InstanceID = "officer",
+                DisplayName = "General Dodonna",
+                OwnerInstanceID = _playerFactionId,
+            };
+            _uiContext.Game.AttachNode(fighter, _sourceShip);
+            _uiContext.Game.AttachNode(regiment, _sourceShip);
+            _uiContext.Game.AttachNode(specialForces, _sourceShip);
+            _uiContext.Game.AttachNode(officer, _sourceShip);
+
+            _controller.OpenScrap(new ISceneNode[] { _sourceShip }, Confirm);
+            UIWindow window = _windowManager.Windows.Single();
+            _windowManager.TryGetWindowView(window, out ConfirmDialogWindowView view);
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+
+            _controller.RenderWindows();
+
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    "Scrap these units?",
+                    "Assault Frigate",
+                    "  Also scrapped: X-wing Squadron",
+                    "  Also scrapped: SpecForce Regiment",
+                    "  Also scrapped: Infiltrators",
+                },
+                GetVisibleLines(view)
+            );
         }
 
         [Test]
@@ -322,11 +388,37 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         /// <returns>The created game.</returns>
         private static GameRoot CreateGame()
         {
-            GameRoot game = TestGame.Create(TestConfig.Create());
+            GameRoot game = TestGame.Create(new GameConfig());
             game.GetFactions().Add(new Faction { InstanceID = _playerFactionId });
             game.Summary.PlayerFactionID = _playerFactionId;
             game.SetFactionController(_playerFactionId, "PLAYER1", PlayerControllerType.Human);
             return game;
+        }
+
+        /// <summary>
+        /// Creates the confirmation theme required by the controller fixture.
+        /// </summary>
+        /// <returns>A theme library containing default and player-faction themes.</returns>
+        private static FactionThemeLibrary CreateThemeLibrary()
+        {
+            ConfirmDialogTheme confirmDialogTheme = new ConfirmDialogTheme
+            {
+                BackgroundImagePath = "confirm-background",
+                ScrapTitleImagePath = "scrap-title",
+                ScrapRetireSoundPath = "scrap-retire",
+                StopConstructionSoundPath = "stop-construction",
+            };
+            return new FactionThemeLibrary(
+                new FactionThemes
+                {
+                    new FactionTheme { FactionInstanceID = "DEFAULT" },
+                    new FactionTheme
+                    {
+                        FactionInstanceID = _playerFactionId,
+                        ConfirmDialogTheme = confirmDialogTheme,
+                    },
+                }
+            );
         }
 
         /// <summary>
