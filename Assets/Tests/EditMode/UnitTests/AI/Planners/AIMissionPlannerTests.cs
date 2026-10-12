@@ -703,6 +703,7 @@ namespace Rebellion.Tests.AI.Planners
                 empire.InstanceID
             );
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
+            headquarters.AddVisitor(empire.InstanceID);
             headquarters.IsHeadquarters = true;
             empire.HQInstanceID = headquarters.InstanceID;
             empire.Settings.Headquarters.IsMobile = true;
@@ -738,7 +739,12 @@ namespace Rebellion.Tests.AI.Planners
                 context.GetSpecialForcesIntent(headquartersAgent)
             );
             Assert.AreEqual(SpecialForcesIntent.Decoy, context.GetSpecialForcesIntent(remoteAgent));
-            Assert.IsTrue(proposals.Any(proposal => proposal.Participant == headquartersAgent));
+            Assert.IsTrue(
+                proposals.Any(proposal =>
+                    proposal.Participant == headquartersAgent
+                    && proposal.TargetPlanet == headquarters
+                )
+            );
             Assert.IsFalse(proposals.Any(proposal => proposal.Participant == remoteAgent));
         }
 

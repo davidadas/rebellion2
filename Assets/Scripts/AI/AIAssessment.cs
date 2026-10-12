@@ -96,6 +96,11 @@ namespace Rebellion.AI
             string,
             List<Fleet>
         >(StringComparer.Ordinal);
+        private readonly HashSet<string> _knownHostileFleetPlanetIds = new HashSet<string>(
+            StringComparer.Ordinal
+        );
+        private readonly Dictionary<string, int> _knownIncomingHostileFleetStrengths =
+            new Dictionary<string, int>(StringComparer.Ordinal);
         private readonly Dictionary<string, Planet> _fleetPlanets = new Dictionary<string, Planet>(
             StringComparer.Ordinal
         );
@@ -143,6 +148,7 @@ namespace Rebellion.AI
             new Dictionary<ManufacturingType, int>();
         private readonly Dictionary<ManufacturingType, double> _queuedProductionClearTicks =
             new Dictionary<ManufacturingType, double>();
+        private HashSet<string> _queuedManufacturableIds;
         private int? _productionFacilityMaintenance;
         private readonly Dictionary<
             (string PlanetId, ManufacturingType ManufacturingType),
@@ -930,6 +936,42 @@ namespace Rebellion.AI
         }
 
         /// <summary>
+        /// Returns whether an owned manufacturable is present in a planetary production queue.
+        /// </summary>
+        /// <param name="manufacturable">The manufacturable to inspect.</param>
+        /// <returns>True when the manufacturable is currently queued.</returns>
+        public bool IsQueuedForManufacturing(IManufacturable manufacturable)
+        {
+            if (manufacturable == null || string.IsNullOrEmpty(manufacturable.InstanceID))
+                return false;
+
+            _queuedManufacturableIds ??= BuildQueuedManufacturableIds();
+            return _queuedManufacturableIds.Contains(manufacturable.InstanceID);
+        }
+
+        /// <summary>
+        /// Builds the turn-scoped index of owned queued manufacturables.
+        /// </summary>
+        /// <returns>The queued manufacturable identifiers.</returns>
+        private HashSet<string> BuildQueuedManufacturableIds()
+        {
+            HashSet<string> queuedIds = new(StringComparer.Ordinal);
+            foreach (Planet planet in OwnedPlanets)
+            {
+                foreach (List<IManufacturable> queue in planet.GetManufacturingQueue().Values)
+                {
+                    foreach (IManufacturable item in queue)
+                    {
+                        if (!string.IsNullOrEmpty(item?.InstanceID))
+                            queuedIds.Add(item.InstanceID);
+                    }
+                }
+            }
+
+            return queuedIds;
+        }
+
+        /// <summary>
         /// Returns the regiments attached to a planet during this AI turn.
         /// </summary>
         /// <param name="planet">The planet to inspect.</param>
@@ -1414,6 +1456,19 @@ namespace Rebellion.AI
             )
             {
                 AddIndexedValue(_hostileFleetsByPlanetId, planet.InstanceID, fleet);
+                _knownHostileFleetPlanetIds.Add(planet.InstanceID);
+                if (fleet.Movement != null)
+                {
+                    int strength = fleet.GetCombatValue();
+                    if (
+                        !_knownIncomingHostileFleetStrengths.TryGetValue(
+                            planet.InstanceID,
+                            out int currentStrength
+                        )
+                        || strength > currentStrength
+                    )
+                        _knownIncomingHostileFleetStrengths[planet.InstanceID] = strength;
+                }
                 if (fleet.Movement == null)
                     _missionHostileFleetPlanetIds.Add(planet.InstanceID);
             }
@@ -1725,6 +1780,58 @@ namespace Rebellion.AI
             return _hostileFleetsByPlanetId.TryGetValue(planet.InstanceID, out List<Fleet> fleets)
                 ? fleets
                 : Array.Empty<Fleet>();
+        }
+
+        /// <summary>
+        /// Returns whether the faction's current intelligence contains a hostile fleet at a
+        /// planet.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <returns>True when a hostile fleet is known at the planet.</returns>
+        public bool HasKnownHostileFleet(Planet planet)
+        {
+            return planet != null && _knownHostileFleetPlanetIds.Contains(planet.InstanceID);
+        }
+
+        /// <summary>
+        /// Returns the strongest known hostile fleet approaching a planet.
+        /// </summary>
+        /// <param name="planet">The destination planet to inspect.</param>
+        /// <returns>The strongest known incoming fleet combat value.</returns>
+        public int GetKnownIncomingHostileFleetStrength(Planet planet)
+        {
+            return
+                planet != null
+                && _knownIncomingHostileFleetStrengths.TryGetValue(
+                    planet.InstanceID,
+                    out int strength
+                )
+                ? strength
+                : 0;
+        }
+
+        /// <summary>
+        /// Returns the ready orbital strength currently stationed at a faction headquarters.
+        /// </summary>
+        /// <param name="planet">The headquarters planet to inspect.</param>
+        /// <returns>The combined ready fleet and planetary-fighter combat value.</returns>
+        public int GetHeadquartersOrbitalDefenseStrength(Planet planet)
+        {
+            if (!IsFactionHeadquarters(planet))
+                return 0;
+
+            int fleetStrength = GetFriendlyFleets(planet)
+                .Where(fleet => fleet.Movement == null)
+                .Sum(GetReadyFleetCombatValue);
+            int planetaryFighterStrength = GetPlanetStarfighters(planet)
+                .Where(starfighter =>
+                    starfighter.GetOwnerInstanceID() == _faction.InstanceID
+                    && starfighter.ManufacturingStatus == ManufacturingStatus.Complete
+                    && starfighter.Movement == null
+                    && starfighter.CurrentSquadronSize > 0
+                )
+                .Sum(starfighter => starfighter.GetCombatValue());
+            return fleetStrength + planetaryFighterStrength;
         }
 
         /// <summary>

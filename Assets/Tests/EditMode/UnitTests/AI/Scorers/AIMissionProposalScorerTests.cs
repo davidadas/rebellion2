@@ -932,7 +932,50 @@ namespace Rebellion.Tests.AI.Scorers
         }
 
         [Test]
-        public void Score_MobileHeadquartersEspionageAgent_PrioritizesItsMission()
+        public void Score_MobileHeadquartersEspionageAgentTargetingHeadquarters_PrioritizesMission()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
+            Planet headquarters = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "headquarters",
+                empire.InstanceID
+            );
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
+            headquarters.AddVisitor(empire.InstanceID);
+            target.AddVisitor(empire.InstanceID);
+            headquarters.IsHeadquarters = true;
+            empire.HQInstanceID = headquarters.InstanceID;
+            empire.Settings.Headquarters.IsMobile = true;
+            SpecialForces headquartersAgent = AITestSceneBuilder.CreateSpecialForces(
+                "headquarters-agent",
+                empire.InstanceID,
+                MissionTypeIDs.Espionage
+            );
+            headquartersAgent.Ratings[OfficerRating.Espionage] = 100;
+            game.AttachNode(headquartersAgent, headquarters);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIMissionProposalScorer scorer = new AIMissionProposalScorer();
+
+            double headquartersScore = scorer.Score(
+                context,
+                new AIMissionProposal(
+                    new[] { headquartersAgent },
+                    MissionTypeIDs.Espionage,
+                    headquarters
+                )
+            );
+            double remoteScore = scorer.Score(
+                context,
+                new AIMissionProposal(new[] { headquartersAgent }, MissionTypeIDs.Espionage, target)
+            );
+
+            Assert.Greater(headquartersScore, remoteScore);
+        }
+
+        [Test]
+        public void Score_MobileHeadquartersEspionageAgentTargetingOtherPlanet_DoesNotAddHeadquartersPriority()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
@@ -970,16 +1013,16 @@ namespace Rebellion.Tests.AI.Scorers
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
             AIMissionProposalScorer scorer = new AIMissionProposalScorer();
 
-            double headquartersScore = scorer.Score(
+            double headquartersAgentScore = scorer.Score(
                 context,
                 new AIMissionProposal(new[] { headquartersAgent }, MissionTypeIDs.Espionage, target)
             );
-            double otherScore = scorer.Score(
+            double otherAgentScore = scorer.Score(
                 context,
                 new AIMissionProposal(new[] { otherAgent }, MissionTypeIDs.Espionage, target)
             );
 
-            Assert.Greater(headquartersScore, otherScore);
+            Assert.AreEqual(otherAgentScore, headquartersAgentScore, 0.000001);
         }
 
         [Test]

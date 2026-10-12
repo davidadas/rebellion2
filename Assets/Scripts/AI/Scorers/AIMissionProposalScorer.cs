@@ -555,6 +555,7 @@ namespace Rebellion.AI.Scorers
                 missionTypeId == MissionTypeIDs.Espionage
                 && proposal.Participant is SpecialForces specialForces
                 && context.IsHeadquartersEspionageAgent(specialForces)
+                && proposal.TargetPlanet == context.Assessment.FactionHeadquarters
                     ? 1
                     : 0,
                 utility.MobileHeadquartersEspionage

@@ -509,6 +509,21 @@ namespace Rebellion.AI.Planners
             if (!participant.CanPerformMission(MissionTypeIDs.Espionage))
                 return;
 
+            Planet headquarters = context.Assessment.FactionHeadquarters;
+            if (
+                participant is SpecialForces specialForces
+                && context.IsHeadquartersEspionageAgent(specialForces)
+                && headquarters != null
+                && !HasActiveMissionAtPlanet(MissionTypeIDs.Espionage, headquarters.InstanceID)
+            )
+                TryAddMissionProposal(
+                    context,
+                    proposals,
+                    participant,
+                    MissionTypeIDs.Espionage,
+                    headquarters
+                );
+
             foreach (Planet planet in GetEspionageCandidatePlanets(context))
                 TryAddMissionProposal(
                     context,

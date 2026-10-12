@@ -27,6 +27,8 @@ namespace Rebellion.AI
         public MissionQueries MissionQueries { get; }
         public MovementCommands Movement { get; }
         public MovementQueries MovementQueries { get; }
+        public HeadquartersCommands Headquarters { get; }
+        public HeadquartersQueries HeadquartersQueries { get; }
         public ManufacturingCommands Manufacturing { get; }
         public MaintenanceCommands Maintenance { get; }
         public BombardmentCommands Bombardment { get; }
@@ -85,6 +87,7 @@ namespace Rebellion.AI
         /// <param name="strategicPlan">The strategic allocations derived from the assessment.</param>
         /// <param name="factionView">The faction-visible galaxy state for this turn.</param>
         /// <param name="maintenance">Maintenance system used to project production capacity.</param>
+        /// <param name="headquarters">Headquarters system used by relocation proposals.</param>
         public AITurnContext(
             GameRoot game,
             Faction faction,
@@ -97,7 +100,8 @@ namespace Rebellion.AI
             AIAssessment assessment,
             AIStrategicPlan strategicPlan,
             GalaxyMap factionView = null,
-            MaintenanceCommands maintenance = null
+            MaintenanceCommands maintenance = null,
+            HeadquartersCommands headquarters = null
         )
         {
             Game = game;
@@ -106,6 +110,8 @@ namespace Rebellion.AI
             MissionQueries = game == null ? null : new MissionQueries(game);
             Movement = movement;
             MovementQueries = game == null ? null : new MovementQueries(game);
+            Headquarters = headquarters;
+            HeadquartersQueries = game == null ? null : new HeadquartersQueries(game);
             Manufacturing = manufacturing;
             Maintenance = maintenance;
             Bombardment = bombardment;
