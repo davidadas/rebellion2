@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Rebellion.Game;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 
 namespace Rebellion.Simulation
@@ -34,6 +35,16 @@ namespace Rebellion.Simulation
             _tracker.ClearBlockadeStatus(currentBlockades, results);
             _tracker.RememberBlockades(currentBlockades);
             return results;
+        }
+
+        /// <summary>
+        /// Observes planets whose orbital movement or combat just settled.
+        /// </summary>
+        /// <param name="planets">The affected planets to observe.</param>
+        /// <returns>The newly observed blockade starts without changing tracked state.</returns>
+        internal IReadOnlyList<BlockadeChangedResult> ObservePlanets(IEnumerable<Planet> planets)
+        {
+            return _tracker.ObservePlanets(planets);
         }
     }
 }

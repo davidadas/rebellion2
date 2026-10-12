@@ -4435,7 +4435,7 @@ namespace Rebellion.Tests.Simulation
                 ManufacturingStatus = ManufacturingStatus.Building,
             };
             scene.game.AttachNode(building, scene.blockadedDestination);
-            AddBlockadingFleet(scene.game, scene.blockadedDestination);
+            (Fleet blockadingFleet, _) = AddBlockadingFleet(scene.game, scene.blockadedDestination);
             ProcessBlockadeStart(scene.game, scene.blockade, scene.resultBus);
 
             building.ManufacturingStatus = ManufacturingStatus.Delivering;
@@ -4451,6 +4451,7 @@ namespace Rebellion.Tests.Simulation
                 .OfType<GameObjectDestroyedOnArrivalResult>()
                 .Single();
             Assert.AreSame(building, destroyed.DestroyedObject);
+            Assert.AreSame(blockadingFleet, destroyed.DestroyedBy);
             Assert.AreSame(scene.blockadedDestination, destroyed.Context);
             Assert.IsFalse(
                 results
@@ -4479,7 +4480,7 @@ namespace Rebellion.Tests.Simulation
                 ManufacturingStatus = ManufacturingStatus.Building,
             };
             scene.game.AttachNode(regiment, scene.blockadedDestination);
-            AddBlockadingFleet(scene.game, scene.blockadedDestination);
+            (Fleet blockadingFleet, _) = AddBlockadingFleet(scene.game, scene.blockadedDestination);
             ProcessBlockadeStart(scene.game, scene.blockade, scene.resultBus);
 
             regiment.ManufacturingStatus = ManufacturingStatus.Delivering;
@@ -4495,6 +4496,7 @@ namespace Rebellion.Tests.Simulation
                 .OfType<GameObjectDestroyedOnArrivalResult>()
                 .Single();
             Assert.AreSame(regiment, destroyed.DestroyedObject);
+            Assert.AreSame(blockadingFleet, destroyed.DestroyedBy);
             Assert.AreSame(scene.blockadedDestination, destroyed.Context);
             Assert.IsFalse(
                 results

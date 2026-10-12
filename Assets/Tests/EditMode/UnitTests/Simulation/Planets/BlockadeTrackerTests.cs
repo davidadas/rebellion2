@@ -115,6 +115,21 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void ObservePlanets_FollowedByFullTick_PreservesTrackedTransition()
+        {
+            (GameRoot game, Planet planet, _) = BuildScene();
+            BlockadeTracker manager = new BlockadeTracker(game);
+
+            IReadOnlyList<GameResult> observed = manager.ObservePlanets(new[] { planet });
+            IReadOnlyList<GameResult> fullTick = new BlockadeTickProcessor(manager).ProcessTick(
+                game
+            );
+
+            Assert.AreEqual(1, observed.OfType<BlockadeChangedResult>().Count());
+            Assert.AreEqual(1, fullTick.OfType<BlockadeChangedResult>().Count());
+        }
+
+        [Test]
         public void ProcessTick_BlockadeEnds_EmitsBlockadeCleared()
         {
             (GameRoot game, Planet planet, _) = BuildScene();

@@ -1403,6 +1403,15 @@ namespace Rebellion.Simulation
             string movableOwner = MovementQueries.GetMovementControlOwner(movable);
             if (!destinationPlanet.IsBlockadedFor(movableOwner))
                 return false;
+            Fleet blockadingFleet = destinationPlanet
+                .GetChildren<Fleet>()
+                .FirstOrDefault(fleet =>
+                    fleet.Movement == null
+                    && fleet.GetOwnerInstanceID() != movableOwner
+                    && fleet.HasOperationalCapitalShips()
+                );
+            if (blockadingFleet == null)
+                return false;
 
             _game.DeleteNode(movable);
             GameLogger.Log(
@@ -1412,6 +1421,7 @@ namespace Rebellion.Simulation
                 new GameObjectDestroyedOnArrivalResult
                 {
                     DestroyedObject = movable,
+                    DestroyedBy = blockadingFleet,
                     Context = destinationPlanet,
                     Tick = _game.CurrentTick,
                 }
