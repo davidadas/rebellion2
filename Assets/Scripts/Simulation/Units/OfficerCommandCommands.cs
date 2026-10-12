@@ -168,6 +168,65 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
+        /// Captures the command target of every ranked officer relocated with a scene node.
+        /// </summary>
+        /// <param name="movedNode">The officer or container about to be relocated.</param>
+        /// <returns>The ranked officers and their command targets before relocation.</returns>
+        internal static IReadOnlyDictionary<Officer, ISceneNode> CaptureRelocatedCommandTargets(
+            ISceneNode movedNode
+        )
+        {
+            if (movedNode == null)
+                return new Dictionary<Officer, ISceneNode>();
+
+            IEnumerable<Officer> officers =
+                movedNode is Officer officer ? new[] { officer }
+                : movedNode is ContainerNode container
+                    ? container.GetChildren<Officer>(recursive: true)
+                : Enumerable.Empty<Officer>();
+
+            return officers
+                .Where(candidate => candidate.CurrentRank != OfficerRank.None)
+                .ToDictionary(candidate => candidate, ResolveCommandHierarchyTarget);
+        }
+
+        /// <summary>
+        /// Resigns relocated officers whose fleet or planetary command changed.
+        /// </summary>
+        /// <param name="previousCommandTargets">The command targets captured before relocation.</param>
+        /// <param name="tick">The current game tick.</param>
+        /// <param name="results">The movement results receiving command changes.</param>
+        internal static void ReconcileRelocatedCommandRanks(
+            IReadOnlyDictionary<Officer, ISceneNode> previousCommandTargets,
+            int tick,
+            ICollection<GameResult> results
+        )
+        {
+            if (previousCommandTargets == null)
+                throw new ArgumentNullException(nameof(previousCommandTargets));
+            if (results == null)
+                throw new ArgumentNullException(nameof(results));
+
+            foreach (KeyValuePair<Officer, ISceneNode> command in previousCommandTargets)
+            {
+                Officer officer = command.Key;
+                if (
+                    officer.CurrentRank == OfficerRank.None
+                    || ReferenceEquals(command.Value, ResolveCommandHierarchyTarget(officer))
+                )
+                    continue;
+
+                ApplyRankChange(
+                    officer,
+                    OfficerRank.None,
+                    command.Value ?? ResolveCommandHierarchyTarget(officer),
+                    tick,
+                    results
+                );
+            }
+        }
+
+        /// <summary>
         /// Enumerates officers competing for posts in one fleet or planetary system.
         /// Planetary posts exclude officers attached to fleets in orbit.
         /// </summary>
