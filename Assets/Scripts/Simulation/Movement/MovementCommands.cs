@@ -1001,7 +1001,9 @@ namespace Rebellion.Simulation
             }
         }
 
-        /// <summary>Advances one active unit and reports whether it reached its destination.</summary>
+        /// <summary>
+        /// Advances one active unit and reports whether it reached its destination.
+        /// </summary>
         /// <param name="movable">The movable unit to advance.</param>
         /// <returns>True when the unit completed transit during this update.</returns>
         private bool AdvanceMovement(IMovable movable)
@@ -1029,7 +1031,9 @@ namespace Rebellion.Simulation
             return movable.Movement.IsComplete();
         }
 
-        /// <summary>Resolves one arrival encounter for each completed personnel movement group.</summary>
+        /// <summary>
+        /// Resolves one arrival encounter for each completed personnel movement group.
+        /// </summary>
         /// <param name="arrivals">The units that completed transit this tick.</param>
         /// <param name="results">The collection receiving encounter results.</param>
         private void ResolvePersonnelArrivalGroups(
@@ -1069,7 +1073,9 @@ namespace Rebellion.Simulation
             }
         }
 
-        /// <summary>Resolves hostile detection against personnel crossing one planetary system.</summary>
+        /// <summary>
+        /// Resolves hostile detection against personnel crossing one planetary system.
+        /// </summary>
         /// <param name="movables">The personnel crossing together.</param>
         /// <param name="planet">The planetary system being crossed.</param>
         /// <param name="results">The collection receiving encounter results.</param>
@@ -1091,7 +1097,9 @@ namespace Rebellion.Simulation
                 ResolvePersonnelEncounterGroup(group.ToList(), planet, results);
         }
 
-        /// <summary>Returns whether personnel remain eligible for a movement encounter.</summary>
+        /// <summary>
+        /// Returns whether personnel remain eligible for a movement encounter.
+        /// </summary>
         /// <param name="participant">The participant to inspect.</param>
         /// <returns>True when the participant remains active and free.</returns>
         private static bool IsEligibleEncounterParticipant(IMissionParticipant participant)
@@ -1104,7 +1112,9 @@ namespace Rebellion.Simulation
             };
         }
 
-        /// <summary>Resolves detection and confrontation for one faction's personnel.</summary>
+        /// <summary>
+        /// Resolves detection and confrontation for one faction's personnel.
+        /// </summary>
         /// <param name="participants">The personnel crossing together.</param>
         /// <param name="planet">The planetary system being crossed.</param>
         /// <param name="results">The collection receiving encounter results.</param>
@@ -1143,7 +1153,9 @@ namespace Rebellion.Simulation
             }
         }
 
-        /// <summary>Resolves one detected participant's confrontation.</summary>
+        /// <summary>
+        /// Resolves one detected participant's confrontation.
+        /// </summary>
         /// <param name="participant">The detected participant.</param>
         /// <param name="encounter">The hostile detector and calculated probabilities.</param>
         /// <param name="planet">The planetary system where the encounter occurs.</param>
@@ -1209,7 +1221,9 @@ namespace Rebellion.Simulation
             );
         }
 
-        /// <summary>Removes detected special forces that fail to evade.</summary>
+        /// <summary>
+        /// Removes detected special forces that fail to evade.
+        /// </summary>
         /// <param name="specialForces">The unit to remove.</param>
         /// <param name="planet">The planetary system where the unit was destroyed.</param>
         /// <param name="results">The collection receiving the destruction result.</param>
@@ -1232,7 +1246,9 @@ namespace Rebellion.Simulation
             );
         }
 
-        /// <summary>Rolls against a movement encounter percentage.</summary>
+        /// <summary>
+        /// Rolls against a movement encounter percentage.
+        /// </summary>
         /// <param name="probability">The percentage chance of success.</param>
         /// <returns>True when the roll succeeds.</returns>
         private bool RollMovementPercent(double probability)
@@ -1909,7 +1925,9 @@ namespace Rebellion.Simulation
             );
         }
 
-        /// <summary>Starts return travel that resolves its personnel encounter on arrival.</summary>
+        /// <summary>
+        /// Starts return travel that resolves its personnel encounter on arrival.
+        /// </summary>
         /// <param name="unit">The unit to move.</param>
         /// <param name="destination">The requested destination.</param>
         /// <param name="results">The collection receiving movement results.</param>

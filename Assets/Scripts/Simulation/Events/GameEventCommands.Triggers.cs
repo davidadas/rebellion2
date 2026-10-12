@@ -14,7 +14,9 @@ namespace Rebellion.Simulation
 {
     public sealed partial class GameEventCommands
     {
-        /// <summary>Tests a simulation result against an authored trigger.</summary>
+        /// <summary>
+        /// Tests a simulation result against an authored trigger.
+        /// </summary>
         /// <param name="definition">The authored trigger and filters.</param>
         /// <param name="result">The existing simulation result.</param>
         /// <returns>Whether the result satisfies the trigger.</returns>
@@ -51,7 +53,9 @@ namespace Rebellion.Simulation
                 ),
             };
 
-        /// <summary>Returns the result contract selected by an authored trigger.</summary>
+        /// <summary>
+        /// Returns the result contract selected by an authored trigger.
+        /// </summary>
         /// <param name="definition">The authored trigger.</param>
         /// <returns>The existing simulation-result type consumed by the trigger.</returns>
         private static Type GetResultType(GameEventTrigger definition) =>

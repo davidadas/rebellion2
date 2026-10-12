@@ -70,7 +70,9 @@ namespace Rebellion.Simulation
             return Array.Empty<GameResult>();
         }
 
-        /// <summary>Finds the opposing faction currently controlling a faction's headquarters.</summary>
+        /// <summary>
+        /// Finds the opposing faction currently controlling a faction's headquarters.
+        /// </summary>
         /// <param name="game">The active game graph.</param>
         /// <param name="defender">The faction whose headquarters is inspected.</param>
         /// <param name="attacker">Receives the faction controlling the headquarters.</param>
@@ -91,7 +93,9 @@ namespace Rebellion.Simulation
             return attacker != null;
         }
 
-        /// <summary>Gets the current owner of a faction's configured headquarters.</summary>
+        /// <summary>
+        /// Gets the current owner of a faction's configured headquarters.
+        /// </summary>
         /// <param name="game">The active game graph.</param>
         /// <param name="defender">The faction whose headquarters is inspected.</param>
         /// <returns>The current headquarters owner identifier, or null.</returns>

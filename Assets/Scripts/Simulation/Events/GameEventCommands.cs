@@ -54,7 +54,9 @@ namespace Rebellion.Simulation
                 missionResolver: null
             ) { }
 
-        /// <summary>Creates game-event processing with registered mission lifecycle handling.</summary>
+        /// <summary>
+        /// Creates game-event processing with registered mission lifecycle handling.
+        /// </summary>
         /// <param name="game">The game instance.</param>
         /// <param name="provider">Random number provider for stochastic event actions.</param>
         /// <param name="unitFactory">Factory for actions that create runtime units.</param>
@@ -845,13 +847,17 @@ namespace Rebellion.Simulation
             maximum = schedule.MaximumTicks;
         }
 
-        /// <summary>Returns whether the authored schedule permits repeated activations.</summary>
+        /// <summary>
+        /// Returns whether the authored schedule permits repeated activations.
+        /// </summary>
         /// <param name="schedule">The authored schedule.</param>
         /// <returns>Whether a recurring interval is configured.</returns>
         private static bool IsRecurring(GameEventSchedule schedule) =>
             schedule.Every != null || schedule.RandomInterval != null;
 
-        /// <summary>Gets the conditions that permanently end the recurring schedule.</summary>
+        /// <summary>
+        /// Gets the conditions that permanently end the recurring schedule.
+        /// </summary>
         /// <param name="schedule">The authored schedule.</param>
         /// <returns>The configured terminal conditions, or an empty collection.</returns>
         private static IReadOnlyList<GameConditional> GetUntil(GameEventSchedule schedule)

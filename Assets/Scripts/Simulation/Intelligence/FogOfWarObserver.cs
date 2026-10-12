@@ -47,7 +47,9 @@ namespace Rebellion.Simulation
             _recorder = recorder ?? throw new ArgumentNullException(nameof(recorder));
         }
 
-        /// <summary>Registers the settled-result callback with the result bus.</summary>
+        /// <summary>
+        /// Registers the settled-result callback with the result bus.
+        /// </summary>
         /// <param name="results">The bus that delivers completed game results.</param>
         public void Connect(GameResultBus results)
         {
@@ -59,14 +61,18 @@ namespace Rebellion.Simulation
             _subscriptions = new IDisposable[] { results.Observe<GameResult>(ProcessResults) };
         }
 
-        /// <summary>Stops receiving completed game results.</summary>
+        /// <summary>
+        /// Stops receiving completed game results.
+        /// </summary>
         public void Dispose()
         {
             foreach (IDisposable subscription in _subscriptions ?? Array.Empty<IDisposable>())
                 subscription.Dispose();
         }
 
-        /// <summary>Records intelligence at the instant an ownership transition completes.</summary>
+        /// <summary>
+        /// Records intelligence at the instant an ownership transition completes.
+        /// </summary>
         /// <param name="result">The completed ownership transition.</param>
         internal void ObserveOwnershipChange(PlanetOwnershipChangedResult result)
         {
@@ -142,7 +148,9 @@ namespace Rebellion.Simulation
             }
         }
 
-        /// <summary>Refreshes visible intelligence and repairs saved entity locations.</summary>
+        /// <summary>
+        /// Refreshes visible intelligence and repairs saved entity locations.
+        /// </summary>
         internal void ReconcileKnowledge()
         {
             RefreshVisibleKnowledge();
@@ -150,7 +158,9 @@ namespace Rebellion.Simulation
                 _recorder.ReconcileEntityLocations(faction);
         }
 
-        /// <summary>Replaces remembered state for every currently visible planet.</summary>
+        /// <summary>
+        /// Replaces remembered state for every currently visible planet.
+        /// </summary>
         internal void RefreshVisibleKnowledge()
         {
             foreach (Faction faction in _game.GetFactions())
@@ -265,7 +275,9 @@ namespace Rebellion.Simulation
                 _commands.ForgetEntity(result.Faction, lostUnit.InstanceID);
         }
 
-        /// <summary>Records or removes knowledge after an officer's custody state changes.</summary>
+        /// <summary>
+        /// Records or removes knowledge after an officer's custody state changes.
+        /// </summary>
         /// <param name="result">The completed custody-state change.</param>
         private void RecordCaptureState(OfficerCaptureStateResult result)
         {
@@ -284,7 +296,9 @@ namespace Rebellion.Simulation
                 _commands.ForgetEntity(captor, officer.InstanceID);
         }
 
-        /// <summary>Updates planet knowledge after a completed ownership change.</summary>
+        /// <summary>
+        /// Updates planet knowledge after a completed ownership change.
+        /// </summary>
         /// <param name="result">The ownership change being observed.</param>
         private void RecordOwnershipChange(PlanetOwnershipChangedResult result)
         {

@@ -23,7 +23,9 @@ namespace Rebellion.Game.Units
         public string MessageImagePath { get; set; }
         public string EncyclopediaImagePath { get; set; }
 
-        /// <summary>Creates an independent copy of this image set.</summary>
+        /// <summary>
+        /// Creates an independent copy of this image set.
+        /// </summary>
         /// <returns>The created copy.</returns>
         public OfficerImageSet CreateCopy() =>
             new OfficerImageSet
@@ -114,7 +116,9 @@ namespace Rebellion.Game.Units
             return paths ?? Array.Empty<string>();
         }
 
-        /// <summary>Creates an independent copy of this voice set.</summary>
+        /// <summary>
+        /// Creates an independent copy of this voice set.
+        /// </summary>
         /// <returns>The created copy.</returns>
         public OfficerVoiceSet CreateCopy()
         {
@@ -429,11 +433,15 @@ namespace Rebellion.Game.Units
             return true;
         }
 
-        /// <summary>Creates an empty officer copy.</summary>
+        /// <summary>
+        /// Creates an empty officer copy.
+        /// </summary>
         /// <returns>The created node copy.</returns>
         protected override BaseSceneNode CreateNodeCopy() => new Officer();
 
-        /// <summary>Copies officer state into an empty destination.</summary>
+        /// <summary>
+        /// Copies officer state into an empty destination.
+        /// </summary>
         /// <param name="destination">The destination.</param>
         protected override void CopyStateTo(BaseSceneNode destination)
         {

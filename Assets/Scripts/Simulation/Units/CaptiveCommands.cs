@@ -24,7 +24,9 @@ namespace Rebellion.Simulation
         private readonly ProbabilityTable _escapeTable;
         private readonly GameConfig.TickRangeConfig _escapeAttemptInterval;
 
-        /// <summary>Raised when an immediate capture or release produces a result.</summary>
+        /// <summary>
+        /// Raised when an immediate capture or release produces a result.
+        /// </summary>
         public event Action<IReadOnlyList<GameResult>> ResultsProduced;
 
         /// <summary>

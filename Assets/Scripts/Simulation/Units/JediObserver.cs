@@ -5,20 +5,26 @@ using Rebellion.Game.Results;
 
 namespace Rebellion.Simulation
 {
-    /// <summary>Routes mission completions to Force growth in batch order.</summary>
+    /// <summary>
+    /// Routes mission completions to Force growth in batch order.
+    /// </summary>
     public sealed class JediObserver : IResultObserver, IDisposable
     {
         private readonly JediCommands _commands;
         private IDisposable _subscription;
 
-        /// <summary>Creates the jedi result listener.</summary>
+        /// <summary>
+        /// Creates the jedi result listener.
+        /// </summary>
         /// <param name="commands">The jedi operations for this game.</param>
         public JediObserver(JediCommands commands)
         {
             _commands = commands ?? throw new ArgumentNullException(nameof(commands));
         }
 
-        /// <summary>Registers the mission-completion callback with the result bus.</summary>
+        /// <summary>
+        /// Registers the mission-completion callback with the result bus.
+        /// </summary>
         /// <param name="results">The bus that delivers mission completions.</param>
         public void Connect(GameResultBus results)
         {
@@ -29,7 +35,9 @@ namespace Rebellion.Simulation
             ).Subscribe<MissionCompletedResult>(HandleResults);
         }
 
-        /// <summary>Stops receiving mission completions.</summary>
+        /// <summary>
+        /// Stops receiving mission completions.
+        /// </summary>
         public void Dispose() => _subscription?.Dispose();
 
         /// <summary>

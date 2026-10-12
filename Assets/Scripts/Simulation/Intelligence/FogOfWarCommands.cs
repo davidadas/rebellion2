@@ -24,7 +24,9 @@ namespace Rebellion.Simulation
         public FogOfWarCommands(GameRoot game)
             : this(game, new FogOfWarRecorder()) { }
 
-        /// <summary>Creates fog-of-war operations using the supplied intelligence recorder.</summary>
+        /// <summary>
+        /// Creates fog-of-war operations using the supplied intelligence recorder.
+        /// </summary>
         /// <param name="game">The active game graph.</param>
         /// <param name="recorder">The recorder shared with intelligence lifecycle handling.</param>
         internal FogOfWarCommands(GameRoot game, FogOfWarRecorder recorder)
@@ -54,7 +56,9 @@ namespace Rebellion.Simulation
             return true;
         }
 
-        /// <summary>Records selected registered entities for a registered faction.</summary>
+        /// <summary>
+        /// Records selected registered entities for a registered faction.
+        /// </summary>
         /// <param name="faction">The faction receiving the observations.</param>
         /// <param name="entities">The entities being observed.</param>
         /// <param name="observedAtTick">The tick represented by the observations, or the current tick.</param>
@@ -81,7 +85,9 @@ namespace Rebellion.Simulation
             return true;
         }
 
-        /// <summary>Records a planet's current ownership for the factions observing it.</summary>
+        /// <summary>
+        /// Records a planet's current ownership for the factions observing it.
+        /// </summary>
         /// <param name="planet">The planet whose ownership is observed.</param>
         /// <param name="observers">The factions receiving a current ownership observation.</param>
         /// <param name="observedAtTick">The tick represented by the observation, or the current tick.</param>

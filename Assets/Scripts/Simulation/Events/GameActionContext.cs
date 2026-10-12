@@ -40,7 +40,9 @@ namespace Rebellion.Simulation
         )
             : this(game, random, evaluation, unitFactory, missionResolver: null) { }
 
-        /// <summary>Creates an event action context with mission lifecycle handling.</summary>
+        /// <summary>
+        /// Creates an event action context with mission lifecycle handling.
+        /// </summary>
         /// <param name="game">The game.</param>
         /// <param name="random">The random source.</param>
         /// <param name="evaluation">The event evaluation context.</param>

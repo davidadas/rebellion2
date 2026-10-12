@@ -11,13 +11,17 @@ using Rebellion.Util.Random;
 
 namespace Rebellion.Simulation
 {
-    /// <summary>Evaluates mission eligibility and odds without starting or advancing missions.</summary>
+    /// <summary>
+    /// Evaluates mission eligibility and odds without starting or advancing missions.
+    /// </summary>
     public sealed class MissionQueries
     {
         private readonly GameRoot _game;
         private readonly MissionFactory _missionFactory;
 
-        /// <summary>Creates mission queries for the supplied game state.</summary>
+        /// <summary>
+        /// Creates mission queries for the supplied game state.
+        /// </summary>
         /// <param name="game">The game used to resolve participants and mission rules.</param>
         public MissionQueries(GameRoot game)
         {
@@ -973,7 +977,9 @@ namespace Rebellion.Simulation
                 .ToList();
         }
 
-        /// <summary>Returns whether a checkpoint checks planetary rather than orbital defenders.</summary>
+        /// <summary>
+        /// Returns whether a checkpoint checks planetary rather than orbital defenders.
+        /// </summary>
         /// <param name="phase">The encounter checkpoint.</param>
         /// <param name="objective">The authoritative or observed mission objective.</param>
         /// <returns>True when the checkpoint uses planetary defenders.</returns>
@@ -1011,7 +1017,9 @@ namespace Rebellion.Simulation
             return candidates;
         }
 
-        /// <summary>Adds probability to an existing or new state outcome.</summary>
+        /// <summary>
+        /// Adds probability to an existing or new state outcome.
+        /// </summary>
         /// <param name="probabilities">The probabilities.</param>
         /// <param name="state">The state key.</param>
         /// <param name="probability">The probability.</param>
@@ -1029,21 +1037,27 @@ namespace Rebellion.Simulation
             probabilities[state] = existingProbability + probability;
         }
 
-        /// <summary>Returns whether the specified bit is set.</summary>
+        /// <summary>
+        /// Returns whether the specified bit is set.
+        /// </summary>
         /// <param name="value">The bit set.</param>
         /// <param name="index">The zero-based bit index.</param>
         /// <returns>True when the bit is set.</returns>
         private static bool IsBitSet(BigInteger value, int index) =>
             (value & (BigInteger.One << index)) != BigInteger.Zero;
 
-        /// <summary>Returns a bit set with the specified bit enabled.</summary>
+        /// <summary>
+        /// Returns a bit set with the specified bit enabled.
+        /// </summary>
         /// <param name="value">The bit set.</param>
         /// <param name="index">The zero-based bit index.</param>
         /// <returns>The updated bit set.</returns>
         private static BigInteger SetBit(BigInteger value, int index) =>
             value | (BigInteger.One << index);
 
-        /// <summary>Returns a bit set with the specified bit disabled.</summary>
+        /// <summary>
+        /// Returns a bit set with the specified bit disabled.
+        /// </summary>
         /// <param name="value">The bit set.</param>
         /// <param name="index">The zero-based bit index.</param>
         /// <returns>The updated bit set.</returns>
@@ -1289,7 +1303,9 @@ namespace Rebellion.Simulation
             return detectors;
         }
 
-        /// <summary>Returns whether the mission's objective is on a planet rather than aboard a fleet.</summary>
+        /// <summary>
+        /// Returns whether the mission's objective is on a planet rather than aboard a fleet.
+        /// </summary>
         /// <param name="mission">The mission whose current target is evaluated.</param>
         /// <returns>True for a planetary objective.</returns>
         internal bool IsPlanetaryObjective(Mission mission)

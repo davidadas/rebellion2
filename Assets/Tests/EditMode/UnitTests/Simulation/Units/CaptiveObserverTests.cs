@@ -499,7 +499,9 @@ namespace Rebellion.Tests.Simulation
             return reactions;
         }
 
-        /// <summary>Handles ownership changes and applies their settled intelligence effects.</summary>
+        /// <summary>
+        /// Handles ownership changes and applies their settled intelligence effects.
+        /// </summary>
         /// <param name="game">The active game graph.</param>
         /// <param name="observer">The custody observer under test.</param>
         /// <param name="results">The ownership changes to handle.</param>
@@ -520,7 +522,9 @@ namespace Rebellion.Tests.Simulation
             return reactions;
         }
 
-        /// <summary>Applies settled custody results to faction intelligence.</summary>
+        /// <summary>
+        /// Applies settled custody results to faction intelligence.
+        /// </summary>
         /// <param name="game">The active game graph.</param>
         /// <param name="results">The settled results to observe.</param>
         private static void RecordKnowledge(GameRoot game, IEnumerable<GameResult> results)

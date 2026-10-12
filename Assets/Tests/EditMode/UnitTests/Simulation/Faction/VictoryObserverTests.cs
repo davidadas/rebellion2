@@ -144,7 +144,9 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Collects victories published by the supplied command service.</summary>
+        /// <summary>
+        /// Collects victories published by the supplied command service.
+        /// </summary>
         /// <param name="commands">The victory commands to observe.</param>
         /// <returns>The collection receiving published victories.</returns>
         private static List<VictoryResult> CaptureVictories(VictoryCommands commands)

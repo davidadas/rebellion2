@@ -5,13 +5,19 @@ using Rebellion.SceneGraph;
 
 namespace Rebellion.Simulation
 {
-    /// <summary>Describes every hostile detection attempt facing one personnel movement group.</summary>
+    /// <summary>
+    /// Describes every hostile detection attempt facing one personnel movement group.
+    /// </summary>
     public sealed class PersonnelMovementEncounterOdds
     {
-        /// <summary>Gets the eligible detector attempts in scene traversal order.</summary>
+        /// <summary>
+        /// Gets the eligible detector attempts in scene traversal order.
+        /// </summary>
         public IReadOnlyList<PersonnelMovementDetectorOdds> Detectors { get; }
 
-        /// <summary>Creates a personnel movement encounter projection.</summary>
+        /// <summary>
+        /// Creates a personnel movement encounter projection.
+        /// </summary>
         /// <param name="detectors">The eligible detector attempts.</param>
         internal PersonnelMovementEncounterOdds(
             IReadOnlyList<PersonnelMovementDetectorOdds> detectors
@@ -21,21 +27,31 @@ namespace Rebellion.Simulation
         }
     }
 
-    /// <summary>Describes one hostile detector's odds against a personnel movement group.</summary>
+    /// <summary>
+    /// Describes one hostile detector's odds against a personnel movement group.
+    /// </summary>
     public sealed class PersonnelMovementDetectorOdds
     {
         private readonly IReadOnlyDictionary<IMissionParticipant, double> _evasionProbabilities;
 
-        /// <summary>Gets the hostile detector.</summary>
+        /// <summary>
+        /// Gets the hostile detector.
+        /// </summary>
         public ISceneNode Detector { get; }
 
-        /// <summary>Gets the eligible officer supporting the detector, when one is assigned.</summary>
+        /// <summary>
+        /// Gets the eligible officer supporting the detector, when one is assigned.
+        /// </summary>
         public Officer Commander { get; }
 
-        /// <summary>Gets this detector's chance to detect the movement group.</summary>
+        /// <summary>
+        /// Gets this detector's chance to detect the movement group.
+        /// </summary>
         public int DetectionProbability { get; }
 
-        /// <summary>Creates one detector projection.</summary>
+        /// <summary>
+        /// Creates one detector projection.
+        /// </summary>
         /// <param name="detector">The hostile detector.</param>
         /// <param name="commander">The supporting commander, when present.</param>
         /// <param name="detectionProbability">The detection percentage.</param>
@@ -55,7 +71,9 @@ namespace Rebellion.Simulation
                 ?? throw new ArgumentNullException(nameof(evasionProbabilities));
         }
 
-        /// <summary>Returns one participant's chance to evade this detector.</summary>
+        /// <summary>
+        /// Returns one participant's chance to evade this detector.
+        /// </summary>
         /// <param name="participant">The participant attempting to evade.</param>
         /// <returns>The configured evasion percentage, or zero when absent.</returns>
         public double GetEvasionProbability(IMissionParticipant participant)

@@ -36,7 +36,9 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(origin.InstanceID, faction.HQInstanceID);
         }
 
-        /// <summary>Creates headquarters operations with the game's movement dependencies.</summary>
+        /// <summary>
+        /// Creates headquarters operations with the game's movement dependencies.
+        /// </summary>
         /// <param name="game">The active game graph.</param>
         /// <returns>The headquarters command implementation.</returns>
         private static HeadquartersCommands CreateCommands(GameRoot game)
@@ -54,7 +56,9 @@ namespace Rebellion.Tests.Simulation
             return new HeadquartersCommands(game, movement, queries);
         }
 
-        /// <summary>Creates a faction with headquarters and two registered planets.</summary>
+        /// <summary>
+        /// Creates a faction with headquarters and two registered planets.
+        /// </summary>
         /// <param name="isMobile">Whether the headquarters may relocate.</param>
         /// <returns>The game, faction, origin, destination and headquarters building.</returns>
         private static (GameRoot, Faction, Planet, Planet, Building) CreateGame(bool isMobile)

@@ -1502,7 +1502,9 @@ namespace Rebellion.Simulation
             return new PersonnelMovementEncounterOdds(odds);
         }
 
-        /// <summary>Returns hostile units eligible to detect personnel in one system.</summary>
+        /// <summary>
+        /// Returns hostile units eligible to detect personnel in one system.
+        /// </summary>
         /// <param name="ownerInstanceId">The traveling personnel's faction identifier.</param>
         /// <param name="hostileFleets">The stationary hostile fleets at the planet.</param>
         /// <returns>The eligible detectors in scene traversal order.</returns>
@@ -1532,7 +1534,9 @@ namespace Rebellion.Simulation
             return detectors;
         }
 
-        /// <summary>Returns stationary hostile fleets in scene traversal order.</summary>
+        /// <summary>
+        /// Returns stationary hostile fleets in scene traversal order.
+        /// </summary>
         /// <param name="ownerInstanceId">The traveling personnel's faction identifier.</param>
         /// <param name="planet">The planetary system being crossed.</param>
         /// <returns>The stationary hostile fleets.</returns>
@@ -1546,7 +1550,9 @@ namespace Rebellion.Simulation
                 .ToList();
         }
 
-        /// <summary>Returns whether a completed friendly building suppresses the encounter.</summary>
+        /// <summary>
+        /// Returns whether a completed friendly building suppresses the encounter.
+        /// </summary>
         /// <param name="ownerInstanceId">The faction receiving protection.</param>
         /// <param name="planet">The planet containing candidate buildings.</param>
         /// <returns>True when an eligible building is present.</returns>
@@ -1562,7 +1568,9 @@ namespace Rebellion.Simulation
                 );
         }
 
-        /// <summary>Appends eligible hostile detectors without changing scene order.</summary>
+        /// <summary>
+        /// Appends eligible hostile detectors without changing scene order.
+        /// </summary>
         /// <param name="ownerInstanceId">The faction attempting to avoid detection.</param>
         /// <param name="candidates">The candidate detector units.</param>
         /// <param name="detectors">The collection receiving eligible detectors.</param>
@@ -1579,7 +1587,9 @@ namespace Rebellion.Simulation
             }
         }
 
-        /// <summary>Finds the assigned commander paired with a detector.</summary>
+        /// <summary>
+        /// Finds the assigned commander paired with a detector.
+        /// </summary>
         /// <param name="detector">The detector whose commander is requested.</param>
         /// <param name="planet">The planet containing the detector.</param>
         /// <returns>The eligible commander, or null when none is assigned.</returns>
@@ -1610,7 +1620,9 @@ namespace Rebellion.Simulation
             );
         }
 
-        /// <summary>Returns whether an officer can support a detector.</summary>
+        /// <summary>
+        /// Returns whether an officer can support a detector.
+        /// </summary>
         /// <param name="officer">The officer to inspect.</param>
         /// <returns>True when the officer can command the detector.</returns>
         private static bool IsEligibleDetectorCommander(Officer officer)
@@ -1622,7 +1634,9 @@ namespace Rebellion.Simulation
                 && officer.InjuryPoints == 0;
         }
 
-        /// <summary>Returns one detector's chance to detect a personnel movement group.</summary>
+        /// <summary>
+        /// Returns one detector's chance to detect a personnel movement group.
+        /// </summary>
         /// <param name="participants">The personnel crossing together.</param>
         /// <param name="detector">The hostile detector making the attempt.</param>
         /// <param name="commander">The eligible officer supporting the detector.</param>
@@ -1651,7 +1665,9 @@ namespace Rebellion.Simulation
             return Math.Clamp(LookupProbability(config.Foil, score), 0, 100);
         }
 
-        /// <summary>Returns a detector's authored rating.</summary>
+        /// <summary>
+        /// Returns a detector's authored rating.
+        /// </summary>
         /// <param name="detector">The detector whose rating is requested.</param>
         /// <returns>The stored detection rating.</returns>
         private static int GetAuthoredDetectionRating(ISceneNode detector)
@@ -1665,7 +1681,9 @@ namespace Rebellion.Simulation
             };
         }
 
-        /// <summary>Returns one participant's chance to evade a detector.</summary>
+        /// <summary>
+        /// Returns one participant's chance to evade a detector.
+        /// </summary>
         /// <param name="participant">The participant attempting to evade.</param>
         /// <param name="commander">The eligible officer supporting the detector.</param>
         /// <returns>The evasion percentage.</returns>
@@ -1680,7 +1698,9 @@ namespace Rebellion.Simulation
             return LookupProbability(config.Evasion, score, config.DefaultEvasionProbability);
         }
 
-        /// <summary>Returns the active mission probability-table configuration.</summary>
+        /// <summary>
+        /// Returns the active mission probability-table configuration.
+        /// </summary>
         /// <returns>The configured probability tables.</returns>
         private GameConfig.MissionProbabilityTablesConfig GetMissionProbabilityTables()
         {
@@ -1688,7 +1708,9 @@ namespace Rebellion.Simulation
                 ?? new GameConfig.MissionProbabilityTablesConfig();
         }
 
-        /// <summary>Returns the configured probability for a score.</summary>
+        /// <summary>
+        /// Returns the configured probability for a score.
+        /// </summary>
         /// <param name="entries">The configured probability entries.</param>
         /// <param name="score">The score to look up.</param>
         /// <param name="defaultValue">The value returned when no entries exist.</param>

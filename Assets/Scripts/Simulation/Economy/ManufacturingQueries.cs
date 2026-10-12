@@ -9,12 +9,16 @@ using Rebellion.SceneGraph;
 
 namespace Rebellion.Simulation
 {
-    /// <summary>Evaluates manufacturing eligibility, capacity and completion estimates without changing the game.</summary>
+    /// <summary>
+    /// Evaluates manufacturing eligibility, capacity and completion estimates without changing the game.
+    /// </summary>
     public sealed class ManufacturingQueries
     {
         private readonly GameRoot _game;
 
-        /// <summary>Creates manufacturing queries for the supplied game.</summary>
+        /// <summary>
+        /// Creates manufacturing queries for the supplied game.
+        /// </summary>
         /// <param name="game">The game whose faction maintenance is evaluated.</param>
         public ManufacturingQueries(GameRoot game)
         {

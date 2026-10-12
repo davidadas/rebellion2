@@ -459,7 +459,9 @@ namespace Rebellion.Tests.Simulation
             };
         }
 
-        /// <summary>Creates and attaches a faction for an ownership-change test.</summary>
+        /// <summary>
+        /// Creates and attaches a faction for an ownership-change test.
+        /// </summary>
         /// <param name="instanceId">The faction instance identifier.</param>
         /// <returns>The attached faction.</returns>
         private Faction CreateFaction(string instanceId)
@@ -469,7 +471,9 @@ namespace Rebellion.Tests.Simulation
             return faction;
         }
 
-        /// <summary>Creates a populated planet in the test sector.</summary>
+        /// <summary>
+        /// Creates a populated planet in the test sector.
+        /// </summary>
         /// <param name="instanceId">The planet instance identifier.</param>
         /// <param name="ownerInstanceId">The optional owning faction identifier.</param>
         /// <returns>The attached planet.</returns>

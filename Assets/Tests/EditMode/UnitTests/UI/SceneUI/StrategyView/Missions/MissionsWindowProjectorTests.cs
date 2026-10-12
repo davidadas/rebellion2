@@ -296,7 +296,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
 
         private sealed class TestMission : Mission
         {
-            /// <summary>Creates an empty test mission copy.</summary>
+            /// <summary>
+            /// Creates an empty test mission copy.
+            /// </summary>
             /// <returns>An empty test mission.</returns>
             protected override BaseSceneNode CreateNodeCopy() => new TestMission();
 

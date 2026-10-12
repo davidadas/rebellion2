@@ -26,11 +26,15 @@ namespace Rebellion.Game.Missions
         /// </summary>
         public string TargetOfficerInstanceID { get; set; }
 
-        /// <summary>Creates an empty abduction mission copy.</summary>
+        /// <summary>
+        /// Creates an empty abduction mission copy.
+        /// </summary>
         /// <returns>An empty abduction mission.</returns>
         protected override BaseSceneNode CreateNodeCopy() => new AbductionMission();
 
-        /// <summary>Copies abduction-specific state into an empty destination.</summary>
+        /// <summary>
+        /// Copies abduction-specific state into an empty destination.
+        /// </summary>
         /// <param name="destination">The destination mission.</param>
         protected override void CopyStateTo(BaseSceneNode destination)
         {
@@ -282,11 +286,15 @@ namespace Rebellion.Game.Missions
         /// </summary>
         public string TargetOfficerInstanceID { get; set; }
 
-        /// <summary>Creates an empty assassination mission copy.</summary>
+        /// <summary>
+        /// Creates an empty assassination mission copy.
+        /// </summary>
         /// <returns>An empty assassination mission.</returns>
         protected override BaseSceneNode CreateNodeCopy() => new AssassinationMission();
 
-        /// <summary>Copies assassination-specific state into an empty destination.</summary>
+        /// <summary>
+        /// Copies assassination-specific state into an empty destination.
+        /// </summary>
         /// <param name="destination">The destination mission.</param>
         protected override void CopyStateTo(BaseSceneNode destination)
         {
@@ -585,7 +593,9 @@ namespace Rebellion.Game.Missions
         /// </summary>
         internal override bool SuccessfulParticipantsRemainAtLocation => true;
 
-        /// <summary>Creates an empty diplomacy mission copy.</summary>
+        /// <summary>
+        /// Creates an empty diplomacy mission copy.
+        /// </summary>
         /// <returns>An empty diplomacy mission.</returns>
         protected override BaseSceneNode CreateNodeCopy() => new DiplomacyMission();
 
@@ -883,7 +893,9 @@ namespace Rebellion.Game.Missions
     {
         public const string MissionTypeID = "Espionage";
 
-        /// <summary>Creates an empty espionage mission copy.</summary>
+        /// <summary>
+        /// Creates an empty espionage mission copy.
+        /// </summary>
         /// <returns>An empty espionage mission.</returns>
         protected override BaseSceneNode CreateNodeCopy() => new EspionageMission();
 
@@ -1117,7 +1129,9 @@ namespace Rebellion.Game.Missions
     {
         public const string MissionTypeID = "InciteUprising";
 
-        /// <summary>Creates an empty incite-uprising mission copy.</summary>
+        /// <summary>
+        /// Creates an empty incite-uprising mission copy.
+        /// </summary>
         /// <returns>An empty incite-uprising mission.</returns>
         protected override BaseSceneNode CreateNodeCopy() => new InciteUprisingMission();
 
@@ -1245,11 +1259,15 @@ namespace Rebellion.Game.Missions
                 .OfType<Officer>()
                 .FirstOrDefault(officer => officer.InstanceID == TrainerInstanceID);
 
-        /// <summary>Creates an empty Jedi-training mission copy.</summary>
+        /// <summary>
+        /// Creates an empty Jedi-training mission copy.
+        /// </summary>
         /// <returns>An empty Jedi-training mission.</returns>
         protected override BaseSceneNode CreateNodeCopy() => new JediTrainingMission();
 
-        /// <summary>Copies Jedi-training-specific state into an empty destination.</summary>
+        /// <summary>
+        /// Copies Jedi-training-specific state into an empty destination.
+        /// </summary>
         /// <param name="destination">The destination mission.</param>
         protected override void CopyStateTo(BaseSceneNode destination)
         {
@@ -1554,7 +1572,9 @@ namespace Rebellion.Game.Missions
     {
         public const string MissionTypeID = "Reconnaissance";
 
-        /// <summary>Creates an empty reconnaissance mission copy.</summary>
+        /// <summary>
+        /// Creates an empty reconnaissance mission copy.
+        /// </summary>
         /// <returns>An empty reconnaissance mission.</returns>
         protected override BaseSceneNode CreateNodeCopy() => new ReconnaissanceMission();
 
@@ -1715,11 +1735,15 @@ namespace Rebellion.Game.Missions
         /// </summary>
         public string RecruitedOfficerInstanceID { get; set; }
 
-        /// <summary>Creates an empty recruitment mission copy.</summary>
+        /// <summary>
+        /// Creates an empty recruitment mission copy.
+        /// </summary>
         /// <returns>An empty recruitment mission.</returns>
         protected override BaseSceneNode CreateNodeCopy() => new RecruitmentMission();
 
-        /// <summary>Copies recruitment-specific state into an empty destination.</summary>
+        /// <summary>
+        /// Copies recruitment-specific state into an empty destination.
+        /// </summary>
         /// <param name="destination">The destination mission.</param>
         protected override void CopyStateTo(BaseSceneNode destination)
         {
@@ -1958,11 +1982,15 @@ namespace Rebellion.Game.Missions
         /// </summary>
         public string TargetOfficerInstanceID { get; set; }
 
-        /// <summary>Creates an empty rescue mission copy.</summary>
+        /// <summary>
+        /// Creates an empty rescue mission copy.
+        /// </summary>
         /// <returns>An empty rescue mission.</returns>
         protected override BaseSceneNode CreateNodeCopy() => new RescueMission();
 
-        /// <summary>Copies rescue-specific state into an empty destination.</summary>
+        /// <summary>
+        /// Copies rescue-specific state into an empty destination.
+        /// </summary>
         /// <param name="destination">The destination mission.</param>
         protected override void CopyStateTo(BaseSceneNode destination)
         {
@@ -2141,11 +2169,15 @@ namespace Rebellion.Game.Missions
         /// </summary>
         public ResearchDiscipline Discipline { get; set; }
 
-        /// <summary>Creates an empty research mission copy.</summary>
+        /// <summary>
+        /// Creates an empty research mission copy.
+        /// </summary>
         /// <returns>An empty research mission.</returns>
         protected override BaseSceneNode CreateNodeCopy() => new ResearchMission();
 
-        /// <summary>Copies research-specific state into an empty destination.</summary>
+        /// <summary>
+        /// Copies research-specific state into an empty destination.
+        /// </summary>
         /// <param name="destination">The destination mission.</param>
         protected override void CopyStateTo(BaseSceneNode destination)
         {
@@ -2541,11 +2573,15 @@ namespace Rebellion.Game.Missions
         /// </summary>
         public string SabotageTargetInstanceID { get; set; }
 
-        /// <summary>Creates an empty sabotage mission copy.</summary>
+        /// <summary>
+        /// Creates an empty sabotage mission copy.
+        /// </summary>
         /// <returns>An empty sabotage mission.</returns>
         protected override BaseSceneNode CreateNodeCopy() => new SabotageMission();
 
-        /// <summary>Copies sabotage-specific state into an empty destination.</summary>
+        /// <summary>
+        /// Copies sabotage-specific state into an empty destination.
+        /// </summary>
         /// <param name="destination">The destination mission.</param>
         protected override void CopyStateTo(BaseSceneNode destination)
         {
