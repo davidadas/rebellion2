@@ -51,6 +51,80 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             Assert.IsNotNull(controller.MapRoot);
             Assert.IsNotNull(controller.MapRoot.GetComponent<TacticalMapRenderer>());
             Assert.IsNotNull(controller.BattleCamera.GetComponent<TacticalViewCameraController>());
+            Assert.IsNotNull(instance.GetComponent<TacticalSelectionController>());
+            Assert.IsNotNull(instance.GetComponentInChildren<TacticalSelectionView>());
+        }
+
+        /// <summary>Checks loaded geometry participates in world selection.</summary>
+        /// <returns>The asynchronous model-loading and selection check.</returns>
+        [Test]
+        public async Task InitializeAsync_LoadedHull_CanBeSelectedAsync()
+        {
+            ActiveBattle battle = CreateBattleWithCombatant(out CombatUnit combatant);
+            await controller.InitializeAsync(battle, CreateBattleMap(), models, "FACTION");
+            TacticalSelectionController selection =
+                instance.GetComponent<TacticalSelectionController>();
+
+            selection.SelectAt(controller.BattleCamera.WorldToScreenPoint(Vector3.zero));
+
+            Assert.AreSame(combatant, selection.SelectedCombatant);
+        }
+
+        /// <summary>Checks real content connects the dock to multiple deployed ships.</summary>
+        /// <returns>The asynchronous integration check.</returns>
+        [Test]
+        public async Task InitializeAsync_ContentFleet_ConnectsRosterAndRadarAsync()
+        {
+            string mapId = TestContent.Data.DefaultSpaceBattleMapInstanceIDs.First();
+            Assert.IsTrue(TestContent.Data.TryGetBattleMap(mapId, out BattleMap map));
+            ActiveBattle battle = new ActiveBattle
+            {
+                BattleMapInstanceID = mapId,
+                Kind = BattleKind.Space,
+            };
+            string viewer = TestContent.Pack.Scenario.PlayableFactionIDs.First();
+            BattleMapDeploymentRegion[] regions = map.GetDeploymentRegions().ToArray();
+            int slot = 0;
+            foreach (string faction in TestContent.Pack.Scenario.PlayableFactionIDs)
+            {
+                foreach (
+                    CapitalShip template in TestContent
+                        .Data.CapitalShips.Where(ship =>
+                            !ship.CanDestroyPlanets
+                            && !string.IsNullOrWhiteSpace(ship.ModelPath)
+                            && ship.ManufacturingFactionInstanceIDs.Contains(faction)
+                        )
+                        .Take(3)
+                )
+                {
+                    CapitalShip ship = (CapitalShip)template.CreateCopy();
+                    ship.OwnerInstanceID = faction;
+                    battle.AddCombatants(ship);
+                }
+                battle.GetParticipants().Last().BattleMapSlotID = regions[slot++].ParticipantSlotID;
+            }
+            await controller.InitializeAsync(battle, map, models, viewer, true);
+            ContentBindings.Apply(controller.MapRoot.gameObject, TestContent.Assets);
+            TacticalSelectionView dock = instance.GetComponentInChildren<TacticalSelectionView>();
+            dock.ApplyTheme(
+                TestContent.CreateThemeLibrary().GetTheme(viewer).BattleHud,
+                TestContent.Assets
+            );
+            CombatUnit[] selected = battle.GetParticipants().First().GetCombatants().ToArray();
+            System.Collections.Generic.Dictionary<CombatUnit, Transform> presentations =
+                new System.Collections.Generic.Dictionary<CombatUnit, Transform>();
+            for (int i = 0; i < selected.Length; i++)
+                presentations.Add(selected[i], controller.BattleRoot.GetChild(0).GetChild(i));
+            dock.RenderSelection(
+                selected.Take(2).ToArray(),
+                presentations,
+                controller.BattleCamera
+            );
+            Assert.AreEqual(2, dock.GetComponentsInChildren<TacticalUnitCardView>().Length);
+
+            dock.RenderSelection(selected, presentations, controller.BattleCamera);
+
+            Assert.AreEqual(3, dock.GetComponentsInChildren<TacticalUnitCardView>().Length);
         }
 
         [Test]

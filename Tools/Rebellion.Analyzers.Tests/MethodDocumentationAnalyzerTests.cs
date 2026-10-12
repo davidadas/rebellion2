@@ -151,21 +151,23 @@ class Example
             Assert.IsEmpty(diagnostics);
         }
 
+        /// <summary>Checks test declarations can retain XML documentation.</summary>
+        /// <returns>The asynchronous analyzer verification.</returns>
         [Test]
-        public async Task Method_DocumentedNUnitTest_ReportsTestCommentAsync()
+        public async Task Method_DocumentedNUnitTest_DoesNotReportDiagnosticAsync()
         {
             const string source =
                 @"
 class Example
 {
-    /// <summary>Redundantly explains the test.</summary>
+    /// <summary>Documents the test contract.</summary>
     [NUnit.Framework.Test]
     public void I_Am_ATest() { }
 }";
 
             ImmutableArray<Diagnostic> diagnostics = await AnalyzeAsync(source);
 
-            AssertDiagnostic(diagnostics, MethodDocumentationAnalyzer.TestCommentDiagnosticId);
+            Assert.IsEmpty(diagnostics);
         }
 
         [Test]

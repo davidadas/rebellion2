@@ -24,7 +24,7 @@ public sealed class TacticalViewController : MonoBehaviour
     private Transform mapRoot;
 
     [SerializeField]
-    private Rect initialFleetViewport = new Rect(0.05f, 0.05f, 0.9f, 0.9f);
+    private Rect initialFleetViewport = new Rect(0.05f, 0.24f, 0.9f, 0.71f);
 
     private readonly List<ContentModelInstance> modelInstances = new List<ContentModelInstance>();
     private CancellationTokenSource modelLoading;
@@ -67,6 +67,8 @@ public sealed class TacticalViewController : MonoBehaviour
             throw new MissingReferenceException($"{name} is missing its map root.");
         if (mapRoot.GetComponent<TacticalMapRenderer>() == null)
             throw new MissingComponentException($"{mapRoot.name} is missing its map renderer.");
+        if (GetComponent<TacticalSelectionController>() == null)
+            throw new MissingComponentException($"{name} is missing its selection controller.");
     }
 
     /// <summary>
@@ -77,6 +79,7 @@ public sealed class TacticalViewController : MonoBehaviour
         try
         {
             AppBootstrap bootstrap = AppBootstrap.EnsureExists();
+            GetComponent<TacticalMenuController>().Initialize(bootstrap);
             GameRuntime runtime = bootstrap.GetRuntime();
             GameRoot game = runtime?.GetActiveGame();
             ActiveBattle activeBattle =
@@ -104,6 +107,14 @@ public sealed class TacticalViewController : MonoBehaviour
             );
             if (this == null)
                 return;
+            string themeFaction =
+                viewerFactionInstanceID
+                ?? activeBattle.GetParticipants().FirstOrDefault()?.FactionInstanceID;
+            FactionTheme theme = new FactionThemeLibrary(gameData.FactionThemes).GetTheme(
+                themeFaction
+            );
+            GetComponentInChildren<TacticalSelectionView>()
+                .ApplyTheme(theme.BattleHud, bootstrap.GetContentAssets());
             ContentBindings.Apply(mapRoot.gameObject, bootstrap.GetContentAssets());
         }
         catch (OperationCanceledException) { }
@@ -208,6 +219,16 @@ public sealed class TacticalViewController : MonoBehaviour
         }
         ConfigureCamera(viewerFactionInstanceID);
         battleRoot.gameObject.SetActive(true);
+        GetComponent<TacticalSelectionController>().Initialize(battleCamera, presentations);
+        GetComponentInChildren<TacticalSelectionView>()
+            .BindBattle(
+                presentations,
+                battleMap.PlayableBounds,
+                battleCamera,
+                viewerFactionInstanceID
+                    ?? activeBattle.GetParticipants().FirstOrDefault()?.FactionInstanceID,
+                GetComponent<TacticalSelectionController>().SelectedCombatants
+            );
     }
 
     /// <summary>Releases scene instances and cancels model loads when the tactical view closes.</summary>
@@ -454,6 +475,7 @@ public sealed class TacticalViewController : MonoBehaviour
     /// </summary>
     private void ClearBattleRoot()
     {
+        GetComponent<TacticalSelectionController>().Clear();
         ReleaseModels();
         modelLoading = new CancellationTokenSource();
         for (int childIndex = battleRoot.childCount - 1; childIndex >= 0; childIndex--)

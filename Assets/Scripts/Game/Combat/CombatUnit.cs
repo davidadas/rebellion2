@@ -29,6 +29,11 @@ namespace Rebellion.Game.Combat
 
         public string SourceUnitInstanceID { get; set; }
         public bool HasRetreated { get; set; }
+
+        /// <summary>
+        /// Gets or sets remaining battle shields, or null when no shield state was recorded.
+        /// </summary>
+        public int? CurrentShieldStrength { get; set; }
         public BattleVector3 Position { get; set; } = new BattleVector3();
         public BattleVector3 Forward { get; set; } = new BattleVector3 { Z = 1f };
 
@@ -66,6 +71,9 @@ namespace Rebellion.Game.Combat
             return new CombatUnit
             {
                 SourceUnitInstanceID = sourceUnit.InstanceID,
+                CurrentShieldStrength = battleCopy is CapitalShip capitalShip
+                    ? capitalShip.MaxShieldStrength
+                    : ((Starfighter)battleCopy).ShieldStrength,
                 _unit = battleCopy,
             };
         }
