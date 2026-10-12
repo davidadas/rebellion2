@@ -17,7 +17,9 @@ namespace Rebellion.Simulation
 {
     public partial class GameEventCommands
     {
-        /// <summary>Interprets one authored action in the supplied activation without catching failures.</summary>
+        /// <summary>
+        /// Interprets one authored action in the supplied activation without catching failures.
+        /// </summary>
         /// <param name="action">The authored action definition.</param>
         /// <param name="context">The activation's state, random source, and pending work.</param>
         public static void ExecuteAction(GameAction action, GameActionContext context)
@@ -120,7 +122,9 @@ namespace Rebellion.Simulation
             }
         }
 
-        /// <summary>Executes authored actions in order, logging each failure and continuing the activation.</summary>
+        /// <summary>
+        /// Executes authored actions in order, logging each failure and continuing the activation.
+        /// </summary>
         /// <param name="actions">The ordered action definitions.</param>
         /// <param name="context">The shared activation state.</param>
         public static void ExecuteActions(
@@ -1491,7 +1495,9 @@ namespace Rebellion.Simulation
             return;
         }
 
-        /// <summary>Applies the authored adjustment to the planet's raw-resource count.</summary>
+        /// <summary>
+        /// Applies the authored adjustment to the planet's raw-resource count.
+        /// </summary>
         /// <param name="action">The authored adjustment.</param>
         /// <param name="context">The shared activation state.</param>
         private static void Execute(
@@ -1506,7 +1512,9 @@ namespace Rebellion.Simulation
                 (planet, value) => planet.NumRawResourceNodes = value
             );
 
-        /// <summary>Applies the authored adjustment to the planet's energy capacity.</summary>
+        /// <summary>
+        /// Applies the authored adjustment to the planet's energy capacity.
+        /// </summary>
         /// <param name="action">The authored adjustment.</param>
         /// <param name="context">The shared activation state.</param>
         private static void Execute(ChangeEnergyCapacityAction action, GameActionContext context) =>

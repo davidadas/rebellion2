@@ -606,7 +606,9 @@ namespace Rebellion.Simulation
             _withdrawalResolver.ApplyFighterRecovery(plan);
         }
 
-        /// <summary>Moves withdrawing fleets to their reserved planets.</summary>
+        /// <summary>
+        /// Moves withdrawing fleets to their reserved planets.
+        /// </summary>
         /// <param name="plan">The reserved withdrawal plan.</param>
         private void CompleteFleetWithdrawal(SpaceCombatWithdrawalPlan plan)
         {

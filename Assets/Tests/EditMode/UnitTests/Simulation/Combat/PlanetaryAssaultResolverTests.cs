@@ -7,7 +7,9 @@ using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Simulation;
 
-/// <summary>Verifies resolve completed assault does not modify game state.</summary>
+/// <summary>
+/// Verifies resolve completed assault does not modify game state.
+/// </summary>
 namespace Rebellion.Tests.Simulation
 {
     [TestFixture]

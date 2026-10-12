@@ -61,7 +61,9 @@ namespace Rebellion.Simulation
             );
         }
 
-        /// <summary>Creates mission commands around the registered mission resolver.</summary>
+        /// <summary>
+        /// Creates mission commands around the registered mission resolver.
+        /// </summary>
         /// <param name="game">The active game state.</param>
         /// <param name="queries">The mission eligibility and probability queries.</param>
         /// <param name="resolver">The registered mission lifecycle resolver.</param>

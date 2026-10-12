@@ -20,24 +20,36 @@ namespace Rebellion.Simulation
             new Dictionary<Starfighter, CapitalShip>();
         private readonly HashSet<ISceneNode> _withdrawnUnits = new HashSet<ISceneNode>();
 
-        /// <summary>Gets the reserved destination for each withdrawing fleet.</summary>
+        /// <summary>
+        /// Gets the reserved destination for each withdrawing fleet.
+        /// </summary>
         internal IReadOnlyDictionary<Fleet, Planet> FleetDestinations => _fleetDestinations;
 
-        /// <summary>Gets the reserved independent destination for each withdrawing fighter.</summary>
+        /// <summary>
+        /// Gets the reserved independent destination for each withdrawing fighter.
+        /// </summary>
         internal IReadOnlyDictionary<Starfighter, ContainerNode> FighterDestinations =>
             _fighterDestinations;
 
-        /// <summary>Gets the withdrawing carrier reserved for each dependent fighter.</summary>
+        /// <summary>
+        /// Gets the withdrawing carrier reserved for each dependent fighter.
+        /// </summary>
         internal IReadOnlyDictionary<Starfighter, CapitalShip> FighterRecoveryAssignments =>
             _fighterRecoveryAssignments;
 
-        /// <summary>Gets every unit that has a reserved way out of combat.</summary>
+        /// <summary>
+        /// Gets every unit that has a reserved way out of combat.
+        /// </summary>
         internal IReadOnlyCollection<ISceneNode> WithdrawnUnits => _withdrawnUnits;
 
-        /// <summary>Gets whether at least one participating unit can withdraw.</summary>
+        /// <summary>
+        /// Gets whether at least one participating unit can withdraw.
+        /// </summary>
         internal bool CanWithdraw => _withdrawnUnits.Count > 0;
 
-        /// <summary>Adds a fleet and its independently mobile ships to the plan.</summary>
+        /// <summary>
+        /// Adds a fleet and its independently mobile ships to the plan.
+        /// </summary>
         /// <param name="fleet">The fleet receiving the destination.</param>
         /// <param name="destination">The planet receiving the fleet.</param>
         /// <param name="ships">The ships capable of leaving with the fleet.</param>
@@ -57,7 +69,9 @@ namespace Rebellion.Simulation
             _withdrawnUnits.UnionWith(withdrawingShips);
         }
 
-        /// <summary>Adds an independent fighter and its reserved destination.</summary>
+        /// <summary>
+        /// Adds an independent fighter and its reserved destination.
+        /// </summary>
         /// <param name="fighter">The independently withdrawing fighter.</param>
         /// <param name="destination">The container reserved for the fighter.</param>
         internal void AddFighterDestination(Starfighter fighter, ContainerNode destination)
@@ -69,7 +83,9 @@ namespace Rebellion.Simulation
             _withdrawnUnits.Add(fighter);
         }
 
-        /// <summary>Adds a dependent fighter and the withdrawing carrier reserved for it.</summary>
+        /// <summary>
+        /// Adds a dependent fighter and the withdrawing carrier reserved for it.
+        /// </summary>
         /// <param name="fighter">The fighter travelling aboard a carrier.</param>
         /// <param name="carrier">The carrier receiving the fighter.</param>
         internal void AddFighterRecovery(Starfighter fighter, CapitalShip carrier)
@@ -81,7 +97,9 @@ namespace Rebellion.Simulation
             _withdrawnUnits.Add(fighter);
         }
 
-        /// <summary>Returns whether the unit has a reserved withdrawal path.</summary>
+        /// <summary>
+        /// Returns whether the unit has a reserved withdrawal path.
+        /// </summary>
         /// <param name="unit">The participating unit to inspect.</param>
         /// <returns>True when the unit belongs to this plan.</returns>
         internal bool Contains(ISceneNode unit)
@@ -89,7 +107,9 @@ namespace Rebellion.Simulation
             return unit != null && _withdrawnUnits.Contains(unit);
         }
 
-        /// <summary>Returns the first planet receiving this combat side.</summary>
+        /// <summary>
+        /// Returns the first planet receiving this combat side.
+        /// </summary>
         /// <returns>The destination planet identifier, or null when the plan is empty.</returns>
         internal string GetRetreatPlanetInstanceID()
         {
@@ -102,19 +122,25 @@ namespace Rebellion.Simulation
         }
     }
 
-    /// <summary>Builds capacity-aware withdrawal plans without mutating game state.</summary>
+    /// <summary>
+    /// Builds capacity-aware withdrawal plans without mutating game state.
+    /// </summary>
     internal sealed class SpaceCombatWithdrawalPlanner
     {
         private readonly MovementQueries _movement;
 
-        /// <summary>Creates a withdrawal planner from the shared movement rules.</summary>
+        /// <summary>
+        /// Creates a withdrawal planner from the shared movement rules.
+        /// </summary>
         /// <param name="movement">The movement rules used to resolve safe destinations.</param>
         internal SpaceCombatWithdrawalPlanner(MovementQueries movement)
         {
             _movement = movement ?? throw new ArgumentNullException(nameof(movement));
         }
 
-        /// <summary>Builds one coordinated withdrawal plan for a combat side.</summary>
+        /// <summary>
+        /// Builds one coordinated withdrawal plan for a combat side.
+        /// </summary>
         /// <param name="fleets">The side's participating fleets.</param>
         /// <param name="planet">The combat planet.</param>
         /// <param name="ownerInstanceId">The withdrawing faction identifier.</param>
@@ -148,7 +174,9 @@ namespace Rebellion.Simulation
             return plan;
         }
 
-        /// <summary>Reserves a shared safe planet for every fleet with a mobile ship.</summary>
+        /// <summary>
+        /// Reserves a shared safe planet for every fleet with a mobile ship.
+        /// </summary>
         /// <param name="plan">The plan receiving fleet destinations.</param>
         /// <param name="fleets">The participating fleets in stable encounter order.</param>
         /// <param name="planet">The combat planet.</param>
@@ -192,7 +220,9 @@ namespace Rebellion.Simulation
             }
         }
 
-        /// <summary>Reserves independent fighter destinations and remaining carrier bays.</summary>
+        /// <summary>
+        /// Reserves independent fighter destinations and remaining carrier bays.
+        /// </summary>
         /// <param name="plan">The plan receiving fighter assignments.</param>
         /// <param name="planet">The combat planet.</param>
         /// <param name="participatingFighters">Every active fighter participating in combat.</param>
@@ -247,7 +277,9 @@ namespace Rebellion.Simulation
                 plan.AddFighterRecovery(assignment.Key, assignment.Value);
         }
 
-        /// <summary>Returns active capital ships in stable participating-fleet order.</summary>
+        /// <summary>
+        /// Returns active capital ships in stable participating-fleet order.
+        /// </summary>
         /// <param name="fleets">The participating fleets.</param>
         /// <returns>The active capital ships.</returns>
         internal static List<CapitalShip> GetParticipatingShips(IReadOnlyList<Fleet> fleets)
@@ -259,7 +291,9 @@ namespace Rebellion.Simulation
                 .ToList();
         }
 
-        /// <summary>Returns active carried and planetary fighters in stable combat order.</summary>
+        /// <summary>
+        /// Returns active carried and planetary fighters in stable combat order.
+        /// </summary>
         /// <param name="ships">The participating capital ships.</param>
         /// <param name="planet">The combat planet.</param>
         /// <param name="ownerInstanceId">The participating faction identifier.</param>
@@ -278,7 +312,9 @@ namespace Rebellion.Simulation
                 .ToList();
         }
 
-        /// <summary>Assigns surviving carrier-dependent fighters to withdrawing carriers.</summary>
+        /// <summary>
+        /// Assigns surviving carrier-dependent fighters to withdrawing carriers.
+        /// </summary>
         /// <param name="carriers">The capital ships that successfully withdraw.</param>
         /// <param name="participatingFighters">Every active fighter that entered combat.</param>
         /// <param name="carrierDependentFighters">Fighters eligible to leave aboard a carrier.</param>
@@ -337,7 +373,9 @@ namespace Rebellion.Simulation
             return assignments;
         }
 
-        /// <summary>Filters participating units to the supplied tactical candidates.</summary>
+        /// <summary>
+        /// Filters participating units to the supplied tactical candidates.
+        /// </summary>
         /// <typeparam name="TUnit">The scene-node type being filtered.</typeparam>
         /// <param name="units">The participating units.</param>
         /// <param name="eligibleUnits">The allowed units, or null to allow every participant.</param>
@@ -353,7 +391,9 @@ namespace Rebellion.Simulation
                 .ToList();
         }
 
-        /// <summary>Returns whether a destination has room after existing reservations.</summary>
+        /// <summary>
+        /// Returns whether a destination has room after existing reservations.
+        /// </summary>
         /// <param name="destination">The candidate destination.</param>
         /// <param name="fighter">The fighter requesting a reservation.</param>
         /// <param name="reservations">The reservations already made by this plan.</param>
@@ -375,7 +415,9 @@ namespace Rebellion.Simulation
             return destination?.CanAcceptChild(fighter, plannedChildren) == true;
         }
 
-        /// <summary>Adds a fighter reservation to a destination.</summary>
+        /// <summary>
+        /// Adds a fighter reservation to a destination.
+        /// </summary>
         /// <param name="destination">The reserved destination.</param>
         /// <param name="fighter">The fighter consuming destination capacity.</param>
         /// <param name="reservations">The reservations being built.</param>
@@ -394,7 +436,9 @@ namespace Rebellion.Simulation
             plannedChildren.Add(fighter);
         }
 
-        /// <summary>Calculates bays available after non-travelling participants are removed.</summary>
+        /// <summary>
+        /// Calculates bays available after non-travelling participants are removed.
+        /// </summary>
         /// <param name="carrier">The carrier receiving displaced fighters.</param>
         /// <param name="participatingFighters">Every active fighter that entered combat.</param>
         /// <param name="carrierDependentFighters">Fighters resolved to remain aboard a carrier.</param>

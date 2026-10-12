@@ -407,7 +407,9 @@ namespace Rebellion.Simulation
             return durability;
         }
 
-        /// <summary>Calculates movement completed by units currently leaving combat.</summary>
+        /// <summary>
+        /// Calculates movement completed by units currently leaving combat.
+        /// </summary>
         /// <param name="force">The force whose withdrawal motion is measured.</param>
         /// <returns>The combined withdrawal distance of units still moving toward safety.</returns>
         private static double GetWithdrawalProgress(CombatForce force)
@@ -738,7 +740,9 @@ namespace Rebellion.Simulation
                 return _targetableUnits;
             }
 
-            /// <summary>Starts withdrawal for every surviving unit in the force.</summary>
+            /// <summary>
+            /// Starts withdrawal for every surviving unit in the force.
+            /// </summary>
             internal void BeginWithdrawal()
             {
                 if (!CanWithdraw || WithdrawalOrdered)
@@ -749,7 +753,9 @@ namespace Rebellion.Simulation
                     unit.StartWithdrawal();
             }
 
-            /// <summary>Completes each mobile withdrawal that has reached safety.</summary>
+            /// <summary>
+            /// Completes each mobile withdrawal that has reached safety.
+            /// </summary>
             /// <param name="withdrawalDistance">The distance required to leave combat.</param>
             internal void CompleteReadyWithdrawals(double withdrawalDistance)
             {
@@ -773,7 +779,9 @@ namespace Rebellion.Simulation
                 CompleteDependentWithdrawal();
             }
 
-            /// <summary>Immediately resolves withdrawal for every surviving unit.</summary>
+            /// <summary>
+            /// Immediately resolves withdrawal for every surviving unit.
+            /// </summary>
             internal void CompleteWithdrawal()
             {
                 foreach (
@@ -788,7 +796,9 @@ namespace Rebellion.Simulation
                 CompleteDependentWithdrawal();
             }
 
-            /// <summary>Resolves stranded units after every mobile survivor has escaped.</summary>
+            /// <summary>
+            /// Resolves stranded units after every mobile survivor has escaped.
+            /// </summary>
             private void CompleteDependentWithdrawal()
             {
                 HashSet<Starfighter> carrierDependentFighters = Fighters
@@ -841,7 +851,9 @@ namespace Rebellion.Simulation
                 return false;
             }
 
-            /// <summary>Determines whether a tactical collection contains an unresolved survivor.</summary>
+            /// <summary>
+            /// Determines whether a tactical collection contains an unresolved survivor.
+            /// </summary>
             /// <param name="units">The units to inspect.</param>
             /// <returns>True when at least one unit is alive and has not withdrawn.</returns>
             private static bool HasUnresolvedUnit(IReadOnlyList<TacticalUnit> units)
@@ -854,7 +866,9 @@ namespace Rebellion.Simulation
                 return false;
             }
 
-            /// <summary>Determines whether a tactical collection is still moving out of combat.</summary>
+            /// <summary>
+            /// Determines whether a tactical collection is still moving out of combat.
+            /// </summary>
             /// <param name="units">The units to inspect.</param>
             /// <returns>True when at least one surviving unit is withdrawing.</returns>
             private static bool HasWithdrawingUnit(IReadOnlyList<TacticalUnit> units)
@@ -867,7 +881,9 @@ namespace Rebellion.Simulation
                 return false;
             }
 
-            /// <summary>Determines whether an independently mobile unit is still withdrawing.</summary>
+            /// <summary>
+            /// Determines whether an independently mobile unit is still withdrawing.
+            /// </summary>
             /// <returns>True when an independently mobile survivor has not reached safety.</returns>
             private bool HasWithdrawingIndependentUnit()
             {

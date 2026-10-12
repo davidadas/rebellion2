@@ -130,7 +130,9 @@ namespace Rebellion.Simulation
             return total;
         }
 
-        /// <summary>Returns projected bombardment strength for a fleet.</summary>
+        /// <summary>
+        /// Returns projected bombardment strength for a fleet.
+        /// </summary>
         /// <param name="fleet">The fleet to inspect.</param>
         /// <param name="config">Bombardment configuration.</param>
         /// <returns>The projected bombardment strength.</returns>
@@ -149,7 +151,9 @@ namespace Rebellion.Simulation
                 * GetBombardmentMultiplier(fleet, config);
         }
 
-        /// <summary>Returns projected bombardment strength for one capital ship.</summary>
+        /// <summary>
+        /// Returns projected bombardment strength for one capital ship.
+        /// </summary>
         /// <param name="fleet">The fleet containing the ship.</param>
         /// <param name="capitalShip">The capital ship to inspect.</param>
         /// <param name="config">Bombardment configuration.</param>

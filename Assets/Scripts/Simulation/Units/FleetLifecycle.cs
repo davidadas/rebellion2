@@ -4,10 +4,14 @@ using Rebellion.Game.Units;
 
 namespace Rebellion.Simulation
 {
-    /// <summary>Maintains structural fleet invariants after contained ships move or disappear.</summary>
+    /// <summary>
+    /// Maintains structural fleet invariants after contained ships move or disappear.
+    /// </summary>
     internal static class FleetLifecycle
     {
-        /// <summary>Removes a registered fleet when it is attached and contains no capital ships.</summary>
+        /// <summary>
+        /// Removes a registered fleet when it is attached and contains no capital ships.
+        /// </summary>
         /// <param name="game">The active game graph.</param>
         /// <param name="fleet">The fleet or snapshot to inspect.</param>
         /// <returns>True when an empty fleet was detached.</returns>

@@ -34,7 +34,9 @@ namespace Rebellion.SceneGraph
         public string InjuredImagePath { get; set; }
         public string Description { get; set; }
 
-        /// <summary>Sets the deterministic instance-identifier seed.</summary>
+        /// <summary>
+        /// Sets the deterministic instance-identifier seed.
+        /// </summary>
         /// <param name="seed">The seed, or null to restore random identifiers.</param>
         public static void SetInstanceIdSeed(int? seed)
         {
@@ -42,7 +44,9 @@ namespace Rebellion.SceneGraph
                 _deterministicInstanceIdProvider = seed.HasValue ? new Random(seed.Value) : null;
         }
 
-        /// <summary>Creates a random or deterministically seeded instance identifier.</summary>
+        /// <summary>
+        /// Creates a random or deterministically seeded instance identifier.
+        /// </summary>
         /// <returns>The new identifier.</returns>
         private static string CreateInstanceId()
         {
@@ -57,7 +61,9 @@ namespace Rebellion.SceneGraph
             }
         }
 
-        /// <summary>Returns the current identifier without creating one.</summary>
+        /// <summary>
+        /// Returns the current identifier without creating one.
+        /// </summary>
         /// <returns>The current identifier, or null.</returns>
         internal string PeekInstanceID()
         {

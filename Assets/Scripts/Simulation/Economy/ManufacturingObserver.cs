@@ -9,14 +9,18 @@ using Rebellion.SceneGraph;
 
 namespace Rebellion.Simulation
 {
-    /// <summary>Routes completed game changes to the corresponding manufacturing operations.</summary>
+    /// <summary>
+    /// Routes completed game changes to the corresponding manufacturing operations.
+    /// </summary>
     public sealed class ManufacturingObserver : IResultObserver, IDisposable
     {
         private readonly GameRoot _game;
         private readonly ManufacturingCommands _commands;
         private IDisposable[] _subscriptions;
 
-        /// <summary>Creates the manufacturing result listener.</summary>
+        /// <summary>
+        /// Creates the manufacturing result listener.
+        /// </summary>
         /// <param name="game">The active game graph containing manufacturing queues.</param>
         /// <param name="commands">The queue operations for this game.</param>
         public ManufacturingObserver(GameRoot game, ManufacturingCommands commands)
@@ -25,7 +29,9 @@ namespace Rebellion.Simulation
             _commands = commands ?? throw new ArgumentNullException(nameof(commands));
         }
 
-        /// <summary>Registers manufacturing-loss callbacks with the result bus.</summary>
+        /// <summary>
+        /// Registers manufacturing-loss callbacks with the result bus.
+        /// </summary>
         /// <param name="results">The bus that delivers manufacturing-loss results.</param>
         public void Connect(GameResultBus results)
         {
@@ -44,14 +50,18 @@ namespace Rebellion.Simulation
             };
         }
 
-        /// <summary>Stops receiving manufacturing-loss results.</summary>
+        /// <summary>
+        /// Stops receiving manufacturing-loss results.
+        /// </summary>
         public void Dispose()
         {
             foreach (IDisposable subscription in _subscriptions ?? Array.Empty<IDisposable>())
                 subscription.Dispose();
         }
 
-        /// <summary>Rebuilds all manufacturing queues from persisted scene-graph items.</summary>
+        /// <summary>
+        /// Rebuilds all manufacturing queues from persisted scene-graph items.
+        /// </summary>
         internal void RebuildQueues()
         {
             List<Planet> planets = _game.GetSceneNodesByType<Planet>().ToList();
@@ -109,7 +119,9 @@ namespace Rebellion.Simulation
             }
         }
 
-        /// <summary>Restores persisted queue order and normalizes its sequence values.</summary>
+        /// <summary>
+        /// Restores persisted queue order and normalizes its sequence values.
+        /// </summary>
         /// <param name="candidates">The queued items discovered in the scene graph.</param>
         /// <returns>The items in manufacturing order.</returns>
         private static List<IManufacturable> RestoreQueueOrder(
@@ -272,7 +284,9 @@ namespace Rebellion.Simulation
             }
         }
 
-        /// <summary>Clears every populated manufacturing lane on a planet.</summary>
+        /// <summary>
+        /// Clears every populated manufacturing lane on a planet.
+        /// </summary>
         /// <param name="planet">The planet whose manufacturing lanes are cleared.</param>
         private void ClearPlanetQueues(Planet planet)
         {

@@ -204,7 +204,9 @@ namespace Rebellion.AI.Proposals
                 || MissionTypeID == MissionTypeIDs.Rescue;
         }
 
-        /// <summary>Creates the mission context represented by the proposal.</summary>
+        /// <summary>
+        /// Creates the mission context represented by the proposal.
+        /// </summary>
         /// <returns>The mission context.</returns>
         internal MissionContext CreateContext()
         {
