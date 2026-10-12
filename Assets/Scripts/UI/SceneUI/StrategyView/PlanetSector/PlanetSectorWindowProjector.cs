@@ -628,14 +628,7 @@ internal sealed class PlanetSectorWindowProjector
     /// <returns>True when the unit should make the planet's Defense window available.</returns>
     private static bool HasDefensePresence(IMovable unit)
     {
-        if (unit?.IsActive() != true)
-            return false;
-
-        if (unit is IManufacturable { ManufacturingStatus: ManufacturingStatus.Building })
-            return true;
-
-        return unit is not IManufacturable manufacturable
-            || manufacturable.GetManufacturingStatus() == ManufacturingStatus.Complete;
+        return unit?.IsActive() == true;
     }
 
     /// <summary>

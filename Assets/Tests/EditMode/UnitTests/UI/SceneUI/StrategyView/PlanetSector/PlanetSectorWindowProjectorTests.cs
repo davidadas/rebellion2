@@ -573,6 +573,33 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsNotNull(data.Planets[1].DefensePressedTexture);
         }
 
+        [TestCase(DefenseWindowItemKind.Officer)]
+        [TestCase(DefenseWindowItemKind.SpecialForces)]
+        [TestCase(DefenseWindowItemKind.Regiment)]
+        [TestCase(DefenseWindowItemKind.Starfighter)]
+        [TestCase(DefenseWindowItemKind.Shield)]
+        [TestCase(DefenseWindowItemKind.Battery)]
+        public void CreateRenderData_EnrouteDefenseWindowItem_ReturnsDefenseOverlay(
+            DefenseWindowItemKind itemKind
+        )
+        {
+            Planet planet = CreatePlanet("planet", _playerFactionId, 10, 20);
+            IMovable item = CreateEnrouteDefenseWindowItem(itemKind);
+            planet.AddTestChild((Rebellion.SceneGraph.ISceneNode)item);
+
+            PlanetSectorWindowRenderData data = _projector.CreateRenderData(
+                CreateSector(new GalaxyMapPlanet(_planetSector, planet, string.Empty)),
+                null,
+                PlanetIcon.None,
+                null,
+                PlanetIcon.None
+            );
+
+            Assert.IsNotNull(item.Movement);
+            Assert.IsNotNull(data.Planets[0].DefenseTexture);
+            Assert.IsNotNull(data.Planets[0].DefensePressedTexture);
+        }
+
         [Test]
         public void CreateRenderData_UprisingPlanet_ReturnsUprisingAndMissionOverlays()
         {
@@ -801,6 +828,58 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         }
 
         /// <summary>
+        /// Creates one en-route item represented by the Defense window.
+        /// </summary>
+        /// <param name="itemKind">The Defense-window item category to create.</param>
+        /// <returns>The configured en-route item.</returns>
+        private static IMovable CreateEnrouteDefenseWindowItem(DefenseWindowItemKind itemKind)
+        {
+            MovementState movement = new MovementState();
+            return itemKind switch
+            {
+                DefenseWindowItemKind.Officer => new Officer
+                {
+                    OwnerInstanceID = _playerFactionId,
+                    Movement = movement,
+                },
+                DefenseWindowItemKind.SpecialForces => new SpecialForces
+                {
+                    OwnerInstanceID = _playerFactionId,
+                    ManufacturingStatus = ManufacturingStatus.Delivering,
+                    Movement = movement,
+                },
+                DefenseWindowItemKind.Regiment => new Regiment
+                {
+                    OwnerInstanceID = _playerFactionId,
+                    ManufacturingStatus = ManufacturingStatus.Delivering,
+                    Movement = movement,
+                },
+                DefenseWindowItemKind.Starfighter => new Starfighter
+                {
+                    OwnerInstanceID = _playerFactionId,
+                    ManufacturingStatus = ManufacturingStatus.Delivering,
+                    Movement = movement,
+                },
+                DefenseWindowItemKind.Shield => new Building
+                {
+                    OwnerInstanceID = _playerFactionId,
+                    BuildingType = BuildingType.Defense,
+                    ShieldStrength = 1,
+                    ManufacturingStatus = ManufacturingStatus.Delivering,
+                    Movement = movement,
+                },
+                DefenseWindowItemKind.Battery => new Building
+                {
+                    OwnerInstanceID = _playerFactionId,
+                    BuildingType = BuildingType.Weapon,
+                    ManufacturingStatus = ManufacturingStatus.Delivering,
+                    Movement = movement,
+                },
+                _ => throw new ArgumentOutOfRangeException(nameof(itemKind), itemKind, null),
+            };
+        }
+
+        /// <summary>
         /// Creates planet.
         /// </summary>
         /// <param name="instanceId">The instance id.</param>
@@ -862,6 +941,16 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             {
                 return false;
             }
+        }
+
+        public enum DefenseWindowItemKind
+        {
+            Officer,
+            SpecialForces,
+            Regiment,
+            Starfighter,
+            Shield,
+            Battery,
         }
     }
 }
