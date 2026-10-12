@@ -6,6 +6,7 @@ using Rebellion.AI.Proposals;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Simulation;
@@ -35,6 +36,7 @@ namespace Rebellion.AI
         public GalaxyMap FactionView { get; }
         public AIAssessment Assessment { get; }
         public AIStrategicPlan StrategicPlan { get; }
+        public IReadOnlyList<SpecialForces> UnlockedSpecialForcesTemplates { get; }
         public int AvailableProjectedMaintenanceHeadroom
         {
             get
@@ -64,6 +66,7 @@ namespace Rebellion.AI
         private readonly List<GameResult> _results = new List<GameResult>();
         private readonly Dictionary<SpecialForces, SpecialForcesIntent> _specialForcesIntents =
             new Dictionary<SpecialForces, SpecialForcesIntent>();
+        private readonly HashSet<SpecialForces> _headquartersEspionageAgents;
         private readonly HashSet<string> _unlockedSpecialForcesMissionTypes;
         private long _committedManufacturingMaintenance;
 
@@ -113,14 +116,27 @@ namespace Rebellion.AI
             FactionView = factionView;
             Assessment = assessment;
             StrategicPlan = strategicPlan;
-            _unlockedSpecialForcesMissionTypes =
+            UnlockedSpecialForcesTemplates =
                 faction
                     ?.GetUnlockedTechnologies(ManufacturingType.Troop)
                     .Select(technology => technology.GetReference())
                     .OfType<SpecialForces>()
-                    .SelectMany(unit => unit.AllowedMissionTypeIDs)
-                    .ToHashSet(StringComparer.Ordinal)
-                ?? new HashSet<string>(StringComparer.Ordinal);
+                    .ToList()
+                ?? new List<SpecialForces>();
+            _unlockedSpecialForcesMissionTypes = UnlockedSpecialForcesTemplates
+                .SelectMany(unit => unit.AllowedMissionTypeIDs)
+                .ToHashSet(StringComparer.Ordinal);
+            _headquartersEspionageAgents =
+                faction?.Settings?.Headquarters?.IsMobile == true
+                && assessment?.FactionHeadquarters != null
+                    ? assessment
+                        .AvailableMissionParticipants.OfType<SpecialForces>()
+                        .Where(unit =>
+                            unit.CanPerformMission(MissionTypeIDs.Espionage)
+                            && unit.GetParentOfType<Planet>() == assessment.FactionHeadquarters
+                        )
+                        .ToHashSet()
+                    : new HashSet<SpecialForces>();
         }
 
         /// <summary>
@@ -256,6 +272,17 @@ namespace Rebellion.AI
         {
             return !string.IsNullOrEmpty(missionTypeId)
                 && _unlockedSpecialForcesMissionTypes.Contains(missionTypeId);
+        }
+
+        /// <summary>
+        /// Returns whether an available special-forces unit is an espionage agent stationed at
+        /// this mobile faction's headquarters for the current turn.
+        /// </summary>
+        /// <param name="unit">The special-forces unit to inspect.</param>
+        /// <returns>True when the unit is an available headquarters espionage agent.</returns>
+        public bool IsHeadquartersEspionageAgent(SpecialForces unit)
+        {
+            return unit != null && _headquartersEspionageAgents.Contains(unit);
         }
 
         /// <summary>

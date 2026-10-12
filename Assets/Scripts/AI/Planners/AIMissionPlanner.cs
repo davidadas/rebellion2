@@ -113,8 +113,15 @@ namespace Rebellion.AI.Planners
                 )
             )
             {
-                if (OfficersCoverEveryMissionCapability(availableOfficers, roleUnits.First()))
-                    SetSpecialForcesIntent(context, roleUnits.Skip(1), SpecialForcesIntent.Decoy);
+                List<SpecialForces> orderedRoleUnits = roleUnits
+                    .OrderByDescending(context.IsHeadquartersEspionageAgent)
+                    .ToList();
+                if (OfficersCoverEveryMissionCapability(availableOfficers, orderedRoleUnits[0]))
+                    SetSpecialForcesIntent(
+                        context,
+                        orderedRoleUnits.Skip(1),
+                        SpecialForcesIntent.Decoy
+                    );
             }
         }
 

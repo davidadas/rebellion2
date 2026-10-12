@@ -137,20 +137,34 @@ namespace Rebellion.AI.Scorers
                 AIProductionDemandKind.FleetCapitalShip
                 or AIProductionDemandKind.FleetStarfighter
                 or AIProductionDemandKind.FleetRegiment => GetFleetPressure(context, demand),
-                AIProductionDemandKind.SpecialForces => Math.Min(
-                    100,
-                    demand.BaseDemandPercent
-                        + AIUtility.EvaluateDiscretePressure(
-                            demand.DeficitCount / (double)Math.Max(1, demand.TargetCount),
-                            context.Game.Config.AI.Infrastructure.DemandUtility.Deficit
-                        )
-                ),
+                AIProductionDemandKind.SpecialForces => GetSpecialForcesPressure(context, demand),
                 AIProductionDemandKind.BuildingUpgrade => GetUpgradePressure(context, demand),
                 AIProductionDemandKind.ConstructionFacility
                 or AIProductionDemandKind.Shipyard
                 or AIProductionDemandKind.TrainingFacility => GetFacilityPressure(context, demand),
                 _ => 0,
             };
+        }
+
+        /// <summary>
+        /// Calculates special-forces production urgency while preserving explicitly configured
+        /// priorities above the normal demand ceiling.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="demand">The special-forces production demand.</param>
+        /// <returns>The configured and deficit-adjusted production urgency.</returns>
+        private static double GetSpecialForcesPressure(
+            AITurnContext context,
+            AIProductionDemand demand
+        )
+        {
+            double pressure =
+                demand.BaseDemandPercent
+                + AIUtility.EvaluateDiscretePressure(
+                    demand.DeficitCount / (double)Math.Max(1, demand.TargetCount),
+                    context.Game.Config.AI.Infrastructure.DemandUtility.Deficit
+                );
+            return Math.Min(Math.Max(100, demand.BaseDemandPercent), pressure);
         }
 
         /// <summary>

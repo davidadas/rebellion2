@@ -197,6 +197,8 @@ namespace Rebellion.AI
 
         public IReadOnlyList<Planet> OwnedPlanets { get; }
 
+        public Planet FactionHeadquarters { get; }
+
         public IReadOnlyList<Planet> EnemyPlanets { get; }
 
         public IReadOnlyList<Planet> NeutralPlanets { get; }
@@ -220,6 +222,8 @@ namespace Rebellion.AI
 
         // Missions.
         public IReadOnlyList<IMissionParticipant> AvailableMissionParticipants { get; }
+
+        public IReadOnlyList<SpecialForces> OwnedSpecialForces { get; }
 
         internal IReadOnlyList<Mission> ActiveMissions { get; }
 
@@ -326,6 +330,8 @@ namespace Rebellion.AI
             }
             BuildMissionDetectorIndex();
             OwnedPlanets = BuildOwnedPlanets();
+            FactionHeadquarters = OwnedPlanets.FirstOrDefault(IsFactionHeadquarters);
+            OwnedSpecialForces = BuildOwnedSpecialForces();
             UnfinishedPlanetStarfighterCount = OwnedPlanets
                 .SelectMany(GetPlanetStarfighters)
                 .Count(starfighter =>
@@ -2604,6 +2610,15 @@ namespace Rebellion.AI
                 .OrderBy(GetPlanetSystemPositionX)
                 .ThenBy(planet => planet.InstanceID)
                 .ToList();
+        }
+
+        /// <summary>
+        /// Builds the faction's owned special-forces list from its ownership index.
+        /// </summary>
+        /// <returns>Owned special-forces units.</returns>
+        private List<SpecialForces> BuildOwnedSpecialForces()
+        {
+            return _faction?.GetOwnedUnitsByType<SpecialForces>() ?? new List<SpecialForces>();
         }
 
         /// <summary>
