@@ -7,7 +7,9 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-/// <summary>Owns the fixed bottom dock, pooled roster cards, and projected selection brackets.</summary>
+/// <summary>
+/// Owns the fixed bottom dock, pooled roster cards, and projected selection brackets.
+/// </summary>
 public sealed class TacticalSelectionView : MonoBehaviour
 {
     [SerializeField]
@@ -47,7 +49,9 @@ public sealed class TacticalSelectionView : MonoBehaviour
 
     public event Action<IReadOnlyList<CombatUnit>> CardClicked;
 
-    /// <summary>Displays drag-selection feedback without intercepting world input.</summary>
+    /// <summary>
+    /// Displays drag-selection feedback without intercepting world input.
+    /// </summary>
     /// <param name="start">The first pointer position.</param>
     /// <param name="end">The current pointer position.</param>
     /// <param name="visible">Whether a drag-selection gesture is active.</param>
@@ -63,7 +67,9 @@ public sealed class TacticalSelectionView : MonoBehaviour
         marquee.sizeDelta = new Vector2(Mathf.Abs(a.x - b.x), Mathf.Abs(a.y - b.y));
     }
 
-    /// <summary>Applies a faction's authored dock palette.</summary>
+    /// <summary>
+    /// Applies a faction's authored dock palette.
+    /// </summary>
     /// <param name="theme">The faction's battle presentation theme.</param>
     /// <param name="assets">The content source resolving portraits.</param>
     public void ApplyTheme(BattleHudTheme theme, IContentAssetSource assets)
@@ -84,7 +90,9 @@ public sealed class TacticalSelectionView : MonoBehaviour
                 card.BindGroup(card.Combatants, GetPortrait(card.Combatant));
     }
 
-    /// <summary>Connects the radar to the same loaded battle and selection as the roster.</summary>
+    /// <summary>
+    /// Connects the radar to the same loaded battle and selection as the roster.
+    /// </summary>
     /// <param name="presentations">The loaded model roots.</param>
     /// <param name="bounds">The map's playable volume.</param>
     /// <param name="camera">The battle camera.</param>
@@ -98,7 +106,9 @@ public sealed class TacticalSelectionView : MonoBehaviour
         IReadOnlyList<CombatUnit> selected
     ) => radar.Bind(presentations, bounds, camera, viewer, selected);
 
-    /// <summary>Renders one inspected unit through the same roster contract as multiselection.</summary>
+    /// <summary>
+    /// Renders one inspected unit through the same roster contract as multiselection.
+    /// </summary>
     /// <param name="combatant">The selected unit, or null.</param>
     /// <param name="presentation">The model root, or null.</param>
     /// <param name="camera">The battle camera.</param>
@@ -114,7 +124,9 @@ public sealed class TacticalSelectionView : MonoBehaviour
         RenderSelection(_singleSelection, _singlePresentation, camera);
     }
 
-    /// <summary>Refreshes selected cards and projected brackets without resizing the roster well.</summary>
+    /// <summary>
+    /// Refreshes selected cards and projected brackets without resizing the roster well.
+    /// </summary>
     /// <param name="selected">The current ordered selection.</param>
     /// <param name="presentations">The loaded presentation index.</param>
     /// <param name="camera">The battle camera.</param>
@@ -186,7 +198,9 @@ public sealed class TacticalSelectionView : MonoBehaviour
             selectionFrame.gameObject.SetActive(false);
     }
 
-    /// <summary>Groups only a changed selection, keeping fighter squadrons and factions distinct.</summary>
+    /// <summary>
+    /// Groups only a changed selection, keeping fighter squadrons and factions distinct.
+    /// </summary>
     /// <param name="selected">The selection owner's ordered battle units.</param>
     private void RebuildGroups(IReadOnlyList<CombatUnit> selected)
     {
@@ -221,7 +235,9 @@ public sealed class TacticalSelectionView : MonoBehaviour
         }
     }
 
-    /// <summary>Resolves a portrait only when the associated card binding changes.</summary>
+    /// <summary>
+    /// Resolves a portrait only when the associated card binding changes.
+    /// </summary>
     /// <param name="combatant">The represented unit.</param>
     /// <returns>The configured display portrait, or null when none exists.</returns>
     private Texture2D GetPortrait(CombatUnit combatant)
@@ -232,12 +248,16 @@ public sealed class TacticalSelectionView : MonoBehaviour
             : null;
     }
 
-    /// <summary>Forwards an authored roster button to the selection controller.</summary>
+    /// <summary>
+    /// Forwards an authored roster button to the selection controller.
+    /// </summary>
     /// <param name="combatants">The clicked card's members.</param>
     private void HandleCardClicked(IReadOnlyList<CombatUnit> combatants) =>
         CardClicked?.Invoke(combatants);
 
-    /// <summary>Fits white corner brackets around a visible projected hull.</summary>
+    /// <summary>
+    /// Fits white corner brackets around a visible projected hull.
+    /// </summary>
     /// <param name="frame">The pooled bracket rectangle.</param>
     /// <param name="presentation">The centered model root.</param>
     /// <param name="size">The measured local model dimensions.</param>

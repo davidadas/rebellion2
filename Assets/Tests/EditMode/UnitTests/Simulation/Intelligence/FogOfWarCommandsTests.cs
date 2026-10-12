@@ -847,7 +847,9 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        /// <summary>Observes a planet at a selected simulation tick through the public command.</summary>
+        /// <summary>
+        /// Observes a planet at a selected simulation tick through the public command.
+        /// </summary>
         /// <param name="faction">The observing faction.</param>
         /// <param name="planet">The observed planet.</param>
         /// <param name="sector">The expected containing sector.</param>

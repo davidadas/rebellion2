@@ -4532,7 +4532,9 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(GameEventCommands.Matches(trigger, result));
         }
 
-        /// <summary>Builds an eligible duel followed by an authored message for deferred failure tests.</summary>
+        /// <summary>
+        /// Builds an eligible duel followed by an authored message for deferred failure tests.
+        /// </summary>
         /// <returns>The game, event, and ordered duel participants.</returns>
         private (
             GameRoot Game,
@@ -4575,17 +4577,23 @@ namespace Rebellion.Tests.Simulation
             return (game, gameEvent, encountered, opposing);
         }
 
-        /// <summary>Fails after capture to exercise partial-mutation failure handling.</summary>
+        /// <summary>
+        /// Fails after capture to exercise partial-mutation failure handling.
+        /// </summary>
         private sealed class CaptureThenThrowRandom : IRandomNumberProvider
         {
             private int _rolls;
 
-            /// <summary>Rejects unexpected floating-point draws in the capture path.</summary>
+            /// <summary>
+            /// Rejects unexpected floating-point draws in the capture path.
+            /// </summary>
             /// <returns>No value; this path always throws.</returns>
             public double NextDouble() =>
                 throw new InvalidOperationException("Unexpected random draw.");
 
-            /// <summary>Fails capture avoidance, avoids the initial injury, then throws on fallback injury.</summary>
+            /// <summary>
+            /// Fails capture avoidance, avoids the initial injury, then throws on fallback injury.
+            /// </summary>
             /// <param name="min">The requested inclusive lower bound.</param>
             /// <param name="max">The requested exclusive upper bound.</param>
             /// <returns>The maximum allowed value on the first two calls.</returns>
@@ -4593,7 +4601,9 @@ namespace Rebellion.Tests.Simulation
                 _rolls++ < 2 ? max - 1 : throw new InvalidOperationException("Injury roll failed.");
         }
 
-        /// <summary>Executes one authored action through the public event-processing contract.</summary>
+        /// <summary>
+        /// Executes one authored action through the public event-processing contract.
+        /// </summary>
         /// <param name="game">The state in which the event executes.</param>
         /// <param name="action">The authored operation to perform.</param>
         /// <param name="random">The random stream shared by event execution and duel resolution.</param>
@@ -4639,7 +4649,9 @@ namespace Rebellion.Tests.Simulation
                 : executor.ProcessScheduledEvents(game.GetEventPool());
         }
 
-        /// <summary>Builds movement dependencies for authored movement and ownership tests.</summary>
+        /// <summary>
+        /// Builds movement dependencies for authored movement and ownership tests.
+        /// </summary>
         /// <param name="game">The state used by each movement dependency.</param>
         /// <returns>The movement commands for that state.</returns>
         private static MovementCommands CreateMovementCommands(GameRoot game)

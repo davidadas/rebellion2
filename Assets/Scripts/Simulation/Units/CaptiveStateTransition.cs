@@ -6,10 +6,14 @@ using Rebellion.SceneGraph;
 
 namespace Rebellion.Simulation
 {
-    /// <summary>Applies shared captive-state transitions independently of their trigger.</summary>
+    /// <summary>
+    /// Applies shared captive-state transitions independently of their trigger.
+    /// </summary>
     internal static class CaptiveStateTransition
     {
-        /// <summary>Captures an officer and describes the resulting custody change.</summary>
+        /// <summary>
+        /// Captures an officer and describes the resulting custody change.
+        /// </summary>
         /// <param name="officer">The officer being captured.</param>
         /// <param name="captor">The faction taking custody.</param>
         /// <param name="capturingUnit">The unit responsible for the capture, when present.</param>
@@ -45,7 +49,9 @@ namespace Rebellion.Simulation
             };
         }
 
-        /// <summary>Clears an officer's custody state and describes the release.</summary>
+        /// <summary>
+        /// Clears an officer's custody state and describes the release.
+        /// </summary>
         /// <param name="officer">The officer being released.</param>
         /// <param name="context">The planet where the release occurred.</param>
         /// <param name="tick">The tick when the release occurred.</param>

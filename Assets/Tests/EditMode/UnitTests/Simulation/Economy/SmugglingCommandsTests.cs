@@ -192,7 +192,9 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(results.OfType<SmugglingChangedResult>());
         }
 
-        /// <summary>Attaches one completed facility to the controlled planet.</summary>
+        /// <summary>
+        /// Attaches one completed facility to the controlled planet.
+        /// </summary>
         /// <returns>The attached facility.</returns>
         private Building AddFacility()
         {

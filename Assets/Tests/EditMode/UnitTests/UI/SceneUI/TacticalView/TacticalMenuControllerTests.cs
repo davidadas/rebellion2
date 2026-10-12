@@ -14,7 +14,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         private AppBootstrap _bootstrap;
         private TacticalMenuController _menu;
 
-        /// <summary>Creates the existing menu services in an isolated tactical presentation.</summary>
+        /// <summary>
+        /// Creates the existing menu services in an isolated tactical presentation.
+        /// </summary>
         /// <returns>The play-mode transition.</returns>
         [UnitySetUp]
         public IEnumerator SetUp()
@@ -31,7 +33,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             _menu = _instance.GetComponent<TacticalMenuController>();
         }
 
-        /// <summary>Closes the menu before releasing its application-owned services.</summary>
+        /// <summary>
+        /// Closes the menu before releasing its application-owned services.
+        /// </summary>
         /// <returns>The edit-mode transition.</returns>
         [UnityTearDown]
         public IEnumerator TearDown()
@@ -42,7 +46,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             yield return new ExitPlayMode();
         }
 
-        /// <summary>Checks cancellation is unhandled before the scene services are connected.</summary>
+        /// <summary>
+        /// Checks cancellation is unhandled before the scene services are connected.
+        /// </summary>
         /// <returns>The completed interaction.</returns>
         [UnityTest]
         public IEnumerator TryCancel_UninitializedMenu_DoesNotHandleCancellation()
@@ -51,7 +57,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             yield return null;
         }
 
-        /// <summary>Checks Escape opens the shared menu and closing restores the prior input state.</summary>
+        /// <summary>
+        /// Checks Escape opens the shared menu and closing restores the prior input state.
+        /// </summary>
         /// <returns>The completed open-and-close interaction.</returns>
         [UnityTest]
         public IEnumerator TryCancel_InitializedMenu_OpensAndRestoresInput()
@@ -76,7 +84,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             yield return null;
         }
 
-        /// <summary>Checks closing a menu does not enable previously disabled camera controls.</summary>
+        /// <summary>
+        /// Checks closing a menu does not enable previously disabled camera controls.
+        /// </summary>
         /// <returns>The completed open-and-close interaction.</returns>
         [UnityTest]
         public IEnumerator TryCancel_PreviouslyDisabledCamera_KeepsCameraDisabled()
@@ -93,7 +103,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             yield return null;
         }
 
-        /// <summary>Checks disabling the scene menu removes its cancellation handler and modal surface.</summary>
+        /// <summary>
+        /// Checks disabling the scene menu removes its cancellation handler and modal surface.
+        /// </summary>
         /// <returns>The completed disable interaction.</returns>
         [UnityTest]
         public IEnumerator TryCancel_DisabledController_RemovesModalAndCancelHandler()

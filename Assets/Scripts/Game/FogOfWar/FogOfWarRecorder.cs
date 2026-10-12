@@ -473,7 +473,9 @@ namespace Rebellion.Game.FogOfWar
             ReconcileEntityLocations(faction, planet.InstanceID, snapshot);
         }
 
-        /// <summary>Returns the existing planet snapshot or creates its initial strategic state.</summary>
+        /// <summary>
+        /// Returns the existing planet snapshot or creates its initial strategic state.
+        /// </summary>
         /// <param name="sectorSnapshot">The sector snapshot.</param>
         /// <param name="planet">The planet.</param>
         /// <param name="currentTick">The current tick.</param>
@@ -498,7 +500,9 @@ namespace Rebellion.Game.FogOfWar
             return snapshot;
         }
 
-        /// <summary>Refreshes only the intelligence categories revealed by this observation.</summary>
+        /// <summary>
+        /// Refreshes only the intelligence categories revealed by this observation.
+        /// </summary>
         /// <param name="faction">The faction.</param>
         /// <param name="planet">The planet.</param>
         /// <param name="snapshot">The snapshot.</param>

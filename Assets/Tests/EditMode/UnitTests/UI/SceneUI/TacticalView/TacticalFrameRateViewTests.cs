@@ -15,7 +15,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         private TacticalFrameRateView _counter;
         private float _previousTimeScale;
 
-        /// <summary>Creates the generated counter using its normal Unity lifecycle.</summary>
+        /// <summary>
+        /// Creates the generated counter using its normal Unity lifecycle.
+        /// </summary>
         /// <returns>The play-mode transition.</returns>
         [UnitySetUp]
         public IEnumerator SetUp()
@@ -32,7 +34,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             _counter = _instance.GetComponentInChildren<TacticalFrameRateView>();
         }
 
-        /// <summary>Restores presentation time and releases the isolated scene.</summary>
+        /// <summary>
+        /// Restores presentation time and releases the isolated scene.
+        /// </summary>
         /// <returns>The edit-mode transition.</returns>
         [UnityTearDown]
         public IEnumerator TearDown()
@@ -42,7 +46,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             yield return new ExitPlayMode();
         }
 
-        /// <summary>Checks the counter remains anchored to the top-right without intercepting input.</summary>
+        /// <summary>
+        /// Checks the counter remains anchored to the top-right without intercepting input.
+        /// </summary>
         /// <returns>The completed layout check.</returns>
         [UnityTest]
         public IEnumerator Transform_GeneratedCounter_AnchorsTopRight()
@@ -56,7 +62,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             yield return null;
         }
 
-        /// <summary>Checks the displayed frame rate continues updating when scaled time is paused.</summary>
+        /// <summary>
+        /// Checks the displayed frame rate continues updating when scaled time is paused.
+        /// </summary>
         /// <returns>The unscaled sampling interval.</returns>
         [UnityTest]
         public IEnumerator Enabled_PausedTime_UpdatesFrameRate()

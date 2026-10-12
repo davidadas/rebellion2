@@ -7,12 +7,16 @@ using Rebellion.Game.Units;
 
 namespace Rebellion.Simulation
 {
-    /// <summary>Evaluates whether fleets can assault a planet without resolving combat.</summary>
+    /// <summary>
+    /// Evaluates whether fleets can assault a planet without resolving combat.
+    /// </summary>
     public sealed class PlanetaryAssaultQueries
     {
         private readonly GameRoot _game;
 
-        /// <summary>Creates assault eligibility queries for the active game.</summary>
+        /// <summary>
+        /// Creates assault eligibility queries for the active game.
+        /// </summary>
         /// <param name="game">The game supplying the current assault configuration.</param>
         public PlanetaryAssaultQueries(GameRoot game)
         {

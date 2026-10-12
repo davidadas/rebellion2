@@ -2783,7 +2783,9 @@ namespace Rebellion.Simulation
                 _ => SpaceCombatSideOutcome.Unknown,
             };
 
-        /// <summary>Returns the recorded withdrawal destination for one battle perspective.</summary>
+        /// <summary>
+        /// Returns the recorded withdrawal destination for one battle perspective.
+        /// </summary>
         /// <param name="faction">The faction.</param>
         /// <param name="result">The result.</param>
         /// <returns>The requested retreat planet instance id.</returns>
@@ -2798,7 +2800,9 @@ namespace Rebellion.Simulation
                 _ => null,
             };
 
-        /// <summary>Resolves a recorded planet ID for display without inferring combat state.</summary>
+        /// <summary>
+        /// Resolves a recorded planet ID for display without inferring combat state.
+        /// </summary>
         /// <param name="game">The game.</param>
         /// <param name="planetInstanceID">The planet instance id.</param>
         /// <returns>The requested planet name.</returns>

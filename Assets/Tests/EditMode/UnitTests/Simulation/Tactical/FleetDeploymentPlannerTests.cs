@@ -239,7 +239,9 @@ namespace Rebellion.Tests.Simulation.Tactical
             Assert.That(timer.Elapsed.TotalSeconds, Is.LessThan(5d));
         }
 
-        /// <summary>Creates synthetic combatants with stable identities and varied dimensions.</summary>
+        /// <summary>
+        /// Creates synthetic combatants with stable identities and varied dimensions.
+        /// </summary>
         /// <param name="capitals">The capital ship count.</param>
         /// <param name="squadrons">The squadron count.</param>
         /// <param name="fighters">The fighters per squadron.</param>
@@ -287,7 +289,9 @@ namespace Rebellion.Tests.Simulation.Tactical
             return battle;
         }
 
-        /// <summary>Creates a bounded map for a single participant.</summary>
+        /// <summary>
+        /// Creates a bounded map for a single participant.
+        /// </summary>
         /// <param name="yaw">The heading in degrees.</param>
         /// <returns>The map definition.</returns>
         private static BattleMap CreateMap(float yaw = 0f)
@@ -326,13 +330,17 @@ namespace Rebellion.Tests.Simulation.Tactical
             return map;
         }
 
-        /// <summary>Enumerates combatants without changing their participant ownership.</summary>
+        /// <summary>
+        /// Enumerates combatants without changing their participant ownership.
+        /// </summary>
         /// <param name="battle">The source battle.</param>
         /// <returns>The combatants.</returns>
         private static IEnumerable<CombatUnit> GetCombatants(ActiveBattle battle) =>
             battle.GetParticipants().SelectMany(participant => participant.GetCombatants());
 
-        /// <summary>Measures a ship in the same heading frame used by presentation.</summary>
+        /// <summary>
+        /// Measures a ship in the same heading frame used by presentation.
+        /// </summary>
         /// <param name="unit">The deployed combatant.</param>
         /// <returns>The world-aligned hull envelope.</returns>
         private static Bounds GetHull(CombatUnit unit)
@@ -350,7 +358,9 @@ namespace Rebellion.Tests.Simulation.Tactical
             return new Bounds(ToVector(unit.Position), dimensions);
         }
 
-        /// <summary>Measures the complete hull envelope of a squadron.</summary>
+        /// <summary>
+        /// Measures the complete hull envelope of a squadron.
+        /// </summary>
         /// <param name="units">The squadron members.</param>
         /// <returns>The combined envelope.</returns>
         private static Bounds GetGroupBounds(IEnumerable<CombatUnit> units)
@@ -361,7 +371,9 @@ namespace Rebellion.Tests.Simulation.Tactical
             return result;
         }
 
-        /// <summary>Checks containment and oriented-box separation independently of the planner.</summary>
+        /// <summary>
+        /// Checks containment and oriented-box separation independently of the planner.
+        /// </summary>
         /// <param name="participant">The deployed participant.</param>
         /// <param name="region">The containing map region.</param>
         private static void AssertContainedAndSeparated(
@@ -401,7 +413,9 @@ namespace Rebellion.Tests.Simulation.Tactical
             }
         }
 
-        /// <summary>Converts saved battle coordinates for geometric assertions.</summary>
+        /// <summary>
+        /// Converts saved battle coordinates for geometric assertions.
+        /// </summary>
         /// <param name="value">The saved vector.</param>
         /// <returns>The Unity vector.</returns>
         private static Vector3 ToVector(BattleVector3 value) =>

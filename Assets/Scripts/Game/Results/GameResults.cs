@@ -549,7 +549,9 @@ namespace Rebellion.Game.Results
     {
         public IGameEntity Ref { get; set; }
 
-        /// <summary>Creates a destruction result attributed to arrival processing.</summary>
+        /// <summary>
+        /// Creates a destruction result attributed to arrival processing.
+        /// </summary>
         public GameObjectDestroyedOnArrivalResult()
         {
             Reason = UnitDestructionReason.Arrival;
@@ -563,7 +565,9 @@ namespace Rebellion.Game.Results
     {
         public IGameEntity Ref { get; set; }
 
-        /// <summary>Creates a destruction result attributed to maintenance processing.</summary>
+        /// <summary>
+        /// Creates a destruction result attributed to maintenance processing.
+        /// </summary>
         public GameObjectAutoscrappedResult()
         {
             Reason = UnitDestructionReason.Maintenance;
@@ -575,7 +579,9 @@ namespace Rebellion.Game.Results
     /// </summary>
     public class GameObjectSabotagedResult : GameObjectDestroyedResult
     {
-        /// <summary>Creates a destruction result attributed to sabotage.</summary>
+        /// <summary>
+        /// Creates a destruction result attributed to sabotage.
+        /// </summary>
         public GameObjectSabotagedResult()
         {
             Reason = UnitDestructionReason.Sabotage;

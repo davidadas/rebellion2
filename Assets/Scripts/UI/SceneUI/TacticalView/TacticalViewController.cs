@@ -231,13 +231,17 @@ public sealed class TacticalViewController : MonoBehaviour
             );
     }
 
-    /// <summary>Releases scene instances and cancels model loads when the tactical view closes.</summary>
+    /// <summary>
+    /// Releases scene instances and cancels model loads when the tactical view closes.
+    /// </summary>
     private void OnDestroy()
     {
         ReleaseModels();
     }
 
-    /// <summary>Loads and centers a combatant's Unity model with its intentional uniform scale.</summary>
+    /// <summary>
+    /// Loads and centers a combatant's Unity model with its intentional uniform scale.
+    /// </summary>
     /// <param name="combatant">The unit whose model is loaded.</param>
     /// <param name="presentation">The root receiving the model hierarchy.</param>
     /// <param name="models">The application-owned model cache.</param>
@@ -269,7 +273,9 @@ public sealed class TacticalViewController : MonoBehaviour
         instance.ApplyPose(presentation, scale, Vector3.zero, false, false, true, -1);
     }
 
-    /// <summary>Releases only the instantiated models owned by this tactical view.</summary>
+    /// <summary>
+    /// Releases only the instantiated models owned by this tactical view.
+    /// </summary>
     private void ReleaseModels()
     {
         modelLoading?.Cancel();
@@ -350,7 +356,9 @@ public sealed class TacticalViewController : MonoBehaviour
         cameraController.Frame(hulls, initialFleetViewport);
     }
 
-    /// <summary>Returns absolute component magnitudes for rotated hull dimensions.</summary>
+    /// <summary>
+    /// Returns absolute component magnitudes for rotated hull dimensions.
+    /// </summary>
     /// <param name="value">The rotated axis.</param>
     /// <returns>The absolute axis.</returns>
     private static Vector3 Abs(Vector3 value) =>

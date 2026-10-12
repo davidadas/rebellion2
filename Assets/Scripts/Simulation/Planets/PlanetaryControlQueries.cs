@@ -7,12 +7,16 @@ using Rebellion.Game.Units;
 
 namespace Rebellion.Simulation
 {
-    /// <summary>Calculates planetary control and support resistance without changing game state.</summary>
+    /// <summary>
+    /// Calculates planetary control and support resistance without changing game state.
+    /// </summary>
     public sealed class PlanetaryControlQueries
     {
         private readonly GameRoot _game;
 
-        /// <summary>Creates control queries for the active game.</summary>
+        /// <summary>
+        /// Creates control queries for the active game.
+        /// </summary>
         /// <param name="game">The game whose factions and control configuration are consulted.</param>
         public PlanetaryControlQueries(GameRoot game)
         {

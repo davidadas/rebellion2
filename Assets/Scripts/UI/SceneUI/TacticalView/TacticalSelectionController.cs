@@ -6,7 +6,9 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 
-/// <summary>Owns hull picking, multiselection, and transient selection in the tactical scene.</summary>
+/// <summary>
+/// Owns hull picking, multiselection, and transient selection in the tactical scene.
+/// </summary>
 public sealed class TacticalSelectionController : MonoBehaviour
 {
     [SerializeField]
@@ -22,17 +24,25 @@ public sealed class TacticalSelectionController : MonoBehaviour
     private Vector2 _pressPosition;
     private bool _selecting;
 
-    /// <summary>Gets the ordered transient selection without allowing callers to modify it.</summary>
+    /// <summary>
+    /// Gets the ordered transient selection without allowing callers to modify it.
+    /// </summary>
     public IReadOnlyList<CombatUnit> SelectedCombatants =>
         _readOnlySelection ??= _selected.AsReadOnly();
 
-    /// <summary>Gets the inspected unit, regardless of its owning faction.</summary>
+    /// <summary>
+    /// Gets the inspected unit, regardless of its owning faction.
+    /// </summary>
     public CombatUnit SelectedCombatant => _selected.Count > 0 ? _selected[0] : null;
 
-    /// <summary>Connects roster selection to the same selection owner as world input.</summary>
+    /// <summary>
+    /// Connects roster selection to the same selection owner as world input.
+    /// </summary>
     private void Awake() => view.CardClicked += SelectCard;
 
-    /// <summary>Binds picking to the loaded presentation roots of one battle.</summary>
+    /// <summary>
+    /// Binds picking to the loaded presentation roots of one battle.
+    /// </summary>
     /// <param name="camera">The camera displaying the battle.</param>
     /// <param name="presentations">The loaded combatants and their presentation roots.</param>
     public void Initialize(Camera camera, IReadOnlyDictionary<CombatUnit, Transform> presentations)
@@ -49,7 +59,9 @@ public sealed class TacticalSelectionController : MonoBehaviour
         _presentations = presentations;
     }
 
-    /// <summary>Selects the nearest loaded hull under a screen point, or clears empty-space selection.</summary>
+    /// <summary>
+    /// Selects the nearest loaded hull under a screen point, or clears empty-space selection.
+    /// </summary>
     /// <param name="screenPosition">The pointer position in screen pixels.</param>
     /// <param name="additive">Whether to toggle this hull without replacing the selection.</param>
     public void SelectAt(Vector2 screenPosition, bool additive = false)
@@ -99,7 +111,9 @@ public sealed class TacticalSelectionController : MonoBehaviour
         RefreshView();
     }
 
-    /// <summary>Releases selection and all references to a previous battle presentation.</summary>
+    /// <summary>
+    /// Releases selection and all references to a previous battle presentation.
+    /// </summary>
     public void Clear()
     {
         _selected.Clear();
@@ -117,7 +131,9 @@ public sealed class TacticalSelectionController : MonoBehaviour
         }
     }
 
-    /// <summary>Selects visible hull centers inside a screen rectangle.</summary>
+    /// <summary>
+    /// Selects visible hull centers inside a screen rectangle.
+    /// </summary>
     /// <param name="screenRectangle">The drag-selection screen rectangle.</param>
     /// <param name="additive">Whether to retain the previous selection.</param>
     public void SelectWithin(Rect screenRectangle, bool additive = false)
@@ -143,7 +159,9 @@ public sealed class TacticalSelectionController : MonoBehaviour
         RefreshView();
     }
 
-    /// <summary>Handles click, shift-click, and drag selection after camera navigation.</summary>
+    /// <summary>
+    /// Handles click, shift-click, and drag selection after camera navigation.
+    /// </summary>
     private void LateUpdate()
     {
         if (_presentations == null)
@@ -202,10 +220,14 @@ public sealed class TacticalSelectionController : MonoBehaviour
         RefreshView();
     }
 
-    /// <summary>Updates only selected presentation objects.</summary>
+    /// <summary>
+    /// Updates only selected presentation objects.
+    /// </summary>
     private void RefreshView() => view.RenderSelection(_selected, _presentations, _camera);
 
-    /// <summary>Ends a pending drag when a modal takes input without discarding selected ships.</summary>
+    /// <summary>
+    /// Ends a pending drag when a modal takes input without discarding selected ships.
+    /// </summary>
     private void OnDisable()
     {
         _selecting = false;
@@ -213,7 +235,9 @@ public sealed class TacticalSelectionController : MonoBehaviour
             view.RenderMarquee(Vector2.zero, Vector2.zero, false);
     }
 
-    /// <summary>Inspects a roster group, or toggles its members when shift is held.</summary>
+    /// <summary>
+    /// Inspects a roster group, or toggles its members when shift is held.
+    /// </summary>
     /// <param name="combatants">The clicked card's combatants.</param>
     private void SelectCard(IReadOnlyList<CombatUnit> combatants)
     {
@@ -230,7 +254,9 @@ public sealed class TacticalSelectionController : MonoBehaviour
         RefreshView();
     }
 
-    /// <summary>Prevents world selection through any raycastable interface element.</summary>
+    /// <summary>
+    /// Prevents world selection through any raycastable interface element.
+    /// </summary>
     /// <param name="screenPosition">The pointer position to test.</param>
     /// <returns>True when the active interface handles this point.</returns>
     private bool IsOverInterface(Vector2 screenPosition)
@@ -250,7 +276,9 @@ public sealed class TacticalSelectionController : MonoBehaviour
         return _interfaceHits.Count > 0;
     }
 
-    /// <summary>Discards scene-owned selection when the controller is destroyed.</summary>
+    /// <summary>
+    /// Discards scene-owned selection when the controller is destroyed.
+    /// </summary>
     private void OnDestroy()
     {
         if (view)

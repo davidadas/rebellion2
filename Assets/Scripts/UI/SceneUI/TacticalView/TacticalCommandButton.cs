@@ -1,14 +1,18 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-/// <summary>A tactile command key; intentionally does not issue gameplay orders yet.</summary>
+/// <summary>
+/// A tactile command key; intentionally does not issue gameplay orders yet.
+/// </summary>
 public sealed class TacticalCommandButton : Button
 {
     [SerializeField]
     private RectTransform keyFace;
     private Vector2 _releasedPosition;
 
-    /// <summary>Captures the authored key face before input is enabled.</summary>
+    /// <summary>
+    /// Captures the authored key face before input is enabled.
+    /// </summary>
     protected override void Awake()
     {
         base.Awake();
@@ -17,7 +21,9 @@ public sealed class TacticalCommandButton : Button
         _releasedPosition = keyFace.anchoredPosition;
     }
 
-    /// <summary>Applies the standard button tint and a physical key depression.</summary>
+    /// <summary>
+    /// Applies the standard button tint and a physical key depression.
+    /// </summary>
     /// <param name="state">The current selectable state.</param>
     /// <param name="instant">Whether the tint should change immediately.</param>
     protected override void DoStateTransition(SelectionState state, bool instant)
@@ -29,7 +35,9 @@ public sealed class TacticalCommandButton : Button
                 + (state == SelectionState.Pressed ? new Vector2(0f, -2f) : Vector2.zero);
     }
 
-    /// <summary>Restores the released key position when the dock or scene is deactivated.</summary>
+    /// <summary>
+    /// Restores the released key position when the dock or scene is deactivated.
+    /// </summary>
     protected override void OnDisable()
     {
         base.OnDisable();

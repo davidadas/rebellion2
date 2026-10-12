@@ -15,7 +15,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         private TacticalRadarView _radar;
         private TacticalViewCameraController _navigation;
 
-        /// <summary>Creates a generated instrument bound to a configured battle camera.</summary>
+        /// <summary>
+        /// Creates a generated instrument bound to a configured battle camera.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -54,11 +56,15 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             Canvas.ForceUpdateCanvases();
         }
 
-        /// <summary>Releases the generated instrument.</summary>
+        /// <summary>
+        /// Releases the generated instrument.
+        /// </summary>
         [TearDown]
         public void TearDown() => UnityEngine.Object.DestroyImmediate(_instance);
 
-        /// <summary>Checks an empty minimap contains only its background and no decorative geometry.</summary>
+        /// <summary>
+        /// Checks an empty minimap contains only its background and no decorative geometry.
+        /// </summary>
         [Test]
         public void Bind_EmptyBattle_DrawsOnlyBackground()
         {
@@ -76,7 +82,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             }
         }
 
-        /// <summary>Checks radar input recenters navigation without changing the orbit distance.</summary>
+        /// <summary>
+        /// Checks radar input recenters navigation without changing the orbit distance.
+        /// </summary>
         [Test]
         public void OnPointerDown_InsideRadar_RepositionsCameraPivot()
         {
@@ -104,7 +112,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             Assert.AreEqual(distance, _navigation.Distance);
         }
 
-        /// <summary>Checks non-navigation pointer buttons cannot move the camera.</summary>
+        /// <summary>
+        /// Checks non-navigation pointer buttons cannot move the camera.
+        /// </summary>
         [Test]
         public void OnPointerDown_RightButton_PreservesCameraPivot()
         {

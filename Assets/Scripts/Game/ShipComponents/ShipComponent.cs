@@ -3,7 +3,9 @@ using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.ShipComponents
 {
-    /// <summary>Base state shared by physical components installed on a ship.</summary>
+    /// <summary>
+    /// Base state shared by physical components installed on a ship.
+    /// </summary>
     [PersistableObject]
     public abstract class ShipComponent : BaseGameEntity
     {
@@ -11,7 +13,9 @@ namespace Rebellion.Game.ShipComponents
         public bool Targetable { get; set; }
         public string ModelNodePath { get; set; }
 
-        /// <summary>Copies state shared by every ship component.</summary>
+        /// <summary>
+        /// Copies state shared by every ship component.
+        /// </summary>
         /// <param name="copy">The destination component.</param>
         protected void CopyComponentStateTo(ShipComponent copy)
         {
@@ -21,7 +25,9 @@ namespace Rebellion.Game.ShipComponents
             CopyEntityStateTo(copy);
         }
 
-        /// <summary>Creates an independent copy of the component.</summary>
+        /// <summary>
+        /// Creates an independent copy of the component.
+        /// </summary>
         /// <returns>The copied component.</returns>
         public abstract ShipComponent CreateCopy();
     }

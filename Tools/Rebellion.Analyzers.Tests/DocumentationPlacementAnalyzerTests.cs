@@ -18,7 +18,9 @@ namespace Rebellion.Analyzers.Tests
                 @"
 class Example
 {
-    /// <summary>Stores the value.</summary>
+    /// <summary>
+    /// Stores the value.
+    /// </summary>
     private int _value;
 }";
 
@@ -34,7 +36,9 @@ class Example
                 @"
 enum Example
 {
-    /// <summary>Represents the first value.</summary>
+    /// <summary>
+    /// Represents the first value.
+    /// </summary>
     First,
 }";
 
@@ -50,7 +54,9 @@ enum Example
                 @"
 class Example
 {
-    /// <summary>Gets the value.</summary>
+    /// <summary>
+    /// Gets the value.
+    /// </summary>
     public int Value { get; }
 }";
 

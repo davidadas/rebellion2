@@ -184,7 +184,9 @@ namespace Rebellion.Tests.Simulation
             CollectionAssert.AreEqual(new[] { retained }, faction.Messages[MessageType.Conflict]);
         }
 
-        /// <summary>Prepares authored deliveries lazily so commands must finish enumeration before attachment.</summary>
+        /// <summary>
+        /// Prepares authored deliveries lazily so commands must finish enumeration before attachment.
+        /// </summary>
         /// <param name="factory">The production template factory.</param>
         /// <param name="items">The recipients, text, and optional reports to prepare.</param>
         /// <returns>The prepared deliveries in input order.</returns>

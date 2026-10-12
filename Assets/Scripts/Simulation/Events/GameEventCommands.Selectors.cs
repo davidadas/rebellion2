@@ -13,7 +13,9 @@ namespace Rebellion.Simulation
 {
     public sealed partial class GameEventCommands
     {
-        /// <summary>Resolves an authored selector without changing its evaluation timing.</summary>
+        /// <summary>
+        /// Resolves an authored selector without changing its evaluation timing.
+        /// </summary>
         /// <param name="definition">The authored selector to interpret.</param>
         /// <param name="game">The current game state.</param>
         /// <param name="provider">The random provider used by randomized selection.</param>

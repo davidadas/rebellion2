@@ -171,7 +171,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView.Camera
             );
         }
 
-        /// <summary>Creates world envelopes with substantial width, height and depth variation.</summary>
+        /// <summary>
+        /// Creates world envelopes with substantial width, height and depth variation.
+        /// </summary>
         /// <returns>The hull envelopes.</returns>
         private static Bounds[] CreateFleetBounds() =>
             new[]
@@ -181,7 +183,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView.Camera
                 new Bounds(new Vector3(50f, -80f, 300f), new Vector3(4f, 2f, 5f)),
             };
 
-        /// <summary>Projects all corners through Unity's camera rather than duplicating fit calculations.</summary>
+        /// <summary>
+        /// Projects all corners through Unity's camera rather than duplicating fit calculations.
+        /// </summary>
         /// <param name="camera">The configured camera.</param>
         /// <param name="hulls">The fleet envelopes.</param>
         /// <param name="viewport">The required visible viewport.</param>

@@ -208,7 +208,9 @@ public sealed class TacticalViewCameraController : MonoBehaviour
         ApplyFraming();
     }
 
-    /// <summary>Fits cached hull corners using the actual perspective projection.</summary>
+    /// <summary>
+    /// Fits cached hull corners using the actual perspective projection.
+    /// </summary>
     private void ApplyFraming()
     {
         _framingAspect = _controlledCamera.aspect;
@@ -250,13 +252,17 @@ public sealed class TacticalViewCameraController : MonoBehaviour
         );
     }
 
-    /// <summary>Returns component magnitudes for clipping-plane calculations.</summary>
+    /// <summary>
+    /// Returns component magnitudes for clipping-plane calculations.
+    /// </summary>
     /// <param name="value">The corner displacement.</param>
     /// <returns>The absolute displacement.</returns>
     private static Vector3 Abs(Vector3 value) =>
         new Vector3(Mathf.Abs(value.x), Mathf.Abs(value.y), Mathf.Abs(value.z));
 
-    /// <summary>Checks whether all coordinates are finite.</summary>
+    /// <summary>
+    /// Checks whether all coordinates are finite.
+    /// </summary>
     /// <param name="value">The coordinates to validate.</param>
     /// <returns>True when no coordinate is NaN or infinite.</returns>
     private static bool IsFinite(Vector3 value) =>
@@ -286,7 +292,9 @@ public sealed class TacticalViewCameraController : MonoBehaviour
         ApplyTransform();
     }
 
-    /// <summary>Centers navigation on a radar location while preserving zoom and orbit.</summary>
+    /// <summary>
+    /// Centers navigation on a radar location while preserving zoom and orbit.
+    /// </summary>
     /// <param name="point">The requested world-space pivot.</param>
     public void Recenter(Vector3 point)
     {

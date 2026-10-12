@@ -1,7 +1,9 @@
 using System;
 using UnityEngine;
 
-/// <summary>Hosts the shared Options menu over the tactical scene and suspends battle input.</summary>
+/// <summary>
+/// Hosts the shared Options menu over the tactical scene and suspends battle input.
+/// </summary>
 public sealed class TacticalMenuController : MonoBehaviour, ICancelable
 {
     [SerializeField]
@@ -26,7 +28,9 @@ public sealed class TacticalMenuController : MonoBehaviour, ICancelable
     private bool _inputSuspended;
     private bool _dirty;
 
-    /// <summary>Connects this scene to the shared menu services after application initialization.</summary>
+    /// <summary>
+    /// Connects this scene to the shared menu services after application initialization.
+    /// </summary>
     /// <param name="bootstrap">The initialized application service owner.</param>
     public void Initialize(AppBootstrap bootstrap)
     {
@@ -50,7 +54,9 @@ public sealed class TacticalMenuController : MonoBehaviour, ICancelable
         AttachInput();
     }
 
-    /// <summary>Opens Options for an unhandled Escape, or delegates cancellation to the open menu.</summary>
+    /// <summary>
+    /// Opens Options for an unhandled Escape, or delegates cancellation to the open menu.
+    /// </summary>
     /// <returns>Whether this scene handled the cancellation request.</returns>
     public bool TryCancel()
     {
@@ -60,14 +66,18 @@ public sealed class TacticalMenuController : MonoBehaviour, ICancelable
         return true;
     }
 
-    /// <summary>Restores scene input subscriptions when the initialized controller is re-enabled.</summary>
+    /// <summary>
+    /// Restores scene input subscriptions when the initialized controller is re-enabled.
+    /// </summary>
     private void OnEnable()
     {
         if (_menu != null)
             AttachInput();
     }
 
-    /// <summary>Renders changed shared-menu data without rebuilding it every frame.</summary>
+    /// <summary>
+    /// Renders changed shared-menu data without rebuilding it every frame.
+    /// </summary>
     private void Update()
     {
         if (!_dirty || _menu?.IsOpen != true)
@@ -76,7 +86,9 @@ public sealed class TacticalMenuController : MonoBehaviour, ICancelable
         _menu.RenderWindows();
     }
 
-    /// <summary>Detaches scene shortcuts and closes its overlay when leaving the scene.</summary>
+    /// <summary>
+    /// Detaches scene shortcuts and closes its overlay when leaving the scene.
+    /// </summary>
     private void OnDisable()
     {
         if (_input != null)
@@ -86,10 +98,14 @@ public sealed class TacticalMenuController : MonoBehaviour, ICancelable
         _menu?.Close();
     }
 
-    /// <summary>Releases shared-menu subscriptions and unapplied settings owned by this scene.</summary>
+    /// <summary>
+    /// Releases shared-menu subscriptions and unapplied settings owned by this scene.
+    /// </summary>
     private void OnDestroy() => _menu?.Dispose();
 
-    /// <summary>Uses the application's rebindable cancellation and dedicated menu actions.</summary>
+    /// <summary>
+    /// Uses the application's rebindable cancellation and dedicated menu actions.
+    /// </summary>
     private void AttachInput()
     {
         _input = _bootstrap.GetInputController();
@@ -98,7 +114,9 @@ public sealed class TacticalMenuController : MonoBehaviour, ICancelable
         _bootstrap.GetCancelStack().Register(this);
     }
 
-    /// <summary>Opens the shared menu or lets it close confirmations, rebinding, and settings safely.</summary>
+    /// <summary>
+    /// Opens the shared menu or lets it close confirmations, rebinding, and settings safely.
+    /// </summary>
     private void ToggleMenu()
     {
         if (_menu.IsOpen)
@@ -119,7 +137,9 @@ public sealed class TacticalMenuController : MonoBehaviour, ICancelable
         }
     }
 
-    /// <summary>Centers the existing menu in the overlay's current source-coordinate surface.</summary>
+    /// <summary>
+    /// Centers the existing menu in the overlay's current source-coordinate surface.
+    /// </summary>
     /// <returns>The top-left window position expected by the window manager.</returns>
     private Vector2Int GetWindowPosition()
     {
@@ -130,7 +150,9 @@ public sealed class TacticalMenuController : MonoBehaviour, ICancelable
         );
     }
 
-    /// <summary>Synchronizes modal visibility and restores each battle input component's previous state.</summary>
+    /// <summary>
+    /// Synchronizes modal visibility and restores each battle input component's previous state.
+    /// </summary>
     private void HandleMenuChanged()
     {
         _dirty = true;
@@ -149,7 +171,9 @@ public sealed class TacticalMenuController : MonoBehaviour, ICancelable
         _inputSuspended = open;
     }
 
-    /// <summary>Loads a save through the established scene-launch flow instead of retaining stale battle models.</summary>
+    /// <summary>
+    /// Loads a save through the established scene-launch flow instead of retaining stale battle models.
+    /// </summary>
     /// <param name="fileName">The selected save identifier.</param>
     /// <returns>Whether the saved-game scene transition was requested.</returns>
     private bool LoadSavedGame(string fileName)

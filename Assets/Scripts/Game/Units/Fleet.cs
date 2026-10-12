@@ -60,11 +60,15 @@ namespace Rebellion.Game.Units
             _capitalShips = capitalShips ?? new List<CapitalShip>();
         }
 
-        /// <summary>Creates an empty fleet copy.</summary>
+        /// <summary>
+        /// Creates an empty fleet copy.
+        /// </summary>
         /// <returns>The created node copy.</returns>
         protected override BaseSceneNode CreateNodeCopy() => new Fleet();
 
-        /// <summary>Copies fleet state into an empty destination.</summary>
+        /// <summary>
+        /// Copies fleet state into an empty destination.
+        /// </summary>
         /// <param name="destination">The destination.</param>
         protected override void CopyStateTo(BaseSceneNode destination)
         {

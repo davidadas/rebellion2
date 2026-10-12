@@ -34,7 +34,9 @@ namespace Rebellion.Simulation
             _queries = queries ?? throw new ArgumentNullException(nameof(queries));
         }
 
-        /// <summary>Registers the blockade callback with the result bus.</summary>
+        /// <summary>
+        /// Registers the blockade callback with the result bus.
+        /// </summary>
         /// <param name="results">The bus that delivers blockade changes.</param>
         public void Connect(GameResultBus results)
         {
@@ -51,7 +53,9 @@ namespace Rebellion.Simulation
             };
         }
 
-        /// <summary>Stops receiving blockade changes.</summary>
+        /// <summary>
+        /// Stops receiving blockade changes.
+        /// </summary>
         public void Dispose()
         {
             foreach (IDisposable subscription in _subscriptions ?? Array.Empty<IDisposable>())
@@ -87,7 +91,9 @@ namespace Rebellion.Simulation
             return reactions;
         }
 
-        /// <summary>Redirects or destroys inbound units after a blockade begins.</summary>
+        /// <summary>
+        /// Redirects or destroys inbound units after a blockade begins.
+        /// </summary>
         /// <param name="result">The completed blockade change.</param>
         /// <param name="reactions">The collection receiving movement and destruction facts.</param>
         private void HandleBlockadeStarted(
@@ -135,7 +141,9 @@ namespace Rebellion.Simulation
             }
         }
 
-        /// <summary>Returns whether an inbound unit must seek another destination.</summary>
+        /// <summary>
+        /// Returns whether an inbound unit must seek another destination.
+        /// </summary>
         /// <param name="unit">The inbound unit.</param>
         /// <param name="planet">The blockaded destination.</param>
         /// <returns>True when the blockade forces autorouting.</returns>
@@ -150,7 +158,9 @@ namespace Rebellion.Simulation
             };
         }
 
-        /// <summary>Destroys an inbound unit that cannot enter or route around a blockade.</summary>
+        /// <summary>
+        /// Destroys an inbound unit that cannot enter or route around a blockade.
+        /// </summary>
         /// <param name="unit">The unit to destroy.</param>
         /// <param name="planet">The blockaded destination.</param>
         /// <param name="reactions">The collection receiving the destruction fact.</param>
@@ -171,7 +181,9 @@ namespace Rebellion.Simulation
             );
         }
 
-        /// <summary>Retargets a moving unit from its current position.</summary>
+        /// <summary>
+        /// Retargets a moving unit from its current position.
+        /// </summary>
         /// <param name="unit">The unit being rerouted.</param>
         /// <param name="destination">The new destination planet.</param>
         private void RetargetMovement(IMovable unit, Planet destination)
@@ -261,7 +273,9 @@ namespace Rebellion.Simulation
             return reactions;
         }
 
-        /// <summary>Recovers surviving occupants retained by a removed capital ship.</summary>
+        /// <summary>
+        /// Recovers surviving occupants retained by a removed capital ship.
+        /// </summary>
         /// <param name="removedShip">The removed ship retaining its former children.</param>
         /// <param name="context">The removal location.</param>
         /// <param name="removedInstanceIds">Units removed by the same result batch.</param>
@@ -317,7 +331,9 @@ namespace Rebellion.Simulation
             }
         }
 
-        /// <summary>Moves one removed-ship occupant to the nearest safe container.</summary>
+        /// <summary>
+        /// Moves one removed-ship occupant to the nearest safe container.
+        /// </summary>
         /// <param name="occupant">The surviving occupant.</param>
         /// <param name="fleet">The former fleet when it remains active.</param>
         /// <param name="origin">The planet where removal occurred.</param>
@@ -356,7 +372,9 @@ namespace Rebellion.Simulation
                 StartTransit(occupant, origin, destination, results);
         }
 
-        /// <summary>Captures a stranded officer when no friendly destination exists.</summary>
+        /// <summary>
+        /// Captures a stranded officer when no friendly destination exists.
+        /// </summary>
         /// <param name="occupant">The stranded occupant.</param>
         /// <param name="origin">The removal planet.</param>
         /// <param name="results">The collection receiving capture facts.</param>
@@ -398,7 +416,9 @@ namespace Rebellion.Simulation
             RestoreOccupant(officer, origin);
         }
 
-        /// <summary>Finds a compatible surviving carrier in the removed ship's fleet.</summary>
+        /// <summary>
+        /// Finds a compatible surviving carrier in the removed ship's fleet.
+        /// </summary>
         /// <param name="occupant">The occupant requiring recovery.</param>
         /// <param name="fleet">The surviving fleet.</param>
         /// <returns>The first compatible carrier, or null.</returns>
@@ -414,7 +434,9 @@ namespace Rebellion.Simulation
                 .FirstOrDefault(ship => ship.CanAcceptChild(occupant));
         }
 
-        /// <summary>Moves a mobile fighter out of a carrier to free recovery capacity.</summary>
+        /// <summary>
+        /// Moves a mobile fighter out of a carrier to free recovery capacity.
+        /// </summary>
         /// <param name="fleet">The surviving fleet.</param>
         /// <param name="origin">The carrier-removal planet.</param>
         /// <param name="results">The collection receiving movement facts.</param>
@@ -458,7 +480,9 @@ namespace Rebellion.Simulation
             _commands.TryEvacuateToNearestFriendlyPlanet(mobileFighter, results);
         }
 
-        /// <summary>Returns whether a mobile fighter can safely vacate its carrier.</summary>
+        /// <summary>
+        /// Returns whether a mobile fighter can safely vacate its carrier.
+        /// </summary>
         /// <param name="fighter">The fighter occupying recovery capacity.</param>
         /// <param name="origin">The carrier-removal planet.</param>
         /// <returns>True when the fighter has a safe destination.</returns>
@@ -470,7 +494,9 @@ namespace Rebellion.Simulation
                 || _queries.CanEvacuateToNearestFriendlyPlanet(fighter);
         }
 
-        /// <summary>Starts transit for a recovered unit already attached to its destination.</summary>
+        /// <summary>
+        /// Starts transit for a recovered unit already attached to its destination.
+        /// </summary>
         /// <param name="occupant">The recovered unit.</param>
         /// <param name="origin">The removal planet.</param>
         /// <param name="destination">The receiving container.</param>
@@ -504,7 +530,9 @@ namespace Rebellion.Simulation
             );
         }
 
-        /// <summary>Registers a retained child beneath a live destination.</summary>
+        /// <summary>
+        /// Registers a retained child beneath a live destination.
+        /// </summary>
         /// <param name="occupant">The retained scene node.</param>
         /// <param name="destination">The receiving container.</param>
         private void RestoreOccupant(ISceneNode occupant, ContainerNode destination)

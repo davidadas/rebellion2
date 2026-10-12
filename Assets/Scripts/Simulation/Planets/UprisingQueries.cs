@@ -5,7 +5,9 @@ using Rebellion.Game.Galaxy;
 
 namespace Rebellion.Simulation
 {
-    /// <summary>Calculates garrison requirements without changing the supplied planet or faction.</summary>
+    /// <summary>
+    /// Calculates garrison requirements without changing the supplied planet or faction.
+    /// </summary>
     public static class UprisingQueries
     {
         /// <summary>

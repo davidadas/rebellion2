@@ -7,7 +7,9 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-/// <summary>One reusable roster card bound to a real combatant's portrait and durability.</summary>
+/// <summary>
+/// One reusable roster card bound to a real combatant's portrait and durability.
+/// </summary>
 public sealed class TacticalUnitCardView : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
 {
     [SerializeField]
@@ -54,7 +56,9 @@ public sealed class TacticalUnitCardView : MonoBehaviour, IPointerEnterHandler, 
     public CombatUnit Combatant => _combatant;
     public IReadOnlyList<CombatUnit> Combatants => _combatants;
 
-    /// <summary>Connects the authored roster button.</summary>
+    /// <summary>
+    /// Connects the authored roster button.
+    /// </summary>
     private void Awake()
     {
         button.onClick.AddListener(Select);
@@ -65,7 +69,9 @@ public sealed class TacticalUnitCardView : MonoBehaviour, IPointerEnterHandler, 
         }
     }
 
-    /// <summary>Binds the roster card without creating or modifying game data.</summary>
+    /// <summary>
+    /// Binds the roster card without creating or modifying game data.
+    /// </summary>
     /// <param name="combatant">The combatant represented by the card.</param>
     /// <param name="texture">The combatant's resolved portrait, when available.</param>
     public void Bind(CombatUnit combatant, Texture2D texture)
@@ -74,7 +80,9 @@ public sealed class TacticalUnitCardView : MonoBehaviour, IPointerEnterHandler, 
         BindGroup(_single, texture);
     }
 
-    /// <summary>Binds one type-grouped selection card to its actual battle members.</summary>
+    /// <summary>
+    /// Binds one type-grouped selection card to its actual battle members.
+    /// </summary>
     /// <param name="combatants">The nonempty group owned by the selection view.</param>
     /// <param name="texture">The group's resolved portrait.</param>
     public void BindGroup(IReadOnlyList<CombatUnit> combatants, Texture2D texture)
@@ -102,7 +110,9 @@ public sealed class TacticalUnitCardView : MonoBehaviour, IPointerEnterHandler, 
         Refresh();
     }
 
-    /// <summary>Releases a pooled card's reference to a previous battle unit.</summary>
+    /// <summary>
+    /// Releases a pooled card's reference to a previous battle unit.
+    /// </summary>
     public void Unbind()
     {
         _combatant = null;
@@ -113,7 +123,9 @@ public sealed class TacticalUnitCardView : MonoBehaviour, IPointerEnterHandler, 
         durabilityTooltip.SetActive(false);
     }
 
-    /// <summary>Refreshes only changed durability values on this selected combatant.</summary>
+    /// <summary>
+    /// Refreshes only changed durability values on this selected combatant.
+    /// </summary>
     public void Refresh()
     {
         if (_combatant == null)
@@ -187,10 +199,14 @@ public sealed class TacticalUnitCardView : MonoBehaviour, IPointerEnterHandler, 
         }
     }
 
-    /// <summary>Forwards a roster click to its selection owner.</summary>
+    /// <summary>
+    /// Forwards a roster click to its selection owner.
+    /// </summary>
     private void Select() => Clicked?.Invoke(_combatants);
 
-    /// <summary>Selects one member through the same selection owner as the grouped card.</summary>
+    /// <summary>
+    /// Selects one member through the same selection owner as the grouped card.
+    /// </summary>
     /// <param name="index">The authored member position.</param>
     private void SelectMember(int index)
     {
@@ -198,17 +214,25 @@ public sealed class TacticalUnitCardView : MonoBehaviour, IPointerEnterHandler, 
             Clicked?.Invoke(new[] { _combatants[index] });
     }
 
-    /// <summary>Shows exact durability values while the player inspects a roster card.</summary>
+    /// <summary>
+    /// Shows exact durability values while the player inspects a roster card.
+    /// </summary>
     /// <param name="eventData">The pointer event.</param>
     public void OnPointerEnter(PointerEventData eventData) => durabilityTooltip.SetActive(true);
 
-    /// <summary>Releases the durability tooltip when the pointer leaves a card.</summary>
+    /// <summary>
+    /// Releases the durability tooltip when the pointer leaves a card.
+    /// </summary>
     /// <param name="eventData">The pointer event.</param>
     public void OnPointerExit(PointerEventData eventData) => durabilityTooltip.SetActive(false);
 
-    /// <summary>Hides transient hover feedback when a pooled card is released.</summary>
+    /// <summary>
+    /// Hides transient hover feedback when a pooled card is released.
+    /// </summary>
     private void OnDisable() => durabilityTooltip.SetActive(false);
 
-    /// <summary>Releases the authored button subscription.</summary>
+    /// <summary>
+    /// Releases the authored button subscription.
+    /// </summary>
     private void OnDestroy() => button.onClick.RemoveListener(Select);
 }

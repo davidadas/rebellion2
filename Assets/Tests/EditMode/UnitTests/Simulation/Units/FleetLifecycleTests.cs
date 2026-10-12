@@ -15,7 +15,9 @@ namespace Rebellion.Tests.Simulation
         private GameRoot _game;
         private Planet _planet;
 
-        /// <summary>Creates a populated test planet.</summary>
+        /// <summary>
+        /// Creates a populated test planet.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
