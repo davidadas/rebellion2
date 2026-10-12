@@ -219,7 +219,6 @@ public static class TacticalViewPrefabBuilder
             .gameObject.AddComponent<TacticalRadarView>();
         radar.raycastTarget = true;
         BuildTimeControls(left.transform);
-        BuildLights(left.transform, new Vector2(207f, 17f), 0.7f);
 
         TacticalHudGraphic rosterHousing = Art(
             "RosterHousing",
@@ -535,35 +534,6 @@ public static class TacticalViewPrefabBuilder
             );
             label.alignment = TextAlignmentOptions.Center;
         }
-    }
-
-    /// <summary>Authors three small status lights with staggered presentation-only blinking.</summary>
-    /// <param name="parent">The instrument housing.</param>
-    /// <param name="position">The lamp bank position.</param>
-    /// <param name="phase">The independent blink offset.</param>
-    private static void BuildLights(Transform parent, Vector2 position, float phase)
-    {
-        TacticalHudGraphic bank = Art(
-            "LampBank",
-            parent,
-            TacticalHudGraphic.Artwork.Well,
-            new Color(0.015f, 0.018f, 0.02f),
-            new Rect(position, new Vector2(24f, 3f))
-        );
-        Image[] lamps = new Image[3];
-        for (int i = 0; i < lamps.Length; i++)
-        {
-            Image lamp = RectObject($"Lamp{i}", bank.transform, new Rect(i * 9f, 0f, 3f, 3f))
-                .gameObject.AddComponent<Image>();
-            lamp.color = i == 0 ? new Color(0.35f, 0.65f, 0.55f) : new Color(0.25f, 0.32f, 0.39f);
-            lamp.raycastTarget = false;
-            lamps[i] = lamp;
-        }
-        TacticalPanelLights lights = bank.gameObject.AddComponent<TacticalPanelLights>();
-        SerializedObject serialized = new SerializedObject(lights);
-        SetReferences(serialized, "lamps", lamps);
-        serialized.FindProperty("phaseOffset").floatValue = phase;
-        serialized.ApplyModifiedPropertiesWithoutUndo();
     }
 
     /// <summary>Creates a compact durability fill inside its recessed track.</summary>
