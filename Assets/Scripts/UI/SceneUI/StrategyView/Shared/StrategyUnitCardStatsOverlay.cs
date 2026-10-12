@@ -253,6 +253,7 @@ internal static class StrategyUnitCardStatsOverlayBuilder
     /// Builds the supported graph or capability overlay for one unit.
     /// </summary>
     /// <param name="node">The unit represented by the card.</param>
+    /// <param name="game">The active game state used to resolve contextual officer bonuses.</param>
     /// <returns>The source-resolution overlay, or null for an unsupported node type.</returns>
     public static StrategyUnitCardStatsOverlayData Build(ISceneNode node, GameRoot game = null)
     {
@@ -271,6 +272,7 @@ internal static class StrategyUnitCardStatsOverlayBuilder
     /// Builds the four personnel ratings, capabilities, research ratings, and rank markers.
     /// </summary>
     /// <param name="officer">The represented officer.</param>
+    /// <param name="game">The active game state used to resolve contextual officer bonuses.</param>
     /// <returns>The completed personnel overlay.</returns>
     private static StrategyUnitCardStatsOverlayData BuildOfficer(Officer officer, GameRoot game)
     {
