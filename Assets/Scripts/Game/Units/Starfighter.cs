@@ -45,6 +45,12 @@ namespace Rebellion.Game.Units
         [PersistableMember(Name = nameof(ShieldStrength))]
         private int _shieldStrength;
 
+        [PersistableMember(Name = nameof(MaxHullStrength))]
+        private int _maxHullStrength;
+
+        [PersistableMember(Name = nameof(CurrentHullStrength))]
+        private int _currentHullStrength;
+
         // Maneuverability Info.
         [PersistableMember(Name = nameof(Hyperdrive))]
         private int _hyperdrive;
@@ -108,6 +114,22 @@ namespace Rebellion.Game.Units
         {
             get => _shieldStrength;
             set => _shieldStrength = value;
+        }
+
+        /// <summary>Gets or sets the configured hull strength of one fighter.</summary>
+        [PersistableIgnore]
+        public int MaxHullStrength
+        {
+            get => _maxHullStrength;
+            set => _maxHullStrength = value;
+        }
+
+        /// <summary>Gets or sets the remaining hull strength of one fighter.</summary>
+        [PersistableIgnore]
+        public int CurrentHullStrength
+        {
+            get => _currentHullStrength;
+            set => _currentHullStrength = value;
         }
 
         [PersistableIgnore]
@@ -224,6 +246,8 @@ namespace Rebellion.Game.Units
             copy.DetectionRating = DetectionRating;
             copy.Bombardment = Bombardment;
             copy.ShieldStrength = ShieldStrength;
+            copy.MaxHullStrength = MaxHullStrength;
+            copy.CurrentHullStrength = CurrentHullStrength;
             copy.Hyperdrive = Hyperdrive;
             copy.SublightSpeed = SublightSpeed;
             copy.Agility = Agility;

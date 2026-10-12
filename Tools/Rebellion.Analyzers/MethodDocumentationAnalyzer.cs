@@ -70,8 +70,8 @@ namespace Rebellion.Analyzers
 
         private static readonly DiagnosticDescriptor _testCommentRule = new DiagnosticDescriptor(
             TestCommentDiagnosticId,
-            "Test methods must not have leading comments",
-            "Test method '{0}' must not have a leading comment",
+            "Test methods must not have leading prose comments",
+            "Test method '{0}' must not have a leading prose comment",
             "Documentation",
             DiagnosticSeverity.Error,
             isEnabledByDefault: true
@@ -259,21 +259,18 @@ namespace Rebellion.Analyzers
 
             FileLinePositionSpan commentLines = trivia.GetLocation().GetLineSpan();
             FileLinePositionSpan tokenLines = trivia.Token.GetLocation().GetLineSpan();
-            return tokenLines.StartLinePosition.Line
-                <= commentLines.EndLinePosition.Line + 1;
+            return tokenLines.StartLinePosition.Line <= commentLines.EndLinePosition.Line + 1;
         }
 
         /// <summary>
-        /// Checks whether trivia is a regular or documentation comment.
+        /// Checks whether trivia is a regular prose comment rather than XML documentation.
         /// </summary>
         /// <param name="trivia">The syntax trivia to inspect.</param>
-        /// <returns>True when the trivia is a comment.</returns>
+        /// <returns>True when the trivia is a prose comment.</returns>
         private static bool IsComment(SyntaxTrivia trivia)
         {
             return trivia.IsKind(SyntaxKind.SingleLineCommentTrivia)
-                || trivia.IsKind(SyntaxKind.MultiLineCommentTrivia)
-                || trivia.IsKind(SyntaxKind.SingleLineDocumentationCommentTrivia)
-                || trivia.IsKind(SyntaxKind.MultiLineDocumentationCommentTrivia);
+                || trivia.IsKind(SyntaxKind.MultiLineCommentTrivia);
         }
 
         /// <summary>

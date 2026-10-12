@@ -286,6 +286,16 @@ public sealed class TacticalViewCameraController : MonoBehaviour
         ApplyTransform();
     }
 
+    /// <summary>Centers navigation on a radar location while preserving zoom and orbit.</summary>
+    /// <param name="point">The requested world-space pivot.</param>
+    public void Recenter(Vector3 point)
+    {
+        RequireConfiguration();
+        _framingCorners = null;
+        _pivot = ClampToPlayableVolume(point);
+        ApplyTransform();
+    }
+
     /// <summary>
     /// Pans the camera pivot relative to the current planar view direction.
     /// </summary>
