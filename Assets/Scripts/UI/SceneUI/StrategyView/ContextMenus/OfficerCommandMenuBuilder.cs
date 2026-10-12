@@ -22,7 +22,7 @@ internal static class OfficerCommandMenuBuilder
         bool commandMenuEnabled =
             playerControlsOfficer
             && hasCommandChoice
-            && OfficerCommandCommands.CanChangeRank(officer, OfficerRank.None);
+            && OfficerCommandQueries.CanChangeRank(officer, OfficerRank.None);
 
         return new StrategyMenuCommand(
             StrategyMenuAction.Command,
@@ -82,7 +82,7 @@ internal static class OfficerCommandMenuBuilder
         return new StrategyMenuCommand(
             action,
             text,
-            canChangeCommand && OfficerCommandCommands.CanChangeRank(officer, rank),
+            canChangeCommand && OfficerCommandQueries.CanChangeRank(officer, rank),
             officer.CurrentRank == rank
                 ? StrategyContextMenuIconKeys.CheckMark
                 : StrategyContextMenuIconKeys.None

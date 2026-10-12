@@ -24,6 +24,7 @@ namespace Rebellion.Simulation
         private readonly FogOfWarQueries _fogOfWarQueries;
         private readonly EvacuationLossResolver _evacuationLosses;
         private readonly FleetCommands _fleetSystem;
+        private readonly OfficerCommandCommands _officerCommands;
         private readonly PersonnelCommands _personnelCommands;
         private readonly MovementQueries _queries;
         private readonly IRandomNumberProvider _movementRandom;
@@ -44,6 +45,7 @@ namespace Rebellion.Simulation
         /// <param name="queries">The shared movement eligibility and destination rules.</param>
         /// <param name="random">The random source used for movement consequences.</param>
         /// <param name="personnelCommands">The personnel lifecycle operations.</param>
+        /// <param name="officerCommands">The officer command-assignment operations.</param>
         public MovementCommands(
             GameRoot game,
             FogOfWarCommands fogOfWar,
@@ -51,7 +53,8 @@ namespace Rebellion.Simulation
             FogOfWarQueries fogOfWarQueries,
             MovementQueries queries,
             IRandomNumberProvider random = null,
-            PersonnelCommands personnelCommands = null
+            PersonnelCommands personnelCommands = null,
+            OfficerCommandCommands officerCommands = null
         )
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
@@ -64,6 +67,7 @@ namespace Rebellion.Simulation
             _evacuationLosses = new EvacuationLossResolver(game, _movementRandom);
             _personnelCommands =
                 personnelCommands ?? new PersonnelCommands(new PersonnelQueries(game));
+            _officerCommands = officerCommands ?? new OfficerCommandCommands(game);
         }
 
         /// <summary>
@@ -2176,13 +2180,9 @@ namespace Rebellion.Simulation
         )
         {
             IReadOnlyDictionary<Officer, ISceneNode> previousCommandTargets =
-                OfficerCommandCommands.CaptureRelocatedCommandTargets(node);
+                OfficerCommandQueries.CaptureRelocatedCommandTargets(node);
             _game.MoveNode(node, destination);
-            OfficerCommandCommands.ReconcileRelocatedCommandRanks(
-                previousCommandTargets,
-                _game.CurrentTick,
-                results
-            );
+            _officerCommands.ReconcileRelocatedCommandRanks(previousCommandTargets, results);
         }
 
         /// <summary>
