@@ -606,29 +606,7 @@ internal sealed class PlanetSectorWindowProjector
     /// <returns>True when a defense overlay should be displayed.</returns>
     private static bool HasDefenses(Planet planet)
     {
-        return planet != null
-            && (
-                planet
-                    .GetChildren<Building>()
-                    .Any(building =>
-                        building.GetBuildingType() is (BuildingType.Defense or BuildingType.Weapon)
-                        && HasDefensePresence(building)
-                    )
-                || planet.GetChildren<Officer>().Any(HasDefensePresence)
-                || planet.GetChildren<SpecialForces>().Any(HasDefensePresence)
-                || planet.GetChildren<Regiment>().Any(HasDefensePresence)
-                || planet.GetChildren<Starfighter>().Any(HasDefensePresence)
-            );
-    }
-
-    /// <summary>
-    /// Returns whether a defensive unit is represented by its destination planet.
-    /// </summary>
-    /// <param name="unit">The unit to inspect.</param>
-    /// <returns>True when the unit should make the planet's Defense window available.</returns>
-    private static bool HasDefensePresence(IMovable unit)
-    {
-        return unit?.IsActive() == true;
+        return DefenseWindowSession.HasPlanetItems(planet);
     }
 
     /// <summary>
