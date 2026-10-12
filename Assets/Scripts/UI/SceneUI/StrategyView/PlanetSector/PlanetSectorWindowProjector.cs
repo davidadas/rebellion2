@@ -622,10 +622,10 @@ internal sealed class PlanetSectorWindowProjector
     }
 
     /// <summary>
-    /// Returns whether a defensive unit is present or visibly under construction at its planet.
+    /// Returns whether a defensive unit is represented by its destination planet.
     /// </summary>
     /// <param name="unit">The unit to inspect.</param>
-    /// <returns>True when the unit contributes to the planet's defense overlay.</returns>
+    /// <returns>True when the unit should make the planet's Defense window available.</returns>
     private static bool HasDefensePresence(IMovable unit)
     {
         if (unit?.IsActive() != true)
@@ -634,11 +634,8 @@ internal sealed class PlanetSectorWindowProjector
         if (unit is IManufacturable { ManufacturingStatus: ManufacturingStatus.Building })
             return true;
 
-        return unit.GetTransitMovement() == null
-            && (
-                unit is not IManufacturable manufacturable
-                || manufacturable.GetManufacturingStatus() == ManufacturingStatus.Complete
-            );
+        return unit is not IManufacturable manufacturable
+            || manufacturable.GetManufacturingStatus() == ManufacturingStatus.Complete;
     }
 
     /// <summary>

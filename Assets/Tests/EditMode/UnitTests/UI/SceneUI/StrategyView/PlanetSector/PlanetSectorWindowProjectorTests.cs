@@ -539,6 +539,41 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         }
 
         [Test]
+        public void CreateRenderData_OfficerMovingToOtherwiseEmptyPlanet_ReturnsDefenseOverlay()
+        {
+            Planet origin = CreatePlanet("origin", _playerFactionId, 10, 20);
+            Planet destination = CreatePlanet("destination", _playerFactionId, 20, 30);
+            Officer officer = new Officer
+            {
+                InstanceID = "officer",
+                OwnerInstanceID = _playerFactionId,
+            };
+            _game.AttachNode(_planetSector, _game.GetGalaxyMap());
+            _game.AttachNode(origin, _planetSector);
+            _game.AttachNode(destination, _planetSector);
+            _game.AttachNode(officer, origin);
+            GameSession session = TestContent.CreateGameSession(_game);
+
+            session.GetService<MovementCommands>().RequestMove(officer, destination);
+            PlanetSectorWindowRenderData data = _projector.CreateRenderData(
+                CreateSector(
+                    new GalaxyMapPlanet(_planetSector, origin, string.Empty),
+                    new GalaxyMapPlanet(_planetSector, destination, string.Empty)
+                ),
+                null,
+                PlanetIcon.None,
+                null,
+                PlanetIcon.None
+            );
+
+            Assert.AreSame(destination, officer.GetParent());
+            Assert.IsNotNull(officer.Movement);
+            Assert.IsNull(data.Planets[0].DefenseTexture);
+            Assert.IsNotNull(data.Planets[1].DefenseTexture);
+            Assert.IsNotNull(data.Planets[1].DefensePressedTexture);
+        }
+
+        [Test]
         public void CreateRenderData_UprisingPlanet_ReturnsUprisingAndMissionOverlays()
         {
             Planet planet = CreatePlanet("planet", _opposingFactionId, 10, 20);
