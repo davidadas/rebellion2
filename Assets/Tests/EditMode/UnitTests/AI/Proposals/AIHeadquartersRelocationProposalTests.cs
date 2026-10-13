@@ -1,11 +1,14 @@
+using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.AI;
+using Rebellion.AI.Phases;
 using Rebellion.AI.Planners;
 using Rebellion.AI.Proposals;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.Tests.AI.Helpers;
 
@@ -64,6 +67,76 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.IsNotNull(headquarters.Movement);
         }
 
+        [Test]
+        public void Execute_DefenseFleetAndActiveEspionageMission_EvacuatesCompleteAssignment()
+        {
+            AITurnContext setupContext = CreateContext(
+                unfinishedDestinationBuilding: false,
+                out Planet origin,
+                out Planet destination,
+                out Building headquarters,
+                out _
+            );
+            Fleet defender = setupContext
+                .Assessment.GetFriendlyFleets(origin)
+                .Single(fleet => fleet.GetOwnerInstanceID() == setupContext.Faction.InstanceID);
+            SpecialForces agent = new SpecialForces
+            {
+                InstanceID = "headquarters-agent",
+                OwnerInstanceID = setupContext.Faction.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                AllowedMissionTypeIDs = new List<string> { MissionTypeIDs.Espionage },
+            };
+            setupContext.Game.AttachNode(agent, origin);
+            Assert.IsTrue(
+                setupContext.Missions.InitiateMission(
+                    new MissionContext
+                    {
+                        MissionTypeID = MissionTypeIDs.Espionage,
+                        Location = origin,
+                        MainParticipants = new List<IMissionParticipant> { agent },
+                        DecoyParticipants = new List<IMissionParticipant>(),
+                    }
+                )
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(
+                setupContext.Game,
+                setupContext.Faction
+            );
+            AIHeadquartersRelocationProposal proposal = new AIHeadquartersRelocationPlanner()
+                .Plan(context)
+                .Cast<AIHeadquartersRelocationProposal>()
+                .Single();
+            AIFleetDefenseProposal competingDefense = new AIFleetDefenseProposal(defender, origin);
+            AIAbortMissionProposal competingAbort = new AIAbortMissionProposal(
+                proposal.EspionageMission
+            );
+            proposal.SetScore(1);
+            competingDefense.SetScore(0.5);
+            competingAbort.SetScore(0.5);
+            context.AddProposal(proposal);
+            context.AddProposal(competingDefense);
+            context.AddProposal(competingAbort);
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+            CollectionAssert.AreEqual(new[] { proposal }, selected);
+            selected.Single().Execute(context);
+
+            Assert.IsNull(
+                context.Game.GetSceneNodeByInstanceID<Mission>(proposal.EspionageMission.InstanceID)
+            );
+            Assert.AreSame(destination, headquarters.GetParent());
+            Assert.AreSame(destination, defender.GetParent());
+            Assert.AreSame(destination, agent.GetParent());
+            Assert.AreEqual(
+                headquarters.Movement.MovementGroupID,
+                defender.Movement.MovementGroupID
+            );
+            Assert.AreEqual(headquarters.Movement.MovementGroupID, agent.Movement.MovementGroupID);
+            Assert.AreEqual(destination.InstanceID, defender.Order.TargetPlanetId);
+            Assert.AreEqual(FleetOrderStatus.Readying, defender.Order.Status);
+        }
+
         /// <summary>
         /// Creates a threatened mobile headquarters and a full safe destination.
         /// </summary>
@@ -111,7 +184,20 @@ namespace Rebellion.Tests.AI.Proposals
                 energyCapacity: 1
             );
             AddFleet(game, origin, "incoming", rebels.InstanceID, 200, isMoving: true);
-            AddFleet(game, origin, "defender", empire.InstanceID, 100, isMoving: false);
+            Fleet defender = AddFleet(
+                game,
+                origin,
+                "defender",
+                empire.InstanceID,
+                100,
+                isMoving: false
+            );
+            defender.RoleType = FleetRoleType.Battle;
+            defender.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Defend,
+                TargetPlanetId = origin.InstanceID,
+            };
             AITestSceneBuilder.RevealPlanet(game, empire, origin);
 
             if (!unfinishedDestinationBuilding)
@@ -162,7 +248,8 @@ namespace Rebellion.Tests.AI.Proposals
         /// <param name="ownerInstanceId">The owning faction identifier.</param>
         /// <param name="combatStrength">The capital ship combat strength.</param>
         /// <param name="isMoving">Whether the fleet is inbound.</param>
-        private static void AddFleet(
+        /// <returns>The attached fleet.</returns>
+        private static Fleet AddFleet(
             GameRoot game,
             Planet planet,
             string instanceId,
@@ -183,6 +270,7 @@ namespace Rebellion.Tests.AI.Proposals
                 ),
                 fleet
             );
+            return fleet;
         }
     }
 }

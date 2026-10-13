@@ -5,6 +5,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 using Rebellion.Simulation;
 
 namespace Rebellion.Tests.Simulation
@@ -33,6 +34,67 @@ namespace Rebellion.Tests.Simulation
 
             Assert.IsFalse(CreateCommands(game).TryRelocate(hq, destination));
             Assert.AreSame(origin, hq.GetParent());
+            Assert.AreEqual(origin.InstanceID, faction.HQInstanceID);
+        }
+
+        [Test]
+        public void TryRelocate_WithAccompanyingUnits_MovesCompleteGroupTogether()
+        {
+            (GameRoot game, Faction faction, Planet origin, Planet destination, Building hq) =
+                CreateGame(isMobile: true);
+            Fleet fleet = EntityFactory.CreateFleet("defender", faction.InstanceID);
+            game.AttachNode(fleet, origin);
+            game.AttachNode(
+                new CapitalShip
+                {
+                    InstanceID = "defender-ship",
+                    OwnerInstanceID = faction.InstanceID,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                    Hyperdrive = 4,
+                },
+                fleet
+            );
+            SpecialForces agent = new SpecialForces
+            {
+                InstanceID = "agent",
+                OwnerInstanceID = faction.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(agent, origin);
+
+            bool relocated = CreateCommands(game)
+                .TryRelocate(hq, destination, new List<ISceneNode> { fleet, agent });
+
+            Assert.IsTrue(relocated);
+            Assert.AreSame(destination, hq.GetParent());
+            Assert.AreSame(destination, fleet.GetParent());
+            Assert.AreSame(destination, agent.GetParent());
+            Assert.AreEqual(hq.Movement.MovementGroupID, fleet.Movement.MovementGroupID);
+            Assert.AreEqual(hq.Movement.MovementGroupID, agent.Movement.MovementGroupID);
+        }
+
+        [Test]
+        public void TryRelocate_AccompanyingUnitIsAtAnotherPlanet_LeavesCompleteGroupInPlace()
+        {
+            (GameRoot game, Faction faction, Planet origin, Planet destination, Building hq) =
+                CreateGame(isMobile: true);
+            SpecialForces remoteAgent = new SpecialForces
+            {
+                InstanceID = "remote-agent",
+                OwnerInstanceID = faction.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(remoteAgent, destination);
+
+            bool relocated = CreateCommands(game)
+                .TryRelocate(hq, destination, new List<ISceneNode> { remoteAgent });
+
+            Assert.IsFalse(relocated);
+            Assert.AreSame(origin, hq.GetParent());
+            Assert.IsNull(hq.Movement);
+            Assert.AreSame(destination, remoteAgent.GetParent());
+            Assert.IsNull(remoteAgent.Movement);
+            Assert.IsTrue(origin.IsHeadquarters);
             Assert.AreEqual(origin.InstanceID, faction.HQInstanceID);
         }
 

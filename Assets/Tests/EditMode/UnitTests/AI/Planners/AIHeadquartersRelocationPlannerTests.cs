@@ -6,6 +6,7 @@ using Rebellion.AI.Proposals;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.Tests.AI.Helpers;
 
@@ -61,6 +62,48 @@ namespace Rebellion.Tests.AI.Planners
             );
 
             Assert.IsEmpty(new AIHeadquartersRelocationPlanner().Plan(context));
+        }
+
+        [Test]
+        public void Plan_ThreatenedHeadquartersWithDefenseAndEspionage_AssignsBothToRelocation()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet origin = AddMobileHeadquarters(game, empire, sector);
+            AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "destination",
+                empire.InstanceID,
+                energyCapacity: 1
+            );
+            AddFleet(game, origin, "incoming", rebels.InstanceID, 200, isMoving: true);
+            Fleet defender = AddFleet(
+                game,
+                origin,
+                "defender",
+                empire.InstanceID,
+                100,
+                isMoving: false
+            );
+            defender.RoleType = FleetRoleType.Battle;
+            defender.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Defend,
+                TargetPlanetId = origin.InstanceID,
+            };
+            SpecialForces agent = AddEspionageAgent(game, origin, empire.InstanceID);
+            AITestSceneBuilder.RevealPlanet(game, empire, origin);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIHeadquartersRelocationProposal proposal = new AIHeadquartersRelocationPlanner()
+                .Plan(context)
+                .Cast<AIHeadquartersRelocationProposal>()
+                .Single();
+
+            CollectionAssert.AreEqual(new[] { defender }, proposal.DefensiveFleets);
+            Assert.AreSame(agent, proposal.EspionageAgent);
+            Assert.IsNull(proposal.EspionageMission);
         }
 
         [Test]
@@ -231,6 +274,30 @@ namespace Rebellion.Tests.AI.Planners
                 fleet
             );
             return fleet;
+        }
+
+        /// <summary>
+        /// Adds an available espionage special-forces unit to a planet.
+        /// </summary>
+        /// <param name="game">The game graph.</param>
+        /// <param name="planet">The unit's planet.</param>
+        /// <param name="ownerInstanceId">The owning faction identifier.</param>
+        /// <returns>The attached espionage unit.</returns>
+        private static SpecialForces AddEspionageAgent(
+            GameRoot game,
+            Planet planet,
+            string ownerInstanceId
+        )
+        {
+            SpecialForces agent = new SpecialForces
+            {
+                InstanceID = "headquarters-agent",
+                OwnerInstanceID = ownerInstanceId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                AllowedMissionTypeIDs = new() { MissionTypeIDs.Espionage },
+            };
+            game.AttachNode(agent, planet);
+            return agent;
         }
     }
 }

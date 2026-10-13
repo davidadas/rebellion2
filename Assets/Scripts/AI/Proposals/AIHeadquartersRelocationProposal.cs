@@ -1,6 +1,9 @@
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 using Rebellion.Simulation;
 
 namespace Rebellion.AI.Proposals
@@ -20,6 +23,12 @@ namespace Rebellion.AI.Proposals
 
         public Building BuildingToRemove { get; }
 
+        public IReadOnlyList<Fleet> DefensiveFleets { get; }
+
+        public SpecialForces EspionageAgent { get; }
+
+        public Mission EspionageMission { get; }
+
         public int ThreatStrength { get; }
 
         public int DefenseStrength { get; }
@@ -31,6 +40,9 @@ namespace Rebellion.AI.Proposals
         /// <param name="origin">The current headquarters planet.</param>
         /// <param name="destination">The selected destination planet.</param>
         /// <param name="buildingToRemove">The destination building to remove, if capacity is full.</param>
+        /// <param name="defensiveFleets">Ready fleets assigned to accompany the headquarters.</param>
+        /// <param name="espionageAgent">The headquarters espionage unit to evacuate, if present.</param>
+        /// <param name="espionageMission">The agent's active headquarters mission, if present.</param>
         /// <param name="threatStrength">The known incoming hostile fleet strength.</param>
         /// <param name="defenseStrength">The ready headquarters orbital defense strength.</param>
         public AIHeadquartersRelocationProposal(
@@ -38,6 +50,9 @@ namespace Rebellion.AI.Proposals
             Planet origin,
             Planet destination,
             Building buildingToRemove,
+            IReadOnlyList<Fleet> defensiveFleets,
+            SpecialForces espionageAgent,
+            Mission espionageMission,
             int threatStrength,
             int defenseStrength
         )
@@ -46,6 +61,10 @@ namespace Rebellion.AI.Proposals
             Origin = origin;
             Destination = destination;
             BuildingToRemove = buildingToRemove;
+            DefensiveFleets =
+                defensiveFleets?.Where(fleet => fleet != null).ToList() ?? new List<Fleet>();
+            EspionageAgent = espionageAgent;
+            EspionageMission = espionageMission;
             ThreatStrength = threatStrength;
             DefenseStrength = defenseStrength;
         }
@@ -97,7 +116,34 @@ namespace Rebellion.AI.Proposals
             if (!context.HeadquartersQueries.CanRelocate(Headquarters, Destination))
                 return;
 
-            context.Headquarters.TryRelocate(Headquarters, Destination);
+            if (
+                EspionageMission != null
+                && !context.Missions.AbortMission(EspionageMission.InstanceID)
+            )
+                return;
+
+            if (!CanEvacuateEspionageAgent(context))
+                return;
+
+            List<ISceneNode> accompanyingUnits = DefensiveFleets.Cast<ISceneNode>().ToList();
+            if (
+                EspionageAgent != null
+                && !DefensiveFleets.Contains(EspionageAgent.GetParentOfType<Fleet>())
+            )
+                accompanyingUnits.Add(EspionageAgent);
+
+            if (!context.Headquarters.TryRelocate(Headquarters, Destination, accompanyingUnits))
+                return;
+
+            foreach (Fleet fleet in DefensiveFleets)
+            {
+                fleet.Order = new FleetOrder
+                {
+                    OrderType = FleetOrderType.Defend,
+                    Status = FleetOrderStatus.Readying,
+                    TargetPlanetId = Destination.InstanceID,
+                };
+            }
         }
 
         /// <summary>
@@ -135,6 +181,7 @@ namespace Rebellion.AI.Proposals
                 || context.Assessment == null
                 || context.Headquarters == null
                 || context.HeadquartersQueries == null
+                || EspionageMission != null && context.Missions == null
                 || context.Maintenance == null
                 || context.Manufacturing == null
                 || context.Game.GetSceneNodeByInstanceID<Building>(Headquarters?.InstanceID)
@@ -151,6 +198,8 @@ namespace Rebellion.AI.Proposals
                 || context.Assessment.HasKnownHostileFleet(Destination)
                 || context.Assessment.GetKnownIncomingHostileFleetStrength(Origin)
                     <= context.Assessment.GetHeadquartersOrbitalDefenseStrength(Origin)
+                || DefensiveFleets.Any(fleet => !CanEvacuateDefensiveFleet(context, fleet))
+                || !CanEvacuateEspionageAssignment(context)
             )
                 return false;
 
@@ -168,6 +217,72 @@ namespace Rebellion.AI.Proposals
                     is ManufacturingStatus.Building
                         or ManufacturingStatus.Complete
                 && Destination.GetAvailableEnergy() == 0;
+        }
+
+        /// <summary>
+        /// Returns whether a defensive fleet is still ready at the threatened headquarters.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="fleet">The defensive fleet to inspect.</param>
+        /// <returns>True when the fleet can accompany the relocation.</returns>
+        private bool CanEvacuateDefensiveFleet(AITurnContext context, Fleet fleet)
+        {
+            return fleet != null
+                && context.Game.GetSceneNodeByInstanceID<Fleet>(fleet.InstanceID) == fleet
+                && fleet.GetOwnerInstanceID() == context.Faction.InstanceID
+                && fleet.GetParentOfType<Planet>() == Origin
+                && fleet.RoleType == FleetRoleType.Battle
+                && fleet.Movement == null
+                && !fleet.IsInCombat
+                && fleet.HasOperationalCapitalShips();
+        }
+
+        /// <summary>
+        /// Returns whether the selected espionage unit and active mission still match the planned
+        /// headquarters assignment.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <returns>True when the assignment can be evacuated.</returns>
+        private bool CanEvacuateEspionageAssignment(AITurnContext context)
+        {
+            if (EspionageAgent == null)
+                return EspionageMission == null;
+
+            if (
+                context.Game.GetSceneNodeByInstanceID<SpecialForces>(EspionageAgent.InstanceID)
+                    != EspionageAgent
+                || EspionageAgent.GetOwnerInstanceID() != context.Faction.InstanceID
+                || EspionageAgent.GetParentOfType<Planet>() != Origin
+                || EspionageAgent.Movement != null
+                || !EspionageAgent.CanPerformMission(MissionTypeIDs.Espionage)
+            )
+                return false;
+
+            if (EspionageMission == null)
+                return !EspionageAgent.IsOnMission();
+
+            return context.Game.GetSceneNodeByInstanceID<Mission>(EspionageMission.InstanceID)
+                    == EspionageMission
+                && EspionageMission.ConfigKey == MissionTypeIDs.Espionage
+                && EspionageMission.GetParentOfType<Planet>() == Origin
+                && EspionageAgent.GetParent() == EspionageMission;
+        }
+
+        /// <summary>
+        /// Returns whether an aborted or idle espionage unit is ready to depart from the old
+        /// headquarters.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <returns>True when no agent was selected or the selected agent can move.</returns>
+        private bool CanEvacuateEspionageAgent(AITurnContext context)
+        {
+            return EspionageAgent == null
+                || context.Game.GetSceneNodeByInstanceID<SpecialForces>(EspionageAgent.InstanceID)
+                    == EspionageAgent
+                    && EspionageAgent.GetOwnerInstanceID() == context.Faction.InstanceID
+                    && EspionageAgent.GetParentOfType<Planet>() == Origin
+                    && EspionageAgent.Movement == null
+                    && !EspionageAgent.IsOnMission();
         }
     }
 }

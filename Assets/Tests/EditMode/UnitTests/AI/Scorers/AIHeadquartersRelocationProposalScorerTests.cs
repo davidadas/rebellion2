@@ -16,10 +16,16 @@ namespace Rebellion.Tests.AI.Scorers
                 null,
                 null,
                 null,
+                null,
+                null,
+                null,
                 threatStrength: 200,
                 defenseStrength: 150
             );
             AIHeadquartersRelocationProposal higherDeficit = new(
+                null,
+                null,
+                null,
                 null,
                 null,
                 null,

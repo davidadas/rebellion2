@@ -512,6 +512,21 @@ namespace Rebellion.AI.Selectors
                     AISelectionReservationKind.ProductionBuildingReplacement,
                     relocation.BuildingToRemove?.InstanceID
                 );
+                foreach (Fleet fleet in relocation.DefensiveFleets)
+                {
+                    Add(reservations, AISelectionReservationKind.FleetOrder, fleet.InstanceID);
+                    Add(reservations, AISelectionReservationKind.FleetMovement, fleet.InstanceID);
+                }
+                Add(
+                    reservations,
+                    AISelectionReservationKind.MissionActor,
+                    relocation.EspionageAgent?.InstanceID
+                );
+                Add(
+                    reservations,
+                    AISelectionReservationKind.Mission,
+                    relocation.EspionageMission?.InstanceID
+                );
                 return reservations;
             }
 

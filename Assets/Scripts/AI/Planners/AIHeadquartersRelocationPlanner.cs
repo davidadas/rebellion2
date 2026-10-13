@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.AI.Proposals;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.Simulation;
 
@@ -47,6 +48,9 @@ namespace Rebellion.AI.Planners
             if (threatStrength <= defenseStrength)
                 return proposals;
 
+            IReadOnlyList<Fleet> defensiveFleets = FindDefensiveFleets(context, origin);
+            (SpecialForces espionageAgent, Mission espionageMission) =
+                FindHeadquartersEspionageAssignment(context, origin);
             RelocationDestination relocation = SelectDestination(context, headquarters, origin);
             if (relocation.Planet == null)
                 return proposals;
@@ -57,6 +61,9 @@ namespace Rebellion.AI.Planners
                     origin,
                     relocation.Planet,
                     relocation.BuildingToRemove,
+                    defensiveFleets,
+                    espionageAgent,
+                    espionageMission,
                     threatStrength,
                     defenseStrength
                 )
@@ -83,6 +90,90 @@ namespace Rebellion.AI.Planners
                     && building.ManufacturingStatus == ManufacturingStatus.Complete
                     && building.Movement == null
                 );
+        }
+
+        /// <summary>
+        /// Returns ready fleets explicitly defending the headquarters plus the strongest idle
+        /// local battle fleet when no defense order exists yet.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="origin">The threatened headquarters planet.</param>
+        /// <returns>The fleets that should accompany the headquarters.</returns>
+        private static IReadOnlyList<Fleet> FindDefensiveFleets(
+            AITurnContext context,
+            Planet origin
+        )
+        {
+            List<Fleet> localCandidates = context
+                .Assessment.GetFriendlyFleets(origin)
+                .Where(fleet =>
+                    fleet.RoleType == FleetRoleType.Battle
+                    && fleet.Movement == null
+                    && !fleet.IsInCombat
+                    && fleet.HasOperationalCapitalShips()
+                )
+                .ToList();
+            List<Fleet> assigned = localCandidates
+                .Where(fleet =>
+                    fleet.Order?.OrderType == FleetOrderType.Defend
+                    && fleet.Order.TargetPlanetId == origin.InstanceID
+                )
+                .OrderBy(fleet => fleet.InstanceID, StringComparer.Ordinal)
+                .ToList();
+            if (assigned.Count > 0)
+                return assigned;
+
+            Fleet available = localCandidates
+                .Where(fleet => fleet.Order == null)
+                .OrderByDescending(context.Assessment.GetFleetCombatValue)
+                .ThenBy(fleet => fleet.InstanceID, StringComparer.Ordinal)
+                .FirstOrDefault();
+            return available == null ? Array.Empty<Fleet>() : new[] { available };
+        }
+
+        /// <summary>
+        /// Finds the special-forces unit assigned to local headquarters espionage and its active
+        /// mission when one exists.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="origin">The threatened headquarters planet.</param>
+        /// <returns>The assigned espionage unit and optional active mission.</returns>
+        private static (SpecialForces Agent, Mission Mission) FindHeadquartersEspionageAssignment(
+            AITurnContext context,
+            Planet origin
+        )
+        {
+            foreach (
+                Mission mission in context
+                    .Assessment.ActiveMissions.Where(mission =>
+                        mission.ConfigKey == MissionTypeIDs.Espionage
+                        && mission.GetParentOfType<Planet>() == origin
+                    )
+                    .OrderBy(mission => mission.InstanceID, StringComparer.Ordinal)
+            )
+            {
+                SpecialForces activeAgent = mission
+                    .GetAllParticipants()
+                    .OfType<SpecialForces>()
+                    .Where(unit =>
+                        unit.GetOwnerInstanceID() == context.Faction.InstanceID
+                        && unit.CanPerformMission(MissionTypeIDs.Espionage)
+                    )
+                    .OrderBy(unit => unit.InstanceID, StringComparer.Ordinal)
+                    .FirstOrDefault();
+                if (activeAgent != null)
+                    return (activeAgent, mission);
+            }
+
+            SpecialForces availableAgent = context
+                .Assessment.AvailableMissionParticipants.OfType<SpecialForces>()
+                .Where(unit =>
+                    unit.GetParentOfType<Planet>() == origin
+                    && unit.CanPerformMission(MissionTypeIDs.Espionage)
+                )
+                .OrderBy(unit => unit.InstanceID, StringComparer.Ordinal)
+                .FirstOrDefault();
+            return (availableAgent, null);
         }
 
         /// <summary>
