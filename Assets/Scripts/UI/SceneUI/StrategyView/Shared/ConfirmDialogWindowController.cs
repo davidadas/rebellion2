@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Missions;
+using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using UnityEngine;
 
@@ -12,6 +13,7 @@ public sealed class ConfirmDialogWindowController
 {
     private const string _moveTransitLabel = "Transit Time in Days";
     private const string _retirePrompt = "Retire these personnel?";
+    private const string _scrappedChildPrefix = "  Also scrapped: ";
     private const string _scrapPrompt = "Scrap these units?";
     private const string _missionAbortPrompt = "Are you sure you want to abort this mission?";
     private const string _stopConstructionPrompt =
@@ -292,9 +294,35 @@ public sealed class ConfirmDialogWindowController
     private static IReadOnlyList<string> BuildLines(ConfirmDialogSession session)
     {
         List<string> lines = new List<string> { GetPrompt(session) };
-        if (session.Kind != ConfirmDialogKind.MissionAbort)
-            lines.AddRange(session.Items.Select(item => item?.GetDisplayName() ?? string.Empty));
+        if (session.Kind == ConfirmDialogKind.MissionAbort)
+            return lines;
+
+        foreach (ISceneNode item in session.Items)
+        {
+            lines.Add(item?.GetDisplayName() ?? string.Empty);
+            if (session.Kind != ConfirmDialogKind.Scrap)
+                continue;
+
+            lines.AddRange(
+                GetScrappedChildren(item)
+                    .Select(child => $"{_scrappedChildPrefix}{child.GetDisplayName()}")
+            );
+        }
+
         return lines;
+    }
+
+    /// <summary>
+    /// Returns carried units removed along with a scrapped capital ship.
+    /// </summary>
+    /// <param name="item">The selected scrap target.</param>
+    /// <returns>The carried units that do not survive the scrap operation.</returns>
+    private static IEnumerable<ISceneNode> GetScrappedChildren(ISceneNode item)
+    {
+        return item is CapitalShip
+            ? item.GetChildren(includeDisabled: true)
+                .Where(child => child is Starfighter or Regiment or SpecialForces)
+            : Enumerable.Empty<ISceneNode>();
     }
 
     /// <summary>
