@@ -100,5 +100,17 @@ namespace Rebellion.Tests.UI.SceneUI
             Assert.IsNull(GameLaunchContext.SaveFileName);
             Assert.IsFalse(GameLaunchContext.IsLoadGame);
         }
+
+        [Test]
+        public void ConsumeContentPackAfterRestart_PreparedPack_ReturnsPackOnce()
+        {
+            GameLaunchContext.PrepareSaveLoadAfterContentRestart("campaign", TestContent.Pack);
+
+            ContentPack first = GameLaunchContext.ConsumeContentPackAfterRestart();
+            ContentPack second = GameLaunchContext.ConsumeContentPackAfterRestart();
+
+            Assert.AreSame(TestContent.Pack, first);
+            Assert.IsNull(second);
+        }
     }
 }

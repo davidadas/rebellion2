@@ -85,8 +85,8 @@ public sealed class GameFlowController : MonoBehaviour
         }
         catch (Exception exception)
         {
-            Debug.LogException(exception);
-            LoadingScreenController.RecoverFromLoadFailure();
+            if (!LoadingScreenController.RecoverFromLoadFailure(exception))
+                Debug.LogException(exception);
         }
     }
 
@@ -302,9 +302,6 @@ public sealed class GameFlowController : MonoBehaviour
     {
         bool loadingTransitionActive = LoadingScreenController.IsLoadInProgress;
         strategyController.ActivatePresentation(startMusic: !loadingTransitionActive);
-        LoadingScreenController.CompletePendingLoad(
-            loadingTransitionActive ? strategyController.ResumeMusic : null
-        );
         GameManager clock = AppBootstrap.Instance.GetRuntime().GetActiveGameManager();
         GameRoot activeGame = session.Game;
         GameMetadata metadata = activeGame.Metadata ??= new GameMetadata();
@@ -317,6 +314,34 @@ public sealed class GameFlowController : MonoBehaviour
             briefingsDisabled
         );
         GameLaunchContext.PlayIntroCutscene = false;
+
+        if (loadingTransitionActive)
+        {
+            LoadingScreenController.CompletePendingLoad(() =>
+            {
+                strategyController.ResumeMusic();
+                FinishGameplayActivation(session, clock, metadata, playBriefing);
+            });
+            return;
+        }
+
+        FinishGameplayActivation(session, clock, metadata, playBriefing);
+    }
+
+    /// <summary>
+    /// Enables strategy ticking after any loading handoff and optional opening briefing completes.
+    /// </summary>
+    /// <param name="session">The prepared game session.</param>
+    /// <param name="clock">The prepared game clock.</param>
+    /// <param name="metadata">The active game's mutable metadata.</param>
+    /// <param name="playBriefing">Whether the opening briefing should play first.</param>
+    private void FinishGameplayActivation(
+        GameSession session,
+        GameManager clock,
+        GameMetadata metadata,
+        bool playBriefing
+    )
+    {
         if (playBriefing)
         {
             strategyController.PlayBriefing(() =>

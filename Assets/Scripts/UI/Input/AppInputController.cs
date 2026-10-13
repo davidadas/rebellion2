@@ -130,7 +130,7 @@ public sealed class AppInputController : MonoBehaviour, PlayerInputActions.IGlob
         if (!context.performed)
             return;
 
-        if (CurrentContext == InputContext.Cutscene)
+        if (CurrentContext == InputContext.Cutscene || LoadingScreenController.IsLoadInProgress)
             return;
 
         if (Keyboard.current?.shiftKey.isPressed == true)
@@ -145,7 +145,11 @@ public sealed class AppInputController : MonoBehaviour, PlayerInputActions.IGlob
     /// <param name="context">The input callback context.</param>
     public void OnOpenGameMenu(InputAction.CallbackContext context)
     {
-        if (!context.performed || CurrentContext == InputContext.Cutscene)
+        if (
+            !context.performed
+            || CurrentContext == InputContext.Cutscene
+            || LoadingScreenController.IsLoadInProgress
+        )
             return;
 
         OptionsMenuRequested?.Invoke();
@@ -252,6 +256,7 @@ public sealed class AppInputController : MonoBehaviour, PlayerInputActions.IGlob
     private bool CanUseGameplayShortcuts()
     {
         return !UIInputFocus.IsTextEntryActive()
+            && !LoadingScreenController.IsLoadInProgress
             && (
                 CurrentContext == InputContext.Strategy
                 || CurrentContext == InputContext.Tactical

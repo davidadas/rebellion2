@@ -123,17 +123,21 @@ public sealed class AppBootstrap : MonoBehaviour
         _sceneLoader = GetComponent<SceneLoader>();
         if (_sceneLoader == null)
             _sceneLoader = gameObject.AddComponent<SceneLoader>();
-        // Read the saved selection directly; the settings system loads after content.
-        UserSettingsManager.TryReadContentSelection(
-            out string selectedPackID,
-            out string selectedScenarioID,
-            out string[] disabledModIDs
-        );
-        _contentPack = ContentPackLoader.OpenActive(
-            selectedPackID,
-            selectedScenarioID,
-            disabledModIDs
-        );
+        _contentPack = GameLaunchContext.ConsumeContentPackAfterRestart();
+        if (_contentPack == null)
+        {
+            // Read the saved selection directly; the settings system loads after content.
+            UserSettingsManager.TryReadContentSelection(
+                out string selectedPackID,
+                out string selectedScenarioID,
+                out string[] disabledModIDs
+            );
+            _contentPack = ContentPackLoader.OpenActive(
+                selectedPackID,
+                selectedScenarioID,
+                disabledModIDs
+            );
+        }
         _mainMenuApplicationPreload = ContentPackLoader.LoadApplicationPreloadManifest(
             _contentPack.FileResolver,
             _mainMenuPreloadID
@@ -219,9 +223,11 @@ public sealed class AppBootstrap : MonoBehaviour
     /// Transitions to another application scene.
     /// </summary>
     /// <param name="sceneAddress">The Unity scene name to load.</param>
-    internal void LoadScene(string sceneAddress)
+    /// <param name="loadFailed">The optional action invoked when scene loading fails.</param>
+    /// <returns>True when the transition was accepted.</returns>
+    internal bool LoadScene(string sceneAddress, Action<Exception> loadFailed = null)
     {
-        _sceneLoader.Load(sceneAddress);
+        return _sceneLoader.Load(sceneAddress, loadFailed);
     }
 
     /// <summary>
@@ -238,18 +244,54 @@ public sealed class AppBootstrap : MonoBehaviour
         if (!System.IO.File.Exists(saveGameManager.GetSaveFilePath(fileName)))
             return false;
 
-        GameMetadata metadata = saveGameManager.GetSaveMetadata(fileName);
-        if (_contentPack.MatchesContentIdentity(metadata))
+        if (LoadingScreenController.IsLoadInProgress)
+            return false;
+
+        LoadingScreenController.LoadSave(this, fileName);
+        return true;
+    }
+
+    /// <summary>
+    /// Reads save metadata and verifies any required replacement content away from the main thread.
+    /// </summary>
+    /// <param name="fileName">The save identifier to prepare.</param>
+    /// <returns>The verified loading preparation.</returns>
+    internal Task<SaveLoadPreparation> PrepareSaveLoadAsync(string fileName)
+    {
+        if (string.IsNullOrWhiteSpace(fileName))
+            throw new ArgumentException("A save file name is required.", nameof(fileName));
+
+        SaveGameManager saveGameManager = SaveGameManager.Instance;
+        ContentPack activePack = _contentPack;
+        return Task.Run(() =>
         {
-            GameLaunchContext.PrepareSaveLoad(fileName);
-            LoadingScreenController.LoadSave(this, reconstructContent: false);
-            return true;
+            GameMetadata metadata = saveGameManager.GetSaveMetadata(fileName);
+            SaveContentSelection selection = activePack.MatchesContentIdentity(metadata)
+                ? null
+                : SaveContentResolver.Resolve(activePack, metadata);
+            return new SaveLoadPreparation(fileName, selection);
+        });
+    }
+
+    /// <summary>
+    /// Applies a verified loading preparation on the Unity thread.
+    /// </summary>
+    /// <param name="preparation">The verified save and content selection.</param>
+    /// <returns>True when application content must be reconstructed.</returns>
+    internal bool ApplySaveLoadPreparation(SaveLoadPreparation preparation)
+    {
+        if (preparation == null)
+            throw new ArgumentNullException(nameof(preparation));
+
+        if (!preparation.RequiresContentRestart)
+        {
+            GameLaunchContext.PrepareSaveLoad(preparation.FileName);
+            return false;
         }
 
-        SaveContentSelection selection = SaveContentResolver.Resolve(_contentPack, metadata);
+        SaveContentSelection selection = preparation.ContentSelection;
         PersistContentSelection(selection.Pack, selection.DisabledModIDs);
-        GameLaunchContext.PrepareSaveLoadAfterContentRestart(fileName);
-        LoadingScreenController.LoadSave(this, reconstructContent: true);
+        GameLaunchContext.PrepareSaveLoadAfterContentRestart(preparation.FileName, selection.Pack);
         return true;
     }
 

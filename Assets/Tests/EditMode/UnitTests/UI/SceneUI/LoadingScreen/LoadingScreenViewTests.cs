@@ -51,12 +51,17 @@ namespace Rebellion.Tests.UI.SceneUI.LoadingScreen
                     .transform.Find("Background/LoadingHud")
                     .GetComponent<HyperspaceLoadingHudGraphic>()
             );
+            Transform continueButton = prefab.transform.Find("Background/ContinueButton");
+            Assert.IsNotNull(continueButton);
+            Assert.IsNotNull(continueButton.GetComponent<Button>());
+            Assert.IsFalse(continueButton.gameObject.activeSelf);
             Assert.IsNotNull(prefab.transform.Find("ShuttleRig/ModelRoot"));
             Assert.IsNotNull(
                 prefab.transform.Find("ShuttleRig/CameraOrbit/Camera").GetComponent<Camera>()
             );
             Assert.IsNull(prefab.transform.Find("Background/TransitLabel"));
             Assert.IsNull(prefab.transform.Find("Background/DetailTextField"));
+            Assert.IsNotNull(prefab.transform.Find("Background/FailureDetailTextField"));
 
             Transform status = prefab.transform.Find("Background/StatusTextField");
             Assert.IsNotNull(status);
@@ -95,13 +100,42 @@ namespace Rebellion.Tests.UI.SceneUI.LoadingScreen
                 .transform.Find("Background/StatusTextField")
                 .GetComponent<TextMeshProUGUI>();
 
-            _instance.ShowLoadFailure();
+            _instance.ShowLoadFailure("Required content is unavailable.");
 
             Assert.AreEqual("LOAD FAILED\nRETURNING TO MENU...", status.text);
+            Assert.AreEqual(
+                "Required content is unavailable.",
+                _instance
+                    .transform.Find("Background/FailureDetailTextField")
+                    .GetComponent<TextMeshProUGUI>()
+                    .text
+            );
 
             _instance.PrepareEntrance();
 
             Assert.AreEqual("Loading ...", status.text);
+            Assert.IsFalse(
+                _instance.transform.Find("Background/FailureDetailTextField").gameObject.activeSelf
+            );
+        }
+
+        [Test]
+        public void ShowReady_LoadCompleted_ShowsContinuePrompt()
+        {
+            LoadingScreenView prefab = Resources.Load<LoadingScreenView>("UI/LoadingScreen");
+            _instance = Object.Instantiate(prefab);
+            Button continueButton = _instance
+                .transform.Find("Background/ContinueButton")
+                .GetComponent<Button>();
+            TextMeshProUGUI status = _instance
+                .transform.Find("Background/StatusTextField")
+                .GetComponent<TextMeshProUGUI>();
+
+            _instance.ShowReady();
+
+            Assert.AreEqual("GAME READY", status.text);
+            Assert.IsTrue(continueButton.gameObject.activeSelf);
+            Assert.IsTrue(continueButton.interactable);
         }
 
         [UnityTest]

@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using TMPro;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 /// <summary>
@@ -24,6 +25,15 @@ public sealed class LoadingScreenView : MonoBehaviour
 
     [SerializeField]
     private TextMeshProUGUI statusText;
+
+    [SerializeField]
+    private TextMeshProUGUI failureDetailText;
+
+    [SerializeField]
+    private Button continueButton;
+
+    [SerializeField]
+    private HyperspaceLoadingHudGraphic loadingHud;
 
     [SerializeField]
     private RawImage shuttleViewport;
@@ -63,6 +73,12 @@ public sealed class LoadingScreenView : MonoBehaviour
     private Vector3 shuttleRestScale;
     private bool modelReady;
     private bool loadFailed;
+    private bool readyForContinue;
+
+    /// <summary>
+    /// Raised when the player accepts a fully prepared saved game.
+    /// </summary>
+    internal event Action ContinueRequested;
 
     /// <summary>
     /// Verifies the generated presentation, creates its render target, and seeds the starfield.
@@ -71,6 +87,9 @@ public sealed class LoadingScreenView : MonoBehaviour
     {
         if (
             statusText == null
+            || failureDetailText == null
+            || continueButton == null
+            || loadingHud == null
             || shuttleViewport == null
             || starfield == null
             || presentationGroup == null
@@ -81,11 +100,14 @@ public sealed class LoadingScreenView : MonoBehaviour
         )
         {
             throw new MissingReferenceException(
-                $"{name} requires status, starfield, transition, viewport, camera-orbit, camera, and model-root references."
+                $"{name} requires status, continue, loading-HUD, starfield, transition, viewport, camera-orbit, camera, and model-root references."
             );
         }
 
         statusText.text = _loadingText;
+        failureDetailText.gameObject.SetActive(false);
+        continueButton.onClick.AddListener(RequestContinue);
+        continueButton.gameObject.SetActive(false);
         yawDrag = new LimitedYawDrag(_maximumYaw, _yawDegreesPerScreen);
         shuttleCameraOrbitRestRotation = shuttleCameraOrbit.localRotation;
         cancellation = new CancellationTokenSource();
@@ -121,12 +143,15 @@ public sealed class LoadingScreenView : MonoBehaviour
     private void Update()
     {
         float time = Time.unscaledTime;
-        if (!loadFailed)
+        if (!loadFailed && !readyForContinue)
         {
             int dotCount = 1 + Mathf.FloorToInt(time * 2.25f) % 3;
             statusText.text = $"LOADING{new string('.', dotCount)}";
             statusText.alpha = Mathf.Lerp(0.72f, 1f, (Mathf.Sin(time * 3.2f) + 1f) * 0.5f);
         }
+        if (readyForContinue && IsKeyboardContinuePressed())
+            RequestContinue();
+
         UpdateCameraDragInput();
         displayedYaw = Mathf.SmoothDampAngle(
             displayedYaw,
@@ -201,6 +226,8 @@ public sealed class LoadingScreenView : MonoBehaviour
         else
         {
             yawDrag?.End();
+            readyForContinue = false;
+            continueButton.gameObject.SetActive(false);
         }
 
         gameObject.SetActive(visible);
@@ -212,8 +239,13 @@ public sealed class LoadingScreenView : MonoBehaviour
     internal void PrepareEntrance()
     {
         loadFailed = false;
+        readyForContinue = false;
         statusText.text = _loadingText;
         statusText.alpha = 1f;
+        failureDetailText.gameObject.SetActive(false);
+        loadingHud.gameObject.SetActive(true);
+        continueButton.interactable = true;
+        continueButton.gameObject.SetActive(false);
         ResetCameraInteraction();
         presentationGroup.alpha = 0f;
         fadeOverlayGroup.alpha = 0f;
@@ -241,11 +273,76 @@ public sealed class LoadingScreenView : MonoBehaviour
     /// <summary>
     /// Replaces the animated loading label with a stable recovery message.
     /// </summary>
-    internal void ShowLoadFailure()
+    /// <param name="details">A concise explanation of why loading failed.</param>
+    internal void ShowLoadFailure(string details = null)
     {
         loadFailed = true;
+        readyForContinue = false;
         statusText.text = "LOAD FAILED\nRETURNING TO MENU...";
         statusText.alpha = 1f;
+        failureDetailText.text = FormatFailureDetail(details);
+        failureDetailText.gameObject.SetActive(true);
+        loadingHud.gameObject.SetActive(false);
+        continueButton.gameObject.SetActive(false);
+    }
+
+    /// <summary>
+    /// Replaces the loading animation with a stable player-controlled handoff.
+    /// </summary>
+    internal void ShowReady()
+    {
+        loadFailed = false;
+        readyForContinue = true;
+        statusText.text = "GAME READY";
+        statusText.alpha = 1f;
+        failureDetailText.gameObject.SetActive(false);
+        loadingHud.gameObject.SetActive(false);
+        continueButton.interactable = true;
+        continueButton.gameObject.SetActive(true);
+    }
+
+    /// <summary>
+    /// Raises the continue request once for the current ready state.
+    /// </summary>
+    private void RequestContinue()
+    {
+        if (!readyForContinue)
+            return;
+
+        readyForContinue = false;
+        continueButton.interactable = false;
+        ContinueRequested?.Invoke();
+    }
+
+    /// <summary>
+    /// Returns whether a supported keyboard key requested the ready-state handoff this frame.
+    /// </summary>
+    /// <returns>True when Enter, keypad Enter, or Space was pressed.</returns>
+    private static bool IsKeyboardContinuePressed()
+    {
+        Keyboard keyboard = Keyboard.current;
+        return keyboard != null
+            && (
+                keyboard.enterKey.wasPressedThisFrame
+                || keyboard.numpadEnterKey.wasPressedThisFrame
+                || keyboard.spaceKey.wasPressedThisFrame
+            );
+    }
+
+    /// <summary>
+    /// Produces a bounded single-message explanation suitable for the loading presentation.
+    /// </summary>
+    /// <param name="details">The raw loading error message.</param>
+    /// <returns>The normalized user-facing explanation.</returns>
+    private static string FormatFailureDetail(string details)
+    {
+        const int maximumLength = 240;
+        string normalized = string.IsNullOrWhiteSpace(details)
+            ? "The saved game could not be loaded."
+            : details.Replace('\r', ' ').Replace('\n', ' ').Trim();
+        return normalized.Length <= maximumLength
+            ? normalized
+            : normalized.Substring(0, maximumLength - 3) + "...";
     }
 
     /// <summary>
@@ -264,6 +361,9 @@ public sealed class LoadingScreenView : MonoBehaviour
     /// </summary>
     private void OnDestroy()
     {
+        if (continueButton != null)
+            continueButton.onClick.RemoveListener(RequestContinue);
+
         cancellation?.Cancel();
         cancellation?.Dispose();
         cancellation = null;

@@ -7,6 +7,7 @@ using Rebellion.Game;
 /// </summary>
 public static class GameLaunchContext
 {
+    private static ContentPack _contentPackAfterRestart;
     private static string _saveFileNameAfterContentRestart;
 
     /// <summary>
@@ -38,12 +39,28 @@ public static class GameLaunchContext
     /// Preserves a save request while application content is reconstructed.
     /// </summary>
     /// <param name="fileName">The save identifier to restore after reconstruction.</param>
-    internal static void PrepareSaveLoadAfterContentRestart(string fileName)
+    /// <param name="contentPack">The verified content pack to transfer to the replacement bootstrap.</param>
+    internal static void PrepareSaveLoadAfterContentRestart(
+        string fileName,
+        ContentPack contentPack = null
+    )
     {
         if (string.IsNullOrWhiteSpace(fileName))
             throw new ArgumentException("A save file name is required.", nameof(fileName));
 
         _saveFileNameAfterContentRestart = fileName;
+        _contentPackAfterRestart = contentPack;
+    }
+
+    /// <summary>
+    /// Returns and consumes the verified content pack prepared for bootstrap reconstruction.
+    /// </summary>
+    /// <returns>The prepared content pack, or null when normal content selection should be loaded.</returns>
+    internal static ContentPack ConsumeContentPackAfterRestart()
+    {
+        ContentPack contentPack = _contentPackAfterRestart;
+        _contentPackAfterRestart = null;
+        return contentPack;
     }
 
     /// <summary>
@@ -56,6 +73,7 @@ public static class GameLaunchContext
 
         string fileName = _saveFileNameAfterContentRestart;
         _saveFileNameAfterContentRestart = null;
+        _contentPackAfterRestart = null;
         PrepareSaveLoad(fileName);
     }
 

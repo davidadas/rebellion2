@@ -38,7 +38,10 @@ namespace Rebellion.Tests.App
         [TearDown]
         public void TearDown()
         {
-            LoadingScreenController.CompletePendingLoad();
+            LoadingScreenController loadingController =
+                Object.FindAnyObjectByType<LoadingScreenController>(FindObjectsInactive.Include);
+            if (loadingController != null)
+                Object.DestroyImmediate(loadingController.gameObject);
             Object.DestroyImmediate(_gameObject);
             DestroyAudioManagers();
             GameLaunchContext.Reset(TestContent.Pack);
@@ -65,12 +68,13 @@ namespace Rebellion.Tests.App
         [Test]
         public void InitializeRuntimeCore_PendingSaveAfterContentRestart_RestoresLoadRequest()
         {
-            GameLaunchContext.PrepareSaveLoadAfterContentRestart("campaign");
+            GameLaunchContext.PrepareSaveLoadAfterContentRestart("campaign", TestContent.Pack);
 
             UIComponentTestHelper.InvokeLifecycle(_bootstrap, "InitializeRuntimeCore");
 
             Assert.AreEqual("campaign", GameLaunchContext.SaveFileName);
             Assert.IsTrue(GameLaunchContext.IsLoadGame);
+            Assert.AreSame(TestContent.Pack, _bootstrap.GetContentPack());
         }
 
         [Test]

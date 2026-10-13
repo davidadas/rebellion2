@@ -95,12 +95,28 @@ public static class LoadingScreenPrefabBuilder
         status.color = new Color(0.84f, 0.95f, 1f, 1f);
         SetSourceRect(status.rectTransform, 0, 890, 1920, 62);
 
+        TextMeshProUGUI failureDetail = CreateLoadingText(
+            "FailureDetailTextField",
+            backgroundObject.transform,
+            string.Empty,
+            22,
+            FontStyles.Normal
+        );
+        failureDetail.color = new Color(0.72f, 0.86f, 0.94f, 1f);
+        failureDetail.textWrappingMode = TextWrappingModes.Normal;
+        failureDetail.overflowMode = TextOverflowModes.Ellipsis;
+        SetSourceRect(failureDetail.rectTransform, 460, 952, 1000, 92);
+        failureDetail.gameObject.SetActive(false);
+
         GameObject loadingHudObject = CreateRectObject("LoadingHud", backgroundObject.transform);
         loadingHudObject.AddComponent<CanvasRenderer>();
         HyperspaceLoadingHudGraphic loadingHud =
             loadingHudObject.AddComponent<HyperspaceLoadingHudGraphic>();
         loadingHud.raycastTarget = false;
         SetSourceRect(loadingHud.rectTransform, 510, 968, 900, 42);
+
+        Button continueButton = CreateContinueButton(backgroundObject.transform);
+        continueButton.gameObject.SetActive(false);
 
         GameObject rig = new GameObject("ShuttleRig");
         rig.transform.SetParent(root.transform, false);
@@ -166,6 +182,9 @@ public static class LoadingScreenPrefabBuilder
 
         LoadingScreenView view = root.GetComponent<LoadingScreenView>();
         AssignReference(view, "statusText", status);
+        AssignReference(view, "failureDetailText", failureDetail);
+        AssignReference(view, "continueButton", continueButton);
+        AssignReference(view, "loadingHud", loadingHud);
         AssignReference(view, "shuttleViewport", shuttleViewport);
         AssignReference(view, "starfield", starfield);
         AssignReference(view, "presentationGroup", presentationGroup);
@@ -174,6 +193,41 @@ public static class LoadingScreenPrefabBuilder
         AssignReference(view, "shuttleCamera", shuttleCamera);
         AssignReference(view, "shuttleModelRoot", modelRoot.transform);
         SavePrefab(root, _prefabPath);
+    }
+
+    /// <summary>
+    /// Creates the centered button used to enter a fully loaded game.
+    /// </summary>
+    /// <param name="parent">The loading-presentation parent.</param>
+    /// <returns>The configured continue button.</returns>
+    private static Button CreateContinueButton(Transform parent)
+    {
+        GameObject buttonObject = CreateRectObject("ContinueButton", parent);
+        buttonObject.AddComponent<CanvasRenderer>();
+        Image background = buttonObject.AddComponent<Image>();
+        background.color = new Color(0.025f, 0.12f, 0.2f, 0.96f);
+
+        Button button = buttonObject.AddComponent<Button>();
+        button.targetGraphic = background;
+        ColorBlock colors = button.colors;
+        colors.normalColor = Color.white;
+        colors.highlightedColor = new Color(0.72f, 0.92f, 1f, 1f);
+        colors.pressedColor = new Color(0.48f, 0.76f, 0.92f, 1f);
+        colors.selectedColor = colors.highlightedColor;
+        button.colors = colors;
+        SetSourceRect(background.rectTransform, 760, 958, 400, 64);
+
+        TextMeshProUGUI label = CreateLoadingText(
+            "Label",
+            buttonObject.transform,
+            "CONTINUE",
+            30,
+            FontStyles.Bold
+        );
+        label.characterSpacing = 7f;
+        label.color = new Color(0.84f, 0.95f, 1f, 1f);
+        FillParent(label.rectTransform);
+        return button;
     }
 
     /// <summary>
