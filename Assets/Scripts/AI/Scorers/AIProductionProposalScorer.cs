@@ -527,18 +527,7 @@ namespace Rebellion.AI.Scorers
                 reservePercent,
                 config.RefinedMaterialEconomyWarningPercent
             );
-            long projectedStockpile = Math.Max(
-                0,
-                (long)context.Assessment.RefinedMaterialStockpile
-                    - context.Assessment.NearTermRefinedMaterialCommitment
-            );
-            int supply = context.Assessment.RefinedMaterialSupply;
-            int projectedPercent =
-                supply <= 0
-                    ? projectedStockpile > 0
-                        ? 100
-                        : 0
-                    : (int)Math.Min(100, projectedStockpile * 100 / supply);
+            int projectedPercent = context.Assessment.ProjectedRefinedMaterialPercent;
             if (projectedPercent >= warningPercent)
                 return 0;
             double urgency = Math.Min(

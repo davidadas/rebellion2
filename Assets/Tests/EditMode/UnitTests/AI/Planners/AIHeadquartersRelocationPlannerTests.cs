@@ -155,6 +155,71 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreSame(removableDefense, proposal.BuildingToRemove);
         }
 
+        [Test]
+        public void Plan_EquallySafeFullPlanets_PreservesRequiredProduction()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.Selection.MaintenanceHeadroomTarget = 25;
+            game.Config.AI.Selection.RefinedMaterialEconomyWarningPercent = 40;
+            empire.RefinedMaterialStockpile = 100;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet origin = AddMobileHeadquarters(game, empire, sector);
+            Planet productionPlanet = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "production",
+                empire.InstanceID,
+                energyCapacity: 1
+            );
+            Building requiredShipyard = AddBuilding(
+                game,
+                productionPlanet,
+                "required-shipyard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            Planet resourcePlanet = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "resources",
+                empire.InstanceID,
+                energyCapacity: 4,
+                rawResourceNodes: 2
+            );
+            AddBuilding(game, resourcePlanet, "mine-a", BuildingType.Mine, ManufacturingType.None);
+            AddBuilding(game, resourcePlanet, "mine-b", BuildingType.Mine, ManufacturingType.None);
+            AddBuilding(
+                game,
+                resourcePlanet,
+                "refinery-a",
+                BuildingType.Refinery,
+                ManufacturingType.None
+            );
+            AddBuilding(
+                game,
+                resourcePlanet,
+                "refinery-b",
+                BuildingType.Refinery,
+                ManufacturingType.None
+            );
+            AddFleet(game, origin, "incoming", rebels.InstanceID, 200, isMoving: true);
+            AddFleet(game, origin, "defender", empire.InstanceID, 100, isMoving: false);
+            AITestSceneBuilder.RevealPlanet(game, empire, origin);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIHeadquartersRelocationProposal proposal = new AIHeadquartersRelocationPlanner()
+                .Plan(context)
+                .Cast<AIHeadquartersRelocationProposal>()
+                .Single();
+
+            Assert.AreSame(resourcePlanet, proposal.Destination);
+            Assert.AreNotSame(requiredShipyard, proposal.BuildingToRemove);
+            Assert.That(
+                proposal.BuildingToRemove.GetBuildingType(),
+                Is.EqualTo(BuildingType.Mine).Or.EqualTo(BuildingType.Refinery)
+            );
+        }
+
         /// <summary>
         /// Creates a mobile headquarters with one alternate destination and an incoming fleet.
         /// </summary>
@@ -228,15 +293,21 @@ namespace Rebellion.Tests.AI.Planners
         /// <param name="planet">The destination planet.</param>
         /// <param name="instanceId">The building instance identifier.</param>
         /// <param name="buildingType">The building type.</param>
+        /// <param name="productionType">The manufacturing lane supplied by the building.</param>
         /// <returns>The attached building.</returns>
         private static Building AddBuilding(
             GameRoot game,
             Planet planet,
             string instanceId,
-            BuildingType buildingType
+            BuildingType buildingType,
+            ManufacturingType productionType = ManufacturingType.Building
         )
         {
-            Building building = AITestSceneBuilder.CreateBuildingTemplate(instanceId, buildingType);
+            Building building = AITestSceneBuilder.CreateBuildingTemplate(
+                instanceId,
+                buildingType,
+                productionType
+            );
             building.OwnerInstanceID = planet.OwnerInstanceID;
             game.AttachNode(building, planet);
             return building;

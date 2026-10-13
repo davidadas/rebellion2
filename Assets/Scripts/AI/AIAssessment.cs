@@ -210,9 +210,17 @@ namespace Rebellion.AI
         public IReadOnlyList<Planet> NeutralPlanets { get; }
 
         // Economy.
+        public int MaintenanceCapacityPerResourcePair { get; }
+
         public int MaintenanceCapacity { get; }
 
         public int ProjectedMaintenanceHeadroom { get; }
+
+        public int ProjectedMinedResourceCapacity { get; }
+
+        public int ProjectedRefinementCapacity { get; }
+
+        public int ProjectedMaterialCapacity { get; }
 
         public int ProjectedEconomyMaintenanceHeadroom { get; }
 
@@ -221,6 +229,8 @@ namespace Rebellion.AI
         public int RefinedMaterialStockpile { get; }
 
         public int NearTermRefinedMaterialCommitment { get; }
+
+        public int ProjectedRefinedMaterialPercent { get; }
 
         public int PendingRawMaterialRequestCount { get; }
 
@@ -267,20 +277,19 @@ namespace Rebellion.AI
                     .ToList()
                 ?? new List<string>();
             int availableMaterials = faction?.GetTotalAvailableMaterialsRaw() ?? 0;
-            int maintenanceCapacityPerFacility =
+            MaintenanceCapacityPerResourcePair =
                 ResourceProductionQueries.CalculateMaintenanceCapacityPerFacility(game, faction);
-            MaintenanceCapacity = availableMaterials * maintenanceCapacityPerFacility;
+            MaintenanceCapacity = availableMaterials * MaintenanceCapacityPerResourcePair;
             ProjectedMaintenanceHeadroom =
                 MaintenanceCapacity - (faction?.GetTotalProjectedMaintenanceCost() ?? 0);
-            int projectedMaterials = Math.Min(
+            ProjectedMinedResourceCapacity = faction?.GetTotalRawMinedResources() ?? 0;
+            ProjectedRefinementCapacity = faction?.GetTotalRawRefinementCapacity() ?? 0;
+            ProjectedMaterialCapacity = Math.Min(
                 faction?.GetTotalRawResourceNodes() ?? 0,
-                Math.Min(
-                    faction?.GetTotalRawMinedResources() ?? 0,
-                    faction?.GetTotalRawRefinementCapacity() ?? 0
-                )
+                Math.Min(ProjectedMinedResourceCapacity, ProjectedRefinementCapacity)
             );
             ProjectedEconomyMaintenanceHeadroom =
-                projectedMaterials * maintenanceCapacityPerFacility
+                ProjectedMaterialCapacity * MaintenanceCapacityPerResourcePair
                 - (faction?.GetTotalProjectedMaintenanceCost() ?? 0);
             RefinedMaterialSupply =
                 availableMaterials * (faction?.Settings?.RefinementMultiplier ?? 0);
@@ -344,6 +353,16 @@ namespace Rebellion.AI
                     starfighter.ManufacturingStatus != ManufacturingStatus.Complete
                 );
             NearTermRefinedMaterialCommitment = GetNearTermRefinedMaterialCommitment();
+            long projectedRefinedMaterials = Math.Max(
+                0,
+                (long)RefinedMaterialStockpile - NearTermRefinedMaterialCommitment
+            );
+            ProjectedRefinedMaterialPercent =
+                RefinedMaterialSupply <= 0
+                    ? projectedRefinedMaterials > 0
+                        ? 100
+                        : 0
+                    : (int)Math.Min(100, projectedRefinedMaterials * 100 / RefinedMaterialSupply);
             EnemyPlanets = BuildEnemyPlanets();
             NeutralPlanets = BuildNeutralPlanets();
             AvailableMissionParticipants = BuildAvailableMissionParticipants();

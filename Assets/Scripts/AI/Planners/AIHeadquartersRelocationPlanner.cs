@@ -194,7 +194,7 @@ namespace Rebellion.AI.Planners
                 .Where(group => !string.IsNullOrEmpty(group.Key))
                 .ToDictionary(group => group.Key, group => group.Count(), StringComparer.Ordinal);
 
-            IEnumerable<Planet> candidates = context
+            IEnumerable<IGrouping<int, Planet>> candidateGroups = context
                 .Assessment.OwnedPlanets.Where(planet =>
                     planet != null
                     && planet != origin
@@ -203,29 +203,112 @@ namespace Rebellion.AI.Planners
                     && !context.Assessment.HasKnownHostileFleet(planet)
                     && !MovementQueries.IsBlockedFromDestinationByBlockade(headquarters, planet)
                 )
-                .OrderBy(planet =>
-                {
-                    knownEnemyPlanetsBySystem.TryGetValue(
-                        context.Assessment.GetPlanetSystemId(planet),
-                        out int count
-                    );
-                    return count;
-                })
-                .ThenByDescending(planet => planet.GetAvailableEnergy() > 0)
-                .ThenByDescending(context.Assessment.GetPlanetValue)
-                .ThenBy(planet => planet.InstanceID, StringComparer.Ordinal);
+                .GroupBy(planet =>
+                    GetKnownEnemyPlanetCount(context, knownEnemyPlanetsBySystem, planet)
+                )
+                .OrderBy(group => group.Key);
 
-            foreach (Planet candidate in candidates)
+            foreach (IGrouping<int, Planet> candidateGroup in candidateGroups)
             {
-                if (context.HeadquartersQueries.CanRelocate(headquarters, candidate))
-                    return new RelocationDestination(candidate, null);
+                Planet openDestination = candidateGroup
+                    .Where(candidate =>
+                        context.HeadquartersQueries.CanRelocate(headquarters, candidate)
+                    )
+                    .OrderByDescending(context.Assessment.GetPlanetValue)
+                    .ThenBy(candidate => candidate.InstanceID, StringComparer.Ordinal)
+                    .FirstOrDefault();
+                if (openDestination != null)
+                    return new RelocationDestination(openDestination, null);
 
-                Building buildingToRemove = _spacePolicy.SelectBuildingToRemove(context, candidate);
-                if (buildingToRemove != null)
-                    return new RelocationDestination(candidate, buildingToRemove);
+                Planet selectedPlanet = null;
+                AIPlanetBuildingSpacePolicy.Removal selectedRemoval = default;
+                double selectedRemainingValue = 0;
+                foreach (Planet candidate in candidateGroup)
+                {
+                    AIPlanetBuildingSpacePolicy.Removal removal = _spacePolicy.SelectRemoval(
+                        context,
+                        candidate
+                    );
+                    if (!removal.IsAvailable)
+                        continue;
+
+                    double remainingValue = GetRemainingPlanetValue(
+                        context,
+                        candidate,
+                        removal.Building
+                    );
+                    int comparison = selectedRemoval.IsAvailable
+                        ? removal.CompareCostTo(selectedRemoval)
+                        : -1;
+                    if (
+                        comparison < 0
+                        || comparison == 0
+                            && (
+                                remainingValue > selectedRemainingValue
+                                || remainingValue == selectedRemainingValue
+                                    && string.CompareOrdinal(
+                                        candidate.InstanceID,
+                                        selectedPlanet.InstanceID
+                                    ) < 0
+                            )
+                    )
+                    {
+                        selectedPlanet = candidate;
+                        selectedRemoval = removal;
+                        selectedRemainingValue = remainingValue;
+                    }
+                }
+
+                if (selectedRemoval.IsAvailable)
+                    return new RelocationDestination(selectedPlanet, selectedRemoval.Building);
             }
 
             return default;
+        }
+
+        /// <summary>
+        /// Returns the number of known enemy planets in a destination's system.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="knownEnemyPlanetsBySystem">Known enemy counts keyed by system.</param>
+        /// <param name="planet">The destination planet.</param>
+        /// <returns>The known enemy planet count.</returns>
+        private static int GetKnownEnemyPlanetCount(
+            AITurnContext context,
+            IReadOnlyDictionary<string, int> knownEnemyPlanetsBySystem,
+            Planet planet
+        )
+        {
+            return knownEnemyPlanetsBySystem.TryGetValue(
+                context.Assessment.GetPlanetSystemId(planet),
+                out int count
+            )
+                ? count
+                : 0;
+        }
+
+        /// <summary>
+        /// Calculates destination value after its selected building has been removed.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="planet">The destination planet.</param>
+        /// <param name="building">The building selected for removal.</param>
+        /// <returns>The remaining strategic planet value.</returns>
+        private static double GetRemainingPlanetValue(
+            AITurnContext context,
+            Planet planet,
+            Building building
+        )
+        {
+            double remainingValue = context.Assessment.GetPlanetValue(planet) - 1;
+            int processRate = building.GetProcessRate();
+            if (
+                building.ManufacturingStatus == ManufacturingStatus.Complete
+                && building.GetProductionType() != ManufacturingType.None
+                && processRate > 0
+            )
+                remainingValue -= 1d / processRate;
+            return remainingValue;
         }
 
         private readonly struct RelocationDestination

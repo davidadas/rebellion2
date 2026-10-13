@@ -990,28 +990,10 @@ namespace Rebellion.AI.Demands
         {
             return context.Assessment.PendingRawMaterialRequestCount > 0
                 || context.Assessment.PendingRefinedMaterialRequestCount > 0
-                || GetProjectedRefinedMaterialPercent(context)
+                || context.Assessment.ProjectedRefinedMaterialPercent
                     <= context.Game.Config.AI.Selection.RefinedMaterialEconomyWarningPercent
                 || context.Assessment.ProjectedEconomyMaintenanceHeadroom
                     < context.Game.Config.AI.Selection.MaintenanceHeadroomTarget;
-        }
-
-        /// <summary>
-        /// Returns projected uncommitted refined materials as a percentage of supply.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <returns>The projected refined-material percentage.</returns>
-        private static int GetProjectedRefinedMaterialPercent(AITurnContext context)
-        {
-            long projectedStockpile = Math.Max(
-                0,
-                (long)context.Assessment.RefinedMaterialStockpile
-                    - context.Assessment.NearTermRefinedMaterialCommitment
-            );
-            int supply = context.Assessment.RefinedMaterialSupply;
-            if (supply <= 0)
-                return projectedStockpile > 0 ? 100 : 0;
-            return (int)Math.Min(100, projectedStockpile * 100 / supply);
         }
 
         /// <summary>
