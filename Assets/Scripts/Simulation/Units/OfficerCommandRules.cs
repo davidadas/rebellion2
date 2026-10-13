@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
@@ -7,9 +6,9 @@ using Rebellion.SceneGraph;
 namespace Rebellion.Simulation
 {
     /// <summary>
-    /// Evaluates officer command eligibility, scope, and relocation effects.
+    /// Evaluates domain rules shared by officer command operations and presentation.
     /// </summary>
-    internal static class OfficerCommandQueries
+    internal static class OfficerCommandRules
     {
         /// <summary>
         /// Determines whether an officer's state and deployment permit a command change.
@@ -47,50 +46,6 @@ namespace Rebellion.Simulation
                 return null;
 
             return ResolveCommandHierarchyTarget(officer);
-        }
-
-        /// <summary>
-        /// Captures the command target of every ranked officer relocated with a scene node.
-        /// </summary>
-        /// <param name="movedNode">The officer or container about to be relocated.</param>
-        /// <returns>The ranked officers and their command targets before relocation.</returns>
-        internal static IReadOnlyDictionary<Officer, ISceneNode> CaptureRelocatedCommandTargets(
-            ISceneNode movedNode
-        )
-        {
-            if (movedNode == null)
-                return new Dictionary<Officer, ISceneNode>();
-
-            IEnumerable<Officer> officers =
-                movedNode is Officer officer ? new[] { officer }
-                : movedNode is ContainerNode container
-                    ? container.GetChildren<Officer>(recursive: true)
-                : Enumerable.Empty<Officer>();
-
-            return officers
-                .Where(candidate => candidate.CurrentRank != OfficerRank.None)
-                .ToDictionary(candidate => candidate, ResolveCommandHierarchyTarget);
-        }
-
-        /// <summary>
-        /// Enumerates officers competing for posts in one fleet or planetary system.
-        /// Planetary posts exclude officers attached to fleets in orbit.
-        /// </summary>
-        /// <param name="commandTarget">The fleet or planet.</param>
-        /// <returns>The officers in that command.</returns>
-        internal static IEnumerable<Officer> GetCommandOfficers(ISceneNode commandTarget)
-        {
-            if (commandTarget is Fleet fleet)
-                return fleet.GetChildren<Officer>(recursive: true);
-
-            if (commandTarget is Planet planet)
-            {
-                return planet
-                    .GetChildren<Officer>(recursive: true)
-                    .Where(officer => officer.GetParentOfType<Fleet>() == null);
-            }
-
-            return Enumerable.Empty<Officer>();
         }
 
         /// <summary>

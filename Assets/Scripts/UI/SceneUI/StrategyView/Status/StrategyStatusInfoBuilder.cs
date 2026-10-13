@@ -981,7 +981,7 @@ internal sealed class StrategyStatusInfoBuilder
         if (officer.CurrentRank == OfficerRank.None)
             return "Not Assigned";
 
-        ISceneNode commandTarget = OfficerCommandQueries.ResolveCommandTarget(officer);
+        ISceneNode commandTarget = OfficerCommandRules.ResolveCommandTarget(officer);
         return commandTarget?.GetDisplayName() ?? "Not Assigned";
     }
 
