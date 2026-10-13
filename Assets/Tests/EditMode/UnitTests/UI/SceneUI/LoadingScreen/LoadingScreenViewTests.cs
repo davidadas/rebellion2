@@ -6,7 +6,7 @@ using UnityEngine;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
 
-namespace Rebellion.Tests.App
+namespace Rebellion.Tests.UI.SceneUI.LoadingScreen
 {
     [TestFixture]
     public sealed class LoadingScreenViewTests

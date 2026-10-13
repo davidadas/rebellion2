@@ -32,7 +32,7 @@ public static class LoadingScreenPreview
         if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
             return;
 
-        CommonUIPrefabBuilder.BuildLoadingScreenPrefab();
+        LoadingScreenPrefabBuilder.Rebuild();
         SceneBuilder.Build(_scenePath, _prefabPath, _sceneRootName);
         Scene scene = EditorSceneManager.OpenScene(_scenePath, OpenSceneMode.Single);
         Selection.activeGameObject = FindLoadingScreenRoot(scene);

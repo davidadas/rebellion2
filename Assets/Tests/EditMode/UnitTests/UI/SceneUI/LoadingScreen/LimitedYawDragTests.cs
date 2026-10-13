@@ -1,6 +1,6 @@
 using NUnit.Framework;
 
-namespace Rebellion.Tests.App
+namespace Rebellion.Tests.UI.SceneUI.LoadingScreen
 {
     [TestFixture]
     public sealed class LimitedYawDragTests
