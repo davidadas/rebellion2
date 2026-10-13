@@ -1055,6 +1055,31 @@ namespace Rebellion.Game.FogOfWar
         }
 
         /// <summary>
+        /// Removes an entity from one remembered planet without discarding a newer location.
+        /// </summary>
+        /// <param name="faction">The faction whose snapshot is updated.</param>
+        /// <param name="entityId">The entity instance ID to remove.</param>
+        /// <param name="planetId">The planet where the entity is no longer present.</param>
+        internal void RemoveEntityFromPlanetSnapshot(
+            Faction faction,
+            string entityId,
+            string planetId
+        )
+        {
+            if (faction == null || string.IsNullOrEmpty(entityId) || string.IsNullOrEmpty(planetId))
+                return;
+
+            RemoveEntityFromOldSnapshot(faction, entityId, planetId);
+            if (
+                faction.Fog.EntityLastSeenAt.TryGetValue(entityId, out string lastSeenPlanetId)
+                && lastSeenPlanetId == planetId
+            )
+            {
+                faction.Fog.EntityLastSeenAt.Remove(entityId);
+            }
+        }
+
+        /// <summary>
         /// Repairs the entity-location index and removes duplicate remembered entities.
         /// Existing save data can contain the same entity in more than one planet snapshot when
         /// live visibility exposed a newer location without recording a new observation.

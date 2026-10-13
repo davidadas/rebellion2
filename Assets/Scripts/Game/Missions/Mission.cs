@@ -11,6 +11,17 @@ using Rebellion.Util.Serialization;
 namespace Rebellion.Game.Missions
 {
     /// <summary>
+    /// Identifies a mission whose objective is a particular scene entity.
+    /// </summary>
+    internal interface IEntityTargetingMission
+    {
+        /// <summary>
+        /// Gets the instance ID of the entity selected as the mission objective.
+        /// </summary>
+        string TargetEntityInstanceID { get; }
+    }
+
+    /// <summary>
     /// Identifies a mission encounter checkpoint.
     /// </summary>
     internal enum MissionEncounterPhase
