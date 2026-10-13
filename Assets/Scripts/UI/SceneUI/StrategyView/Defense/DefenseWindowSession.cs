@@ -308,6 +308,19 @@ internal sealed class DefenseWindowSession
     }
 
     /// <summary>
+    /// Returns whether a planet has any active item represented by the Defense window.
+    /// </summary>
+    /// <param name="planet">The represented planet.</param>
+    /// <returns>True when at least one Defense-window tab contains an active item.</returns>
+    internal static bool HasPlanetItems(Planet planet)
+    {
+        return planet != null
+            && DefenseWindowRenderData.OrderedTabs.Any(tab =>
+                GetPlanetItems(planet, tab).Count > 0
+            );
+    }
+
+    /// <summary>
     /// Captures the current index selection as identity-backed scene nodes.
     /// </summary>
     /// <param name="items">The current ordered items.</param>
