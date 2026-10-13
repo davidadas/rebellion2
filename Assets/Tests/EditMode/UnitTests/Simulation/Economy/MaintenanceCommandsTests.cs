@@ -171,6 +171,85 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void TryScrap_CapitalShipWithRegimentAndAvailableCarrier_DestroysRegiment()
+        {
+            GameConfig config = new GameConfig();
+            config.Production.ScrapRefundDivisor = 1;
+            var scene = BuildCarrierScrapScene(config);
+            Fleet fleet = (Fleet)scene.carrier.GetParent();
+            CapitalShip availableCarrier = new CapitalShip
+            {
+                InstanceID = "scrap-available-carrier",
+                OwnerInstanceID = scene.owner.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                RegimentCapacity = 1,
+                MaxHullStrength = 100,
+                CurrentHullStrength = 100,
+            };
+            Regiment regiment = EntityFactory.CreateRegiment(
+                "scrap-regiment",
+                scene.owner.InstanceID
+            );
+            regiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            scene.carrier.RegimentCapacity = 1;
+            scene.game.AttachNode(availableCarrier, fleet);
+            scene.game.AttachNode(regiment, scene.carrier);
+
+            bool scrapped = scene.maintenance.TryScrap(
+                new IManufacturable[] { scene.carrier },
+                scene.owner.InstanceID
+            );
+
+            Assert.IsTrue(scrapped);
+            Assert.IsNull(
+                scene.game.GetSceneNodeByInstanceID<Regiment>(
+                    regiment.InstanceID,
+                    includeDisabled: true
+                )
+            );
+            Assert.IsEmpty(availableCarrier.GetChildren<Regiment>(includeDisabled: true));
+        }
+
+        [Test]
+        public void TryScrap_CapitalShipWithSpecialForcesAndAvailableCarrier_DestroysSpecialForces()
+        {
+            GameConfig config = new GameConfig();
+            config.Production.ScrapRefundDivisor = 1;
+            var scene = BuildCarrierScrapScene(config);
+            Fleet fleet = (Fleet)scene.carrier.GetParent();
+            CapitalShip availableCarrier = new CapitalShip
+            {
+                InstanceID = "scrap-available-carrier",
+                OwnerInstanceID = scene.owner.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaxHullStrength = 100,
+                CurrentHullStrength = 100,
+            };
+            SpecialForces specialForces = new SpecialForces
+            {
+                InstanceID = "scrap-special-forces",
+                OwnerInstanceID = scene.owner.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            scene.game.AttachNode(availableCarrier, fleet);
+            scene.game.AttachNode(specialForces, scene.carrier);
+
+            bool scrapped = scene.maintenance.TryScrap(
+                new IManufacturable[] { scene.carrier },
+                scene.owner.InstanceID
+            );
+
+            Assert.IsTrue(scrapped);
+            Assert.IsNull(
+                scene.game.GetSceneNodeByInstanceID<SpecialForces>(
+                    specialForces.InstanceID,
+                    includeDisabled: true
+                )
+            );
+            Assert.IsEmpty(availableCarrier.GetChildren<SpecialForces>(includeDisabled: true));
+        }
+
+        [Test]
         public void Constructor_WithNullGame_ThrowsArgumentNullException()
         {
             ArgumentNullException exception = Assert.Throws<ArgumentNullException>(() =>
@@ -852,6 +931,7 @@ namespace Rebellion.Tests.Simulation
         /// Builds a maintenance scene containing a carrier with an officer and two eligible
         /// friendly fallback planets at different distances.
         /// </summary>
+        /// <param name="config">Optional runtime configuration for the scene.</param>
         /// <returns>The carrier-scrap scene and its connected result pipeline.</returns>
         private (
             GameRoot game,
@@ -863,9 +943,9 @@ namespace Rebellion.Tests.Simulation
             Officer officer,
             MaintenanceCommands maintenance,
             GameResultBus resultBus
-        ) BuildCarrierScrapScene()
+        ) BuildCarrierScrapScene(GameConfig config = null)
         {
-            GameRoot game = CreateGame();
+            GameRoot game = config == null ? CreateGame() : TestGame.Create(config);
             Faction owner = CreateFaction("empire", "Empire");
             game.GetFactions().Add(owner);
             PlanetSector sector = new PlanetSector { InstanceID = "scrap-sector" };
