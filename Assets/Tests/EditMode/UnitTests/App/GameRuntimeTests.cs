@@ -108,6 +108,16 @@ namespace Rebellion.Tests.App
         }
 
         [Test]
+        public void StartLoadedGame_SerializedGalaxyLayout_RestoresActiveContentCoordinates()
+        {
+            GameRoot game = CreateGameWithStaleGalaxyLayout();
+
+            GameSession session = _runtime.StartLoadedGame(game);
+
+            AssertGalaxyLayoutMatchesActiveContent(session.Game);
+        }
+
+        [Test]
         public void LoadGame_LegacyFactionSettings_RestoresActiveContentSettings()
         {
             _runtime.StartGame(CreateGame());
@@ -118,6 +128,19 @@ namespace Rebellion.Tests.App
 
             Assert.IsTrue(loaded);
             AssertFactionSettingsMatchActiveContent(_runtime.GetActiveGame());
+        }
+
+        [Test]
+        public void LoadGame_SerializedGalaxyLayout_RestoresActiveContentCoordinates()
+        {
+            _runtime.StartGame(CreateGame());
+            GameRoot game = CreateGameWithStaleGalaxyLayout();
+            _saveGameManager.SaveGameData(game, "stale-galaxy-layout", "Stale Galaxy Layout");
+
+            bool loaded = _runtime.LoadGame("stale-galaxy-layout");
+
+            Assert.IsTrue(loaded);
+            AssertGalaxyLayoutMatchesActiveContent(_runtime.GetActiveGame());
         }
 
         [Test]
@@ -445,6 +468,36 @@ namespace Rebellion.Tests.App
         }
 
         /// <summary>
+        /// Creates a load-compatible game with stale serialized galaxy coordinates.
+        /// </summary>
+        /// <returns>The prepared game.</returns>
+        private GameRoot CreateGameWithStaleGalaxyLayout()
+        {
+            PlanetSector template = _contentPack.GameData.PlanetSectors.First(sector =>
+                sector.GetChildren<Planet>().Count > 0
+            );
+            Planet planetTemplate = template.GetChildren<Planet>()[0];
+            PlanetSector sector = new PlanetSector
+            {
+                InstanceID = template.InstanceID,
+                TypeID = template.TypeID,
+                PositionX = template.PositionX + 100,
+                PositionY = template.PositionY + 100,
+            };
+            Planet planet = new Planet
+            {
+                InstanceID = planetTemplate.InstanceID,
+                TypeID = planetTemplate.TypeID,
+                PositionX = planetTemplate.PositionX + 100,
+                PositionY = planetTemplate.PositionY + 100,
+            };
+            GameRoot game = CreateGame();
+            game.AttachNode(sector, game.GetGalaxyMap());
+            game.AttachNode(planet, sector);
+            return game;
+        }
+
+        /// <summary>
         /// Asserts that loaded factions own independent copies of active authored settings.
         /// </summary>
         /// <param name="game">The loaded game to inspect.</param>
@@ -465,6 +518,26 @@ namespace Rebellion.Tests.App
                 Assert.AreNotSame(template.Settings, loaded.Settings);
                 Assert.AreNotSame(template.Settings.Headquarters, loaded.Settings.Headquarters);
             }
+        }
+
+        /// <summary>
+        /// Asserts that loaded galaxy coordinates match the active authored layout.
+        /// </summary>
+        /// <param name="game">The loaded game to inspect.</param>
+        private void AssertGalaxyLayoutMatchesActiveContent(GameRoot game)
+        {
+            PlanetSector loaded = game.GetGalaxyMap().GetChildren<PlanetSector>().Single();
+            PlanetSector template = _contentPack.GameData.PlanetSectors.Single(sector =>
+                sector.TypeID == loaded.TypeID
+            );
+            Planet loadedPlanet = loaded.GetChildren<Planet>().Single();
+            Planet templatePlanet = template
+                .GetChildren<Planet>()
+                .Single(planet => planet.InstanceID == loadedPlanet.InstanceID);
+            Assert.AreEqual(template.PositionX, loaded.PositionX);
+            Assert.AreEqual(template.PositionY, loaded.PositionY);
+            Assert.AreEqual(templatePlanet.PositionX, loadedPlanet.PositionX);
+            Assert.AreEqual(templatePlanet.PositionY, loadedPlanet.PositionY);
         }
 
         /// <summary>

@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
 using Rebellion.Simulation;
 using Rebellion.Util.Logging;
 using Rebellion.Util.Reflection;
@@ -108,7 +109,7 @@ public sealed class GameRuntime
         }
 
         ValidateGameContent(game);
-        ReconcileFactionSettings(game);
+        ReconcileStaticContent(game);
         GameSession session = new GameSession(game, _contentPack.GameData);
         GameManager clock = new GameManager(() => session.Game, session.Tick);
         _activeGameSession = session;
@@ -234,7 +235,7 @@ public sealed class GameRuntime
     {
         GameRoot loadedGame = _saveGameManager.LoadGameData(fileName);
         ValidateGameContent(loadedGame);
-        ReconcileFactionSettings(loadedGame);
+        ReconcileStaticContent(loadedGame);
         _activeGameSession.ReplaceGame(loadedGame);
         _gameManager.Reset();
         GameReplaced?.Invoke(_activeGameSession.Game);
@@ -268,6 +269,16 @@ public sealed class GameRuntime
     }
 
     /// <summary>
+    /// Restores immutable authored state from the active content pack.
+    /// </summary>
+    /// <param name="game">The game whose authored state will be restored.</param>
+    private void ReconcileStaticContent(GameRoot game)
+    {
+        ReconcileFactionSettings(game);
+        ReconcileGalaxyLayout(game);
+    }
+
+    /// <summary>
     /// Restores immutable faction configuration from the active content pack.
     /// </summary>
     /// <param name="game">The game whose faction settings will be restored.</param>
@@ -289,6 +300,36 @@ public sealed class GameRuntime
                 );
 
             faction.Settings = template.Settings.GetDeepCopy();
+        }
+    }
+
+    /// <summary>
+    /// Restores authored sector and planet coordinates from the active content pack.
+    /// </summary>
+    /// <param name="game">The game whose galaxy layout will be restored.</param>
+    private void ReconcileGalaxyLayout(GameRoot game)
+    {
+        foreach (PlanetSector sector in game.GetGalaxyMap().GetChildren<PlanetSector>())
+        {
+            PlanetSector template = _contentPack.GameData.PlanetSectors.FirstOrDefault(candidate =>
+                candidate?.TypeID == sector.TypeID
+            );
+            if (template == null)
+                continue;
+
+            sector.PositionX = template.PositionX;
+            sector.PositionY = template.PositionY;
+            foreach (Planet planet in sector.GetChildren<Planet>())
+            {
+                Planet planetTemplate = template
+                    .GetChildren<Planet>()
+                    .FirstOrDefault(candidate => candidate?.InstanceID == planet.InstanceID);
+                if (planetTemplate == null)
+                    continue;
+
+                planet.PositionX = planetTemplate.PositionX;
+                planet.PositionY = planetTemplate.PositionY;
+            }
         }
     }
 

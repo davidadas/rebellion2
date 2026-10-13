@@ -11,8 +11,7 @@ public sealed class EditorContentAssetSource : IContentAssetSource
     private const int _previewTextureLimit = 4096;
     private static readonly string[] _textureExtensions = { ".png", ".jpg", ".jpeg" };
 
-    private readonly string _contentRoot;
-    private readonly string _packRoot;
+    private readonly ContentFileResolver _fileResolver;
 
     /// <summary>
     /// Opens the active content pack used to resolve editor-preview assets.
@@ -20,8 +19,7 @@ public sealed class EditorContentAssetSource : IContentAssetSource
     public EditorContentAssetSource()
     {
         ContentPack pack = ContentPackLoader.OpenActive();
-        _contentRoot = pack.ContentRootPath;
-        _packRoot = pack.PackRootPath;
+        _fileResolver = pack.FileResolver;
     }
 
     /// <summary>
@@ -168,37 +166,34 @@ public sealed class EditorContentAssetSource : IContentAssetSource
         if (string.IsNullOrWhiteSpace(normalized))
             throw new ArgumentException("A content address is required.", nameof(address));
 
-        string root;
-        string relative;
-        if (normalized.StartsWith("Application/", StringComparison.Ordinal))
-        {
-            root = _contentRoot;
-            relative = normalized;
-        }
-        else if (normalized.StartsWith("Pack/", StringComparison.Ordinal))
-        {
-            root = _packRoot;
-            relative = normalized["Pack/".Length..];
-        }
-        else
+        if (
+            !normalized.StartsWith("Application/", StringComparison.Ordinal)
+            && !normalized.StartsWith("Pack/", StringComparison.Ordinal)
+        )
         {
             throw new ArgumentException($"Unsupported content address: {address}", nameof(address));
         }
 
-        string path = Path.Combine(root, relative);
-        if (!Path.HasExtension(path))
+        string path = _fileResolver.ResolveFile(normalized, _textureExtensions);
+        if (path == null)
+            throw new FileNotFoundException($"Content asset not found: {normalized}");
+
+        string dataPath = Path.GetFullPath(Application.dataPath)
+            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        string absolutePath = Path.GetFullPath(path);
+        string relativePath = Path.GetRelativePath(dataPath, absolutePath);
+        if (
+            relativePath == ".."
+            || relativePath.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal)
+            || Path.IsPathFullyQualified(relativePath)
+        )
         {
-            foreach (string extension in _textureExtensions)
-            {
-                if (File.Exists(path + extension))
-                {
-                    path += extension;
-                    break;
-                }
-            }
+            throw new InvalidOperationException(
+                $"Editor content assets must be imported beneath Assets: {absolutePath}"
+            );
         }
 
-        string assetPath = "Assets" + path[Application.dataPath.Length..].Replace('\\', '/');
+        string assetPath = "Assets/" + relativePath.Replace('\\', '/');
         if (AssetDatabase.LoadMainAssetAtPath(assetPath) == null)
             throw new FileNotFoundException($"Imported content asset not found: {assetPath}");
         return assetPath;

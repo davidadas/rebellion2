@@ -1,4 +1,6 @@
+using System;
 using System.Threading.Tasks;
+using Rebellion.Game;
 using UnityEngine;
 #if UNITY_EDITOR
 using UnityEditor;
@@ -48,6 +50,12 @@ public sealed class AppBootstrap : MonoBehaviour
     private SceneLoader _sceneLoader;
     private ContentPreloadManifest _strategyApplicationPreload;
     private UserSettingsManager _userSettingsManager;
+
+    /// <summary>
+    /// Raised immediately before a saved-game transition begins.
+    /// Scene presentations use this boundary to stop rendering the outgoing game.
+    /// </summary>
+    internal event Action SaveLoadStarting;
 
     /// <summary>
     /// Ensures AppBootstrap exists. Creates minimal bootstrap if missing (for scene testing).
@@ -137,6 +145,7 @@ public sealed class AppBootstrap : MonoBehaviour
         Cursor.SetCursor(cursorTexture, Vector2.zero, CursorMode.Auto);
         _contentModelCache = new ContentModelCache(_contentAssets);
         GameLaunchContext.Reset(_contentPack);
+        GameLaunchContext.RestoreSaveLoadAfterContentRestart();
         audioManager = AudioManager.EnsureExists(transform);
         audioManager.InitializeContent(_contentAssets);
 
@@ -166,7 +175,7 @@ public sealed class AppBootstrap : MonoBehaviour
         if (inputController == null)
             inputController = CreateInputController();
 
-        inputController?.Initialize(inputManager, _cancelStack, _runtime);
+        inputController?.Initialize(inputManager, _cancelStack, _runtime, LoadSave);
     }
 
     /// <summary>
@@ -206,6 +215,53 @@ public sealed class AppBootstrap : MonoBehaviour
     internal void LoadScene(string sceneAddress)
     {
         _sceneLoader.Load(sceneAddress);
+    }
+
+    /// <summary>
+    /// Loads a save under the exact content identity recorded in its metadata.
+    /// </summary>
+    /// <param name="fileName">The save identifier to load.</param>
+    /// <returns>True when loading or content reconstruction was started.</returns>
+    internal bool LoadSave(string fileName)
+    {
+        if (string.IsNullOrWhiteSpace(fileName))
+            return false;
+
+        SaveGameManager saveGameManager = SaveGameManager.Instance;
+        if (!System.IO.File.Exists(saveGameManager.GetSaveFilePath(fileName)))
+            return false;
+
+        GameMetadata metadata = saveGameManager.GetSaveMetadata(fileName);
+        if (_contentPack.MatchesContentIdentity(metadata))
+        {
+            SaveLoadStarting?.Invoke();
+            _runtime.EndGame();
+            GameLaunchContext.PrepareSaveLoad(fileName);
+            ContentRestartController.LoadSave(this, reconstructContent: false);
+            return true;
+        }
+
+        SaveContentSelection selection = SaveContentResolver.Resolve(_contentPack, metadata);
+        PersistContentSelection(selection.Pack, selection.DisabledModIDs);
+        SaveLoadStarting?.Invoke();
+        _runtime.EndGame();
+        GameLaunchContext.PrepareSaveLoadAfterContentRestart(fileName);
+        ContentRestartController.LoadSave(this, reconstructContent: true);
+        return true;
+    }
+
+    /// <summary>
+    /// Persists a verified save-content selection for the replacement bootstrap.
+    /// </summary>
+    /// <param name="contentPack">The verified pack and scenario.</param>
+    /// <param name="disabledModIDs">Compatible mods excluded by the save.</param>
+    private void PersistContentSelection(ContentPack contentPack, string[] disabledModIDs)
+    {
+        UserContentSettings content = _userSettingsManager.Settings.Content;
+        content.ActivePackID = contentPack.Definition.ID;
+        content.ActiveScenarioID = contentPack.Scenario.ID;
+        content.DisabledModIDs = disabledModIDs ?? Array.Empty<string>();
+        _userSettingsManager.Save();
     }
 
     /// <summary>

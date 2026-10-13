@@ -246,18 +246,16 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         }
 
         [Test]
-        public void LoadGame_MissingFileName_ThrowsInvalidOperationException()
+        public void LoadGameAsync_MissingFileName_ThrowsInvalidOperationException()
         {
             string originalFileName = GameLaunchContext.SaveFileName;
             try
             {
                 GameLaunchContext.SaveFileName = null;
 
-                TargetInvocationException exception = Assert.Throws<TargetInvocationException>(() =>
-                    InvokePrivate("LoadGame")
-                );
+                Task load = (Task)InvokePrivate("LoadGameAsync");
 
-                Assert.IsInstanceOf<InvalidOperationException>(exception.InnerException);
+                Assert.ThrowsAsync<InvalidOperationException>(async () => await load);
             }
             finally
             {

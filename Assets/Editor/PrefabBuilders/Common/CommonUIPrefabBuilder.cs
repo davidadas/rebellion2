@@ -10,6 +10,8 @@ using UnityEngine.UI;
 /// </summary>
 public static class CommonUIPrefabBuilder
 {
+    private const string _contentRestartLoadingPrefabPath =
+        "Assets/Resources/UI/ContentRestartLoadingView.prefab";
     private const string _scrollAreaPrefabPath = "Assets/Prefabs/UI/Common/ScrollArea.prefab";
     private const string _textInputPrefabPath = "Assets/Prefabs/UI/Common/TextInput.prefab";
     private const string _confirmationDialogPrefabPath =
@@ -36,12 +38,14 @@ public static class CommonUIPrefabBuilder
     private const int _defaultControlHeight = 1;
     private const int _confirmationSurfaceWidth = 640;
     private const int _confirmationSurfaceHeight = 480;
+    private const int _loadingPresentationLayer = 31;
 
     /// <summary>
     /// Rebuilds every reusable generated control prefab.
     /// </summary>
     public static void RebuildSharedControlPrefabs()
     {
+        BuildContentRestartLoadingPrefab();
         BuildScrollAreaPrefab();
         BuildTextInputPrefab();
         BuildConfirmationDialogPrefab();
@@ -51,6 +55,158 @@ public static class CommonUIPrefabBuilder
             ImportAssetOptions.ForceSynchronousImport | ImportAssetOptions.ForceUpdate
         );
         AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+    }
+
+    /// <summary>
+    /// Authors the application-owned loading page used while content packs are exchanged.
+    /// </summary>
+    /// <returns>The saved loading-page prefab root.</returns>
+    internal static GameObject BuildContentRestartLoadingPrefab()
+    {
+        GameObject root = new GameObject(
+            "ContentRestartLoadingView",
+            typeof(RectTransform),
+            typeof(Canvas),
+            typeof(CanvasScaler),
+            typeof(GraphicRaycaster),
+            typeof(ContentRestartLoadingView)
+        );
+        FillParent(root.GetComponent<RectTransform>());
+
+        Canvas canvas = root.GetComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = short.MaxValue;
+
+        CanvasScaler scaler = root.GetComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920f, 1080f);
+        scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+        scaler.matchWidthOrHeight = 0.5f;
+
+        GameObject displayCameraObject = new GameObject("DisplayCamera", typeof(Camera));
+        displayCameraObject.transform.SetParent(root.transform, false);
+        Camera displayCamera = displayCameraObject.GetComponent<Camera>();
+        displayCamera.clearFlags = CameraClearFlags.SolidColor;
+        displayCamera.backgroundColor = new Color(0.005f, 0.012f, 0.022f, 1f);
+        displayCamera.cullingMask = 0;
+        displayCamera.depth = -100f;
+        displayCamera.allowHDR = false;
+        displayCamera.allowMSAA = false;
+
+        GameObject backgroundObject = CreateRectObject("Background", root.transform);
+        backgroundObject.AddComponent<CanvasRenderer>();
+        Image background = backgroundObject.AddComponent<Image>();
+        background.color = new Color(0.005f, 0.012f, 0.022f, 1f);
+        background.raycastTarget = true;
+        FillParent(background.rectTransform);
+
+        GameObject starfieldObject = CreateRectObject(
+            "HyperspaceField",
+            backgroundObject.transform
+        );
+        starfieldObject.AddComponent<CanvasRenderer>();
+        HyperspaceStarfieldGraphic starfield =
+            starfieldObject.AddComponent<HyperspaceStarfieldGraphic>();
+        starfield.raycastTarget = false;
+        FillParent(starfield.rectTransform);
+
+        GameObject shuttleViewportObject = CreateRectObject(
+            "ShuttleViewport",
+            backgroundObject.transform
+        );
+        RawImage shuttleViewport = shuttleViewportObject.AddComponent<RawImage>();
+        shuttleViewport.color = Color.white;
+        shuttleViewport.raycastTarget = false;
+        FillParent(shuttleViewport.rectTransform);
+
+        TextMeshProUGUI status = CreateLoadingText(
+            "StatusTextField",
+            backgroundObject.transform,
+            "Loading ...",
+            38,
+            FontStyles.Bold
+        );
+        status.color = new Color(0.82f, 0.92f, 1f, 1f);
+        SetSourceRect(status.rectTransform, 0, 905, 1920, 64);
+
+        GameObject rig = new GameObject("ShuttleRig");
+        rig.transform.SetParent(root.transform, false);
+        rig.transform.position = new Vector3(12000f, 12000f, 12000f);
+
+        GameObject modelRoot = new GameObject("ModelRoot");
+        modelRoot.transform.SetParent(rig.transform, false);
+
+        GameObject keyLightObject = new GameObject("KeyLight", typeof(Light));
+        keyLightObject.transform.SetParent(rig.transform, false);
+        keyLightObject.transform.localRotation = Quaternion.Euler(28f, -32f, 0f);
+        Light keyLight = keyLightObject.GetComponent<Light>();
+        keyLight.type = LightType.Directional;
+        keyLight.color = new Color(0.78f, 0.88f, 1f, 1f);
+        keyLight.intensity = 0.35f;
+        keyLight.cullingMask = 1 << _loadingPresentationLayer;
+        keyLight.shadows = LightShadows.None;
+
+        GameObject fillLightObject = new GameObject("FillLight", typeof(Light));
+        fillLightObject.transform.SetParent(rig.transform, false);
+        fillLightObject.transform.localPosition = new Vector3(-2.5f, -1f, -2.5f);
+        Light fillLight = fillLightObject.GetComponent<Light>();
+        fillLight.type = LightType.Point;
+        fillLight.color = new Color(0.25f, 0.55f, 1f, 1f);
+        fillLight.intensity = 0.12f;
+        fillLight.range = 12f;
+        fillLight.cullingMask = 1 << _loadingPresentationLayer;
+        fillLight.shadows = LightShadows.None;
+
+        GameObject cameraObject = new GameObject("Camera", typeof(Camera));
+        cameraObject.transform.SetParent(rig.transform, false);
+        cameraObject.transform.localPosition = new Vector3(0f, 0f, -6f);
+        Camera shuttleCamera = cameraObject.GetComponent<Camera>();
+        shuttleCamera.clearFlags = CameraClearFlags.SolidColor;
+        shuttleCamera.backgroundColor = Color.clear;
+        shuttleCamera.fieldOfView = 35f;
+        shuttleCamera.nearClipPlane = 0.1f;
+        shuttleCamera.farClipPlane = 50f;
+        shuttleCamera.cullingMask = 1 << _loadingPresentationLayer;
+        shuttleCamera.allowHDR = false;
+        shuttleCamera.allowMSAA = true;
+
+        ContentRestartLoadingView view = root.GetComponent<ContentRestartLoadingView>();
+        AssignReference(view, "statusText", status);
+        AssignReference(view, "shuttleViewport", shuttleViewport);
+        AssignReference(view, "shuttleCamera", shuttleCamera);
+        AssignReference(view, "shuttleModelRoot", modelRoot.transform);
+        return SavePrefab(root, _contentRestartLoadingPrefabPath);
+    }
+
+    /// <summary>
+    /// Creates one centered text field for the content-restart loading page.
+    /// </summary>
+    /// <param name="name">The text GameObject name.</param>
+    /// <param name="parent">The text parent transform.</param>
+    /// <param name="content">The initial text.</param>
+    /// <param name="fontSize">The authored font size.</param>
+    /// <param name="fontStyle">The authored font style.</param>
+    /// <returns>The configured text component.</returns>
+    private static TextMeshProUGUI CreateLoadingText(
+        string name,
+        Transform parent,
+        string content,
+        int fontSize,
+        FontStyles fontStyle
+    )
+    {
+        GameObject textObject = CreateRectObject(name, parent);
+        textObject.AddComponent<CanvasRenderer>();
+        TextMeshProUGUI text = textObject.AddComponent<TextMeshProUGUI>();
+        text.text = content;
+        text.color = Color.white;
+        text.fontSize = fontSize;
+        text.fontStyle = fontStyle;
+        text.alignment = TextAlignmentOptions.Center;
+        text.textWrappingMode = TextWrappingModes.NoWrap;
+        text.overflowMode = TextOverflowModes.Overflow;
+        text.raycastTarget = false;
+        return text;
     }
 
     /// <summary>

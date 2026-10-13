@@ -66,6 +66,9 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     private GameObject _gameplayPage;
 
     [SerializeField]
+    private GameObject _userInterfacePage;
+
+    [SerializeField]
     private GameObject _graphicsPage;
 
     [SerializeField]
@@ -129,7 +132,10 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     [SerializeField]
     private OptionsToggleRowView[] _gameplayRows = Array.Empty<OptionsToggleRowView>();
 
-    [Header("Gameplay page - Idle Bar")]
+    [Header("User Interface page")]
+    [SerializeField]
+    private TMP_Dropdown _idleBarLocationDropdown;
+
     [SerializeField]
     private OptionsToggleRowView[] _userInterfaceRows = Array.Empty<OptionsToggleRowView>();
 
@@ -203,6 +209,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     private bool _bound;
     private IContentAssetSource _contentAssets;
     private OptionsMenuTab? _previousTab;
+    private RectInt[] _tabSourceRects = Array.Empty<RectInt>();
 
     public event Action<OptionsMenuTab> TabSelected;
     public event Action ResumeRequested;
@@ -223,6 +230,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     public event Action<UserTacticalOption> TacticalToggleRequested;
     public event Action<UserGameplayOption> GameplayToggleRequested;
     public event Action<UserInterfaceOption> UserInterfaceToggleRequested;
+    public event Action<IdleBarLocation> IdleBarLocationRequested;
     public event Action<int> ModToggleRequested;
     public event Action<int> ContentPackStepRequested;
     public event Action<string> AutosaveIntervalChanged;
@@ -259,6 +267,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     private void Awake()
     {
         VerifyReferences();
+        CaptureTabSourceRects();
         BindControls();
     }
 
@@ -291,12 +300,17 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
         UILayout.SetTextContent(_pageTitleTextField, GetTabTitle(data.ActiveTab));
         if (data.ActiveTab != OptionsMenuTab.SaveLoad)
             _saveListView.CancelRename();
-        RenderTabs(data.ActiveTab);
+        if (data.ActiveTab != OptionsMenuTab.UserInterface)
+            _idleBarLocationDropdown.Hide();
+        RenderTabs(data.ActiveTab, data.ShowModsTab);
         RenderFooter(data);
         switch (data.ActiveTab)
         {
             case OptionsMenuTab.Gameplay:
                 RenderGameplayPage(data);
+                break;
+            case OptionsMenuTab.UserInterface:
+                RenderUserInterfacePage(data);
                 break;
             case OptionsMenuTab.Graphics:
                 RenderGraphicsPage(data);
@@ -322,30 +336,65 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     /// Highlights the active tab and shows only its page.
     /// </summary>
     /// <param name="activeTab">The currently visible page.</param>
-    private void RenderTabs(OptionsMenuTab activeTab)
+    /// <param name="showModsTab">Whether content management is available in this scene.</param>
+    private void RenderTabs(OptionsMenuTab activeTab, bool showModsTab)
     {
+        if (_tabSourceRects.Length != _tabButtons.Length)
+            CaptureTabSourceRects();
+
+        int visibleSlot = 0;
         for (int i = 0; i < _tabLabelFields.Length; i++)
         {
+            bool visible = showModsTab || i != (int)OptionsMenuTab.Mods;
+            Button tabButton = i < _tabButtons.Length ? _tabButtons[i] : null;
+            if (tabButton != null)
+            {
+                tabButton.gameObject.SetActive(visible);
+                if (visible)
+                {
+                    RectInt slot = _tabSourceRects[visibleSlot];
+                    UILayout.SetSourcePosition(
+                        tabButton.transform as RectTransform,
+                        slot.x,
+                        slot.y
+                    );
+                }
+            }
+            if (!visible)
+                continue;
+
+            visibleSlot++;
             bool active = i == (int)activeTab;
             if (_tabLabelFields[i] != null)
                 _tabLabelFields[i].color = active ? _activeTabColor : _inactiveTabColor;
             if (i < _tabSurfaceImages.Length && _tabSurfaceImages[i] != null)
                 _tabSurfaceImages[i].gameObject.SetActive(!active);
-            if (i < _tabButtons.Length && _tabButtons[i]?.GetComponent<Image>() is Image tabImage)
+            if (tabButton?.GetComponent<Image>() is Image tabImage)
             {
                 tabImage.sprite = active ? _rowActiveSprite : _rowIdleSprite;
             }
         }
 
         SetPageActive(_gameplayPage, activeTab == OptionsMenuTab.Gameplay);
+        SetPageActive(_userInterfacePage, activeTab == OptionsMenuTab.UserInterface);
         SetPageActive(_graphicsPage, activeTab == OptionsMenuTab.Graphics);
         SetPageActive(_audioPage, activeTab == OptionsMenuTab.Audio);
         SetPageActive(_saveLoadPage, activeTab == OptionsMenuTab.SaveLoad);
         SetPageActive(_controlsPage, activeTab == OptionsMenuTab.Controls);
-        SetPageActive(_modsPage, activeTab == OptionsMenuTab.Mods);
-        _settingsActions?.SetActive(
-            activeTab != OptionsMenuTab.SaveLoad && activeTab != OptionsMenuTab.Mods
-        );
+        SetPageActive(_modsPage, showModsTab && activeTab == OptionsMenuTab.Mods);
+        _settingsActions?.SetActive(activeTab != OptionsMenuTab.SaveLoad);
+        _defaultsButton?.gameObject.SetActive(activeTab != OptionsMenuTab.SaveLoad);
+        _applyButton?.gameObject.SetActive(activeTab != OptionsMenuTab.SaveLoad);
+    }
+
+    /// <summary>
+    /// Captures the authored navigation slots before host-specific tabs are hidden.
+    /// </summary>
+    private void CaptureTabSourceRects()
+    {
+        _tabSourceRects = _tabButtons
+            .Select(button => UILayout.GetSourceRect(button.transform as RectTransform))
+            .ToArray();
     }
 
     /// <summary>
@@ -363,8 +412,6 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             bool enabled = data.GameplayStates.TryGetValue(option, out bool value) && value;
             row.Render(enabled);
         }
-
-        RenderUserInterfaceOptions(data);
 
         bool autosaveEnabled =
             data.GameplayStates.TryGetValue(
@@ -389,11 +436,13 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     }
 
     /// <summary>
-    /// Applies Idle Bar toggle values to the Gameplay page.
+    /// Applies user-interface toggle values to the User Interface page.
     /// </summary>
     /// <param name="data">The options state to present.</param>
-    private void RenderUserInterfaceOptions(OptionsMenuRenderData data)
+    private void RenderUserInterfacePage(OptionsMenuRenderData data)
     {
+        _idleBarLocationDropdown.SetValueWithoutNotify((int)data.IdleBarLocation);
+        _idleBarLocationDropdown.RefreshShownValue();
         foreach (OptionsToggleRowView row in _userInterfaceRows)
         {
             if (row == null)
@@ -859,6 +908,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
         return tab switch
         {
             OptionsMenuTab.Gameplay => "GAMEPLAY",
+            OptionsMenuTab.UserInterface => "UI",
             OptionsMenuTab.Graphics => "GRAPHICS",
             OptionsMenuTab.Audio => "AUDIO",
             OptionsMenuTab.SaveLoad => "SAVE / LOAD",
@@ -912,6 +962,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             if (row != null)
                 row.ToggleRequested += HandleUserInterfaceToggle;
         }
+        _idleBarLocationDropdown.onValueChanged.AddListener(HandleIdleBarLocationChanged);
         foreach (OptionsToggleRowView row in _modRows)
         {
             if (row != null)
@@ -992,6 +1043,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             if (row != null)
                 row.ToggleRequested -= HandleUserInterfaceToggle;
         }
+        _idleBarLocationDropdown.onValueChanged.RemoveListener(HandleIdleBarLocationChanged);
         foreach (OptionsToggleRowView row in _modRows)
         {
             if (row != null)
@@ -1081,6 +1133,17 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     }
 
     /// <summary>
+    /// Forwards a valid idle-bar corner selection to subscribers.
+    /// </summary>
+    /// <param name="option">The selected dropdown index.</param>
+    private void HandleIdleBarLocationChanged(int option)
+    {
+        IdleBarLocation location = (IdleBarLocation)option;
+        if (Enum.IsDefined(typeof(IdleBarLocation), location))
+            IdleBarLocationRequested?.Invoke(location);
+    }
+
+    /// <summary>
     /// Forwards a mod-toggle request to subscribers.
     /// </summary>
     /// <param name="option">The displayed mod index.</param>
@@ -1136,10 +1199,16 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             || string.IsNullOrWhiteSpace(_rowActiveSpriteAddress)
         )
             throw new MissingReferenceException($"{name} is missing a row sprite address.");
-        if (_tabButtons.Length != 6 || _tabLabelFields.Length != 6 || _tabSurfaceImages.Length != 6)
-            throw new MissingReferenceException($"{name} expects six tabs.");
+        int tabCount = Enum.GetValues(typeof(OptionsMenuTab)).Length;
+        if (
+            _tabButtons.Length != tabCount
+            || _tabLabelFields.Length != tabCount
+            || _tabSurfaceImages.Length != tabCount
+        )
+            throw new MissingReferenceException($"{name} expects {tabCount} tabs.");
         if (
             _gameplayPage == null
+            || _userInterfacePage == null
             || _graphicsPage == null
             || _audioPage == null
             || _saveLoadPage == null
@@ -1159,6 +1228,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
         if (
             _userInterfaceRows.Length != userInterfaceOptionCount
             || Array.Exists(_userInterfaceRows, row => row == null)
+            || _idleBarLocationDropdown == null
         )
             throw new MissingReferenceException(
                 $"{name} expects {userInterfaceOptionCount} user-interface rows."

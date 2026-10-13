@@ -75,7 +75,7 @@ public sealed class GameFlowController : MonoBehaviour
 
             if (GameLaunchContext.IsLoadGame)
             {
-                LoadGame();
+                await LoadGameAsync();
                 GameSession session = StartGameSession(loadedGame: true);
                 InitializeStrategy(session);
                 ActivateGameplay(session, false);
@@ -185,14 +185,15 @@ public sealed class GameFlowController : MonoBehaviour
     /// <summary>
     /// Loads and validates the requested save file.
     /// </summary>
-    private void LoadGame()
+    /// <returns>A task representing asynchronous save deserialization.</returns>
+    private async Task LoadGameAsync()
     {
         string fileName = GameLaunchContext.SaveFileName;
 
         if (string.IsNullOrEmpty(fileName))
             throw new InvalidOperationException("LoadGame called but SaveFileName is null.");
 
-        game = SaveGameManager.Instance.LoadGameData(fileName);
+        game = await SaveGameManager.Instance.LoadGameDataAsync(fileName);
         AppBootstrap.Instance.GetRuntime().ValidateGameContent(game);
     }
 
@@ -299,6 +300,7 @@ public sealed class GameFlowController : MonoBehaviour
     private void ActivateGameplay(GameSession session, bool requestBriefing)
     {
         strategyController.ActivatePresentation();
+        ContentRestartController.CompletePendingLoad();
         GameManager clock = AppBootstrap.Instance.GetRuntime().GetActiveGameManager();
         GameRoot activeGame = session.Game;
         GameMetadata metadata = activeGame.Metadata ??= new GameMetadata();

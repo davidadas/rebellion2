@@ -96,6 +96,24 @@ Mods load by folder name in ordinal order. If two enabled mods replace the same 
 folder wins. Custom load-order controls are not yet supported. Files not supplied by a mod fall back
 to the selected content pack and then the shared application content.
 
+## Derived content packs
+
+A selectable content pack can inherit files from another installed pack by declaring its ID in
+`pack.xml`:
+
+```xml
+<ContentPack>
+  <ID>example-derived-pack</ID>
+  <BasePackID>example-base-pack</BasePackID>
+  <!-- The remaining pack definition is omitted here. -->
+</ContentPack>
+```
+
+Files present in the derived pack override files at the same `Pack/` address. Missing files fall
+back through the declared base-pack chain. Each derived pack still provides a complete `pack.xml`
+so its scenarios, factions, preload manifests, and identity remain explicit. Circular inheritance,
+missing base packs, and duplicate IDs in the active inheritance chain are rejected during loading.
+
 ## Sharing a mod
 
 Package the mod folder containing `mod.xml` and `Content`; players install it by extracting that

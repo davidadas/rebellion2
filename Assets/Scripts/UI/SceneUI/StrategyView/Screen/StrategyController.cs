@@ -148,6 +148,7 @@ public sealed class StrategyController
     private StrategyScreenInputController inputController;
     private OptionsMenuController _optionsMenuController;
     private AppInputController _appInputController;
+    private AppBootstrap _appBootstrap;
 
     private IReadOnlyList<GalaxyMapSector> Sectors =>
         galaxyMapController?.Sectors ?? Array.Empty<GalaxyMapSector>();
@@ -186,6 +187,9 @@ public sealed class StrategyController
         runtime = gameRuntime ?? throw new ArgumentNullException(nameof(gameRuntime));
         gameManager = manager;
         uiContext = context;
+        _appBootstrap = AppBootstrap.Instance;
+        if (_appBootstrap != null)
+            _appBootstrap.SaveLoadStarting += HandleSaveLoadStarting;
         PreloadStrategySfx();
         cancelStack = AppBootstrap.Instance?.GetCancelStack();
         strategyContextMenu.Initialize(uiContext);
@@ -298,7 +302,12 @@ public sealed class StrategyController
                 AppBootstrap
                     .Instance?.GetUserSettingsManager()
                     ?.Settings?.UserInterface?.KeepIdleBarOpen
-                ?? false
+                ?? false,
+            () =>
+                AppBootstrap
+                    .Instance?.GetUserSettingsManager()
+                    ?.Settings?.UserInterface?.IdleBarLocation
+                ?? IdleBarLocation.TopRight
         );
         idleBarController.Initialize(this);
         idleBarController.BindView(idleBar);
@@ -629,9 +638,10 @@ public sealed class StrategyController
             CloseWindow,
             bootstrap,
             settingsRuntime.SaveGame,
-            settingsRuntime.LoadGame,
+            bootstrap.LoadSave,
             MarkDirty,
-            saveGameManager
+            saveGameManager,
+            showModsTab: false
         );
         _appInputController = bootstrap.GetInputController();
         if (_appInputController != null)
@@ -942,6 +952,12 @@ public sealed class StrategyController
     /// </summary>
     private void OnDestroy()
     {
+        if (_appBootstrap != null)
+        {
+            _appBootstrap.SaveLoadStarting -= HandleSaveLoadStarting;
+            _appBootstrap = null;
+        }
+
         if (saveGameManager != null)
             saveGameManager.Saving -= CaptureChangedWindows;
         SetBriefingInteractionEnabled(true);
@@ -1448,6 +1464,14 @@ public sealed class StrategyController
         contentGroup.alpha = ready ? 1f : 0f;
         contentGroup.interactable = ready;
         contentGroup.blocksRaycasts = ready;
+    }
+
+    /// <summary>
+    /// Conceals the complete outgoing strategy presentation before saved-game loading begins.
+    /// </summary>
+    private void HandleSaveLoadStarting()
+    {
+        SetContentReady(false);
     }
 
     /// <summary>

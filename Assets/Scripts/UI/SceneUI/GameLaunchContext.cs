@@ -7,6 +7,8 @@ using Rebellion.Game;
 /// </summary>
 public static class GameLaunchContext
 {
+    private static string _saveFileNameAfterContentRestart;
+
     /// <summary>
     /// Gets the launch settings for a new game.
     /// </summary>
@@ -17,6 +19,45 @@ public static class GameLaunchContext
     public static bool IsLoadGame { get; set; }
 
     public static bool PlayIntroCutscene { get; set; }
+
+    /// <summary>
+    /// Configures the next strategy-scene launch to restore a save.
+    /// </summary>
+    /// <param name="fileName">The save identifier to restore.</param>
+    public static void PrepareSaveLoad(string fileName)
+    {
+        if (string.IsNullOrWhiteSpace(fileName))
+            throw new ArgumentException("A save file name is required.", nameof(fileName));
+
+        SaveFileName = fileName;
+        IsLoadGame = true;
+        PlayIntroCutscene = false;
+    }
+
+    /// <summary>
+    /// Preserves a save request while application content is reconstructed.
+    /// </summary>
+    /// <param name="fileName">The save identifier to restore after reconstruction.</param>
+    internal static void PrepareSaveLoadAfterContentRestart(string fileName)
+    {
+        if (string.IsNullOrWhiteSpace(fileName))
+            throw new ArgumentException("A save file name is required.", nameof(fileName));
+
+        _saveFileNameAfterContentRestart = fileName;
+    }
+
+    /// <summary>
+    /// Restores and consumes a save request preserved across content reconstruction.
+    /// </summary>
+    internal static void RestoreSaveLoadAfterContentRestart()
+    {
+        if (string.IsNullOrWhiteSpace(_saveFileNameAfterContentRestart))
+            return;
+
+        string fileName = _saveFileNameAfterContentRestart;
+        _saveFileNameAfterContentRestart = null;
+        PrepareSaveLoad(fileName);
+    }
 
     /// <summary>
     /// Restores the launch context to the authored new-game defaults.

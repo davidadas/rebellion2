@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Rebellion.Game;
 using Rebellion.Util.Logging;
 using Rebellion.Util.Serialization;
@@ -425,10 +426,54 @@ public class SaveGameManager
     public GameRoot LoadGameData(string fileName)
     {
         string saveFilePath = GetSaveFilePath(fileName);
+        return DeserializeGame(saveFilePath, WarnUnknownSaveElement);
+    }
 
-        GameSerializer serializer = CreateSaveDeserializer(typeof(GameRoot));
+    /// <summary>
+    /// Reads and deserializes a saved game without blocking the caller's synchronization context.
+    /// Unknown-field warnings are reported after deserialization returns to that context.
+    /// </summary>
+    /// <param name="fileName">The name of the save file.</param>
+    /// <returns>A task containing the loaded game data.</returns>
+    public async Task<GameRoot> LoadGameDataAsync(string fileName)
+    {
+        string saveFilePath = GetSaveFilePath(fileName);
+        List<(Type ObjectType, string ElementName)> skippedElements = new();
+        GameRoot loadedGame = await Task.Run(() =>
+            DeserializeGame(
+                saveFilePath,
+                (objectType, elementName) => skippedElements.Add((objectType, elementName))
+            )
+        );
 
-        using FileStream fileStream = new FileStream(saveFilePath, FileMode.Open);
+        foreach ((Type objectType, string elementName) in skippedElements)
+            WarnUnknownSaveElement(objectType, elementName);
+
+        return loadedGame;
+    }
+
+    /// <summary>
+    /// Reads and deserializes one game save from an absolute path.
+    /// </summary>
+    /// <param name="saveFilePath">The absolute save path.</param>
+    /// <param name="unknownElementSkipped">Receives elements omitted for compatibility.</param>
+    /// <returns>The deserialized game data.</returns>
+    private static GameRoot DeserializeGame(
+        string saveFilePath,
+        Action<Type, string> unknownElementSkipped
+    )
+    {
+        GameSerializer serializer = CreateSaveDeserializer(
+            typeof(GameRoot),
+            unknownElementSkipped: unknownElementSkipped
+        );
+
+        using FileStream fileStream = new FileStream(
+            saveFilePath,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.Read
+        );
         return (GameRoot)serializer.Deserialize(fileStream);
     }
 
@@ -441,7 +486,7 @@ public class SaveGameManager
     {
         try
         {
-            GameMetadata metadata = ReadSaveMetadata(fileName);
+            GameMetadata metadata = GetSaveMetadata(fileName);
             return new SaveGameEntry(fileName, metadata);
         }
         catch (Exception ex)
@@ -458,9 +503,18 @@ public class SaveGameManager
     /// </summary>
     /// <param name="fileName">The save file name without its extension.</param>
     /// <returns>The deserialized save metadata.</returns>
-    private GameMetadata ReadSaveMetadata(string fileName)
+    public GameMetadata GetSaveMetadata(string fileName)
     {
+        if (string.IsNullOrWhiteSpace(fileName))
+            throw new ArgumentException("A save file name is required.", nameof(fileName));
+
         string saveFilePath = GetSaveFilePath(fileName);
+        if (!File.Exists(saveFilePath))
+            throw new FileNotFoundException(
+                "The requested save file does not exist.",
+                saveFilePath
+            );
+
         string metadataFilePath = GetSaveMetadataFilePath(fileName);
         if (
             File.Exists(metadataFilePath)
@@ -564,8 +618,13 @@ public class SaveGameManager
     /// </summary>
     /// <param name="type">The root type to deserialize.</param>
     /// <param name="rootName">The optional serialized root element name.</param>
+    /// <param name="unknownElementSkipped">Receives elements omitted for compatibility.</param>
     /// <returns>The configured save-game deserializer.</returns>
-    private static GameSerializer CreateSaveDeserializer(Type type, string rootName = null)
+    private static GameSerializer CreateSaveDeserializer(
+        Type type,
+        string rootName = null,
+        Action<Type, string> unknownElementSkipped = null
+    )
     {
         return new GameSerializer(
             type,
@@ -573,7 +632,7 @@ public class SaveGameManager
             {
                 RootName = rootName,
                 IgnoreUnknownElements = true,
-                UnknownElementSkipped = WarnUnknownSaveElement,
+                UnknownElementSkipped = unknownElementSkipped ?? WarnUnknownSaveElement,
             }
         );
     }

@@ -24,6 +24,9 @@ public sealed class ContentPackDefinition
     public string ID { get; set; }
 
     [XmlElement]
+    public string BasePackID { get; set; }
+
+    [XmlElement]
     public string Version { get; set; }
 
     [XmlElement]
@@ -31,6 +34,9 @@ public sealed class ContentPackDefinition
 
     [XmlElement]
     public string DefaultScenarioID { get; set; }
+
+    [XmlElement]
+    public string MainMenuMusicPath { get; set; }
 
     [XmlElement]
     public string GameConfigPath { get; set; }

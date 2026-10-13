@@ -1,5 +1,9 @@
+using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using NUnit.Framework;
+using Rebellion.Game;
+using Rebellion.Simulation;
 using UnityEngine;
 
 namespace Rebellion.Tests.App
@@ -34,6 +38,7 @@ namespace Rebellion.Tests.App
         [TearDown]
         public void TearDown()
         {
+            ContentRestartController.CompletePendingLoad();
             Object.DestroyImmediate(_gameObject);
             DestroyAudioManagers();
             GameLaunchContext.Reset(TestContent.Pack);
@@ -54,6 +59,58 @@ namespace Rebellion.Tests.App
                 GameLaunchContext.Summary.PackVersion
             );
             Assert.AreEqual(TestContent.Pack.Scenario.ID, GameLaunchContext.Summary.ScenarioID);
+        }
+
+        [Test]
+        public void InitializeRuntimeCore_PendingSaveAfterContentRestart_RestoresLoadRequest()
+        {
+            GameLaunchContext.PrepareSaveLoadAfterContentRestart("campaign");
+
+            UIComponentTestHelper.InvokeLifecycle(_bootstrap, "InitializeRuntimeCore");
+
+            Assert.AreEqual("campaign", GameLaunchContext.SaveFileName);
+            Assert.IsTrue(GameLaunchContext.IsLoadGame);
+        }
+
+        [Test]
+        public void LoadSave_ActiveContent_BeginsPresentedSceneTransition()
+        {
+            UIComponentTestHelper.InvokeLifecycle(_bootstrap, "InitializeRuntimeCore");
+            ContentPack contentPack = _bootstrap.GetContentPack();
+            GameRuntime runtime = _bootstrap.GetRuntime();
+            GameRoot activeGame = CreateCompatibleGame(contentPack, 1);
+            runtime.StartGame(activeGame);
+            string fileName = $"bootstrap-hot-load-{System.Guid.NewGuid():N}";
+            SaveGameManager saveGameManager = SaveGameManager.Instance;
+            int transitionCount = 0;
+            _bootstrap.SaveLoadStarting += () => transitionCount++;
+
+            try
+            {
+                saveGameManager.SaveGameData(
+                    CreateCompatibleGame(contentPack, 42),
+                    fileName,
+                    "Bootstrap Hot Load"
+                );
+
+                bool loaded = _bootstrap.LoadSave(fileName);
+
+                Assert.IsTrue(loaded);
+                Assert.AreEqual(1, transitionCount);
+                Assert.IsFalse(runtime.HasActiveGame);
+                Assert.AreEqual(fileName, GameLaunchContext.SaveFileName);
+                Assert.IsTrue(GameLaunchContext.IsLoadGame);
+                Assert.IsNotNull(
+                    Object.FindAnyObjectByType<ContentRestartController>(
+                        FindObjectsInactive.Include
+                    )
+                );
+            }
+            finally
+            {
+                File.Delete(saveGameManager.GetSaveFilePath(fileName));
+                File.Delete(saveGameManager.GetSaveMetadataFilePath(fileName));
+            }
         }
 
         [Test]
@@ -83,6 +140,30 @@ namespace Rebellion.Tests.App
             {
                 Object.DestroyImmediate(manager.gameObject);
             }
+        }
+
+        /// <summary>
+        /// Creates a minimal game carrying the supplied content identity.
+        /// </summary>
+        /// <param name="contentPack">The content pack the game belongs to.</param>
+        /// <param name="tick">The current turn value.</param>
+        /// <returns>The compatible game.</returns>
+        private static GameRoot CreateCompatibleGame(ContentPack contentPack, int tick)
+        {
+            return new GameRoot
+            {
+                CurrentTick = tick,
+                Summary = new GameSummary
+                {
+                    PackID = contentPack.Definition.ID,
+                    PackVersion = contentPack.Definition.Version,
+                    ScenarioID = contentPack.Scenario.ID,
+                    ModIDs = contentPack.FileResolver.Mods.Select(mod => mod.ID).ToArray(),
+                    ModVersions = contentPack
+                        .FileResolver.Mods.Select(mod => mod.Version)
+                        .ToArray(),
+                },
+            };
         }
     }
 }

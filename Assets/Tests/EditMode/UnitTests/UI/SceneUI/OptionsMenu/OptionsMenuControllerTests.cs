@@ -28,6 +28,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         private string _saveDirectoryPath;
         private int _dirtyCount;
         private bool _loadResult;
+        private bool _menuOpenWhenLoadCalled;
         private string _loadedFileName;
         private string _testModDirectoryPath;
 
@@ -107,6 +108,20 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
+        public void Open_ModsUnavailable_UsesGameplayAndOmitsModsTab()
+        {
+            _controller.Dispose();
+            _controller = CreateController(GetPrefab(), showModsTab: false);
+
+            OptionsMenuView view = OpenAndRender(OptionsMenuTab.Mods);
+            Button[] tabs = GetField<Button[]>(view, "_tabButtons");
+
+            Assert.IsTrue(GetField<GameObject>(view, "_gameplayPage").activeSelf);
+            Assert.IsFalse(tabs[(int)OptionsMenuTab.Mods].gameObject.activeSelf);
+            Assert.IsTrue(tabs[(int)OptionsMenuTab.SaveLoad].gameObject.activeSelf);
+        }
+
+        [Test]
         public void TryCancel_OpenWindow_ClosesWindow()
         {
             Assert.IsFalse(_controller.TryCancel());
@@ -139,6 +154,10 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.IsTrue(GetField<GameObject>(view, "_gameplayPage").activeSelf);
             tabs[(int)OptionsMenuTab.Gameplay].onClick.Invoke();
             Assert.AreEqual(initialDirtyCount, _dirtyCount);
+
+            tabs[(int)OptionsMenuTab.UserInterface].onClick.Invoke();
+            _controller.RenderWindows();
+            Assert.IsTrue(GetField<GameObject>(view, "_userInterfacePage").activeSelf);
 
             tabs[(int)OptionsMenuTab.Graphics].onClick.Invoke();
             tabs[(int)OptionsMenuTab.Audio].onClick.Invoke();
@@ -192,9 +211,40 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             row.GetComponentInChildren<Button>(true).onClick.Invoke();
 
             CollectionAssert.AreEqual(
+                new[] { otherPackModID },
+                _bootstrap.GetUserSettingsManager().Settings.Content.DisabledModIDs
+            );
+            GetField<Button>(view, "_applyButton").onClick.Invoke();
+
+            CollectionAssert.AreEqual(
                 new[] { compatibleModID, otherPackModID },
                 _bootstrap.GetUserSettingsManager().Settings.Content.DisabledModIDs
             );
+        }
+
+        [Test]
+        public void HandleDefaults_ModsConfirmed_RestoresCatalogPackAndEnablesAllMods()
+        {
+            _bootstrap.GetUserSettingsManager().Settings.Content.DisabledModIDs = new[]
+            {
+                "disabled-mod",
+            };
+            _controller.Dispose();
+            _controller = CreateController(GetPrefab());
+            OptionsMenuView view = OpenAndRender(OptionsMenuTab.Mods);
+
+            GetField<Button>(view, "_defaultsButton").onClick.Invoke();
+            ConfirmationDialogView confirmation = GetField<ConfirmationDialogView>(
+                view,
+                "_confirmDialog"
+            );
+            GetField<Button>(confirmation, "confirmButton").onClick.Invoke();
+
+            Assert.AreEqual(
+                ContentPackLoader.GetDefaultPackID(_bootstrap.GetContentPack().ContentRootPath),
+                GetField<string>(_controller, "_selectedPackID")
+            );
+            Assert.IsEmpty(GetField<HashSet<string>>(_controller, "_selectedDisabledModIDs"));
         }
 
         [Test]
@@ -245,7 +295,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         [Test]
         public void HandleUserInterfaceToggle_InterfaceOptionsClicked_TogglesOptions()
         {
-            OptionsMenuView view = OpenAndRender(OptionsMenuTab.Gameplay);
+            OptionsMenuView view = OpenAndRender(OptionsMenuTab.UserInterface);
             bool initiallyVisible = _bootstrap
                 .GetUserSettingsManager()
                 .Settings.UserInterface.ShowIdleBar;
@@ -285,6 +335,20 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.AreEqual(
                 !initiallyShowingStats,
                 _bootstrap.GetUserSettingsManager().Settings.UserInterface.ShowUnitCardStats
+            );
+        }
+
+        [Test]
+        public void HandleIdleBarLocationChanged_DropdownSelection_StagesLocation()
+        {
+            OptionsMenuView view = OpenAndRender(OptionsMenuTab.UserInterface);
+            TMP_Dropdown dropdown = GetField<TMP_Dropdown>(view, "_idleBarLocationDropdown");
+
+            dropdown.value = (int)IdleBarLocation.BottomLeft;
+
+            Assert.AreEqual(
+                IdleBarLocation.BottomLeft,
+                _bootstrap.GetUserSettingsManager().Settings.UserInterface.IdleBarLocation
             );
         }
 
@@ -433,6 +497,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             GetField<Button>(saveList, "_loadButton").onClick.Invoke();
 
             Assert.AreEqual("existing_save", _loadedFileName);
+            Assert.IsFalse(_menuOpenWhenLoadCalled);
             Assert.IsFalse(_controller.IsOpen);
             Assert.AreEqual(
                 "Existing Save",
@@ -580,8 +645,12 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         /// Creates controller.
         /// </summary>
         /// <param name="prefab">The prefab.</param>
+        /// <param name="showModsTab">Whether the controller exposes content management.</param>
         /// <returns>The created controller.</returns>
-        private OptionsMenuController CreateController(OptionsMenuView prefab)
+        private OptionsMenuController CreateController(
+            OptionsMenuView prefab,
+            bool showModsTab = true
+        )
         {
             return new OptionsMenuController(
                 prefab,
@@ -601,11 +670,13 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 },
                 fileName =>
                 {
+                    _menuOpenWhenLoadCalled = _controller.IsOpen;
                     _loadedFileName = fileName;
                     return _loadResult;
                 },
                 () => _dirtyCount++,
-                _saveGameManager
+                _saveGameManager,
+                showModsTab
             );
         }
 

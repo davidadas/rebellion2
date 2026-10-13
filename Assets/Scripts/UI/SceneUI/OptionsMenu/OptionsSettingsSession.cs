@@ -35,6 +35,7 @@ internal sealed class OptionsSettingsSession
     private int _snapshotFullScreenMode;
     private int _snapshotAutosaveIntervalTicks;
     private int _snapshotAutosavesToKeep;
+    private IdleBarLocation _snapshotIdleBarLocation;
     private string _snapshotBindingOverrides = string.Empty;
     private bool _inputDiffersFromSnapshot;
 
@@ -111,6 +112,7 @@ internal sealed class OptionsSettingsSession
             Gameplay.SetEnabled(entry.Key, entry.Value);
         foreach (KeyValuePair<UserInterfaceOption, bool> entry in _snapshotUserInterface)
             UserInterface.SetEnabled(entry.Key, entry.Value);
+        UserInterface.IdleBarLocation = _snapshotIdleBarLocation;
         Gameplay.SetAutosaveIntervalTicks(_snapshotAutosaveIntervalTicks);
         Gameplay.SetAutosavesToKeep(_snapshotAutosavesToKeep);
 
@@ -131,6 +133,8 @@ internal sealed class OptionsSettingsSession
         {
             case OptionsMenuTab.Gameplay:
                 Gameplay.RestoreDefaults();
+                break;
+            case OptionsMenuTab.UserInterface:
                 UserInterface.RestoreDefaults();
                 break;
             case OptionsMenuTab.Graphics:
@@ -235,6 +239,16 @@ internal sealed class OptionsSettingsSession
     }
 
     /// <summary>
+    /// Sets the strategy-desktop corner used by the idle bar.
+    /// </summary>
+    /// <param name="location">The requested idle-bar corner.</param>
+    internal void SetIdleBarLocation(IdleBarLocation location)
+    {
+        UserInterface.IdleBarLocation = location;
+        RefreshDirtyState();
+    }
+
+    /// <summary>
     /// Sets the number of ticks between autosaves within the supported range.
     /// </summary>
     /// <param name="ticks">The requested autosave interval.</param>
@@ -326,6 +340,7 @@ internal sealed class OptionsSettingsSession
         _snapshotFullScreenMode = Video.FullScreenMode;
         _snapshotAutosaveIntervalTicks = Gameplay.AutosaveIntervalTicks;
         _snapshotAutosavesToKeep = Gameplay.AutosavesToKeep;
+        _snapshotIdleBarLocation = UserInterface.IdleBarLocation;
         _snapshotBindingOverrides = _inputManager.SaveBindingOverrides();
         _inputDiffersFromSnapshot = false;
         _snapshotTactical.Clear();
@@ -346,6 +361,12 @@ internal sealed class OptionsSettingsSession
     {
         float[] volumes = GetVolumes();
         if (volumes.Length != _snapshotVolumes.Length)
+        {
+            IsDirty = true;
+            return;
+        }
+
+        if (UserInterface.IdleBarLocation != _snapshotIdleBarLocation)
         {
             IsDirty = true;
             return;

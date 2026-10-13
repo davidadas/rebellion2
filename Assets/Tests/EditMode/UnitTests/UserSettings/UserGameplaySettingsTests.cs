@@ -80,6 +80,7 @@ namespace Rebellion.Tests.UserSettings
                 ShowIdleBar = false,
                 KeepIdleBarOpen = true,
                 ShowUnitCardStats = true,
+                IdleBarLocation = IdleBarLocation.BottomLeft,
             };
 
             settings.RestoreDefaults();
@@ -87,6 +88,20 @@ namespace Rebellion.Tests.UserSettings
             Assert.IsTrue(settings.ShowIdleBar);
             Assert.IsFalse(settings.KeepIdleBarOpen);
             Assert.IsFalse(settings.ShowUnitCardStats);
+            Assert.AreEqual(IdleBarLocation.TopRight, settings.IdleBarLocation);
+        }
+
+        [Test]
+        public void UserInterfaceOptions_InvalidIdleBarLocation_NormalizesToTopRight()
+        {
+            UserInterfaceSettings settings = new UserInterfaceSettings
+            {
+                IdleBarLocation = (IdleBarLocation)int.MaxValue,
+            };
+
+            settings.Normalize();
+
+            Assert.AreEqual(IdleBarLocation.TopRight, settings.IdleBarLocation);
         }
 
         [Test]
