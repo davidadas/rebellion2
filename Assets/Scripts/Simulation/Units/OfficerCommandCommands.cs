@@ -37,7 +37,7 @@ namespace Rebellion.Simulation
         /// <param name="rank">The requested command post, or None to resign.</param>
         /// <param name="requestingFactionInstanceId">The faction issuing the order.</param>
         /// <returns>True when the command may be applied.</returns>
-        public bool CanSetRank(
+        private static bool CanSetRank(
             Officer officer,
             OfficerRank rank,
             string requestingFactionInstanceId
@@ -54,7 +54,7 @@ namespace Rebellion.Simulation
             )
                 return false;
 
-            return OfficerCommandRules.CanChangeRank(officer, rank);
+            return OfficerCommandQueries.CanChangeCommand(officer, rank);
         }
 
         /// <summary>
@@ -75,7 +75,7 @@ namespace Rebellion.Simulation
             if (!CanSetRank(officer, rank, requestingFactionInstanceId))
                 return false;
 
-            ISceneNode commandTarget = OfficerCommandRules.ResolveCommandTarget(officer);
+            ISceneNode commandTarget = GetCommandTarget(officer);
             List<GameResult> results = new List<GameResult>();
 
             // Selecting the active post resigns the officer from that post.
@@ -148,6 +148,17 @@ namespace Rebellion.Simulation
                     Tick = _game.CurrentTick,
                 }
             );
+        }
+
+        /// <summary>
+        /// Finds the fleet or planetary system receiving an explicit command appointment.
+        /// </summary>
+        /// <param name="officer">The officer being appointed.</param>
+        /// <returns>The containing fleet or planet.</returns>
+        private static ISceneNode GetCommandTarget(Officer officer)
+        {
+            return officer.GetParentOfType<Fleet>()
+                ?? (ISceneNode)officer.GetParentOfType<Planet>();
         }
 
         /// <summary>

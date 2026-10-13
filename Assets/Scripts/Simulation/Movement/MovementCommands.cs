@@ -2201,10 +2201,7 @@ namespace Rebellion.Simulation
 
             return officers
                 .Where(candidate => candidate.CurrentRank != OfficerRank.None)
-                .ToDictionary(
-                    candidate => candidate,
-                    OfficerCommandRules.ResolveCommandHierarchyTarget
-                );
+                .ToDictionary(candidate => candidate, GetCommandTargetFromHierarchy);
         }
 
         /// <summary>
@@ -2222,19 +2219,30 @@ namespace Rebellion.Simulation
                 Officer officer = command.Key;
                 if (
                     officer.CurrentRank == OfficerRank.None
-                    || ReferenceEquals(
-                        command.Value,
-                        OfficerCommandRules.ResolveCommandHierarchyTarget(officer)
-                    )
+                    || ReferenceEquals(command.Value, GetCommandTargetFromHierarchy(officer))
                 )
                     continue;
 
                 ResignRelocatedOfficer(
                     officer,
-                    command.Value ?? OfficerCommandRules.ResolveCommandHierarchyTarget(officer),
+                    command.Value ?? GetCommandTargetFromHierarchy(officer),
                     results
                 );
             }
+        }
+
+        /// <summary>
+        /// Finds the fleet or planetary system represented by an officer's hierarchy.
+        /// </summary>
+        /// <param name="officer">The officer to inspect.</param>
+        /// <returns>The containing fleet or planet, or null while assigned to a mission.</returns>
+        private static ISceneNode GetCommandTargetFromHierarchy(Officer officer)
+        {
+            if (officer?.IsOnMission() != false)
+                return null;
+
+            return officer.GetParentOfType<Fleet>()
+                ?? (ISceneNode)officer.GetParentOfType<Planet>();
         }
 
         /// <summary>

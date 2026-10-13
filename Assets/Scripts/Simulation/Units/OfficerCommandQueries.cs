@@ -6,9 +6,9 @@ using Rebellion.SceneGraph;
 namespace Rebellion.Simulation
 {
     /// <summary>
-    /// Evaluates domain rules shared by officer command operations and presentation.
+    /// Answers whether an officer may change command posts.
     /// </summary>
-    internal static class OfficerCommandRules
+    internal static class OfficerCommandQueries
     {
         /// <summary>
         /// Determines whether an officer's state and deployment permit a command change.
@@ -16,9 +16,9 @@ namespace Rebellion.Simulation
         /// <param name="officer">The officer to inspect.</param>
         /// <param name="rank">The requested command post, or None to resign.</param>
         /// <returns>True when the officer may receive the requested rank.</returns>
-        internal static bool CanChangeRank(Officer officer, OfficerRank rank)
+        internal static bool CanChangeCommand(Officer officer, OfficerRank rank)
         {
-            ISceneNode commandTarget = ResolveCommandTarget(officer);
+            ISceneNode commandTarget = GetCommandTarget(officer);
             if (
                 officer == null
                 || !IsSupportedRank(rank)
@@ -36,31 +36,17 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Finds the fleet or planetary-system command represented by an officer's location.
+        /// Finds the fleet or planetary system containing a deployed officer.
         /// </summary>
-        /// <param name="officer">The officer whose command is requested.</param>
-        /// <returns>The local command target, or null when the officer is not deployed.</returns>
-        internal static ISceneNode ResolveCommandTarget(Officer officer)
+        /// <param name="officer">The officer to inspect.</param>
+        /// <returns>The containing fleet or planet, or null when the officer is not deployed.</returns>
+        private static ISceneNode GetCommandTarget(Officer officer)
         {
-            if (officer?.Movement != null)
+            if (officer?.Movement != null || officer?.IsOnMission() != false)
                 return null;
 
-            return ResolveCommandHierarchyTarget(officer);
-        }
-
-        /// <summary>
-        /// Finds the fleet or planetary command represented by the scene hierarchy, independent
-        /// of an officer's in-transit display state.
-        /// </summary>
-        /// <param name="officer">The officer whose hierarchy is requested.</param>
-        /// <returns>The hierarchy's command target, or null while assigned to a mission.</returns>
-        internal static ISceneNode ResolveCommandHierarchyTarget(Officer officer)
-        {
-            if (officer?.IsOnMission() != false)
-                return null;
-
-            Fleet fleet = officer.GetParentOfType<Fleet>();
-            return fleet != null ? fleet : officer.GetParentOfType<Planet>();
+            return officer.GetParentOfType<Fleet>()
+                ?? (ISceneNode)officer.GetParentOfType<Planet>();
         }
 
         /// <summary>
