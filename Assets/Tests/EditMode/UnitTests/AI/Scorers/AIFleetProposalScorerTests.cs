@@ -271,36 +271,6 @@ namespace Rebellion.Tests.AI.Fleets
 
             Assert.Greater(score, 0);
             Assert.LessOrEqual(score, 1);
-            Assert.GreaterOrEqual(scorer.GetNewAttackScoreUpperBound(context, target), score);
-        }
-
-        [Test]
-        public void GetNewAttackScoreUpperBound_WithAttackProposal_DoesNotUnderestimateScore()
-        {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
-            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
-            Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
-            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
-            Fleet fleet = AddBattleFleet(
-                game,
-                owned,
-                "friendly",
-                empire.InstanceID,
-                combatStrength: 1000
-            );
-            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
-            AIFleetAttackProposal proposal = new AIFleetAttackProposal(
-                fleet,
-                FleetOrderType.Attack,
-                FleetOrderStatus.Staging,
-                target
-            );
-            AIFleetProposalScorer scorer = new AIFleetProposalScorer();
-
-            double score = scorer.Score(context, proposal);
-            double upperBound = scorer.GetNewAttackScoreUpperBound(context, target);
-
-            Assert.GreaterOrEqual(upperBound, score);
         }
 
         [Test]

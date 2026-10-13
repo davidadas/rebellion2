@@ -888,30 +888,21 @@ namespace Rebellion.AI.Planners
         {
             AIFleetAttackProposal selected = null;
             IReadOnlyList<Fleet> availableFleets = fleets.ToList();
-            IEnumerable<(Planet Target, double UpperBound)> orderedTargets = targets
-                .Select(target =>
-                    (
-                        Target: target,
-                        UpperBound: _scorer.GetNewAttackScoreUpperBound(context, target)
-                    )
+            foreach (
+                Planet target in targets.OrderBy(
+                    planet => planet.InstanceID,
+                    StringComparer.Ordinal
                 )
-                .OrderByDescending(candidate => candidate.UpperBound)
-                .ThenBy(candidate => candidate.Target.InstanceID, StringComparer.Ordinal);
-            foreach ((Planet Target, double UpperBound) candidate in orderedTargets)
+            )
             {
-                if (selected != null && candidate.UpperBound < selected.Score)
-                    break;
-
                 foreach (Fleet fleet in availableFleets)
                 {
                     Planet currentPlanet = context.Assessment.GetFleetPlanet(fleet);
                     AIFleetAttackProposal proposal = new AIFleetAttackProposal(
                         fleet,
                         FleetOrderType.Attack,
-                        currentPlanet == candidate.Target
-                            ? FleetOrderStatus.Ready
-                            : FleetOrderStatus.Staging,
-                        candidate.Target
+                        currentPlanet == target ? FleetOrderStatus.Ready : FleetOrderStatus.Staging,
+                        target
                     );
                     proposal.SetScore(_scorer.Score(context, proposal));
                     if (proposal.Score <= 0 || !IsPreferred(proposal, selected))

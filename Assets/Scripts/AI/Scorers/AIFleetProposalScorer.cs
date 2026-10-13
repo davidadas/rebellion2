@@ -428,20 +428,6 @@ namespace Rebellion.AI.Scorers
         }
 
         /// <summary>
-        /// Returns a provable upper bound for an attack proposal's score.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="targetPlanet">The attack target to bound.</param>
-        /// <returns>The highest score an attack proposal for the target can attain.</returns>
-        internal double GetNewAttackScoreUpperBound(AITurnContext context, Planet targetPlanet)
-        {
-            if (context?.Game == null || targetPlanet == null)
-                return 0;
-
-            return 1;
-        }
-
-        /// <summary>
         /// Returns whether an undefended enemy orbit exposes military targets whose removal can
         /// produce a sector-wide support gain.
         /// </summary>

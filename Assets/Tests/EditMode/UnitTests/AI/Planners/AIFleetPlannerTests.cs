@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -217,6 +218,104 @@ namespace Rebellion.Tests.AI.Fleets
             Assert.AreEqual(1, proposals.Count);
             Assert.AreSame(expected.Fleet, proposals[0].Fleet);
             Assert.AreSame(expected.TargetPlanet, proposals[0].TargetPlanet);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Plan_WithTiedAttackCandidates_SelectsOrdinalFirstRegardlessOfInsertionOrder(
+            bool reverseOrder
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction opponent);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
+            Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
+            string[] identifiers = reverseOrder ? new[] { "z", "a" } : new[] { "a", "z" };
+            foreach (string identifier in identifiers)
+            {
+                Planet target = AITestSceneBuilder.AddPlanet(
+                    game,
+                    system,
+                    identifier,
+                    opponent.InstanceID
+                );
+                AITestSceneBuilder.RevealPlanet(game, empire, target);
+                AddBattleFleet(
+                    game,
+                    owned,
+                    empire.InstanceID,
+                    "fleet-" + identifier,
+                    combatStrength: 1000
+                );
+            }
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIFleetAttackProposal proposal = new AIFleetPlanner()
+                .Plan(context)
+                .OfType<AIFleetAttackProposal>()
+                .Single();
+
+            Assert.AreEqual("fleet-a", proposal.Fleet.InstanceID);
+            Assert.AreEqual("a", proposal.TargetPlanet.InstanceID);
+        }
+
+        [Test]
+        public void Plan_WithMultipleAttackTargets_SelectsHighestScoringFleetTargetPair()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction opponent);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
+            Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
+            Planet ordinary = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "a-ordinary",
+                opponent.InstanceID
+            );
+            Planet headquarters = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "z-headquarters",
+                opponent.InstanceID
+            );
+            headquarters.IsHeadquarters = true;
+            opponent.HQInstanceID = headquarters.InstanceID;
+            AITestSceneBuilder.RevealPlanet(game, empire, ordinary);
+            AITestSceneBuilder.RevealPlanet(game, empire, headquarters);
+            Fleet weaker = AddBattleFleet(
+                game,
+                owned,
+                empire.InstanceID,
+                "a-weaker",
+                combatStrength: 100
+            );
+            Fleet stronger = AddBattleFleet(
+                game,
+                owned,
+                empire.InstanceID,
+                "z-stronger",
+                combatStrength: 1000
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIFleetProposalScorer scorer = new AIFleetProposalScorer();
+            AIFleetAttackProposal expected = new[] { weaker, stronger }
+                .SelectMany(candidate =>
+                    context.Assessment.EnemyPlanets.Select(target => new AIFleetAttackProposal(
+                        candidate,
+                        FleetOrderType.Attack,
+                        FleetOrderStatus.Staging,
+                        target
+                    ))
+                )
+                .OrderByDescending(candidate => scorer.Score(context, candidate))
+                .ThenBy(candidate => candidate.GetSortKey(), StringComparer.Ordinal)
+                .First();
+
+            AIFleetAttackProposal proposal = new AIFleetPlanner()
+                .Plan(context)
+                .OfType<AIFleetAttackProposal>()
+                .Single();
+
+            Assert.AreSame(expected.Fleet, proposal.Fleet);
+            Assert.AreSame(expected.TargetPlanet, proposal.TargetPlanet);
         }
 
         [Test]
