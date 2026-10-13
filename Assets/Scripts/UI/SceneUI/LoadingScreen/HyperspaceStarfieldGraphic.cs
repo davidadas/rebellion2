@@ -2,14 +2,12 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// Renders a layered perspective hyperspace tunnel as one animated UI mesh.
+/// Renders a layered perspective hyperspace starfield as one animated UI mesh.
 /// </summary>
 [DisallowMultipleComponent]
 public sealed class HyperspaceStarfieldGraphic : MaskableGraphic
 {
     private const int _starCount = 560;
-    private const int _tunnelRingCount = 7;
-    private const int _tunnelSegmentCount = 32;
     private const int _speedRayCount = 24;
     private const float _minimumDepth = 0.048f;
 
@@ -74,7 +72,7 @@ public sealed class HyperspaceStarfieldGraphic : MaskableGraphic
     }
 
     /// <summary>
-    /// Builds the background gradient, tunnel structure, speed rays, and depth-shaded stars.
+    /// Builds the background gradient, speed rays, and depth-shaded stars.
     /// </summary>
     /// <param name="vertexHelper">The UI mesh receiving the star geometry.</param>
     protected override void OnPopulateMesh(VertexHelper vertexHelper)
@@ -87,7 +85,6 @@ public sealed class HyperspaceStarfieldGraphic : MaskableGraphic
         Rect bounds = rectTransform.rect;
         Vector2 vanishingPoint = GetVanishingPoint(bounds);
         AddBackdrop(vertexHelper, bounds);
-        AddTunnelRings(vertexHelper, bounds, vanishingPoint);
         AddSpeedRays(vertexHelper, bounds, vanishingPoint);
         for (int index = 0; index < stars.Length; index++)
             AddStar(vertexHelper, stars[index], vanishingPoint);
@@ -135,41 +132,6 @@ public sealed class HyperspaceStarfieldGraphic : MaskableGraphic
             new Color(0.05f, 0.28f, 0.55f, 0.16f),
             new Color(0.01f, 0.04f, 0.12f, 0f)
         );
-    }
-
-    /// <summary>
-    /// Draws expanding elliptical bands that establish the hyperspace tunnel volume.
-    /// </summary>
-    /// <param name="vertexHelper">The mesh receiving geometry.</param>
-    /// <param name="bounds">The presentation bounds.</param>
-    /// <param name="center">The tunnel vanishing point.</param>
-    private void AddTunnelRings(VertexHelper vertexHelper, Rect bounds, Vector2 center)
-    {
-        float phase = Mathf.Repeat(animationTime * 0.34f, 1f);
-        for (int ringIndex = 0; ringIndex < _tunnelRingCount; ringIndex++)
-        {
-            float progress = Mathf.Repeat((ringIndex + phase) / _tunnelRingCount, 1f);
-            progress = Mathf.Pow(progress, 1.55f);
-            float radiusX = Mathf.Lerp(42f, bounds.width * 0.76f, progress);
-            float radiusY = Mathf.Lerp(24f, bounds.height * 0.74f, progress);
-            float thickness = Mathf.Lerp(0.55f, 3.2f, progress);
-            float alpha = Mathf.Sin(progress * Mathf.PI) * 0.22f;
-            Color32 inner = new Color(0.27f, 0.67f, 1f, alpha);
-            Color32 outer = new Color(0.72f, 0.92f, 1f, alpha * 0.38f);
-
-            for (int segment = 0; segment < _tunnelSegmentCount; segment++)
-            {
-                float startAngle = segment * Mathf.PI * 2f / _tunnelSegmentCount;
-                float endAngle = (segment + 1) * Mathf.PI * 2f / _tunnelSegmentCount;
-                Vector2 start =
-                    center
-                    + new Vector2(Mathf.Cos(startAngle) * radiusX, Mathf.Sin(startAngle) * radiusY);
-                Vector2 end =
-                    center
-                    + new Vector2(Mathf.Cos(endAngle) * radiusX, Mathf.Sin(endAngle) * radiusY);
-                AddLine(vertexHelper, start, end, thickness, inner, outer);
-            }
-        }
     }
 
     /// <summary>

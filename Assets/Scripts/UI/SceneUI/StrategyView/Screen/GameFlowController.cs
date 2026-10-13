@@ -317,11 +317,14 @@ public sealed class GameFlowController : MonoBehaviour
 
         if (loadingTransitionActive)
         {
-            LoadingScreenController.CompletePendingLoad(() =>
-            {
-                strategyController.ResumeMusic();
-                FinishGameplayActivation(session, clock, metadata, playBriefing);
-            });
+            LoadingScreenController.CompletePendingLoad(
+                () =>
+                {
+                    strategyController.ResumeMusic();
+                    FinishGameplayActivation(session, clock, metadata, playBriefing);
+                },
+                StrategyController.PlayStrategyReadySound
+            );
             return;
         }
 

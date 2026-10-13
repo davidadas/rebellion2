@@ -113,7 +113,11 @@ public sealed class MainMenuController : MonoBehaviour
         }
         catch (System.Exception exception)
         {
-            Debug.LogException(exception);
+            if (mainMenuCanvas != null)
+                mainMenuCanvas.enabled = true;
+
+            if (!LoadingScreenController.CompleteFailedRecovery(exception))
+                Debug.LogException(exception);
         }
     }
 

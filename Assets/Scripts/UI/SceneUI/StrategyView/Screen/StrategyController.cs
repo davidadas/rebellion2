@@ -920,7 +920,8 @@ public sealed class StrategyController
     {
         RequestInitialTextures();
         SetContentReady(true);
-        PlayStrategyReadySound();
+        if (!LoadingScreenController.IsLoadInProgress)
+            PlayStrategyReadySound();
     }
 
     /// <summary>
@@ -1949,13 +1950,14 @@ public sealed class StrategyController
         strategyMusicController.Resume();
         RefreshStrategyState();
         RestoreWindows();
-        PlayStrategyReadySound();
+        if (!LoadingScreenController.IsLoadInProgress)
+            PlayStrategyReadySound();
     }
 
     /// <summary>
     /// Plays the established galaxy-presentation change cue when strategy becomes ready.
     /// </summary>
-    private static void PlayStrategyReadySound()
+    internal static void PlayStrategyReadySound()
     {
         PlayStrategySfx(StrategyUISoundPaths.GalacticInformationControl);
     }

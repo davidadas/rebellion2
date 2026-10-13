@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.Networking;
 using UnityEngine.UI;
 
 /// <summary>
@@ -13,9 +14,20 @@ using UnityEngine.UI;
 [DisallowMultipleComponent]
 public sealed class LoadingScreenView : MonoBehaviour
 {
-    private const string _loadingText = "Loading ...";
+    private enum PresentationState
+    {
+        Loading,
+        Ready,
+        Continuing,
+        Failed,
+        TerminalFailure,
+    }
+
+    private const string _loadingText = "LOADING, PLEASE WAIT...";
     private const string _shuttleRelativePath =
         "Application/Loading/Models/lambda-imperial-shuttle.glb";
+    private const string _flightAudioRelativePath = "Application/Loading/Audio/shuttle-reactor.wav";
+    private const float _flightAudioVolume = 0.22f;
     private const int _presentationLayer = 31;
     private const int _renderTextureWidth = 1280;
     private const int _renderTextureHeight = 720;
@@ -33,7 +45,10 @@ public sealed class LoadingScreenView : MonoBehaviour
     private Button continueButton;
 
     [SerializeField]
-    private HyperspaceLoadingHudGraphic loadingHud;
+    private TextMeshProUGUI continueLabel;
+
+    [SerializeField]
+    private TextMeshProUGUI continueKeyboardHint;
 
     [SerializeField]
     private RawImage shuttleViewport;
@@ -56,6 +71,9 @@ public sealed class LoadingScreenView : MonoBehaviour
     [SerializeField]
     private Transform shuttleModelRoot;
 
+    [SerializeField]
+    private AudioSource shuttleFlightAudio;
+
     private CancellationTokenSource cancellation;
     private ContentModelInstance modelInstance;
     private Material shuttleExhaustCoreMaterial;
@@ -72,8 +90,8 @@ public sealed class LoadingScreenView : MonoBehaviour
     private Quaternion shuttleRestRotation;
     private Vector3 shuttleRestScale;
     private bool modelReady;
-    private bool loadFailed;
-    private bool readyForContinue;
+    private bool presentationVisible;
+    private PresentationState presentationState;
 
     /// <summary>
     /// Raised when the player accepts a fully prepared saved game.
@@ -89,7 +107,8 @@ public sealed class LoadingScreenView : MonoBehaviour
             statusText == null
             || failureDetailText == null
             || continueButton == null
-            || loadingHud == null
+            || continueLabel == null
+            || continueKeyboardHint == null
             || shuttleViewport == null
             || starfield == null
             || presentationGroup == null
@@ -97,10 +116,11 @@ public sealed class LoadingScreenView : MonoBehaviour
             || shuttleCameraOrbit == null
             || shuttleCamera == null
             || shuttleModelRoot == null
+            || shuttleFlightAudio == null
         )
         {
             throw new MissingReferenceException(
-                $"{name} requires status, continue, loading-HUD, starfield, transition, viewport, camera-orbit, camera, and model-root references."
+                $"{name} requires status, continue, starfield, transition, viewport, camera-orbit, camera, model-root, and flight-audio references."
             );
         }
 
@@ -110,6 +130,7 @@ public sealed class LoadingScreenView : MonoBehaviour
         continueButton.gameObject.SetActive(false);
         yawDrag = new LimitedYawDrag(_maximumYaw, _yawDegreesPerScreen);
         shuttleCameraOrbitRestRotation = shuttleCameraOrbit.localRotation;
+        presentationVisible = gameObject.activeInHierarchy && presentationGroup.alpha > 0f;
         cancellation = new CancellationTokenSource();
         CreateRenderTarget();
     }
@@ -135,6 +156,13 @@ public sealed class LoadingScreenView : MonoBehaviour
             ),
             cancellation.Token
         );
+        _ = LoadFlightAudioAsync(
+            Path.Combine(
+                contentRootPath,
+                _flightAudioRelativePath.Replace('/', Path.DirectorySeparatorChar)
+            ),
+            cancellation.Token
+        );
     }
 
     /// <summary>
@@ -143,13 +171,18 @@ public sealed class LoadingScreenView : MonoBehaviour
     private void Update()
     {
         float time = Time.unscaledTime;
-        if (!loadFailed && !readyForContinue)
+        if (presentationState == PresentationState.Loading)
         {
             int dotCount = 1 + Mathf.FloorToInt(time * 2.25f) % 3;
-            statusText.text = $"LOADING{new string('.', dotCount)}";
+            statusText.text = $"LOADING, PLEASE WAIT{new string('.', dotCount)}";
             statusText.alpha = Mathf.Lerp(0.72f, 1f, (Mathf.Sin(time * 3.2f) + 1f) * 0.5f);
         }
-        if (readyForContinue && IsKeyboardContinuePressed())
+        if (
+            (
+                presentationState == PresentationState.Ready
+                || presentationState == PresentationState.TerminalFailure
+            ) && IsKeyboardContinuePressed()
+        )
             RequestContinue();
 
         UpdateCameraDragInput();
@@ -221,13 +254,17 @@ public sealed class LoadingScreenView : MonoBehaviour
         {
             ResetCameraInteraction();
             presentationGroup.alpha = 1f;
+            presentationVisible = true;
+            StartFlightAudio();
             SetBlackOpacity(0f);
         }
         else
         {
             yawDrag?.End();
-            readyForContinue = false;
+            presentationState = PresentationState.Continuing;
             continueButton.gameObject.SetActive(false);
+            presentationVisible = false;
+            StopFlightAudio();
         }
 
         gameObject.SetActive(visible);
@@ -238,16 +275,18 @@ public sealed class LoadingScreenView : MonoBehaviour
     /// </summary>
     internal void PrepareEntrance()
     {
-        loadFailed = false;
-        readyForContinue = false;
+        presentationState = PresentationState.Loading;
         statusText.text = _loadingText;
         statusText.alpha = 1f;
         failureDetailText.gameObject.SetActive(false);
-        loadingHud.gameObject.SetActive(true);
+        continueLabel.text = "CONTINUE";
+        continueKeyboardHint.text = "PRESS ENTER";
         continueButton.interactable = true;
         continueButton.gameObject.SetActive(false);
         ResetCameraInteraction();
         presentationGroup.alpha = 0f;
+        presentationVisible = false;
+        StopFlightAudio();
         SetBlackOpacity(0f);
         gameObject.SetActive(true);
     }
@@ -259,6 +298,11 @@ public sealed class LoadingScreenView : MonoBehaviour
     internal void SetPresentationVisible(bool visible)
     {
         presentationGroup.alpha = visible ? 1f : 0f;
+        presentationVisible = visible;
+        if (visible)
+            StartFlightAudio();
+        else
+            StopFlightAudio();
     }
 
     /// <summary>
@@ -278,27 +322,47 @@ public sealed class LoadingScreenView : MonoBehaviour
     /// <param name="details">A concise explanation of why loading failed.</param>
     internal void ShowLoadFailure(string details = null)
     {
-        loadFailed = true;
-        readyForContinue = false;
+        presentationState = PresentationState.Failed;
         statusText.text = "LOAD FAILED\nRETURNING TO MENU...";
         statusText.alpha = 1f;
         failureDetailText.text = FormatFailureDetail(details);
         failureDetailText.gameObject.SetActive(true);
-        loadingHud.gameObject.SetActive(false);
         continueButton.gameObject.SetActive(false);
+        StopFlightAudio();
+    }
+
+    /// <summary>
+    /// Presents an unrecoverable application failure with an explicit exit action.
+    /// </summary>
+    /// <param name="details">A concise explanation of why recovery failed.</param>
+    internal void ShowTerminalFailure(string details = null)
+    {
+        presentationState = PresentationState.TerminalFailure;
+        statusText.text = "APPLICATION RECOVERY FAILED";
+        statusText.alpha = 1f;
+        failureDetailText.text = FormatFailureDetail(details);
+        failureDetailText.gameObject.SetActive(true);
+        continueLabel.text = "QUIT";
+        continueKeyboardHint.text = "PRESS ENTER";
+        continueButton.onClick.RemoveListener(RequestContinue);
+        continueButton.onClick.AddListener(RequestContinue);
+        continueButton.interactable = true;
+        continueButton.gameObject.SetActive(true);
+        SetBlackOpacity(0f);
+        StopFlightAudio();
     }
 
     /// <summary>
     /// Replaces the loading animation with a stable player-controlled handoff.
     /// </summary>
-    internal void ShowReady()
+    public void ShowReady()
     {
-        loadFailed = false;
-        readyForContinue = true;
-        statusText.text = "GAME READY";
+        presentationState = PresentationState.Ready;
+        statusText.text = string.Empty;
         statusText.alpha = 1f;
         failureDetailText.gameObject.SetActive(false);
-        loadingHud.gameObject.SetActive(false);
+        continueLabel.text = "CONTINUE";
+        continueKeyboardHint.text = "PRESS ENTER";
         continueButton.onClick.RemoveListener(RequestContinue);
         continueButton.onClick.AddListener(RequestContinue);
         continueButton.interactable = true;
@@ -311,11 +375,15 @@ public sealed class LoadingScreenView : MonoBehaviour
     /// </summary>
     private void RequestContinue()
     {
-        if (!readyForContinue)
+        if (
+            presentationState != PresentationState.Ready
+            && presentationState != PresentationState.TerminalFailure
+        )
             return;
 
-        readyForContinue = false;
+        presentationState = PresentationState.Continuing;
         continueButton.interactable = false;
+        StopFlightAudio();
         ContinueRequested?.Invoke();
     }
 
@@ -375,6 +443,17 @@ public sealed class LoadingScreenView : MonoBehaviour
 
         modelInstance?.Dispose();
         modelInstance = null;
+
+        StopFlightAudio();
+        AudioClip flightAudioClip = shuttleFlightAudio?.clip;
+        if (flightAudioClip != null)
+        {
+            shuttleFlightAudio.clip = null;
+            if (Application.isPlaying)
+                Destroy(flightAudioClip);
+            else
+                DestroyImmediate(flightAudioClip);
+        }
 
         if (shuttleExhaustMaterial != null)
         {
@@ -452,6 +531,10 @@ public sealed class LoadingScreenView : MonoBehaviour
         try
         {
             resource = await ContentModelLoader.LoadResourceAsync(filePath, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (shuttleModelRoot == null)
+                return;
+
             loadedInstance = await resource.InstantiateAsync(shuttleModelRoot, cancellationToken);
             loadedInstance.TakeOwnership(resource);
             resource = null;
@@ -477,6 +560,96 @@ public sealed class LoadingScreenView : MonoBehaviour
             loadedInstance?.Dispose();
             resource?.Dispose();
         }
+    }
+
+    /// <summary>
+    /// Loads and starts the application-owned shuttle reactor ambience.
+    /// </summary>
+    /// <param name="filePath">The absolute WAV path.</param>
+    /// <param name="cancellationToken">Cancels loading when the presentation closes.</param>
+    /// <returns>A task representing the asynchronous audio load.</returns>
+    private async Task LoadFlightAudioAsync(string filePath, CancellationToken cancellationToken)
+    {
+        try
+        {
+            using UnityWebRequest request = UnityWebRequestMultimedia.GetAudioClip(
+                new Uri(filePath).AbsoluteUri,
+                AudioType.WAV
+            );
+            UnityWebRequestAsyncOperation operation = request.SendWebRequest();
+            while (!operation.isDone)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                await Task.Yield();
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+            if (request.result != UnityWebRequest.Result.Success)
+                throw new IOException(
+                    $"Loading-screen reactor audio could not be loaded at '{filePath}': {request.error}"
+                );
+
+            AudioClip clip = DownloadHandlerAudioClip.GetContent(request);
+            if (clip == null)
+                throw new IOException(
+                    $"Loading-screen reactor audio could not be decoded at '{filePath}'."
+                );
+
+            cancellationToken.ThrowIfCancellationRequested();
+            if (shuttleFlightAudio == null)
+            {
+                if (Application.isPlaying)
+                    Destroy(clip);
+                else
+                    DestroyImmediate(clip);
+                return;
+            }
+
+            clip.name = Path.GetFileNameWithoutExtension(filePath);
+            shuttleFlightAudio.clip = clip;
+            StartFlightAudio();
+        }
+        catch (OperationCanceledException)
+        {
+            // The loading page completed before its decorative audio finished loading.
+        }
+        catch (Exception exception)
+        {
+            Debug.LogWarning(
+                $"Loading-screen reactor audio unavailable; continuing silently.\n{exception}"
+            );
+        }
+    }
+
+    /// <summary>
+    /// Starts the shuttle reactor while the loading presentation is visible.
+    /// </summary>
+    private void StartFlightAudio()
+    {
+        if (
+            !presentationVisible
+            || presentationState == PresentationState.Continuing
+            || presentationState == PresentationState.Failed
+            || presentationState == PresentationState.TerminalFailure
+            || shuttleFlightAudio.clip == null
+            || shuttleFlightAudio.isPlaying
+        )
+            return;
+
+        AudioManager audioManager = AudioManager.Instance;
+        float settingsVolume =
+            audioManager == null ? 1f : audioManager.MasterVolume * audioManager.AmbienceVolume;
+        shuttleFlightAudio.volume = _flightAudioVolume * settingsVolume;
+        shuttleFlightAudio.Play();
+    }
+
+    /// <summary>
+    /// Stops the shuttle reactor without releasing its reusable clip.
+    /// </summary>
+    private void StopFlightAudio()
+    {
+        if (shuttleFlightAudio?.isPlaying == true)
+            shuttleFlightAudio.Stop();
     }
 
     /// <summary>

@@ -3,6 +3,7 @@ using System.IO;
 using TMPro;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 /// <summary>
@@ -11,6 +12,8 @@ using UnityEngine.UI;
 public static class LoadingScreenPrefabBuilder
 {
     private const string _prefabPath = "Assets/Resources/UI/LoadingScreen.prefab";
+    private const string _scenePath = "Assets/Scenes/LoadingScreen.unity";
+    private const string _sceneRootName = "LoadingScreen";
     private const int _presentationLayer = 31;
 
     /// <summary>
@@ -87,11 +90,11 @@ public static class LoadingScreenPrefabBuilder
         TextMeshProUGUI status = CreateLoadingText(
             "StatusTextField",
             backgroundObject.transform,
-            "Loading ...",
-            44,
+            "LOADING, PLEASE WAIT...",
+            28,
             FontStyles.Bold
         );
-        status.characterSpacing = 10f;
+        status.characterSpacing = 5f;
         status.color = new Color(0.84f, 0.95f, 1f, 1f);
         SetSourceRect(status.rectTransform, 0, 890, 1920, 62);
 
@@ -107,13 +110,6 @@ public static class LoadingScreenPrefabBuilder
         failureDetail.overflowMode = TextOverflowModes.Ellipsis;
         SetSourceRect(failureDetail.rectTransform, 460, 952, 1000, 92);
         failureDetail.gameObject.SetActive(false);
-
-        GameObject loadingHudObject = CreateRectObject("LoadingHud", backgroundObject.transform);
-        loadingHudObject.AddComponent<CanvasRenderer>();
-        HyperspaceLoadingHudGraphic loadingHud =
-            loadingHudObject.AddComponent<HyperspaceLoadingHudGraphic>();
-        loadingHud.raycastTarget = false;
-        SetSourceRect(loadingHud.rectTransform, 510, 968, 900, 42);
 
         Button continueButton = CreateContinueButton(backgroundObject.transform);
         continueButton.gameObject.SetActive(false);
@@ -181,10 +177,23 @@ public static class LoadingScreenPrefabBuilder
         FillParent(fadeOverlay.rectTransform);
 
         LoadingScreenView view = root.GetComponent<LoadingScreenView>();
+        AudioSource shuttleFlightAudio = root.AddComponent<AudioSource>();
+        shuttleFlightAudio.playOnAwake = false;
+        shuttleFlightAudio.loop = true;
+        shuttleFlightAudio.spatialBlend = 0f;
         AssignReference(view, "statusText", status);
         AssignReference(view, "failureDetailText", failureDetail);
         AssignReference(view, "continueButton", continueButton);
-        AssignReference(view, "loadingHud", loadingHud);
+        AssignReference(
+            view,
+            "continueLabel",
+            continueButton.transform.Find("Label").GetComponent<TextMeshProUGUI>()
+        );
+        AssignReference(
+            view,
+            "continueKeyboardHint",
+            continueButton.transform.Find("KeyboardHint").GetComponent<TextMeshProUGUI>()
+        );
         AssignReference(view, "shuttleViewport", shuttleViewport);
         AssignReference(view, "starfield", starfield);
         AssignReference(view, "presentationGroup", presentationGroup);
@@ -192,7 +201,17 @@ public static class LoadingScreenPrefabBuilder
         AssignReference(view, "shuttleCameraOrbit", cameraOrbitObject.transform);
         AssignReference(view, "shuttleCamera", shuttleCamera);
         AssignReference(view, "shuttleModelRoot", modelRoot.transform);
+        AssignReference(view, "shuttleFlightAudio", shuttleFlightAudio);
         SavePrefab(root, _prefabPath);
+        SceneBuilder.Build(_scenePath, _prefabPath, _sceneRootName, BuildPreviewEventSystem);
+    }
+
+    /// <summary>
+    /// Adds pointer-event processing to the generated standalone preview scene.
+    /// </summary>
+    private static void BuildPreviewEventSystem()
+    {
+        new GameObject("EventSystem", typeof(EventSystem), typeof(StandaloneInputModule));
     }
 
     /// <summary>
@@ -205,29 +224,154 @@ public static class LoadingScreenPrefabBuilder
         GameObject buttonObject = CreateRectObject("ContinueButton", parent);
         buttonObject.AddComponent<CanvasRenderer>();
         Image background = buttonObject.AddComponent<Image>();
-        background.color = new Color(0.025f, 0.12f, 0.2f, 0.96f);
+        background.color = new Color(0.02f, 0.09f, 0.15f, 0.98f);
 
         Button button = buttonObject.AddComponent<Button>();
+        button.transition = Selectable.Transition.None;
         button.targetGraphic = background;
-        ColorBlock colors = button.colors;
-        colors.normalColor = Color.white;
-        colors.highlightedColor = new Color(0.72f, 0.92f, 1f, 1f);
-        colors.pressedColor = new Color(0.48f, 0.76f, 0.92f, 1f);
-        colors.selectedColor = colors.highlightedColor;
-        button.colors = colors;
-        SetSourceRect(background.rectTransform, 760, 958, 400, 64);
+        SetSourceRect(background.rectTransform, 735, 946, 450, 86);
+
+        Image outerGlow = CreateButtonImage(
+            "OuterGlow",
+            buttonObject.transform,
+            new Color(0.08f, 0.64f, 1f, 0.1f)
+        );
+        SetInsetRect(outerGlow.rectTransform, -7f, -7f, -7f, -7f);
+
+        Image frame = CreateButtonImage(
+            "Frame",
+            buttonObject.transform,
+            new Color(0.12f, 0.55f, 0.75f, 0.75f)
+        );
+        SetInsetRect(frame.rectTransform, 0f, 0f, 0f, 0f);
+
+        Image panel = CreateButtonImage(
+            "Panel",
+            buttonObject.transform,
+            new Color(0.012f, 0.055f, 0.1f, 0.98f)
+        );
+        SetInsetRect(panel.rectTransform, 3f, 3f, 3f, 3f);
+
+        Image upperRail = CreateButtonImage(
+            "UpperRail",
+            buttonObject.transform,
+            new Color(0.5f, 0.9f, 1f, 0.9f)
+        );
+        SetCenteredRect(upperRail.rectTransform, 0f, 40f, 258f, 2f);
+
+        Image lowerRail = CreateButtonImage(
+            "LowerRail",
+            buttonObject.transform,
+            new Color(0.12f, 0.5f, 0.8f, 0.74f)
+        );
+        SetCenteredRect(lowerRail.rectTransform, 0f, -40f, 258f, 2f);
+
+        Image leftAccent = CreateButtonImage(
+            "LeftAccent",
+            buttonObject.transform,
+            new Color(0.36f, 0.88f, 1f, 1f)
+        );
+        SetCenteredRect(leftAccent.rectTransform, -216f, 0f, 6f, 42f);
+
+        Image rightAccent = CreateButtonImage(
+            "RightAccent",
+            buttonObject.transform,
+            new Color(0.36f, 0.88f, 1f, 1f)
+        );
+        SetCenteredRect(rightAccent.rectTransform, 216f, 0f, 6f, 42f);
 
         TextMeshProUGUI label = CreateLoadingText(
             "Label",
             buttonObject.transform,
-            "PRESS ENTER TO CONTINUE",
+            "CONTINUE",
             24,
             FontStyles.Bold
         );
-        label.characterSpacing = 7f;
-        label.color = new Color(0.84f, 0.95f, 1f, 1f);
-        FillParent(label.rectTransform);
+        label.characterSpacing = 8f;
+        label.color = new Color(0.78f, 0.91f, 0.96f, 1f);
+        SetCenteredRect(label.rectTransform, 0f, 8f, 420f, 42f);
+
+        TextMeshProUGUI keyboardHint = CreateLoadingText(
+            "KeyboardHint",
+            buttonObject.transform,
+            "PRESS ENTER",
+            12,
+            FontStyles.Normal
+        );
+        keyboardHint.characterSpacing = 4f;
+        keyboardHint.color = new Color(0.4f, 0.74f, 0.9f, 1f);
+        SetCenteredRect(keyboardHint.rectTransform, 0f, -25f, 420f, 22f);
+
+        LoadingContinueButtonFeedback feedback =
+            buttonObject.AddComponent<LoadingContinueButtonFeedback>();
+        AssignReference(feedback, "outerGlow", outerGlow);
+        AssignReference(feedback, "frame", frame);
+        AssignReference(feedback, "panel", panel);
+        AssignReference(feedback, "label", label);
         return button;
+    }
+
+    /// <summary>
+    /// Creates a non-interactive image used to compose the continue-button frame.
+    /// </summary>
+    /// <param name="name">The image object name.</param>
+    /// <param name="parent">The button transform.</param>
+    /// <param name="color">The authored image color.</param>
+    /// <returns>The configured image.</returns>
+    private static Image CreateButtonImage(string name, Transform parent, Color color)
+    {
+        GameObject imageObject = CreateRectObject(name, parent);
+        Image image = imageObject.AddComponent<Image>();
+        image.color = color;
+        image.raycastTarget = false;
+        return image;
+    }
+
+    /// <summary>
+    /// Insets a rectangle from every edge of its parent.
+    /// </summary>
+    /// <param name="rect">The target rectangle.</param>
+    /// <param name="left">The left inset.</param>
+    /// <param name="bottom">The bottom inset.</param>
+    /// <param name="right">The right inset.</param>
+    /// <param name="top">The top inset.</param>
+    private static void SetInsetRect(
+        RectTransform rect,
+        float left,
+        float bottom,
+        float right,
+        float top
+    )
+    {
+        rect.anchorMin = Vector2.zero;
+        rect.anchorMax = Vector2.one;
+        rect.offsetMin = new Vector2(left, bottom);
+        rect.offsetMax = new Vector2(-right, -top);
+        rect.localScale = Vector3.one;
+    }
+
+    /// <summary>
+    /// Positions a fixed-size rectangle relative to the center of its parent.
+    /// </summary>
+    /// <param name="rect">The target rectangle.</param>
+    /// <param name="x">The horizontal center offset.</param>
+    /// <param name="y">The vertical center offset.</param>
+    /// <param name="width">The rectangle width.</param>
+    /// <param name="height">The rectangle height.</param>
+    private static void SetCenteredRect(
+        RectTransform rect,
+        float x,
+        float y,
+        float width,
+        float height
+    )
+    {
+        rect.anchorMin = new Vector2(0.5f, 0.5f);
+        rect.anchorMax = new Vector2(0.5f, 0.5f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = new Vector2(x, y);
+        rect.sizeDelta = new Vector2(width, height);
+        rect.localScale = Vector3.one;
     }
 
     /// <summary>

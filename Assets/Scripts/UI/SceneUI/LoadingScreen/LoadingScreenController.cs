@@ -17,6 +17,7 @@ internal sealed class LoadingScreenController : MonoBehaviour
     private static LoadingScreenController _activeController;
 
     private AppBootstrap _bootstrap;
+    private Action _continueAccepted;
     private Action _transitionCompleted;
     private LoadingScreenView _view;
     private Coroutine _finishRoutine;
@@ -26,6 +27,7 @@ internal sealed class LoadingScreenController : MonoBehaviour
     private bool _reconstructContent;
     private bool _loadInProgress;
     private bool _recoveringFromFailure;
+    private bool _quitOnContinue;
 
     /// <summary>
     /// Gets whether a saved-game loading transition is currently active.
@@ -68,8 +70,11 @@ internal sealed class LoadingScreenController : MonoBehaviour
 
         controller._bootstrap = bootstrap;
         controller._saveFileName = fileName;
+        controller._continueAccepted = null;
+        controller._transitionCompleted = null;
         controller._reconstructContent = false;
         controller._recoveringFromFailure = false;
+        controller._quitOnContinue = false;
         controller.EnsurePresentation();
         controller._loadInProgress = true;
 
@@ -133,7 +138,11 @@ internal sealed class LoadingScreenController : MonoBehaviour
     /// Removes the persistent loading presentation after replacement gameplay is visible.
     /// </summary>
     /// <param name="transitionCompleted">The action to run after the loading view is gone.</param>
-    internal static void CompletePendingLoad(Action transitionCompleted = null)
+    /// <param name="continueAccepted">The action to run when the player accepts the ready state.</param>
+    internal static void CompletePendingLoad(
+        Action transitionCompleted = null,
+        Action continueAccepted = null
+    )
     {
         if (_activeController == null)
             return;
@@ -147,6 +156,7 @@ internal sealed class LoadingScreenController : MonoBehaviour
         if (!_activeController._loadInProgress)
             return;
 
+        _activeController._continueAccepted = continueAccepted;
         _activeController._transitionCompleted = transitionCompleted;
 
         if (_activeController._recoveringFromFailure)
@@ -160,9 +170,19 @@ internal sealed class LoadingScreenController : MonoBehaviour
         else if (_activeController._view == null)
         {
             _activeController._loadInProgress = false;
+            _activeController._quitOnContinue = false;
+            Action accepted = _activeController._continueAccepted;
+            _activeController._continueAccepted = null;
             Action completed = _activeController._transitionCompleted;
             _activeController._transitionCompleted = null;
-            completed?.Invoke();
+            try
+            {
+                accepted?.Invoke();
+            }
+            finally
+            {
+                completed?.Invoke();
+            }
         }
     }
 
@@ -177,9 +197,11 @@ internal sealed class LoadingScreenController : MonoBehaviour
             return false;
 
         LoadingScreenController controller = _activeController;
+        controller._continueAccepted = null;
         controller._transitionCompleted = null;
         controller._reconstructContent = false;
         controller._recoveringFromFailure = true;
+        controller._quitOnContinue = false;
         controller._view?.ShowLoadFailure(exception?.Message);
 
         if (exception != null)
@@ -197,9 +219,8 @@ internal sealed class LoadingScreenController : MonoBehaviour
             bootstrap = AppBootstrap.Instance;
         if (bootstrap == null)
         {
-            controller._loadInProgress = false;
-            controller._view?.SetVisible(false);
-            return false;
+            controller.EnterTerminalFailure(exception);
+            return true;
         }
 
         bootstrap.GetRuntime()?.EndGame();
@@ -209,6 +230,41 @@ internal sealed class LoadingScreenController : MonoBehaviour
                 controller.ReturnToMainMenu(bootstrap)
             );
         }
+        return true;
+    }
+
+    /// <summary>
+    /// Releases a failed recovery transition after the main-menu scene is available.
+    /// </summary>
+    /// <param name="exception">The main-menu initialization failure.</param>
+    /// <returns>True when an active loading transition was released.</returns>
+    internal static bool CompleteFailedRecovery(Exception exception)
+    {
+        if (!_activeController || !_activeController._loadInProgress)
+            return false;
+
+        if (exception != null)
+            Debug.LogException(exception);
+
+        LoadingScreenController controller = _activeController;
+        controller._continueAccepted = null;
+        controller._transitionCompleted = null;
+        controller._recoveringFromFailure = false;
+        controller._quitOnContinue = false;
+        if (!Application.isPlaying)
+        {
+            controller._loadInProgress = false;
+            DestroyImmediate(controller.gameObject);
+            return true;
+        }
+
+        if (controller._view == null)
+        {
+            controller._loadInProgress = false;
+            return true;
+        }
+
+        controller.BeginFinishTransition();
         return true;
     }
 
@@ -243,9 +299,21 @@ internal sealed class LoadingScreenController : MonoBehaviour
     private void HandleRecoverySceneFailure(Exception exception)
     {
         Debug.LogException(exception);
-        _loadInProgress = false;
-        _recoveringFromFailure = false;
-        _view?.SetVisible(false);
+        EnterTerminalFailure(exception);
+    }
+
+    /// <summary>
+    /// Keeps the loading presentation interactive when application recovery cannot continue.
+    /// </summary>
+    /// <param name="exception">The unrecoverable application failure.</param>
+    private void EnterTerminalFailure(Exception exception)
+    {
+        _continueAccepted = null;
+        _transitionCompleted = null;
+        _recoveringFromFailure = true;
+        _quitOnContinue = true;
+        _loadInProgress = true;
+        _view?.ShowTerminalFailure(exception?.Message);
     }
 
     /// <summary>
@@ -253,6 +321,9 @@ internal sealed class LoadingScreenController : MonoBehaviour
     /// </summary>
     private void OnDestroy()
     {
+        _continueAccepted = null;
+        _transitionCompleted = null;
+        _quitOnContinue = false;
         if (_view != null)
             _view.ContinueRequested -= HandleContinueRequested;
 
@@ -364,10 +435,23 @@ internal sealed class LoadingScreenController : MonoBehaviour
     /// </summary>
     private void HandleContinueRequested()
     {
-        if (!_loadInProgress || _recoveringFromFailure)
+        if (!_loadInProgress)
+            return;
+
+        if (_quitOnContinue)
+        {
+            Application.Quit();
+            return;
+        }
+
+        if (_recoveringFromFailure)
             return;
 
         BeginFinishTransition();
+        Action continueAccepted = _continueAccepted;
+        _continueAccepted = null;
+        _quitOnContinue = false;
+        continueAccepted?.Invoke();
     }
 
     /// <summary>
@@ -395,6 +479,7 @@ internal sealed class LoadingScreenController : MonoBehaviour
         _recoveringFromFailure = false;
         _saveFileName = null;
         _finishRoutine = null;
+        _continueAccepted = null;
         Action transitionCompleted = _transitionCompleted;
         _transitionCompleted = null;
         transitionCompleted?.Invoke();

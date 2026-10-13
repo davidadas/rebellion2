@@ -46,16 +46,17 @@ namespace Rebellion.Tests.UI.SceneUI.LoadingScreen
             Assert.IsNotNull(shuttleViewport.GetComponent<RawImage>());
             Transform commandShade = prefab.transform.Find("Background/BottomCommandShade");
             Assert.Less(commandShade.GetSiblingIndex(), shuttleViewport.GetSiblingIndex());
-            Assert.IsNotNull(
-                prefab
-                    .transform.Find("Background/LoadingHud")
-                    .GetComponent<HyperspaceLoadingHudGraphic>()
-            );
+            Assert.IsNull(prefab.transform.Find("Background/LoadingHud"));
             Transform continueButton = prefab.transform.Find("Background/ContinueButton");
             Assert.IsNotNull(continueButton);
             Assert.IsNotNull(continueButton.GetComponent<Button>());
             Assert.IsFalse(continueButton.gameObject.activeSelf);
             Assert.IsNotNull(prefab.transform.Find("ShuttleRig/ModelRoot"));
+            AudioSource flightAudio = prefab.GetComponent<AudioSource>();
+            Assert.IsNotNull(flightAudio);
+            Assert.IsTrue(flightAudio.loop);
+            Assert.IsFalse(flightAudio.playOnAwake);
+            Assert.AreEqual(0f, flightAudio.spatialBlend);
             Assert.IsNotNull(
                 prefab.transform.Find("ShuttleRig/CameraOrbit/Camera").GetComponent<Camera>()
             );
@@ -65,7 +66,7 @@ namespace Rebellion.Tests.UI.SceneUI.LoadingScreen
 
             Transform status = prefab.transform.Find("Background/StatusTextField");
             Assert.IsNotNull(status);
-            Assert.AreEqual("Loading ...", status.GetComponent<TextMeshProUGUI>().text);
+            Assert.AreEqual("LOADING, PLEASE WAIT...", status.GetComponent<TextMeshProUGUI>().text);
         }
 
         [Test]
@@ -113,7 +114,7 @@ namespace Rebellion.Tests.UI.SceneUI.LoadingScreen
 
             _instance.PrepareEntrance();
 
-            Assert.AreEqual("Loading ...", status.text);
+            Assert.AreEqual("LOADING, PLEASE WAIT...", status.text);
             Assert.IsFalse(
                 _instance.transform.Find("Background/FailureDetailTextField").gameObject.activeSelf
             );
@@ -136,11 +137,49 @@ namespace Rebellion.Tests.UI.SceneUI.LoadingScreen
 
             _instance.ShowReady();
 
-            Assert.AreEqual("GAME READY", status.text);
-            Assert.AreEqual("PRESS ENTER TO CONTINUE", continueLabel.text);
+            Assert.AreEqual(string.Empty, status.text);
+            Assert.AreEqual("CONTINUE", continueLabel.text);
+            Assert.AreEqual(
+                "PRESS ENTER",
+                continueButton.transform.Find("KeyboardHint").GetComponent<TextMeshProUGUI>().text
+            );
+            Assert.IsNotNull(continueButton.transform.Find("OuterGlow"));
+            Assert.IsNotNull(continueButton.transform.Find("Frame"));
+            Assert.IsNotNull(continueButton.transform.Find("Panel"));
+            Assert.IsNotNull(continueButton.transform.Find("LeftAccent"));
+            Assert.IsNotNull(continueButton.transform.Find("RightAccent"));
+            Assert.AreEqual(Selectable.Transition.None, continueButton.transition);
+            Assert.IsNotNull(continueButton.GetComponent<LoadingContinueButtonFeedback>());
             Assert.IsTrue(continueButton.gameObject.activeSelf);
             Assert.IsTrue(continueButton.interactable);
             Assert.IsFalse(fade.blocksRaycasts);
+        }
+
+        [Test]
+        public void ShowTerminalFailure_UnrecoverableFailure_ShowsQuitAction()
+        {
+            LoadingScreenView prefab = Resources.Load<LoadingScreenView>("UI/LoadingScreen");
+            _instance = Object.Instantiate(prefab);
+            TextMeshProUGUI status = _instance
+                .transform.Find("Background/StatusTextField")
+                .GetComponent<TextMeshProUGUI>();
+            TextMeshProUGUI detail = _instance
+                .transform.Find("Background/FailureDetailTextField")
+                .GetComponent<TextMeshProUGUI>();
+            Button continueButton = _instance
+                .transform.Find("Background/ContinueButton")
+                .GetComponent<Button>();
+
+            _instance.ShowTerminalFailure("Replacement services could not be created.");
+
+            Assert.AreEqual("APPLICATION RECOVERY FAILED", status.text);
+            Assert.AreEqual("Replacement services could not be created.", detail.text);
+            Assert.AreEqual(
+                "QUIT",
+                continueButton.transform.Find("Label").GetComponent<TextMeshProUGUI>().text
+            );
+            Assert.IsTrue(continueButton.gameObject.activeSelf);
+            Assert.IsTrue(continueButton.interactable);
         }
 
         [Test]
@@ -159,6 +198,45 @@ namespace Rebellion.Tests.UI.SceneUI.LoadingScreen
 
             Assert.IsTrue(requested);
             Assert.IsFalse(continueButton.interactable);
+        }
+
+        [UnityTest]
+        public IEnumerator ShowReady_ContinueButtonClicked_KeepsLoadingStatusHidden()
+        {
+            LoadingScreenView prefab = Resources.Load<LoadingScreenView>("UI/LoadingScreen");
+            _instance = Object.Instantiate(prefab);
+            Button continueButton = _instance
+                .transform.Find("Background/ContinueButton")
+                .GetComponent<Button>();
+            TextMeshProUGUI status = _instance
+                .transform.Find("Background/StatusTextField")
+                .GetComponent<TextMeshProUGUI>();
+
+            _instance.ShowReady();
+            continueButton.onClick.Invoke();
+            yield return null;
+
+            Assert.AreEqual(string.Empty, status.text);
+        }
+
+        [UnityTest]
+        public IEnumerator ContinueButton_PointerEntered_BrightensWithoutResizingControl()
+        {
+            LoadingScreenView prefab = Resources.Load<LoadingScreenView>("UI/LoadingScreen");
+            _instance = Object.Instantiate(prefab);
+            _instance.ShowReady();
+            Transform continueTransform = _instance.transform.Find("Background/ContinueButton");
+            LoadingContinueButtonFeedback feedback =
+                continueTransform.GetComponent<LoadingContinueButtonFeedback>();
+            Image frame = continueTransform.Find("Frame").GetComponent<Image>();
+            float initialScale = continueTransform.localScale.x;
+            Color initialFrameColor = frame.color;
+
+            feedback.OnPointerEnter(null);
+            yield return null;
+
+            Assert.AreEqual(initialScale, continueTransform.localScale.x);
+            Assert.Greater(frame.color.grayscale, initialFrameColor.grayscale);
         }
 
         [UnityTest]
@@ -188,6 +266,32 @@ namespace Rebellion.Tests.UI.SceneUI.LoadingScreen
             Assert.AreEqual(4, exhaustPlumeCount);
             Assert.IsEmpty(modelRoot.GetComponentsInChildren<ParticleSystem>());
             Assert.IsEmpty(modelRoot.GetComponentsInChildren<Light>());
+        }
+
+        [UnityTest]
+        public IEnumerator Initialize_ApplicationFlightAudioExists_LoadsLoopingReactor()
+        {
+            LoadingScreenView prefab = Resources.Load<LoadingScreenView>("UI/LoadingScreen");
+            _instance = Object.Instantiate(prefab);
+            _instance.Initialize(Path.Combine(Application.dataPath, "Content"));
+
+            AudioSource flightAudio = _instance.GetComponent<AudioSource>();
+            Transform modelRoot = _instance.transform.Find("ShuttleRig/ModelRoot");
+            float timeout = Time.realtimeSinceStartup + 10f;
+            while (
+                (
+                    flightAudio.clip == null
+                    || modelRoot.GetComponentsInChildren<Renderer>().Length == 0
+                )
+                && Time.realtimeSinceStartup < timeout
+            )
+            {
+                yield return null;
+            }
+
+            Assert.IsNotNull(flightAudio.clip);
+            Assert.AreEqual("shuttle-reactor", flightAudio.clip.name);
+            Assert.IsTrue(flightAudio.loop);
         }
     }
 }
