@@ -131,7 +131,7 @@ namespace Rebellion.Tests.AI.Fleets
                 .OfType<AIFleetEvacuationProposal>()
                 .Single(candidate => candidate.Fleet == fleet);
 
-            Assert.AreSame(hostile, proposal.HostilePlanet);
+            Assert.AreSame(hostile, proposal.CurrentPlanet);
         }
 
         [TestCase(FleetOrderType.Attack)]
@@ -168,7 +168,7 @@ namespace Rebellion.Tests.AI.Fleets
                 .OfType<AIFleetEvacuationProposal>()
                 .Single(candidate => candidate.Fleet == fleet);
 
-            Assert.AreSame(hostile, proposal.HostilePlanet);
+            Assert.AreSame(hostile, proposal.CurrentPlanet);
         }
 
         [Test]
@@ -567,7 +567,7 @@ namespace Rebellion.Tests.AI.Fleets
                 .ToList();
 
             Assert.AreEqual(1, proposals.Count);
-            Assert.AreSame(blockedTarget, proposals[0].HostilePlanet);
+            Assert.AreSame(blockedTarget, proposals[0].CurrentPlanet);
         }
 
         [Test]
@@ -592,7 +592,7 @@ namespace Rebellion.Tests.AI.Fleets
                 .OfType<AIFleetEvacuationProposal>()
                 .Single(candidate => candidate.Fleet == fleet);
 
-            Assert.AreSame(target, proposal.HostilePlanet);
+            Assert.AreSame(target, proposal.CurrentPlanet);
         }
 
         [Test]
@@ -620,7 +620,42 @@ namespace Rebellion.Tests.AI.Fleets
                 .OfType<AIFleetEvacuationProposal>()
                 .Single(candidate => candidate.Fleet == fleet);
 
-            Assert.AreSame(target, proposal.HostilePlanet);
+            Assert.AreSame(target, proposal.CurrentPlanet);
+        }
+
+        [Test]
+        public void Plan_WithInactiveFleetAndInboundShipsAtBlockadedOwnedPlanet_AddsSelectableEvacuationProposal()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
+            Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
+            AITestSceneBuilder.AddPlanet(game, system, "friendly", empire.InstanceID);
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+            AddBattleFleet(
+                game,
+                owned,
+                rebels.InstanceID,
+                "blockading-fleet",
+                combatStrength: 1000
+            );
+            Fleet fleet = AddBattleFleet(game, owned, empire.InstanceID, "fleet");
+            CapitalShip inboundShip = fleet.GetChildren<CapitalShip>().Single();
+            inboundShip.Movement = new MovementState { TransitTicks = 10 };
+            fleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                Status = FleetOrderStatus.Building,
+                TargetPlanetId = target.InstanceID,
+            };
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIFleetEvacuationProposal proposal = new AIFleetPlanner()
+                .Plan(context)
+                .OfType<AIFleetEvacuationProposal>()
+                .Single(candidate => candidate.Fleet == fleet);
+
+            Assert.IsTrue(proposal.CanSelect(context));
         }
 
         [Test]
@@ -660,7 +695,7 @@ namespace Rebellion.Tests.AI.Fleets
                 .OfType<AIFleetEvacuationProposal>()
                 .Single(candidate => candidate.Fleet == fleet);
 
-            Assert.AreSame(hostileStaging, proposal.HostilePlanet);
+            Assert.AreSame(hostileStaging, proposal.CurrentPlanet);
         }
 
         [Test]
@@ -1785,7 +1820,7 @@ namespace Rebellion.Tests.AI.Fleets
                 .OfType<AIFleetEvacuationProposal>()
                 .Single();
 
-            Assert.AreSame(hostile, proposal.HostilePlanet);
+            Assert.AreSame(hostile, proposal.CurrentPlanet);
         }
 
         [Test]

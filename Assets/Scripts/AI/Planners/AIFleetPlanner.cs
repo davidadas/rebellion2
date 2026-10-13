@@ -509,16 +509,7 @@ namespace Rebellion.AI.Planners
         /// <returns>True when the fleet should evacuate to friendly territory.</returns>
         private static bool ShouldEvacuate(AITurnContext context, Fleet fleet, Planet currentPlanet)
         {
-            if (
-                currentPlanet == null
-                || fleet.Movement != null
-                || fleet.IsInCombat
-                || string.IsNullOrEmpty(currentPlanet.GetOwnerInstanceID())
-                || currentPlanet.GetOwnerInstanceID() == context.Faction.InstanceID
-            )
-                return false;
-
-            return !CanAct(context, fleet, currentPlanet);
+            return AIFleetEvacuationProposal.IsRequired(context, fleet, currentPlanet);
         }
 
         /// <summary>
@@ -1692,22 +1683,6 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns whether a fleet has a viable immediate action at a hostile planet.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="fleet">The fleet to inspect.</param>
-        /// <param name="planet">The hostile planet.</param>
-        /// <returns>True when the fleet can win orbit or advance against the planet.</returns>
-        private static bool CanAct(AITurnContext context, Fleet fleet, Planet planet)
-        {
-            if (fleet == null || planet == null)
-                return false;
-            return context.Assessment.GetStrongestHostileFleetStrength(planet) > 0
-                ? CanWinProjectedOrbitalCombat(context, fleet, planet)
-                : CanAdvance(context, fleet, planet);
-        }
-
-        /// <summary>
         /// Returns whether target shields exceed the fleet's current bombardment strength.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
@@ -1788,25 +1763,6 @@ namespace Rebellion.AI.Planners
                     >= demand.RegimentStrength
                 && context.Assessment.GetProjectedFleetBombardmentStrength(fleet)
                     >= demand.BombardmentStrength;
-        }
-
-        /// <summary>
-        /// Returns whether projected combat strength defeats known orbital defenders.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="fleet">The fleet to inspect.</param>
-        /// <param name="targetPlanet">The target planet.</param>
-        /// <returns>True when projected combat strength is sufficient.</returns>
-        private static bool CanWinProjectedOrbitalCombat(
-            AITurnContext context,
-            Fleet fleet,
-            Planet targetPlanet
-        )
-        {
-            int required = context.GetAttackDemand(targetPlanet)?.OrbitalStrength ?? 0;
-            return required > 0
-                && context.Assessment.GetProjectedFleetCombatValueAgainstCapitalShips(fleet)
-                    >= required;
         }
 
         /// <summary>
