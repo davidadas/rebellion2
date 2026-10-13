@@ -10,8 +10,7 @@ using UnityEngine.UI;
 /// </summary>
 public static class CommonUIPrefabBuilder
 {
-    private const string _contentRestartLoadingPrefabPath =
-        "Assets/Resources/UI/ContentRestartLoadingView.prefab";
+    private const string _loadingScreenPrefabPath = "Assets/Resources/UI/LoadingScreen.prefab";
     private const string _scrollAreaPrefabPath = "Assets/Prefabs/UI/Common/ScrollArea.prefab";
     private const string _textInputPrefabPath = "Assets/Prefabs/UI/Common/TextInput.prefab";
     private const string _confirmationDialogPrefabPath =
@@ -45,7 +44,7 @@ public static class CommonUIPrefabBuilder
     /// </summary>
     public static void RebuildSharedControlPrefabs()
     {
-        BuildContentRestartLoadingPrefab();
+        BuildLoadingScreenPrefab();
         BuildScrollAreaPrefab();
         BuildTextInputPrefab();
         BuildConfirmationDialogPrefab();
@@ -58,18 +57,18 @@ public static class CommonUIPrefabBuilder
     }
 
     /// <summary>
-    /// Authors the application-owned loading page used while content packs are exchanged.
+    /// Authors the application-owned screen shown during saved-game loading.
     /// </summary>
-    /// <returns>The saved loading-page prefab root.</returns>
-    internal static GameObject BuildContentRestartLoadingPrefab()
+    /// <returns>The saved loading-screen prefab root.</returns>
+    internal static GameObject BuildLoadingScreenPrefab()
     {
         GameObject root = new GameObject(
-            "ContentRestartLoadingView",
+            "LoadingScreen",
             typeof(RectTransform),
             typeof(Canvas),
             typeof(CanvasScaler),
             typeof(GraphicRaycaster),
-            typeof(ContentRestartLoadingView)
+            typeof(LoadingScreenView)
         );
         FillParent(root.GetComponent<RectTransform>());
 
@@ -98,6 +97,7 @@ public static class CommonUIPrefabBuilder
         Image background = backgroundObject.AddComponent<Image>();
         background.color = new Color(0.005f, 0.012f, 0.022f, 1f);
         background.raycastTarget = true;
+        CanvasGroup presentationGroup = backgroundObject.AddComponent<CanvasGroup>();
         FillParent(background.rectTransform);
 
         GameObject starfieldObject = CreateRectObject(
@@ -109,6 +109,15 @@ public static class CommonUIPrefabBuilder
             starfieldObject.AddComponent<HyperspaceStarfieldGraphic>();
         starfield.raycastTarget = false;
         FillParent(starfield.rectTransform);
+
+        GameObject bottomShadeObject = CreateRectObject(
+            "BottomCommandShade",
+            backgroundObject.transform
+        );
+        Image bottomShade = bottomShadeObject.AddComponent<Image>();
+        bottomShade.color = new Color(0.002f, 0.008f, 0.02f, 0.58f);
+        bottomShade.raycastTarget = false;
+        SetSourceRect(bottomShade.rectTransform, 0, 822, 1920, 258);
 
         GameObject shuttleViewportObject = CreateRectObject(
             "ShuttleViewport",
@@ -123,11 +132,19 @@ public static class CommonUIPrefabBuilder
             "StatusTextField",
             backgroundObject.transform,
             "Loading ...",
-            38,
+            44,
             FontStyles.Bold
         );
-        status.color = new Color(0.82f, 0.92f, 1f, 1f);
-        SetSourceRect(status.rectTransform, 0, 905, 1920, 64);
+        status.characterSpacing = 10f;
+        status.color = new Color(0.84f, 0.95f, 1f, 1f);
+        SetSourceRect(status.rectTransform, 0, 890, 1920, 62);
+
+        GameObject loadingHudObject = CreateRectObject("LoadingHud", backgroundObject.transform);
+        loadingHudObject.AddComponent<CanvasRenderer>();
+        HyperspaceLoadingHudGraphic loadingHud =
+            loadingHudObject.AddComponent<HyperspaceLoadingHudGraphic>();
+        loadingHud.raycastTarget = false;
+        SetSourceRect(loadingHud.rectTransform, 510, 968, 900, 42);
 
         GameObject rig = new GameObject("ShuttleRig");
         rig.transform.SetParent(root.transform, false);
@@ -141,8 +158,8 @@ public static class CommonUIPrefabBuilder
         keyLightObject.transform.localRotation = Quaternion.Euler(28f, -32f, 0f);
         Light keyLight = keyLightObject.GetComponent<Light>();
         keyLight.type = LightType.Directional;
-        keyLight.color = new Color(0.78f, 0.88f, 1f, 1f);
-        keyLight.intensity = 0.35f;
+        keyLight.color = new Color(0.7f, 0.84f, 1f, 1f);
+        keyLight.intensity = 0.48f;
         keyLight.cullingMask = 1 << _loadingPresentationLayer;
         keyLight.shadows = LightShadows.None;
 
@@ -151,35 +168,60 @@ public static class CommonUIPrefabBuilder
         fillLightObject.transform.localPosition = new Vector3(-2.5f, -1f, -2.5f);
         Light fillLight = fillLightObject.GetComponent<Light>();
         fillLight.type = LightType.Point;
-        fillLight.color = new Color(0.25f, 0.55f, 1f, 1f);
-        fillLight.intensity = 0.12f;
+        fillLight.color = new Color(0.12f, 0.46f, 1f, 1f);
+        fillLight.intensity = 0.22f;
         fillLight.range = 12f;
         fillLight.cullingMask = 1 << _loadingPresentationLayer;
         fillLight.shadows = LightShadows.None;
 
+        GameObject rimLightObject = new GameObject("RimLight", typeof(Light));
+        rimLightObject.transform.SetParent(rig.transform, false);
+        rimLightObject.transform.localRotation = Quaternion.Euler(-18f, 154f, 0f);
+        Light rimLight = rimLightObject.GetComponent<Light>();
+        rimLight.type = LightType.Directional;
+        rimLight.color = new Color(0.18f, 0.52f, 1f, 1f);
+        rimLight.intensity = 0.38f;
+        rimLight.cullingMask = 1 << _loadingPresentationLayer;
+        rimLight.shadows = LightShadows.None;
+
+        GameObject cameraOrbitObject = new GameObject("CameraOrbit");
+        cameraOrbitObject.transform.SetParent(rig.transform, false);
+
         GameObject cameraObject = new GameObject("Camera", typeof(Camera));
-        cameraObject.transform.SetParent(rig.transform, false);
-        cameraObject.transform.localPosition = new Vector3(0f, 0f, -6f);
+        cameraObject.transform.SetParent(cameraOrbitObject.transform, false);
+        cameraObject.transform.localPosition = new Vector3(0f, 0.08f, -6f);
         Camera shuttleCamera = cameraObject.GetComponent<Camera>();
         shuttleCamera.clearFlags = CameraClearFlags.SolidColor;
         shuttleCamera.backgroundColor = Color.clear;
-        shuttleCamera.fieldOfView = 35f;
+        shuttleCamera.fieldOfView = 32f;
         shuttleCamera.nearClipPlane = 0.1f;
         shuttleCamera.farClipPlane = 50f;
         shuttleCamera.cullingMask = 1 << _loadingPresentationLayer;
         shuttleCamera.allowHDR = false;
         shuttleCamera.allowMSAA = true;
 
-        ContentRestartLoadingView view = root.GetComponent<ContentRestartLoadingView>();
+        GameObject fadeOverlayObject = CreateRectObject("FadeOverlay", root.transform);
+        Image fadeOverlay = fadeOverlayObject.AddComponent<Image>();
+        fadeOverlay.color = Color.black;
+        fadeOverlay.raycastTarget = true;
+        CanvasGroup fadeOverlayGroup = fadeOverlayObject.AddComponent<CanvasGroup>();
+        fadeOverlayGroup.alpha = 0f;
+        FillParent(fadeOverlay.rectTransform);
+
+        LoadingScreenView view = root.GetComponent<LoadingScreenView>();
         AssignReference(view, "statusText", status);
         AssignReference(view, "shuttleViewport", shuttleViewport);
+        AssignReference(view, "starfield", starfield);
+        AssignReference(view, "presentationGroup", presentationGroup);
+        AssignReference(view, "fadeOverlayGroup", fadeOverlayGroup);
+        AssignReference(view, "shuttleCameraOrbit", cameraOrbitObject.transform);
         AssignReference(view, "shuttleCamera", shuttleCamera);
         AssignReference(view, "shuttleModelRoot", modelRoot.transform);
-        return SavePrefab(root, _contentRestartLoadingPrefabPath);
+        return SavePrefab(root, _loadingScreenPrefabPath);
     }
 
     /// <summary>
-    /// Creates one centered text field for the content-restart loading page.
+    /// Creates one centered text field for the loading screen.
     /// </summary>
     /// <param name="name">The text GameObject name.</param>
     /// <param name="parent">The text parent transform.</param>

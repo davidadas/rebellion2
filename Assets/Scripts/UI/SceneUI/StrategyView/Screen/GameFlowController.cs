@@ -299,8 +299,11 @@ public sealed class GameFlowController : MonoBehaviour
     /// <param name="requestBriefing">Whether launch state requested the opening briefing.</param>
     private void ActivateGameplay(GameSession session, bool requestBriefing)
     {
-        strategyController.ActivatePresentation();
-        ContentRestartController.CompletePendingLoad();
+        bool loadingTransitionActive = LoadingScreenController.IsLoadInProgress;
+        strategyController.ActivatePresentation(startMusic: !loadingTransitionActive);
+        LoadingScreenController.CompletePendingLoad(
+            loadingTransitionActive ? strategyController.ResumeMusic : null
+        );
         GameManager clock = AppBootstrap.Instance.GetRuntime().GetActiveGameManager();
         GameRoot activeGame = session.Game;
         GameMetadata metadata = activeGame.Metadata ??= new GameMetadata();

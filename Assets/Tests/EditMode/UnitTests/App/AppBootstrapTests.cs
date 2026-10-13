@@ -38,7 +38,7 @@ namespace Rebellion.Tests.App
         [TearDown]
         public void TearDown()
         {
-            ContentRestartController.CompletePendingLoad();
+            LoadingScreenController.CompletePendingLoad();
             Object.DestroyImmediate(_gameObject);
             DestroyAudioManagers();
             GameLaunchContext.Reset(TestContent.Pack);
@@ -48,17 +48,18 @@ namespace Rebellion.Tests.App
         public void InitializeRuntimeCore_BlankLaunchContext_SetsActiveContentDefaults()
         {
             UIComponentTestHelper.InvokeLifecycle(_bootstrap, "InitializeRuntimeCore");
+            ContentPack activeContent = _bootstrap.GetContentPack();
 
             Assert.AreEqual(
-                TestContent.Pack.Scenario.DefaultPlayerFactionID,
+                activeContent.Scenario.DefaultPlayerFactionID,
                 GameLaunchContext.Summary.PlayerFactionID
             );
-            Assert.AreEqual(TestContent.Pack.Definition.ID, GameLaunchContext.Summary.PackID);
+            Assert.AreEqual(activeContent.Definition.ID, GameLaunchContext.Summary.PackID);
             Assert.AreEqual(
-                TestContent.Pack.Definition.Version,
+                activeContent.Definition.Version,
                 GameLaunchContext.Summary.PackVersion
             );
-            Assert.AreEqual(TestContent.Pack.Scenario.ID, GameLaunchContext.Summary.ScenarioID);
+            Assert.AreEqual(activeContent.Scenario.ID, GameLaunchContext.Summary.ScenarioID);
         }
 
         [Test]
@@ -84,6 +85,12 @@ namespace Rebellion.Tests.App
             SaveGameManager saveGameManager = SaveGameManager.Instance;
             int transitionCount = 0;
             _bootstrap.SaveLoadStarting += () => transitionCount++;
+            AudioManager audioManager = AudioManager.EnsureExists();
+            AudioClip music = AudioClip.Create("Outgoing Music", 1, 1, 44100, false);
+            audioManager.PlayTrack(music, true);
+            AudioSource musicSource = audioManager
+                .GetComponents<AudioSource>()
+                .Single(source => source.clip == music);
 
             try
             {
@@ -100,16 +107,16 @@ namespace Rebellion.Tests.App
                 Assert.IsFalse(runtime.HasActiveGame);
                 Assert.AreEqual(fileName, GameLaunchContext.SaveFileName);
                 Assert.IsTrue(GameLaunchContext.IsLoadGame);
+                Assert.IsNull(musicSource.clip);
                 Assert.IsNotNull(
-                    Object.FindAnyObjectByType<ContentRestartController>(
-                        FindObjectsInactive.Include
-                    )
+                    Object.FindAnyObjectByType<LoadingScreenController>(FindObjectsInactive.Include)
                 );
             }
             finally
             {
                 File.Delete(saveGameManager.GetSaveFilePath(fileName));
                 File.Delete(saveGameManager.GetSaveMetadataFilePath(fileName));
+                Object.DestroyImmediate(music);
             }
         }
 

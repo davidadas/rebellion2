@@ -227,7 +227,8 @@ public sealed class StrategyController
     /// <summary>
     /// Reveals the initialized strategy presentation and starts its ambient behavior.
     /// </summary>
-    public void ActivatePresentation()
+    /// <param name="startMusic">Whether strategy music should begin immediately.</param>
+    public void ActivatePresentation(bool startMusic)
     {
         if (!initialized)
             throw new InvalidOperationException("StrategyController has not been initialized.");
@@ -242,7 +243,7 @@ public sealed class StrategyController
         presentationActive = true;
         AppBootstrap.Instance?.GetInputController()?.SetContext(InputContext.Strategy);
         RegisterCancelHandlers();
-        OnGameReady();
+        OnGameReady(startMusic);
         RestoreWindows();
         LoadInitialContent();
     }
@@ -896,10 +897,20 @@ public sealed class StrategyController
     /// <summary>
     /// Starts strategy music and builds the initial strategy snapshot.
     /// </summary>
-    private void OnGameReady()
+    /// <param name="startMusic">Whether strategy music should begin immediately.</param>
+    private void OnGameReady(bool startMusic)
+    {
+        if (startMusic)
+            ResumeMusic();
+        RebuildSnapshot();
+    }
+
+    /// <summary>
+    /// Starts strategy music after a deferred presentation transition finishes.
+    /// </summary>
+    internal void ResumeMusic()
     {
         strategyMusicController.Resume();
-        RebuildSnapshot();
     }
 
     /// <summary>

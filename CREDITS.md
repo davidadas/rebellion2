@@ -6,10 +6,10 @@
 - The Architect
 - Metasharp
 - Nick Himebaugh
-- Daniel Andersson
+- tegnemaskin
 
 ## Third-party assets
 
-- ["Star Wars: Lambda Shuttle"](https://sketchfab.com/3d-models/star-wars-lambda-shuttle-9d160e16845a4b518a2d30a7c716f20d)
-  by Daniel Andersson, licensed under
+- ["Star Wars Lambda Imperial Shuttle"](https://sketchfab.com/3d-models/star-wars-lambda-imperial-shuttle-4db774b7ea41489ca7bb683ed0f0b60a)
+  by tegnemaskin, licensed under
   [Creative Commons Attribution](https://creativecommons.org/licenses/by/4.0/).

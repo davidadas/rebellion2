@@ -176,6 +176,7 @@ public sealed class AppBootstrap : MonoBehaviour
             inputController = CreateInputController();
 
         inputController?.Initialize(inputManager, _cancelStack, _runtime, LoadSave);
+        LoadingScreenController.Prepare(this);
     }
 
     /// <summary>
@@ -234,20 +235,25 @@ public sealed class AppBootstrap : MonoBehaviour
         GameMetadata metadata = saveGameManager.GetSaveMetadata(fileName);
         if (_contentPack.MatchesContentIdentity(metadata))
         {
-            SaveLoadStarting?.Invoke();
-            _runtime.EndGame();
             GameLaunchContext.PrepareSaveLoad(fileName);
-            ContentRestartController.LoadSave(this, reconstructContent: false);
+            LoadingScreenController.LoadSave(this, reconstructContent: false);
             return true;
         }
 
         SaveContentSelection selection = SaveContentResolver.Resolve(_contentPack, metadata);
         PersistContentSelection(selection.Pack, selection.DisabledModIDs);
+        GameLaunchContext.PrepareSaveLoadAfterContentRestart(fileName);
+        LoadingScreenController.LoadSave(this, reconstructContent: true);
+        return true;
+    }
+
+    /// <summary>
+    /// Stops the outgoing scene and runtime after the persistent loading presentation is visible.
+    /// </summary>
+    internal void SuspendForSaveLoad()
+    {
         SaveLoadStarting?.Invoke();
         _runtime.EndGame();
-        GameLaunchContext.PrepareSaveLoadAfterContentRestart(fileName);
-        ContentRestartController.LoadSave(this, reconstructContent: true);
-        return true;
     }
 
     /// <summary>

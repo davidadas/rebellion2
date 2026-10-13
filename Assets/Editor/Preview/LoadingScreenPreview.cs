@@ -6,19 +6,19 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 
 /// <summary>
-/// Opens the content-restart loading presentation by itself for an indefinite visual preview.
+/// Opens the loading screen by itself for an indefinite visual preview.
 /// </summary>
 [InitializeOnLoad]
-public static class ContentRestartLoadingPreview
+public static class LoadingScreenPreview
 {
     private const string _menuPath = "Rebellion/Preview/Loading Screen %#l";
-    private const string _prefabPath = "Assets/Resources/UI/ContentRestartLoadingView.prefab";
-    private const string _scenePath = "Assets/Scenes/ContentRestartLoadingPreview.unity";
+    private const string _prefabPath = "Assets/Resources/UI/LoadingScreen.prefab";
+    private const string _scenePath = "Assets/Scenes/LoadingScreen.unity";
 
     /// <summary>
     /// Initializes editor play-mode handling for the dedicated preview scene.
     /// </summary>
-    static ContentRestartLoadingPreview()
+    static LoadingScreenPreview()
     {
         EditorApplication.playModeStateChanged += HandlePlayModeStateChanged;
     }
@@ -32,14 +32,14 @@ public static class ContentRestartLoadingPreview
         if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
             return;
 
-        CommonUIPrefabBuilder.BuildContentRestartLoadingPrefab();
+        CommonUIPrefabBuilder.BuildLoadingScreenPrefab();
         GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(_prefabPath);
         if (prefab == null)
             throw new InvalidOperationException($"Loading-screen prefab is missing: {_prefabPath}");
 
         Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
         GameObject instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab, scene);
-        instance.name = nameof(ContentRestartLoadingView);
+        instance.name = "LoadingScreen";
         if (!EditorSceneManager.SaveScene(scene, _scenePath))
             throw new IOException($"Could not save the loading-screen preview: {_scenePath}");
 
@@ -59,8 +59,7 @@ public static class ContentRestartLoadingPreview
         )
             return;
 
-        ContentRestartLoadingView view =
-            UnityEngine.Object.FindAnyObjectByType<ContentRestartLoadingView>();
+        LoadingScreenView view = UnityEngine.Object.FindAnyObjectByType<LoadingScreenView>();
         if (view == null)
             throw new MissingReferenceException(
                 "The loading-screen preview scene has no loading view."
