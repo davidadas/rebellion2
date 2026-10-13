@@ -102,10 +102,7 @@ public sealed class StrategyController
     private EventSystem briefingEventSystem;
     private bool briefingSkipConfirmationOpen;
     private UIContext uiContext;
-    private readonly List<(
-        InputAction action,
-        Action<InputAction.CallbackContext> callback
-    )> _boundInputActions = new List<(InputAction, Action<InputAction.CallbackContext>)>();
+    private StrategyShortcutBindings shortcutBindings;
     private bool dirty = true;
     private bool contentReady;
     private bool initialized;
@@ -3462,7 +3459,7 @@ public sealed class StrategyController
     }
 
     /// <summary>
-    /// Adds the strategy key binding listeners.
+    /// Composes shortcut routing and its screen-level execution boundary.
     /// </summary>
     private void WireStrategyInputActions()
     {
@@ -3470,228 +3467,28 @@ public sealed class StrategyController
         if (asset == null)
             return;
 
-        asset.FindActionMap("Strategy")?.Enable();
-
-        for (int slot = 0; slot < 12; slot++)
-        {
-            int index = slot;
-            BindInputAction(
-                asset,
-                $"Strategy/BookmarkSlot{slot + 1}",
-                () => HandleBookmarkRequested(index)
-            );
-        }
-
-        BindInputAction(
-            asset,
-            "Strategy/OpenSystemFinder",
-            () => finderWindowController.Open(FinderMode.Systems)
-        );
-        BindInputAction(
-            asset,
-            "Strategy/OpenFleetFinder",
-            () => finderWindowController.Open(FinderMode.Fleets)
-        );
-        BindInputAction(
-            asset,
-            "Strategy/OpenPersonnelFinder",
-            () => finderWindowController.Open(FinderMode.Personnel)
-        );
-        BindInputAction(
-            asset,
-            "Strategy/OpenPlanetFinder",
-            () => finderWindowController.Open(FinderMode.Troops)
-        );
-        BindInputAction(
-            asset,
-            "Strategy/OpenEncyclopedia",
-            () => encyclopediaWindowController.Open()
-        );
-        BindInputAction(
-            asset,
-            "Strategy/OpenAllMessages",
-            () => messagesWindowController.Open(MessagesTab.All)
-        );
-        BindInputAction(
-            asset,
-            "Strategy/AdvisorBuildShips",
-            () => strategyHudController.BeginAdvisorConstruction(ManufacturingType.Ship)
-        );
-        BindInputAction(
-            asset,
-            "Strategy/AdvisorBuildTroops",
-            () => strategyHudController.BeginAdvisorConstruction(ManufacturingType.Troop)
-        );
-        BindInputAction(
-            asset,
-            "Strategy/AdvisorBuildFacilities",
-            () => strategyHudController.BeginAdvisorConstruction(ManufacturingType.Building)
-        );
-        BindInputAction(
-            asset,
-            "Strategy/OpenMissionSetup",
-            () => inputController.TryExecuteContextShortcut(StrategyMenuAction.CreateMission)
-        );
-        BindInputAction(
-            asset,
-            "Strategy/IssueMoveOrder",
-            () => inputController.TryExecuteContextShortcut(StrategyMenuAction.Move)
-        );
-        BindInputAction(
-            asset,
-            "Strategy/ConfirmMoveOrder",
-            () => inputController.TryExecuteContextShortcut(StrategyMenuAction.MoveConfirm)
-        );
-        BindInputAction(asset, "Strategy/DecreaseGameSpeed", () => StepGameSpeed(false));
-        BindInputAction(asset, "Strategy/IncreaseGameSpeed", () => StepGameSpeed(true));
-
-        BindGalacticInformationAction(
-            asset,
-            "ShowPopularSupport",
-            GalacticInformationFilterMode.PopularSupport
-        );
-        BindGalacticInformationAction(
-            asset,
-            "ShowUprisings",
-            GalacticInformationFilterMode.Uprisings
-        );
-        BindGalacticInformationAction(
-            asset,
-            "ShowIdleFleets",
-            GalacticInformationFilterMode.IdleFleets
-        );
-        BindGalacticInformationAction(
-            asset,
-            "ShowFleetsEnroute",
-            GalacticInformationFilterMode.FleetsEnroute
-        );
-        BindGalacticInformationAction(
-            asset,
-            "ShowIdlePersonnel",
-            GalacticInformationFilterMode.IdlePersonnel
-        );
-        BindGalacticInformationAction(
-            asset,
-            "ShowActivePersonnel",
-            GalacticInformationFilterMode.ActivePersonnel
-        );
-        BindGalacticInformationAction(
-            asset,
-            "ShowAvailableEnergy",
-            GalacticInformationFilterMode.AvailableEnergy
-        );
-        BindGalacticInformationAction(
-            asset,
-            "ShowAvailableRawMaterial",
-            GalacticInformationFilterMode.AvailableRawMaterial
-        );
-        BindGalacticInformationAction(asset, "ShowMines", GalacticInformationFilterMode.Mines);
-        BindGalacticInformationAction(
-            asset,
-            "ShowRefineries",
-            GalacticInformationFilterMode.Refineries
-        );
-        BindGalacticInformationAction(
-            asset,
-            "ShowShipyards",
-            GalacticInformationFilterMode.Shipyards
-        );
-        BindGalacticInformationAction(
-            asset,
-            "ShowTrainingFacilities",
-            GalacticInformationFilterMode.TrainingFacilities
-        );
-        BindGalacticInformationAction(
-            asset,
-            "ShowConstructionYards",
-            GalacticInformationFilterMode.ConstructionYards
-        );
-        BindGalacticInformationAction(
-            asset,
-            "ShowIdleShipyards",
-            GalacticInformationFilterMode.IdleShipyards
-        );
-        BindGalacticInformationAction(
-            asset,
-            "ShowIdleTrainingFacilities",
-            GalacticInformationFilterMode.IdleTrainingFacilities
-        );
-        BindGalacticInformationAction(
-            asset,
-            "ShowIdleConstructionYards",
-            GalacticInformationFilterMode.IdleConstructionYards
-        );
-        BindGalacticInformationAction(
-            asset,
-            "ShowTroopers",
-            GalacticInformationFilterMode.Troopers
-        );
-        BindGalacticInformationAction(
-            asset,
-            "ShowFighterSquadrons",
-            GalacticInformationFilterMode.FighterSquadrons
-        );
-        BindGalacticInformationAction(
-            asset,
-            "ShowUnitShieldGenerators",
-            GalacticInformationFilterMode.UnitShieldGenerators
-        );
-        BindGalacticInformationAction(
-            asset,
-            "ShowPlanetaryShieldGenerators",
-            GalacticInformationFilterMode.PlanetaryShieldGenerators
-        );
-        BindGalacticInformationAction(
-            asset,
-            "ShowPlanetaryDefenseBatteries",
-            GalacticInformationFilterMode.PlanetaryDefenseBatteries
+        shortcutBindings = new StrategyShortcutBindings(asset, CanExecuteStrategyShortcut);
+        shortcutBindings.BindCommands(
+            HandleBookmarkRequested,
+            mode => finderWindowController.Open(mode),
+            () => encyclopediaWindowController.Open(),
+            tab => messagesWindowController.Open(tab),
+            type => strategyHudController.BeginAdvisorConstruction(type),
+            action => inputController.TryExecuteContextShortcut(action),
+            StepGameSpeed,
+            mode => galacticInformationDisplayController?.SelectFilterFromShortcut(mode)
         );
     }
 
     /// <summary>
-    /// Applies the information filter selected by a keyboard shortcut.
+    /// Checks the current presentation and keyboard-focus boundaries for strategy shortcuts.
     /// </summary>
-    /// <param name="asset">The asset.</param>
-    /// <param name="actionName">The action name.</param>
-    /// <param name="mode">The mode.</param>
-    private void BindGalacticInformationAction(
-        InputActionAsset asset,
-        string actionName,
-        GalacticInformationFilterMode mode
-    )
+    /// <returns>True when a strategy command may execute.</returns>
+    private bool CanExecuteStrategyShortcut()
     {
-        BindInputAction(
-            asset,
-            $"Strategy/{actionName}",
-            () => galacticInformationDisplayController?.SelectFilterFromShortcut(mode)
-        );
-    }
-
-    /// <summary>
-    /// Adds a listener for an input action.
-    /// </summary>
-    /// <param name="asset">The input asset.</param>
-    /// <param name="actionPath">The map/action path.</param>
-    /// <param name="command">The command to run.</param>
-    private void BindInputAction(InputActionAsset asset, string actionPath, Action command)
-    {
-        InputAction action = asset.FindAction(actionPath, false);
-        if (action == null)
-            return;
-
-        void Callback(InputAction.CallbackContext context)
-        {
-            if (
-                context.performed
-                && !briefingActive
-                && _optionsMenuController?.IsOpen != true
-                && !UIInputFocus.IsTextEntryActive()
-            )
-                command();
-        }
-
-        action.performed += Callback;
-        _boundInputActions.Add((action, Callback));
+        return !briefingActive
+            && _optionsMenuController?.IsOpen != true
+            && !UIInputFocus.IsTextEntryActive();
     }
 
     /// <summary>
@@ -3716,11 +3513,8 @@ public sealed class StrategyController
     /// </summary>
     private void UnwireStrategyInputActions()
     {
-        foreach (
-            (InputAction action, Action<InputAction.CallbackContext> callback) in _boundInputActions
-        )
-            action.performed -= callback;
-        _boundInputActions.Clear();
+        shortcutBindings?.Dispose();
+        shortcutBindings = null;
     }
 
     /// <summary>
