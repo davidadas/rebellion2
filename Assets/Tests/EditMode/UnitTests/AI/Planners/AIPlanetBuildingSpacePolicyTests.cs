@@ -130,6 +130,72 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
+        public void SelectBuildingToRemove_ActiveMineBackedOnlyByUnfinishedMine_PreservesActiveMine()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Selection.MaintenanceHeadroomTarget = 25;
+            game.Config.AI.Selection.RefinedMaterialEconomyWarningPercent = 40;
+            empire.RefinedMaterialStockpile = 100;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet destination = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "destination",
+                empire.InstanceID,
+                energyCapacity: 3,
+                rawResourceNodes: 1
+            );
+            Building shipyard = AddBuilding(
+                game,
+                destination,
+                "required-shipyard",
+                BuildingType.Shipyard,
+                ManufacturingStatus.Complete,
+                ManufacturingType.Ship
+            );
+            AddBuilding(
+                game,
+                destination,
+                "active-mine",
+                BuildingType.Mine,
+                ManufacturingStatus.Complete,
+                ManufacturingType.None
+            );
+            AddBuilding(
+                game,
+                destination,
+                "active-refinery",
+                BuildingType.Refinery,
+                ManufacturingStatus.Complete,
+                ManufacturingType.None
+            );
+            Planet futureMinePlanet = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "future-mine-planet",
+                empire.InstanceID,
+                rawResourceNodes: 1
+            );
+            Building unfinishedMine = AddBuilding(
+                game,
+                futureMinePlanet,
+                "unfinished-mine",
+                BuildingType.Mine,
+                ManufacturingStatus.Building,
+                ManufacturingType.None
+            );
+            futureMinePlanet.AddToManufacturingQueue(unfinishedMine);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            Building selected = new AIPlanetBuildingSpacePolicy().SelectBuildingToRemove(
+                context,
+                destination
+            );
+
+            Assert.AreSame(shipyard, selected);
+        }
+
+        [Test]
         public void SelectBuildingToRemove_EquivalentSurplusProduction_SelectsSlowerFacility()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);

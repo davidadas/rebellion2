@@ -43,13 +43,26 @@ namespace Rebellion.AI.Planners
 
             IReadOnlyList<Building> buildings = context.Assessment.GetPlanetBuildings(planet);
             int mineCount = 0;
+            int activeMineCount = 0;
             foreach (Building building in buildings)
             {
                 if (building?.GetBuildingType() == BuildingType.Mine)
+                {
                     mineCount++;
+                    if (
+                        building.ManufacturingStatus == ManufacturingStatus.Complete
+                        && building.Movement == null
+                    )
+                        activeMineCount++;
+                }
             }
 
-            RemovalEconomics economics = new RemovalEconomics(context, planet, mineCount);
+            RemovalEconomics economics = new RemovalEconomics(
+                context,
+                planet,
+                mineCount,
+                activeMineCount
+            );
             Removal selected = default;
             foreach (Building building in buildings)
             {
@@ -111,12 +124,17 @@ namespace Rebellion.AI.Planners
                     context,
                     building.GetBuildingType()
                 ),
-                BuildingType.Mine or BuildingType.Refinery => economics.GetCapacityLoss(
-                    building.GetBuildingType()
+                BuildingType.Mine or BuildingType.Refinery => economics.GetProjectedCapacityLoss(
+                    building
                 ),
                 _ => 0,
             };
-            return new Removal(building, priority, strategicImpact);
+            return new Removal(
+                building,
+                priority,
+                strategicImpact,
+                economics.GetMaintenanceHeadroomCost(context, building)
+            );
         }
 
         /// <summary>
@@ -212,21 +230,26 @@ namespace Rebellion.AI.Planners
 
             internal bool IsAvailable => Building != null;
 
+            internal int MaintenanceHeadroomCost { get; }
+
             /// <summary>
             /// Creates an evaluated building removal.
             /// </summary>
             /// <param name="building">The building selected for removal.</param>
             /// <param name="priority">The broad strategic removal tier.</param>
             /// <param name="strategicImpact">The projected deficit or resource-capacity loss.</param>
+            /// <param name="maintenanceHeadroomCost">The immediate net maintenance headroom consumed.</param>
             internal Removal(
                 Building building,
                 AIPlanetBuildingRemovalPriority priority,
-                double strategicImpact
+                double strategicImpact,
+                int maintenanceHeadroomCost
             )
             {
                 Building = building;
                 _priority = priority;
                 _strategicImpact = strategicImpact;
+                MaintenanceHeadroomCost = Math.Max(0, maintenanceHeadroomCost);
                 _processRate = building?.GetProcessRate() ?? 0;
                 _constructionCost = building?.ConstructionCost ?? 0;
                 _maintenanceCost = building?.MaintenanceCost ?? 0;
@@ -244,6 +267,10 @@ namespace Rebellion.AI.Planners
                     return comparison;
 
                 comparison = _strategicImpact.CompareTo(other._strategicImpact);
+                if (comparison != 0)
+                    return comparison;
+
+                comparison = MaintenanceHeadroomCost.CompareTo(other.MaintenanceHeadroomCost);
                 if (comparison != 0)
                     return comparison;
 
@@ -268,8 +295,10 @@ namespace Rebellion.AI.Planners
         /// </summary>
         private readonly struct RemovalEconomics
         {
-            private readonly int _mineCapacityLoss;
-            private readonly int _refineryCapacityLoss;
+            private readonly int _availableMineCapacityLoss;
+            private readonly int _availableRefineryCapacityLoss;
+            private readonly int _projectedMineCapacityLoss;
+            private readonly int _projectedRefineryCapacityLoss;
 
             /// <summary>
             /// Captures destination-local and faction-wide resource effects once per planet.
@@ -277,25 +306,75 @@ namespace Rebellion.AI.Planners
             /// <param name="context">The current AI turn context.</param>
             /// <param name="planet">The destination planet.</param>
             /// <param name="mineCount">The destination's total mine count.</param>
-            internal RemovalEconomics(AITurnContext context, Planet planet, int mineCount)
+            /// <param name="activeMineCount">The destination's completed stationary mine count.</param>
+            internal RemovalEconomics(
+                AITurnContext context,
+                Planet planet,
+                int mineCount,
+                int activeMineCount
+            )
             {
-                int projectedCapacity = context.Assessment.ProjectedMaterialCapacity;
+                AIAssessment assessment = context.Assessment;
+                int projectedCapacity = assessment.ProjectedMaterialCapacity;
                 int minedAfterRemoval = Math.Max(
                     0,
-                    context.Assessment.ProjectedMinedResourceCapacity
+                    assessment.ProjectedMinedResourceCapacity
                         - (mineCount <= planet.GetRawResourceNodes() ? 1 : 0)
                 );
                 int refinementAfterRemoval = Math.Max(
                     0,
-                    context.Assessment.ProjectedRefinementCapacity - 1
+                    assessment.ProjectedRefinementCapacity - 1
                 );
-                _mineCapacityLoss = Math.Max(
+                _projectedMineCapacityLoss = Math.Max(
                     0,
-                    projectedCapacity - Math.Min(projectedCapacity, minedAfterRemoval)
+                    projectedCapacity
+                        - CalculateMaterialCapacity(
+                            assessment.ProjectedResourceNodeCapacity,
+                            minedAfterRemoval,
+                            assessment.ProjectedRefinementCapacity
+                        )
                 );
-                _refineryCapacityLoss = Math.Max(
+                _projectedRefineryCapacityLoss = Math.Max(
                     0,
-                    projectedCapacity - Math.Min(projectedCapacity, refinementAfterRemoval)
+                    projectedCapacity
+                        - CalculateMaterialCapacity(
+                            assessment.ProjectedResourceNodeCapacity,
+                            assessment.ProjectedMinedResourceCapacity,
+                            refinementAfterRemoval
+                        )
+                );
+
+                bool productionActive = !planet.IsResourceProductionSuspended();
+                int availableMinedAfterRemoval = Math.Max(
+                    0,
+                    assessment.AvailableMinedResourceCapacity
+                        - (
+                            productionActive && activeMineCount <= planet.GetRawResourceNodes()
+                                ? 1
+                                : 0
+                        )
+                );
+                int availableRefinementAfterRemoval = Math.Max(
+                    0,
+                    assessment.AvailableRefinementCapacity - (productionActive ? 1 : 0)
+                );
+                _availableMineCapacityLoss = Math.Max(
+                    0,
+                    assessment.AvailableMaterialCapacity
+                        - CalculateMaterialCapacity(
+                            assessment.AvailableResourceNodeCapacity,
+                            availableMinedAfterRemoval,
+                            assessment.AvailableRefinementCapacity
+                        )
+                );
+                _availableRefineryCapacityLoss = Math.Max(
+                    0,
+                    assessment.AvailableMaterialCapacity
+                        - CalculateMaterialCapacity(
+                            assessment.AvailableResourceNodeCapacity,
+                            assessment.AvailableMinedResourceCapacity,
+                            availableRefinementAfterRemoval
+                        )
                 );
             }
 
@@ -308,13 +387,15 @@ namespace Rebellion.AI.Planners
             /// <returns>True when the resource facility is economically expendable.</returns>
             internal bool CanSpare(AITurnContext context, Building building)
             {
-                int capacityLoss = GetCapacityLoss(building.GetBuildingType());
-                if (capacityLoss <= 0)
+                int availableCapacityLoss = GetAvailableCapacityLoss(building);
+                int projectedCapacityLoss = GetProjectedCapacityLoss(building);
+                if (availableCapacityLoss <= 0 && projectedCapacityLoss <= 0)
                     return true;
 
-                int remainingCapacity = context.Assessment.ProjectedMaterialCapacity - capacityLoss;
+                int remainingProjectedCapacity =
+                    context.Assessment.ProjectedMaterialCapacity - projectedCapacityLoss;
                 if (
-                    remainingCapacity <= 0
+                    remainingProjectedCapacity <= 0
                     || context.Assessment.PendingRawMaterialRequestCount > 0
                     || context.Assessment.PendingRefinedMaterialRequestCount > 0
                     || context.Assessment.ProjectedRefinedMaterialPercent
@@ -322,27 +403,82 @@ namespace Rebellion.AI.Planners
                 )
                     return false;
 
-                long remainingHeadroom =
-                    (long)context.Assessment.ProjectedEconomyMaintenanceHeadroom
-                    - (long)capacityLoss * context.Assessment.MaintenanceCapacityPerResourcePair
+                long remainingAvailableHeadroom =
+                    (long)context.Assessment.ProjectedMaintenanceHeadroom
+                    - (long)availableCapacityLoss
+                        * context.Assessment.MaintenanceCapacityPerResourcePair
                     + building.MaintenanceCost;
-                return remainingHeadroom
-                    >= context.Game.Config.AI.Selection.MaintenanceHeadroomTarget;
+                long remainingProjectedHeadroom =
+                    (long)context.Assessment.ProjectedEconomyMaintenanceHeadroom
+                    - (long)projectedCapacityLoss
+                        * context.Assessment.MaintenanceCapacityPerResourcePair
+                    + building.MaintenanceCost;
+                int target = context.Game.Config.AI.Selection.MaintenanceHeadroomTarget;
+                return remainingAvailableHeadroom >= target && remainingProjectedHeadroom >= target;
             }
 
             /// <summary>
-            /// Returns the projected paired-resource capacity lost by removing a facility type.
+            /// Returns the immediate net maintenance headroom consumed by removing a facility.
             /// </summary>
-            /// <param name="buildingType">The resource facility type.</param>
-            /// <returns>The projected material-capacity loss.</returns>
-            internal int GetCapacityLoss(BuildingType buildingType)
+            /// <param name="context">The current AI turn context.</param>
+            /// <param name="building">The candidate facility.</param>
+            /// <returns>The non-negative maintenance headroom cost.</returns>
+            internal int GetMaintenanceHeadroomCost(AITurnContext context, Building building)
             {
-                return buildingType switch
+                long capacityCost =
+                    (long)GetAvailableCapacityLoss(building)
+                    * context.Assessment.MaintenanceCapacityPerResourcePair;
+                return (int)
+                    Math.Min(int.MaxValue, Math.Max(0, capacityCost - building.MaintenanceCost));
+            }
+
+            /// <summary>
+            /// Returns the active material capacity lost by removing a facility.
+            /// </summary>
+            /// <param name="building">The candidate facility.</param>
+            /// <returns>The available material-capacity loss.</returns>
+            private int GetAvailableCapacityLoss(Building building)
+            {
+                if (building.ManufacturingStatus != ManufacturingStatus.Complete)
+                    return 0;
+
+                return building.GetBuildingType() switch
                 {
-                    BuildingType.Mine => _mineCapacityLoss,
-                    BuildingType.Refinery => _refineryCapacityLoss,
+                    BuildingType.Mine => _availableMineCapacityLoss,
+                    BuildingType.Refinery => _availableRefineryCapacityLoss,
                     _ => 0,
                 };
+            }
+
+            /// <summary>
+            /// Returns the future material capacity lost by removing a facility.
+            /// </summary>
+            /// <param name="building">The candidate facility.</param>
+            /// <returns>The projected material-capacity loss.</returns>
+            internal int GetProjectedCapacityLoss(Building building)
+            {
+                return building.GetBuildingType() switch
+                {
+                    BuildingType.Mine => _projectedMineCapacityLoss,
+                    BuildingType.Refinery => _projectedRefineryCapacityLoss,
+                    _ => 0,
+                };
+            }
+
+            /// <summary>
+            /// Returns paired material capacity for the supplied resource totals.
+            /// </summary>
+            /// <param name="resourceNodes">Accessible resource-node capacity.</param>
+            /// <param name="minedResources">Mine capacity.</param>
+            /// <param name="refinementCapacity">Refinery capacity.</param>
+            /// <returns>The paired material capacity.</returns>
+            private static int CalculateMaterialCapacity(
+                int resourceNodes,
+                int minedResources,
+                int refinementCapacity
+            )
+            {
+                return Math.Min(resourceNodes, Math.Min(minedResources, refinementCapacity));
             }
         }
 

@@ -216,6 +216,16 @@ namespace Rebellion.AI
 
         public int ProjectedMaintenanceHeadroom { get; }
 
+        public int AvailableResourceNodeCapacity { get; }
+
+        public int AvailableMinedResourceCapacity { get; }
+
+        public int AvailableRefinementCapacity { get; }
+
+        public int AvailableMaterialCapacity { get; }
+
+        public int ProjectedResourceNodeCapacity { get; }
+
         public int ProjectedMinedResourceCapacity { get; }
 
         public int ProjectedRefinementCapacity { get; }
@@ -276,23 +286,30 @@ namespace Rebellion.AI
                     .Select(candidate => candidate.InstanceID)
                     .ToList()
                 ?? new List<string>();
-            int availableMaterials = faction?.GetTotalAvailableMaterialsRaw() ?? 0;
+            AvailableResourceNodeCapacity = faction?.GetTotalAvailableResourceNodes() ?? 0;
+            AvailableMinedResourceCapacity = faction?.GetTotalAvailableMinedResources() ?? 0;
+            AvailableRefinementCapacity = faction?.GetTotalAvailableRefinementCapacity() ?? 0;
+            AvailableMaterialCapacity = Math.Min(
+                AvailableResourceNodeCapacity,
+                Math.Min(AvailableMinedResourceCapacity, AvailableRefinementCapacity)
+            );
             MaintenanceCapacityPerResourcePair =
                 ResourceProductionQueries.CalculateMaintenanceCapacityPerFacility(game, faction);
-            MaintenanceCapacity = availableMaterials * MaintenanceCapacityPerResourcePair;
+            MaintenanceCapacity = AvailableMaterialCapacity * MaintenanceCapacityPerResourcePair;
             ProjectedMaintenanceHeadroom =
                 MaintenanceCapacity - (faction?.GetTotalProjectedMaintenanceCost() ?? 0);
+            ProjectedResourceNodeCapacity = faction?.GetTotalRawResourceNodes() ?? 0;
             ProjectedMinedResourceCapacity = faction?.GetTotalRawMinedResources() ?? 0;
             ProjectedRefinementCapacity = faction?.GetTotalRawRefinementCapacity() ?? 0;
             ProjectedMaterialCapacity = Math.Min(
-                faction?.GetTotalRawResourceNodes() ?? 0,
+                ProjectedResourceNodeCapacity,
                 Math.Min(ProjectedMinedResourceCapacity, ProjectedRefinementCapacity)
             );
             ProjectedEconomyMaintenanceHeadroom =
                 ProjectedMaterialCapacity * MaintenanceCapacityPerResourcePair
                 - (faction?.GetTotalProjectedMaintenanceCost() ?? 0);
             RefinedMaterialSupply =
-                availableMaterials * (faction?.Settings?.RefinementMultiplier ?? 0);
+                AvailableMaterialCapacity * (faction?.Settings?.RefinementMultiplier ?? 0);
             RefinedMaterialStockpile = faction?.RefinedMaterialStockpile ?? 0;
             PendingRawMaterialRequestCount = faction?.PendingRawMaterialFacilityIDs?.Count ?? 0;
             PendingRefinedMaterialRequestCount =

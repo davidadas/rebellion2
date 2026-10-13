@@ -75,6 +75,7 @@ namespace Rebellion.AI.Selectors
 
             _selectionState.Reserve(reservations);
             ReserveDestinationEnergy(proposal.Destination, _buildingEnergyCost);
+            ReserveMaintenanceCost(proposal.MaintenanceHeadroomCost);
             return true;
         }
 
@@ -147,7 +148,7 @@ namespace Rebellion.AI.Selectors
             _selectionState.Reserve(GetReservations(proposal));
             ReserveProducerCapacity(proposal);
             ReserveDestinationEnergy(proposal);
-            _selectedMaintenanceCost += proposal.GetMaintenanceCost();
+            ReserveMaintenanceCost(proposal.GetMaintenanceCost());
             if (proposal.Demand?.Kind == AIProductionDemandKind.PlanetaryStarfighterReserve)
                 _selectedPlanetaryStarfighterCount += proposal.GetManufacturingCount();
         }
@@ -453,6 +454,16 @@ namespace Rebellion.AI.Selectors
                 ? reservedEnergy
                 : 0;
             _reservedDestinationEnergy[destination.InstanceID] = reserved + count;
+        }
+
+        /// <summary>
+        /// Reserves maintenance headroom consumed by an accepted action.
+        /// </summary>
+        /// <param name="maintenanceCost">The non-negative maintenance cost to reserve.</param>
+        private void ReserveMaintenanceCost(int maintenanceCost)
+        {
+            long reserved = (long)_selectedMaintenanceCost + Math.Max(0, maintenanceCost);
+            _selectedMaintenanceCost = (int)Math.Min(int.MaxValue, reserved);
         }
 
         /// <summary>

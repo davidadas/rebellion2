@@ -68,6 +68,32 @@ namespace Rebellion.Tests.AI.Proposals
         }
 
         [Test]
+        public void Execute_ResourceFacilityRemoval_CommitsMaintenanceHeadroomCost()
+        {
+            AITurnContext context = CreateContext(
+                unfinishedDestinationBuilding: false,
+                out _,
+                out _,
+                out _,
+                out _,
+                completedDestinationBuildingType: BuildingType.Mine
+            );
+            AIHeadquartersRelocationProposal proposal = new AIHeadquartersRelocationPlanner()
+                .Plan(context)
+                .Cast<AIHeadquartersRelocationProposal>()
+                .Single();
+            int initialHeadroom = context.AvailableProjectedMaintenanceHeadroom;
+
+            proposal.Execute(context);
+
+            Assert.Greater(proposal.MaintenanceHeadroomCost, 0);
+            Assert.AreEqual(
+                initialHeadroom - proposal.MaintenanceHeadroomCost,
+                context.AvailableProjectedMaintenanceHeadroom
+            );
+        }
+
+        [Test]
         public void Execute_DefenseFleetAndActiveEspionageMission_EvacuatesCompleteAssignment()
         {
             AITurnContext setupContext = CreateContext(
@@ -145,13 +171,15 @@ namespace Rebellion.Tests.AI.Proposals
         /// <param name="destination">Receives the destination planet.</param>
         /// <param name="headquarters">Receives the headquarters building.</param>
         /// <param name="removableBuilding">Receives the destination facility.</param>
+        /// <param name="completedDestinationBuildingType">The completed facility occupying the destination.</param>
         /// <returns>The configured AI turn context.</returns>
         private static AITurnContext CreateContext(
             bool unfinishedDestinationBuilding,
             out Planet origin,
             out Planet destination,
             out Building headquarters,
-            out Building removableBuilding
+            out Building removableBuilding,
+            BuildingType completedDestinationBuildingType = BuildingType.Defense
         )
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
@@ -166,7 +194,7 @@ namespace Rebellion.Tests.AI.Proposals
                 sector,
                 "origin",
                 empire.InstanceID,
-                energyCapacity: 1
+                energyCapacity: completedDestinationBuildingType == BuildingType.Mine ? 2 : 1
             );
             origin.IsHeadquarters = true;
             empire.HQInstanceID = origin.InstanceID;
@@ -176,12 +204,17 @@ namespace Rebellion.Tests.AI.Proposals
                 "mobile-headquarters",
                 BuildingType.Headquarters
             );
+            if (completedDestinationBuildingType == BuildingType.Mine)
+            {
+                AddBuilding(game, origin, "refinery", BuildingType.Refinery);
+            }
             destination = AITestSceneBuilder.AddPlanet(
                 game,
                 sector,
                 "destination",
                 empire.InstanceID,
-                energyCapacity: 1
+                energyCapacity: 1,
+                rawResourceNodes: completedDestinationBuildingType == BuildingType.Mine ? 1 : 0
             );
             AddFleet(game, origin, "incoming", rebels.InstanceID, 200, isMoving: true);
             Fleet defender = AddFleet(
@@ -202,7 +235,12 @@ namespace Rebellion.Tests.AI.Proposals
 
             if (!unfinishedDestinationBuilding)
             {
-                removableBuilding = AddBuilding(game, destination, "defense", BuildingType.Defense);
+                removableBuilding = AddBuilding(
+                    game,
+                    destination,
+                    "destination-building",
+                    completedDestinationBuildingType
+                );
                 return AITestSceneBuilder.CreateContext(game, empire);
             }
 

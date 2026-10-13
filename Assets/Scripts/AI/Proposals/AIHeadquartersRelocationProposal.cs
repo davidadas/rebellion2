@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Galaxy;
@@ -23,6 +24,8 @@ namespace Rebellion.AI.Proposals
 
         public Building BuildingToRemove { get; }
 
+        public int MaintenanceHeadroomCost { get; }
+
         public IReadOnlyList<Fleet> DefensiveFleets { get; }
 
         public SpecialForces EspionageAgent { get; }
@@ -40,6 +43,7 @@ namespace Rebellion.AI.Proposals
         /// <param name="origin">The current headquarters planet.</param>
         /// <param name="destination">The selected destination planet.</param>
         /// <param name="buildingToRemove">The destination building to remove, if capacity is full.</param>
+        /// <param name="maintenanceHeadroomCost">The net maintenance headroom consumed by removing the building.</param>
         /// <param name="defensiveFleets">Ready fleets assigned to accompany the headquarters.</param>
         /// <param name="espionageAgent">The headquarters espionage unit to evacuate, if present.</param>
         /// <param name="espionageMission">The agent's active headquarters mission, if present.</param>
@@ -50,6 +54,7 @@ namespace Rebellion.AI.Proposals
             Planet origin,
             Planet destination,
             Building buildingToRemove,
+            int maintenanceHeadroomCost,
             IReadOnlyList<Fleet> defensiveFleets,
             SpecialForces espionageAgent,
             Mission espionageMission,
@@ -61,6 +66,7 @@ namespace Rebellion.AI.Proposals
             Origin = origin;
             Destination = destination;
             BuildingToRemove = buildingToRemove;
+            MaintenanceHeadroomCost = Math.Max(0, maintenanceHeadroomCost);
             DefensiveFleets =
                 defensiveFleets?.Where(fleet => fleet != null).ToList() ?? new List<Fleet>();
             EspionageAgent = espionageAgent;
@@ -107,11 +113,13 @@ namespace Rebellion.AI.Proposals
             if (!CanExecute(context))
                 return;
 
-            if (
-                !context.HeadquartersQueries.CanRelocate(Headquarters, Destination)
-                && !TryRemoveBuilding(context)
-            )
-                return;
+            if (!context.HeadquartersQueries.CanRelocate(Headquarters, Destination))
+            {
+                if (!TryRemoveBuilding(context))
+                    return;
+
+                context.CommitMaintenanceCost(MaintenanceHeadroomCost);
+            }
 
             if (!context.HeadquartersQueries.CanRelocate(Headquarters, Destination))
                 return;

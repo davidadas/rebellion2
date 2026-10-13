@@ -61,6 +61,7 @@ namespace Rebellion.AI.Planners
                     origin,
                     relocation.Planet,
                     relocation.BuildingToRemove,
+                    relocation.MaintenanceHeadroomCost,
                     defensiveFleets,
                     espionageAgent,
                     espionageMission,
@@ -218,7 +219,7 @@ namespace Rebellion.AI.Planners
                     .ThenBy(candidate => candidate.InstanceID, StringComparer.Ordinal)
                     .FirstOrDefault();
                 if (openDestination != null)
-                    return new RelocationDestination(openDestination, null);
+                    return new RelocationDestination(openDestination, null, 0);
 
                 Planet selectedPlanet = null;
                 AIPlanetBuildingSpacePolicy.Removal selectedRemoval = default;
@@ -260,7 +261,13 @@ namespace Rebellion.AI.Planners
                 }
 
                 if (selectedRemoval.IsAvailable)
-                    return new RelocationDestination(selectedPlanet, selectedRemoval.Building);
+                {
+                    return new RelocationDestination(
+                        selectedPlanet,
+                        selectedRemoval.Building,
+                        selectedRemoval.MaintenanceHeadroomCost
+                    );
+                }
             }
 
             return default;
@@ -317,15 +324,23 @@ namespace Rebellion.AI.Planners
 
             internal Building BuildingToRemove { get; }
 
+            internal int MaintenanceHeadroomCost { get; }
+
             /// <summary>
             /// Creates a resolved headquarters destination.
             /// </summary>
             /// <param name="planet">The destination planet.</param>
             /// <param name="buildingToRemove">The building that must be removed, if any.</param>
-            internal RelocationDestination(Planet planet, Building buildingToRemove)
+            /// <param name="maintenanceHeadroomCost">The net maintenance headroom consumed by the removal.</param>
+            internal RelocationDestination(
+                Planet planet,
+                Building buildingToRemove,
+                int maintenanceHeadroomCost
+            )
             {
                 Planet = planet;
                 BuildingToRemove = buildingToRemove;
+                MaintenanceHeadroomCost = Math.Max(0, maintenanceHeadroomCost);
             }
         }
     }

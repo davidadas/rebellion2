@@ -45,7 +45,7 @@ namespace Rebellion.AI
             {
                 long available =
                     (long)(Assessment?.ProjectedMaintenanceHeadroom ?? 0)
-                    - _committedManufacturingMaintenance;
+                    - _committedMaintenanceCost;
                 return (int)Math.Max(int.MinValue, Math.Min(int.MaxValue, available));
             }
         }
@@ -70,7 +70,7 @@ namespace Rebellion.AI
             new Dictionary<SpecialForces, SpecialForcesIntent>();
         private readonly HashSet<SpecialForces> _headquartersEspionageAgents;
         private readonly HashSet<string> _unlockedSpecialForcesMissionTypes;
-        private long _committedManufacturingMaintenance;
+        private long _committedMaintenanceCost;
 
         /// <summary>
         /// Creates a turn context.
@@ -238,12 +238,12 @@ namespace Rebellion.AI
         }
 
         /// <summary>
-        /// Records maintenance committed by a manufacturing order that executed this turn.
+        /// Records maintenance headroom consumed by an action that executed this turn.
         /// </summary>
-        /// <param name="maintenanceCost">The non-negative maintenance committed.</param>
-        public void CommitManufacturingMaintenance(int maintenanceCost)
+        /// <param name="maintenanceCost">The non-negative maintenance cost committed.</param>
+        public void CommitMaintenanceCost(int maintenanceCost)
         {
-            _committedManufacturingMaintenance += Math.Max(0, maintenanceCost);
+            _committedMaintenanceCost += Math.Max(0, maintenanceCost);
         }
 
         /// <summary>
