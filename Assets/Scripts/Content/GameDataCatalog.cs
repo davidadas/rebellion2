@@ -52,6 +52,11 @@ public sealed class GameDataCatalog
     public FactionThemes FactionThemes { get; }
 
     /// <summary>
+    /// Gets the pack-wide arrival presentation, or null when the pack does not declare one.
+    /// </summary>
+    public BattleArrivalTheme BattleArrival { get; }
+
+    /// <summary>
     /// Creates a complete typed game-data catalog.
     /// </summary>
     /// <param name="gameConfig">The runtime game configuration.</param>
@@ -70,6 +75,7 @@ public sealed class GameDataCatalog
     /// <param name="encyclopediaEntries">The authored encyclopedia entries.</param>
     /// <param name="factionThemes">The neutral and faction presentation themes.</param>
     /// <param name="defaultSpaceBattleMapInstanceIDs">The maps inherited by planets without space-map overrides.</param>
+    /// <param name="battleArrival">The optional shared tactical arrival presentation.</param>
     public GameDataCatalog(
         GameConfig gameConfig,
         GameGenerationConfig generationConfig,
@@ -86,7 +92,8 @@ public sealed class GameDataCatalog
         MessageDefinition[] messageDefinitions,
         EncyclopediaEntries encyclopediaEntries,
         FactionThemes factionThemes,
-        IEnumerable<string> defaultSpaceBattleMapInstanceIDs = null
+        IEnumerable<string> defaultSpaceBattleMapInstanceIDs = null,
+        BattleArrivalTheme battleArrival = null
     )
     {
         GameConfig = gameConfig ?? throw new ArgumentNullException(nameof(gameConfig));
@@ -116,6 +123,7 @@ public sealed class GameDataCatalog
         EncyclopediaEntries =
             encyclopediaEntries ?? throw new ArgumentNullException(nameof(encyclopediaEntries));
         FactionThemes = factionThemes ?? throw new ArgumentNullException(nameof(factionThemes));
+        BattleArrival = battleArrival;
     }
 
     /// <summary>

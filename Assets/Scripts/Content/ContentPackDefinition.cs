@@ -61,6 +61,9 @@ public sealed class ContentPackDefinition
     [XmlElement]
     public string NeutralThemePath { get; set; }
 
+    [XmlElement]
+    public string BattleArrivalPath { get; set; }
+
     [XmlArray]
     [XmlArrayItem("Path")]
     public List<string> FactionPaths { get; set; } = new List<string>();

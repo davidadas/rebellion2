@@ -93,6 +93,24 @@ namespace Rebellion.Tests.Content
             Assert.IsTrue(turbolasers.All(building => !building.IsDetectionBlocker));
         }
 
+        /// <summary>
+        /// Checks shared arrival presentation is loaded through the pack definition, not faction themes.
+        /// </summary>
+        [Test]
+        public void OpenActive_SharedBattleArrival_LoadsPackPresentation()
+        {
+            ContentPack pack = TestContent.Pack;
+
+            Assert.AreEqual("Shared/Tactical/arrival.xml", pack.Definition.BattleArrivalPath);
+            Assert.IsNotNull(pack.GameData.BattleArrival);
+            Assert.AreEqual(
+                "Pack/Shared/Tactical/Audio/hyperspace-arrival.wav",
+                pack.GameData.BattleArrival.SoundPath
+            );
+            Assert.AreEqual("#33B3FFD1", pack.GameData.BattleArrival.TrailColorHex);
+            Assert.AreEqual("#33B8FFFF", pack.GameData.BattleArrival.BurstColorHex);
+        }
+
         [TestCase(RuntimePlatform.OSXPlayer, "Game.app/Contents/Resources/Data")]
         [TestCase(RuntimePlatform.OSXPlayer, "Game.app/Contents")]
         [TestCase(RuntimePlatform.LinuxPlayer, "Game_Data")]

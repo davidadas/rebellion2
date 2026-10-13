@@ -188,7 +188,7 @@ public sealed class TacticalViewController : MonoBehaviour
                 ?? activeBattle.GetParticipants().FirstOrDefault()?.FactionInstanceID;
             FactionThemeLibrary themes = new FactionThemeLibrary(gameData.FactionThemes);
             FactionTheme theme = themes.GetTheme(themeFaction);
-            BattleArrivalTheme arrivalTheme = themes.GetTheme(null).BattleArrival;
+            BattleArrivalTheme arrivalTheme = gameData.BattleArrival;
             AudioClip arrivalClip = null;
             if (game == null && activeBattle.Kind == BattleKind.Space)
             {
