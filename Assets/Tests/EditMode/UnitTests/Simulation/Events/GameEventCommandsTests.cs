@@ -2905,6 +2905,36 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void ExecuteAction_DestroyLastBlockadingFleet_ReportsBlockadeEnd()
+        {
+            GameRoot game = BuildGame(out Planet planet, out _);
+            Fleet fleet = EntityFactory.CreateFleet("blockading-fleet", "rebels");
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "blockading-ship",
+                OwnerInstanceID = "rebels",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, planet);
+            game.AttachNode(ship, fleet);
+            DestroyUnitsAction action = new DestroyUnitsAction
+            {
+                Selectors = new List<GameEventSelector>
+                {
+                    new SelectFleets { InstanceID = fleet.InstanceID },
+                },
+            };
+
+            List<GameResult> results = action.Execute(game);
+
+            Assert.IsFalse(planet.IsBlockaded());
+            BlockadeChangedResult blockade = results.OfType<BlockadeChangedResult>().Single();
+            Assert.AreSame(planet, blockade.Planet);
+            Assert.IsNull(blockade.BlockadingFleet);
+            Assert.IsFalse(blockade.Blockaded);
+        }
+
+        [Test]
         public void ExecuteActions_ActionThrows_ExecutesRemainingActions()
         {
             GameRoot game = new GameRoot();
