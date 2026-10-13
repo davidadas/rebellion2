@@ -9,19 +9,19 @@ using Rebellion.Game.Units;
 namespace Rebellion.Simulation
 {
     /// <summary>
-    /// Records blockade starts at the operation that changes a planet's orbital state.
+    /// Records blockade transitions at the operation that changes a planet's orbital state.
     /// </summary>
     internal static class BlockadeTransitions
     {
         /// <summary>
-        /// Adds a blockade-start result when an operation changed the planet from unblocked to blockaded.
+        /// Adds a blockade-change result when an operation changed the planet's blockade state.
         /// </summary>
         /// <param name="game">The active game.</param>
         /// <param name="planet">The planet whose orbital state changed.</param>
         /// <param name="wasBlockaded">Whether the planet was blockaded before the operation.</param>
         /// <param name="results">The result collection receiving the transition.</param>
-        /// <returns>True when a blockade-start result was added.</returns>
-        internal static bool AddStartedResult(
+        /// <returns>True when a blockade-change result was added.</returns>
+        internal static bool AddChangedResult(
             GameRoot game,
             Planet planet,
             bool wasBlockaded,
@@ -32,17 +32,23 @@ namespace Rebellion.Simulation
                 throw new ArgumentNullException(nameof(game));
             if (results == null)
                 throw new ArgumentNullException(nameof(results));
-            if (planet == null || wasBlockaded || !planet.IsBlockaded())
+            if (planet == null)
                 return false;
 
-            Fleet blockadingFleet = planet
-                .GetChildren<Fleet>()
-                .FirstOrDefault(fleet =>
-                    fleet.Movement == null
-                    && fleet.OwnerInstanceID != planet.OwnerInstanceID
-                    && fleet.HasOperationalCapitalShips()
-                );
-            if (blockadingFleet == null)
+            bool isBlockaded = planet.IsBlockaded();
+            if (wasBlockaded == isBlockaded)
+                return false;
+
+            Fleet blockadingFleet = isBlockaded
+                ? planet
+                    .GetChildren<Fleet>()
+                    .FirstOrDefault(fleet =>
+                        fleet.Movement == null
+                        && fleet.OwnerInstanceID != planet.OwnerInstanceID
+                        && fleet.HasOperationalCapitalShips()
+                    )
+                : null;
+            if (isBlockaded && blockadingFleet == null)
                 return false;
 
             results.Add(
@@ -50,7 +56,7 @@ namespace Rebellion.Simulation
                 {
                     Planet = planet,
                     BlockadingFleet = blockadingFleet,
-                    Blockaded = true,
+                    Blockaded = isBlockaded,
                     Tick = game.CurrentTick,
                 }
             );

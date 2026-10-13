@@ -618,13 +618,23 @@ namespace Rebellion.Simulation
         /// Moves withdrawing fleets to their reserved planets.
         /// </summary>
         /// <param name="plan">The reserved withdrawal plan.</param>
-        private void CompleteFleetWithdrawal(SpaceCombatWithdrawalPlan plan)
+        /// <param name="results">The combat event collection receiving blockade transitions.</param>
+        private void CompleteFleetWithdrawal(
+            SpaceCombatWithdrawalPlan plan,
+            ICollection<GameResult> results
+        )
         {
             foreach (KeyValuePair<Fleet, Planet> assignment in plan.FleetDestinations)
             {
                 Fleet fleet = assignment.Key;
                 Planet originalPlanet = fleet.GetParentOfType<Planet>();
-                if (!_movement.TryRequestMove(fleet, assignment.Value))
+                if (
+                    !_movement.TryRequestMoveWithImmediateBlockadeResults(
+                        fleet,
+                        assignment.Value,
+                        results
+                    )
+                )
                     continue;
 
                 if (
@@ -912,9 +922,9 @@ namespace Rebellion.Simulation
             CompleteFighterWithdrawal(defenderWithdrawalPlan);
             events.AddRange(ApplyShipDamage(result.ShipDamage, result.Planet));
             RemoveEmptyFleets(attackerFleets, defenderFleets);
-            BlockadeTransitions.AddStartedResult(_game, result.Planet, wasBlockaded, events);
-            CompleteFleetWithdrawal(attackerWithdrawalPlan);
-            CompleteFleetWithdrawal(defenderWithdrawalPlan);
+            BlockadeTransitions.AddChangedResult(_game, result.Planet, wasBlockaded, events);
+            CompleteFleetWithdrawal(attackerWithdrawalPlan, events);
+            CompleteFleetWithdrawal(defenderWithdrawalPlan, events);
 
             List<ISceneNode> destroyedUnits = events
                 .OfType<GameObjectDestroyedResult>()

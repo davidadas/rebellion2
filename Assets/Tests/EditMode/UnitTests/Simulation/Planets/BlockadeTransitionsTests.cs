@@ -11,20 +11,20 @@ using Rebellion.Simulation;
 namespace Rebellion.Tests.Simulation
 {
     /// <summary>
-    /// Tests blockade-start result creation at orbital mutation boundaries.
+    /// Tests blockade-change result creation at orbital mutation boundaries.
     /// </summary>
     [TestFixture]
     public sealed class BlockadeTransitionsTests
     {
         [Test]
-        public void AddStartedResult_NewBlockade_AddsStartedResult()
+        public void AddChangedResult_NewBlockade_AddsStartedResult()
         {
             (GameRoot game, Planet planet) = BuildScene();
             bool wasBlockaded = planet.IsBlockaded();
             Fleet fleet = AttachOperationalFleet(game, planet, "alliance");
             List<GameResult> results = new List<GameResult>();
 
-            bool added = BlockadeTransitions.AddStartedResult(game, planet, wasBlockaded, results);
+            bool added = BlockadeTransitions.AddChangedResult(game, planet, wasBlockaded, results);
 
             Assert.IsTrue(added);
             BlockadeChangedResult result = results.OfType<BlockadeChangedResult>().Single();
@@ -35,13 +35,13 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void AddStartedResult_ExistingBlockade_AddsNoResult()
+        public void AddChangedResult_ExistingBlockade_AddsNoResult()
         {
             (GameRoot game, Planet planet) = BuildScene();
             AttachOperationalFleet(game, planet, "alliance");
             List<GameResult> results = new List<GameResult>();
 
-            bool added = BlockadeTransitions.AddStartedResult(
+            bool added = BlockadeTransitions.AddChangedResult(
                 game,
                 planet,
                 wasBlockaded: true,
@@ -53,12 +53,12 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void AddStartedResult_UnblockadedPlanet_AddsNoResult()
+        public void AddChangedResult_UnblockadedPlanet_AddsNoResult()
         {
             (GameRoot game, Planet planet) = BuildScene();
             List<GameResult> results = new List<GameResult>();
 
-            bool added = BlockadeTransitions.AddStartedResult(
+            bool added = BlockadeTransitions.AddChangedResult(
                 game,
                 planet,
                 wasBlockaded: false,
@@ -67,6 +67,25 @@ namespace Rebellion.Tests.Simulation
 
             Assert.IsFalse(added);
             Assert.IsEmpty(results);
+        }
+
+        [Test]
+        public void AddChangedResult_EndedBlockade_AddsEndedResult()
+        {
+            (GameRoot game, Planet planet) = BuildScene();
+            Fleet fleet = AttachOperationalFleet(game, planet, "alliance");
+            bool wasBlockaded = planet.IsBlockaded();
+            fleet.Movement = new MovementState { TransitTicks = 1 };
+            List<GameResult> results = new List<GameResult>();
+
+            bool added = BlockadeTransitions.AddChangedResult(game, planet, wasBlockaded, results);
+
+            Assert.IsTrue(added);
+            BlockadeChangedResult result = results.OfType<BlockadeChangedResult>().Single();
+            Assert.AreSame(planet, result.Planet);
+            Assert.IsNull(result.BlockadingFleet);
+            Assert.IsFalse(result.Blockaded);
+            Assert.AreEqual(game.CurrentTick, result.Tick);
         }
 
         /// <summary>

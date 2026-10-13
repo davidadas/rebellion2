@@ -3021,6 +3021,36 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void ResolvePendingRetreat_OwningFleetLeavesHostileFleet_ReportsBlockadeStart()
+        {
+            GameRoot game = CreateGame();
+            game.SetFactionController("empire", "player1", PlayerControllerType.Human);
+            (Planet combatPlanet, _) = CreatePlanet(game, "combat", owner: "empire");
+            CreatePlanet(game, "empire-home", owner: "empire");
+            CreatePlanet(game, "alliance-home", owner: "alliance");
+            CreateFleet(game, "empire-fleet", "empire", combatPlanet, 1, 100, 1);
+            Fleet blockadingFleet = CreateFleet(
+                game,
+                "alliance-fleet",
+                "alliance",
+                combatPlanet,
+                1,
+                1000,
+                100
+            );
+            SpaceCombatCommands manager = MakeSpaceCombat(game);
+
+            new SpaceCombatTickProcessor(manager).ProcessTick(game);
+            List<GameResult> results = manager.ResolvePendingRetreat("empire");
+
+            Assert.IsTrue(combatPlanet.IsBlockaded());
+            BlockadeChangedResult blockade = results.OfType<BlockadeChangedResult>().Single();
+            Assert.AreSame(combatPlanet, blockade.Planet);
+            Assert.AreSame(blockadingFleet, blockade.BlockadingFleet);
+            Assert.IsTrue(blockade.Blockaded);
+        }
+
+        [Test]
         public void ResolvePendingRetreat_PlanetaryHyperdriveFighter_MovesFighterAndDoesNotRestartCombat()
         {
             GameRoot game = CreateGame();

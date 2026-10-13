@@ -27,6 +27,7 @@ namespace Rebellion.Simulation
 
         private readonly Func<IEnumerable<GameResult>, bool, List<GameResult>> _processResults;
         private readonly Action<List<GameResult>> _processMessages;
+        private readonly List<BlockadeChangedResult> _deferredBlockadeResults = new();
         private readonly List<GameResult> _deferredMessageResults = new();
         private AIDirector _aiDirector;
         private ITickProcessor _captive;
@@ -140,6 +141,7 @@ namespace Rebellion.Simulation
         /// </summary>
         internal void Reset()
         {
+            _deferredBlockadeResults.Clear();
             _deferredMessageResults.Clear();
             _tickState = TickExecutionState.Idle;
         }
@@ -221,23 +223,30 @@ namespace Rebellion.Simulation
             ProcessResults(_recovery.ProcessTick(_game));
             ProcessResults(_captive.ProcessTick(_game));
 
-            List<GameResult> movementResults = ProcessResults(
+            List<BlockadeChangedResult> blockadeTransitions = new List<BlockadeChangedResult>();
+            List<GameResult> movementResults = ProcessMovementPhaseResults(
                 _movement.ProcessTick(_game),
-                processMessages: false
+                blockadeTransitions
             );
 
-            List<GameResult> combatResults = ProcessResults(
+            List<GameResult> combatResults = ProcessMovementPhaseResults(
                 _spaceCombat.ProcessTick(_game),
-                processMessages: false
+                blockadeTransitions
             );
 
-            List<GameResult> waypointResults = ProcessAvailableWaypointContinuations();
+            List<GameResult> waypointResults = ProcessAvailableWaypointContinuations(
+                blockadeTransitions
+            );
+            List<GameResult> blockadeResults = ResolveMovementPhaseBlockadeTransitions(
+                blockadeTransitions
+            );
             _fogOfWarObserver.RefreshVisibleKnowledge();
 
             List<GameResult> movementPhaseResults = CombineResults(
                 movementResults,
                 combatResults,
-                waypointResults
+                waypointResults,
+                blockadeResults
             );
             if (_spaceCombatCommands.HasPendingDecision)
             {
@@ -265,6 +274,7 @@ namespace Rebellion.Simulation
             foreach (object step in _aiDirector.ProcessTickIncrementally(aiResults))
                 yield return step;
             ProcessResults(aiResults);
+            ProcessDeferredBlockadeResults();
 
             ProcessResults(_planetaryControl.ProcessTick(_game));
             ProcessResults(_uprising.ProcessTick(_game));
@@ -360,20 +370,27 @@ namespace Rebellion.Simulation
             _tickState = TickExecutionState.Processing;
             try
             {
-                combatResults = ProcessResults(combatResults, processMessages: false);
+                List<BlockadeChangedResult> blockadeTransitions = new List<BlockadeChangedResult>();
+                combatResults = ProcessMovementPhaseResults(combatResults, blockadeTransitions);
                 SpaceCombatResult completedCombat = combatResults
                     .OfType<SpaceCombatResult>()
                     .FirstOrDefault();
 
-                List<GameResult> waypointResults = ProcessAvailableWaypointContinuations();
-                List<GameResult> additionalCombatResults = ProcessResults(
+                List<GameResult> waypointResults = ProcessAvailableWaypointContinuations(
+                    blockadeTransitions
+                );
+                List<GameResult> additionalCombatResults = ProcessMovementPhaseResults(
                     _spaceCombat.ProcessTick(_game),
-                    processMessages: false
+                    blockadeTransitions
+                );
+                List<GameResult> blockadeResults = ResolveMovementPhaseBlockadeTransitions(
+                    blockadeTransitions
                 );
                 _fogOfWarObserver.RefreshVisibleKnowledge();
                 _deferredMessageResults.AddRange(combatResults);
                 _deferredMessageResults.AddRange(waypointResults);
                 _deferredMessageResults.AddRange(additionalCombatResults);
+                _deferredMessageResults.AddRange(blockadeResults);
 
                 if (_spaceCombatCommands.HasPendingDecision)
                 {
@@ -409,10 +426,12 @@ namespace Rebellion.Simulation
         /// </summary>
         internal void ReconcileLoadedState()
         {
-            List<GameResult> combatResults = ProcessResults(
+            List<BlockadeChangedResult> blockadeTransitions = new List<BlockadeChangedResult>();
+            List<GameResult> combatResults = ProcessMovementPhaseResults(
                 _spaceCombat.ProcessTick(_game),
-                processMessages: false
+                blockadeTransitions
             );
+            combatResults.AddRange(ResolveMovementPhaseBlockadeTransitions(blockadeTransitions));
             _fogOfWarObserver.RefreshVisibleKnowledge();
             if (_spaceCombatCommands.HasPendingDecision)
             {
@@ -427,16 +446,112 @@ namespace Rebellion.Simulation
         /// <summary>
         /// Continues waypoint routes when no combat decision is blocking movement.
         /// </summary>
+        /// <param name="blockadeTransitions">The collection receiving unpublished blockade transitions.</param>
         /// <returns>The results produced while starting the next route legs.</returns>
-        private List<GameResult> ProcessAvailableWaypointContinuations()
+        private List<GameResult> ProcessAvailableWaypointContinuations(
+            ICollection<BlockadeChangedResult> blockadeTransitions
+        )
         {
             if (_spaceCombatCommands.HasPendingDecision)
                 return new List<GameResult>();
 
-            return ProcessResults(
+            return ProcessMovementPhaseResults(
                 _movementCommands.ContinueFleetWaypointRoutes(),
+                blockadeTransitions
+            );
+        }
+
+        /// <summary>
+        /// Settles non-blockade movement-phase results while retaining blockade facts until all
+        /// automatic waypoint continuations have changed the live orbital state.
+        /// </summary>
+        /// <param name="results">The movement-phase results to settle.</param>
+        /// <param name="blockadeTransitions">The collection receiving unpublished blockade transitions.</param>
+        /// <returns>The settled non-blockade results and their reactions.</returns>
+        private List<GameResult> ProcessMovementPhaseResults(
+            IEnumerable<GameResult> results,
+            ICollection<BlockadeChangedResult> blockadeTransitions
+        )
+        {
+            if (blockadeTransitions == null)
+                throw new ArgumentNullException(nameof(blockadeTransitions));
+
+            List<GameResult> sourceResults = (results ?? Enumerable.Empty<GameResult>())
+                .Where(result => result != null)
+                .ToList();
+            foreach (
+                BlockadeChangedResult transition in sourceResults.OfType<BlockadeChangedResult>()
+            )
+                blockadeTransitions.Add(transition);
+
+            return ProcessResults(
+                sourceResults.Where(result => result is not BlockadeChangedResult),
                 processMessages: false
             );
+        }
+
+        /// <summary>
+        /// Publishes net blockade changes after waypoint continuation and defers transient starts
+        /// until strategic processing has completed.
+        /// </summary>
+        /// <param name="blockadeTransitions">The blockade facts produced during movement and combat.</param>
+        /// <returns>The immediately settled blockade results and their reactions.</returns>
+        private List<GameResult> ResolveMovementPhaseBlockadeTransitions(
+            IReadOnlyCollection<BlockadeChangedResult> blockadeTransitions
+        )
+        {
+            if (blockadeTransitions == null || blockadeTransitions.Count == 0)
+                return new List<GameResult>();
+
+            List<BlockadeChangedResult> immediateResults = new List<BlockadeChangedResult>();
+            foreach (
+                IGrouping<
+                    Rebellion.Game.Galaxy.Planet,
+                    BlockadeChangedResult
+                > planetTransitions in blockadeTransitions
+                    .Where(result => result?.Planet != null)
+                    .GroupBy(result => result.Planet)
+            )
+            {
+                List<BlockadeChangedResult> orderedTransitions = planetTransitions.ToList();
+                bool wasBlockaded = !orderedTransitions[0].Blockaded;
+                bool isBlockaded = planetTransitions.Key.IsBlockaded();
+                if (wasBlockaded != isBlockaded)
+                {
+                    BlockadeChangedResult finalTransition = orderedTransitions.Last(result =>
+                        result.Blockaded == isBlockaded
+                    );
+                    immediateResults.Add(finalTransition);
+                    continue;
+                }
+
+                if (!wasBlockaded)
+                {
+                    BlockadeChangedResult transientStart = orderedTransitions.FirstOrDefault(
+                        result => result.Blockaded
+                    );
+                    if (transientStart != null)
+                        _deferredBlockadeResults.Add(transientStart);
+                }
+            }
+
+            return ProcessResults(immediateResults, processMessages: false);
+        }
+
+        /// <summary>
+        /// Publishes transient blockade-start facts after AI planning, when their live blockade is
+        /// already gone and cannot trigger movement reactions.
+        /// </summary>
+        private void ProcessDeferredBlockadeResults()
+        {
+            if (_deferredBlockadeResults.Count == 0)
+                return;
+
+            List<BlockadeChangedResult> results = new List<BlockadeChangedResult>(
+                _deferredBlockadeResults
+            );
+            _deferredBlockadeResults.Clear();
+            ProcessResults(results);
         }
 
         /// <summary>

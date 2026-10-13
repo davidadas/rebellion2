@@ -229,7 +229,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ProcessTick_FleetContinuesFromBlockadedWaypoint_ReportsBlockadeBeforeDeparture()
+        public void ProcessTick_FleetContinuesFromBlockadedWaypoint_ReportsTransientBlockadeStart()
         {
             (Planet blockadedPlanet, Planet nextPlanet, Fleet fleet, Building delivery) =
                 CreateTransientBlockadeScenario();
@@ -249,6 +249,37 @@ namespace Rebellion.Tests.Simulation
                     result.Blockaded && ReferenceEquals(result.Planet, blockadedPlanet)
                 )
             );
+        }
+
+        [Test]
+        public void ProcessTick_TransientWaypointBlockade_DoesNotRedirectInboundRegiment()
+        {
+            (Planet blockadedPlanet, _, _, _) = CreateTransientBlockadeScenario();
+            const string empireId = "TRANSIENT_EMPIRE";
+            Planet sourcePlanet = new Planet
+            {
+                InstanceID = "TRANSIENT_REGIMENT_SOURCE",
+                OwnerInstanceID = empireId,
+                IsColonized = true,
+                PositionX = 10,
+                PositionY = 100,
+            };
+            _game.AttachNode(sourcePlanet, blockadedPlanet.GetParent());
+            Regiment regiment = EntityFactory.CreateRegiment(
+                "TRANSIENT_INBOUND_REGIMENT",
+                empireId
+            );
+            regiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            _game.AttachNode(regiment, sourcePlanet);
+            MovementCommands movement = _session.GetService<MovementCommands>();
+            movement.RequestMove(regiment, blockadedPlanet);
+            regiment.Movement.TransitTicks = 10;
+
+            _tick.ProcessTick();
+
+            Assert.AreSame(regiment, _game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
+            Assert.AreSame(blockadedPlanet, regiment.GetParentOfType<Planet>());
+            Assert.IsNotNull(regiment.Movement);
         }
 
         [Test]

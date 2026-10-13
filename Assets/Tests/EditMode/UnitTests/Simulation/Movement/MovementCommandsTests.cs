@@ -2065,6 +2065,27 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void RequestMove_LastBlockadingFleetDeparts_ReportsBlockadeEnd()
+        {
+            (GameRoot game, Planet origin, Planet destination, MovementCommands movement) =
+                BuildBlockadeScene(new FixedRNG());
+            Fleet blockadingFleet = origin.GetChildren<Fleet>().Single();
+
+            movement.RequestMove(blockadingFleet, destination);
+            IReadOnlyList<GameResult> results = new MovementTickProcessor(movement).ProcessTick(
+                game
+            );
+
+            Assert.IsFalse(origin.IsBlockaded());
+            BlockadeChangedResult blockade = results
+                .OfType<BlockadeChangedResult>()
+                .Single(result => ReferenceEquals(result.Planet, origin) && !result.Blockaded);
+            Assert.AreSame(origin, blockade.Planet);
+            Assert.IsNull(blockade.BlockadingFleet);
+            Assert.IsFalse(blockade.Blockaded);
+        }
+
+        [Test]
         public void RequestMove_RegimentFromUnblockedPlanet_NoEvacuationLoss()
         {
             // FixedRNG would cause loss, but planet isn't blockaded

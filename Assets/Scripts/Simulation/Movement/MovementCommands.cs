@@ -192,6 +192,43 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
+        /// Attempts to move one unit while returning blockade transitions to the enclosing command
+        /// and leaving all other movement results queued for normal movement processing.
+        /// </summary>
+        /// <param name="unit">The unit to move.</param>
+        /// <param name="destination">The requested destination.</param>
+        /// <param name="blockadeResults">The enclosing result collection receiving blockade transitions.</param>
+        /// <returns>True when the movement request was accepted.</returns>
+        internal bool TryRequestMoveWithImmediateBlockadeResults(
+            IMovable unit,
+            ContainerNode destination,
+            ICollection<GameResult> blockadeResults
+        )
+        {
+            if (blockadeResults == null)
+                throw new ArgumentNullException(nameof(blockadeResults));
+
+            int firstPendingResult = _pendingResults.Count;
+            bool moved = TryRequestMove(unit, destination);
+            if (!moved)
+                return false;
+
+            for (int index = firstPendingResult; index < _pendingResults.Count; index++)
+            {
+                if (_pendingResults[index] is BlockadeChangedResult transition)
+                    blockadeResults.Add(transition);
+            }
+
+            for (int index = _pendingResults.Count - 1; index >= firstPendingResult; index--)
+            {
+                if (_pendingResults[index] is BlockadeChangedResult)
+                    _pendingResults.RemoveAt(index);
+            }
+
+            return true;
+        }
+
+        /// <summary>
         /// Requests move.
         /// </summary>
         /// <param name="unit">The unit to move.</param>
@@ -300,7 +337,7 @@ namespace Rebellion.Simulation
                 unit.Movement = null;
                 CompleteManufacturingDelivery(unit);
                 AddPlanetGarrisonChangedResults(_pendingResults, unit, destinationPlanet);
-                AddBlockadeStartedResult(destinationPlanet, wasBlockaded, _pendingResults);
+                AddBlockadeChangedResult(destinationPlanet, wasBlockaded, _pendingResults);
                 return;
             }
 
@@ -1336,7 +1373,7 @@ namespace Rebellion.Simulation
                     sourceEventInstanceID,
                     completesManufacturingDelivery
                 );
-                AddBlockadeStartedResult(destinationPlanet, wasBlockaded, results);
+                AddBlockadeChangedResult(destinationPlanet, wasBlockaded, results);
             }
             catch (SceneAccessException ex)
             {
@@ -2028,7 +2065,7 @@ namespace Rebellion.Simulation
             {
                 results.Add(evacuationLoss);
                 AddPlanetGarrisonChangedResults(results, unit, originPlanet);
-                AddBlockadeStartedResult(originPlanet, wasBlockaded, results);
+                AddBlockadeChangedResult(originPlanet, wasBlockaded, results);
                 return true;
             }
 
@@ -2053,7 +2090,7 @@ namespace Rebellion.Simulation
                         results,
                         sourceEventInstanceID
                     );
-                AddBlockadeStartedResult(originPlanet, wasBlockaded, results);
+                AddBlockadeChangedResult(originPlanet, wasBlockaded, results);
                 return true;
             }
 
@@ -2071,7 +2108,7 @@ namespace Rebellion.Simulation
                         results,
                         sourceEventInstanceID
                     );
-                AddBlockadeStartedResult(originPlanet, wasBlockaded, results);
+                AddBlockadeChangedResult(originPlanet, wasBlockaded, results);
                 return true;
             }
 
@@ -2109,7 +2146,7 @@ namespace Rebellion.Simulation
             GameLogger.Log(
                 $"{unit.GetDisplayName()} ordered to move to {destination.GetDisplayName()} (ETA: {transitTicks} ticks)"
             );
-            AddBlockadeStartedResult(originPlanet, wasBlockaded, results);
+            AddBlockadeChangedResult(originPlanet, wasBlockaded, results);
             return true;
         }
 
@@ -2125,19 +2162,19 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Records a blockade start after a relevant movement mutation.
+        /// Records a blockade transition after a relevant movement mutation.
         /// </summary>
         /// <param name="planet">The affected planet.</param>
         /// <param name="wasBlockaded">The blockade state captured before the mutation.</param>
         /// <param name="results">The result collection receiving the transition.</param>
-        private void AddBlockadeStartedResult(
+        private void AddBlockadeChangedResult(
             Planet planet,
             bool? wasBlockaded,
             ICollection<GameResult> results
         )
         {
             if (wasBlockaded.HasValue)
-                BlockadeTransitions.AddStartedResult(_game, planet, wasBlockaded.Value, results);
+                BlockadeTransitions.AddChangedResult(_game, planet, wasBlockaded.Value, results);
         }
 
         /// <summary>

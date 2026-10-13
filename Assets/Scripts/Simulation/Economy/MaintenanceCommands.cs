@@ -260,7 +260,7 @@ namespace Rebellion.Simulation
             FleetLifecycle.RemoveEmptyFleet(_game, parentFleet);
             if (wasBlockaded.HasValue)
             {
-                BlockadeTransitions.AddStartedResult(_game, location, wasBlockaded.Value, results);
+                BlockadeTransitions.AddChangedResult(_game, location, wasBlockaded.Value, results);
             }
 
             if (
