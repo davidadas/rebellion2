@@ -3469,7 +3469,7 @@ public sealed class StrategyController
     /// </summary>
     void IIdleBarActions.CancelIdleBarItemDrag()
     {
-        if (!strategyDragController.TryCancelDirectItemInteraction())
+        if (strategyDragController?.TryCancelDirectItemInteraction() != true)
             return;
 
         RenderOverlay();
