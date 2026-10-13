@@ -220,8 +220,8 @@ public static class LoadingScreenPrefabBuilder
         TextMeshProUGUI label = CreateLoadingText(
             "Label",
             buttonObject.transform,
-            "CONTINUE",
-            30,
+            "PRESS ENTER TO CONTINUE",
+            24,
             FontStyles.Bold
         );
         label.characterSpacing = 7f;

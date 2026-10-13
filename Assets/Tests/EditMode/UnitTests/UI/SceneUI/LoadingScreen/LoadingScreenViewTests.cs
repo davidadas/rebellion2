@@ -130,12 +130,35 @@ namespace Rebellion.Tests.UI.SceneUI.LoadingScreen
             TextMeshProUGUI status = _instance
                 .transform.Find("Background/StatusTextField")
                 .GetComponent<TextMeshProUGUI>();
+            TextMeshProUGUI continueLabel =
+                continueButton.GetComponentInChildren<TextMeshProUGUI>();
+            CanvasGroup fade = _instance.transform.Find("FadeOverlay").GetComponent<CanvasGroup>();
 
             _instance.ShowReady();
 
             Assert.AreEqual("GAME READY", status.text);
+            Assert.AreEqual("PRESS ENTER TO CONTINUE", continueLabel.text);
             Assert.IsTrue(continueButton.gameObject.activeSelf);
             Assert.IsTrue(continueButton.interactable);
+            Assert.IsFalse(fade.blocksRaycasts);
+        }
+
+        [Test]
+        public void ShowReady_ContinueButtonClicked_RaisesContinueRequest()
+        {
+            LoadingScreenView prefab = Resources.Load<LoadingScreenView>("UI/LoadingScreen");
+            _instance = Object.Instantiate(prefab);
+            Button continueButton = _instance
+                .transform.Find("Background/ContinueButton")
+                .GetComponent<Button>();
+            bool requested = false;
+            _instance.ContinueRequested += () => requested = true;
+
+            _instance.ShowReady();
+            continueButton.onClick.Invoke();
+
+            Assert.IsTrue(requested);
+            Assert.IsFalse(continueButton.interactable);
         }
 
         [UnityTest]

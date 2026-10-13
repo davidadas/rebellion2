@@ -221,7 +221,7 @@ public sealed class LoadingScreenView : MonoBehaviour
         {
             ResetCameraInteraction();
             presentationGroup.alpha = 1f;
-            fadeOverlayGroup.alpha = 0f;
+            SetBlackOpacity(0f);
         }
         else
         {
@@ -248,7 +248,7 @@ public sealed class LoadingScreenView : MonoBehaviour
         continueButton.gameObject.SetActive(false);
         ResetCameraInteraction();
         presentationGroup.alpha = 0f;
-        fadeOverlayGroup.alpha = 0f;
+        SetBlackOpacity(0f);
         gameObject.SetActive(true);
     }
 
@@ -267,7 +267,9 @@ public sealed class LoadingScreenView : MonoBehaviour
     /// <param name="opacity">The desired opacity from transparent to opaque.</param>
     internal void SetBlackOpacity(float opacity)
     {
-        fadeOverlayGroup.alpha = Mathf.Clamp01(opacity);
+        float clampedOpacity = Mathf.Clamp01(opacity);
+        fadeOverlayGroup.alpha = clampedOpacity;
+        fadeOverlayGroup.blocksRaycasts = clampedOpacity > 0f;
     }
 
     /// <summary>
@@ -297,8 +299,11 @@ public sealed class LoadingScreenView : MonoBehaviour
         statusText.alpha = 1f;
         failureDetailText.gameObject.SetActive(false);
         loadingHud.gameObject.SetActive(false);
+        continueButton.onClick.RemoveListener(RequestContinue);
+        continueButton.onClick.AddListener(RequestContinue);
         continueButton.interactable = true;
         continueButton.gameObject.SetActive(true);
+        SetBlackOpacity(0f);
     }
 
     /// <summary>
