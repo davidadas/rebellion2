@@ -391,13 +391,6 @@ public static class ContentPackLoader
             pack.NeutralThemePath,
             nameof(FactionThemes)
         );
-        BattleArrivalTheme battleArrival = string.IsNullOrWhiteSpace(pack.BattleArrivalPath)
-            ? null
-            : DeserializeGameData<BattleArrivalTheme>(
-                fileResolver,
-                pack.BattleArrivalPath,
-                "BattleArrival"
-            );
 
         List<Faction> factionData = new List<Faction>();
         List<CapitalShip> capitalShips = new List<CapitalShip>();
@@ -471,8 +464,7 @@ public static class ContentPackLoader
             messageDefinitions,
             encyclopediaEntries,
             themes,
-            pack.DefaultSpaceBattleMapInstanceIDs,
-            battleArrival
+            pack.DefaultSpaceBattleMapInstanceIDs
         );
     }
 

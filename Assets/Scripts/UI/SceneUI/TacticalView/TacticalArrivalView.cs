@@ -17,15 +17,18 @@ public sealed class TacticalArrivalView : IDisposable
     private const float _trailLifetime = 0.42f;
     private const float _burstLifetime = 0.85f;
     private const float _soundLeadTime = 0.08f;
+    private static readonly Color _trailColor = new Color32(0x33, 0xb3, 0xff, 0xd1);
+    private static readonly Color _burstColor = new Color32(0x33, 0xb8, 0xff, 0xff);
 
     private readonly Dictionary<CombatUnit, Arrival> _arrivals =
         new Dictionary<CombatUnit, Arrival>();
-    private readonly Dictionary<Color, Material> _materials = new Dictionary<Color, Material>();
     private readonly AudioManager _audioManager;
     private GameObject _effectsRoot;
     private AudioSource _sound;
     private AudioClip _clip;
     private Texture2D _glow;
+    private Material _trailMaterial;
+    private Material _burstMaterial;
     private float _elapsed;
     private float _endTime;
     private bool _soundPlayed;
@@ -42,7 +45,6 @@ public sealed class TacticalArrivalView : IDisposable
         public float StartTime;
         public TrailRenderer Trail;
         public ParticleSystem Burst;
-        public Color BurstColor;
         public bool Complete;
     }
 
@@ -51,13 +53,11 @@ public sealed class TacticalArrivalView : IDisposable
     /// </summary>
     /// <param name="parent">The scene owning these temporary effects.</param>
     /// <param name="presentations">The deployed units and their loaded model roots.</param>
-    /// <param name="theme">The shared arrival presentation definition.</param>
     /// <param name="clip">The resident arrival sound, loaded before the sequence starts.</param>
     /// <param name="audioManager">The application sound-volume owner.</param>
     public TacticalArrivalView(
         Transform parent,
         IReadOnlyDictionary<CombatUnit, Transform> presentations,
-        BattleArrivalTheme theme,
         AudioClip clip,
         AudioManager audioManager
     )
@@ -66,8 +66,6 @@ public sealed class TacticalArrivalView : IDisposable
             throw new ArgumentNullException(nameof(parent));
         if (presentations == null)
             throw new ArgumentNullException(nameof(presentations));
-        if (theme == null)
-            throw new ArgumentNullException(nameof(theme));
         _clip = clip != null ? clip : throw new ArgumentNullException(nameof(clip));
         _audioManager =
             audioManager != null
@@ -75,9 +73,8 @@ public sealed class TacticalArrivalView : IDisposable
                 : throw new ArgumentNullException(nameof(audioManager));
         try
         {
-            Color trailColor = ParseColor(theme.TrailColorHex);
-            Color burstColor = ParseColor(theme.BurstColorHex);
-            Material trailMaterial = GetMaterial(trailColor);
+            _trailMaterial = CreateMaterial(_trailColor);
+            _burstMaterial = CreateMaterial(_burstColor);
             _effectsRoot = new GameObject("Hyperspace Arrival");
             _effectsRoot.transform.SetParent(parent, false);
             _sound = _effectsRoot.AddComponent<AudioSource>();
@@ -100,9 +97,9 @@ public sealed class TacticalArrivalView : IDisposable
                 trail.minVertexDistance = 0.8f;
                 trail.startWidth = selectionRadius * 0.6f;
                 trail.endWidth = 0f;
-                trail.startColor = trailColor;
-                trail.endColor = new Color(trailColor.r, trailColor.g, trailColor.b, 0f);
-                trail.sharedMaterial = trailMaterial;
+                trail.startColor = _trailColor;
+                trail.endColor = new Color(_trailColor.r, _trailColor.g, _trailColor.b, 0f);
+                trail.sharedMaterial = _trailMaterial;
                 trail.shadowCastingMode = ShadowCastingMode.Off;
                 trail.receiveShadows = false;
                 Arrival arrival = new Arrival
@@ -112,7 +109,6 @@ public sealed class TacticalArrivalView : IDisposable
                     Forward = root.localRotation * Vector3.forward,
                     StartTime = _startTime + index % 5 * 0.025f,
                     Trail = trail,
-                    BurstColor = burstColor,
                 };
                 _arrivals.Add(presentation.Key, arrival);
                 root.localPosition = arrival.Destination - arrival.Forward * _travelDistance;
@@ -184,7 +180,7 @@ public sealed class TacticalArrivalView : IDisposable
                 continue;
             arrival.Complete = true;
             arrival.Trail.emitting = false;
-            arrival.Burst = CreateBurst(arrival.Root.position, arrival.BurstColor);
+            arrival.Burst = CreateBurst(arrival.Root.position);
         }
         return _elapsed < _endTime || _sound.isPlaying;
     }
@@ -212,9 +208,10 @@ public sealed class TacticalArrivalView : IDisposable
         _effectsRoot = null;
         _sound = null;
         _clip = null;
-        foreach (Material material in _materials.Values)
-            DestroyOwned(material);
-        _materials.Clear();
+        DestroyOwned(_trailMaterial);
+        _trailMaterial = null;
+        DestroyOwned(_burstMaterial);
+        _burstMaterial = null;
         DestroyOwned(_glow);
         _glow = null;
     }
@@ -223,9 +220,8 @@ public sealed class TacticalArrivalView : IDisposable
     /// Creates the short world-space particle burst at a completed fly-in.
     /// </summary>
     /// <param name="position">The unit's world-space arrival point.</param>
-    /// <param name="color">The shared burst color.</param>
     /// <returns>The stopped particle system advanced by the arrival clock.</returns>
-    private ParticleSystem CreateBurst(Vector3 position, Color color)
+    private ParticleSystem CreateBurst(Vector3 position)
     {
         GameObject burstObject = new GameObject("Arrival Burst");
         burstObject.transform.SetParent(_effectsRoot.transform, false);
@@ -239,7 +235,7 @@ public sealed class TacticalArrivalView : IDisposable
         main.startLifetime = new ParticleSystem.MinMaxCurve(_burstLifetime * 0.5f, _burstLifetime);
         main.startSpeed = new ParticleSystem.MinMaxCurve(6.5f * 0.35f, 6.5f);
         main.startSize = new ParticleSystem.MinMaxCurve(0.08f, 0.42f);
-        main.startColor = color;
+        main.startColor = _burstColor;
         main.simulationSpace = ParticleSystemSimulationSpace.World;
         ParticleSystem.EmissionModule emission = particles.emission;
         emission.enabled = false;
@@ -251,7 +247,7 @@ public sealed class TacticalArrivalView : IDisposable
         renderer.renderMode = ParticleSystemRenderMode.Stretch;
         renderer.velocityScale = 0.16f;
         renderer.lengthScale = 2.2f;
-        renderer.sharedMaterial = GetMaterial(color);
+        renderer.sharedMaterial = _burstMaterial;
         renderer.shadowCastingMode = ShadowCastingMode.Off;
         renderer.receiveShadows = false;
         particles.Emit(12);
@@ -259,14 +255,12 @@ public sealed class TacticalArrivalView : IDisposable
     }
 
     /// <summary>
-    /// Shares one additive glow material per effect color within this sequence.
+    /// Creates an additive material using the sequence's shared glow texture.
     /// </summary>
     /// <param name="color">The material tint.</param>
     /// <returns>The sequence-owned material.</returns>
-    private Material GetMaterial(Color color)
+    private Material CreateMaterial(Color color)
     {
-        if (_materials.TryGetValue(color, out Material material))
-            return material;
         Shader shader = Shader.Find("Rebellion/Unlit Additive");
         if (shader == null)
             throw new InvalidOperationException(
@@ -274,9 +268,7 @@ public sealed class TacticalArrivalView : IDisposable
             );
         if (_glow == null)
             _glow = CreateGlowTexture();
-        material = new Material(shader) { color = color, mainTexture = _glow };
-        _materials.Add(color, material);
-        return material;
+        return new Material(shader) { color = color, mainTexture = _glow };
     }
 
     /// <summary>
@@ -304,18 +296,6 @@ public sealed class TacticalArrivalView : IDisposable
         texture.SetPixels(pixels);
         texture.Apply(false, true);
         return texture;
-    }
-
-    /// <summary>
-    /// Parses a required effect color without silently replacing invalid content.
-    /// </summary>
-    /// <param name="value">The configured HTML color.</param>
-    /// <returns>The configured color.</returns>
-    private static Color ParseColor(string value)
-    {
-        if (!ColorUtility.TryParseHtmlString(value, out Color color))
-            throw new InvalidOperationException($"Invalid hyperspace arrival color '{value}'.");
-        return color;
     }
 
     /// <summary>

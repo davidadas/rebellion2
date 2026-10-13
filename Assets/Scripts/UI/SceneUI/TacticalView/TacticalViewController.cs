@@ -14,6 +14,8 @@ using UnityEngine;
 /// </summary>
 public sealed class TacticalViewController : MonoBehaviour
 {
+    private const string _arrivalSoundPath = "Pack/Shared/Tactical/Audio/hyperspace-arrival.wav";
+
     [SerializeField]
     private Camera battleCamera;
 
@@ -188,17 +190,10 @@ public sealed class TacticalViewController : MonoBehaviour
                 ?? activeBattle.GetParticipants().FirstOrDefault()?.FactionInstanceID;
             FactionThemeLibrary themes = new FactionThemeLibrary(gameData.FactionThemes);
             FactionTheme theme = themes.GetTheme(themeFaction);
-            BattleArrivalTheme arrivalTheme = gameData.BattleArrival;
             AudioClip arrivalClip = null;
             if (game == null && activeBattle.Kind == BattleKind.Space)
             {
-                if (arrivalTheme == null || string.IsNullOrWhiteSpace(arrivalTheme.SoundPath))
-                    throw new InvalidOperationException(
-                        "The battle arrival sound is not configured."
-                    );
-                arrivalClip = await bootstrap
-                    .GetContentAssets()
-                    .LoadAudioAsync(arrivalTheme.SoundPath);
+                arrivalClip = await bootstrap.GetContentAssets().LoadAudioAsync(_arrivalSoundPath);
                 if (this == null)
                     return;
             }
@@ -218,7 +213,6 @@ public sealed class TacticalViewController : MonoBehaviour
                 arrivals = new TacticalArrivalView(
                     transform,
                     combatantPresentations,
-                    arrivalTheme,
                     arrivalClip,
                     bootstrap.GetAudioManager()
                 );

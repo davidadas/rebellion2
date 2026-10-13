@@ -172,15 +172,16 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         }
 
         /// <summary>
-        /// Checks invalid presentation content leaves no partially constructed effect hierarchy.
+        /// Checks missing sound is rejected before modifying any unit presentation.
         /// </summary>
         [Test]
-        public void Constructor_InvalidEffectColor_ReleasesPartialResources()
+        public void Constructor_MissingSound_DoesNotModifyPresentations()
         {
             CombatUnit unit = AddUnit();
-            BattleArrivalTheme theme = CreateTheme("invalid");
 
-            Assert.Throws<InvalidOperationException>(() => CreateView(theme));
+            Assert.Throws<ArgumentNullException>(() =>
+                new TacticalArrivalView(_scene.transform, _presentations, null, _audio)
+            );
 
             Assert.AreEqual(new Vector3(6f, 2f, 20f), _presentations[unit].localPosition);
             Assert.IsNull(_presentations[unit].GetComponent<TrailRenderer>());
@@ -253,28 +254,8 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         /// <summary>
         /// Creates the presentation owner using only public dependencies.
         /// </summary>
-        /// <param name="theme">The optional explicitly configured arrival theme.</param>
         /// <returns>The newly constructed arrival owner.</returns>
-        private TacticalArrivalView CreateView(BattleArrivalTheme theme = null) =>
-            new TacticalArrivalView(
-                _scene.transform,
-                _presentations,
-                theme ?? CreateTheme(),
-                _clip,
-                _audio
-            );
-
-        /// <summary>
-        /// Creates valid content colors without depending on a particular installed content pack.
-        /// </summary>
-        /// <param name="trailColor">The configured trail color.</param>
-        /// <returns>The shared arrival presentation definition.</returns>
-        private static BattleArrivalTheme CreateTheme(string trailColor = "#33B3FFD1") =>
-            new BattleArrivalTheme
-            {
-                SoundPath = "Pack/Shared/Tactical/Audio/hyperspace-arrival.wav",
-                TrailColorHex = trailColor,
-                BurstColorHex = "#33B8FFFF",
-            };
+        private TacticalArrivalView CreateView() =>
+            new TacticalArrivalView(_scene.transform, _presentations, _clip, _audio);
     }
 }
