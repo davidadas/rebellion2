@@ -4,9 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.AI;
 using Rebellion.Game;
-using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
-using Rebellion.Game.Units;
 using Rebellion.Util.DependencyInjection;
 using Rebellion.Util.Logging;
 
@@ -29,10 +27,8 @@ namespace Rebellion.Simulation
 
         private readonly Func<IEnumerable<GameResult>, bool, List<GameResult>> _processResults;
         private readonly Action<List<GameResult>> _processMessages;
-        private readonly List<BlockadeChangedResult> _deferredBlockadeResults = new();
         private readonly List<GameResult> _deferredMessageResults = new();
         private AIDirector _aiDirector;
-        private BlockadeTickProcessor _blockade;
         private ITickProcessor _captive;
         private ITickProcessor _factionAutomation;
         private FogOfWarObserver _fogOfWarObserver;
@@ -128,7 +124,6 @@ namespace Rebellion.Simulation
             _gameEvents = new GameEventTickProcessor(services.GetService<GameEventCommands>());
             _naming = new NamingTickProcessor(services.GetService<NamingCommands>());
             _aiDirector = services.GetService<AIDirector>();
-            _blockade = new BlockadeTickProcessor(services.GetService<BlockadeTracker>());
             _planetaryControl = new PlanetaryControlTickProcessor(
                 services.GetService<PlanetaryControlCommands>()
             );
@@ -145,7 +140,6 @@ namespace Rebellion.Simulation
         /// </summary>
         internal void Reset()
         {
-            _deferredBlockadeResults.Clear();
             _deferredMessageResults.Clear();
             _tickState = TickExecutionState.Idle;
         }
@@ -237,7 +231,6 @@ namespace Rebellion.Simulation
                 processMessages: false
             );
 
-            _deferredBlockadeResults.AddRange(ObserveAffectedBlockades(movementResults));
             List<GameResult> waypointResults = ProcessAvailableWaypointContinuations();
             _fogOfWarObserver.RefreshVisibleKnowledge();
 
@@ -273,8 +266,6 @@ namespace Rebellion.Simulation
                 yield return step;
             ProcessResults(aiResults);
 
-            List<GameResult> blockadeResults = ProcessResults(_blockade.ProcessTick(_game));
-            ProcessTransientBlockades(blockadeResults);
             ProcessResults(_planetaryControl.ProcessTick(_game));
             ProcessResults(_uprising.ProcessTick(_game));
 
@@ -446,51 +437,6 @@ namespace Rebellion.Simulation
                 _movementCommands.ContinueFleetWaypointRoutes(),
                 processMessages: false
             );
-        }
-
-        /// <summary>
-        /// Observes blockade state where an arriving unit was destroyed by a blockading fleet.
-        /// </summary>
-        /// <param name="results">The settled movement results to inspect.</param>
-        /// <returns>The newly observed blockade starts awaiting end-of-phase reconciliation.</returns>
-        private IReadOnlyList<BlockadeChangedResult> ObserveAffectedBlockades(
-            IEnumerable<GameResult> results
-        )
-        {
-            List<GameResult> settledResults =
-                results?.Where(result => result != null).ToList() ?? new List<GameResult>();
-            IEnumerable<Planet> affectedPlanets = settledResults
-                .OfType<GameObjectDestroyedOnArrivalResult>()
-                .Where(result => result.DestroyedBy is Fleet)
-                .Select(result => result.Context as Planet)
-                .Where(planet => planet != null);
-
-            return _blockade.ObservePlanets(affectedPlanets);
-        }
-
-        /// <summary>
-        /// Publishes observed blockade starts that ended before normal blockade reconciliation.
-        /// </summary>
-        /// <param name="reconciledResults">The results from normal blockade reconciliation.</param>
-        private void ProcessTransientBlockades(IEnumerable<GameResult> reconciledResults)
-        {
-            HashSet<string> reconciledStarts = (reconciledResults ?? Enumerable.Empty<GameResult>())
-                .OfType<BlockadeChangedResult>()
-                .Where(result => result.Blockaded && result.Planet != null)
-                .Select(result => result.Planet.InstanceID)
-                .ToHashSet(StringComparer.Ordinal);
-            List<BlockadeChangedResult> transientResults = _deferredBlockadeResults
-                .Where(result =>
-                    result?.Planet != null
-                    && !result.Planet.IsBlockaded()
-                    && !reconciledStarts.Contains(result.Planet.InstanceID)
-                )
-                .GroupBy(result => result.Planet.InstanceID)
-                .Select(group => group.First())
-                .ToList();
-            _deferredBlockadeResults.Clear();
-
-            ProcessResults(transientResults);
         }
 
         /// <summary>

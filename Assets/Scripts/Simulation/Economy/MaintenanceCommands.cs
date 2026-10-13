@@ -245,6 +245,8 @@ namespace Rebellion.Simulation
         private void Scrap(IManufacturable item, List<GameResult> results)
         {
             ISceneNode node = item;
+            Planet location = node?.GetParentOfType<Planet>();
+            bool? wasBlockaded = item is CapitalShip ? location?.IsBlockaded() : null;
             Planet garrisonPlanet =
                 item is Regiment regiment
                 && regiment.ManufacturingStatus == ManufacturingStatus.Complete
@@ -256,6 +258,10 @@ namespace Rebellion.Simulation
             RefundScrapMaterials(item);
             _game.DeleteNode(node);
             FleetLifecycle.RemoveEmptyFleet(_game, parentFleet);
+            if (wasBlockaded.HasValue)
+            {
+                BlockadeTransitions.AddStartedResult(_game, location, wasBlockaded.Value, results);
+            }
 
             if (
                 garrisonPlanet != null

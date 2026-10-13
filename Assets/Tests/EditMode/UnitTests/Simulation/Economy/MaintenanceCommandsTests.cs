@@ -171,6 +171,42 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void TryScrap_LastDefendingCapitalShip_ReportsBlockadeStart()
+        {
+            var scene = BuildCarrierScrapScene();
+            Faction opponent = CreateFaction("alliance", "Alliance");
+            scene.game.GetFactions().Add(opponent);
+            Fleet blockadingFleet = EntityFactory.CreateFleet(
+                "blockading-fleet",
+                opponent.InstanceID
+            );
+            CapitalShip blockadingShip = new CapitalShip
+            {
+                InstanceID = "blockading-ship",
+                OwnerInstanceID = opponent.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            scene.game.AttachNode(blockadingFleet, scene.origin);
+            scene.game.AttachNode(blockadingShip, blockadingFleet);
+            List<BlockadeChangedResult> observed = new List<BlockadeChangedResult>();
+            using IDisposable observation = scene.resultBus.Observe<BlockadeChangedResult>(
+                observed.AddRange
+            );
+
+            bool scrapped = scene.maintenance.TryScrap(
+                new IManufacturable[] { scene.carrier },
+                scene.owner.InstanceID
+            );
+
+            Assert.IsTrue(scrapped);
+            Assert.IsTrue(scene.origin.IsBlockaded());
+            BlockadeChangedResult blockade = observed.Single();
+            Assert.AreSame(scene.origin, blockade.Planet);
+            Assert.AreSame(blockadingFleet, blockade.BlockadingFleet);
+            Assert.IsTrue(blockade.Blockaded);
+        }
+
+        [Test]
         public void Constructor_WithNullGame_ThrowsArgumentNullException()
         {
             ArgumentNullException exception = Assert.Throws<ArgumentNullException>(() =>

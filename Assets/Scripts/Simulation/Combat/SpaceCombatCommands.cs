@@ -219,7 +219,11 @@ namespace Rebellion.Simulation
                 result.DefenderRetreatPlanetInstanceID = retreatPlanetInstanceId;
 
             results.Add(result);
-            results.AddRange(result.Events.OfType<GameObjectDestroyedResult>());
+            results.AddRange(
+                result.Events.Where(resultEvent =>
+                    resultEvent is GameObjectDestroyedResult or BlockadeChangedResult
+                )
+            );
             ClearCombatFlags(decision);
             return true;
         }
@@ -369,7 +373,11 @@ namespace Rebellion.Simulation
             if (combatResult != null)
             {
                 results.Add(combatResult);
-                results.AddRange(combatResult.Events.OfType<GameObjectDestroyedResult>());
+                results.AddRange(
+                    combatResult.Events.Where(resultEvent =>
+                        resultEvent is GameObjectDestroyedResult or BlockadeChangedResult
+                    )
+                );
             }
 
             return results;
@@ -895,6 +903,7 @@ namespace Rebellion.Simulation
             SpaceCombatWithdrawalPlan defenderWithdrawalPlan
         )
         {
+            bool wasBlockaded = result.Planet.IsBlockaded();
             List<GameResult> events = ApplyFighterSquadronLosses(
                 result.FighterLosses,
                 result.Planet
@@ -903,6 +912,7 @@ namespace Rebellion.Simulation
             CompleteFighterWithdrawal(defenderWithdrawalPlan);
             events.AddRange(ApplyShipDamage(result.ShipDamage, result.Planet));
             RemoveEmptyFleets(attackerFleets, defenderFleets);
+            BlockadeTransitions.AddStartedResult(_game, result.Planet, wasBlockaded, events);
             CompleteFleetWithdrawal(attackerWithdrawalPlan);
             CompleteFleetWithdrawal(defenderWithdrawalPlan);
 

@@ -465,6 +465,9 @@ namespace Rebellion.Simulation
                 EvictDisplacedUnits(change, results);
             }
 
+            bool wasBlockaded = change.BlockadedFactionInstanceIDs?.Count > 0;
+            BlockadeTransitions.AddStartedResult(_game, change.Planet, wasBlockaded, results);
+
             int shift;
             switch (change.Reason)
             {

@@ -446,6 +446,35 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void HandleResults_OwnershipChangeStartsBlockade_ReportsBlockadeStart()
+        {
+            _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
+            Fleet fleet = EntityFactory.CreateFleet("former-owner-fleet", _empire.InstanceID);
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "former-owner-ship",
+                OwnerInstanceID = _empire.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(fleet, _targetPlanet);
+            _game.AttachNode(ship, fleet);
+            PlanetaryControlObserver observer = new PlanetaryControlObserver(
+                _game,
+                _commands,
+                _movementSystem,
+                new PlanetaryControlQueries(_game)
+            );
+
+            PlanetOwnershipChangedResult change = _commands.TransferPlanet(_targetPlanet, _rebels);
+            List<GameResult> reactions = observer.HandleResults(new[] { change });
+
+            BlockadeChangedResult blockade = reactions.OfType<BlockadeChangedResult>().Single();
+            Assert.AreSame(_targetPlanet, blockade.Planet);
+            Assert.AreSame(fleet, blockade.BlockadingFleet);
+            Assert.IsTrue(blockade.Blockaded);
+        }
+
+        [Test]
         public void HandleResults_LastStationedRegiment_PreservesMissionForLifecycleValidation()
         {
             _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);

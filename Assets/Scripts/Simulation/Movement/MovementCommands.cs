@@ -292,9 +292,11 @@ namespace Rebellion.Simulation
 
             if (destinationPlanet == origin)
             {
+                bool? wasBlockaded = CaptureBlockadeState(unit, destinationPlanet);
                 unit.Movement = null;
                 CompleteManufacturingDelivery(unit);
                 AddPlanetGarrisonChangedResults(_pendingResults, unit, destinationPlanet);
+                AddBlockadeStartedResult(destinationPlanet, wasBlockaded, _pendingResults);
                 return;
             }
 
@@ -1288,6 +1290,7 @@ namespace Rebellion.Simulation
             List<GameResult> results
         )
         {
+            bool? wasBlockaded = CaptureBlockadeState(movable, destinationPlanet);
             string movementGroupID = movable.Movement?.MovementGroupID;
             string sourceEventInstanceID = movable.Movement?.SourceEventInstanceID;
             bool completesManufacturingDelivery =
@@ -1329,6 +1332,7 @@ namespace Rebellion.Simulation
                     sourceEventInstanceID,
                     completesManufacturingDelivery
                 );
+                AddBlockadeStartedResult(destinationPlanet, wasBlockaded, results);
             }
             catch (SceneAccessException ex)
             {
@@ -2009,6 +2013,8 @@ namespace Rebellion.Simulation
                 return false;
             }
 
+            bool? wasBlockaded = CaptureBlockadeState(unit, originPlanet);
+
             EvacuationLossesResult evacuationLoss = _evacuationLosses.Resolve(
                 unit,
                 originPlanet,
@@ -2018,6 +2024,7 @@ namespace Rebellion.Simulation
             {
                 results.Add(evacuationLoss);
                 AddPlanetGarrisonChangedResults(results, unit, originPlanet);
+                AddBlockadeStartedResult(originPlanet, wasBlockaded, results);
                 return true;
             }
 
@@ -2042,6 +2049,7 @@ namespace Rebellion.Simulation
                         results,
                         sourceEventInstanceID
                     );
+                AddBlockadeStartedResult(originPlanet, wasBlockaded, results);
                 return true;
             }
 
@@ -2059,6 +2067,7 @@ namespace Rebellion.Simulation
                         results,
                         sourceEventInstanceID
                     );
+                AddBlockadeStartedResult(originPlanet, wasBlockaded, results);
                 return true;
             }
 
@@ -2096,7 +2105,35 @@ namespace Rebellion.Simulation
             GameLogger.Log(
                 $"{unit.GetDisplayName()} ordered to move to {destination.GetDisplayName()} (ETA: {transitTicks} ticks)"
             );
+            AddBlockadeStartedResult(originPlanet, wasBlockaded, results);
             return true;
+        }
+
+        /// <summary>
+        /// Captures blockade state only for units whose orbital readiness can change it.
+        /// </summary>
+        /// <param name="unit">The unit about to change movement or containment.</param>
+        /// <param name="planet">The affected planet.</param>
+        /// <returns>The current blockade state, or null when the unit cannot affect it.</returns>
+        private static bool? CaptureBlockadeState(IMovable unit, Planet planet)
+        {
+            return unit is Fleet or CapitalShip ? planet?.IsBlockaded() : null;
+        }
+
+        /// <summary>
+        /// Records a blockade start after a relevant movement mutation.
+        /// </summary>
+        /// <param name="planet">The affected planet.</param>
+        /// <param name="wasBlockaded">The blockade state captured before the mutation.</param>
+        /// <param name="results">The result collection receiving the transition.</param>
+        private void AddBlockadeStartedResult(
+            Planet planet,
+            bool? wasBlockaded,
+            ICollection<GameResult> results
+        )
+        {
+            if (wasBlockaded.HasValue)
+                BlockadeTransitions.AddStartedResult(_game, planet, wasBlockaded.Value, results);
         }
 
         /// <summary>
@@ -2202,6 +2239,11 @@ namespace Rebellion.Simulation
             if (faction == null)
                 return;
 
+            List<string> blockadedFactionInstanceIDs = _game
+                .GetFactions()
+                .Where(candidate => destinationPlanet.IsBlockadedFor(candidate.InstanceID))
+                .Select(candidate => candidate.InstanceID)
+                .ToList();
             _game.ChangeOwnership(destinationPlanet, ownerInstanceId);
             destinationPlanet.PopularSupport.Clear();
 
@@ -2220,6 +2262,7 @@ namespace Rebellion.Simulation
                     PreviousOwner = null,
                     NewOwner = faction,
                     Tick = _game.CurrentTick,
+                    BlockadedFactionInstanceIDs = blockadedFactionInstanceIDs,
                 }
             );
         }

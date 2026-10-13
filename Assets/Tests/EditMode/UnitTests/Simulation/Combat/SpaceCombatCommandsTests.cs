@@ -447,6 +447,36 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void Resolve_LastDefendingFleetDestroyed_ReportsBlockadeStart()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            Faction empire = new Faction { InstanceID = "empire" };
+            Faction alliance = new Faction { InstanceID = "alliance" };
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(alliance);
+
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            Planet planet = new Planet { InstanceID = "planet", OwnerInstanceID = "empire" };
+            game.AttachNode(sector, game.Galaxy);
+            game.AttachNode(planet, sector);
+            Fleet defendingFleet = CreateFleet(game, "defender", "empire", planet, 1, 1, 0);
+            Fleet attackingFleet = CreateFleet(game, "attacker", "alliance", planet, 1, 1000, 100);
+
+            TryResolveCombat(
+                MakeSpaceCombat(game),
+                attackingFleet,
+                defendingFleet,
+                out List<GameResult> results
+            );
+
+            Assert.IsTrue(planet.IsBlockaded());
+            BlockadeChangedResult blockade = results.OfType<BlockadeChangedResult>().Single();
+            Assert.AreSame(planet, blockade.Planet);
+            Assert.AreSame(attackingFleet, blockade.BlockadingFleet);
+            Assert.IsTrue(blockade.Blockaded);
+        }
+
+        [Test]
         public void Resolve_DefenderDestroysAttacker_ReturnsDefenderVictory()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
