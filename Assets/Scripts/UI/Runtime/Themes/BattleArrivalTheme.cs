@@ -1,7 +1,7 @@
 using Rebellion.Util.Serialization;
 
 /// <summary>
-/// Defines faction-specific hyperspace arrival sound and effect colors.
+/// Defines the shared hyperspace arrival sound and effect colors.
 /// </summary>
 [PersistableObject]
 public sealed class BattleArrivalTheme

@@ -178,9 +178,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         public void Constructor_InvalidEffectColor_ReleasesPartialResources()
         {
             CombatUnit unit = AddUnit();
-            FactionThemeLibrary themes = CreateThemes("invalid");
+            BattleArrivalTheme theme = CreateTheme("invalid");
 
-            Assert.Throws<InvalidOperationException>(() => CreateView(themes));
+            Assert.Throws<InvalidOperationException>(() => CreateView(theme));
 
             Assert.AreEqual(new Vector3(6f, 2f, 20f), _presentations[unit].localPosition);
             Assert.IsNull(_presentations[unit].GetComponent<TrailRenderer>());
@@ -201,6 +201,24 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             Assert.IsFalse(_view.IsArriving(unit));
             Assert.AreEqual(new Vector3(6f, 2f, 20f), _presentations[unit].localPosition);
             Assert.IsNull(_presentations[unit].GetComponent<TrailRenderer>());
+        }
+
+        /// <summary>
+        /// Checks units from different factions receive the same arrival material and colors.
+        /// </summary>
+        [Test]
+        public void Constructor_DifferentFactions_SharesArrivalMaterial()
+        {
+            CombatUnit first = AddUnit();
+            CombatUnit second = AddUnit();
+            second.GetUnit().OwnerInstanceID = "OTHER_FACTION";
+
+            _view = CreateView();
+
+            Assert.AreSame(
+                _presentations[first].GetComponent<TrailRenderer>().sharedMaterial,
+                _presentations[second].GetComponent<TrailRenderer>().sharedMaterial
+            );
         }
 
         /// <summary>
@@ -235,13 +253,13 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         /// <summary>
         /// Creates the presentation owner using only public dependencies.
         /// </summary>
-        /// <param name="themes">Optional explicitly configured test themes.</param>
+        /// <param name="theme">The optional explicitly configured arrival theme.</param>
         /// <returns>The newly constructed arrival owner.</returns>
-        private TacticalArrivalView CreateView(FactionThemeLibrary themes = null) =>
+        private TacticalArrivalView CreateView(BattleArrivalTheme theme = null) =>
             new TacticalArrivalView(
                 _scene.transform,
                 _presentations,
-                themes ?? CreateThemes(),
+                theme ?? CreateTheme(),
                 _clip,
                 _audio
             );
@@ -250,23 +268,13 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         /// Creates valid content colors without depending on a particular installed content pack.
         /// </summary>
         /// <param name="trailColor">The configured trail color.</param>
-        /// <returns>The theme lookup used by arrival presentation.</returns>
-        private static FactionThemeLibrary CreateThemes(string trailColor = "#33B3FFD1") =>
-            new FactionThemeLibrary(
-                new FactionThemes
-                {
-                    new FactionTheme { FactionInstanceID = "DEFAULT" },
-                    new FactionTheme
-                    {
-                        FactionInstanceID = "FACTION",
-                        BattleArrival = new BattleArrivalTheme
-                        {
-                            SoundPath = "Pack/Shared/Tactical/Audio/hyperspace-arrival.wav",
-                            TrailColorHex = trailColor,
-                            BurstColorHex = "#33B8FFFF",
-                        },
-                    },
-                }
-            );
+        /// <returns>The shared arrival presentation definition.</returns>
+        private static BattleArrivalTheme CreateTheme(string trailColor = "#33B3FFD1") =>
+            new BattleArrivalTheme
+            {
+                SoundPath = "Pack/Shared/Tactical/Audio/hyperspace-arrival.wav",
+                TrailColorHex = trailColor,
+                BurstColorHex = "#33B8FFFF",
+            };
     }
 }

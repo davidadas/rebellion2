@@ -188,19 +188,17 @@ public sealed class TacticalViewController : MonoBehaviour
                 ?? activeBattle.GetParticipants().FirstOrDefault()?.FactionInstanceID;
             FactionThemeLibrary themes = new FactionThemeLibrary(gameData.FactionThemes);
             FactionTheme theme = themes.GetTheme(themeFaction);
+            BattleArrivalTheme arrivalTheme = themes.GetTheme(null).BattleArrival;
             AudioClip arrivalClip = null;
             if (game == null && activeBattle.Kind == BattleKind.Space)
             {
-                if (
-                    theme.BattleArrival == null
-                    || string.IsNullOrWhiteSpace(theme.BattleArrival.SoundPath)
-                )
+                if (arrivalTheme == null || string.IsNullOrWhiteSpace(arrivalTheme.SoundPath))
                     throw new InvalidOperationException(
                         "The battle arrival sound is not configured."
                     );
                 arrivalClip = await bootstrap
                     .GetContentAssets()
-                    .LoadAudioAsync(theme.BattleArrival.SoundPath);
+                    .LoadAudioAsync(arrivalTheme.SoundPath);
                 if (this == null)
                     return;
             }
@@ -220,7 +218,7 @@ public sealed class TacticalViewController : MonoBehaviour
                 arrivals = new TacticalArrivalView(
                     transform,
                     combatantPresentations,
-                    themes,
+                    arrivalTheme,
                     arrivalClip,
                     bootstrap.GetAudioManager()
                 );

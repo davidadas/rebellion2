@@ -58,8 +58,8 @@ content under `Assets/Content/` was not embedded in the player.
 
 Rebuild the UI after changing tactical prefab builders, then open the generated `TacticalView`
 scene. Its standalone preview deploys the default fleets and plays their hyperspace arrivals.
-Copy the matching media branch's `Content/` changes into `Assets/Content/` first; the faction
-themes provide arrival colors and the `Pack/Shared/Tactical/Audio/hyperspace-arrival.wav` sound.
+Copy the matching media branch's `Content/` changes into `Assets/Content/` first; the shared
+default theme provides arrival colors and the `Pack/Shared/Tactical/Audio/hyperspace-arrival.wav` sound.
 
 Select friendly units and right-click the battlefield to move, or press **Move** and left-click
 the destination. **Stop** clears the selected units' pending move orders. Right-drag still orbits

@@ -51,13 +51,13 @@ public sealed class TacticalArrivalView : IDisposable
     /// </summary>
     /// <param name="parent">The scene owning these temporary effects.</param>
     /// <param name="presentations">The deployed units and their loaded model roots.</param>
-    /// <param name="themes">The faction presentation definitions.</param>
+    /// <param name="theme">The shared arrival presentation definition.</param>
     /// <param name="clip">The resident arrival sound, loaded before the sequence starts.</param>
     /// <param name="audioManager">The application sound-volume owner.</param>
     public TacticalArrivalView(
         Transform parent,
         IReadOnlyDictionary<CombatUnit, Transform> presentations,
-        FactionThemeLibrary themes,
+        BattleArrivalTheme theme,
         AudioClip clip,
         AudioManager audioManager
     )
@@ -66,8 +66,8 @@ public sealed class TacticalArrivalView : IDisposable
             throw new ArgumentNullException(nameof(parent));
         if (presentations == null)
             throw new ArgumentNullException(nameof(presentations));
-        if (themes == null)
-            throw new ArgumentNullException(nameof(themes));
+        if (theme == null)
+            throw new ArgumentNullException(nameof(theme));
         _clip = clip != null ? clip : throw new ArgumentNullException(nameof(clip));
         _audioManager =
             audioManager != null
@@ -75,6 +75,9 @@ public sealed class TacticalArrivalView : IDisposable
                 : throw new ArgumentNullException(nameof(audioManager));
         try
         {
+            Color trailColor = ParseColor(theme.TrailColorHex);
+            Color burstColor = ParseColor(theme.BurstColorHex);
+            Material trailMaterial = GetMaterial(trailColor);
             _effectsRoot = new GameObject("Hyperspace Arrival");
             _effectsRoot.transform.SetParent(parent, false);
             _sound = _effectsRoot.AddComponent<AudioSource>();
@@ -86,16 +89,6 @@ public sealed class TacticalArrivalView : IDisposable
             {
                 if (presentation.Key.HasRetreated)
                     continue;
-                BattleArrivalTheme theme = themes
-                    .GetTheme(presentation.Key.GetUnit().OwnerInstanceID)
-                    .BattleArrival;
-                if (theme == null)
-                    throw new InvalidOperationException(
-                        "A battle participant has no arrival theme."
-                    );
-                Color trailColor = ParseColor(theme.TrailColorHex);
-                Color burstColor = ParseColor(theme.BurstColorHex);
-                Material trailMaterial = GetMaterial(trailColor);
                 Transform root = presentation.Value;
                 ModelDimensions size = presentation.Key.GetUnit().ModelSize;
                 float selectionRadius = Mathf.Max(
@@ -230,7 +223,7 @@ public sealed class TacticalArrivalView : IDisposable
     /// Creates the short world-space particle burst at a completed fly-in.
     /// </summary>
     /// <param name="position">The unit's world-space arrival point.</param>
-    /// <param name="color">The faction's burst color.</param>
+    /// <param name="color">The shared burst color.</param>
     /// <returns>The stopped particle system advanced by the arrival clock.</returns>
     private ParticleSystem CreateBurst(Vector3 position, Color color)
     {
@@ -266,7 +259,7 @@ public sealed class TacticalArrivalView : IDisposable
     }
 
     /// <summary>
-    /// Shares one additive glow material per faction effect color within this sequence.
+    /// Shares one additive glow material per effect color within this sequence.
     /// </summary>
     /// <param name="color">The material tint.</param>
     /// <returns>The sequence-owned material.</returns>
