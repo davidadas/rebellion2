@@ -43,6 +43,24 @@ namespace Rebellion.Tests.Game.Units
             };
         }
 
+        /// <summary>
+        /// Checks the movement query preserves configured ratings without allowing negative speed.
+        /// </summary>
+        /// <param name="configured">The configured speed.</param>
+        /// <param name="expected">The non-negative movement speed.</param>
+        [TestCase(4, 4)]
+        [TestCase(0, 0)]
+        [TestCase(-4, 0)]
+        public void GetSublightSpeed_ConfiguredRating_ReturnsNonNegativeSpeed(
+            int configured,
+            int expected
+        )
+        {
+            _capitalShip.SublightSpeed = configured;
+
+            Assert.AreEqual(expected, _capitalShip.GetSublightSpeed());
+        }
+
         [Test]
         public void AssignName_ValidName_ReplacesDisplayNameAndMarksAssigned()
         {

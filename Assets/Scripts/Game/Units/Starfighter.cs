@@ -285,6 +285,12 @@ namespace Rebellion.Game.Units
         }
 
         /// <summary>
+        /// Returns the fighter's non-negative configured sublight movement speed.
+        /// </summary>
+        /// <returns>The sublight movement speed.</returns>
+        public int GetSublightSpeed() => Math.Max(0, SublightSpeed);
+
+        /// <summary>
         /// Returns the weapon groups installed on this starfighter type.
         /// </summary>
         /// <returns>The installed hardpoint groups.</returns>

@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Linq;
 using System.Threading.Tasks;
 using NUnit.Framework;
@@ -6,7 +7,12 @@ using Rebellion.Game.Combat;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.LowLevel;
+using UnityEngine.SceneManagement;
+using UnityEngine.TestTools;
 
 namespace Rebellion.Tests.UI.SceneUI.TacticalView
 {
@@ -25,10 +31,14 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [SetUp]
         public void SetUp()
         {
+            if (instance != null)
+                UnityEngine.Object.DestroyImmediate(instance);
+            models?.Dispose();
             GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(_prefabPath);
             Assert.IsNotNull(prefab, $"Missing generated tactical prefab: {_prefabPath}");
             instance = UnityEngine.Object.Instantiate(prefab);
             controller = instance.GetComponent<TacticalViewController>();
+            controller.enabled = false;
             models = new ContentModelCache(TestContent.Assets);
         }
 
@@ -40,6 +50,96 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         {
             UnityEngine.Object.DestroyImmediate(instance);
             models.Dispose();
+        }
+
+        /// <summary>
+        /// Checks the authored Move and Stop buttons drive saved positions and their rendered model roots.
+        /// </summary>
+        /// <returns>The model loading, runtime input, and mode transitions.</returns>
+        [UnityTest]
+        public IEnumerator InitializeAsync_MoveAndStopButtons_MovePresentationWithBattleState()
+        {
+            UnityEngine.Object.DestroyImmediate(instance);
+            models.Dispose();
+            Scene scene = EditorSceneManager.NewScene(
+                NewSceneSetup.EmptyScene,
+                NewSceneMode.Single
+            );
+            EditorSceneManager.MarkSceneDirty(scene);
+            yield return new EnterPlayMode();
+            SetUp();
+            InputTestFixture input = new InputTestFixture();
+            input.Setup();
+            try
+            {
+                Mouse mouse = InputSystem.AddDevice<Mouse>();
+                ActiveBattle battle = CreateBattleWithCombatant(out CombatUnit combatant);
+                ((CapitalShip)combatant.GetUnit()).SublightSpeed = 4;
+                Task initialization = controller.InitializeAsync(
+                    battle,
+                    CreateBattleMap(),
+                    models,
+                    "FACTION"
+                );
+                while (!initialization.IsCompleted)
+                    yield return null;
+                initialization.GetAwaiter().GetResult();
+                controller.enabled = true;
+                TacticalSelectionController selection =
+                    instance.GetComponent<TacticalSelectionController>();
+                selection.SelectAt(controller.BattleCamera.WorldToScreenPoint(Vector3.zero));
+                Assert.AreSame(combatant, selection.SelectedCombatant);
+                TacticalSelectionView view =
+                    instance.GetComponentInChildren<TacticalSelectionView>();
+                view.MoveButton.onClick.Invoke();
+                Vector2 target = controller.BattleCamera.WorldToScreenPoint(
+                    new Vector3(100f, 0f, 0f)
+                );
+
+                InputSystem.QueueStateEvent(
+                    mouse,
+                    new MouseState { position = target }.WithButton(MouseButton.Left)
+                );
+                yield return null;
+                InputSystem.QueueStateEvent(mouse, new MouseState { position = target });
+                yield return null;
+                yield return null;
+
+                Assert.That(combatant.Position.X, Is.GreaterThan(0f));
+                Assert.That(combatant.Position.Z, Is.GreaterThan(0f));
+                Assert.That(combatant.Forward.X, Is.GreaterThan(0f).And.LessThan(1f));
+                Assert.That(combatant.MoveDestination.X, Is.EqualTo(100f).Within(0.01f));
+                Transform presentation = controller.BattleRoot.GetChild(0).GetChild(0);
+                Assert.That(
+                    presentation.localPosition.x,
+                    Is.EqualTo(combatant.Position.X).Within(0.0001f)
+                );
+                Assert.That(
+                    Quaternion.Angle(
+                        presentation.localRotation,
+                        Quaternion.LookRotation(
+                            new Vector3(
+                                combatant.Forward.X,
+                                combatant.Forward.Y,
+                                combatant.Forward.Z
+                            )
+                        )
+                    ),
+                    Is.LessThan(0.01f)
+                );
+                view.StopButton.onClick.Invoke();
+                float stopped = combatant.Position.X;
+                yield return null;
+                Assert.AreEqual(stopped, combatant.Position.X);
+                Assert.IsNull(combatant.MoveDestination);
+            }
+            finally
+            {
+                input.TearDown();
+                UnityEngine.Object.DestroyImmediate(instance);
+                models.Dispose();
+            }
+            yield return new ExitPlayMode();
         }
 
         [Test]

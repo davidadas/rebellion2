@@ -23,6 +23,11 @@ public sealed class TacticalSelectionController : MonoBehaviour
     private IReadOnlyList<CombatUnit> _readOnlySelection;
     private Vector2 _pressPosition;
     private bool _selecting;
+    private bool _choosingDestination;
+    private TacticalViewCameraController _cameraInput;
+
+    public event Action<Vector2> MoveRequested;
+    public event Action StopRequested;
 
     /// <summary>
     /// Gets the ordered transient selection without allowing callers to modify it.
@@ -38,7 +43,12 @@ public sealed class TacticalSelectionController : MonoBehaviour
     /// <summary>
     /// Connects roster selection to the same selection owner as world input.
     /// </summary>
-    private void Awake() => view.CardClicked += SelectCard;
+    private void Awake()
+    {
+        view.CardClicked += SelectCard;
+        view.MoveButton.onClick.AddListener(BeginMove);
+        view.StopButton.onClick.AddListener(RequestStop);
+    }
 
     /// <summary>
     /// Binds picking to the loaded presentation roots of one battle.
@@ -57,6 +67,9 @@ public sealed class TacticalSelectionController : MonoBehaviour
         Clear();
         _camera = camera;
         _presentations = presentations;
+        _cameraInput = camera.GetComponent<TacticalViewCameraController>();
+        if (_cameraInput)
+            _cameraInput.RightClicked += RequestMove;
     }
 
     /// <summary>
@@ -118,6 +131,10 @@ public sealed class TacticalSelectionController : MonoBehaviour
     {
         _selected.Clear();
         _selecting = false;
+        _choosingDestination = false;
+        if (_cameraInput)
+            _cameraInput.RightClicked -= RequestMove;
+        _cameraInput = null;
         _presentations = null;
         _camera = null;
         _interfaceHits.Clear();
@@ -178,8 +195,13 @@ public sealed class TacticalSelectionController : MonoBehaviour
                 && _camera.pixelRect.Contains(point)
             )
             {
-                _pressPosition = point;
-                _selecting = true;
+                if (_choosingDestination)
+                    RequestMove(point);
+                else
+                {
+                    _pressPosition = point;
+                    _selecting = true;
+                }
             }
             if (mouse.rightButton.isPressed)
                 _selecting = false;
@@ -231,8 +253,48 @@ public sealed class TacticalSelectionController : MonoBehaviour
     private void OnDisable()
     {
         _selecting = false;
+        _choosingDestination = false;
         if (view)
             view.RenderMarquee(Vector2.zero, Vector2.zero, false);
+    }
+
+    /// <summary>
+    /// Arms the next unobstructed world click as a move destination instead of a selection.
+    /// </summary>
+    private void BeginMove()
+    {
+        if (isActiveAndEnabled && _presentations != null && _selected.Count > 0)
+            _choosingDestination = true;
+    }
+
+    /// <summary>
+    /// Requests movement without treating camera drags or interface clicks as orders.
+    /// </summary>
+    /// <param name="screenPosition">The requested destination in screen pixels.</param>
+    private void RequestMove(Vector2 screenPosition)
+    {
+        if (
+            !isActiveAndEnabled
+            || _camera == null
+            || _presentations == null
+            || !_camera.pixelRect.Contains(screenPosition)
+            || IsOverInterface(screenPosition)
+        )
+            return;
+        _choosingDestination = false;
+        _selecting = false;
+        MoveRequested?.Invoke(screenPosition);
+    }
+
+    /// <summary>
+    /// Cancels destination placement and requests cancellation of the selected ships' move orders.
+    /// </summary>
+    private void RequestStop()
+    {
+        if (!isActiveAndEnabled)
+            return;
+        _choosingDestination = false;
+        StopRequested?.Invoke();
     }
 
     /// <summary>
@@ -282,7 +344,11 @@ public sealed class TacticalSelectionController : MonoBehaviour
     private void OnDestroy()
     {
         if (view)
+        {
             view.CardClicked -= SelectCard;
+            view.MoveButton.onClick.RemoveListener(BeginMove);
+            view.StopButton.onClick.RemoveListener(RequestStop);
+        }
         Clear();
     }
 }

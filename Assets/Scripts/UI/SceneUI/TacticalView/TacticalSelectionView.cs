@@ -38,6 +38,13 @@ public sealed class TacticalSelectionView : MonoBehaviour
 
     [SerializeField]
     private TacticalHudGraphic[] keys;
+
+    [SerializeField]
+    private TacticalCommandButton moveButton;
+
+    [SerializeField]
+    private TacticalCommandButton stopButton;
+
     private readonly List<RectTransform> _frames = new List<RectTransform>();
     private readonly List<TacticalUnitCardView> _cards = new List<TacticalUnitCardView>();
     private readonly List<CombatUnit> _singleSelection = new List<CombatUnit>(1);
@@ -46,6 +53,9 @@ public sealed class TacticalSelectionView : MonoBehaviour
     private IContentAssetSource _assets;
     private readonly List<CombatUnit> _selectionSnapshot = new List<CombatUnit>();
     private readonly List<List<CombatUnit>> _groups = new List<List<CombatUnit>>();
+
+    public TacticalCommandButton MoveButton => moveButton;
+    public TacticalCommandButton StopButton => stopButton;
 
     public event Action<IReadOnlyList<CombatUnit>> CardClicked;
 

@@ -22,7 +22,7 @@ public sealed class TacticalViewCameraController : MonoBehaviour
     private const float _keyboardZoomOutMultiplier = 1.1f;
     private const float _twoButtonZoomRatePerPixel = 0.005f;
     private const float _fastPanMultiplier = 3f;
-    private const float _panDistanceMultiplier = 1.5f;
+    private const float _panDistanceMultiplier = 0.75f;
     private const float _windowsScrollDeltaPerUnit = 120f;
 
     private Vector3 _playableMinimum;
@@ -48,6 +48,8 @@ public sealed class TacticalViewCameraController : MonoBehaviour
     internal bool IsConfigured => _configured;
     internal float Distance => _distance;
     internal Vector3 Pivot => _pivot;
+
+    public event Action<Vector2> RightClicked;
 
     /// <summary>
     /// Captures the required camera component.
@@ -125,7 +127,7 @@ public sealed class TacticalViewCameraController : MonoBehaviour
         float largestDimension = Mathf.Max(playableSize.x, playableSize.y, playableSize.z);
         _controlledCamera = GetComponent<Camera>();
         _minimumDistance = Mathf.Max(_controlledCamera.nearClipPlane * 2f, largestDimension / 600f);
-        _minimumPanSpeed = largestDimension / 6f;
+        _minimumPanSpeed = largestDimension / 12f;
 
         Vector3 eyeOffset = transform.position - _pivot;
         if (eyeOffset.sqrMagnitude <= Mathf.Epsilon)
@@ -406,7 +408,8 @@ public sealed class TacticalViewCameraController : MonoBehaviour
             _lastPointerPosition = pointerPosition;
             _rightPointerDragging |=
                 Vector2.Distance(_rightPointerPressPosition, pointerPosition)
-                > _pointerDragThreshold;
+                    > _pointerDragThreshold
+                || mouse.leftButton.isPressed;
             if (_rightPointerDragging)
             {
                 if (mouse.leftButton.isPressed)
@@ -418,8 +421,16 @@ public sealed class TacticalViewCameraController : MonoBehaviour
 
         if (_rightPointerGestureActive && mouse.rightButton.wasReleasedThisFrame)
         {
+            bool clicked =
+                !_rightPointerDragging
+                && !mouse.leftButton.isPressed
+                && !pointerOverInterface
+                && Vector2.Distance(_rightPointerPressPosition, pointerPosition)
+                    <= _pointerDragThreshold;
             _rightPointerGestureActive = false;
             _rightPointerDragging = false;
+            if (clicked)
+                RightClicked?.Invoke(pointerPosition);
         }
     }
 

@@ -320,6 +320,16 @@ public static class TacticalViewPrefabBuilder
         SetReference(serialized, "radar", radar);
         SetReferences(serialized, "housings", new Object[] { left, rosterHousing, commands });
         SetReferences(serialized, "keys", keys);
+        SetReference(
+            serialized,
+            "moveButton",
+            keys[0].GetComponentInParent<TacticalCommandButton>()
+        );
+        SetReference(
+            serialized,
+            "stopButton",
+            keys[2].GetComponentInParent<TacticalCommandButton>()
+        );
         serialized.ApplyModifiedPropertiesWithoutUndo();
         return view;
     }

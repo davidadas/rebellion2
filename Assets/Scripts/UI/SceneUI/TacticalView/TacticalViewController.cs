@@ -28,6 +28,11 @@ public sealed class TacticalViewController : MonoBehaviour
 
     private readonly List<ContentModelInstance> modelInstances = new List<ContentModelInstance>();
     private CancellationTokenSource modelLoading;
+    private readonly Dictionary<CombatUnit, Transform> combatantPresentations =
+        new Dictionary<CombatUnit, Transform>();
+    private TacticalSelectionController selectionController;
+    private string viewerFactionInstanceID;
+    private TacticalArrivalView arrivals;
 
     /// <summary>
     /// Gets the active battle presented by this scene.
@@ -72,10 +77,90 @@ public sealed class TacticalViewController : MonoBehaviour
     }
 
     /// <summary>
+    /// Advances battle movement and presents its saved positions while the scene is unpaused.
+    /// </summary>
+    private void Update()
+    {
+        bool paused = GetComponent<TacticalMenuController>()?.IsOpen == true;
+        if (arrivals?.Advance(Time.deltaTime, paused) == false)
+        {
+            arrivals.Dispose();
+            arrivals = null;
+        }
+        if (paused)
+            return;
+        foreach (KeyValuePair<CombatUnit, Transform> presentation in combatantPresentations)
+        {
+            if (arrivals?.IsArriving(presentation.Key) == true)
+                continue;
+            TacticalMovement.Advance(presentation.Key, Time.deltaTime);
+            presentation.Value.localPosition = ToUnityVector(presentation.Key.Position);
+            Vector3 forward = ToUnityVector(presentation.Key.Forward);
+            if (forward.sqrMagnitude > Mathf.Epsilon)
+                presentation.Value.localRotation = Quaternion.LookRotation(forward.normalized);
+        }
+    }
+
+    /// <summary>
+    /// Projects a world click onto the selected friendly formation's current horizontal plane.
+    /// </summary>
+    /// <param name="screenPosition">The clicked screen location.</param>
+    private void RequestMove(Vector2 screenPosition)
+    {
+        float height = 0f;
+        int count = 0;
+        foreach (CombatUnit unit in selectionController.SelectedCombatants)
+        {
+            if (
+                unit.HasRetreated
+                || !string.Equals(
+                    unit.GetUnit().OwnerInstanceID,
+                    viewerFactionInstanceID,
+                    StringComparison.Ordinal
+                )
+            )
+                continue;
+            height += unit.Position.Y;
+            count++;
+        }
+        if (count == 0)
+            return;
+        Plane plane = new Plane(Vector3.up, new Vector3(0f, height / count, 0f));
+        Ray ray = battleCamera.ScreenPointToRay(screenPosition);
+        if (!plane.Raycast(ray, out float distance))
+            return;
+        Vector3 destination = ray.GetPoint(distance);
+        TacticalMovement.MoveTo(
+            ActiveBattle,
+            BattleMap.PlayableBounds,
+            selectionController.SelectedCombatants,
+            viewerFactionInstanceID,
+            new BattleVector3
+            {
+                X = destination.x,
+                Y = destination.y,
+                Z = destination.z,
+            }
+        );
+    }
+
+    /// <summary>
+    /// Stops pending movement for the selected friendly ships.
+    /// </summary>
+    private void RequestStop() =>
+        TacticalMovement.Stop(
+            ActiveBattle,
+            selectionController.SelectedCombatants,
+            viewerFactionInstanceID
+        );
+
+    /// <summary>
     /// Resolves the active tactical battle after the scene becomes active.
     /// </summary>
     private async void Start()
     {
+        if (ActiveBattle != null)
+            return;
         try
         {
             AppBootstrap bootstrap = AppBootstrap.EnsureExists();
@@ -98,6 +183,27 @@ public sealed class TacticalViewController : MonoBehaviour
             }
 
             string viewerFactionInstanceID = game?.GetPlayerFaction().InstanceID;
+            string themeFaction =
+                viewerFactionInstanceID
+                ?? activeBattle.GetParticipants().FirstOrDefault()?.FactionInstanceID;
+            FactionThemeLibrary themes = new FactionThemeLibrary(gameData.FactionThemes);
+            FactionTheme theme = themes.GetTheme(themeFaction);
+            AudioClip arrivalClip = null;
+            if (game == null && activeBattle.Kind == BattleKind.Space)
+            {
+                if (
+                    theme.BattleArrival == null
+                    || string.IsNullOrWhiteSpace(theme.BattleArrival.SoundPath)
+                )
+                    throw new InvalidOperationException(
+                        "The battle arrival sound is not configured."
+                    );
+                arrivalClip = await bootstrap
+                    .GetContentAssets()
+                    .LoadAudioAsync(theme.BattleArrival.SoundPath);
+                if (this == null)
+                    return;
+            }
             await InitializeAsync(
                 activeBattle,
                 battleMap,
@@ -107,15 +213,17 @@ public sealed class TacticalViewController : MonoBehaviour
             );
             if (this == null)
                 return;
-            string themeFaction =
-                viewerFactionInstanceID
-                ?? activeBattle.GetParticipants().FirstOrDefault()?.FactionInstanceID;
-            FactionTheme theme = new FactionThemeLibrary(gameData.FactionThemes).GetTheme(
-                themeFaction
-            );
             GetComponentInChildren<TacticalSelectionView>()
                 .ApplyTheme(theme.BattleHud, bootstrap.GetContentAssets());
             ContentBindings.Apply(mapRoot.gameObject, bootstrap.GetContentAssets());
+            if (arrivalClip != null)
+                arrivals = new TacticalArrivalView(
+                    transform,
+                    combatantPresentations,
+                    themes,
+                    arrivalClip,
+                    bootstrap.GetAudioManager()
+                );
         }
         catch (OperationCanceledException) { }
         catch (Exception exception)
@@ -220,6 +328,16 @@ public sealed class TacticalViewController : MonoBehaviour
         ConfigureCamera(viewerFactionInstanceID);
         battleRoot.gameObject.SetActive(true);
         GetComponent<TacticalSelectionController>().Initialize(battleCamera, presentations);
+        this.viewerFactionInstanceID =
+            viewerFactionInstanceID
+            ?? activeBattle.GetParticipants().FirstOrDefault()?.FactionInstanceID;
+        selectionController = GetComponent<TacticalSelectionController>();
+        selectionController.MoveRequested -= RequestMove;
+        selectionController.StopRequested -= RequestStop;
+        selectionController.MoveRequested += RequestMove;
+        selectionController.StopRequested += RequestStop;
+        foreach (KeyValuePair<CombatUnit, Transform> presentation in presentations)
+            combatantPresentations.Add(presentation.Key, presentation.Value);
         GetComponentInChildren<TacticalSelectionView>()
             .BindBattle(
                 presentations,
@@ -236,6 +354,11 @@ public sealed class TacticalViewController : MonoBehaviour
     /// </summary>
     private void OnDestroy()
     {
+        if (selectionController)
+        {
+            selectionController.MoveRequested -= RequestMove;
+            selectionController.StopRequested -= RequestStop;
+        }
         ReleaseModels();
     }
 
@@ -278,6 +401,9 @@ public sealed class TacticalViewController : MonoBehaviour
     /// </summary>
     private void ReleaseModels()
     {
+        arrivals?.Dispose();
+        arrivals = null;
+        combatantPresentations.Clear();
         modelLoading?.Cancel();
         modelLoading?.Dispose();
         modelLoading = null;

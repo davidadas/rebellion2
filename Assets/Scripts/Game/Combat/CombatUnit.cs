@@ -38,6 +38,11 @@ namespace Rebellion.Game.Combat
         public BattleVector3 Forward { get; set; } = new BattleVector3 { Z = 1f };
 
         /// <summary>
+        /// Gets or sets the pending move destination in battle coordinates, or null when stopped.
+        /// </summary>
+        public BattleVector3 MoveDestination { get; set; }
+
+        /// <summary>
         /// Returns the independently mutable battle copy of the strategic unit.
         /// </summary>
         /// <returns>The battle unit.</returns>
