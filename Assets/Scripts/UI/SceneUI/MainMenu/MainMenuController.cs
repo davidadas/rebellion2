@@ -101,8 +101,15 @@ public sealed class MainMenuController : MonoBehaviour
             view?.RenderFactions(contentPack.Scenario.PlayableFactionIDs);
             AudioManager audioManager = bootstrap.GetAudioManager();
             audioManager.PreloadSfx(view?.GetAudioCuePaths());
-            audioManager.PlayTrack(GetMenuMusicPath(contentPack.Definition), true);
             mainMenuCanvas.enabled = true;
+            if (LoadingScreenController.IsLoadInProgress)
+            {
+                LoadingScreenController.CompletePendingLoad(() =>
+                    audioManager.PlayTrack(GetMenuMusicPath(contentPack.Definition), true)
+                );
+            }
+            else
+                audioManager.PlayTrack(GetMenuMusicPath(contentPack.Definition), true);
         }
         catch (System.Exception exception)
         {

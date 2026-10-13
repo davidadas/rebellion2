@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using Rebellion.Game;
 using UnityEngine;
@@ -56,6 +57,11 @@ public sealed class AppBootstrap : MonoBehaviour
     /// Scene presentations use this boundary to stop rendering the outgoing game.
     /// </summary>
     internal event Action SaveLoadStarting;
+
+    /// <summary>
+    /// Gets whether the application scene loader is still completing a transition.
+    /// </summary>
+    internal bool IsSceneTransitionInProgress => _sceneLoader?.IsLoading == true;
 
     /// <summary>
     /// Ensures AppBootstrap exists. Creates minimal bootstrap if missing (for scene testing).
@@ -266,7 +272,10 @@ public sealed class AppBootstrap : MonoBehaviour
         UserContentSettings content = _userSettingsManager.Settings.Content;
         content.ActivePackID = contentPack.Definition.ID;
         content.ActiveScenarioID = contentPack.Scenario.ID;
-        content.DisabledModIDs = disabledModIDs ?? Array.Empty<string>();
+        content.SetDisabledModsForPack(
+            contentPack.FileResolver.AvailableMods.Select(mod => mod.ID),
+            disabledModIDs
+        );
         _userSettingsManager.Save();
     }
 

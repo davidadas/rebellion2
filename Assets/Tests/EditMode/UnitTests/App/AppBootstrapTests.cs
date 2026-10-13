@@ -121,6 +121,35 @@ namespace Rebellion.Tests.App
         }
 
         [Test]
+        public void RecoverFromLoadFailure_ActiveTransition_ClearsLoadingState()
+        {
+            UIComponentTestHelper.InvokeLifecycle(_bootstrap, "InitializeRuntimeCore");
+            ContentPack contentPack = _bootstrap.GetContentPack();
+            string fileName = $"bootstrap-failed-load-{System.Guid.NewGuid():N}";
+            SaveGameManager saveGameManager = SaveGameManager.Instance;
+
+            try
+            {
+                saveGameManager.SaveGameData(
+                    CreateCompatibleGame(contentPack, 42),
+                    fileName,
+                    "Bootstrap Failed Load"
+                );
+                Assert.IsTrue(_bootstrap.LoadSave(fileName));
+                Assert.IsTrue(LoadingScreenController.IsLoadInProgress);
+
+                Assert.IsTrue(LoadingScreenController.RecoverFromLoadFailure());
+
+                Assert.IsFalse(LoadingScreenController.IsLoadInProgress);
+            }
+            finally
+            {
+                File.Delete(saveGameManager.GetSaveFilePath(fileName));
+                File.Delete(saveGameManager.GetSaveMetadataFilePath(fileName));
+            }
+        }
+
+        [Test]
         public async Task InitializeMainMenuContentAsync_DestroyedDuringPreload_CompletesSafelyAsync()
         {
             UIComponentTestHelper.InvokeLifecycle(_bootstrap, "InitializeRuntimeCore");

@@ -86,6 +86,24 @@ namespace Rebellion.Tests.UI.SceneUI.LoadingScreen
             Assert.AreEqual(1f, fade.alpha);
         }
 
+        [Test]
+        public void ShowLoadFailure_ThenPrepareEntrance_RestoresLoadingStatus()
+        {
+            LoadingScreenView prefab = Resources.Load<LoadingScreenView>("UI/LoadingScreen");
+            _instance = Object.Instantiate(prefab);
+            TextMeshProUGUI status = _instance
+                .transform.Find("Background/StatusTextField")
+                .GetComponent<TextMeshProUGUI>();
+
+            _instance.ShowLoadFailure();
+
+            Assert.AreEqual("LOAD FAILED\nRETURNING TO MENU...", status.text);
+
+            _instance.PrepareEntrance();
+
+            Assert.AreEqual("Loading ...", status.text);
+        }
+
         [UnityTest]
         public IEnumerator Initialize_ApplicationShuttleExists_LoadsRenderableModel()
         {

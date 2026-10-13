@@ -86,6 +86,7 @@ public sealed class GameFlowController : MonoBehaviour
         catch (Exception exception)
         {
             Debug.LogException(exception);
+            LoadingScreenController.RecoverFromLoadFailure();
         }
     }
 

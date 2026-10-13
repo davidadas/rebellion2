@@ -19,6 +19,7 @@ internal sealed class LoadingScreenController : MonoBehaviour
     private LoadingScreenView _view;
     private Coroutine _finishRoutine;
     private Coroutine _prepareRoutine;
+    private Coroutine _recoveryRoutine;
     private bool _reconstructContent;
     private bool _loadInProgress;
 
@@ -147,6 +148,60 @@ internal sealed class LoadingScreenController : MonoBehaviour
             _activeController._transitionCompleted = null;
             completed?.Invoke();
         }
+    }
+
+    /// <summary>
+    /// Keeps the loading presentation active while a failed save load returns to the main menu.
+    /// </summary>
+    /// <returns>True when an active saved-game transition began recovery.</returns>
+    internal static bool RecoverFromLoadFailure()
+    {
+        if (_activeController?._loadInProgress != true)
+            return false;
+
+        LoadingScreenController controller = _activeController;
+        controller._transitionCompleted = null;
+        controller._reconstructContent = false;
+        controller._view?.ShowLoadFailure();
+
+        if (!Application.isPlaying)
+        {
+            controller._loadInProgress = false;
+            DestroyImmediate(controller.gameObject);
+            return true;
+        }
+
+        AppBootstrap bootstrap = controller._bootstrap ?? AppBootstrap.Instance;
+        if (bootstrap == null)
+        {
+            controller._loadInProgress = false;
+            controller._view?.SetVisible(false);
+            return false;
+        }
+
+        bootstrap.GetRuntime()?.EndGame();
+        if (controller._recoveryRoutine == null)
+        {
+            controller._recoveryRoutine = controller.StartCoroutine(
+                controller.ReturnToMainMenu(bootstrap)
+            );
+        }
+        return true;
+    }
+
+    /// <summary>
+    /// Waits for the incoming strategy scene transition to release the shared scene loader before
+    /// starting recovery navigation.
+    /// </summary>
+    /// <param name="bootstrap">The active application bootstrap.</param>
+    /// <returns>The recovery-navigation coroutine.</returns>
+    private IEnumerator ReturnToMainMenu(AppBootstrap bootstrap)
+    {
+        while (bootstrap.IsSceneTransitionInProgress)
+            yield return null;
+
+        bootstrap.LoadScene("MainMenu");
+        _recoveryRoutine = null;
     }
 
     /// <summary>

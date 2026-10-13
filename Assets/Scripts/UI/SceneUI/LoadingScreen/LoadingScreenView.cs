@@ -62,6 +62,7 @@ public sealed class LoadingScreenView : MonoBehaviour
     private Quaternion shuttleRestRotation;
     private Vector3 shuttleRestScale;
     private bool modelReady;
+    private bool loadFailed;
 
     /// <summary>
     /// Verifies the generated presentation, creates its render target, and seeds the starfield.
@@ -120,9 +121,12 @@ public sealed class LoadingScreenView : MonoBehaviour
     private void Update()
     {
         float time = Time.unscaledTime;
-        int dotCount = 1 + Mathf.FloorToInt(time * 2.25f) % 3;
-        statusText.text = $"LOADING{new string('.', dotCount)}";
-        statusText.alpha = Mathf.Lerp(0.72f, 1f, (Mathf.Sin(time * 3.2f) + 1f) * 0.5f);
+        if (!loadFailed)
+        {
+            int dotCount = 1 + Mathf.FloorToInt(time * 2.25f) % 3;
+            statusText.text = $"LOADING{new string('.', dotCount)}";
+            statusText.alpha = Mathf.Lerp(0.72f, 1f, (Mathf.Sin(time * 3.2f) + 1f) * 0.5f);
+        }
         UpdateCameraDragInput();
         displayedYaw = Mathf.SmoothDampAngle(
             displayedYaw,
@@ -207,6 +211,9 @@ public sealed class LoadingScreenView : MonoBehaviour
     /// </summary>
     internal void PrepareEntrance()
     {
+        loadFailed = false;
+        statusText.text = _loadingText;
+        statusText.alpha = 1f;
         ResetCameraInteraction();
         presentationGroup.alpha = 0f;
         fadeOverlayGroup.alpha = 0f;
@@ -229,6 +236,16 @@ public sealed class LoadingScreenView : MonoBehaviour
     internal void SetBlackOpacity(float opacity)
     {
         fadeOverlayGroup.alpha = Mathf.Clamp01(opacity);
+    }
+
+    /// <summary>
+    /// Replaces the animated loading label with a stable recovery message.
+    /// </summary>
+    internal void ShowLoadFailure()
+    {
+        loadFailed = true;
+        statusText.text = "LOAD FAILED\nRETURNING TO MENU...";
+        statusText.alpha = 1f;
     }
 
     /// <summary>
