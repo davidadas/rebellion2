@@ -640,10 +640,11 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ReplaceGame_InvalidEvent_LeavesReplacementGameAssigned()
+        public void ReplaceGame_InvalidEvent_PreservesActiveGame()
         {
             GameConfig config = TestConfig.Create();
-            GameSession manager = new(TestGame.Create(config), TestGameData.Create(config));
+            GameRoot game = TestGame.Create(config);
+            using GameSession manager = new(game, TestGameData.Create(config));
             GameRoot replacement = TestGame.Create(config);
             replacement
                 .GetEventPool()
@@ -658,7 +659,7 @@ namespace Rebellion.Tests.Simulation
 
             Assert.Throws<InvalidOperationException>(() => manager.ReplaceGame(replacement));
 
-            Assert.AreSame(replacement, manager.Game);
+            Assert.AreSame(game, manager.Game);
         }
 
         [Test]
@@ -675,7 +676,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ReplaceGame_InvalidEvent_RetainsEarlierComponentReplacement()
+        public void ReplaceGame_InvalidEvent_PreservesActiveServices()
         {
             GameConfig config = TestConfig.Create();
             GameSession manager = new(TestGame.Create(config), TestGameData.Create(config));
@@ -687,7 +688,66 @@ namespace Rebellion.Tests.Simulation
 
             Assert.Throws<InvalidOperationException>(() => manager.ReplaceGame(replacement));
 
-            Assert.AreNotSame(movement, manager.GetService<MovementCommands>());
+            Assert.AreSame(movement, manager.GetService<MovementCommands>());
+        }
+
+        [Test]
+        public void ReplaceGame_InvalidEvent_PreservesTickRuntime()
+        {
+            GameRoot replacement = TestGame.Create(_game.Config);
+            replacement.SetGameSpeed(TickSpeed.Paused);
+            replacement
+                .GetEventPool()
+                .Add(new GameEvent { InstanceID = "INVALID", MaximumActivations = 0 });
+            Assert.Throws<InvalidOperationException>(() => _session.ReplaceGame(replacement));
+
+            _session.Tick.ProcessTick();
+
+            Assert.AreEqual(1, _game.CurrentTick);
+        }
+
+        [Test]
+        public void ReplaceGame_InvalidEvent_KeepsActiveCommandConnections()
+        {
+            Regiment regiment = CreateRegiment();
+            MaintenanceCommands maintenance = _session.GetService<MaintenanceCommands>();
+            int batches = 0;
+            _session.Pipeline.ResultsResolved += _ => batches++;
+            GameRoot replacement = TestGame.Create(_game.Config);
+            replacement
+                .GetEventPool()
+                .Add(new GameEvent { InstanceID = "INVALID", MaximumActivations = 0 });
+            Assert.Throws<InvalidOperationException>(() => _session.ReplaceGame(replacement));
+
+            maintenance.TryScrap(new[] { regiment }, _faction.InstanceID);
+
+            Assert.AreEqual(1, batches);
+        }
+
+        [Test]
+        public void ReplaceGame_DerivedStateFailure_PreservesActiveRuntime()
+        {
+            GameRoot game = TestGame.Create(_game.Config);
+            GameDataCatalog data = TestContent.Data;
+            using GameSession manager = new GameSession(game, data);
+            MovementCommands movement = manager.GetService<MovementCommands>();
+            GameResultBus bus = manager.Results;
+            CapitalShip template = data.CapitalShips[0];
+            try
+            {
+                data.CapitalShips[0] = null;
+                Assert.Throws<NullReferenceException>(() =>
+                    manager.ReplaceGame(TestGame.Create(_game.Config))
+                );
+            }
+            finally
+            {
+                data.CapitalShips[0] = template;
+            }
+
+            Assert.AreSame(game, manager.Game);
+            Assert.AreSame(movement, manager.GetService<MovementCommands>());
+            Assert.AreSame(bus, manager.Results);
         }
 
         [Test]
@@ -732,6 +792,64 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(manager.GetService<SpaceCombatCommands>().HasPendingDecision);
             Assert.IsFalse(manager.Tick.IsSettled);
             Assert.AreEqual(1, decisionsRequired);
+
+            manager.Tick.ResolveCombat(true);
+
+            Assert.AreEqual(40, game.CurrentTick);
+            Assert.AreEqual(1, completedTicks);
+            Assert.IsTrue(manager.Tick.IsSettled);
+        }
+
+        [Test]
+        public void ReplaceGame_InvalidEvent_PreservesPendingCombat()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            game.CurrentTick = 40;
+            Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
+            Faction empire = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
+            game.GetFactions().Add(alliance);
+            game.GetFactions().Add(empire);
+            game.SetFactionController(alliance.InstanceID, "player", PlayerControllerType.Human);
+            PlanetSector sector = new PlanetSector { InstanceID = "SECTOR" };
+            game.AttachNode(sector, game.GetGalaxyMap());
+            Planet planet = CreatePlanet("PLANET", empire.InstanceID, 0);
+            game.AttachNode(planet, sector);
+            CreateCombatFleet(
+                game,
+                "ALLIANCE_FLEET",
+                alliance.InstanceID,
+                planet,
+                hullStrength: 1000,
+                weaponPower: 100
+            );
+            CreateCombatFleet(
+                game,
+                "EMPIRE_FLEET",
+                empire.InstanceID,
+                planet,
+                hullStrength: 1000,
+                weaponPower: 100
+            );
+            GameSession manager = TestContent.CreateGameSession(game);
+            int decisionsRequired = 0;
+            int completedTicks = 0;
+            manager.Tick.CombatDecisionRequired += () => decisionsRequired++;
+            manager.Tick.TickCompleted += () => completedTicks++;
+
+            manager.Tick.ReconcileLoadedState();
+
+            Assert.AreEqual(40, game.CurrentTick);
+            Assert.IsTrue(manager.GetService<SpaceCombatCommands>().HasPendingDecision);
+            Assert.IsFalse(manager.Tick.IsSettled);
+            Assert.AreEqual(1, decisionsRequired);
+
+            GameRoot replacement = TestGame.Create(game.Config);
+            replacement
+                .GetEventPool()
+                .Add(new GameEvent { InstanceID = "INVALID", MaximumActivations = 0 });
+            Assert.Throws<InvalidOperationException>(() => manager.ReplaceGame(replacement));
+            Assert.IsFalse(manager.Tick.IsSettled);
+            Assert.IsTrue(manager.GetService<SpaceCombatCommands>().HasPendingDecision);
 
             manager.Tick.ResolveCombat(true);
 

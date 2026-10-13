@@ -1,37 +1,26 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Rebellion.Game;
-using Rebellion.Game.Factions;
 using Rebellion.Game.Results;
-using Rebellion.Game.Units;
-using Rebellion.SceneGraph;
 using Rebellion.Util.DependencyInjection;
-using Rebellion.Util.Random;
-using Rebellion.Util.Reflection;
 
 namespace Rebellion.Simulation
 {
     /// <summary>
-    /// Constructs and connects runtime components for the active game graph.
+    /// Publishes fully prepared game runtimes while preserving the session's scheduling and event identity.
     /// </summary>
     public sealed class GameSession : IServiceLocator, IDisposable
     {
         private readonly GameDataCatalog _gameData;
-        private readonly List<Action> _disconnect = new();
-        private readonly List<ServiceLocator> _retiredServiceScopes = new();
-        private IRandomNumberProvider _randomProvider;
-        private ServiceLocator _serviceScope;
+        private GameSessionRuntime _runtime;
 
-        public GameRoot Game { get; private set; }
+        public GameRoot Game => _runtime.Game;
         public GameResultPipeline Pipeline { get; }
         public GameTickProcessor Tick { get; }
 
-        internal MessageObserver MessageObserver { get; private set; }
-
-        internal GameEventCommands GameEventCommands { get; private set; }
-
-        internal GameResultBus Results { get; private set; }
+        internal MessageObserver MessageObserver => _runtime.MessageObserver;
+        internal GameEventCommands GameEventCommands => _runtime.GameEventCommands;
+        internal GameResultBus Results => _runtime.Results;
 
         /// <summary>
         /// Prepares a game graph and constructs its connected runtime components.
@@ -54,189 +43,56 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <typeparam name="T">The requested runtime service type.</typeparam>
         /// <returns>The current game's service instance.</returns>
-        public T GetService<T>() => _serviceScope.GetService<T>();
+        public T GetService<T>() => _runtime.Services.GetService<T>();
 
         /// <summary>
         /// Resolves a runtime service by its type.
         /// </summary>
         /// <param name="serviceType">The requested runtime service type.</param>
         /// <returns>The current game's service instance.</returns>
-        public object GetService(Type serviceType) => _serviceScope.GetService(serviceType);
+        public object GetService(Type serviceType) => _runtime.Services.GetService(serviceType);
 
         /// <summary>
-        /// Rebuilds components in place, preserving partial initialization on failure.
+        /// Prepares and connects a replacement before publishing it as the active runtime.
+        /// Failed preparation leaves the active graph, tick state, and subscriptions intact.
         /// </summary>
         /// <param name="game">The replacement graph to prepare.</param>
         internal void ReplaceGame(GameRoot game)
         {
-            if (game == null)
-                throw new InvalidOperationException("Cannot manage a null game.");
-
-            Game = game;
-            if (Game.Config == null)
-                Game.SetConfig(_gameData.GameConfig);
-            Game.RebuildSceneState();
-            Tick.Reset();
-            _randomProvider = game.Random;
-            Action[] previousConnections = _disconnect.ToArray();
-            ServiceLocator previousServiceScope = _serviceScope;
+            GameSessionRuntime replacement = new GameSessionRuntime(game, _gameData);
             try
             {
-                InitializeComponents();
-                RebuildDerivedState();
+                replacement.ConnectResults(ProcessImmediateResults);
             }
             catch
             {
-                if (previousServiceScope != null && previousServiceScope != _serviceScope)
-                    _retiredServiceScopes.Add(previousServiceScope);
+                replacement.Dispose();
                 throw;
             }
 
-            foreach (Action disconnect in previousConnections)
-            {
-                disconnect();
-                _disconnect.Remove(disconnect);
-            }
-            previousServiceScope?.Dispose();
-            foreach (ServiceLocator retiredScope in _retiredServiceScopes)
-                retiredScope.Dispose();
-            _retiredServiceScopes.Clear();
+            GameSessionRuntime previous = _runtime;
+            _runtime = replacement;
+            Tick.ConnectRuntime(replacement.TickRuntime);
+            Tick.Reset();
+            previous?.Dispose();
         }
 
         /// <summary>
-        /// Detaches the result subscriptions and producer connections owned by this runtime.
+        /// Releases the subscriptions and services owned by the active runtime.
         /// </summary>
         public void Dispose()
         {
-            foreach (Action disconnect in _disconnect)
-                disconnect();
-            _disconnect.Clear();
-            _serviceScope?.Dispose();
-            foreach (ServiceLocator retiredScope in _retiredServiceScopes)
-                retiredScope.Dispose();
-            _retiredServiceScopes.Clear();
+            _runtime?.Dispose();
         }
 
         /// <summary>
-        /// Constructs the runtime components and connects their explicit dependencies.
-        /// </summary>
-        private void InitializeComponents()
-        {
-            MessageFactory messageFactory = new MessageFactory(
-                _gameData.MessageDefinitions.GetDeepCopy()
-            );
-            GameResultBus resultBus = new GameResultBus();
-            _serviceScope = GameServiceRegistration.Create(
-                Game,
-                _gameData,
-                _randomProvider,
-                messageFactory
-            );
-            MessageObserver = GetService<MessageObserver>();
-            GetService<MovementQueries>()
-                .SetCompletedBuildingMovementPolicy(GetService<HeadquartersQueries>().CanMove);
-            Tick.ConnectRuntime(_serviceScope);
-            GameEventCommands = GetService<GameEventCommands>();
-            GameEventCommands.ValidateEvents(Game.GetEventPool());
-
-            Results = resultBus;
-            ConnectResults();
-        }
-
-        /// <summary>
-        /// Connects result producers, typed reactions, and observers.
-        /// </summary>
-        private void ConnectResults()
-        {
-            GameServiceRegistration.ConnectObservers(_serviceScope, Results);
-
-            PlanetaryControlCommands planetaryControlSystem =
-                GetService<PlanetaryControlCommands>();
-            PlanetaryControlObserver planetaryControlObserver =
-                GetService<PlanetaryControlObserver>();
-            FogOfWarObserver fogOfWarObserver = GetService<FogOfWarObserver>();
-            planetaryControlSystem.OwnershipChanging +=
-                planetaryControlObserver.ObserveOwnershipChange;
-            planetaryControlSystem.OwnershipChanged += fogOfWarObserver.ObserveOwnershipChange;
-            _disconnect.Add(() =>
-                planetaryControlSystem.OwnershipChanging -=
-                    planetaryControlObserver.ObserveOwnershipChange
-            );
-            _disconnect.Add(() =>
-                planetaryControlSystem.OwnershipChanged -= fogOfWarObserver.ObserveOwnershipChange
-            );
-
-            MovementCommands movementSystem = GetService<MovementCommands>();
-            movementSystem.ResultsProduced += ProcessImmediateResults;
-            _disconnect.Add(() => movementSystem.ResultsProduced -= ProcessImmediateResults);
-            MaintenanceCommands maintenanceSystem = GetService<MaintenanceCommands>();
-            maintenanceSystem.ResultsProduced += ProcessImmediateResults;
-            _disconnect.Add(() => maintenanceSystem.ResultsProduced -= ProcessImmediateResults);
-            OfficerCommandCommands officerCommandSystem = GetService<OfficerCommandCommands>();
-            officerCommandSystem.ResultsProduced += ProcessImmediateResults;
-            _disconnect.Add(() => officerCommandSystem.ResultsProduced -= ProcessImmediateResults);
-            CaptiveCommands captiveSystem = GetService<CaptiveCommands>();
-            captiveSystem.ResultsProduced += ProcessImmediateResults;
-            _disconnect.Add(() => captiveSystem.ResultsProduced -= ProcessImmediateResults);
-            BombardmentCommands bombardmentSystem = GetService<BombardmentCommands>();
-            bombardmentSystem.ResultsProduced += ProcessImmediateResults;
-            _disconnect.Add(() => bombardmentSystem.ResultsProduced -= ProcessImmediateResults);
-            PlanetaryAssaultCommands planetaryAssaultSystem =
-                GetService<PlanetaryAssaultCommands>();
-            planetaryAssaultSystem.ResultsProduced += ProcessImmediateResults;
-            _disconnect.Add(() =>
-                planetaryAssaultSystem.ResultsProduced -= ProcessImmediateResults
-            );
-            VictoryCommands victorySystem = GetService<VictoryCommands>();
-            victorySystem.ResultsProduced += ProcessImmediateResults;
-            _disconnect.Add(() => victorySystem.ResultsProduced -= ProcessImmediateResults);
-        }
-
-        /// <summary>
-        /// Routes results produced outside the tick loop and then refreshes visible intelligence.
+        /// Routes results produced outside the tick loop and refreshes visible intelligence.
         /// </summary>
         /// <param name="results">The immediately produced game results.</param>
         private void ProcessImmediateResults(IReadOnlyList<GameResult> results)
         {
             Pipeline.ProcessImmediate(results);
             GetService<FogOfWarObserver>().RefreshVisibleKnowledge();
-        }
-
-        /// <summary>
-        /// Rebuilds derived state that is not persisted.
-        /// </summary>
-        private void RebuildDerivedState()
-        {
-            IManufacturable[] templates = CopyTemplates(_gameData.Buildings)
-                .Cast<IManufacturable>()
-                .Concat(CopyTemplates(_gameData.CapitalShips))
-                .Concat(CopyTemplates(_gameData.Starfighters))
-                .Concat(CopyTemplates(_gameData.Regiments))
-                .Concat(CopyTemplates(_gameData.SpecialForces))
-                .ToArray();
-
-            foreach (Faction faction in Game.GetFactions())
-                faction.RebuildResearchCatalog(templates);
-
-            GetService<ManufacturingObserver>().RebuildQueues();
-            GetService<FogOfWarObserver>().ReconcileKnowledge();
-        }
-
-        /// <summary>
-        /// Creates detached template copies with fresh runtime identities.
-        /// </summary>
-        /// <typeparam name="T">The scene-node template type.</typeparam>
-        /// <param name="templates">The templates to copy.</param>
-        /// <returns>Detached copies suitable for derived catalogs.</returns>
-        private static IEnumerable<T> CopyTemplates<T>(IEnumerable<T> templates)
-            where T : class, ISceneNode
-        {
-            foreach (T template in templates)
-            {
-                T copy = (T)template.CreateCopy();
-                copy.InstanceID = null;
-                yield return copy;
-            }
         }
     }
 }

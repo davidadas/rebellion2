@@ -358,6 +358,22 @@ namespace Rebellion.Tests.App
         }
 
         [Test]
+        public void LoadGame_InvalidEvent_PreservesActiveGame()
+        {
+            GameRoot original = CreateGame();
+            _runtime.StartGame(original);
+            GameRoot replacement = CreateGame();
+            replacement
+                .GetEventPool()
+                .Add(new GameEvent { InstanceID = "INVALID", MaximumActivations = 0 });
+            _saveGameManager.SaveGameData(replacement, "invalid-event", "Invalid Event");
+
+            Assert.Throws<InvalidOperationException>(() => _runtime.LoadGame("invalid-event"));
+
+            Assert.AreSame(original, _runtime.GetActiveGame());
+        }
+
+        [Test]
         public void LoadGame_ValidSave_KeepsSessionIdentity()
         {
             GameSession session = _runtime.StartGame(CreateGame());
