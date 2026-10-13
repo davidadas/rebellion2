@@ -50,6 +50,24 @@ namespace Rebellion.Tests.Game.Units
             };
         }
 
+        /// <summary>
+        /// Checks the movement query preserves configured ratings without allowing negative speed.
+        /// </summary>
+        /// <param name="configured">The configured speed.</param>
+        /// <param name="expected">The non-negative movement speed.</param>
+        [TestCase(8, 8)]
+        [TestCase(0, 0)]
+        [TestCase(-8, 0)]
+        public void GetSublightSpeed_ConfiguredRating_ReturnsNonNegativeSpeed(
+            int configured,
+            int expected
+        )
+        {
+            _starfighter.SublightSpeed = configured;
+
+            Assert.AreEqual(expected, _starfighter.GetSublightSpeed());
+        }
+
         [Test]
         public void GetManufacturingType_ForStarfighter_ReturnsShip()
         {

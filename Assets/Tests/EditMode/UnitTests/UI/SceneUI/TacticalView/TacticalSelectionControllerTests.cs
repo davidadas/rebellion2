@@ -411,6 +411,125 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         }
 
         /// <summary>
+        /// Checks right clicks request movement while an orbit gesture does not.
+        /// </summary>
+        /// <returns>The runtime pointer interaction and mode transitions.</returns>
+        [UnityTest]
+        public IEnumerator MoveRequested_RightClickThenOrbit_EmitsOnlyClickOrder()
+        {
+            PreparePlayMode();
+            yield return new EnterPlayMode();
+            SetUp();
+            InputTestFixture input = new InputTestFixture();
+            input.Setup();
+            try
+            {
+                Mouse mouse = InputSystem.AddDevice<Mouse>();
+                AddHull(Vector3.zero);
+                _controller.Initialize(_camera, _presentations);
+                _camera
+                    .GetComponent<TacticalViewCameraController>()
+                    .Configure(
+                        new BattleMapBounds
+                        {
+                            MinimumX = -1000f,
+                            MaximumX = 1000f,
+                            MinimumY = -1000f,
+                            MaximumY = 1000f,
+                            MinimumZ = -1000f,
+                            MaximumZ = 1000f,
+                        },
+                        Vector3.zero
+                    );
+                int orders = 0;
+                _controller.MoveRequested += _ => orders++;
+                Vector2 point = _camera.WorldToScreenPoint(Vector3.zero);
+                InputSystem.QueueStateEvent(
+                    mouse,
+                    new MouseState { position = point }.WithButton(MouseButton.Right)
+                );
+                yield return null;
+                InputSystem.QueueStateEvent(mouse, new MouseState { position = point });
+                yield return null;
+                Assert.AreEqual(1, orders);
+
+                InputSystem.QueueStateEvent(
+                    mouse,
+                    new MouseState { position = point }.WithButton(MouseButton.Right)
+                );
+                yield return null;
+                InputSystem.QueueStateEvent(
+                    mouse,
+                    new MouseState { position = point + new Vector2(40f, 0f) }.WithButton(
+                        MouseButton.Right
+                    )
+                );
+                yield return null;
+                InputSystem.QueueStateEvent(
+                    mouse,
+                    new MouseState { position = point + new Vector2(40f, 0f) }
+                );
+                yield return null;
+
+                Assert.AreEqual(1, orders);
+            }
+            finally
+            {
+                input.TearDown();
+                UnityEngine.Object.DestroyImmediate(_instance);
+            }
+            yield return new ExitPlayMode();
+        }
+
+        /// <summary>
+        /// Checks the Move key consumes a destination click without changing selection and Stop is connected.
+        /// </summary>
+        /// <returns>The runtime command interaction and mode transitions.</returns>
+        [UnityTest]
+        public IEnumerator MoveRequested_MoveButtonThenWorldClick_PreservesSelectionAndWiresStop()
+        {
+            PreparePlayMode();
+            yield return new EnterPlayMode();
+            SetUp();
+            InputTestFixture input = new InputTestFixture();
+            input.Setup();
+            try
+            {
+                Mouse mouse = InputSystem.AddDevice<Mouse>();
+                CombatUnit unit = AddHull(Vector3.zero);
+                _controller.Initialize(_camera, _presentations);
+                Vector2 point = _camera.WorldToScreenPoint(Vector3.zero);
+                _controller.SelectAt(point);
+                int orders = 0;
+                int stops = 0;
+                _controller.MoveRequested += _ => orders++;
+                _controller.StopRequested += () => stops++;
+                TacticalSelectionView view =
+                    _instance.GetComponentInChildren<TacticalSelectionView>();
+                view.MoveButton.onClick.Invoke();
+
+                InputSystem.QueueStateEvent(
+                    mouse,
+                    new MouseState { position = point }.WithButton(MouseButton.Left)
+                );
+                yield return null;
+                InputSystem.QueueStateEvent(mouse, new MouseState { position = point });
+                yield return null;
+                view.StopButton.onClick.Invoke();
+
+                Assert.AreEqual(1, orders);
+                Assert.AreEqual(1, stops);
+                Assert.AreSame(unit, _controller.SelectedCombatant);
+            }
+            finally
+            {
+                input.TearDown();
+                UnityEngine.Object.DestroyImmediate(_instance);
+            }
+            yield return new ExitPlayMode();
+        }
+
+        /// <summary>
         /// Verifies additive world selection and toggle removal.
         /// </summary>
         [Test]

@@ -130,6 +130,31 @@ namespace Rebellion.Tests.Game.Combat
             Assert.AreEqual(remainingShields, restored.CurrentShieldStrength);
         }
 
+        /// <summary>
+        /// Checks saving a moving combatant preserves its position and unfinished order.
+        /// </summary>
+        [Test]
+        public void Serialize_MoveDestination_PreservesPendingOrder()
+        {
+            CombatUnit unit = CombatUnit.Create(new CapitalShip { SublightSpeed = 4 });
+            unit.Position.X = 5f;
+            unit.MoveDestination = new BattleVector3
+            {
+                X = 20f,
+                Y = 3f,
+                Z = 40f,
+            };
+
+            CombatUnit restored = SerializationHelper.Deserialize<CombatUnit>(
+                SerializationHelper.Serialize(unit)
+            );
+
+            Assert.AreEqual(5f, restored.Position.X);
+            Assert.AreEqual(20f, restored.MoveDestination.X);
+            Assert.AreEqual(3f, restored.MoveDestination.Y);
+            Assert.AreEqual(40f, restored.MoveDestination.Z);
+        }
+
         [Test]
         public void Serialize_FighterHull_PreservesCurrentAndMaximum()
         {

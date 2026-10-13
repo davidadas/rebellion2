@@ -29,6 +29,11 @@ public sealed class TacticalMenuController : MonoBehaviour, ICancelable
     private bool _dirty;
 
     /// <summary>
+    /// Gets whether the tactical scene is paused by its modal options menu.
+    /// </summary>
+    public bool IsOpen => _menu?.IsOpen == true;
+
+    /// <summary>
     /// Connects this scene to the shared menu services after application initialization.
     /// </summary>
     /// <param name="bootstrap">The initialized application service owner.</param>

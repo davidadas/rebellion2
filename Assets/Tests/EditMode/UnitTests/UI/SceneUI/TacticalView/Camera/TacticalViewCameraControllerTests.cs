@@ -58,6 +58,37 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView.Camera
             Assert.That(controller.Pivot.z, Is.LessThanOrEqualTo(3000f));
         }
 
+        /// <summary>
+        /// Checks normal and shift panning use half their preceding near-camera speeds.
+        /// </summary>
+        /// <param name="fast">Whether shift panning is active.</param>
+        /// <param name="expected">The expected travel in a tenth of a second.</param>
+        [TestCase(false, 50f)]
+        [TestCase(true, 150f)]
+        public void Pan_NearCamera_UsesHalvedMinimumSpeed(bool fast, float expected)
+        {
+            controller.Pan(Vector2.up, 0.1f, fast);
+
+            Assert.That(controller.Pivot.z, Is.EqualTo(expected).Within(0.001f));
+        }
+
+        /// <summary>
+        /// Checks distance-scaled pan speed is also halved for normal and shift navigation.
+        /// </summary>
+        /// <param name="fast">Whether shift panning is active.</param>
+        /// <param name="expected">The expected travel in a tenth of a second.</param>
+        [TestCase(false, 150f)]
+        [TestCase(true, 450f)]
+        public void Pan_DistantCamera_UsesHalvedDistanceSpeed(bool fast, float expected)
+        {
+            cameraObject.transform.position = new Vector3(0f, 0f, -2000f);
+            controller.Configure(CreatePlayableBounds(), Vector3.zero);
+
+            controller.Pan(Vector2.up, 0.1f, fast);
+
+            Assert.That(controller.Pivot.z, Is.EqualTo(expected).Within(0.001f));
+        }
+
         [Test]
         public void ZoomByScroll_PositiveWindowsWheelUnit_ReducesCameraDistance()
         {
