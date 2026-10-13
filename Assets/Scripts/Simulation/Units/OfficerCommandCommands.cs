@@ -15,7 +15,6 @@ namespace Rebellion.Simulation
     public sealed class OfficerCommandCommands
     {
         private readonly GameRoot _game;
-        private readonly OfficerCommandResolver _resolver;
 
         /// <summary>
         /// Raised after an immediate command appointment produces results.
@@ -29,7 +28,6 @@ namespace Rebellion.Simulation
         public OfficerCommandCommands(GameRoot game)
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
-            _resolver = new OfficerCommandResolver(game);
         }
 
         /// <summary>
@@ -99,7 +97,7 @@ namespace Rebellion.Simulation
                         )
                         .ToList()
                 )
-                    _resolver.ApplyRank(incumbent, OfficerRank.None, commandTarget, results);
+                    ApplyRank(incumbent, OfficerRank.None, commandTarget, results);
             }
 
             if (officer.CurrentRank == rank)
@@ -111,9 +109,45 @@ namespace Rebellion.Simulation
                 return true;
             }
 
-            _resolver.ApplyRank(officer, rank, commandTarget, results);
+            ApplyRank(officer, rank, commandTarget, results);
             ResultsProduced?.Invoke(results);
             return true;
+        }
+
+        /// <summary>
+        /// Changes one officer's post and records both command notifications.
+        /// </summary>
+        /// <param name="officer">The officer to update.</param>
+        /// <param name="rank">The new post.</param>
+        /// <param name="commandTarget">The command associated with the change.</param>
+        /// <param name="results">The destination result collection.</param>
+        private void ApplyRank(
+            Officer officer,
+            OfficerRank rank,
+            ISceneNode commandTarget,
+            ICollection<GameResult> results
+        )
+        {
+            OfficerRank previousRank = officer.CurrentRank;
+            officer.CurrentRank = rank;
+            results.Add(
+                new CommandKindChangedResult
+                {
+                    Officer = officer,
+                    CommandKind = (int)rank,
+                    Detail = (int)previousRank,
+                    Tick = _game.CurrentTick,
+                }
+            );
+            results.Add(
+                new OfficerCommandingResult
+                {
+                    Officer = officer,
+                    CommandTarget = rank == OfficerRank.None ? null : commandTarget,
+                    Context = commandTarget,
+                    Tick = _game.CurrentTick,
+                }
+            );
         }
 
         /// <summary>

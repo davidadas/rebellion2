@@ -24,7 +24,6 @@ namespace Rebellion.Simulation
         private readonly FogOfWarQueries _fogOfWarQueries;
         private readonly EvacuationLossResolver _evacuationLosses;
         private readonly FleetCommands _fleetSystem;
-        private readonly OfficerCommandResolver _officerCommandResolver;
         private readonly PersonnelCommands _personnelCommands;
         private readonly MovementQueries _queries;
         private readonly IRandomNumberProvider _movementRandom;
@@ -65,7 +64,6 @@ namespace Rebellion.Simulation
             _evacuationLosses = new EvacuationLossResolver(game, _movementRandom);
             _personnelCommands =
                 personnelCommands ?? new PersonnelCommands(new PersonnelQueries(game));
-            _officerCommandResolver = new OfficerCommandResolver(game);
         }
 
         /// <summary>
@@ -2178,9 +2176,99 @@ namespace Rebellion.Simulation
         )
         {
             IReadOnlyDictionary<Officer, ISceneNode> previousCommandTargets =
-                _officerCommandResolver.CaptureRelocatedCommandTargets(node);
+                CaptureRelocatedCommandTargets(node);
             _game.MoveNode(node, destination);
-            _officerCommandResolver.ReconcileRelocatedCommandRanks(previousCommandTargets, results);
+            ReconcileRelocatedCommandRanks(previousCommandTargets, results);
+        }
+
+        /// <summary>
+        /// Captures the command target of every ranked officer relocated with a scene node.
+        /// </summary>
+        /// <param name="movedNode">The officer or container about to be relocated.</param>
+        /// <returns>The ranked officers and their command targets before relocation.</returns>
+        private static IReadOnlyDictionary<Officer, ISceneNode> CaptureRelocatedCommandTargets(
+            ISceneNode movedNode
+        )
+        {
+            if (movedNode == null)
+                return new Dictionary<Officer, ISceneNode>();
+
+            IEnumerable<Officer> officers =
+                movedNode is Officer officer ? new[] { officer }
+                : movedNode is ContainerNode container
+                    ? container.GetChildren<Officer>(recursive: true)
+                : Enumerable.Empty<Officer>();
+
+            return officers
+                .Where(candidate => candidate.CurrentRank != OfficerRank.None)
+                .ToDictionary(
+                    candidate => candidate,
+                    OfficerCommandRules.ResolveCommandHierarchyTarget
+                );
+        }
+
+        /// <summary>
+        /// Resigns relocated officers whose fleet or planetary command changed.
+        /// </summary>
+        /// <param name="previousCommandTargets">The command targets captured before relocation.</param>
+        /// <param name="results">The movement results receiving command changes.</param>
+        private void ReconcileRelocatedCommandRanks(
+            IReadOnlyDictionary<Officer, ISceneNode> previousCommandTargets,
+            ICollection<GameResult> results
+        )
+        {
+            foreach (KeyValuePair<Officer, ISceneNode> command in previousCommandTargets)
+            {
+                Officer officer = command.Key;
+                if (
+                    officer.CurrentRank == OfficerRank.None
+                    || ReferenceEquals(
+                        command.Value,
+                        OfficerCommandRules.ResolveCommandHierarchyTarget(officer)
+                    )
+                )
+                    continue;
+
+                ResignRelocatedOfficer(
+                    officer,
+                    command.Value ?? OfficerCommandRules.ResolveCommandHierarchyTarget(officer),
+                    results
+                );
+            }
+        }
+
+        /// <summary>
+        /// Clears a relocated officer's post and records both command notifications.
+        /// </summary>
+        /// <param name="officer">The relocated officer.</param>
+        /// <param name="previousCommandTarget">The command associated with the resignation.</param>
+        /// <param name="results">The movement results receiving the resignation.</param>
+        private void ResignRelocatedOfficer(
+            Officer officer,
+            ISceneNode previousCommandTarget,
+            ICollection<GameResult> results
+        )
+        {
+            OfficerRank previousRank = officer.CurrentRank;
+            officer.CurrentRank = OfficerRank.None;
+            results.Add(
+                new CommandKindChangedResult
+                {
+                    Officer = officer,
+                    CommandKind = (int)OfficerRank.None,
+                    Detail = (int)previousRank,
+                    Tick = _game.CurrentTick,
+                }
+            );
+            results.Add(
+                new OfficerCommandingResult
+                {
+                    Officer = officer,
+                    CommandTarget = null,
+                    Context = previousCommandTarget,
+                    Tick = _game.CurrentTick,
+                }
+            );
         }
 
         /// <summary>
