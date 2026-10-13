@@ -53,3 +53,21 @@ BUILD_TARGET=StandaloneWindows64 BUILD_PLAYER_PATH=build/rebellion2.exe ./build.
 
 Player builds generate the UI through `StandalonePlayerBuild.Build` and verify that development
 content under `Assets/Content/` was not embedded in the player.
+
+## Tactical scene preview
+
+Rebuild the UI after changing tactical prefab builders, then open the generated `TacticalView`
+scene. Its standalone preview deploys the default fleets and plays their hyperspace arrivals.
+Copy the matching media branch's `Content/` changes into `Assets/Content/` first; the faction
+themes provide arrival colors and the `Pack/Shared/Tactical/Audio/hyperspace-arrival.wav` sound.
+
+Select friendly units and right-click the battlefield to move, or press **Move** and left-click
+the destination. **Stop** clears the selected units' pending move orders. Right-drag still orbits
+the camera. Regular and Shift camera panning use the reduced speed.
+
+Units move forward through curved turns at their configured sublight speed. Fighters turn at
+ten degrees per speed point per second; capital ships turn at half that rate. Destinations
+preserve the selected formation's offsets and keep its unit centers inside the map. Curved
+travel does not yet avoid collisions or enforce map boundaries along the route. Engine-component
+damage does not yet change the configured speed. Pending destinations are saved with battle state;
+loading an existing battle preserves its poses without replaying the arrival presentation.
