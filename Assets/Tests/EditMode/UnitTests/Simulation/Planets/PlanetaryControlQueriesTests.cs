@@ -17,7 +17,9 @@ namespace Rebellion.Tests.Simulation
         private Planet _targetPlanet;
         private PlanetaryControlQueries _queries;
 
-        /// <summary>Creates a planet and two factions for read-only control calculations.</summary>
+        /// <summary>
+        /// Creates a planet and two factions for read-only control calculations.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -86,7 +88,9 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(_queries.GetPlanetController(_targetPlanet));
         }
 
-        /// <summary>Places a completed regiment after setting its planet's ownership.</summary>
+        /// <summary>
+        /// Places a completed regiment after setting its planet's ownership.
+        /// </summary>
         /// <param name="id">The regiment identifier.</param>
         /// <param name="owner">The regiment's faction.</param>
         /// <returns>The attached regiment.</returns>

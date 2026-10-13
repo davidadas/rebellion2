@@ -156,7 +156,9 @@ namespace Rebellion.Tests.Simulation
             Assert.AreSame(regiment, game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
         }
 
-        /// <summary>Builds a planet under an opposing blockade.</summary>
+        /// <summary>
+        /// Builds a planet under an opposing blockade.
+        /// </summary>
         /// <returns>The game and blockaded planet.</returns>
         private static (GameRoot game, Planet planet) BuildScene()
         {

@@ -552,6 +552,7 @@ namespace Rebellion.Simulation
         {
             Planet viewPlanet = new Planet
             {
+                TypeID = masterPlanet.TypeID,
                 InstanceID = masterPlanet.InstanceID,
                 DisplayName = masterPlanet.DisplayName,
                 PlanetDataId = masterPlanet.PlanetDataId,

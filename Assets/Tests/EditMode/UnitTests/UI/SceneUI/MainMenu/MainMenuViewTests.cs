@@ -138,6 +138,21 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         [Test]
+        public void AuthoredPrefab_ModelTurntables_UsePresentationSpeeds()
+        {
+            float[] speeds = _prefabRoot
+                .GetComponentsInChildren<AutoRotate>(true)
+                .Select(spinner => Mathf.Abs(spinner.DegreesPerSecond))
+                .OrderBy(speed => speed)
+                .ToArray();
+
+            CollectionAssert.AreEqual(
+                new[] { 1f / 3f, 120f, 240f, 240f, 240f, 240f, 240f },
+                speeds
+            );
+        }
+
+        [Test]
         public void AuthoredPrefab_PlanetRig_UsesDayNightShade()
         {
             Transform shade = _prefabRoot.transform.Find("PlanetRig/DayNightShade");

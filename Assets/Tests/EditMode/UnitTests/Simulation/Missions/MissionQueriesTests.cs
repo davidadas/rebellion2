@@ -13,7 +13,9 @@ using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Simulation;
 
-/// <summary>Verifies get mission odds default combines known detectors and assigned decoys.</summary>
+/// <summary>
+/// Verifies get mission odds default combines known detectors and assigned decoys.
+/// </summary>
 namespace Rebellion.Tests.Simulation
 {
     [TestFixture]

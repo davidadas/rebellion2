@@ -50,6 +50,20 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void BuildFactionView_UnexploredPlanet_PreservesTypeID()
+        {
+            _tatooine.TypeID = "PLTAT01";
+
+            GalaxyMap view = _queries.BuildFactionView(_alliance);
+            Planet viewTatooine = view.GetChildren<PlanetSector>()
+                .First(sector => sector.InstanceID == _outerRim.InstanceID)
+                .GetChildren<Planet>()
+                .First(planet => planet.InstanceID == _tatooine.InstanceID);
+
+            Assert.AreEqual(_tatooine.TypeID, viewTatooine.TypeID);
+        }
+
+        [Test]
         public void BuildFactionView_UnexploredOwnedPlanet_HidesStatus()
         {
             _coruscant.EnergyCapacity = 7;

@@ -4,14 +4,18 @@ using Rebellion.Game.Results;
 
 namespace Rebellion.Simulation
 {
-    /// <summary>Routes headquarters losses to victory resolution in batch order.</summary>
+    /// <summary>
+    /// Routes headquarters losses to victory resolution in batch order.
+    /// </summary>
     public sealed class VictoryObserver : IResultObserver, IDisposable
     {
         private readonly VictoryCommands _commands;
         private readonly VictoryQueries _queries;
         private IDisposable _subscription;
 
-        /// <summary>Creates the victory result listener.</summary>
+        /// <summary>
+        /// Creates the victory result listener.
+        /// </summary>
         /// <param name="commands">The general victory declaration operation.</param>
         /// <param name="queries">The configured victory eligibility rules.</param>
         public VictoryObserver(VictoryCommands commands, VictoryQueries queries)
@@ -20,7 +24,9 @@ namespace Rebellion.Simulation
             _queries = queries ?? throw new ArgumentNullException(nameof(queries));
         }
 
-        /// <summary>Registers the headquarters-loss callback with the result bus.</summary>
+        /// <summary>
+        /// Registers the headquarters-loss callback with the result bus.
+        /// </summary>
         /// <param name="results">The bus that delivers headquarters losses.</param>
         public void Connect(GameResultBus results)
         {
@@ -31,7 +37,9 @@ namespace Rebellion.Simulation
             ).Subscribe<HeadquartersLostResult>(HandleResults);
         }
 
-        /// <summary>Stops receiving headquarters losses.</summary>
+        /// <summary>
+        /// Stops receiving headquarters losses.
+        /// </summary>
         public void Dispose() => _subscription?.Dispose();
 
         /// <summary>

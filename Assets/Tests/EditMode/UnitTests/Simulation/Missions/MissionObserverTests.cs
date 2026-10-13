@@ -10,7 +10,9 @@ using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Simulation;
 
-/// <summary>Verifies handle results captured mission participant tears down mission at current planet.</summary>
+/// <summary>
+/// Verifies handle results captured mission participant tears down mission at current planet.
+/// </summary>
 namespace Rebellion.Tests.Simulation
 {
     [TestFixture]

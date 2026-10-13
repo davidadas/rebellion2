@@ -10,13 +10,17 @@ using Rebellion.SceneGraph;
 
 namespace Rebellion.Simulation
 {
-    /// <summary>Resolves coordinated withdrawal for every unit on one combat side.</summary>
+    /// <summary>
+    /// Resolves coordinated withdrawal for every unit on one combat side.
+    /// </summary>
     internal sealed class SpaceCombatWithdrawalResolver
     {
         private readonly GameRoot _game;
         private readonly SpaceCombatQueries _spaceCombatQueries;
 
-        /// <summary>Creates withdrawal resolution.</summary>
+        /// <summary>
+        /// Creates withdrawal resolution.
+        /// </summary>
         /// <param name="game">The active game graph.</param>
         /// <param name="spaceCombatQueries">Space-combat withdrawal rules.</param>
         internal SpaceCombatWithdrawalResolver(GameRoot game, SpaceCombatQueries spaceCombatQueries)
@@ -26,7 +30,9 @@ namespace Rebellion.Simulation
                 spaceCombatQueries ?? throw new ArgumentNullException(nameof(spaceCombatQueries));
         }
 
-        /// <summary>Determines whether a combat side can withdraw during automatic combat.</summary>
+        /// <summary>
+        /// Determines whether a combat side can withdraw during automatic combat.
+        /// </summary>
         /// <param name="fleets">The fleets on the withdrawing side.</param>
         /// <param name="opponents">The opposing fleets.</param>
         /// <param name="planet">The combat planet.</param>
@@ -57,7 +63,9 @@ namespace Rebellion.Simulation
             return true;
         }
 
-        /// <summary>Plans and records the units that leave or are lost after a manual order.</summary>
+        /// <summary>
+        /// Plans and records the units that leave or are lost after a manual order.
+        /// </summary>
         /// <param name="result">The combat result receiving withdrawal outcomes.</param>
         /// <param name="retreatingFleets">Every participating fleet on the withdrawing side.</param>
         /// <param name="opposingFleets">The fleets capable of blocking withdrawal.</param>
@@ -100,7 +108,9 @@ namespace Rebellion.Simulation
             return plan;
         }
 
-        /// <summary>Reserves and records strategic destinations after tactical withdrawal.</summary>
+        /// <summary>
+        /// Reserves and records strategic destinations after tactical withdrawal.
+        /// </summary>
         /// <param name="result">The combat result receiving corrected withdrawal outcomes.</param>
         /// <param name="fleets">Every participating fleet on the withdrawing side.</param>
         /// <param name="ownerInstanceId">The withdrawing faction identifier.</param>
@@ -138,7 +148,9 @@ namespace Rebellion.Simulation
             return plan;
         }
 
-        /// <summary>Places withdrawn dependent fighters aboard their reserved carriers.</summary>
+        /// <summary>
+        /// Places withdrawn dependent fighters aboard their reserved carriers.
+        /// </summary>
         /// <param name="plan">The applied withdrawal plan.</param>
         internal void ApplyFighterRecovery(SpaceCombatWithdrawalPlan plan)
         {
@@ -157,7 +169,9 @@ namespace Rebellion.Simulation
             }
         }
 
-        /// <summary>Reconciles tactical withdrawal candidates with reserved strategic movement.</summary>
+        /// <summary>
+        /// Reconciles tactical withdrawal candidates with reserved strategic movement.
+        /// </summary>
         /// <param name="result">The combat result receiving reconciled outcomes.</param>
         /// <param name="plan">The reserved withdrawal plan.</param>
         /// <param name="fleets">Every participating fleet on the withdrawing side.</param>
@@ -218,7 +232,9 @@ namespace Rebellion.Simulation
                     : SpaceCombatSideOutcome.Destroyed;
         }
 
-        /// <summary>Filters participants to the tactical units being reconciled.</summary>
+        /// <summary>
+        /// Filters participants to the tactical units being reconciled.
+        /// </summary>
         /// <typeparam name="TUnit">The scene-node type being filtered.</typeparam>
         /// <param name="units">The participating units.</param>
         /// <param name="eligibleUnits">The allowed units, or null to include every participant.</param>
@@ -234,7 +250,9 @@ namespace Rebellion.Simulation
                 .ToList();
         }
 
-        /// <summary>Records a participating capital ship as destroyed.</summary>
+        /// <summary>
+        /// Records a participating capital ship as destroyed.
+        /// </summary>
         /// <param name="result">The result receiving the loss.</param>
         /// <param name="ship">The ship unable to complete withdrawal.</param>
         private static void RecordDestroyedShip(SpaceCombatResult result, CapitalShip ship)
@@ -258,7 +276,9 @@ namespace Rebellion.Simulation
             damage.HullAfter = 0;
         }
 
-        /// <summary>Records a participating fighter squadron as destroyed.</summary>
+        /// <summary>
+        /// Records a participating fighter squadron as destroyed.
+        /// </summary>
         /// <param name="result">The result receiving the loss.</param>
         /// <param name="fighter">The fighter unable to complete withdrawal.</param>
         private static void RecordDestroyedFighter(SpaceCombatResult result, Starfighter fighter)

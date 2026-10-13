@@ -39,10 +39,6 @@ public class TacticalHUDLayout
 
     public SourceRectLayout SpeedContextSourceLayout { get; set; }
 
-    public string GalacticInformationDisplayImagePath { get; set; }
-
-    public SourceRectLayout GalacticInformationDisplayImageLayout { get; set; }
-
     public SpeedIndicatorTheme SpeedIndicators { get; set; }
 
     public List<StrategyHudMessageNotificationTheme> MessageNotifications { get; set; } =

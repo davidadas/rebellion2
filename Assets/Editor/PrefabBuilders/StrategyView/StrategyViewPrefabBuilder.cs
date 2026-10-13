@@ -811,12 +811,6 @@ public static class StrategyViewPrefabBuilder
             previewHudLayout?.SpeedIndicators?.MediumImagePath,
             previewHudLayout?.SpeedIndicatorSourceLayout
         );
-        RawImage galacticInformationDisplayImage = CreateRawImage(
-            "GalacticInformationDisplayImage",
-            hud.transform,
-            previewHudLayout?.GalacticInformationDisplayImagePath,
-            previewHudLayout?.GalacticInformationDisplayImageLayout
-        );
         List<RawImage> messageNotificationImages = CreateHudMessageNotificationImages(
             hud.transform
         );
@@ -992,11 +986,6 @@ public static class StrategyViewPrefabBuilder
         AssignReference(hudView, "refinedMaterialsTextField", refinedMaterialsLabel);
         AssignReference(hudView, "maintenanceTextField", maintenanceLabel);
         AssignReference(hudView, "speedIndicatorImage", speedIndicatorImage);
-        AssignReference(
-            hudView,
-            "galacticInformationDisplayImage",
-            galacticInformationDisplayImage
-        );
         AssignReference(hudView, "pressedMainButtonImage", pressedMainButtonImage);
         AssignReferenceArray(hudView, "mainButtonImages", mainButtonImages);
         AssignReferenceArray(hudView, "messageNotificationImages", messageNotificationImages);

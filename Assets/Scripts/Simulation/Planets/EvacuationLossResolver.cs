@@ -10,13 +10,17 @@ using Rebellion.Util.Random;
 
 namespace Rebellion.Simulation
 {
-    /// <summary>Resolves the risk of moving a unit through an opposing blockade.</summary>
+    /// <summary>
+    /// Resolves the risk of moving a unit through an opposing blockade.
+    /// </summary>
     internal sealed class EvacuationLossResolver
     {
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _random;
 
-        /// <summary>Creates blockade evacuation resolution.</summary>
+        /// <summary>
+        /// Creates blockade evacuation resolution.
+        /// </summary>
         /// <param name="game">The active game graph.</param>
         /// <param name="random">The random source used for loss rolls.</param>
         internal EvacuationLossResolver(GameRoot game, IRandomNumberProvider random)
@@ -25,7 +29,9 @@ namespace Rebellion.Simulation
             _random = random ?? throw new System.ArgumentNullException(nameof(random));
         }
 
-        /// <summary>Resolves losses for a unit leaving through an opposing blockade.</summary>
+        /// <summary>
+        /// Resolves losses for a unit leaving through an opposing blockade.
+        /// </summary>
         /// <param name="unit">The departing unit.</param>
         /// <param name="origin">The departure planet.</param>
         /// <param name="opposingBlockadeAtDeparture">

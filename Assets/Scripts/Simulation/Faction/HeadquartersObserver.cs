@@ -26,7 +26,9 @@ namespace Rebellion.Simulation
             _game = game ?? throw new ArgumentNullException(nameof(game));
         }
 
-        /// <summary>Registers arrival and ownership callbacks with the result bus.</summary>
+        /// <summary>
+        /// Registers arrival and ownership callbacks with the result bus.
+        /// </summary>
         /// <param name="results">The bus that delivers arrivals and ownership changes.</param>
         public void Connect(GameResultBus results)
         {
@@ -42,7 +44,9 @@ namespace Rebellion.Simulation
             };
         }
 
-        /// <summary>Stops receiving arrivals and ownership changes.</summary>
+        /// <summary>
+        /// Stops receiving arrivals and ownership changes.
+        /// </summary>
         public void Dispose()
         {
             foreach (IDisposable subscription in _subscriptions ?? Array.Empty<IDisposable>())
@@ -82,7 +86,9 @@ namespace Rebellion.Simulation
             return reactions;
         }
 
-        /// <summary>Applies the headquarters marker for an arriving mobile headquarters.</summary>
+        /// <summary>
+        /// Applies the headquarters marker for an arriving mobile headquarters.
+        /// </summary>
         /// <param name="headquarters">The arriving headquarters building.</param>
         /// <param name="destination">The arrival planet.</param>
         private void ApplyArrival(Building headquarters, Planet destination)
@@ -102,7 +108,9 @@ namespace Rebellion.Simulation
             faction.HQInstanceID = destination.InstanceID;
         }
 
-        /// <summary>Applies headquarters consequences for one completed ownership change.</summary>
+        /// <summary>
+        /// Applies headquarters consequences for one completed ownership change.
+        /// </summary>
         /// <param name="result">The ownership change being observed.</param>
         /// <param name="reactions">The collection receiving headquarters results.</param>
         private void ApplyOwnershipChange(
@@ -150,7 +158,9 @@ namespace Rebellion.Simulation
             );
         }
 
-        /// <summary>Updates a fixed headquarters marker after its configured planet changes hands.</summary>
+        /// <summary>
+        /// Updates a fixed headquarters marker after its configured planet changes hands.
+        /// </summary>
         /// <param name="planet">The planet whose ownership changed.</param>
         /// <param name="previousOwner">The previous controller.</param>
         /// <param name="newOwner">The new controller, or null.</param>

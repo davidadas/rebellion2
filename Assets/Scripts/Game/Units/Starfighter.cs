@@ -187,11 +187,15 @@ namespace Rebellion.Game.Units
         /// </summary>
         public Starfighter() { }
 
-        /// <summary>Creates an empty starfighter copy.</summary>
+        /// <summary>
+        /// Creates an empty starfighter copy.
+        /// </summary>
         /// <returns>The created node copy.</returns>
         protected override BaseSceneNode CreateNodeCopy() => new Starfighter();
 
-        /// <summary>Copies starfighter state into an empty destination.</summary>
+        /// <summary>
+        /// Copies starfighter state into an empty destination.
+        /// </summary>
         /// <param name="destination">The destination.</param>
         protected override void CopyStateTo(BaseSceneNode destination)
         {

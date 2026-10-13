@@ -15,7 +15,9 @@ namespace Rebellion.Simulation
         private readonly GameRoot _game;
         private bool _victoryDeclared;
 
-        /// <summary>Raised when an immediate victory declaration produces a result.</summary>
+        /// <summary>
+        /// Raised when an immediate victory declaration produces a result.
+        /// </summary>
         public event Action<IReadOnlyList<VictoryResult>> ResultsProduced;
 
         internal bool IsDeclared => _victoryDeclared;

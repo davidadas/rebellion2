@@ -39,7 +39,9 @@ namespace Rebellion.Analyzers.Tests
                 @"
 class Example
 {
-    /// <summary>Runs an operation.</summary>
+    /// <summary>
+    /// Runs an operation.
+    /// </summary>
     private void Run(int count) { }
 }";
 
@@ -55,7 +57,9 @@ class Example
                 @"
 class Example
 {
-    /// <summary>Returns a value.</summary>
+    /// <summary>
+    /// Returns a value.
+    /// </summary>
     /// <returns>The value.</returns>
     private T Get<T>() { return default(T); }
 }";
@@ -75,7 +79,9 @@ class Example
                 @"
 class Example
 {
-    /// <summary>Gets a value.</summary>
+    /// <summary>
+    /// Gets a value.
+    /// </summary>
     private int GetValue() { return 1; }
 }";
 
@@ -91,7 +97,9 @@ class Example
                 @"
 class Example
 {
-    /// <summary>Returns a value.</summary>
+    /// <summary>
+    /// Returns a value.
+    /// </summary>
     /// <typeparam name=""T"">The value type.</typeparam>
     /// <param name=""value"">The value.</param>
     /// <returns>The value.</returns>
@@ -126,7 +134,9 @@ class Example
                 @"
 class Example
 {
-    /// <summary><inheritdoc cref=""object.ToString""/></summary>
+    /// <summary>
+    /// <inheritdoc cref=""object.ToString""/>
+    /// </summary>
     public override string ToString() { return ""Example""; }
 }";
 
@@ -158,7 +168,9 @@ class Example
                 @"
 class Example
 {
-    /// <summary>Redundantly explains the test.</summary>
+    /// <summary>
+    /// Redundantly explains the test.
+    /// </summary>
     [NUnit.Framework.Test]
     public void I_Am_ATest() { }
 }";

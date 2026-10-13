@@ -2434,7 +2434,9 @@ namespace Rebellion.Tests.Simulation
             };
         }
 
-        /// <summary>Creates an undefended fixed headquarters and an invasion fleet with deterministic capture.</summary>
+        /// <summary>
+        /// Creates an undefended fixed headquarters and an invasion fleet with deterministic capture.
+        /// </summary>
         /// <returns>The manager, attacking fleet, and target headquarters planet.</returns>
         private static (
             GameSession Manager,

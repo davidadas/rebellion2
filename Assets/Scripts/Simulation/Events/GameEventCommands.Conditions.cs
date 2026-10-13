@@ -16,7 +16,9 @@ namespace Rebellion.Simulation
 {
     public sealed partial class GameEventCommands
     {
-        /// <summary>Evaluates an authored condition against its activation context.</summary>
+        /// <summary>
+        /// Evaluates an authored condition against its activation context.
+        /// </summary>
         /// <param name="definition">The authored condition to evaluate.</param>
         /// <param name="context">The existing game and activation context.</param>
         /// <returns>Whether the condition matches.</returns>
@@ -51,14 +53,18 @@ namespace Rebellion.Simulation
                 ),
             };
 
-        /// <summary>Evaluates an authored condition against the current game.</summary>
+        /// <summary>
+        /// Evaluates an authored condition against the current game.
+        /// </summary>
         /// <param name="definition">The authored condition to evaluate.</param>
         /// <param name="game">The current game state.</param>
         /// <returns>Whether the condition matches.</returns>
         public static bool IsMet(GameConditional definition, GameRoot game) =>
             IsMet(definition, new GameConditionContext(game));
 
-        /// <summary>Evaluates an authored condition against a triggering result.</summary>
+        /// <summary>
+        /// Evaluates an authored condition against a triggering result.
+        /// </summary>
         /// <param name="definition">The authored condition to evaluate.</param>
         /// <param name="game">The current game state.</param>
         /// <param name="triggerResult">The result triggering this evaluation.</param>
@@ -69,7 +75,9 @@ namespace Rebellion.Simulation
             GameResult triggerResult
         ) => IsMet(definition, new GameConditionContext(game, triggerResult));
 
-        /// <summary>Evaluates an authored condition against existing activation bindings.</summary>
+        /// <summary>
+        /// Evaluates an authored condition against existing activation bindings.
+        /// </summary>
         /// <param name="definition">The authored condition to evaluate.</param>
         /// <param name="game">The current game state.</param>
         /// <param name="evaluation">The existing activation bindings.</param>
@@ -80,7 +88,9 @@ namespace Rebellion.Simulation
             GameEventEvaluationContext evaluation
         ) => IsMet(definition, new GameConditionContext(game, evaluation));
 
-        /// <summary>Reads the officer state selected by an authored condition.</summary>
+        /// <summary>
+        /// Reads the officer state selected by an authored condition.
+        /// </summary>
         /// <param name="definition">The authored officer condition.</param>
         /// <param name="officer">The officer being evaluated.</param>
         /// <returns>Whether the selected state matches.</returns>

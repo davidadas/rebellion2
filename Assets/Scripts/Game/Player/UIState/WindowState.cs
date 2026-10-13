@@ -63,31 +63,45 @@ namespace Rebellion.Game.UIState
             _zOrder = zOrder;
         }
 
-        /// <summary>Returns the stable window type identifier.</summary>
+        /// <summary>
+        /// Returns the stable window type identifier.
+        /// </summary>
         /// <returns>The stable window type identifier.</returns>
         public string GetWindowTypeID() => _windowTypeID;
 
-        /// <summary>Returns the represented game-object identifier.</summary>
+        /// <summary>
+        /// Returns the represented game-object identifier.
+        /// </summary>
         /// <returns>The represented game-object identifier.</returns>
         public string GetTargetInstanceID() => _targetInstanceID;
 
-        /// <summary>Returns the horizontal window position.</summary>
+        /// <summary>
+        /// Returns the horizontal window position.
+        /// </summary>
         /// <returns>The horizontal window position.</returns>
         public int GetX() => _x;
 
-        /// <summary>Returns the vertical window position.</summary>
+        /// <summary>
+        /// Returns the vertical window position.
+        /// </summary>
         /// <returns>The vertical window position.</returns>
         public int GetY() => _y;
 
-        /// <summary>Returns the saved window width.</summary>
+        /// <summary>
+        /// Returns the saved window width.
+        /// </summary>
         /// <returns>The saved window width.</returns>
         public int GetWidth() => _width;
 
-        /// <summary>Returns the saved window height.</summary>
+        /// <summary>
+        /// Returns the saved window height.
+        /// </summary>
         /// <returns>The saved window height.</returns>
         public int GetHeight() => _height;
 
-        /// <summary>Returns the window stacking position.</summary>
+        /// <summary>
+        /// Returns the window stacking position.
+        /// </summary>
         /// <returns>The window stacking position.</returns>
         public int GetZOrder() => _zOrder;
     }

@@ -449,10 +449,6 @@ public sealed class StrategyHudViewData
 
     public RectInt? SpeedIndicatorBounds { get; }
 
-    public Texture2D GalacticInformationDisplayTexture { get; }
-
-    public RectInt? GalacticInformationDisplayBounds { get; }
-
     public RectInt? SpeedContextBounds { get; }
 
     public IReadOnlyList<StrategyHudButtonViewData> Buttons => buttons;
@@ -471,8 +467,6 @@ public sealed class StrategyHudViewData
     /// <param name="resourceBreakdown">The resource-facility hover panel.</param>
     /// <param name="speedIndicatorTexture">The current speed-indicator texture.</param>
     /// <param name="speedIndicatorBounds">The speed-indicator source-space bounds.</param>
-    /// <param name="galacticInformationDisplayTexture">The galactic display control texture.</param>
-    /// <param name="galacticInformationDisplayBounds">The galactic display control bounds.</param>
     /// <param name="speedContextBounds">The speed context-menu hit area.</param>
     /// <param name="buttons">The HUD buttons in authored slot order.</param>
     /// <param name="messageNotifications">The notification slots in authored order.</param>
@@ -485,8 +479,6 @@ public sealed class StrategyHudViewData
         StrategyHudResourceBreakdownViewData resourceBreakdown,
         Texture2D speedIndicatorTexture,
         RectInt? speedIndicatorBounds,
-        Texture2D galacticInformationDisplayTexture,
-        RectInt? galacticInformationDisplayBounds,
         RectInt? speedContextBounds,
         IReadOnlyList<StrategyHudButtonViewData> buttons,
         IReadOnlyList<StrategyHudMessageNotificationViewData> messageNotifications
@@ -500,8 +492,6 @@ public sealed class StrategyHudViewData
         ResourceBreakdown = resourceBreakdown;
         SpeedIndicatorTexture = speedIndicatorTexture;
         SpeedIndicatorBounds = speedIndicatorBounds;
-        GalacticInformationDisplayTexture = galacticInformationDisplayTexture;
-        GalacticInformationDisplayBounds = galacticInformationDisplayBounds;
         SpeedContextBounds = speedContextBounds;
         this.buttons = Copy(buttons);
         this.messageNotifications = Copy(messageNotifications);
