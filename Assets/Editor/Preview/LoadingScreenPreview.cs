@@ -1,4 +1,3 @@
-using System;
 using System.IO;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -14,6 +13,7 @@ public static class LoadingScreenPreview
     private const string _menuPath = "Rebellion/Preview/Loading Screen %#l";
     private const string _prefabPath = "Assets/Resources/UI/LoadingScreen.prefab";
     private const string _scenePath = "Assets/Scenes/LoadingScreen.unity";
+    private const string _sceneRootName = "LoadingScreen";
 
     /// <summary>
     /// Initializes editor play-mode handling for the dedicated preview scene.
@@ -33,18 +33,28 @@ public static class LoadingScreenPreview
             return;
 
         CommonUIPrefabBuilder.BuildLoadingScreenPrefab();
-        GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(_prefabPath);
-        if (prefab == null)
-            throw new InvalidOperationException($"Loading-screen prefab is missing: {_prefabPath}");
-
-        Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-        GameObject instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab, scene);
-        instance.name = "LoadingScreen";
-        if (!EditorSceneManager.SaveScene(scene, _scenePath))
-            throw new IOException($"Could not save the loading-screen preview: {_scenePath}");
-
-        Selection.activeGameObject = instance;
+        SceneBuilder.Build(_scenePath, _prefabPath, _sceneRootName);
+        Scene scene = EditorSceneManager.OpenScene(_scenePath, OpenSceneMode.Single);
+        Selection.activeGameObject = FindLoadingScreenRoot(scene);
         EditorApplication.EnterPlaymode();
+    }
+
+    /// <summary>
+    /// Finds the generated loading-screen root in the preview scene.
+    /// </summary>
+    /// <param name="scene">The generated preview scene.</param>
+    /// <returns>The loading-screen root.</returns>
+    private static GameObject FindLoadingScreenRoot(Scene scene)
+    {
+        foreach (GameObject root in scene.GetRootGameObjects())
+        {
+            if (root.name == _sceneRootName)
+                return root;
+        }
+
+        throw new MissingReferenceException(
+            $"The loading-screen preview scene has no {_sceneRootName} root: {_scenePath}"
+        );
     }
 
     /// <summary>
