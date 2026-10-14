@@ -6,6 +6,7 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -137,6 +138,8 @@ namespace Rebellion.Simulation
                 OfficerCaptureStateResult result in results.OfType<OfficerCaptureStateResult>()
             )
                 RecordCaptureState(result);
+            foreach (MissionCompletedResult result in results.OfType<MissionCompletedResult>())
+                RemoveAbsentMissionTargetObservation(result);
             foreach (
                 PlanetOwnershipChangedResult result in results.OfType<PlanetOwnershipChangedResult>()
             )
@@ -294,6 +297,37 @@ namespace Rebellion.Simulation
             _commands.ForgetEntity(owner, officer.InstanceID);
             if (captor != owner)
                 _commands.ForgetEntity(captor, officer.InstanceID);
+        }
+
+        /// <summary>
+        /// Removes a mission target from the location where the mission proved it absent.
+        /// </summary>
+        /// <param name="result">The completed entity-targeting mission.</param>
+        private void RemoveAbsentMissionTargetObservation(MissionCompletedResult result)
+        {
+            if (
+                result?.CompletionReason != MissionCompletionReason.TargetUnavailable
+                || result.Mission is not IEntityTargetingMission targetedMission
+                || result.Location == null
+            )
+                return;
+
+            ISceneNode target = _game.GetSceneNodeByInstanceID<ISceneNode>(
+                targetedMission.TargetEntityInstanceID,
+                true
+            );
+            if (
+                target?.GetParentOfType<Planet>()?.InstanceID == result.Location.InstanceID
+                && (target is not IMovable movable || movable.GetTransitMovement() == null)
+            )
+                return;
+
+            Faction owner = FindFaction(result.Mission.OwnerInstanceID);
+            _commands.ForgetEntityAt(
+                owner,
+                targetedMission.TargetEntityInstanceID,
+                result.Location
+            );
         }
 
         /// <summary>

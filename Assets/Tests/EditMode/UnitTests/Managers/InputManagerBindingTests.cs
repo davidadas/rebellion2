@@ -47,6 +47,78 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
+        public void GameSpeedMouseWheel_ControlledScroll_TriggersMatchingDirectionOnly()
+        {
+            InputTestFixture inputFixture = new InputTestFixture();
+            inputFixture.Setup();
+            GameObject root = new GameObject("InputManager");
+            Keyboard keyboard = InputSystem.AddDevice<Keyboard>();
+            Mouse mouse = InputSystem.AddDevice<Mouse>();
+            int decreaseCount = 0;
+            int increaseCount = 0;
+
+            try
+            {
+                InputActionAsset asset = root.AddComponent<InputManager>().Asset;
+                InputAction decrease = asset.FindAction("Strategy/DecreaseGameSpeed", true);
+                InputAction increase = asset.FindAction("Strategy/IncreaseGameSpeed", true);
+                decrease.performed += _ => decreaseCount++;
+                increase.performed += _ => increaseCount++;
+                asset.FindActionMap("Strategy", true).Enable();
+                Key modifier =
+                    Application.platform == RuntimePlatform.OSXEditor ? Key.LeftMeta : Key.LeftCtrl;
+                InputSystem.QueueStateEvent(keyboard, new KeyboardState(modifier));
+                InputSystem.QueueStateEvent(mouse, new MouseState { scroll = Vector2.up });
+                InputSystem.Update();
+
+                Assert.AreEqual(0, decreaseCount);
+                Assert.AreEqual(1, increaseCount);
+
+                InputSystem.QueueStateEvent(mouse, new MouseState { scroll = Vector2.down });
+                InputSystem.Update();
+
+                Assert.AreEqual(1, decreaseCount);
+                Assert.AreEqual(1, increaseCount);
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+                inputFixture.TearDown();
+            }
+        }
+
+        [Test]
+        public void GameSpeedMouseWheel_UnmodifiedScroll_DoesNotTriggerSpeedActions()
+        {
+            InputTestFixture inputFixture = new InputTestFixture();
+            inputFixture.Setup();
+            GameObject root = new GameObject("InputManager");
+            Mouse mouse = InputSystem.AddDevice<Mouse>();
+            int actionCount = 0;
+
+            try
+            {
+                InputActionAsset asset = root.AddComponent<InputManager>().Asset;
+                asset.FindAction("Strategy/DecreaseGameSpeed", true).performed += _ =>
+                    actionCount++;
+                asset.FindAction("Strategy/IncreaseGameSpeed", true).performed += _ =>
+                    actionCount++;
+                asset.FindActionMap("Strategy", true).Enable();
+                InputSystem.QueueStateEvent(mouse, new MouseState { scroll = Vector2.up });
+                InputSystem.Update();
+                InputSystem.QueueStateEvent(mouse, new MouseState { scroll = Vector2.down });
+                InputSystem.Update();
+
+                Assert.AreEqual(0, actionCount);
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+                inputFixture.TearDown();
+            }
+        }
+
+        [Test]
         public void BindingOverrides_AuthoredSlots_RestoreAcrossManagerRestart()
         {
             GameObject firstRoot = new GameObject("FirstInputManager");

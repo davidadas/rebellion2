@@ -248,7 +248,7 @@ internal sealed class OptionsBindingSession : IDisposable
     private void StartRebind(InputAction action, BindingSlot slot)
     {
         _rebindApplied = false;
-        _listeningAction = new InputAction(type: InputActionType.Button);
+        _listeningAction = new InputAction(type: InputActionType.Value);
 
         InputActionRebindingExtensions.RebindingOperation candidate = _listeningAction
             .PerformInteractiveRebinding()
@@ -257,6 +257,8 @@ internal sealed class OptionsBindingSession : IDisposable
             .WithControlsExcluding("<Keyboard>/anyKey")
             .WithControlsExcluding("<Mouse>/leftButton")
             .WithControlsExcluding("<Mouse>/rightButton")
+            .WithControlsExcluding("<Pointer>/delta")
+            .WithControlsExcluding("<Pointer>/position")
             .WithControlsExcluding("<Pointer>/press");
         if (!IsModifierAction(action.name))
         {
@@ -265,10 +267,36 @@ internal sealed class OptionsBindingSession : IDisposable
         }
 
         _operation = candidate
+            .OnGeneratePath(GetRebindPath)
             .OnApplyBinding((_, path) => ApplyRebindPath(action, slot, path))
             .OnCancel(_ => FinishRebind(action, slot, false))
             .OnComplete(_ => FinishRebind(action, slot, true))
             .Start();
+    }
+
+    /// <summary>
+    /// Converts vertical mouse-wheel input into a directional binding path.
+    /// </summary>
+    /// <param name="control">The selected input control.</param>
+    /// <returns>The binding path to apply.</returns>
+    private static string GetRebindPath(InputControl control)
+    {
+        if (
+            control?.path == "/Mouse/scroll"
+            && control is UnityEngine.InputSystem.Controls.Vector2Control vector
+        )
+        {
+            return vector.ReadValue().y < 0 ? "<Mouse>/scroll/down" : "<Mouse>/scroll/up";
+        }
+        if (
+            control?.path == "/Mouse/scroll/y"
+            && control is UnityEngine.InputSystem.Controls.AxisControl axis
+        )
+        {
+            return axis.ReadValue() < 0 ? "<Mouse>/scroll/down" : "<Mouse>/scroll/up";
+        }
+
+        return null;
     }
 
     /// <summary>
@@ -694,7 +722,7 @@ internal sealed class OptionsBindingSession : IDisposable
     {
         InputBinding plain = action.bindings[slot.PlainIndex];
         if (!string.IsNullOrEmpty(plain.effectivePath))
-            return ShortenKey(action.GetBindingDisplayString(slot.PlainIndex));
+            return ShortenPath(plain.effectivePath);
 
         (string modifier, string key) = GetCompositePaths(action, slot.CompositeIndex);
         if (string.IsNullOrEmpty(modifier) || string.IsNullOrEmpty(key))
@@ -709,6 +737,13 @@ internal sealed class OptionsBindingSession : IDisposable
     /// <returns>The result of shorten path.</returns>
     private static string ShortenPath(string path)
     {
+        if (path is "<Keyboard>/leftMeta" or "<Keyboard>/rightMeta")
+            return "CMD";
+        if (path == "<Mouse>/scroll/up")
+            return "WHEEL UP";
+        if (path == "<Mouse>/scroll/down")
+            return "WHEEL DOWN";
+
         return ShortenKey(
             InputControlPath.ToHumanReadableString(
                 path,

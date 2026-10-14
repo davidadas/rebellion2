@@ -24,7 +24,6 @@ namespace Rebellion.Simulation
         private readonly FogOfWarQueries _fogOfWarQueries;
         private readonly EvacuationLossResolver _evacuationLosses;
         private readonly FleetCommands _fleetSystem;
-        private readonly OfficerCommandCommands _officerCommands;
         private readonly PersonnelCommands _personnelCommands;
         private readonly MovementQueries _queries;
         private readonly IRandomNumberProvider _movementRandom;
@@ -45,7 +44,6 @@ namespace Rebellion.Simulation
         /// <param name="queries">The shared movement eligibility and destination rules.</param>
         /// <param name="random">The random source used for movement consequences.</param>
         /// <param name="personnelCommands">The personnel lifecycle operations.</param>
-        /// <param name="officerCommands">The officer command-assignment operations.</param>
         public MovementCommands(
             GameRoot game,
             FogOfWarCommands fogOfWar,
@@ -53,8 +51,7 @@ namespace Rebellion.Simulation
             FogOfWarQueries fogOfWarQueries,
             MovementQueries queries,
             IRandomNumberProvider random = null,
-            PersonnelCommands personnelCommands = null,
-            OfficerCommandCommands officerCommands = null
+            PersonnelCommands personnelCommands = null
         )
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
@@ -67,7 +64,6 @@ namespace Rebellion.Simulation
             _evacuationLosses = new EvacuationLossResolver(game, _movementRandom);
             _personnelCommands =
                 personnelCommands ?? new PersonnelCommands(new PersonnelQueries(game));
-            _officerCommands = officerCommands ?? new OfficerCommandCommands(game);
         }
 
         /// <summary>
@@ -192,6 +188,43 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
+        /// Attempts to move one unit while returning blockade transitions to the enclosing command
+        /// and leaving all other movement results queued for normal movement processing.
+        /// </summary>
+        /// <param name="unit">The unit to move.</param>
+        /// <param name="destination">The requested destination.</param>
+        /// <param name="blockadeResults">The enclosing result collection receiving blockade transitions.</param>
+        /// <returns>True when the movement request was accepted.</returns>
+        internal bool TryRequestMoveWithImmediateBlockadeResults(
+            IMovable unit,
+            ContainerNode destination,
+            ICollection<GameResult> blockadeResults
+        )
+        {
+            if (blockadeResults == null)
+                throw new ArgumentNullException(nameof(blockadeResults));
+
+            int firstPendingResult = _pendingResults.Count;
+            bool moved = TryRequestMove(unit, destination);
+            if (!moved)
+                return false;
+
+            for (int index = firstPendingResult; index < _pendingResults.Count; index++)
+            {
+                if (_pendingResults[index] is BlockadeChangedResult transition)
+                    blockadeResults.Add(transition);
+            }
+
+            for (int index = _pendingResults.Count - 1; index >= firstPendingResult; index--)
+            {
+                if (_pendingResults[index] is BlockadeChangedResult)
+                    _pendingResults.RemoveAt(index);
+            }
+
+            return true;
+        }
+
+        /// <summary>
         /// Requests move.
         /// </summary>
         /// <param name="unit">The unit to move.</param>
@@ -296,9 +329,11 @@ namespace Rebellion.Simulation
 
             if (destinationPlanet == origin)
             {
+                bool? wasBlockaded = CaptureBlockadeState(unit, destinationPlanet);
                 unit.Movement = null;
                 CompleteManufacturingDelivery(unit);
                 AddPlanetGarrisonChangedResults(_pendingResults, unit, destinationPlanet);
+                AddBlockadeChangedResult(destinationPlanet, wasBlockaded, _pendingResults);
                 return;
             }
 
@@ -1292,6 +1327,7 @@ namespace Rebellion.Simulation
             List<GameResult> results
         )
         {
+            bool? wasBlockaded = CaptureBlockadeState(movable, destinationPlanet);
             string movementGroupID = movable.Movement?.MovementGroupID;
             string sourceEventInstanceID = movable.Movement?.SourceEventInstanceID;
             bool completesManufacturingDelivery =
@@ -1333,6 +1369,7 @@ namespace Rebellion.Simulation
                     sourceEventInstanceID,
                     completesManufacturingDelivery
                 );
+                AddBlockadeChangedResult(destinationPlanet, wasBlockaded, results);
             }
             catch (SceneAccessException ex)
             {
@@ -1407,6 +1444,15 @@ namespace Rebellion.Simulation
             string movableOwner = MovementQueries.GetMovementControlOwner(movable);
             if (!destinationPlanet.IsBlockadedFor(movableOwner))
                 return false;
+            Fleet blockadingFleet = destinationPlanet
+                .GetChildren<Fleet>()
+                .FirstOrDefault(fleet =>
+                    fleet.Movement == null
+                    && fleet.GetOwnerInstanceID() != movableOwner
+                    && fleet.HasOperationalCapitalShips()
+                );
+            if (blockadingFleet == null)
+                return false;
 
             _game.DeleteNode(movable);
             GameLogger.Log(
@@ -1416,6 +1462,7 @@ namespace Rebellion.Simulation
                 new GameObjectDestroyedOnArrivalResult
                 {
                     DestroyedObject = movable,
+                    DestroyedBy = blockadingFleet,
                     Context = destinationPlanet,
                     Tick = _game.CurrentTick,
                 }
@@ -2003,6 +2050,8 @@ namespace Rebellion.Simulation
                 return false;
             }
 
+            bool? wasBlockaded = CaptureBlockadeState(unit, originPlanet);
+
             EvacuationLossesResult evacuationLoss = _evacuationLosses.Resolve(
                 unit,
                 originPlanet,
@@ -2012,6 +2061,7 @@ namespace Rebellion.Simulation
             {
                 results.Add(evacuationLoss);
                 AddPlanetGarrisonChangedResults(results, unit, originPlanet);
+                AddBlockadeChangedResult(originPlanet, wasBlockaded, results);
                 return true;
             }
 
@@ -2036,6 +2086,7 @@ namespace Rebellion.Simulation
                         results,
                         sourceEventInstanceID
                     );
+                AddBlockadeChangedResult(originPlanet, wasBlockaded, results);
                 return true;
             }
 
@@ -2053,6 +2104,7 @@ namespace Rebellion.Simulation
                         results,
                         sourceEventInstanceID
                     );
+                AddBlockadeChangedResult(originPlanet, wasBlockaded, results);
                 return true;
             }
 
@@ -2090,7 +2142,35 @@ namespace Rebellion.Simulation
             GameLogger.Log(
                 $"{unit.GetDisplayName()} ordered to move to {destination.GetDisplayName()} (ETA: {transitTicks} ticks)"
             );
+            AddBlockadeChangedResult(originPlanet, wasBlockaded, results);
             return true;
+        }
+
+        /// <summary>
+        /// Captures blockade state only for units whose orbital readiness can change it.
+        /// </summary>
+        /// <param name="unit">The unit about to change movement or containment.</param>
+        /// <param name="planet">The affected planet.</param>
+        /// <returns>The current blockade state, or null when the unit cannot affect it.</returns>
+        private static bool? CaptureBlockadeState(IMovable unit, Planet planet)
+        {
+            return unit is Fleet or CapitalShip ? planet?.IsBlockaded() : null;
+        }
+
+        /// <summary>
+        /// Records a blockade transition after a relevant movement mutation.
+        /// </summary>
+        /// <param name="planet">The affected planet.</param>
+        /// <param name="wasBlockaded">The blockade state captured before the mutation.</param>
+        /// <param name="results">The result collection receiving the transition.</param>
+        private void AddBlockadeChangedResult(
+            Planet planet,
+            bool? wasBlockaded,
+            ICollection<GameResult> results
+        )
+        {
+            if (wasBlockaded.HasValue)
+                BlockadeTransitions.AddChangedResult(_game, planet, wasBlockaded.Value, results);
         }
 
         /// <summary>
@@ -2180,9 +2260,107 @@ namespace Rebellion.Simulation
         )
         {
             IReadOnlyDictionary<Officer, ISceneNode> previousCommandTargets =
-                OfficerCommandQueries.CaptureRelocatedCommandTargets(node);
+                CaptureRelocatedCommandTargets(node);
             _game.MoveNode(node, destination);
-            _officerCommands.ReconcileRelocatedCommandRanks(previousCommandTargets, results);
+            ReconcileRelocatedCommandRanks(previousCommandTargets, results);
+        }
+
+        /// <summary>
+        /// Captures the command target of every ranked officer relocated with a scene node.
+        /// </summary>
+        /// <param name="movedNode">The officer or container about to be relocated.</param>
+        /// <returns>The ranked officers and their command targets before relocation.</returns>
+        private static IReadOnlyDictionary<Officer, ISceneNode> CaptureRelocatedCommandTargets(
+            ISceneNode movedNode
+        )
+        {
+            if (movedNode == null)
+                return new Dictionary<Officer, ISceneNode>();
+
+            IEnumerable<Officer> officers =
+                movedNode is Officer officer ? new[] { officer }
+                : movedNode is ContainerNode container
+                    ? container.GetChildren<Officer>(recursive: true)
+                : Enumerable.Empty<Officer>();
+
+            return officers
+                .Where(candidate => candidate.CurrentRank != OfficerRank.None)
+                .ToDictionary(candidate => candidate, GetCommandTargetFromHierarchy);
+        }
+
+        /// <summary>
+        /// Resigns relocated officers whose fleet or planetary command changed.
+        /// </summary>
+        /// <param name="previousCommandTargets">The command targets captured before relocation.</param>
+        /// <param name="results">The movement results receiving command changes.</param>
+        private void ReconcileRelocatedCommandRanks(
+            IReadOnlyDictionary<Officer, ISceneNode> previousCommandTargets,
+            ICollection<GameResult> results
+        )
+        {
+            foreach (KeyValuePair<Officer, ISceneNode> command in previousCommandTargets)
+            {
+                Officer officer = command.Key;
+                if (
+                    officer.CurrentRank == OfficerRank.None
+                    || ReferenceEquals(command.Value, GetCommandTargetFromHierarchy(officer))
+                )
+                    continue;
+
+                ResignRelocatedOfficer(
+                    officer,
+                    command.Value ?? GetCommandTargetFromHierarchy(officer),
+                    results
+                );
+            }
+        }
+
+        /// <summary>
+        /// Finds the fleet or planetary system represented by an officer's hierarchy.
+        /// </summary>
+        /// <param name="officer">The officer to inspect.</param>
+        /// <returns>The containing fleet or planet, or null while assigned to a mission.</returns>
+        private static ISceneNode GetCommandTargetFromHierarchy(Officer officer)
+        {
+            if (officer?.IsOnMission() != false)
+                return null;
+
+            return officer.GetParentOfType<Fleet>()
+                ?? (ISceneNode)officer.GetParentOfType<Planet>();
+        }
+
+        /// <summary>
+        /// Clears a relocated officer's post and records both command notifications.
+        /// </summary>
+        /// <param name="officer">The relocated officer.</param>
+        /// <param name="previousCommandTarget">The command associated with the resignation.</param>
+        /// <param name="results">The movement results receiving the resignation.</param>
+        private void ResignRelocatedOfficer(
+            Officer officer,
+            ISceneNode previousCommandTarget,
+            ICollection<GameResult> results
+        )
+        {
+            OfficerRank previousRank = officer.CurrentRank;
+            officer.CurrentRank = OfficerRank.None;
+            results.Add(
+                new CommandKindChangedResult
+                {
+                    Officer = officer,
+                    CommandKind = (int)OfficerRank.None,
+                    Detail = (int)previousRank,
+                    Tick = _game.CurrentTick,
+                }
+            );
+            results.Add(
+                new OfficerCommandingResult
+                {
+                    Officer = officer,
+                    CommandTarget = null,
+                    Context = previousCommandTarget,
+                    Tick = _game.CurrentTick,
+                }
+            );
         }
 
         /// <summary>
@@ -2214,6 +2392,11 @@ namespace Rebellion.Simulation
             if (faction == null)
                 return;
 
+            List<string> blockadedFactionInstanceIDs = _game
+                .GetFactions()
+                .Where(candidate => destinationPlanet.IsBlockadedFor(candidate.InstanceID))
+                .Select(candidate => candidate.InstanceID)
+                .ToList();
             _game.ChangeOwnership(destinationPlanet, ownerInstanceId);
             destinationPlanet.PopularSupport.Clear();
 
@@ -2232,6 +2415,7 @@ namespace Rebellion.Simulation
                     PreviousOwner = null,
                     NewOwner = faction,
                     Tick = _game.CurrentTick,
+                    BlockadedFactionInstanceIDs = blockadedFactionInstanceIDs,
                 }
             );
         }

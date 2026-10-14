@@ -147,6 +147,26 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
+        /// Removes the remembered location of an entity when it is known to be absent there.
+        /// </summary>
+        /// <param name="faction">The faction whose observations are updated.</param>
+        /// <param name="entityId">The registered entity identifier.</param>
+        /// <param name="location">The registered planet where the entity is absent.</param>
+        /// <returns>True when the faction and planet are registered and the entity identifier is valid.</returns>
+        public bool ForgetEntityAt(Faction faction, string entityId, Planet location)
+        {
+            Faction liveFaction = FindFaction(faction?.InstanceID);
+            Planet livePlanet = string.IsNullOrEmpty(location?.InstanceID)
+                ? null
+                : _game.GetSceneNodeByInstanceID<Planet>(location.InstanceID);
+            if (liveFaction == null || string.IsNullOrEmpty(entityId) || livePlanet == null)
+                return false;
+
+            _recorder.RemoveEntityFromPlanetSnapshot(liveFaction, entityId, livePlanet.InstanceID);
+            return true;
+        }
+
+        /// <summary>
         /// Captures a snapshot of a planet for a faction.
         /// </summary>
         /// <param name="faction">The faction receiving the snapshot.</param>

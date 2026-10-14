@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -36,7 +37,7 @@ namespace Rebellion.Simulation
         /// <param name="rank">The requested command post, or None to resign.</param>
         /// <param name="requestingFactionInstanceId">The faction issuing the order.</param>
         /// <returns>True when the command may be applied.</returns>
-        public bool CanSetRank(
+        private static bool CanSetRank(
             Officer officer,
             OfficerRank rank,
             string requestingFactionInstanceId
@@ -53,7 +54,7 @@ namespace Rebellion.Simulation
             )
                 return false;
 
-            return OfficerCommandQueries.CanChangeRank(officer, rank);
+            return OfficerCommandQueries.CanChangeCommand(officer, rank);
         }
 
         /// <summary>
@@ -74,7 +75,7 @@ namespace Rebellion.Simulation
             if (!CanSetRank(officer, rank, requestingFactionInstanceId))
                 return false;
 
-            ISceneNode commandTarget = OfficerCommandQueries.ResolveCommandTarget(officer);
+            ISceneNode commandTarget = GetCommandTarget(officer);
             List<GameResult> results = new List<GameResult>();
 
             // Selecting the active post resigns the officer from that post.
@@ -84,8 +85,7 @@ namespace Rebellion.Simulation
             if (rank != OfficerRank.None)
             {
                 foreach (
-                    Officer incumbent in OfficerCommandQueries
-                        .GetCommandOfficers(commandTarget)
+                    Officer incumbent in GetCommandOfficers(commandTarget)
                         .Where(candidate =>
                             !ReferenceEquals(candidate, officer)
                             && candidate.CurrentRank == rank
@@ -115,71 +115,16 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Resigns relocated officers whose fleet or planetary command changed.
-        /// </summary>
-        /// <param name="previousCommandTargets">The command targets captured before relocation.</param>
-        /// <param name="results">The movement results receiving command changes.</param>
-        internal void ReconcileRelocatedCommandRanks(
-            IReadOnlyDictionary<Officer, ISceneNode> previousCommandTargets,
-            ICollection<GameResult> results
-        )
-        {
-            if (previousCommandTargets == null)
-                throw new ArgumentNullException(nameof(previousCommandTargets));
-            if (results == null)
-                throw new ArgumentNullException(nameof(results));
-
-            foreach (KeyValuePair<Officer, ISceneNode> command in previousCommandTargets)
-            {
-                Officer officer = command.Key;
-                if (
-                    officer.CurrentRank == OfficerRank.None
-                    || ReferenceEquals(
-                        command.Value,
-                        OfficerCommandQueries.ResolveCommandHierarchyTarget(officer)
-                    )
-                )
-                    continue;
-
-                ApplyRank(
-                    officer,
-                    OfficerRank.None,
-                    command.Value ?? OfficerCommandQueries.ResolveCommandHierarchyTarget(officer),
-                    results
-                );
-            }
-        }
-
-        /// <summary>
-        /// Changes one officer's post and records both the rank and command-target notifications.
-        /// </summary>
-        /// <param name="officer">The officer to update.</param>
-        /// <param name="rank">The new post.</param>
-        /// <param name="commandTarget">The fleet or system being commanded.</param>
-        /// <param name="results">The destination result collection.</param>
-        private void ApplyRank(
-            Officer officer,
-            OfficerRank rank,
-            ISceneNode commandTarget,
-            ICollection<GameResult> results
-        )
-        {
-            ApplyRankChange(officer, rank, commandTarget, _game.CurrentTick, results);
-        }
-
-        /// <summary>
         /// Changes one officer's post and records both command notifications.
         /// </summary>
         /// <param name="officer">The officer to update.</param>
         /// <param name="rank">The new post.</param>
         /// <param name="commandTarget">The command associated with the change.</param>
-        /// <param name="tick">The current game tick.</param>
         /// <param name="results">The destination result collection.</param>
-        private static void ApplyRankChange(
+        private void ApplyRank(
             Officer officer,
             OfficerRank rank,
             ISceneNode commandTarget,
-            int tick,
             ICollection<GameResult> results
         )
         {
@@ -191,7 +136,7 @@ namespace Rebellion.Simulation
                     Officer = officer,
                     CommandKind = (int)rank,
                     Detail = (int)previousRank,
-                    Tick = tick,
+                    Tick = _game.CurrentTick,
                 }
             );
             results.Add(
@@ -200,9 +145,41 @@ namespace Rebellion.Simulation
                     Officer = officer,
                     CommandTarget = rank == OfficerRank.None ? null : commandTarget,
                     Context = commandTarget,
-                    Tick = tick,
+                    Tick = _game.CurrentTick,
                 }
             );
+        }
+
+        /// <summary>
+        /// Finds the fleet or planetary system receiving an explicit command appointment.
+        /// </summary>
+        /// <param name="officer">The officer being appointed.</param>
+        /// <returns>The containing fleet or planet.</returns>
+        private static ISceneNode GetCommandTarget(Officer officer)
+        {
+            return officer.GetParentOfType<Fleet>()
+                ?? (ISceneNode)officer.GetParentOfType<Planet>();
+        }
+
+        /// <summary>
+        /// Enumerates officers competing for posts in one fleet or planetary system.
+        /// Planetary posts exclude officers attached to fleets in orbit.
+        /// </summary>
+        /// <param name="commandTarget">The fleet or planet.</param>
+        /// <returns>The officers in that command.</returns>
+        private static IEnumerable<Officer> GetCommandOfficers(ISceneNode commandTarget)
+        {
+            if (commandTarget is Fleet fleet)
+                return fleet.GetChildren<Officer>(recursive: true);
+
+            if (commandTarget is Planet planet)
+            {
+                return planet
+                    .GetChildren<Officer>(recursive: true)
+                    .Where(officer => officer.GetParentOfType<Fleet>() == null);
+            }
+
+            return Enumerable.Empty<Officer>();
         }
     }
 }

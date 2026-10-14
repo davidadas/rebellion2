@@ -1234,6 +1234,11 @@ namespace Rebellion.Simulation
             List<ISceneNode> destroyedRoots = selected
                 .Where(unit => !HasSelectedAncestor(unit, selected))
                 .ToList();
+            Dictionary<Planet, bool> blockadeStates = destroyedRoots
+                .Select(root => root as Planet ?? root.GetParentOfType<Planet>())
+                .Where(planet => planet != null)
+                .Distinct()
+                .ToDictionary(planet => planet, planet => planet.IsBlockaded());
             List<ISceneNode> destroyed = new List<ISceneNode>();
 
             foreach (ISceneNode root in destroyedRoots)
@@ -1253,14 +1258,34 @@ namespace Rebellion.Simulation
                     includeDisabled: true
                 );
 
-            context.Record(
-                destroyed.ConvertAll<GameResult>(unit => new GameObjectDestroyedResult
+            List<GameResult> results = destroyed.ConvertAll<GameResult>(
+                unit => new GameObjectDestroyedResult
                 {
                     DestroyedObject = unit,
                     Context = planet,
                     Tick = game.CurrentTick,
-                })
+                }
             );
+            foreach (KeyValuePair<Planet, bool> blockadeState in blockadeStates)
+            {
+                Planet affectedPlanet = blockadeState.Key;
+                if (
+                    game.GetSceneNodeByInstanceID<Planet>(
+                        affectedPlanet.InstanceID,
+                        includeDisabled: true
+                    ) == affectedPlanet
+                )
+                {
+                    BlockadeTransitions.AddChangedResult(
+                        game,
+                        affectedPlanet,
+                        blockadeState.Value,
+                        results
+                    );
+                }
+            }
+
+            context.Record(results);
         }
 
         /// <summary>

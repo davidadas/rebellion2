@@ -87,6 +87,13 @@ namespace Rebellion.AI.Selectors
                         evacuation.Fleet?.InstanceID
                     );
                     break;
+                case AIFleetReinforcementRedirectionProposal redirection:
+                    Add(
+                        reservations,
+                        AISelectionReservationKind.FleetCapitalReinforcement,
+                        redirection.Fleet?.InstanceID
+                    );
+                    break;
                 case AIColonizationProposal colonization:
                     AddColonizationReservations(reservations, colonization);
                     break;

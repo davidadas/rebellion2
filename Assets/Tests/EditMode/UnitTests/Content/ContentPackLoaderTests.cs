@@ -21,7 +21,7 @@ namespace Rebellion.Tests.Content
         <xs:element name=""Movement"">
           <xs:complexType>
             <xs:all>
-              <xs:element name=""DistanceDivisor"" type=""xs:positiveInteger""/>
+              <xs:element name=""DistanceDivisor"" type=""xs:decimal""/>
             </xs:all>
           </xs:complexType>
         </xs:element>
@@ -221,10 +221,10 @@ namespace Rebellion.Tests.Content
         {
             GameConfig config = LoadGameConfigFromFixture(
                 _fixtureCompleteDefaultsXml,
-                "<GameConfig><Movement><DistanceDivisor>7</DistanceDivisor></Movement></GameConfig>"
+                "<GameConfig><Movement><DistanceDivisor>2.5</DistanceDivisor></Movement></GameConfig>"
             );
 
-            Assert.AreEqual(7, config.Movement.DistanceDivisor);
+            Assert.AreEqual(2.5, config.Movement.DistanceDivisor);
             Assert.AreEqual(1, config.Research.BaseResearchPoints);
         }
 

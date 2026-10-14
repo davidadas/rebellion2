@@ -981,7 +981,11 @@ internal sealed class StrategyStatusInfoBuilder
         if (officer.CurrentRank == OfficerRank.None)
             return "Not Assigned";
 
-        ISceneNode commandTarget = OfficerCommandQueries.ResolveCommandTarget(officer);
+        if (officer.Movement != null || officer.IsOnMission())
+            return "Not Assigned";
+
+        ISceneNode commandTarget =
+            officer.GetParentOfType<Fleet>() ?? (ISceneNode)officer.GetParentOfType<Planet>();
         return commandTarget?.GetDisplayName() ?? "Not Assigned";
     }
 
