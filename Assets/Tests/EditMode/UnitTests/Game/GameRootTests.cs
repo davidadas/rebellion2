@@ -966,49 +966,6 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
-        public void DestroyNode_OrdinaryBuilding_PreservesRegisteredRubble()
-        {
-            _game.AttachNode(_planetSector, _game.GetGalaxyMap());
-            _planet.EnergyCapacity = 1;
-            _game.AttachNode(_planet, _planetSector);
-            Building building = new Building
-            {
-                InstanceID = "DESTROYED_MINE",
-                OwnerInstanceID = _faction1.InstanceID,
-                BuildingType = BuildingType.Mine,
-                ManufacturingStatus = ManufacturingStatus.Complete,
-            };
-            _game.AttachNode(building, _planet);
-
-            _game.DestroyNode(building);
-
-            Assert.AreSame(_planet, building.GetParent());
-            Assert.AreSame(building, _game.GetSceneNodeByInstanceID<Building>(building.InstanceID));
-            Assert.IsTrue(building.IsDestroyed);
-        }
-
-        [Test]
-        public void DestroyNode_Headquarters_RemovesBuildingFromGameState()
-        {
-            _game.AttachNode(_planetSector, _game.GetGalaxyMap());
-            _planet.EnergyCapacity = 1;
-            _game.AttachNode(_planet, _planetSector);
-            Building headquarters = new Building
-            {
-                InstanceID = "HEADQUARTERS",
-                OwnerInstanceID = _faction1.InstanceID,
-                BuildingType = BuildingType.Headquarters,
-                ManufacturingStatus = ManufacturingStatus.Complete,
-            };
-            _game.AttachNode(headquarters, _planet);
-
-            _game.DestroyNode(headquarters);
-
-            Assert.IsNull(headquarters.GetParent());
-            Assert.IsNull(_game.GetSceneNodeByInstanceID<Building>(headquarters.InstanceID));
-        }
-
-        [Test]
         public void RebuildSceneState_SerializedDisabledFleet_RestoresDisabledHierarchy()
         {
             Fleet fleet = new Fleet

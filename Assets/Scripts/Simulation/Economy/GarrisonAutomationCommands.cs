@@ -177,13 +177,13 @@ namespace Rebellion.Simulation
                 supportTarget *= config.UprisingMultiplier;
 
             int resourceFacilities =
-                planet.GetTotalBuildingTypeCount(BuildingType.Mine)
-                + planet.GetTotalBuildingTypeCount(BuildingType.Refinery);
+                planet.GetCommittedBuildingTypeCount(BuildingType.Mine)
+                + planet.GetCommittedBuildingTypeCount(BuildingType.Refinery);
             int facilityTarget =
                 resourceFacilities / config.ResourceFacilitiesPerGarrison
-                + planet.GetTotalBuildingTypeCount(BuildingType.Shipyard)
-                + planet.GetTotalBuildingTypeCount(BuildingType.TrainingFacility)
-                + planet.GetTotalBuildingTypeCount(BuildingType.ConstructionFacility);
+                + planet.GetCommittedBuildingTypeCount(BuildingType.Shipyard)
+                + planet.GetCommittedBuildingTypeCount(BuildingType.TrainingFacility)
+                + planet.GetCommittedBuildingTypeCount(BuildingType.ConstructionFacility);
             return Math.Max(supportTarget, facilityTarget);
         }
 

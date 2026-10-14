@@ -33,12 +33,7 @@ namespace Rebellion.AI.Demands
                 foreach (
                     Building building in context
                         .Assessment.GetPlanetBuildings(planet)
-                        .Where(building =>
-                            building.GetOwnerInstanceID() == context.Faction.InstanceID
-                            && building.IsDestroyed
-                            && building.ManufacturingStatus == ManufacturingStatus.Complete
-                            && building.BuildingType != BuildingType.Headquarters
-                        )
+                        .Where(building => IsRebuildableRubble(context, building))
                         .OrderBy(building => building.InstanceID, StringComparer.Ordinal)
                 )
                 {
@@ -276,14 +271,17 @@ namespace Rebellion.AI.Demands
                 )
                 .GroupBy(context.Assessment.GetPlanetSystemId)
                 .ToList();
+            int rebuildableCount = CountRebuildableRubble(context, buildingType);
             int remainingFacilityCount = Math.Max(
                 0,
-                desiredFacilityCount - context.StrategicPlan.GetInfrastructureCount(buildingType)
+                desiredFacilityCount
+                    - context.StrategicPlan.GetInfrastructureCount(buildingType)
+                    - rebuildableCount
             );
             if (buildingType == BuildingType.ConstructionFacility)
                 remainingFacilityCount = Math.Max(
                     remainingFacilityCount,
-                    CountUnseededOuterRimSectors(sectors)
+                    CountUnseededOuterRimSectors(context, sectors)
                 );
             if (remainingFacilityCount == 0)
                 return;
@@ -306,9 +304,11 @@ namespace Rebellion.AI.Demands
         /// <summary>
         /// Counts Outer Rim systems that still lack construction capacity.
         /// </summary>
+        /// <param name="context">The current AI turn context.</param>
         /// <param name="sectors">Owned planets grouped by system.</param>
         /// <returns>The number of unseeded Outer Rim systems.</returns>
         private static int CountUnseededOuterRimSectors(
+            AITurnContext context,
             IEnumerable<IGrouping<string, Planet>> sectors
         )
         {
@@ -317,6 +317,12 @@ namespace Rebellion.AI.Demands
                     == PlanetSectorType.OuterRim
                 && sector.Sum(planet =>
                     planet.GetCommittedBuildingTypeCount(BuildingType.ConstructionFacility)
+                    + context
+                        .Assessment.GetPlanetBuildings(planet)
+                        .Count(building =>
+                            building.BuildingType == BuildingType.ConstructionFacility
+                            && IsRebuildableRubble(context, building)
+                        )
                 ) == 0
             );
         }
@@ -437,6 +443,7 @@ namespace Rebellion.AI.Demands
                     && (
                         !building.IsDestroyed
                         || building.ManufacturingStatus == ManufacturingStatus.Building
+                        || IsRebuildableRubble(context, building)
                     )
                     && building.IsPlanetaryShieldGenerator()
                 );
@@ -464,6 +471,7 @@ namespace Rebellion.AI.Demands
                     && (
                         !building.IsDestroyed
                         || building.ManufacturingStatus == ManufacturingStatus.Building
+                        || IsRebuildableRubble(context, building)
                     )
                     && building.GetBuildingType() == BuildingType.Weapon
                 );
@@ -897,8 +905,12 @@ namespace Rebellion.AI.Demands
             ICollection<AIProductionDemand> requirements
         )
         {
-            int plannedMines = context.Faction.GetTotalRawMinedResources();
-            int plannedRefineries = context.Faction.GetTotalRawRefinementCapacity();
+            int plannedMines =
+                context.Faction.GetTotalRawMinedResources()
+                + CountRebuildableRubble(context, BuildingType.Mine);
+            int plannedRefineries =
+                context.Faction.GetTotalRawRefinementCapacity()
+                + CountRebuildableRubble(context, BuildingType.Refinery);
             foreach (
                 Planet planet in context
                     .Assessment.OwnedPlanets.Where(planet =>
@@ -971,6 +983,9 @@ namespace Rebellion.AI.Demands
             return planet?.IsColonized == false
                 && !planet.IsDestroyed
                 && planet.GetAvailableEnergy() > 0
+                && !context
+                    .Assessment.GetPlanetBuildings(planet)
+                    .Any(building => IsRebuildableRubble(context, building))
                 && context
                     .Assessment.GetPlanetRegiments(planet)
                     .Any(regiment =>
@@ -996,8 +1011,12 @@ namespace Rebellion.AI.Demands
 
             int batchSize = GetBatchSize(context, config);
             int rawResourceNodes = context.Faction.GetTotalRawResourceNodes();
-            int plannedMines = context.Faction.GetTotalRawMinedResources();
-            int plannedRefineries = context.Faction.GetTotalRawRefinementCapacity();
+            int plannedMines =
+                context.Faction.GetTotalRawMinedResources()
+                + CountRebuildableRubble(context, BuildingType.Mine);
+            int plannedRefineries =
+                context.Faction.GetTotalRawRefinementCapacity()
+                + CountRebuildableRubble(context, BuildingType.Refinery);
             int mineDeficit = GetMineDeficit(
                 rawResourceNodes,
                 plannedMines,
@@ -1050,6 +1069,40 @@ namespace Rebellion.AI.Demands
                     )
                 );
             }
+        }
+
+        /// <summary>
+        /// Counts idle rubble that the faction can reconstruct for one building category.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="buildingType">The building category to count.</param>
+        /// <returns>The number of reconstructable destroyed buildings.</returns>
+        private static int CountRebuildableRubble(AITurnContext context, BuildingType buildingType)
+        {
+            return context
+                .Assessment.OwnedPlanets.Where(IsUsablePlanet)
+                .SelectMany(context.Assessment.GetPlanetBuildings)
+                .Count(building =>
+                    building.BuildingType == buildingType && IsRebuildableRubble(context, building)
+                );
+        }
+
+        /// <summary>
+        /// Returns whether a destroyed building can be reconstructed by the active faction.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="building">The destroyed building to inspect.</param>
+        /// <returns>True when the building is owned, idle rubble with an available design.</returns>
+        private static bool IsRebuildableRubble(AITurnContext context, Building building)
+        {
+            return building?.IsRubble() == true
+                && building.BuildingType != BuildingType.Headquarters
+                && string.Equals(
+                    building.GetOwnerInstanceID(),
+                    context?.Faction?.InstanceID,
+                    StringComparison.Ordinal
+                )
+                && IManufacturable.CanBeManufacturedBy(building, context.Faction.InstanceID);
         }
 
         /// <summary>

@@ -49,10 +49,7 @@ namespace Rebellion.AI.Planners
                 if (building?.GetBuildingType() == BuildingType.Mine)
                 {
                     mineCount++;
-                    if (
-                        building.ManufacturingStatus == ManufacturingStatus.Complete
-                        && building.Movement == null
-                    )
+                    if (building.IsOperational())
                         activeMineCount++;
                 }
             }
@@ -116,19 +113,20 @@ namespace Rebellion.AI.Planners
                 economics,
                 building
             );
-            double strategicImpact = building.GetBuildingType() switch
-            {
-                BuildingType.ConstructionFacility
-                or BuildingType.Shipyard
-                or BuildingType.TrainingFacility => GetProductionDeficitAfterRemoval(
-                    context,
-                    building.GetBuildingType()
-                ),
-                BuildingType.Mine or BuildingType.Refinery => economics.GetProjectedCapacityLoss(
-                    building
-                ),
-                _ => 0,
-            };
+            double strategicImpact = building.IsDestroyed
+                ? 0
+                : building.GetBuildingType() switch
+                {
+                    BuildingType.ConstructionFacility
+                    or BuildingType.Shipyard
+                    or BuildingType.TrainingFacility => GetProductionDeficitAfterRemoval(
+                        context,
+                        building.GetBuildingType()
+                    ),
+                    BuildingType.Mine or BuildingType.Refinery =>
+                        economics.GetProjectedCapacityLoss(building),
+                    _ => 0,
+                };
             return new Removal(
                 building,
                 priority,
@@ -150,6 +148,9 @@ namespace Rebellion.AI.Planners
             Building building
         )
         {
+            if (building.IsDestroyed)
+                return AIPlanetBuildingRemovalPriority.Rubble;
+
             if (building.ManufacturingStatus == ManufacturingStatus.Building)
                 return AIPlanetBuildingRemovalPriority.Unfinished;
 
@@ -425,6 +426,9 @@ namespace Rebellion.AI.Planners
             /// <returns>The non-negative maintenance headroom cost.</returns>
             internal int GetMaintenanceHeadroomCost(AITurnContext context, Building building)
             {
+                if (building.IsDestroyed)
+                    return 0;
+
                 long capacityCost =
                     (long)GetAvailableCapacityLoss(building)
                     * context.Assessment.MaintenanceCapacityPerResourcePair;
@@ -439,7 +443,7 @@ namespace Rebellion.AI.Planners
             /// <returns>The available material-capacity loss.</returns>
             private int GetAvailableCapacityLoss(Building building)
             {
-                if (building.ManufacturingStatus != ManufacturingStatus.Complete)
+                if (!building.IsOperational())
                     return 0;
 
                 return building.GetBuildingType() switch
@@ -457,6 +461,9 @@ namespace Rebellion.AI.Planners
             /// <returns>The projected material-capacity loss.</returns>
             internal int GetProjectedCapacityLoss(Building building)
             {
+                if (building.IsDestroyed)
+                    return 0;
+
                 return building.GetBuildingType() switch
                 {
                     BuildingType.Mine => _projectedMineCapacityLoss,
@@ -487,6 +494,7 @@ namespace Rebellion.AI.Planners
         /// </summary>
         internal enum AIPlanetBuildingRemovalPriority
         {
+            Rubble,
             Unfinished,
             SurplusProduction,
             StaticFacility,

@@ -267,10 +267,10 @@ namespace Rebellion.Game.Galaxy
         /// <summary>
         /// Returns whether resource collection is suspended at this planet.
         /// </summary>
-        /// <returns>True during a blockade or uprising.</returns>
+        /// <returns>True when destroyed, blockaded, or in uprising.</returns>
         public bool IsResourceProductionSuspended()
         {
-            return IsBlockaded() || IsInUprising;
+            return IsDestroyed || IsBlockaded() || IsInUprising;
         }
 
         /// <summary>
@@ -392,13 +392,13 @@ namespace Rebellion.Game.Galaxy
         }
 
         /// <summary>
-        /// Gets the total number of mined resource nodes, capped by the raw resource node count.
-        /// This reflects the effective number of resource nodes that can be mined based on mining buildings.
+        /// Gets the committed number of mined resource nodes, capped by the raw resource node count.
+        /// Idle rubble does not contribute capacity until rebuilding begins.
         /// </summary>
         /// <returns>The total number of mined resource nodes, limited by the raw node count.</returns>
         public int GetRawMinedResources()
         {
-            int mineCount = GetTotalBuildingTypeCount(BuildingType.Mine);
+            int mineCount = GetCommittedBuildingTypeCount(BuildingType.Mine);
             return Math.Min(NumRawResourceNodes, mineCount);
         }
 
@@ -422,13 +422,13 @@ namespace Rebellion.Game.Galaxy
         }
 
         /// <summary>
-        /// Gets the total refinement capacity based on available refinery buildings.
-        /// This represents the maximum number of resources that can be refined.
+        /// Gets the committed refinement capacity based on refinery buildings.
+        /// Idle rubble does not contribute capacity until rebuilding begins.
         /// </summary>
         /// <returns>The total refinement capacity.</returns>
         public int GetRawRefinementCapacity()
         {
-            return GetTotalBuildingTypeCount(BuildingType.Refinery);
+            return GetCommittedBuildingTypeCount(BuildingType.Refinery);
         }
 
         /// <summary>

@@ -20,6 +20,7 @@ namespace Rebellion.Simulation
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
         private readonly PlanetaryControlCommands _planetaryControl;
+        private readonly UnitCommands _unitCommands;
         private readonly Dictionary<Planet, int> _garrisonSurplusByPlanet =
             new Dictionary<Planet, int>();
 
@@ -29,15 +30,18 @@ namespace Rebellion.Simulation
         /// <param name="game">The game instance.</param>
         /// <param name="provider">Random number provider for uprising rolls.</param>
         /// <param name="planetaryControl">Planetary control operations for ownership changes.</param>
+        /// <param name="unitCommands">The unit destruction operations.</param>
         public UprisingResolver(
             GameRoot game,
             IRandomNumberProvider provider,
-            PlanetaryControlCommands planetaryControl
+            PlanetaryControlCommands planetaryControl,
+            UnitCommands unitCommands = null
         )
         {
             _game = game;
             _provider = provider;
             _planetaryControl = planetaryControl;
+            _unitCommands = unitCommands ?? new UnitCommands(game);
             InitializeGarrisonSurplus();
         }
 
@@ -969,7 +973,7 @@ namespace Rebellion.Simulation
                 return false;
 
             ISceneNode destroyed = candidates[_provider.NextInt(0, candidates.Count)];
-            _game.DestroyNode(destroyed);
+            _unitCommands.Destroy(destroyed);
             results.Add(
                 new GameObjectDestroyedResult
                 {

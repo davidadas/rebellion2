@@ -126,7 +126,7 @@ namespace Rebellion.Simulation
         )
         {
             int requestCount = pendingFacilityIDs.Count;
-            while (requestCount-- > 0 && pendingFacilityIDs.Count > 0 && stockpile > 0)
+            while (requestCount-- > 0 && pendingFacilityIDs.Count > 0)
             {
                 string facilityId = pendingFacilityIDs[0];
                 Building facility = resolveFacility(facilityId);

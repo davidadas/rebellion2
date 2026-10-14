@@ -67,6 +67,66 @@ namespace Rebellion.Tests.AI.Scorers
         }
 
         [Test]
+        public void GetDemandPressure_IdleRubble_MatchesRemovedRubble()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameConfig.AIInfrastructureConfig infrastructure = game.Config.AI.Infrastructure;
+            infrastructure.ConstructionFacilityPortfolioPercent = 50;
+            infrastructure.ShipyardPortfolioPercent = 50;
+            infrastructure.DemandUtility = new GameConfig.AIProductionDemandUtilityConfig
+            {
+                FacilityPortfolio = new GameConfig.AIConsiderationConfig { Weight = 1 },
+            };
+            infrastructure.PlacementUtility =
+                new GameConfig.AIInfrastructurePlacementUtilityConfig();
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "planet",
+                empire.InstanceID,
+                energyCapacity: 3
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "construction-yard",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+            Building rubble = AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "destroyed-shipyard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            rubble.MarkDestroyed();
+            AIProductionDemand demand = new AIProductionDemand(
+                "construction-demand",
+                AIProductionDemandKind.ConstructionFacility,
+                ManufacturingType.Building,
+                BuildingType.ConstructionFacility,
+                planet,
+                1,
+                baseDemandPercent: 100,
+                targetCount: 2
+            );
+            double withRubble = AIProductionProposalScorer.GetDemandPressure(
+                AITestSceneBuilder.CreateContext(game, empire),
+                demand
+            );
+
+            game.DeleteNode(rubble);
+            double withoutRubble = AIProductionProposalScorer.GetDemandPressure(
+                AITestSceneBuilder.CreateContext(game, empire),
+                demand
+            );
+
+            Assert.AreEqual(withoutRubble, withRubble);
+        }
+
+        [Test]
         public void Score_WithFleetReinforcement_DeductsTravelPenalty()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);

@@ -809,6 +809,7 @@ namespace Rebellion.Tests.Game.Factions
             _faction.TakeNextGenericShipName(genericShip);
             _faction.RawMaterialStockpile = 17;
             _faction.RefinedMaterialStockpile = 23;
+            _faction.HeadquartersDestroyedByFactionInstanceID = "ENEMY";
             _faction.PendingRawMaterialFacilityIDs.AddRange(new[] { "REFINERY1", "REFINERY2" });
             _faction.PendingRefinedMaterialFacilityIDs.AddRange(new[] { "SHIPYARD1", "SHIPYARD2" });
             string serialized = SerializationHelper.Serialize(_faction);
@@ -849,6 +850,10 @@ namespace Rebellion.Tests.Game.Factions
             Assert.AreEqual(
                 _faction.RefinedMaterialStockpile,
                 deserialized.RefinedMaterialStockpile
+            );
+            Assert.AreEqual(
+                _faction.HeadquartersDestroyedByFactionInstanceID,
+                deserialized.HeadquartersDestroyedByFactionInstanceID
             );
             CollectionAssert.AreEqual(
                 _faction.PendingRawMaterialFacilityIDs,

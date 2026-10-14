@@ -4264,7 +4264,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ProcessTick_BuildingInTransitDestinationChangedSides_LeavesRubbleForNewOwner()
+        public void ProcessTick_BuildingDestinationChangesOwner_ScrapsBuilding()
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = TestGame.Create(config);
@@ -4322,10 +4322,12 @@ namespace Rebellion.Tests.Simulation
             for (int i = 0; i < transit; i++)
                 allResults.AddRange(new MovementTickProcessor(movement).ProcessTick(game));
 
-            Assert.AreSame(destPlanet, mine.GetParent());
-            Assert.IsTrue(mine.IsDestroyed);
-            Assert.AreEqual("rebels", mine.OwnerInstanceID);
-            Assert.IsTrue(allResults.OfType<GameObjectDestroyedOnArrivalResult>().Any());
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Building>(mine.InstanceID));
+            Assert.AreEqual("empire", mine.OwnerInstanceID);
+            GameObjectDestroyedOnArrivalResult destroyed = allResults
+                .OfType<GameObjectDestroyedOnArrivalResult>()
+                .Single();
+            Assert.AreSame(game.GetFactionByOwnerInstanceID("rebels"), destroyed.DestroyedBy);
         }
 
         [Test]
@@ -4537,7 +4539,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ProcessTick_ManufacturedBuildingDispatchedAfterBlockadeStarted_LeavesRubbleOnArrival()
+        public void ProcessTick_BuildingArrivesAtBlockade_ScrapsBuilding()
         {
             (
                 GameRoot game,
@@ -4568,8 +4570,7 @@ namespace Rebellion.Tests.Simulation
             for (int tick = 0; tick < transitTicks; tick++)
                 results.AddRange(new MovementTickProcessor(scene.movement).ProcessTick(scene.game));
 
-            Assert.AreSame(scene.blockadedDestination, building.GetParent());
-            Assert.IsTrue(building.IsDestroyed);
+            Assert.IsNull(scene.game.GetSceneNodeByInstanceID<Building>(building.InstanceID));
             GameObjectDestroyedOnArrivalResult destroyed = results
                 .OfType<GameObjectDestroyedOnArrivalResult>()
                 .Single();

@@ -23,6 +23,7 @@ namespace Rebellion.Simulation
         private readonly DuelCommands _duelCommands;
         private readonly MessageCommands _messageCommands;
         private readonly MissionResolver _missionResolver;
+        private readonly UnitCommands _unitCommands;
 
         /// <summary>
         /// Creates a new GameEventCommands.
@@ -34,6 +35,7 @@ namespace Rebellion.Simulation
         /// <param name="planetaryControlCommands">The ownership operations.</param>
         /// <param name="duelCommands">The officer encounter operations.</param>
         /// <param name="messageCommands">The authored message delivery operations.</param>
+        /// <param name="unitCommands">The unit destruction operations.</param>
         public GameEventCommands(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -41,7 +43,8 @@ namespace Rebellion.Simulation
             MovementCommands movementCommands = null,
             PlanetaryControlCommands planetaryControlCommands = null,
             DuelCommands duelCommands = null,
-            MessageCommands messageCommands = null
+            MessageCommands messageCommands = null,
+            UnitCommands unitCommands = null
         )
             : this(
                 game,
@@ -51,7 +54,8 @@ namespace Rebellion.Simulation
                 planetaryControlCommands,
                 duelCommands,
                 messageCommands,
-                missionResolver: null
+                missionResolver: null,
+                unitCommands: unitCommands
             ) { }
 
         /// <summary>
@@ -65,6 +69,7 @@ namespace Rebellion.Simulation
         /// <param name="duelCommands">The officer encounter operations.</param>
         /// <param name="messageCommands">The authored message delivery operations.</param>
         /// <param name="missionResolver">The mission lifecycle resolver.</param>
+        /// <param name="unitCommands">The unit destruction operations.</param>
         internal GameEventCommands(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -73,7 +78,8 @@ namespace Rebellion.Simulation
             PlanetaryControlCommands planetaryControlCommands,
             DuelCommands duelCommands,
             MessageCommands messageCommands,
-            MissionResolver missionResolver
+            MissionResolver missionResolver,
+            UnitCommands unitCommands = null
         )
         {
             _game = game;
@@ -84,6 +90,7 @@ namespace Rebellion.Simulation
             _duelCommands = duelCommands;
             _messageCommands = messageCommands;
             _missionResolver = missionResolver;
+            _unitCommands = unitCommands ?? new UnitCommands(game);
         }
 
         /// <summary>
@@ -481,7 +488,8 @@ namespace Rebellion.Simulation
                 _provider,
                 context,
                 _unitFactory,
-                _missionResolver
+                _missionResolver,
+                _unitCommands
             );
             results = new List<GameResult>(actionContext.Results);
             if (actionContext.DeferredOperations.Count > 0)
@@ -740,6 +748,7 @@ namespace Rebellion.Simulation
         /// <param name="context">The scoped target, trigger, state, and runtime bindings.</param>
         /// <param name="unitFactory">Factory for actions that create runtime units.</param>
         /// <param name="missionResolver">The mission lifecycle resolver.</param>
+        /// <param name="unitCommands">The unit destruction operations.</param>
         /// <returns>The context containing requests and results produced by the actions.</returns>
         private static GameActionContext ExecuteActions(
             GameEvent gameEvent,
@@ -747,7 +756,8 @@ namespace Rebellion.Simulation
             IRandomNumberProvider provider,
             GameEventEvaluationContext context,
             UnitFactory unitFactory = null,
-            MissionResolver missionResolver = null
+            MissionResolver missionResolver = null,
+            UnitCommands unitCommands = null
         )
         {
             GameActionContext actionContext = new GameActionContext(
@@ -755,7 +765,8 @@ namespace Rebellion.Simulation
                 provider,
                 context,
                 unitFactory,
-                missionResolver
+                missionResolver,
+                unitCommands
             );
             ExecuteActions(gameEvent.Actions, actionContext);
             return actionContext;

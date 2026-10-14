@@ -355,6 +355,50 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void HandleResults_RebuildAtCapturedPlanet_ReturnsTransferredBuildingToRubble()
+        {
+            Planet destination = CreatePlanet("CAPTURED", _empire.InstanceID);
+            Building rubble = new Building
+            {
+                InstanceID = "RUBBLE",
+                TypeID = "MINE",
+                OwnerInstanceID = _empire.InstanceID,
+                ConstructionCost = 10,
+                BaseBuildSpeed = 1,
+                BuildingType = BuildingType.Mine,
+                IsDestroyed = true,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                ManufacturingFactionInstanceIDs = new List<string> { _empire.InstanceID },
+            };
+            _game.AttachNode(rubble, destination);
+            Assert.IsTrue(
+                _manager.SetManufacturingOrder(
+                    _coruscant,
+                    rubble,
+                    destination,
+                    1,
+                    _empire.InstanceID
+                )
+            );
+            Faction alliance = CreateFaction("ALLIANCE");
+            PlanetaryControlCommands control = new PlanetaryControlCommands(
+                _game,
+                new PlanetaryControlQueries(_game),
+                new FogOfWarQueries(_game)
+            );
+
+            PlanetOwnershipChangedResult result = control.TransferPlanet(destination, alliance);
+            _observer.HandleResults(new[] { result });
+
+            Assert.AreSame(destination, rubble.GetParent());
+            Assert.AreEqual(alliance.InstanceID, rubble.OwnerInstanceID);
+            Assert.IsTrue(rubble.IsRubble());
+            Assert.IsFalse(
+                _coruscant.GetManufacturingQueue().ContainsKey(ManufacturingType.Building)
+            );
+        }
+
+        [Test]
         public void HandleResults_FleetDestinationAtCapturedPlanet_PreservesOrder()
         {
             Planet destination = CreatePlanet("CAPTURED", _empire.InstanceID);

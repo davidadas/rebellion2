@@ -187,10 +187,31 @@ namespace Rebellion.Game.Units
         }
 
         /// <summary>
+        /// Returns whether this building is idle rubble that can be selected for reconstruction.
+        /// </summary>
+        /// <returns>True when the destroyed building is not currently being rebuilt.</returns>
+        public bool IsRubble()
+        {
+            return IsDestroyed && ManufacturingStatus == ManufacturingStatus.Complete;
+        }
+
+        /// <summary>
+        /// Returns whether this destroyed building is currently being reconstructed.
+        /// </summary>
+        /// <returns>True when reconstruction is in progress.</returns>
+        public bool IsRebuilding()
+        {
+            return IsDestroyed && ManufacturingStatus == ManufacturingStatus.Building;
+        }
+
+        /// <summary>
         /// Converts this building into non-operational rubble while preserving its planet slot.
         /// </summary>
         public void MarkDestroyed()
         {
+            if (IsRubble())
+                return;
+
             IsDestroyed = true;
             ManufacturingStatus = ManufacturingStatus.Complete;
             ManufacturingProgress = 0;

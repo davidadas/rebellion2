@@ -295,6 +295,29 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void ProcessFaction_IdleFacilityRubble_DoesNotIncreaseGarrisonTarget()
+        {
+            _faction.ManageProduction = false;
+            AddDestroyedBuilding(
+                _destination,
+                "DESTROYED_SHIPYARD_1",
+                "shipyard",
+                BuildingType.Shipyard
+            );
+            AddDestroyedBuilding(
+                _destination,
+                "DESTROYED_SHIPYARD_2",
+                "shipyard",
+                BuildingType.Shipyard
+            );
+            AddCompletedRegiment(_destination, "DESTINATION_DEFENSE");
+
+            _automation.ProcessFaction(_faction);
+
+            Assert.AreEqual(1, _destination.GetAllRegiments().Count);
+        }
+
+        [Test]
         public void ProcessFaction_PendingRegimentMeetsTarget_DoesNotQueueAnotherRegiment()
         {
             _faction.ManageProduction = false;
@@ -707,6 +730,29 @@ namespace Rebellion.Tests.Simulation
                 rubble,
                 _producer.GetManufacturingQueue()[ManufacturingType.Building].Single()
             );
+        }
+
+        [Test]
+        public void ProcessFaction_UnrebuildableMineRubble_QueuesMine()
+        {
+            _faction.ManageGarrisons = false;
+            AddProductionFacility(_producer, "CONSTRUCTION", ManufacturingType.Building);
+            Building rubble = AddDestroyedBuilding(
+                _destination,
+                "DESTROYED_MINE",
+                "locked-mine",
+                BuildingType.Mine
+            );
+            rubble.ManufacturingFactionInstanceIDs = new List<string> { "enemy" };
+
+            _automation.ProcessFaction(_faction);
+
+            Building queued = _producer
+                .GetManufacturingQueue()[ManufacturingType.Building]
+                .OfType<Building>()
+                .Single();
+            Assert.AreEqual(BuildingType.Mine, queued.BuildingType);
+            Assert.IsFalse(queued.IsDestroyed);
         }
 
         [Test]

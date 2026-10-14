@@ -20,6 +20,7 @@ namespace Rebellion.Simulation
         private readonly PlanetaryControlCommands _ownership;
         private readonly PlanetaryAssaultResolver _resolver;
         private readonly PlanetaryAssaultQueries _queries;
+        private readonly UnitCommands _unitCommands;
 
         /// <summary>
         /// Raised after an immediate planetary-assault command produces results.
@@ -33,17 +34,20 @@ namespace Rebellion.Simulation
         /// <param name="provider">The random-number provider used by assault resolution.</param>
         /// <param name="ownership">The planetary control commands used to capture planets.</param>
         /// <param name="queries">The assault eligibility rules.</param>
+        /// <param name="unitCommands">The unit destruction operations.</param>
         public PlanetaryAssaultCommands(
             GameRoot game,
             IRandomNumberProvider provider,
             PlanetaryControlCommands ownership,
-            PlanetaryAssaultQueries queries
+            PlanetaryAssaultQueries queries,
+            UnitCommands unitCommands = null
         )
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
             _ownership = ownership ?? throw new ArgumentNullException(nameof(ownership));
             _resolver = new PlanetaryAssaultResolver(game.Config.Combat.PlanetaryAssault, provider);
             _queries = queries ?? throw new ArgumentNullException(nameof(queries));
+            _unitCommands = unitCommands ?? new UnitCommands(game);
         }
 
         /// <summary>
@@ -167,7 +171,7 @@ namespace Rebellion.Simulation
             foreach (Regiment regiment in result.DestroyedDefenderRegiments)
                 _game.DeleteNode(regiment);
             foreach (Building building in result.CollateralDestroyedBuildings)
-                _game.DestroyNode(building);
+                _unitCommands.Destroy(building);
 
             planet.EnergyCapacity -= result.EnergyCapacityDamage;
             planet.AllocatedEnergy -= result.AllocatedEnergyDamage;

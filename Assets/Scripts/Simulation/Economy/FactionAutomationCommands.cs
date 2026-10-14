@@ -112,6 +112,7 @@ namespace Rebellion.Simulation
                     building.IsDestroyed
                     && building.ManufacturingStatus == ManufacturingStatus.Complete
                     && building.BuildingType != BuildingType.Headquarters
+                    && IManufacturable.CanBeManufacturedBy(building, faction.InstanceID)
                     && string.Equals(
                         building.OwnerInstanceID,
                         faction.InstanceID,
@@ -371,7 +372,7 @@ namespace Rebellion.Simulation
         /// <returns>The total facility count.</returns>
         private static int CountBuildings(IEnumerable<Planet> planets, BuildingType buildingType)
         {
-            return planets.Sum(planet => planet.GetTotalBuildingTypeCount(buildingType));
+            return planets.Sum(planet => planet.GetCommittedBuildingTypeCount(buildingType));
         }
     }
 }

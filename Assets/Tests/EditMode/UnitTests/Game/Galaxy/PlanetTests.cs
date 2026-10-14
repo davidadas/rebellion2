@@ -622,6 +622,114 @@ namespace Rebellion.Tests.Game.Galaxy
         }
 
         [Test]
+        public void GetCommittedBuildingTypeCount_IdleRubble_ExcludesRubble()
+        {
+            Building rubble = new Building
+            {
+                BuildingType = BuildingType.Mine,
+                OwnerInstanceID = "FNALL1",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                IsDestroyed = true,
+            };
+            _planet.AddChild(rubble);
+
+            int mineCount = _planet.GetCommittedBuildingTypeCount(BuildingType.Mine);
+
+            Assert.AreEqual(0, mineCount);
+        }
+
+        [Test]
+        public void GetCommittedBuildingTypeCount_RebuildingRubble_IncludesRebuild()
+        {
+            Building rubble = new Building
+            {
+                BuildingType = BuildingType.Mine,
+                OwnerInstanceID = "FNALL1",
+                ManufacturingStatus = ManufacturingStatus.Building,
+                IsDestroyed = true,
+            };
+            _planet.AddChild(rubble);
+
+            int mineCount = _planet.GetCommittedBuildingTypeCount(BuildingType.Mine);
+
+            Assert.AreEqual(1, mineCount);
+        }
+
+        [Test]
+        public void GetRawMinedResources_IdleRubble_ExcludesRubble()
+        {
+            _planet.NumRawResourceNodes = 1;
+            _planet.AddChild(
+                new Building
+                {
+                    BuildingType = BuildingType.Mine,
+                    OwnerInstanceID = "FNALL1",
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                    IsDestroyed = true,
+                }
+            );
+
+            int minedResources = _planet.GetRawMinedResources();
+
+            Assert.AreEqual(0, minedResources);
+        }
+
+        [Test]
+        public void GetRawRefinementCapacity_IdleRubble_ExcludesRubble()
+        {
+            _planet.AddChild(
+                new Building
+                {
+                    BuildingType = BuildingType.Refinery,
+                    OwnerInstanceID = "FNALL1",
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                    IsDestroyed = true,
+                }
+            );
+
+            int refinementCapacity = _planet.GetRawRefinementCapacity();
+
+            Assert.AreEqual(0, refinementCapacity);
+        }
+
+        [Test]
+        public void GetEnergyUsed_IdleRubble_IncludesOccupiedSlot()
+        {
+            _planet.AddChild(
+                new Building
+                {
+                    BuildingType = BuildingType.Refinery,
+                    OwnerInstanceID = "FNALL1",
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                    IsDestroyed = true,
+                }
+            );
+
+            int energyUsed = _planet.GetEnergyUsed();
+
+            Assert.AreEqual(1, energyUsed);
+        }
+
+        [Test]
+        public void GetUnminedResourceNodeCount_IdleMineRubble_ReservesNode()
+        {
+            _planet.NumRawResourceNodes = 1;
+            _planet.AddChild(
+                new Building
+                {
+                    BuildingType = BuildingType.Mine,
+                    OwnerInstanceID = "FNALL1",
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                    IsDestroyed = true,
+                }
+            );
+
+            int unminedResources = _planet.GetUnminedResourceNodeCount();
+
+            Assert.AreEqual(0, unminedResources);
+        }
+
+        [Test]
         public void GetAllBuildings_MultipleSlots_ReturnsAllBuildings()
         {
             Building groundBuilding = new Building { OwnerInstanceID = "FNALL1" };

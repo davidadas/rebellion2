@@ -36,21 +36,6 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Returns whether an active order contains only the requested product.
-        /// </summary>
-        /// <param name="order">The active manufacturing order.</param>
-        /// <param name="template">The requested product template.</param>
-        /// <returns>True when both values identify the same non-empty product.</returns>
-        internal static bool MatchesProduct(ManufacturingOrder order, IManufacturable template)
-        {
-            string requestedTypeID = template?.GetTypeID();
-            return order != null
-                && !string.IsNullOrEmpty(order.ProductTypeID)
-                && !string.IsNullOrEmpty(requestedTypeID)
-                && string.Equals(order.ProductTypeID, requestedTypeID, StringComparison.Ordinal);
-        }
-
-        /// <summary>
         /// Returns whether queued items represent the same ordinary product or rebuild type.
         /// </summary>
         /// <param name="items">The active manufacturing items.</param>

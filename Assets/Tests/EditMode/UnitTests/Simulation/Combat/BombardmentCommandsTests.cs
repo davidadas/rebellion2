@@ -768,6 +768,13 @@ namespace Rebellion.Tests.Simulation
             (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 10);
             planet.IsHeadquarters = true;
             game.GetFactionByOwnerInstanceID("alliance").HQInstanceID = planet.InstanceID;
+            Building headquarters = AddBuilding(
+                game,
+                planet,
+                "headquarters",
+                "alliance",
+                BuildingType.Headquarters
+            );
             Fleet fleet = AddBombardmentFleet(game, planet, "empire", bombardment: 1);
 
             BombardmentResult result = MakeBombardment(
@@ -777,6 +784,8 @@ namespace Rebellion.Tests.Simulation
                 .TryExecute(new List<Fleet> { fleet }, planet, BombardmentType.Military);
 
             Assert.IsTrue(result.HeadquartersDestroyed);
+            Assert.AreSame(headquarters, result.DestroyedHeadquarters);
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Building>(headquarters.InstanceID));
             Assert.IsFalse(planet.IsHeadquarters);
             Assert.IsNull(game.GetFactionByOwnerInstanceID("alliance").HQInstanceID);
             Assert.IsFalse(planet.IsDestroyed);

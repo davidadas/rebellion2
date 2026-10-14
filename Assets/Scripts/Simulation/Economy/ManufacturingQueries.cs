@@ -175,10 +175,7 @@ namespace Rebellion.Simulation
                     ownerInstanceId,
                     StringComparison.Ordinal
                 )
-                && (
-                    template is Building { IsDestroyed: true }
-                    || IManufacturable.CanBeManufacturedBy(template, ownerInstanceId)
-                )
+                && IManufacturable.CanBeManufacturedBy(template, ownerInstanceId)
                 && IsValidRebuildRequest(producer, template, destination)
                 && producer.GetProductionFacilityCount(template.GetManufacturingType()) > 0;
         }
@@ -240,7 +237,7 @@ namespace Rebellion.Simulation
                     ) != true
                 || activeProject == null
                 || activeProject.Count == 0
-                || activeProject.All(item => item.GetTypeID() == template.GetTypeID())
+                || ManufacturingRules.MatchesProduct(activeProject, template)
             )
             {
                 return 0;
@@ -575,7 +572,7 @@ namespace Rebellion.Simulation
                 .GetManufacturingQueue()
                 .TryGetValue(type, out List<IManufacturable> activeItems);
             ManufacturingOrder activeOrder = GetManufacturingOrder(producer, type);
-            if (!ManufacturingRules.MatchesProduct(activeOrder, template))
+            if (!ManufacturingRules.MatchesProduct(activeItems, template))
                 return EstimateManufacturingTicks(producer, template, count);
 
             int retainedCount = Math.Min(count, activeOrder.Quantity);

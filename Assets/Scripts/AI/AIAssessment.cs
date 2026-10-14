@@ -2593,6 +2593,7 @@ namespace Rebellion.AI
                 .SelectMany(GetPlanetBuildings)
                 .Where(building =>
                     building.GetOwnerInstanceID() == _faction.InstanceID
+                    && !building.IsRubble()
                     && building.GetBuildingType()
                         is BuildingType.ConstructionFacility
                             or BuildingType.Shipyard

@@ -203,12 +203,28 @@ namespace Rebellion.AI.Proposals
                 return;
             }
 
-            if (IsCountedManufacturingDemand())
+            Building rebuild = GetRebuildTarget();
+            if (rebuild != null)
             {
-                IManufacturable product = GetRebuildTarget() ?? Product.GetReference();
                 bool started = context.Manufacturing.StartManufacturing(
                     ProducerPlanet,
-                    product,
+                    rebuild,
+                    Destination,
+                    1,
+                    context.Faction.InstanceID
+                );
+                if (!started)
+                    LogEnqueueFailure();
+                else
+                    CommitMaintenance(context);
+                return;
+            }
+
+            if (IsCountedManufacturingDemand())
+            {
+                bool started = context.Manufacturing.StartManufacturing(
+                    ProducerPlanet,
+                    Product.GetReference(),
                     Destination,
                     GetManufacturingCount(),
                     context.Faction.InstanceID
@@ -548,8 +564,7 @@ namespace Rebellion.AI.Proposals
                     != replacement
                 || replacement.GetParent() != destinationPlanet
                 || replacement.GetOwnerInstanceID() != context.Faction.InstanceID
-                || replacement.GetManufacturingStatus() != ManufacturingStatus.Complete
-                || replacement.Movement != null
+                || !replacement.IsOperational()
                 || !replacement.CanUpgradeTo(building)
                 || !IManufacturable.CanBeManufacturedBy(building, context.Faction.InstanceID)
                 || destinationPlanet.GetEnergyUsed() > destinationPlanet.GetEnergyCapacity()
@@ -561,8 +576,7 @@ namespace Rebellion.AI.Proposals
                 .Count(candidate =>
                     candidate.GetOwnerInstanceID() == context.Faction.InstanceID
                     && candidate.GetBuildingType() == replacement.GetBuildingType()
-                    && candidate.GetManufacturingStatus() == ManufacturingStatus.Complete
-                    && candidate.Movement == null
+                    && candidate.IsOperational()
                     && candidate.GetProcessRate() > 0
                 );
             return activeFacilityCount
@@ -602,7 +616,9 @@ namespace Rebellion.AI.Proposals
                     context.Game.AttachNode(replacement, destinationPlanet);
             }
 
-            if (!started)
+            if (started)
+                context.Faction.CancelMaterialRequests(replacement);
+            else
                 LogEnqueueFailure();
             return started;
         }

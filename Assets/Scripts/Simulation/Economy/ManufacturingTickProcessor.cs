@@ -77,6 +77,9 @@ namespace Rebellion.Simulation
         /// <returns>The ordered result batches produced while processing the planet.</returns>
         private IEnumerable<IReadOnlyList<GameResult>> ProcessPlanetIncrementally(Planet planet)
         {
+            if (planet.IsDestroyed)
+                yield break;
+
             Dictionary<ManufacturingType, List<IManufacturable>> queue =
                 planet.GetManufacturingQueue();
             if (queue == null)
@@ -569,6 +572,9 @@ namespace Rebellion.Simulation
             if (item is Building { IsDestroyed: true } rebuilding)
             {
                 rebuilding.CompleteRebuild();
+                Planet rebuildPlanet = rebuilding.GetParentOfType<Planet>();
+                if (rebuildPlanet != null)
+                    rebuildPlanet.IsColonized = true;
                 return;
             }
 

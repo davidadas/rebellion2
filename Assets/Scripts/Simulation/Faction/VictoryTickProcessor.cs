@@ -101,6 +101,9 @@ namespace Rebellion.Simulation
         /// <returns>The current headquarters owner identifier, or null.</returns>
         private static string GetHeadquartersOwner(GameRoot game, Faction defender)
         {
+            if (!string.IsNullOrEmpty(defender.HeadquartersDestroyedByFactionInstanceID))
+                return defender.HeadquartersDestroyedByFactionInstanceID;
+
             Planet planet = game.GetSceneNodeByInstanceID<Planet>(defender.GetHQInstanceID());
             if (defender.Settings?.Headquarters?.IsMobile != true)
                 return planet?.GetOwnerInstanceID();

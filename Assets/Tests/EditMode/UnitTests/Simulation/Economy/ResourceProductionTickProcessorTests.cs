@@ -259,6 +259,17 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void ProcessTick_StaleRequestAtZeroStockpile_RemovesRequest()
+        {
+            _faction.PendingRawMaterialFacilityIDs.Add("missing-facility");
+            _faction.RawMaterialStockpile = 0;
+
+            _system.ProcessTick(_game);
+
+            Assert.IsEmpty(_faction.PendingRawMaterialFacilityIDs);
+        }
+
+        [Test]
         public void ProcessTick_SuspendedRefineryWithPendingRequest_ReservesAvailableRawMaterial()
         {
             Building refinery = AddCompleteBuilding(_planet, BuildingType.Refinery, processRate: 2);

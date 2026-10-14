@@ -338,6 +338,35 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         }
 
         [Test]
+        public void CreateRenderData_IdleMineRubble_ExcludesRawMaterialCapacity()
+        {
+            Planet planet = CreatePlanet("planet", _playerFactionId, 13, 25);
+            planet.NumRawResourceNodes = 2;
+            Building rubble = CreateBuilding(BuildingType.Mine);
+            rubble.IsDestroyed = true;
+            planet.AddTestChild(rubble);
+            GalaxyMapSector sector = CreateSector(
+                new GalaxyMapPlanet(
+                    _planetSector,
+                    planet,
+                    _uiContext.GetPlayerFactionTheme().GalaxyBackground.ImagePath
+                )
+            );
+
+            PlanetSectorWindowRenderData data = _projector.CreateRenderData(
+                sector,
+                null,
+                PlanetIcon.None,
+                null,
+                PlanetIcon.None
+            );
+
+            PlanetSectorPlanetRenderData presentation = data.Planets[0];
+            Assert.AreEqual(0, presentation.RawResourceBar.LitCells);
+            Assert.AreEqual("Raw Materials 0/2", presentation.RawResourceBar.TooltipText);
+        }
+
+        [Test]
         public void CreateRenderData_IdleShipyardFilter_ReturnsEvaluatedMarkerTexture()
         {
             Planet planet = CreatePlanet("planet", _playerFactionId, 13, 25);

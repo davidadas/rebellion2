@@ -4205,6 +4205,41 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void RebuildQueues_RebuildWithoutProducer_ReturnsToRubble()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            Planet planet = new Planet
+            {
+                InstanceID = "planet",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                EnergyCapacity = 1,
+            };
+            game.AttachNode(sector, game.Galaxy);
+            game.AttachNode(planet, sector);
+            Building rubble = new Building
+            {
+                InstanceID = "rubble",
+                OwnerInstanceID = "empire",
+                IsDestroyed = true,
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            game.AttachNode(rubble, planet);
+            ManufacturingCommands commands = new ManufacturingCommands(
+                game,
+                new FleetCommands(game),
+                new ManufacturingQueries(game)
+            );
+
+            new ManufacturingObserver(game, commands).RebuildQueues();
+
+            Assert.IsTrue(rubble.IsRubble());
+            Assert.IsEmpty(planet.GetManufacturingQueue());
+        }
+
+        [Test]
         public void RebuildQueues_InvalidProducerPlanetID_SkipsItem()
         {
             GameConfig config = TestConfig.Create();
@@ -4246,6 +4281,42 @@ namespace Rebellion.Tests.Simulation
             Dictionary<ManufacturingType, List<IManufacturable>> queue =
                 planet.GetManufacturingQueue();
             Assert.AreEqual(0, queue.Count, "Should skip invalid ProducerPlanetID");
+        }
+
+        [Test]
+        public void RebuildQueues_OrphanedRebuild_ReturnsToRubble()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            Planet planet = new Planet
+            {
+                InstanceID = "planet",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                EnergyCapacity = 1,
+            };
+            game.AttachNode(sector, game.Galaxy);
+            game.AttachNode(planet, sector);
+            Building rubble = new Building
+            {
+                InstanceID = "rubble",
+                OwnerInstanceID = "empire",
+                IsDestroyed = true,
+                ManufacturingStatus = ManufacturingStatus.Building,
+                ProducerPlanetID = "missing-producer",
+            };
+            game.AttachNode(rubble, planet);
+            ManufacturingCommands commands = new ManufacturingCommands(
+                game,
+                new FleetCommands(game),
+                new ManufacturingQueries(game)
+            );
+
+            new ManufacturingObserver(game, commands).RebuildQueues();
+
+            Assert.IsTrue(rubble.IsRubble());
+            Assert.IsNull(rubble.ProducerPlanetID);
         }
 
         [Test]
@@ -4861,6 +4932,46 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(rubble.IsDestroyed);
             Assert.IsTrue(rubble.IsOperational());
             Assert.IsEmpty(_coruscant.GetManufacturingQueue()[ManufacturingType.Building]);
+        }
+
+        [Test]
+        public void ProcessTick_RebuildOnUncolonizedPlanet_ColonizesPlanet()
+        {
+            Building rubble = CreateDestroyedBuilding();
+            _game.AttachNode(rubble, _coruscant);
+            _coruscant.IsColonized = false;
+            Assert.IsTrue(
+                _manager.SetManufacturingOrder(
+                    _coruscant,
+                    rubble,
+                    _coruscant,
+                    1,
+                    _empire.InstanceID
+                )
+            );
+
+            for (int tick = 0; tick <= rubble.ConstructionCost && rubble.IsDestroyed; tick++)
+                CreateTickProcessor(_manager).ProcessTick(_game);
+
+            Assert.IsTrue(_coruscant.IsColonized);
+            Assert.IsTrue(rubble.IsOperational());
+        }
+
+        [Test]
+        public void ProcessTick_DestroyedProductionPlanet_DoesNotAdvanceQueue()
+        {
+            Building template = CreateOrderTestBuildingTemplate("mine");
+            Assert.IsTrue(
+                _manager.StartManufacturing(_coruscant, template, _coruscant, 1, _empire.InstanceID)
+            );
+            IManufacturable queued = _coruscant
+                .GetManufacturingQueue()[ManufacturingType.Building]
+                .Single();
+            _coruscant.IsDestroyed = true;
+
+            CreateTickProcessor(_manager).ProcessTick(_game);
+
+            Assert.AreEqual(0, queued.ManufacturingProgress);
         }
 
         [Test]
@@ -5519,7 +5630,7 @@ namespace Rebellion.Tests.Simulation
                 BuildingType = BuildingType.Mine,
                 IsDestroyed = true,
                 ManufacturingStatus = ManufacturingStatus.Complete,
-                ManufacturingFactionInstanceIDs = new List<string> { "OTHER" },
+                ManufacturingFactionInstanceIDs = new List<string> { "EMPIRE" },
             };
         }
 

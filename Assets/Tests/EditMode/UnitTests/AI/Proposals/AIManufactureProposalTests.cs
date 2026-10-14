@@ -75,6 +75,59 @@ namespace Rebellion.Tests.AI.Proposals
         }
 
         [Test]
+        public void Execute_WithMineRubble_QueuesExistingBuilding()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector1");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "resource-world",
+                empire.InstanceID,
+                rawResourceNodes: 1
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "construction-yard",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+            Building rubble = AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "destroyed-mine",
+                BuildingType.Mine,
+                ManufacturingType.None
+            );
+            rubble.MarkDestroyed();
+            AIProductionDemand demand = new AIProductionDemand(
+                "rebuild-mine",
+                AIProductionDemandKind.Mine,
+                ManufacturingType.Building,
+                BuildingType.Mine,
+                planet,
+                1,
+                productTypeId: rubble.TypeID,
+                baseDemandPercent: 100
+            );
+            AIManufactureProposal proposal = new AIManufactureProposal(
+                demand,
+                planet,
+                new Technology(rubble),
+                false
+            );
+
+            proposal.Execute(AITestSceneBuilder.CreateContext(game, empire));
+
+            CollectionAssert.AreEqual(
+                new[] { rubble },
+                planet.GetManufacturingQueue()[ManufacturingType.Building]
+            );
+            Assert.IsTrue(rubble.IsRebuilding());
+        }
+
+        [Test]
         public void Execute_WithMaintenanceRecoveryAtZeroHeadroom_QueuesOrder()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
@@ -215,6 +268,28 @@ namespace Rebellion.Tests.AI.Proposals
         }
 
         [Test]
+        public void Execute_WithFacilityUpgrade_ClearsReplacedFacilityMaterialRequests()
+        {
+            (
+                GameRoot _,
+                Faction faction,
+                Planet _,
+                Building replacement,
+                Building _,
+                AIManufactureProposal proposal,
+                AITurnContext context
+            ) = CreateFacilityUpgradeProposalScene(2, 0, 0);
+            faction.PendingRefinedMaterialFacilityIDs.Add(replacement.InstanceID);
+
+            proposal.Execute(context);
+
+            CollectionAssert.DoesNotContain(
+                faction.PendingRefinedMaterialFacilityIDs,
+                replacement.InstanceID
+            );
+        }
+
+        [Test]
         public void Execute_WithOnlyOneFacility_DoesNotRemoveIt()
         {
             (
@@ -232,6 +307,25 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.AreSame(planet, replacement.GetParent());
             Assert.AreEqual(1, planet.GetTotalBuildingTypeCount(BuildingType.Shipyard));
             Assert.IsFalse(planet.GetManufacturingQueue().ContainsKey(ManufacturingType.Building));
+        }
+
+        [Test]
+        public void CanExecute_WithOnlyOneOperationalFacilityAndRubble_ReturnsFalse()
+        {
+            (
+                GameRoot _,
+                Faction _,
+                Planet _,
+                Building _,
+                Building rubble,
+                AIManufactureProposal proposal,
+                AITurnContext context
+            ) = CreateFacilityUpgradeProposalScene(2, 0, 0);
+            rubble.MarkDestroyed();
+
+            bool canExecute = proposal.CanExecute(context);
+
+            Assert.IsFalse(canExecute);
         }
 
         [Test]

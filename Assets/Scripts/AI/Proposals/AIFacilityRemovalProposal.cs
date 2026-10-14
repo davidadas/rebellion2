@@ -156,10 +156,7 @@ namespace Rebellion.AI.Proposals
                 .Concat(queued)
                 .GroupBy(building => building.InstanceID, StringComparer.Ordinal)
                 .Select(group => group.First())
-                .Where(building =>
-                    !building.IsDestroyed
-                    || building.ManufacturingStatus == ManufacturingStatus.Building
-                )
+                .Where(building => !building.IsDestroyed)
                 .ToList();
         }
 

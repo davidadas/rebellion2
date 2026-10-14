@@ -74,6 +74,38 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void TryScrap_FacilityWithPendingMaterialRequests_ClearsRequests()
+        {
+            GameRoot game = CreateGame();
+            Faction owner = CreateFaction("owner", "Owner");
+            game.GetFactions().Add(owner);
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            Planet planet = CreatePlanet("planet", "Planet", owner.InstanceID);
+            game.AttachNode(sector, game.Galaxy);
+            game.AttachNode(planet, sector);
+            Building building = CreateMine("mine", owner.InstanceID);
+            game.AttachNode(building, planet);
+            owner.PendingRawMaterialFacilityIDs.Add(building.InstanceID);
+            owner.PendingRefinedMaterialFacilityIDs.Add(building.InstanceID);
+            MaintenanceCommands maintenance = new MaintenanceCommands(game, new FixedRNG());
+
+            bool scrapped = maintenance.TryScrap(
+                new IManufacturable[] { building },
+                owner.InstanceID
+            );
+
+            Assert.IsTrue(scrapped);
+            CollectionAssert.DoesNotContain(
+                owner.PendingRawMaterialFacilityIDs,
+                building.InstanceID
+            );
+            CollectionAssert.DoesNotContain(
+                owner.PendingRefinedMaterialFacilityIDs,
+                building.InstanceID
+            );
+        }
+
+        [Test]
         public void TryScrap_ListenerThrows_PropagatesAfterRemoval()
         {
             GameRoot game = CreateGame();

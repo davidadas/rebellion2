@@ -51,6 +51,30 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
+        public void SelectBuildingToRemove_RubbleAndUnfinishedBuilding_SelectsRubble()
+        {
+            AITurnContext context = CreateContext(
+                energyCapacity: 2,
+                out Planet planet,
+                out Building rubble
+            );
+            rubble.MarkDestroyed();
+            Building unfinished = AITestSceneBuilder.CreateBuildingTemplate(
+                "unfinished",
+                BuildingType.Defense
+            );
+            unfinished.OwnerInstanceID = context.Faction.InstanceID;
+            Assert.IsTrue(context.Manufacturing.Enqueue(planet, unfinished, planet));
+            context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+
+            AIPlanetBuildingSpacePolicy.Removal selected =
+                new AIPlanetBuildingSpacePolicy().SelectRemoval(context, planet);
+
+            Assert.AreSame(rubble, selected.Building);
+            Assert.Zero(selected.MaintenanceHeadroomCost);
+        }
+
+        [Test]
         public void SelectBuildingToRemove_DefenseAndResourceFacilities_SelectsDefense()
         {
             AITurnContext context = CreateContext(energyCapacity: 2, out Planet planet, out _);

@@ -115,6 +115,72 @@ namespace Rebellion.Tests.AI
         }
 
         [Test]
+        public void Constructor_IdleResourceRubble_ExcludesProjectedCapacity()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "owned",
+                empire.InstanceID,
+                rawResourceNodes: 1
+            );
+            Building mine = AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "mine",
+                BuildingType.Mine,
+                ManufacturingType.Building
+            );
+            Building refinery = AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "refinery",
+                BuildingType.Refinery,
+                ManufacturingType.Building
+            );
+            mine.MarkDestroyed();
+            refinery.MarkDestroyed();
+
+            AIAssessment assessment = new AIAssessment(game, empire, game.Galaxy);
+
+            Assert.AreEqual(0, assessment.ProjectedMinedResourceCapacity);
+            Assert.AreEqual(0, assessment.ProjectedRefinementCapacity);
+            Assert.AreEqual(0, assessment.ProjectedMaterialCapacity);
+        }
+
+        [Test]
+        public void GetProductionFacilityMaintenance_IdleRubble_ExcludesOnlyIdleRubble()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet planet = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
+            Building idleRubble = AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "idle-rubble",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+            Building rebuilding = AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "rebuilding",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            idleRubble.MaintenanceCost = 7;
+            rebuilding.MaintenanceCost = 11;
+            idleRubble.MarkDestroyed();
+            rebuilding.MarkDestroyed();
+            rebuilding.BeginRebuild();
+            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+
+            Assert.AreEqual(11, assessment.GetProductionFacilityMaintenance());
+        }
+
+        [Test]
         public void GetAvailableProductionLaneCount_WithPartiallyUsedStack_ReturnsFreeLanes()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);

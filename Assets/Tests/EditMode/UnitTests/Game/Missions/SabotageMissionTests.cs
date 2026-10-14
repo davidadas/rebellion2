@@ -227,6 +227,39 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void ResolveObjective_HeadquartersTarget_ClearsHeadquartersState()
+        {
+            (GameRoot game, Planet _, Planet enemyPlanet, Officer officer, FogOfWarCommands _) =
+                MissionSceneBuilder.Build();
+            Faction targetFaction = game.GetFactionByOwnerInstanceID("rebels");
+            targetFaction.HQInstanceID = enemyPlanet.InstanceID;
+            enemyPlanet.IsHeadquarters = true;
+            Building headquarters = new Building
+            {
+                InstanceID = "headquarters",
+                OwnerInstanceID = targetFaction.InstanceID,
+                BuildingType = BuildingType.Headquarters,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(headquarters, enemyPlanet);
+            Mission mission = CreateSabotageMission(
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                headquarters
+            );
+            game.AttachNode(mission, enemyPlanet);
+            mission.Initiate(0);
+
+            MissionSceneBuilder.RunToSuccess(mission, game);
+
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Building>(headquarters.InstanceID));
+            Assert.IsFalse(enemyPlanet.IsHeadquarters);
+            Assert.IsNull(targetFaction.HQInstanceID);
+        }
+
+        [Test]
         public void ResolveObjective_CapitalShipWithOfficer_RestoresOfficerAtLocalPlanet()
         {
             (

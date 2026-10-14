@@ -77,6 +77,7 @@ namespace Rebellion.Simulation
                 locator.GetService<FogOfWarRecorder>()
             ));
             services.AddSingleton<FogOfWarQueries>();
+            services.AddSingleton<UnitCommands>();
             services.AddSingleton<FleetCommands>();
             services.AddSingleton<PersonnelQueries>();
             services.AddSingleton<PersonnelCommands>();
@@ -138,7 +139,8 @@ namespace Rebellion.Simulation
                 locator.GetService<PlanetaryControlCommands>(),
                 locator.GetService<DuelCommands>(),
                 locator.GetService<MessageCommands>(),
-                locator.GetService<MissionResolver>()
+                locator.GetService<MissionResolver>(),
+                locator.GetService<UnitCommands>()
             ));
 
             return services.BuildServiceLocator();

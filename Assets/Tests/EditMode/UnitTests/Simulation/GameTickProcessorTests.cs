@@ -240,8 +240,7 @@ namespace Rebellion.Tests.Simulation
 
             _tick.ProcessTick();
 
-            Assert.AreSame(delivery, _game.GetSceneNodeByInstanceID<Building>(delivery.InstanceID));
-            Assert.IsTrue(delivery.IsDestroyed);
+            Assert.IsNull(_game.GetSceneNodeByInstanceID<Building>(delivery.InstanceID));
             Assert.AreSame(nextPlanet, fleet.GetParentOfType<Planet>());
             Assert.IsNotNull(fleet.Movement);
             Assert.AreEqual(

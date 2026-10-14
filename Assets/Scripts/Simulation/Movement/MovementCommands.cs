@@ -27,6 +27,7 @@ namespace Rebellion.Simulation
         private readonly PersonnelCommands _personnelCommands;
         private readonly MovementQueries _queries;
         private readonly IRandomNumberProvider _movementRandom;
+        private readonly UnitCommands _unitCommands;
         private readonly List<GameResult> _pendingResults = new List<GameResult>();
 
         /// <summary>
@@ -44,6 +45,7 @@ namespace Rebellion.Simulation
         /// <param name="queries">The shared movement eligibility and destination rules.</param>
         /// <param name="random">The random source used for movement consequences.</param>
         /// <param name="personnelCommands">The personnel lifecycle operations.</param>
+        /// <param name="unitCommands">The unit lifecycle operations.</param>
         public MovementCommands(
             GameRoot game,
             FogOfWarCommands fogOfWar,
@@ -51,7 +53,8 @@ namespace Rebellion.Simulation
             FogOfWarQueries fogOfWarQueries,
             MovementQueries queries,
             IRandomNumberProvider random = null,
-            PersonnelCommands personnelCommands = null
+            PersonnelCommands personnelCommands = null,
+            UnitCommands unitCommands = null
         )
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
@@ -64,6 +67,7 @@ namespace Rebellion.Simulation
             _evacuationLosses = new EvacuationLossResolver(game, _movementRandom);
             _personnelCommands =
                 personnelCommands ?? new PersonnelCommands(new PersonnelQueries(game));
+            _unitCommands = unitCommands ?? new UnitCommands(game);
         }
 
         /// <summary>
@@ -1454,7 +1458,7 @@ namespace Rebellion.Simulation
             if (blockadingFleet == null)
                 return false;
 
-            _game.DestroyNode(movable);
+            _unitCommands.RemovePermanently((ISceneNode)movable);
             GameLogger.Log(
                 $"{movable.GetDisplayName()} destroyed on arrival at blockaded {destinationPlanet.GetDisplayName()}."
             );
@@ -1488,15 +1492,10 @@ namespace Rebellion.Simulation
                 return;
             }
 
-            _game.DestroyNode(movable);
-            if (
-                building.IsDestroyed
-                && !string.IsNullOrEmpty(destinationPlanet.GetOwnerInstanceID())
-                && building.GetOwnerInstanceID() != destinationPlanet.GetOwnerInstanceID()
-            )
-            {
-                _game.ChangeOwnership(building, destinationPlanet.GetOwnerInstanceID());
-            }
+            Faction rejectingFaction = _game.GetFactionByOwnerInstanceID(
+                destinationPlanet.OwnerInstanceID
+            );
+            _unitCommands.RemovePermanently(building);
             GameLogger.Log(
                 $"Building {movable.GetDisplayName()} destroyed: destination changed sides during transit."
             );
@@ -1504,6 +1503,7 @@ namespace Rebellion.Simulation
                 new GameObjectDestroyedOnArrivalResult
                 {
                     DestroyedObject = building,
+                    DestroyedBy = rejectingFaction,
                     Context = destinationPlanet,
                     Tick = _game.CurrentTick,
                 }

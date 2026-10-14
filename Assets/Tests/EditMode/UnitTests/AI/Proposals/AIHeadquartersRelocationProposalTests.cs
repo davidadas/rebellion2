@@ -68,6 +68,34 @@ namespace Rebellion.Tests.AI.Proposals
         }
 
         [Test]
+        public void Execute_FullDestinationWithRebuildingRubble_RemovesRubbleAndRelocatesHeadquarters()
+        {
+            AITurnContext context = CreateContext(
+                unfinishedDestinationBuilding: false,
+                out Planet origin,
+                out Planet destination,
+                out Building headquarters,
+                out Building rubble
+            );
+            rubble.MarkDestroyed();
+            rubble.BeginRebuild();
+            rubble.ProducerOwnerID = context.Faction.InstanceID;
+            rubble.ProducerPlanetID = origin.InstanceID;
+            origin.AddToManufacturingQueue(rubble);
+            context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+            AIHeadquartersRelocationProposal proposal = new AIHeadquartersRelocationPlanner()
+                .Plan(context)
+                .Cast<AIHeadquartersRelocationProposal>()
+                .Single();
+
+            proposal.Execute(context);
+
+            Assert.IsNull(context.Game.GetSceneNodeByInstanceID<Building>(rubble.InstanceID));
+            Assert.AreSame(destination, headquarters.GetParent());
+            Assert.IsNotNull(headquarters.Movement);
+        }
+
+        [Test]
         public void Execute_ResourceFacilityRemoval_CommitsMaintenanceHeadroomCost()
         {
             AITurnContext context = CreateContext(

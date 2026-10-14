@@ -20,6 +20,7 @@ namespace Rebellion.Simulation
         private readonly BombardmentQueries _queries;
         private readonly IRandomNumberProvider _provider;
         private readonly PersonnelCommands _personnelCommands;
+        private readonly UnitCommands _unitCommands;
 
         /// <summary>
         /// Raised after an immediate bombardment command produces results.
@@ -33,17 +34,20 @@ namespace Rebellion.Simulation
         /// <param name="provider">Random-number provider used by bombardment resolution.</param>
         /// <param name="queries">Bombardment eligibility and strength rules.</param>
         /// <param name="personnelCommands">Personnel lifecycle commands.</param>
+        /// <param name="unitCommands">Unit destruction commands.</param>
         public BombardmentCommands(
             GameRoot game,
             IRandomNumberProvider provider,
             BombardmentQueries queries,
-            PersonnelCommands personnelCommands = null
+            PersonnelCommands personnelCommands = null,
+            UnitCommands unitCommands = null
         )
         {
             _game = game;
             _provider = provider;
             _personnelCommands =
                 personnelCommands ?? new PersonnelCommands(new PersonnelQueries(game));
+            _unitCommands = unitCommands ?? new UnitCommands(game);
             _queries = queries ?? throw new ArgumentNullException(nameof(queries));
         }
 
@@ -530,7 +534,7 @@ namespace Rebellion.Simulation
                 case BombardmentTargetType.Building:
                     Building building = (Building)target.Entity;
                     result.DestroyedBuildings.Add(building);
-                    _game.DestroyNode(building);
+                    _unitCommands.Destroy(building);
                     break;
                 case BombardmentTargetType.Headquarters:
                     DestroyHeadquarters(planet, defenderId, result);
@@ -560,11 +564,17 @@ namespace Rebellion.Simulation
                 .GetAllBuildings()
                 .SingleOrDefault(building => building.BuildingType == BuildingType.Headquarters);
             if (headquarters != null)
-                _game.DeleteNode(headquarters);
+            {
+                result.DestroyedHeadquarters = headquarters;
+                _unitCommands.Destroy(headquarters);
+            }
+            else
+            {
+                planet.IsHeadquarters = false;
+                if (!string.IsNullOrEmpty(defenderId))
+                    _game.GetFactionByOwnerInstanceID(defenderId).HQInstanceID = null;
+            }
 
-            planet.IsHeadquarters = false;
-            if (!string.IsNullOrEmpty(defenderId))
-                _game.GetFactionByOwnerInstanceID(defenderId).HQInstanceID = null;
             result.HeadquartersDestroyed = true;
         }
 

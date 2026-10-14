@@ -77,13 +77,17 @@ namespace Rebellion.Simulation
                 {
                     if (
                         node
-                            is not IManufacturable
-                            {
-                                ManufacturingStatus: ManufacturingStatus.Building
-                            } manufacturable
-                        || string.IsNullOrEmpty(manufacturable.ProducerPlanetID)
+                        is not IManufacturable
+                        {
+                            ManufacturingStatus: ManufacturingStatus.Building
+                        } manufacturable
                     )
+                        return;
+
+                    if (string.IsNullOrEmpty(manufacturable.ProducerPlanetID))
                     {
+                        if (manufacturable is Building rebuilding && rebuilding.IsRebuilding())
+                            rebuilding.CancelRebuild();
                         return;
                     }
 
@@ -91,7 +95,11 @@ namespace Rebellion.Simulation
                         manufacturable.ProducerPlanetID
                     );
                     if (producer == null)
+                    {
+                        if (manufacturable is Building rebuilding && rebuilding.IsRebuilding())
+                            rebuilding.CancelRebuild();
                         return;
+                    }
 
                     ManufacturingType type = manufacturable.GetManufacturingType();
                     if (!candidates[producer].TryGetValue(type, out List<IManufacturable> lane))

@@ -229,7 +229,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void HandleResults_InTransitBuilding_IsDestroyed()
+        public void HandleResults_InTransitBuilding_RemovesBuilding()
         {
             (
                 GameRoot game,
@@ -246,7 +246,7 @@ namespace Rebellion.Tests.Simulation
             scene.game.AttachNode(building, scene.blockadedDestination);
             scene.movement.RequestMove(building, scene.blockadedDestination, scene.origin);
 
-            AddBlockadingFleet(scene.game, scene.blockadedDestination);
+            (Fleet blockadingFleet, _) = AddBlockadingFleet(scene.game, scene.blockadedDestination);
             List<GameResult> results = ProcessBlockadeStart(
                 scene.game,
                 scene.blockade,
@@ -258,6 +258,8 @@ namespace Rebellion.Tests.Simulation
                 .OfType<GameObjectDestroyedResult>()
                 .Single();
             Assert.AreSame(building, destroyed.DestroyedObject);
+            Assert.AreSame(blockadingFleet, destroyed.DestroyedBy);
+            Assert.AreEqual("empire", building.OwnerInstanceID);
             Assert.AreSame(scene.blockadedDestination, destroyed.Context);
         }
 

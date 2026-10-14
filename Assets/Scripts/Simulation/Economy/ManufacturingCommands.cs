@@ -176,8 +176,7 @@ namespace Rebellion.Simulation
                 List<Building> rebuilds = rebuildPlanet
                     .GetChildren<Building>()
                     .Where(building =>
-                        building.IsDestroyed
-                        && building.ManufacturingStatus == ManufacturingStatus.Complete
+                        building.IsRubble()
                         && string.Equals(building.TypeID, rubble.TypeID, StringComparison.Ordinal)
                         && string.Equals(
                             building.OwnerInstanceID,
@@ -192,7 +191,13 @@ namespace Rebellion.Simulation
                 if (rebuilds.Count != count)
                     return false;
 
-                return rebuilds.All(building => QueueRebuild(producer, building, rebuildPlanet));
+                if (rebuilds.Any(building => !CanQueueRebuild(producer, building, rebuildPlanet)))
+                    return false;
+
+                foreach (Building building in rebuilds)
+                    QueueRebuild(producer, building);
+
+                return true;
             }
 
             bool started = false;
@@ -264,17 +269,25 @@ namespace Rebellion.Simulation
         /// <param name="building">The rubble being rebuilt.</param>
         /// <param name="destination">The planet containing the rubble.</param>
         /// <returns>True when reconstruction was queued.</returns>
-        private bool QueueRebuild(Planet producer, Building building, Planet destination)
+        private static bool CanQueueRebuild(Planet producer, Building building, Planet destination)
         {
-            Faction faction = GetValidatedFaction(producer, building);
-            if (
-                faction == null
-                || !ReferenceEquals(building.GetParent(), destination)
-                || building.ManufacturingStatus != ManufacturingStatus.Complete
-                || !HasMaintenanceHeadroom(faction, building)
-            )
-                return false;
+            return producer != null
+                && building?.IsRubble() == true
+                && ReferenceEquals(building.GetParent(), destination)
+                && string.Equals(
+                    producer.GetOwnerInstanceID(),
+                    building.GetOwnerInstanceID(),
+                    StringComparison.Ordinal
+                );
+        }
 
+        /// <summary>
+        /// Queues a prevalidated destroyed building for reconstruction.
+        /// </summary>
+        /// <param name="producer">The planet performing the work.</param>
+        /// <param name="building">The rubble being rebuilt.</param>
+        private static void QueueRebuild(Planet producer, Building building)
+        {
             building.BeginRebuild();
             building.ProducerOwnerID = producer.GetOwnerInstanceID();
             building.ProducerPlanetID = producer.GetInstanceID();
@@ -282,7 +295,6 @@ namespace Rebellion.Simulation
             GameLogger.Log(
                 $"Enqueued {building.GetDisplayName()} for reconstruction at {producer.GetDisplayName()} (cost: {building.ConstructionCost})"
             );
-            return true;
         }
 
         /// <summary>

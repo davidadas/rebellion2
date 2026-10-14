@@ -441,6 +441,28 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
         }
 
         [Test]
+        public void Build_Rubble_ReturnsZeroMaintenance()
+        {
+            Building building = new Building
+            {
+                InstanceID = "refinery",
+                DisplayName = "Refinery",
+                OwnerInstanceID = _ownerId,
+                BuildingType = BuildingType.Refinery,
+                IsDestroyed = true,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaintenanceCost = 8,
+            };
+            AttachBuilding(building);
+
+            StrategyStatusInfo info = _builder.Build(
+                new StrategyStatusTarget(_mapPlanet, building)
+            );
+
+            Assert.AreEqual("0", info.Rows.Single(row => row.Left == "Maintenance Cost:").Right);
+        }
+
+        [Test]
         public void Build_Starfighter_ReturnsCalculatedSquadronRatings()
         {
             Starfighter starfighter = new Starfighter

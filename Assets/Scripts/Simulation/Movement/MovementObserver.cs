@@ -19,6 +19,7 @@ namespace Rebellion.Simulation
         private readonly MovementCommands _commands;
         private readonly GameRoot _game;
         private readonly MovementQueries _queries;
+        private readonly UnitCommands _unitCommands;
         private IDisposable[] _subscriptions;
 
         /// <summary>
@@ -27,11 +28,18 @@ namespace Rebellion.Simulation
         /// <param name="game">The active game graph.</param>
         /// <param name="commands">The general movement operations.</param>
         /// <param name="queries">The movement routing and destination rules.</param>
-        public MovementObserver(GameRoot game, MovementCommands commands, MovementQueries queries)
+        /// <param name="unitCommands">The unit lifecycle operations.</param>
+        public MovementObserver(
+            GameRoot game,
+            MovementCommands commands,
+            MovementQueries queries,
+            UnitCommands unitCommands = null
+        )
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
             _commands = commands ?? throw new ArgumentNullException(nameof(commands));
             _queries = queries ?? throw new ArgumentNullException(nameof(queries));
+            _unitCommands = unitCommands ?? new UnitCommands(game);
         }
 
         /// <summary>
@@ -114,7 +122,12 @@ namespace Rebellion.Simulation
             {
                 if (unit is Building)
                 {
-                    DestroyBlockadeInboundUnit(unit, result.Planet, reactions);
+                    DestroyBlockadeInboundUnit(
+                        unit,
+                        result.Planet,
+                        result.BlockadingFleet,
+                        reactions
+                    );
                     continue;
                 }
 
@@ -129,7 +142,12 @@ namespace Rebellion.Simulation
                     destination as Planet ?? destination?.GetParentOfType<Planet>();
                 if (destinationPlanet == null)
                 {
-                    DestroyBlockadeInboundUnit(unit, result.Planet, reactions);
+                    DestroyBlockadeInboundUnit(
+                        unit,
+                        result.Planet,
+                        result.BlockadingFleet,
+                        reactions
+                    );
                     continue;
                 }
 
@@ -163,18 +181,21 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="unit">The unit to destroy.</param>
         /// <param name="planet">The blockaded destination.</param>
+        /// <param name="blockadingFleet">The fleet responsible for the destruction.</param>
         /// <param name="reactions">The collection receiving the destruction fact.</param>
         private void DestroyBlockadeInboundUnit(
             IMovable unit,
             Planet planet,
+            Fleet blockadingFleet,
             ICollection<GameResult> reactions
         )
         {
-            _game.DeleteNode(unit);
+            _unitCommands.RemovePermanently((ISceneNode)unit);
             reactions.Add(
                 new GameObjectDestroyedResult
                 {
                     DestroyedObject = unit,
+                    DestroyedBy = blockadingFleet,
                     Context = planet,
                     Tick = _game.CurrentTick,
                 }

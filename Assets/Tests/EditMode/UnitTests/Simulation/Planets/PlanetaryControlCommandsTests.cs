@@ -112,6 +112,60 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void ChangeOwnership_BuildingWithPendingMaterialRequests_ClearsPreviousOwnerRequests()
+        {
+            _empirePlanet.EnergyCapacity = 1;
+            Building building = new Building
+            {
+                InstanceID = "requested-building",
+                OwnerInstanceID = _empire.InstanceID,
+            };
+            _game.AttachNode(building, _empirePlanet);
+            _empire.PendingRawMaterialFacilityIDs.Add(building.InstanceID);
+            _empire.PendingRefinedMaterialFacilityIDs.Add(building.InstanceID);
+
+            _commands.ChangeOwnership(
+                _rebels,
+                Array.Empty<Planet>(),
+                new ISceneNode[] { building }
+            );
+
+            Assert.AreEqual(_rebels.InstanceID, building.OwnerInstanceID);
+            CollectionAssert.DoesNotContain(
+                _empire.PendingRawMaterialFacilityIDs,
+                building.InstanceID
+            );
+            CollectionAssert.DoesNotContain(
+                _empire.PendingRefinedMaterialFacilityIDs,
+                building.InstanceID
+            );
+        }
+
+        [Test]
+        public void ChangeOwnership_Headquarters_RejectsDirectTransfer()
+        {
+            _empirePlanet.EnergyCapacity = 1;
+            Building headquarters = new Building
+            {
+                InstanceID = "headquarters",
+                OwnerInstanceID = _empire.InstanceID,
+                BuildingType = BuildingType.Headquarters,
+            };
+            _game.AttachNode(headquarters, _empirePlanet);
+
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+                _commands.ChangeOwnership(
+                    _rebels,
+                    Array.Empty<Planet>(),
+                    new ISceneNode[] { headquarters }
+                )
+            );
+
+            StringAssert.Contains("cannot be transferred directly", exception.Message);
+            Assert.AreEqual(_empire.InstanceID, headquarters.OwnerInstanceID);
+        }
+
+        [Test]
         public void TransferPlanet_OwnershipTransition_ReportsBeforeAndAfterOwnerMutation()
         {
             string ownerWhileChanging = "not-called";
@@ -225,6 +279,32 @@ namespace Rebellion.Tests.Simulation
             TransferPlanet(_targetPlanet, _rebels);
 
             Assert.AreEqual("rebels", building.GetOwnerInstanceID());
+        }
+
+        [Test]
+        public void TransferPlanet_BuildingWithPendingMaterialRequests_ClearsPreviousOwnerRequests()
+        {
+            _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
+            _targetPlanet.EnergyCapacity = 1;
+            Building building = new Building
+            {
+                InstanceID = "requested-building",
+                OwnerInstanceID = _empire.InstanceID,
+            };
+            _game.AttachNode(building, _targetPlanet);
+            _empire.PendingRawMaterialFacilityIDs.Add(building.InstanceID);
+            _empire.PendingRefinedMaterialFacilityIDs.Add(building.InstanceID);
+
+            TransferPlanet(_targetPlanet, _rebels);
+
+            CollectionAssert.DoesNotContain(
+                _empire.PendingRawMaterialFacilityIDs,
+                building.InstanceID
+            );
+            CollectionAssert.DoesNotContain(
+                _empire.PendingRefinedMaterialFacilityIDs,
+                building.InstanceID
+            );
         }
 
         [Test]

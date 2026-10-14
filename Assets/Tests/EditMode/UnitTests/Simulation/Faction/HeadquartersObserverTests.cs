@@ -111,6 +111,7 @@ namespace Rebellion.Tests.Simulation
             );
             Faction attacker = new Faction { InstanceID = "empire" };
             game.GetFactions().Add(attacker);
+            game.ChangeOwnership(headquarters, attacker.InstanceID);
 
             List<GameResult> results = new HeadquartersObserver(game).HandleResults(
                 new[]
@@ -128,12 +129,86 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(game.GetSceneNodeByInstanceID<Building>(headquarters.InstanceID));
             Assert.IsFalse(origin.IsHeadquarters);
             Assert.IsNull(faction.HQInstanceID);
+            Assert.AreEqual(attacker.InstanceID, faction.HeadquartersDestroyedByFactionInstanceID);
             HeadquartersDestroyedResult destroyed = results
                 .OfType<HeadquartersDestroyedResult>()
                 .Single();
             Assert.AreSame(headquarters, destroyed.Headquarters);
             Assert.AreSame(faction, destroyed.Defender);
             Assert.AreSame(attacker, destroyed.Attacker);
+        }
+
+        [Test]
+        public void HandleResults_HeadquartersDestroyedByEnemy_ReturnsHeadquartersLoss()
+        {
+            (GameRoot game, Faction defender, Planet origin, _, Building headquarters) = CreateGame(
+                isMobile: true
+            );
+            Faction attacker = new Faction { InstanceID = "empire" };
+            game.GetFactions().Add(attacker);
+            Officer saboteur = new Officer
+            {
+                InstanceID = "saboteur",
+                OwnerInstanceID = attacker.InstanceID,
+            };
+
+            List<GameResult> results = new HeadquartersObserver(game).HandleResults(
+                new[]
+                {
+                    new GameObjectSabotagedResult
+                    {
+                        DestroyedObject = headquarters,
+                        DestroyedBy = saboteur,
+                        Context = origin,
+                        Tick = 12,
+                    },
+                }
+            );
+
+            HeadquartersDestroyedResult destroyed = results
+                .OfType<HeadquartersDestroyedResult>()
+                .Single();
+            Assert.AreSame(headquarters, destroyed.Headquarters);
+            Assert.AreSame(origin, destroyed.Planet);
+            Assert.AreSame(defender, destroyed.Defender);
+            Assert.AreSame(attacker, destroyed.Attacker);
+            Assert.AreEqual(12, destroyed.Tick);
+            Assert.AreEqual(attacker.InstanceID, defender.HeadquartersDestroyedByFactionInstanceID);
+        }
+
+        [Test]
+        public void HandleResults_HeadquartersDestroyedByBombardment_ReturnsHeadquartersLoss()
+        {
+            (GameRoot game, Faction defender, Planet origin, _, Building headquarters) = CreateGame(
+                isMobile: true
+            );
+            Faction attacker = new Faction { InstanceID = "empire" };
+            game.GetFactions().Add(attacker);
+
+            List<GameResult> results = new HeadquartersObserver(game).HandleResults(
+                new[]
+                {
+                    new BombardmentResult
+                    {
+                        Planet = origin,
+                        AttackingFaction = attacker,
+                        DefenderOwnerInstanceID = defender.InstanceID,
+                        HeadquartersDestroyed = true,
+                        DestroyedHeadquarters = headquarters,
+                        Tick = 12,
+                    },
+                }
+            );
+
+            HeadquartersDestroyedResult destroyed = results
+                .OfType<HeadquartersDestroyedResult>()
+                .Single();
+            Assert.AreSame(headquarters, destroyed.Headquarters);
+            Assert.AreSame(origin, destroyed.Planet);
+            Assert.AreSame(defender, destroyed.Defender);
+            Assert.AreSame(attacker, destroyed.Attacker);
+            Assert.AreEqual(12, destroyed.Tick);
+            Assert.AreEqual(attacker.InstanceID, defender.HeadquartersDestroyedByFactionInstanceID);
         }
 
         /// <summary>

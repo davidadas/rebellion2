@@ -738,7 +738,11 @@ namespace Rebellion.AI.Scorers
             {
                 foreach (Building building in context.Assessment.GetPlanetBuildings(planet))
                 {
-                    if (building.GetOwnerInstanceID() != context.Faction.InstanceID)
+                    if (
+                        building.GetOwnerInstanceID() != context.Faction.InstanceID
+                        || building.IsDestroyed
+                            && building.ManufacturingStatus != ManufacturingStatus.Building
+                    )
                         continue;
                     switch (building.GetBuildingType())
                     {

@@ -21,6 +21,7 @@ namespace Rebellion.Simulation
     {
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
+        private readonly UnitCommands _unitCommands;
         private readonly HashSet<string> _shortfallFactions = new HashSet<string>();
         private readonly Dictionary<string, int> _nextAutoscrapTickByFaction =
             new Dictionary<string, int>();
@@ -39,6 +40,7 @@ namespace Rebellion.Simulation
         {
             _game = game ?? throw new System.ArgumentNullException(nameof(game));
             _provider = provider;
+            _unitCommands = new UnitCommands(game);
         }
 
         /// <summary>
@@ -257,7 +259,7 @@ namespace Rebellion.Simulation
                     : null;
             Fleet parentFleet = item is CapitalShip ? node?.GetParent() as Fleet : null;
             RefundScrapMaterials(item);
-            _game.DeleteNode(node);
+            _unitCommands.RemovePermanently(node);
             FleetLifecycle.RemoveEmptyFleet(_game, parentFleet);
             if (wasBlockaded.HasValue)
             {

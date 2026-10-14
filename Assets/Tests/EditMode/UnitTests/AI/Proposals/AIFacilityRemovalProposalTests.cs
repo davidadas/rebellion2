@@ -63,6 +63,22 @@ namespace Rebellion.Tests.AI.Proposals
         }
 
         [Test]
+        public void Plan_WithRebuildingShipyard_DoesNotCancelRebuild()
+        {
+            AITurnContext context = CreateContextWithSurplusShipyards(
+                out Planet lowerValue,
+                out _,
+                maintenanceCost: 10
+            );
+            Building rebuilding = lowerValue.GetChildren<Building>().Single();
+            rebuilding.MarkDestroyed();
+            rebuilding.BeginRebuild();
+
+            Assert.IsEmpty(new AIFacilityRemovalPlanner().Plan(context));
+            Assert.IsTrue(rebuilding.IsRebuilding());
+        }
+
+        [Test]
         public void Execute_WithMaintenanceDistressAndSurplus_PreservesStrategicFloor()
         {
             AITurnContext context = CreateContextWithSurplusShipyards(

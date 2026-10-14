@@ -63,6 +63,7 @@ namespace Rebellion.Game.Factions
             set => _settings = value ?? new FactionSettings();
         }
         public string HQInstanceID { get; set; }
+        public string HeadquartersDestroyedByFactionInstanceID { get; set; }
         public string GarrisonTroopTypeID { get; set; }
 
         // Messages and Notifications.
@@ -188,6 +189,19 @@ namespace Rebellion.Game.Factions
                 PendingRefinedMaterialFacilityIDs,
                 minimumStockpile
             );
+        }
+
+        /// <summary>
+        /// Removes every pending material request owned by a facility that can no longer operate.
+        /// </summary>
+        /// <param name="facility">The facility whose pending requests should be removed.</param>
+        public void CancelMaterialRequests(Building facility)
+        {
+            if (string.IsNullOrEmpty(facility?.InstanceID))
+                return;
+
+            PendingRawMaterialFacilityIDs.RemoveAll(id => id == facility.InstanceID);
+            PendingRefinedMaterialFacilityIDs.RemoveAll(id => id == facility.InstanceID);
         }
 
         /// <summary>

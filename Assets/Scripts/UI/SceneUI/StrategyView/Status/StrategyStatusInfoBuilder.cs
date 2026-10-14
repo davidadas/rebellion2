@@ -264,7 +264,10 @@ internal sealed class StrategyStatusInfoBuilder
         AddEtaDestinationRow(info, building);
         info.Rows.Add(new StrategyStatusRow("Status:", GetManufacturingStatusText(building)));
         info.Rows.Add(
-            new StrategyStatusRow("Maintenance Cost:", building.MaintenanceCost.ToString())
+            new StrategyStatusRow(
+                "Maintenance Cost:",
+                (building.IsRubble() ? 0 : building.MaintenanceCost).ToString()
+            )
         );
         if (!defense)
         {

@@ -170,6 +170,39 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void ProcessTick_DestroyedHeadquartersAfterLeaderCapture_PublishesVictoryResult()
+        {
+            (
+                GameRoot game,
+                Faction empire,
+                Faction rebels,
+                Planet empireHQ,
+                VictoryCommands system
+            ) = BuildScene(GameVictoryCondition.Conquest, rebelsCaptureEmpireHQ: false);
+            Officer leader = new Officer
+            {
+                InstanceID = "leader1",
+                OwnerInstanceID = empire.InstanceID,
+                IsMain = true,
+            };
+            game.AttachNode(leader, empireHQ);
+            empire.HQInstanceID = null;
+            empire.HeadquartersDestroyedByFactionInstanceID = rebels.InstanceID;
+
+            List<VictoryResult> published = new List<VictoryResult>();
+            system.ResultsProduced += outcomes => published.AddRange(outcomes);
+            CreateTickProcessor(game, system).ProcessTick(game);
+            Assert.IsEmpty(published);
+
+            leader.IsCaptured = true;
+            CreateTickProcessor(game, system).ProcessTick(game);
+
+            VictoryResult victory = published.Single();
+            Assert.AreSame(rebels, victory.Winner);
+            Assert.AreSame(empire, victory.Loser);
+        }
+
+        [Test]
         public void ProcessTick_MobileHeadquartersInTransit_ReturnsEmpty()
         {
             (GameRoot game, Faction empire, _, Planet empireHQ, VictoryCommands system) =

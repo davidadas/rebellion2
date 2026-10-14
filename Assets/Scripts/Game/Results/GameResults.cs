@@ -177,7 +177,7 @@ namespace Rebellion.Game.Results
     public sealed class HeadquartersCapturedResult : HeadquartersLostResult { }
 
     /// <summary>
-    /// A mobile headquarters was destroyed when its planet fell to an opposing faction.
+    /// A headquarters was destroyed by an opposing faction.
     /// </summary>
     public sealed class HeadquartersDestroyedResult : HeadquartersLostResult
     {
@@ -827,6 +827,7 @@ namespace Rebellion.Game.Results
         public int EnergyCapacityDamage { get; set; }
         public int AllocatedEnergyDamage { get; set; }
         public bool HeadquartersDestroyed { get; set; }
+        public Building DestroyedHeadquarters { get; set; }
         public bool PlanetDestroyed { get; set; }
         public List<Regiment> DestroyedRegiments { get; set; } = new List<Regiment>();
         public List<Building> DestroyedBuildings { get; set; } = new List<Building>();

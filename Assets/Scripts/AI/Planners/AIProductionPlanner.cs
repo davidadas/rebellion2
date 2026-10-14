@@ -694,9 +694,9 @@ namespace Rebellion.AI.Planners
             Building rebuild = demand
                 .DestinationPlanet?.GetChildren<Building>()
                 .Where(building =>
-                    building.IsDestroyed
-                    && building.ManufacturingStatus == ManufacturingStatus.Complete
+                    building.IsRubble()
                     && building.GetOwnerInstanceID() == context.Faction.InstanceID
+                    && IManufacturable.CanBeManufacturedBy(building, context.Faction.InstanceID)
                     && string.Equals(
                         building.TypeID,
                         demand.ProductTypeId,
@@ -705,7 +705,13 @@ namespace Rebellion.AI.Planners
                 )
                 .OrderBy(building => building.InstanceID, StringComparer.Ordinal)
                 .FirstOrDefault();
-            if (rebuild != null && rebuild.MaintenanceCost <= maintenanceBudget)
+            if (
+                rebuild != null
+                && (
+                    ManufacturingRules.IsResourceFacility(rebuild)
+                    || rebuild.MaintenanceCost <= maintenanceBudget
+                )
+            )
                 return new Technology(rebuild);
 
             return GetUnlockedTechnologies(context, ManufacturingType.Building)

@@ -53,6 +53,40 @@ namespace Rebellion.Tests.AI.Demands
         }
 
         [Test]
+        public void BuildDemands_WithRebuildableMine_DoesNotAddReplacementMine()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 0;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "resource-world",
+                empire.InstanceID,
+                rawResourceNodes: 1
+            );
+            Building rubble = AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "destroyed-mine",
+                BuildingType.Mine,
+                ManufacturingType.None
+            );
+            rubble.MarkDestroyed();
+            empire.PendingRefinedMaterialFacilityIDs.Add("waiting-facility");
+
+            List<AIProductionDemand> demands = new AIProductionDemandGenerator().BuildDemands(
+                AITestSceneBuilder.CreateContext(game, empire)
+            );
+
+            Assert.AreEqual(1, demands.Count(demand => demand.Kind == AIProductionDemandKind.Mine));
+            Assert.AreEqual(
+                rubble.TypeID,
+                demands.Single(demand => demand.Kind == AIProductionDemandKind.Mine).ProductTypeId
+            );
+        }
+
+        [Test]
         public void BuildDemands_WithClaimedUncolonizedPlanet_DoesNotAddColonyDemand()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);

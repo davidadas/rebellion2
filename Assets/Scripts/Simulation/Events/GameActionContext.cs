@@ -17,6 +17,7 @@ namespace Rebellion.Simulation
         public IRandomNumberProvider Random { get; }
         public GameEventEvaluationContext Evaluation { get; }
         public UnitFactory UnitFactory { get; }
+        internal UnitCommands UnitCommands { get; }
         internal List<(
             string Name,
             string SourceEventInstanceID,
@@ -38,7 +39,8 @@ namespace Rebellion.Simulation
             GameEventEvaluationContext evaluation = null,
             UnitFactory unitFactory = null
         )
-            : this(game, random, evaluation, unitFactory, missionResolver: null) { }
+            : this(game, random, evaluation, unitFactory, missionResolver: null, unitCommands: null)
+        { }
 
         /// <summary>
         /// Creates an event action context with mission lifecycle handling.
@@ -48,12 +50,14 @@ namespace Rebellion.Simulation
         /// <param name="evaluation">The event evaluation context.</param>
         /// <param name="unitFactory">The runtime unit factory.</param>
         /// <param name="missionResolver">The mission lifecycle resolver.</param>
+        /// <param name="unitCommands">The unit destruction operations.</param>
         internal GameActionContext(
             GameRoot game,
             IRandomNumberProvider random,
             GameEventEvaluationContext evaluation,
             UnitFactory unitFactory,
-            MissionResolver missionResolver
+            MissionResolver missionResolver,
+            UnitCommands unitCommands
         )
         {
             Game = game ?? throw new ArgumentNullException(nameof(game));
@@ -61,6 +65,7 @@ namespace Rebellion.Simulation
             Evaluation = evaluation;
             UnitFactory = unitFactory;
             _missionResolver = missionResolver;
+            UnitCommands = unitCommands ?? new UnitCommands(game);
         }
 
         /// <summary>

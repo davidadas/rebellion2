@@ -1248,7 +1248,7 @@ namespace Rebellion.Simulation
                     if (unit is not Officer || selected.Contains(unit))
                         destroyed.Add(unit);
                 });
-                game.DestroyNode(root);
+                context.UnitCommands.Destroy(root);
             }
 
             Planet planet = !string.IsNullOrWhiteSpace(action.PlanetBinding)

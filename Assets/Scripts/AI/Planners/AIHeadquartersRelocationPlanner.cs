@@ -310,7 +310,7 @@ namespace Rebellion.AI.Planners
             double remainingValue = context.Assessment.GetPlanetValue(planet) - 1;
             int processRate = building.GetProcessRate();
             if (
-                building.ManufacturingStatus == ManufacturingStatus.Complete
+                building.IsOperational()
                 && building.GetProductionType() != ManufacturingType.None
                 && processRate > 0
             )

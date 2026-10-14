@@ -206,9 +206,16 @@ namespace Rebellion.Simulation
 
             foreach (ISceneNode unit in units)
             {
+                if (unit is Building { BuildingType: BuildingType.Headquarters })
+                    throw new InvalidOperationException(
+                        "Headquarters ownership cannot be transferred directly."
+                    );
+
                 Faction previousOwner = _game.GetFactionByOwnerInstanceID(unit.OwnerInstanceID);
                 if (previousOwner == newOwner)
                     continue;
+                if (unit is Building building)
+                    previousOwner?.CancelMaterialRequests(building);
                 _game.ChangeOwnership(unit, newOwner.InstanceID);
                 results.Add(
                     new UnitOwnershipChangedResult
@@ -553,6 +560,12 @@ namespace Rebellion.Simulation
         {
             foreach (Building building in planet.GetChildren<Building>(includeDisabled: true))
             {
+                if (!string.IsNullOrEmpty(building.OwnerInstanceID))
+                {
+                    _game
+                        .GetFactionByOwnerInstanceID(building.OwnerInstanceID)
+                        ?.CancelMaterialRequests(building);
+                }
                 _game.ChangeOwnership(building, newOwner.InstanceID);
             }
         }
