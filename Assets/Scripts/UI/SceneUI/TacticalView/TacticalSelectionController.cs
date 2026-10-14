@@ -28,6 +28,9 @@ public sealed class TacticalSelectionController : MonoBehaviour
 
     public event Action<Vector2> MoveRequested;
     public event Action StopRequested;
+    public event Action LaunchRequested;
+    public event Action RecallRequested;
+    public event Action DockRequested;
 
     /// <summary>
     /// Gets the ordered transient selection without allowing callers to modify it.
@@ -48,6 +51,10 @@ public sealed class TacticalSelectionController : MonoBehaviour
         view.CardClicked += SelectCard;
         view.MoveButton.onClick.AddListener(BeginMove);
         view.StopButton.onClick.AddListener(RequestStop);
+        view.LaunchButton.onClick.AddListener(RequestLaunch);
+        view.RecallButton.onClick.AddListener(RequestRecall);
+        view.DockButton.onClick.AddListener(RequestDock);
+        view.FollowButton.onClick.AddListener(ToggleFollow);
     }
 
     /// <summary>
@@ -133,7 +140,10 @@ public sealed class TacticalSelectionController : MonoBehaviour
         _selecting = false;
         _choosingDestination = false;
         if (_cameraInput)
+        {
+            _cameraInput.StopFollowing();
             _cameraInput.RightClicked -= RequestMove;
+        }
         _cameraInput = null;
         _presentations = null;
         _camera = null;
@@ -142,9 +152,11 @@ public sealed class TacticalSelectionController : MonoBehaviour
         _pointerEventSystem = null;
         if (view)
         {
+            view.BindCarrierOperations(null, null);
             view.RenderSelection(_selected, null, null);
             view.BindBattle(null, null, null, null, _selected);
             view.RenderMarquee(Vector2.zero, Vector2.zero, false);
+            view.RenderFollowState(false, false);
         }
     }
 
@@ -232,7 +244,10 @@ public sealed class TacticalSelectionController : MonoBehaviour
             if (
                 !_presentations.TryGetValue(_selected[i], out Transform root)
                 || !root
-                || !root.gameObject.activeInHierarchy
+                || (
+                    !root.gameObject.activeInHierarchy
+                    && _selected[i].FlightState == FighterFlightState.Deployed
+                )
                 || _selected[i].HasRetreated
             )
                 _selected.RemoveAt(i);
@@ -245,7 +260,45 @@ public sealed class TacticalSelectionController : MonoBehaviour
     /// <summary>
     /// Updates only selected presentation objects.
     /// </summary>
-    private void RefreshView() => view.RenderSelection(_selected, _presentations, _camera);
+    private void RefreshView()
+    {
+        view.RenderSelection(_selected, _presentations, _camera);
+        view.RenderFollowState(
+            TryGetFollowTarget(out _),
+            _cameraInput && _cameraInput.FollowTarget
+        );
+    }
+
+    /// <summary>
+    /// Toggles camera tracking for the primary selected unit without issuing a gameplay order.
+    /// </summary>
+    private void ToggleFollow()
+    {
+        if (!isActiveAndEnabled || !_cameraInput || !_cameraInput.IsConfigured)
+            return;
+        if (_cameraInput.FollowTarget)
+            _cameraInput.StopFollowing();
+        else if (TryGetFollowTarget(out Transform target))
+            _cameraInput.Follow(target);
+        RefreshView();
+    }
+
+    /// <summary>
+    /// Resolves the primary selected unit through the existing scene presentation index.
+    /// </summary>
+    /// <param name="target">The visible presentation root when available.</param>
+    /// <returns>Whether a configured camera can follow the selected unit.</returns>
+    private bool TryGetFollowTarget(out Transform target)
+    {
+        target = null;
+        return _cameraInput
+            && _cameraInput.IsConfigured
+            && SelectedCombatant?.HasRetreated == false
+            && _presentations != null
+            && _presentations.TryGetValue(SelectedCombatant, out target)
+            && target
+            && target.gameObject.activeInHierarchy;
+    }
 
     /// <summary>
     /// Ends a pending drag when a modal takes input without discarding selected ships.
@@ -295,6 +348,33 @@ public sealed class TacticalSelectionController : MonoBehaviour
             return;
         _choosingDestination = false;
         StopRequested?.Invoke();
+    }
+
+    /// <summary>
+    /// Requests launch of selected carried squadrons or selected carriers' manifests.
+    /// </summary>
+    private void RequestLaunch()
+    {
+        if (isActiveAndEnabled)
+            LaunchRequested?.Invoke();
+    }
+
+    /// <summary>
+    /// Requests recovery of selected carriers' assigned fighters.
+    /// </summary>
+    private void RequestRecall()
+    {
+        if (isActiveAndEnabled)
+            RecallRequested?.Invoke();
+    }
+
+    /// <summary>
+    /// Requests return of selected fighter squadrons to their assigned carriers.
+    /// </summary>
+    private void RequestDock()
+    {
+        if (isActiveAndEnabled)
+            DockRequested?.Invoke();
     }
 
     /// <summary>
@@ -348,6 +428,10 @@ public sealed class TacticalSelectionController : MonoBehaviour
             view.CardClicked -= SelectCard;
             view.MoveButton.onClick.RemoveListener(BeginMove);
             view.StopButton.onClick.RemoveListener(RequestStop);
+            view.LaunchButton.onClick.RemoveListener(RequestLaunch);
+            view.RecallButton.onClick.RemoveListener(RequestRecall);
+            view.DockButton.onClick.RemoveListener(RequestDock);
+            view.FollowButton.onClick.RemoveListener(ToggleFollow);
         }
         Clear();
     }

@@ -38,6 +38,9 @@ namespace Rebellion.Tests.Game.Combat
             Assert.AreEqual(50, source.GetComponents()[0].Health);
         }
 
+        /// <summary>
+        /// Checks a copied squadron retains its strength independently of the strategic source.
+        /// </summary>
         [Test]
         public void Create_Starfighter_CreatesIndependentBattleCopy()
         {
@@ -45,6 +48,7 @@ namespace Rebellion.Tests.Game.Combat
             {
                 InstanceID = "STARFIGHTER_SQUADRON_1",
                 OwnerInstanceID = "FACTION_1",
+                MaxSquadronSize = 12,
                 CurrentSquadronSize = 12,
             };
 
@@ -54,8 +58,8 @@ namespace Rebellion.Tests.Game.Combat
             Assert.IsNotNull(copy);
             Assert.AreEqual(source.InstanceID, combatUnit.SourceUnitInstanceID);
             Assert.AreNotSame(source, copy);
-            Assert.AreEqual(1, copy.MaxSquadronSize);
-            Assert.AreEqual(1, copy.CurrentSquadronSize);
+            Assert.AreEqual(12, copy.MaxSquadronSize);
+            Assert.AreEqual(12, copy.CurrentSquadronSize);
 
             copy.CurrentSquadronSize = 0;
 
@@ -183,6 +187,21 @@ namespace Rebellion.Tests.Game.Combat
             CombatUnit restored = SerializationHelper.Deserialize<CombatUnit>(xml);
 
             Assert.IsNull(restored.CurrentShieldStrength);
+        }
+
+        /// <summary>
+        /// Checks the battle records carrier identity even though its fighter copy has no parent.
+        /// </summary>
+        [Test]
+        public void Create_CarriedFighter_PreservesAssignmentWithoutStrategicParent()
+        {
+            CapitalShip carrier = new CapitalShip { InstanceID = "CARRIER" };
+            Starfighter fighter = new Starfighter();
+            fighter.SetParent(carrier);
+            CombatUnit combatant = CombatUnit.Create(fighter);
+            Assert.That(combatant.CarrierSourceUnitInstanceID, Is.EqualTo("CARRIER"));
+            Assert.That(combatant.FlightState, Is.EqualTo(FighterFlightState.Docked));
+            Assert.IsNull(combatant.GetUnit().ParentNode);
         }
 
         [Test]

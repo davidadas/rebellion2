@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using Rebellion.Game.Combat;
+using Rebellion.Game.ShipComponents;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 
@@ -67,6 +68,7 @@ public static class TacticalBattleLaunchContext
         {
             BattleMapInstanceID = battleMap.InstanceID,
             Kind = BattleKind.Space,
+            FlightRandomSeed = Environment.TickCount,
         };
         BaseSceneNode[] templates = gameData
             .CapitalShips.Cast<BaseSceneNode>()
@@ -93,11 +95,38 @@ public static class TacticalBattleLaunchContext
                 );
             }
 
-            foreach (BaseSceneNode template in factionTemplates)
+            BaseSceneNode[] ships = factionTemplates
+                .Select(template =>
+                {
+                    BaseSceneNode ship = (BaseSceneNode)template.CreateCopy();
+                    ship.InstanceID = null;
+                    ship.OwnerInstanceID = factionInstanceID;
+                    ((IManufacturable)ship).SetManufacturingStatus(ManufacturingStatus.Complete);
+                    return ship;
+                })
+                .ToArray();
+            CapitalShip[] carriers = ships
+                .OfType<CapitalShip>()
+                .Where(ship =>
+                    ship.GetComponents()
+                        .OfType<StarfighterBay>()
+                        .Any(bay => bay.FlightPath.Count > 0)
+                )
+                .ToArray();
+            foreach (Starfighter fighter in ships.OfType<Starfighter>())
             {
-                BaseSceneNode ship = (BaseSceneNode)template.CreateCopy();
-                ship.InstanceID = null;
-                ship.OwnerInstanceID = factionInstanceID;
+                if (fighter.Hyperdrive > 0)
+                    continue;
+                CapitalShip carrier = carriers.FirstOrDefault(ship => ship.CanAcceptChild(fighter));
+                if (carrier == null)
+                    throw new InvalidOperationException(
+                        $"Default fighter '{fighter.TypeID}' requires an available carrier with an authored bay route."
+                    );
+                carrier.AddChild(fighter);
+                fighter.SetParent(carrier);
+            }
+            foreach (BaseSceneNode ship in ships)
+            {
                 battle.AddCombatants(ship);
             }
             BattleMapDeploymentRegion deploymentRegion = deploymentRegions[factionIndex];

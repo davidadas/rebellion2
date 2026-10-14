@@ -290,8 +290,19 @@ public static class TacticalViewPrefabBuilder
             "COMMANDS",
             new Color(0.6f, 0.67f, 0.75f)
         );
-        TacticalHudGraphic[] keys = new TacticalHudGraphic[9];
-        string[] names = { "Move", "Attack", "Stop", "Guard", "Focus", "Retreat", "", "", "" };
+        TacticalHudGraphic[] keys = new TacticalHudGraphic[10];
+        string[] names =
+        {
+            "Move",
+            "Attack",
+            "Stop",
+            "Guard",
+            "Focus",
+            "Retreat",
+            "Launch",
+            "Recall",
+            "Dock",
+        };
         TacticalHudGraphic.Artwork[] icons =
         {
             TacticalHudGraphic.Artwork.Move,
@@ -304,12 +315,13 @@ public static class TacticalViewPrefabBuilder
         for (int i = 0; i < names.Length; i++)
             keys[i] = BuildCommand(
                 commands.transform,
-                i < icons.Length ? names[i] : $"CommandSlot{i + 1}",
+                names[i],
                 names[i],
                 i < icons.Length ? icons[i] : null,
                 new Vector2(7f + i % 3 * 70f, 133f - i / 3 * 63f)
             );
 
+        keys[9] = BuildFollowButton(dock.transform, out TMP_Text followLabel);
         SerializedObject serialized = new SerializedObject(view);
         SetReference(serialized, "selectionFrame", frame.rectTransform);
         SetReference(serialized, "marquee", marquee.rectTransform);
@@ -318,6 +330,12 @@ public static class TacticalViewPrefabBuilder
         SetReference(serialized, "rosterScroll", scroll);
         SetReference(serialized, "rosterTitle", rosterTitle);
         SetReference(serialized, "radar", radar);
+        SetReference(
+            serialized,
+            "followButton",
+            keys[9].GetComponentInParent<TacticalCommandButton>()
+        );
+        SetReference(serialized, "followLabel", followLabel);
         SetReferences(serialized, "housings", new Object[] { left, rosterHousing, commands });
         SetReferences(serialized, "keys", keys);
         SetReference(
@@ -330,8 +348,66 @@ public static class TacticalViewPrefabBuilder
             "stopButton",
             keys[2].GetComponentInParent<TacticalCommandButton>()
         );
+        SetReference(
+            serialized,
+            "launchButton",
+            keys[6].GetComponentInParent<TacticalCommandButton>()
+        );
+        SetReference(
+            serialized,
+            "recallButton",
+            keys[7].GetComponentInParent<TacticalCommandButton>()
+        );
+        SetReference(
+            serialized,
+            "dockButton",
+            keys[8].GetComponentInParent<TacticalCommandButton>()
+        );
         serialized.ApplyModifiedPropertiesWithoutUndo();
         return view;
+    }
+
+    /// <summary>
+    /// Authors a dedicated camera key in the space above, and outside, the nine-command housing.
+    /// </summary>
+    /// <param name="parent">The centered bottom dock.</param>
+    /// <param name="label">The label switching between follow and unfollow.</param>
+    /// <returns>The tintable camera key face.</returns>
+    private static TacticalHudGraphic BuildFollowButton(Transform parent, out TMP_Text label)
+    {
+        RectTransform root = RectObject("FollowSelected", parent, new Rect(260f, 238f, 218f, 42f));
+        root.gameObject.SetActive(false);
+        TacticalHudGraphic face = Art(
+            "KeyFace",
+            root,
+            TacticalHudGraphic.Artwork.Key,
+            new Color(0.125f, 0.165f, 0.212f),
+            new Rect(0f, 2f, 218f, 40f)
+        );
+        face.raycastTarget = true;
+        label = Label(
+            "Label",
+            face.transform,
+            new Rect(4f, 4f, 210f, 32f),
+            12f,
+            "FOLLOW SELECTED",
+            new Color(0.85f, 0.89f, 0.94f)
+        );
+        label.alignment = TextAlignmentOptions.Center;
+        TacticalCommandButton button = root.gameObject.AddComponent<TacticalCommandButton>();
+        button.targetGraphic = face;
+        button.navigation = new Navigation { mode = Navigation.Mode.None };
+        button.interactable = false;
+        ColorBlock colors = button.colors;
+        colors.highlightedColor = new Color(1.3f, 1.3f, 1.3f);
+        colors.pressedColor = new Color(0.65f, 0.65f, 0.65f);
+        colors.fadeDuration = 0.06f;
+        button.colors = colors;
+        SerializedObject serialized = new SerializedObject(button);
+        SetReference(serialized, "keyFace", face.rectTransform);
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+        root.gameObject.SetActive(true);
+        return face;
     }
 
     /// <summary>

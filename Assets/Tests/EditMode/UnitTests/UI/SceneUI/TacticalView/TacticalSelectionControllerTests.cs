@@ -8,6 +8,7 @@ using Rebellion.SceneGraph;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.LowLevel;
 using UnityEngine.SceneManagement;
@@ -675,6 +676,94 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             group.transform.Find("Member2").GetComponent<UnityEngine.UI.Button>().onClick.Invoke();
 
             CollectionAssert.AreEqual(new[] { right }, _controller.SelectedCombatants);
+            UnityEngine.Object.DestroyImmediate(_instance);
+            yield return new ExitPlayMode();
+        }
+
+        /// <summary>
+        /// Checks the independent HUD button tracks the primary unit and toggles off without moving it.
+        /// </summary>
+        /// <returns>The runtime button presses, moving presentation, and cleanup.</returns>
+        [UnityTest]
+        public IEnumerator SelectedCombatant_FollowButton_TracksMovingUnitAndTogglesOff()
+        {
+            PreparePlayMode();
+            yield return new EnterPlayMode();
+            SetUp();
+            CombatUnit unit = AddHull(Vector3.zero);
+            TacticalViewCameraController cameraInput =
+                _camera.GetComponent<TacticalViewCameraController>();
+            cameraInput.Configure(
+                new BattleMapBounds
+                {
+                    MinimumX = -1000f,
+                    MaximumX = 1000f,
+                    MinimumY = -1000f,
+                    MaximumY = 1000f,
+                    MinimumZ = -1000f,
+                    MaximumZ = 1000f,
+                },
+                Vector3.zero
+            );
+            _controller.Initialize(_camera, _presentations);
+            Assert.IsNotNull(
+                _instance,
+                "The tactical fixture root must remain alive after binding selection."
+            );
+            TacticalSelectionView view = _instance.GetComponentInChildren<TacticalSelectionView>();
+            Assert.IsNotNull(view, "The tactical fixture must contain its selection view.");
+            Assert.IsNotNull(
+                view.FollowButton,
+                "The generated follow button reference must be bound."
+            );
+            Assert.IsFalse(view.FollowButton.interactable);
+            _controller.SelectAt(_camera.WorldToScreenPoint(Vector3.zero));
+            Assert.IsTrue(view.FollowButton.interactable);
+            yield return null;
+            Canvas.ForceUpdateCanvases();
+            RectTransform followRect = (RectTransform)view.FollowButton.transform;
+            EventSystem followEvents = _instance.GetComponentInChildren<EventSystem>();
+            Assert.IsNotNull(
+                followEvents,
+                "The tactical prefab must provide its own event system."
+            );
+            PointerEventData pointer = new PointerEventData(followEvents)
+            {
+                position = RectTransformUtility.WorldToScreenPoint(
+                    null,
+                    followRect.TransformPoint(followRect.rect.center)
+                ),
+                button = PointerEventData.InputButton.Left,
+            };
+            List<RaycastResult> hits = new List<RaycastResult>();
+            followEvents.RaycastAll(pointer, hits);
+            GameObject followHit = null;
+            foreach (RaycastResult hit in hits)
+                if (
+                    hit.gameObject.GetComponentInParent<TacticalCommandButton>()
+                    == view.FollowButton
+                )
+                {
+                    followHit = hit.gameObject;
+                    break;
+                }
+            Assert.IsNotNull(followHit, "The follow key must receive actual HUD pointer hits.");
+            ExecuteEvents.ExecuteHierarchy(followHit, pointer, ExecuteEvents.pointerClickHandler);
+            Assert.AreSame(_presentations[unit], cameraInput.FollowTarget);
+            Assert.AreEqual(
+                "UNFOLLOW",
+                view.FollowButton.GetComponentInChildren<TMPro.TMP_Text>().text
+            );
+            _presentations[unit].position = new Vector3(25f, 10f, 40f);
+            yield return null;
+            yield return null;
+            Assert.AreEqual(_presentations[unit].position, cameraInput.Pivot);
+            view.FollowButton.onClick.Invoke();
+            Assert.IsNull(cameraInput.FollowTarget);
+            Assert.AreEqual(
+                "FOLLOW SELECTED",
+                view.FollowButton.GetComponentInChildren<TMPro.TMP_Text>().text
+            );
             UnityEngine.Object.DestroyImmediate(_instance);
             yield return new ExitPlayMode();
         }

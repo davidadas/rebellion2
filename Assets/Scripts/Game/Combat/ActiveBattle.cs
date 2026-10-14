@@ -40,6 +40,8 @@ namespace Rebellion.Game.Combat
         public string BattleMapInstanceID { get; set; }
         public BattleKind Kind { get; set; }
         public string PlanetInstanceID { get; set; }
+        public int FlightRandomSeed { get; set; }
+        public long FlightRandomIndex { get; set; }
 
         /// <summary>
         /// Returns the factions participating in the battle.
@@ -52,8 +54,7 @@ namespace Rebellion.Game.Combat
 
         /// <summary>
         /// Adds independently mutable battle copies of a strategic unit under its current owner.
-        /// A capital ship produces one combatant and a starfighter squadron produces one combatant
-        /// for each currently surviving fighter.
+        /// Each capital ship or surviving starfighter squadron produces one combatant.
         /// </summary>
         /// <param name="sourceUnit">The strategic unit entering the battle.</param>
         /// <returns>The battle copies.</returns>
@@ -71,15 +72,11 @@ namespace Rebellion.Game.Combat
                     "Capital ships and starfighters can only enter space battles."
                 );
 
-            int combatantCount = sourceUnit is Starfighter starfighter
-                ? Math.Max(0, starfighter.CurrentSquadronSize)
-                : 1;
-            List<CombatUnit> addedCombatants = new List<CombatUnit>(combatantCount);
-            if (combatantCount == 0)
+            List<CombatUnit> addedCombatants = new List<CombatUnit>(1);
+            if (sourceUnit is Starfighter { CurrentSquadronSize: <= 0 })
                 return addedCombatants.AsReadOnly();
 
-            for (int combatantIndex = 0; combatantIndex < combatantCount; combatantIndex++)
-                addedCombatants.Add(CombatUnit.Create(sourceUnit));
+            addedCombatants.Add(CombatUnit.Create(sourceUnit));
 
             BattleParticipant participant = _participants.Find(candidate =>
                 candidate.FactionInstanceID == sourceUnit.OwnerInstanceID

@@ -44,10 +44,16 @@ public sealed class TacticalViewCameraController : MonoBehaviour
     private Rect _framingViewport;
     private float _framingAspect;
     private float _framingFieldOfView;
+    private Transform _followTarget;
 
     internal bool IsConfigured => _configured;
     internal float Distance => _distance;
     internal Vector3 Pivot => _pivot;
+
+    /// <summary>
+    /// Gets the scene presentation being followed, or null during free navigation.
+    /// </summary>
+    public Transform FollowTarget => _followTarget;
 
     public event Action<Vector2> RightClicked;
 
@@ -89,6 +95,42 @@ public sealed class TacticalViewCameraController : MonoBehaviour
         _rightPointerGestureActive = false;
         _rightPointerDragging = false;
     }
+
+    /// <summary>
+    /// Tracks the unit after movement has updated its presentation for this frame.
+    /// </summary>
+    private void LateUpdate()
+    {
+        if (!_followTarget || !_followTarget.gameObject.activeInHierarchy)
+        {
+            StopFollowing();
+            return;
+        }
+        _pivot = ClampToPlayableVolume(_followTarget.position);
+        ApplyTransform();
+    }
+
+    /// <summary>
+    /// Centers on a visible scene unit and follows its translation without changing zoom or orbit.
+    /// </summary>
+    /// <param name="target">The visible unit's presentation root.</param>
+    public void Follow(Transform target)
+    {
+        RequireConfiguration();
+        if (!target)
+            throw new ArgumentNullException(nameof(target));
+        if (!target.gameObject.activeInHierarchy)
+            throw new ArgumentException("Only visible units can be followed.", nameof(target));
+        _framingCorners = null;
+        _followTarget = target;
+        _pivot = ClampToPlayableVolume(target.position);
+        ApplyTransform();
+    }
+
+    /// <summary>
+    /// Releases the tracked unit while preserving the current camera pose.
+    /// </summary>
+    public void StopFollowing() => _followTarget = null;
 
     /// <summary>
     /// Configures camera navigation from authored map bounds and the current camera pose.
@@ -143,6 +185,7 @@ public sealed class TacticalViewCameraController : MonoBehaviour
         );
         _configured = true;
         _framingCorners = null;
+        StopFollowing();
     }
 
     /// <summary>
@@ -173,6 +216,7 @@ public sealed class TacticalViewCameraController : MonoBehaviour
                 nameof(usableViewport)
             );
         _framingCorners = null;
+        StopFollowing();
         if (hulls.Count == 0)
             return;
         Bounds combined = hulls[0];
@@ -301,6 +345,7 @@ public sealed class TacticalViewCameraController : MonoBehaviour
     public void Recenter(Vector3 point)
     {
         RequireConfiguration();
+        StopFollowing();
         _framingCorners = null;
         _pivot = ClampToPlayableVolume(point);
         ApplyTransform();
@@ -320,6 +365,7 @@ public sealed class TacticalViewCameraController : MonoBehaviour
         if (input.sqrMagnitude <= Mathf.Epsilon || deltaTime <= 0f)
             return;
 
+        StopFollowing();
         _framingCorners = null;
         Vector3 forward = _pivot - transform.position;
         forward.y = 0f;

@@ -331,7 +331,11 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                 {
                     CombatUnit combatant = participant.GetCombatants()[unitIndex];
                     Transform presentation = participantRoot.GetChild(unitIndex);
-                    Assert.That(presentation.GetComponentsInChildren<Renderer>(), Is.Not.Empty);
+                    Assert.That(presentation.GetComponentsInChildren<Renderer>(true), Is.Not.Empty);
+                    Assert.That(
+                        presentation.gameObject.activeSelf,
+                        Is.EqualTo(combatant.FlightState != FighterFlightState.Docked)
+                    );
                     Assert.That(
                         presentation.localPosition,
                         Is.EqualTo(

@@ -1,10 +1,24 @@
 using System;
+using System.Collections.Generic;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Combat
 {
+    /// <summary>
+    /// Describes a fighter's carrier deployment phase independently of its rendered model.
+    /// </summary>
+    public enum FighterFlightState
+    {
+        Deployed,
+        Docked,
+        Queued,
+        Launching,
+        Returning,
+        Docking,
+    }
+
     /// <summary>
     /// Stores a three-dimensional value in battle coordinates.
     /// </summary>
@@ -43,6 +57,24 @@ namespace Rebellion.Game.Combat
         public BattleVector3 MoveDestination { get; set; }
 
         /// <summary>
+        /// Gets or sets the strategic identity of the fighter's assigned carrier.
+        /// </summary>
+        public string CarrierSourceUnitInstanceID { get; set; }
+        public FighterFlightState FlightState { get; set; }
+        public int FlightBayIndex { get; set; }
+        public int FlightWaypointIndex { get; set; }
+        public float FlightSegmentDistance { get; set; }
+        public float FlightDelay { get; set; }
+        public bool RecallRequested { get; set; }
+        public BattleVector3 LaunchFormationOffset { get; set; }
+
+        /// <summary>
+        /// Gets the carrier's ordered squadron launch requests, preserved across scene reloads.
+        /// </summary>
+        public List<string> LaunchQueue { get; set; } = new List<string>();
+        public float LaunchCountdown { get; set; }
+
+        /// <summary>
         /// Returns the independently mutable battle copy of the strategic unit.
         /// </summary>
         /// <returns>The battle unit.</returns>
@@ -67,15 +99,17 @@ namespace Rebellion.Game.Combat
                 );
 
             BaseSceneNode battleCopy = (BaseSceneNode)sourceUnit.CreateCopy();
-            if (battleCopy is Starfighter starfighter)
-            {
-                starfighter.MaxSquadronSize = 1;
-                starfighter.CurrentSquadronSize = 1;
-            }
-
             return new CombatUnit
             {
                 SourceUnitInstanceID = sourceUnit.InstanceID,
+                CarrierSourceUnitInstanceID =
+                    sourceUnit is Starfighter
+                        ? (sourceUnit.ParentNode as CapitalShip)?.InstanceID
+                        : null,
+                FlightState =
+                    sourceUnit is Starfighter && sourceUnit.ParentNode is CapitalShip
+                        ? FighterFlightState.Docked
+                        : FighterFlightState.Deployed,
                 CurrentShieldStrength = battleCopy is CapitalShip capitalShip
                     ? capitalShip.MaxShieldStrength
                     : ((Starfighter)battleCopy).ShieldStrength,
