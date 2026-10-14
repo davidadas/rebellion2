@@ -82,9 +82,78 @@ namespace Rebellion.Simulation
 
             for (int orderIndex = 0; orderIndex < availableCapacity; orderIndex++)
             {
-                if (!TryQueueProductionFacility(faction, ownedPlanets))
+                if (
+                    !TryQueueDestroyedBuilding(faction, ownedPlanets)
+                    && !TryQueueProductionFacility(faction, ownedPlanets)
+                )
                     break;
             }
+        }
+
+        /// <summary>
+        /// Queues the nearest compatible destroyed building before expanding resource production.
+        /// </summary>
+        /// <param name="faction">The faction delegating production management.</param>
+        /// <param name="ownedPlanets">The faction's owned planets.</param>
+        /// <returns>True when a destroyed building was queued for reconstruction.</returns>
+        private bool TryQueueDestroyedBuilding(Faction faction, List<Planet> ownedPlanets)
+        {
+            List<Planet> producers = ownedPlanets
+                .Where(planet =>
+                    !planet.IsDestroyed
+                    && !planet.IsManufacturingReserved(ManufacturingType.Building)
+                    && planet.GetAvailableManufacturingCapacity(ManufacturingType.Building) > 0
+                )
+                .ToList();
+            List<Building> rubble = ownedPlanets
+                .Where(planet => !planet.IsDestroyed)
+                .SelectMany(planet => planet.GetChildren<Building>())
+                .Where(building =>
+                    building.IsDestroyed
+                    && building.ManufacturingStatus == ManufacturingStatus.Complete
+                    && building.BuildingType != BuildingType.Headquarters
+                    && string.Equals(
+                        building.OwnerInstanceID,
+                        faction.InstanceID,
+                        StringComparison.Ordinal
+                    )
+                )
+                .ToList();
+
+            var candidates = producers
+                .SelectMany(producer =>
+                    rubble
+                        .Where(building => IsCompatibleRebuildProject(producer, building))
+                        .Select(building => new
+                        {
+                            Producer = producer,
+                            Building = building,
+                            Destination = building.GetParentOfType<Planet>(),
+                        })
+                )
+                .Where(candidate => candidate.Destination != null)
+                .OrderBy(candidate => candidate.Producer.GetRawDistanceTo(candidate.Destination))
+                .ThenBy(candidate => candidate.Producer.InstanceID, StringComparer.Ordinal)
+                .ThenBy(candidate => candidate.Destination.InstanceID, StringComparer.Ordinal)
+                .ThenBy(candidate => candidate.Building.InstanceID, StringComparer.Ordinal);
+
+            foreach (var candidate in candidates)
+            {
+                if (
+                    _manufacturing.StartManufacturing(
+                        candidate.Producer,
+                        candidate.Building,
+                        candidate.Destination,
+                        _automatedOrderQuantity,
+                        faction.InstanceID
+                    )
+                )
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -219,7 +288,9 @@ namespace Rebellion.Simulation
                 && planet
                     .GetManufacturingQueue()
                     .TryGetValue(ManufacturingType.Building, out List<IManufacturable> queue)
-                && queue?.OfType<Building>().Any(building => building.BuildingType == buildingType)
+                && queue
+                    ?.OfType<Building>()
+                    .Any(building => !building.IsDestroyed && building.BuildingType == buildingType)
                     == true
             );
         }
@@ -243,7 +314,33 @@ namespace Rebellion.Simulation
                 return true;
             }
 
-            return queue.OfType<Building>().All(building => building.BuildingType == buildingType);
+            return queue.All(item =>
+                item is Building { IsDestroyed: false } building
+                && building.BuildingType == buildingType
+            );
+        }
+
+        /// <summary>
+        /// Returns whether a construction lane is idle or already rebuilding the requested product
+        /// at the same destination.
+        /// </summary>
+        /// <param name="producer">The planet containing the construction lane.</param>
+        /// <param name="building">The destroyed building requested for reconstruction.</param>
+        /// <returns>True when adding the rebuild would preserve the active lane.</returns>
+        private static bool IsCompatibleRebuildProject(Planet producer, Building building)
+        {
+            if (
+                !producer
+                    .GetManufacturingQueue()
+                    .TryGetValue(ManufacturingType.Building, out List<IManufacturable> queue)
+                || queue == null
+                || queue.Count == 0
+            )
+            {
+                return true;
+            }
+
+            return ManufacturingRules.MatchesProduct(queue, building);
         }
 
         /// <summary>

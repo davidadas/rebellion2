@@ -117,6 +117,27 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
         }
 
         [Test]
+        public void BuildGalaxyOverview_DestroyedBuilding_ExcludesBuildingAndMaintenance()
+        {
+            Faction faction = new Faction { InstanceID = "faction" };
+            faction.AddOwnedUnit(
+                new Building
+                {
+                    TypeID = "building",
+                    IsDestroyed = true,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                    MaintenanceCost = 40,
+                }
+            );
+
+            IReadOnlyList<AdvisorReportRow> rows = AdvisorReportBuilder.BuildGalaxyOverview(
+                faction
+            );
+
+            Assert.IsEmpty(rows);
+        }
+
+        [Test]
         public void BuildObjectives_ConfiguredConditionsAndVictoryMode_ReturnsVisibleResultsInOrder()
         {
             GameRoot game = new GameRoot

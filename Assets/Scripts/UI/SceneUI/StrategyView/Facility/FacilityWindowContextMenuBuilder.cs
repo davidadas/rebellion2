@@ -173,13 +173,16 @@ internal static class FacilityWindowContextMenuBuilder
     )
     {
         bool underConstruction = building?.GetManufacturingStatus() == ManufacturingStatus.Building;
+        bool destroyed = building?.IsDestroyed == true;
         return new List<StrategyMenuCommand>
         {
             new StrategyMenuCommand(StrategyMenuAction.Encyclopedia, "Encyclopedia", true),
             new StrategyMenuCommand(StrategyMenuAction.Status, "Status", true),
             new StrategyMenuCommand(
                 underConstruction ? StrategyMenuAction.Stop : StrategyMenuAction.Scrap,
-                underConstruction ? "Stop" : "Scrap",
+                underConstruction ? "Stop"
+                    : destroyed ? "Remove"
+                    : "Scrap",
                 playerControlsPlanet
             ),
         };

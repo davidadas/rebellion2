@@ -2762,7 +2762,7 @@ namespace Rebellion.Game.Missions
                 && regiment.ManufacturingStatus == ManufacturingStatus.Complete
                 && regiment.Movement == null;
             Fleet targetFleet = target is CapitalShip ? target.GetParentOfType<Fleet>() : null;
-            game.DeleteNode(target);
+            game.DestroyNode(target);
             if (targetFleet?.GetChildren<CapitalShip>().Count == 0)
                 game.DetachNode(targetFleet);
 

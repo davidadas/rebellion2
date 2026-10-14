@@ -392,6 +392,7 @@ namespace Rebellion.AI.Selectors
             if (
                 proposal?.Product?.GetReference() is not Building
                 || proposal.Demand?.Kind == AIProductionDemandKind.BuildingUpgrade
+                || proposal.RestoresDestroyedBuilding
                 || proposal.Destination is not Planet destination
             )
                 return int.MaxValue;
@@ -414,6 +415,7 @@ namespace Rebellion.AI.Selectors
             if (
                 proposal.Product?.GetReference() is not Building
                 || proposal.Demand?.Kind == AIProductionDemandKind.BuildingUpgrade
+                || proposal.RestoresDestroyedBuilding
                 || proposal.Destination is not Planet destination
             )
                 return;

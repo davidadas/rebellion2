@@ -309,6 +309,64 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        public void MarkDestroyed_OperationalBuilding_LeavesInoperableRubble()
+        {
+            Building building = new Building
+            {
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                ManufacturingProgress = 50,
+                ProducerOwnerID = "owner",
+                ProducerPlanetID = "planet",
+                ProductionCycleDuration = 10,
+            };
+
+            building.MarkDestroyed();
+
+            Assert.IsTrue(building.IsDestroyed);
+            Assert.IsFalse(building.IsOperational());
+            Assert.AreEqual(ManufacturingStatus.Complete, building.ManufacturingStatus);
+            Assert.AreEqual(0, building.ManufacturingProgress);
+            Assert.AreEqual(0, building.ProductionCycleDuration);
+            Assert.IsNull(building.ProducerOwnerID);
+            Assert.IsNull(building.ProducerPlanetID);
+        }
+
+        [Test]
+        public void CompleteRebuild_DestroyedBuilding_RestoresOperation()
+        {
+            Building building = new Building
+            {
+                IsDestroyed = true,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            building.BeginRebuild();
+
+            building.CompleteRebuild();
+
+            Assert.IsFalse(building.IsDestroyed);
+            Assert.IsTrue(building.IsOperational());
+        }
+
+        [Test]
+        public void CancelRebuild_RebuildingBuilding_ReturnsToIdleRubble()
+        {
+            Building building = new Building
+            {
+                IsDestroyed = true,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            building.BeginRebuild();
+            building.ManufacturingProgress = 5;
+
+            building.CancelRebuild();
+
+            Assert.IsTrue(building.IsDestroyed);
+            Assert.AreEqual(ManufacturingStatus.Complete, building.ManufacturingStatus);
+            Assert.AreEqual(0, building.ManufacturingProgress);
+            Assert.IsFalse(building.IsOperational());
+        }
+
+        [Test]
         public void SerializeAndDeserialize_PopulatedBuilding_RetainsProperties()
         {
             Building building = new Building
@@ -338,6 +396,7 @@ namespace Rebellion.Tests.Game.Units
                 ResourceMaintenanceAllocation = 12,
                 ResourceStartupCyclePending = false,
                 IsDetectionBlocker = true,
+                IsDestroyed = true,
                 Upgrades = { "advanced-building" },
                 Movement = null,
             };
@@ -357,6 +416,7 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(building.ShieldStrength, deserializedBuilding.ShieldStrength);
             Assert.AreEqual(building.DefenseWeaponEffect, deserializedBuilding.DefenseWeaponEffect);
             Assert.AreEqual(building.IsDetectionBlocker, deserializedBuilding.IsDetectionBlocker);
+            Assert.AreEqual(building.IsDestroyed, deserializedBuilding.IsDestroyed);
             CollectionAssert.AreEqual(
                 building.ProtectedUnitTypeIDs,
                 deserializedBuilding.ProtectedUnitTypeIDs

@@ -780,6 +780,14 @@ namespace Rebellion.Simulation
         /// <returns>True if the unit can receive the order.</returns>
         internal bool CanReceiveMoveOrder(IMovable unit)
         {
+            if (unit is Building { IsDestroyed: true })
+            {
+                GameLogger.Warning(
+                    $"RequestMove rejected: {unit.GetDisplayName()} is a destroyed building."
+                );
+                return false;
+            }
+
             bool changesManufacturingDestination = IsManufacturingDestinationChange(unit);
             if (!changesManufacturingDestination && unit.GetTransitMovement() != null)
             {
@@ -807,13 +815,14 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Returns whether a movable unit is still being manufactured.
+        /// Returns whether a movable non-rubble unit is still being manufactured.
         /// </summary>
         /// <param name="unit">The unit to inspect.</param>
-        /// <returns>True if the unit is still under construction.</returns>
+        /// <returns>True if the unit is ordinary unfinished production rather than a rebuild.</returns>
         private static bool IsUnderConstruction(IMovable unit)
         {
-            return unit is IManufacturable manufacturable
+            return unit is not Building { IsDestroyed: true }
+                && unit is IManufacturable manufacturable
                 && manufacturable.ManufacturingStatus == ManufacturingStatus.Building;
         }
 
@@ -1563,8 +1572,7 @@ namespace Rebellion.Simulation
                 .Any(building =>
                     building.IsDetectionBlocker
                     && building.OwnerInstanceID == ownerInstanceId
-                    && building.ManufacturingStatus == ManufacturingStatus.Complete
-                    && building.Movement == null
+                    && building.IsOperational()
                 );
         }
 

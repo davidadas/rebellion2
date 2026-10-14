@@ -1494,7 +1494,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void Tick_SabotageResult_RemovesDestroyedObjectFromActorSnapshot()
+        public void Tick_SabotageResult_UpdatesDestroyedBuildingInActorSnapshot()
         {
             GameRoot game = TestGame.Create(TestContent.Data.GameConfig);
             Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
@@ -1576,7 +1576,10 @@ namespace Rebellion.Tests.Simulation
                 .Single(s => s.InstanceID == "SECTOR1")
                 .GetChildren<Planet>()
                 .Single(p => p.InstanceID == "PLANET1");
-            Assert.IsFalse(viewedPlanet.GetChildren<Building>().Any(b => b.InstanceID == "MINE1"));
+            Building viewedMine = viewedPlanet
+                .GetChildren<Building>()
+                .Single(building => building.InstanceID == "MINE1");
+            Assert.IsTrue(viewedMine.IsDestroyed);
         }
 
         [Test]

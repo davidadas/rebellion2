@@ -243,6 +243,9 @@ namespace Rebellion.Game.Missions
             if (target is IManufacturable { ManufacturingStatus: ManufacturingStatus.Building })
                 return false;
 
+            if (target is Building { IsDestroyed: true })
+                return false;
+
             return target is not IMovable movable || movable.GetTransitMovement() == null;
         }
 

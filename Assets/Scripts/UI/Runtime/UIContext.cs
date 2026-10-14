@@ -141,6 +141,16 @@ public sealed class UIContext
         if (node == null)
             return null;
 
+        if (node is Building { IsDestroyed: true })
+        {
+            string destroyedPath = GetTheme(
+                node.GetOwnerInstanceID()
+            )?.StrategyWindows?.Facility?.DestroyedFacilityImagePath;
+            Texture2D destroyedTexture = GetTexture(destroyedPath);
+            if (destroyedTexture != null)
+                return destroyedTexture;
+        }
+
         string path = node.GetDisplayImagePath();
         if (string.IsNullOrEmpty(path))
             return null;

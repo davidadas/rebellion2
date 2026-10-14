@@ -149,10 +149,7 @@ namespace Rebellion.Simulation
             {
                 total += planet
                     .GetBuildings(facilityType)
-                    .Count(building =>
-                        building.GetManufacturingStatus() == ManufacturingStatus.Complete
-                        && building.Movement == null
-                    );
+                    .Count(building => building.IsOperational());
             }
             return total;
         }

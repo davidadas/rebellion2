@@ -191,9 +191,7 @@ internal sealed class FacilityWindowProjector
         IManufacturable current = queue.FirstOrDefault(item =>
             item.GetManufacturingStatus() == ManufacturingStatus.Building
         );
-        int activeFacilityCount = facilities.Count(building =>
-            building.GetManufacturingStatus() == ManufacturingStatus.Complete
-        );
+        int activeFacilityCount = facilities.Count(building => building.IsOperational());
         int? cardIndex = FacilityManufacturingLaneCatalog.GetCardIndex(manufacturingTab);
         bool selected = cardIndex.HasValue && selectedCards?.Contains(cardIndex.Value) == true;
         ManufacturingLaneStateTheme stateTheme = uiContext

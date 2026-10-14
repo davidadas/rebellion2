@@ -205,6 +205,55 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
         }
 
         [Test]
+        public void GetBuildSelection_ConstructionTab_IncludesDestroyedBuildingAtDestination()
+        {
+            const string ownerId = "owner";
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            game.GetFactions().Add(new Faction { InstanceID = ownerId });
+            GalaxyPlanetSector sector = new GalaxyPlanetSector { InstanceID = "sector" };
+            Planet destination = CreatePlanet("destination", ownerId, 1);
+            Building rubble = new Building
+            {
+                InstanceID = "destroyed-mine",
+                TypeID = "mine",
+                DisplayName = "Mine",
+                OwnerInstanceID = ownerId,
+                BuildingType = BuildingType.Mine,
+                IsDestroyed = true,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                ManufacturingFactionInstanceIDs = new List<string> { "other" },
+            };
+            game.AttachNode(sector, game.GetGalaxyMap());
+            game.AttachNode(destination, sector);
+            game.AttachNode(rubble, destination);
+            FleetCommands fleetSystem = new FleetCommands(game);
+            MovementCommands movement = new MovementCommands(
+                game,
+                new FogOfWarCommands(game),
+                fleetSystem,
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
+            ConstructionOrderController controller = CreateController(
+                game,
+                new ManufacturingCommands(
+                    game,
+                    fleetSystem,
+                    new ManufacturingQueries(game),
+                    movement
+                )
+            );
+
+            IReadOnlyList<IManufacturable> selection = controller.GetBuildSelection(
+                FacilityWindowTab.Construction,
+                ownerId,
+                destination
+            );
+
+            CollectionAssert.Contains(selection, rubble);
+        }
+
+        [Test]
         public void GetBuildEstimates_StationaryTemplate_ReturnsCompletionWithoutDeployment()
         {
             const string ownerId = "owner";

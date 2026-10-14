@@ -22,6 +22,37 @@ namespace Rebellion.Tests.AI.Demands
     public sealed class AIProductionDemandGeneratorTests
     {
         [Test]
+        public void BuildDemands_WithDestroyedFacility_AddsExactRebuildDemand()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "damaged-world",
+                empire.InstanceID,
+                energyCapacity: 1
+            );
+            Building rubble = AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "destroyed-mine",
+                BuildingType.Mine,
+                ManufacturingType.None
+            );
+            rubble.IsDestroyed = true;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIProductionDemand demand = new AIProductionDemandGenerator()
+                .BuildDemands(context)
+                .Single(item => item.ProductTypeId == rubble.TypeID);
+
+            Assert.AreEqual(AIProductionDemandKind.Mine, demand.Kind);
+            Assert.AreSame(planet, demand.DestinationPlanet);
+            Assert.AreEqual(1, demand.QuantityNeeded);
+        }
+
+        [Test]
         public void BuildDemands_WithClaimedUncolonizedPlanet_DoesNotAddColonyDemand()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);

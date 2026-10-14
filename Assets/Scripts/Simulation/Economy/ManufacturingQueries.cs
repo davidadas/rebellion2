@@ -127,7 +127,7 @@ namespace Rebellion.Simulation
             if (faction == null)
                 return false;
 
-            if (ManufacturingRules.MatchesProduct(activeOrder, template))
+            if (ManufacturingRules.MatchesProduct(activeItems, template))
             {
                 int addedCount = count - activeOrder.Quantity;
                 return addedCount <= 0
@@ -175,8 +175,40 @@ namespace Rebellion.Simulation
                     ownerInstanceId,
                     StringComparison.Ordinal
                 )
-                && IManufacturable.CanBeManufacturedBy(template, ownerInstanceId)
+                && (
+                    template is Building { IsDestroyed: true }
+                    || IManufacturable.CanBeManufacturedBy(template, ownerInstanceId)
+                )
+                && IsValidRebuildRequest(producer, template, destination)
                 && producer.GetProductionFacilityCount(template.GetManufacturingType()) > 0;
+        }
+
+        /// <summary>
+        /// Validates the additional identity and location rules for rebuilding rubble.
+        /// </summary>
+        /// <param name="producer">The planet performing the manufacturing.</param>
+        /// <param name="template">The requested product or destroyed building.</param>
+        /// <param name="destination">The requested destination.</param>
+        /// <returns>True for an ordinary template or a valid rebuild selection.</returns>
+        private static bool IsValidRebuildRequest(
+            Planet producer,
+            IManufacturable template,
+            ISceneNode destination
+        )
+        {
+            return template is not Building { IsDestroyed: true } building
+                || building.BuildingType != BuildingType.Headquarters
+                    && (
+                        building.ManufacturingStatus == ManufacturingStatus.Complete
+                        || building.ManufacturingStatus == ManufacturingStatus.Building
+                            && string.Equals(
+                                building.ProducerPlanetID,
+                                producer.InstanceID,
+                                StringComparison.Ordinal
+                            )
+                    )
+                    && building.GetOwnerInstanceID() == destination.GetOwnerInstanceID()
+                    && ReferenceEquals(building.GetParent(), destination);
         }
 
         /// <summary>
@@ -263,6 +295,29 @@ namespace Rebellion.Simulation
             string ownerInstanceId = producer.GetOwnerInstanceID();
             if (destination is Planet planet)
             {
+                if (
+                    template is Building { IsDestroyed: true } rubble
+                    && ReferenceEquals(rubble.GetParent(), planet)
+                )
+                {
+                    return planet
+                            .GetChildren<Building>()
+                            .Count(building =>
+                                building.IsDestroyed
+                                && building.ManufacturingStatus == ManufacturingStatus.Complete
+                                && string.Equals(
+                                    building.TypeID,
+                                    rubble.TypeID,
+                                    StringComparison.Ordinal
+                                )
+                                && string.Equals(
+                                    building.OwnerInstanceID,
+                                    ownerInstanceId,
+                                    StringComparison.Ordinal
+                                )
+                            ) >= count;
+                }
+
                 if (template is CapitalShip)
                     return true;
 
@@ -284,7 +339,7 @@ namespace Rebellion.Simulation
                     Building building => planet.GetAvailableEnergy()
                         + CountReplacedItems<Building>(
                             replacedItems,
-                            item => ReferenceEquals(item.GetParent(), planet)
+                            item => !item.IsDestroyed && ReferenceEquals(item.GetParent(), planet)
                         )
                         >= count
                         && (
@@ -293,7 +348,8 @@ namespace Rebellion.Simulation
                                 + CountReplacedItems<Building>(
                                     replacedItems,
                                     item =>
-                                        item.BuildingType == BuildingType.Mine
+                                        !item.IsDestroyed
+                                        && item.BuildingType == BuildingType.Mine
                                         && ReferenceEquals(item.GetParent(), planet)
                                 )
                                 >= count

@@ -185,8 +185,7 @@ namespace Rebellion.Simulation
                     .Any(building =>
                         building.OwnerInstanceID == ship.OwnerInstanceID
                         && building.BuildingType == BuildingType.Shipyard
-                        && building.ManufacturingStatus == ManufacturingStatus.Complete
-                        && building.Movement == null
+                        && building.IsOperational()
                     );
         }
     }

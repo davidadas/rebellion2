@@ -1404,7 +1404,7 @@ namespace Rebellion.Simulation
             if (!destinationPlanet.IsBlockadedFor(movableOwner))
                 return false;
 
-            _game.DeleteNode(movable);
+            _game.DestroyNode(movable);
             GameLogger.Log(
                 $"{movable.GetDisplayName()} destroyed on arrival at blockaded {destinationPlanet.GetDisplayName()}."
             );
@@ -1437,7 +1437,15 @@ namespace Rebellion.Simulation
                 return;
             }
 
-            _game.DeleteNode(movable);
+            _game.DestroyNode(movable);
+            if (
+                building.IsDestroyed
+                && !string.IsNullOrEmpty(destinationPlanet.GetOwnerInstanceID())
+                && building.GetOwnerInstanceID() != destinationPlanet.GetOwnerInstanceID()
+            )
+            {
+                _game.ChangeOwnership(building, destinationPlanet.GetOwnerInstanceID());
+            }
             GameLogger.Log(
                 $"Building {movable.GetDisplayName()} destroyed: destination changed sides during transit."
             );

@@ -172,5 +172,28 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.AreEqual("Scrap", commands.Last().Text);
             Assert.IsTrue(commands.Last().Enabled);
         }
+
+        [Test]
+        public void Build_DestroyedDefenseBuilding_ReturnsRemoveUsingControlEligibility()
+        {
+            Building building = new Building
+            {
+                IsDestroyed = true,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+
+            List<StrategyMenuCommand> commands = DefenseWindowContextMenuBuilder.Build(
+                new ISceneNode[] { building },
+                building,
+                false,
+                true,
+                false,
+                false
+            );
+
+            Assert.AreEqual(StrategyMenuAction.Scrap, commands.Last().Action);
+            Assert.AreEqual("Remove", commands.Last().Text);
+            Assert.IsTrue(commands.Last().Enabled);
+        }
     }
 }

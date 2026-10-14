@@ -187,7 +187,7 @@ namespace Rebellion.AI.Scorers
                 return 0;
 
             double placementUtility = GetFacilityPlacementUtility(context, demand);
-            int currentCount = destination.GetTotalBuildingTypeCount(demand.BuildingType);
+            int currentCount = destination.GetCommittedBuildingTypeCount(demand.BuildingType);
             int deficit = Math.Max(1, demand.TargetCount - currentCount);
             double investmentDeficit = deficit / (double)demand.TargetCount;
             double pressure =
@@ -212,7 +212,7 @@ namespace Rebellion.AI.Scorers
                     ? config.ShipyardSectorHubTargetCount
                     : config.FacilitySectorHubTargetCount;
             int sectorFacilityCount = sector.Sum(planet =>
-                planet.GetTotalBuildingTypeCount(demand.BuildingType)
+                planet.GetCommittedBuildingTypeCount(demand.BuildingType)
             );
             pressure += AIUtility.EvaluatePressure(
                 sectorFacilityCount == 0 ? 1 : 0,
@@ -336,7 +336,7 @@ namespace Rebellion.AI.Scorers
             )
                 return 0;
             int count = planets.Sum(planet =>
-                planet.GetTotalBuildingTypeCount(BuildingType.ConstructionFacility)
+                planet.GetCommittedBuildingTypeCount(BuildingType.ConstructionFacility)
             );
             return 1 - AIUtility.Fulfillment(count, 1);
         }
@@ -361,7 +361,7 @@ namespace Rebellion.AI.Scorers
             int progress = sectors.Sum(sector =>
                 Math.Min(
                     hubTarget,
-                    sector.Max(planet => planet.GetTotalBuildingTypeCount(buildingType))
+                    sector.Max(planet => planet.GetCommittedBuildingTypeCount(buildingType))
                 )
             );
             double target = sectors.Count * (double)hubTarget;

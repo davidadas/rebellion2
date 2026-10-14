@@ -77,13 +77,16 @@ internal static class DefenseWindowContextMenuBuilder
         }
 
         bool selectionUnderConstruction = AreUnderConstruction(selectedItems);
+        bool selectionDestroyed = selectedItems.All(item => item is Building { IsDestroyed: true });
         return new List<StrategyMenuCommand>
         {
             new StrategyMenuCommand(StrategyMenuAction.Encyclopedia, "Encyclopedia", true),
             new StrategyMenuCommand(StrategyMenuAction.Status, "Status", true),
             new StrategyMenuCommand(
                 selectionUnderConstruction ? StrategyMenuAction.Stop : StrategyMenuAction.Scrap,
-                selectionUnderConstruction ? "Stop" : "Scrap",
+                selectionUnderConstruction ? "Stop"
+                    : selectionDestroyed ? "Remove"
+                    : "Scrap",
                 playerControlsItem
             ),
         };

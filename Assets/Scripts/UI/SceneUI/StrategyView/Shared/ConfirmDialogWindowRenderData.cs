@@ -9,6 +9,7 @@ public enum ConfirmDialogKind
 {
     Move,
     Scrap,
+    Remove,
     Retire,
     StopConstruction,
     MissionAbort,

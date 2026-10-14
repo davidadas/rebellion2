@@ -125,7 +125,31 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void ResolveObjective_BuildingOnEnemyPlanet_RemovesBuilding()
+        public void TryCreate_DestroyedBuilding_ReturnsNull()
+        {
+            var (game, _, enemyPlanet, officer, _) = MissionSceneBuilder.Build();
+            Building target = new Building
+            {
+                InstanceID = "target",
+                OwnerInstanceID = "rebels",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                IsDestroyed = true,
+            };
+            game.AttachNode(target, enemyPlanet);
+
+            Mission mission = CreateSabotageMission(
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                target
+            );
+
+            Assert.IsNull(mission);
+        }
+
+        [Test]
+        public void ResolveObjective_BuildingOnEnemyPlanet_LeavesDestroyedBuilding()
         {
             (
                 GameRoot game,
@@ -156,11 +180,10 @@ namespace Rebellion.Tests.Game.Missions
 
             MissionSceneBuilder.RunToSuccess(mission, game);
 
-            Assert.AreEqual(
-                0,
-                enemyPlanet.GetAllBuildings().Count,
-                "Building should be removed on sabotage success"
-            );
+            Assert.AreSame(building, enemyPlanet.GetAllBuildings().Single());
+            Assert.AreSame(building, game.GetSceneNodeByInstanceID<Building>(building.InstanceID));
+            Assert.IsTrue(building.IsDestroyed);
+            Assert.IsFalse(building.IsOperational());
         }
 
         [Test]
@@ -580,7 +603,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void ResolveObjective_SpecificBuildingTarget_RemovesSelectedBuilding()
+        public void ResolveObjective_SpecificBuildingTarget_DestroysOnlySelectedBuilding()
         {
             (
                 GameRoot game,
@@ -626,8 +649,8 @@ namespace Rebellion.Tests.Game.Missions
                 selectedBuilding.InstanceID,
                 ((SabotageMission)mission).SabotageTargetInstanceID
             );
-            Assert.IsNull(game.GetSceneNodeByInstanceID<Building>("b2"));
-            Assert.IsNotNull(game.GetSceneNodeByInstanceID<Building>("b1"));
+            Assert.IsTrue(game.GetSceneNodeByInstanceID<Building>("b2").IsDestroyed);
+            Assert.IsFalse(game.GetSceneNodeByInstanceID<Building>("b1").IsDestroyed);
             Assert.AreEqual(
                 selectedBuilding,
                 results.OfType<GameObjectSabotagedResult>().Single().DestroyedObject

@@ -1425,8 +1425,7 @@ namespace Rebellion.AI
                 && _knownPlanets.ContainsKey(planet.InstanceID)
                 && building.IsDetectionBlocker
                 && building.OwnerInstanceID == _faction.InstanceID
-                && building.ManufacturingStatus == ManufacturingStatus.Complete
-                && building.Movement == null
+                && building.IsOperational()
             )
                 _missionDetectionBlockerPlanetIds.Add(planet.InstanceID);
         }
@@ -1700,8 +1699,7 @@ namespace Rebellion.AI
                 && GetPlanetBuildings(planet)
                     .Count(building =>
                         building.GetOwnerInstanceID() == _faction.InstanceID
-                        && building.ManufacturingStatus == ManufacturingStatus.Complete
-                        && building.Movement == null
+                        && building.IsOperational()
                         && building.IsPlanetaryShieldGenerator()
                     ) >= requiredCount;
         }

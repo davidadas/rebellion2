@@ -381,6 +381,44 @@ namespace Rebellion.Game
         }
 
         /// <summary>
+        /// Applies gameplay destruction while preserving ordinary buildings as rubble.
+        /// </summary>
+        /// <param name="node">The node destroyed by gameplay.</param>
+        public void DestroyNode(ISceneNode node)
+        {
+            if (node is Building { BuildingType: not BuildingType.Headquarters } building)
+            {
+                RemoveFromManufacturingQueue(building);
+                building.MarkDestroyed();
+                return;
+            }
+
+            DeleteNode(node);
+        }
+
+        /// <summary>
+        /// Removes a destroyed building from any producer queue that still references it.
+        /// </summary>
+        /// <param name="building">The building whose queued work is ending.</param>
+        private void RemoveFromManufacturingQueue(Building building)
+        {
+            if (string.IsNullOrEmpty(building?.ProducerPlanetID))
+                return;
+
+            Planet producer = GetSceneNodeByInstanceID<Planet>(building.ProducerPlanetID);
+            if (producer == null)
+                return;
+
+            ManufacturingType type = building.GetManufacturingType();
+            if (!producer.ManufacturingQueue.TryGetValue(type, out List<IManufacturable> queue))
+                return;
+
+            queue.Remove(building);
+            if (queue.Count == 0)
+                producer.ManufacturingQueue.Remove(type);
+        }
+
+        /// <summary>
         /// Removes a subtree from containment, faction ownership indexes, and
         /// the global instance registry so it can no longer participate in gameplay.
         /// </summary>

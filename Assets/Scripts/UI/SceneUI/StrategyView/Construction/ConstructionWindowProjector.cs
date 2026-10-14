@@ -73,7 +73,7 @@ internal sealed class ConstructionWindowProjector
                 active ? titleTheme?.ActiveImagePath : titleTheme?.InactiveImagePath
             ),
             GetItemTexture(uiContext, selected),
-            selected?.GetDisplayName(),
+            GetItemDisplayName(selected),
             buildCount,
             selected == null
                 ? string.Empty
@@ -111,7 +111,7 @@ internal sealed class ConstructionWindowProjector
             rows.Add(
                 new StrategyDropdownItemRenderData(
                     GetItemTexture(uiContext, item),
-                    item.GetDisplayName(),
+                    GetItemDisplayName(item),
                     index == selectedIndex
                         ? _selectedDropdownLabelColor
                         : _unselectedDropdownLabelColor
@@ -120,6 +120,18 @@ internal sealed class ConstructionWindowProjector
         }
 
         return rows.AsReadOnly();
+    }
+
+    /// <summary>
+    /// Formats ordinary construction names and explicit reconstruction choices.
+    /// </summary>
+    /// <param name="item">The construction selection.</param>
+    /// <returns>The displayed construction name.</returns>
+    private static string GetItemDisplayName(IManufacturable item)
+    {
+        return item is Building { IsDestroyed: true }
+            ? $"Rebuild {item.GetDisplayName()}"
+            : item?.GetDisplayName();
     }
 
     /// <summary>

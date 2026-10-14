@@ -368,13 +368,14 @@ public static class GalacticInformationFilterEvaluator
     }
 
     /// <summary>
-    /// Determines whether a manufacturable entity is complete and stationary.
+    /// Determines whether a manufacturable entity is complete, stationary, and not rubble.
     /// </summary>
     /// <param name="entity">The visible manufacturable entity.</param>
-    /// <returns>True when the entity is complete and stationary.</returns>
+    /// <returns>True when the entity is operational for information-filter counts.</returns>
     private static bool IsActive(IManufacturable entity)
     {
         return entity != null
+            && entity is not Building { IsDestroyed: true }
             && entity.GetManufacturingStatus() == ManufacturingStatus.Complete
             && entity.GetTransitMovement() == null;
     }

@@ -327,8 +327,7 @@ namespace Rebellion.Simulation
                     .GetChildren<Building>()
                     .Any(facility =>
                         facility.ProductionType == type
-                        && facility.ManufacturingStatus == ManufacturingStatus.Complete
-                        && facility.Movement == null
+                        && facility.IsOperational()
                         && facility.ProcessRate > 0
                     );
                 if (!hasProducer)

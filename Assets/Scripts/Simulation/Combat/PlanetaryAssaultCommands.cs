@@ -167,7 +167,7 @@ namespace Rebellion.Simulation
             foreach (Regiment regiment in result.DestroyedDefenderRegiments)
                 _game.DeleteNode(regiment);
             foreach (Building building in result.CollateralDestroyedBuildings)
-                _game.DeleteNode(building);
+                _game.DestroyNode(building);
 
             planet.EnergyCapacity -= result.EnergyCapacityDamage;
             planet.AllocatedEnergy -= result.AllocatedEnergyDamage;

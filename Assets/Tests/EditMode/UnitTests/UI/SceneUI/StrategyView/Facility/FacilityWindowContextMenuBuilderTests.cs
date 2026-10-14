@@ -202,6 +202,31 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         }
 
         [Test]
+        public void Build_DestroyedInventoryItem_ReturnsEnabledRemoveCommand()
+        {
+            Planet planet = CreatePlanet(withBuildingQueue: false);
+            Building building = new Building
+            {
+                IsDestroyed = true,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+
+            List<StrategyMenuCommand> commands = FacilityWindowContextMenuBuilder.Build(
+                planet,
+                FacilityWindowTab.Construction,
+                null,
+                building,
+                "owner"
+            );
+
+            StrategyMenuCommand command = commands.Single(item =>
+                item.Action == StrategyMenuAction.Scrap
+            );
+            Assert.AreEqual("Remove", command.Text);
+            Assert.IsTrue(command.Enabled);
+        }
+
+        [Test]
         public void Build_InventoryItemOwnedByAnotherFaction_DisablesDestructiveCommand()
         {
             Planet planet = CreatePlanet(withBuildingQueue: false);

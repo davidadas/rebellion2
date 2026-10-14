@@ -198,6 +198,7 @@ namespace Rebellion.Simulation
                     IsAutoScrapEligibleType(m)
                     && m.GetManufacturingStatus() == ManufacturingStatus.Complete
                     && m.GetMaintenanceCost() > 0
+                    && m is not Building { IsDestroyed: true }
                 )
                 .ToList();
 
@@ -280,6 +281,9 @@ namespace Rebellion.Simulation
         /// <param name="item">The completed item being scrapped.</param>
         private void RefundScrapMaterials(IManufacturable item)
         {
+            if (item is Building { IsDestroyed: true })
+                return;
+
             int refund = item.GetConstructionCost() / _game.Config.Production.ScrapRefundDivisor;
             if (refund <= 0)
                 return;

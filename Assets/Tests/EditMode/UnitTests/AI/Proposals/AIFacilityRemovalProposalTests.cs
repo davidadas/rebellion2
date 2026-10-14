@@ -50,6 +50,19 @@ namespace Rebellion.Tests.AI.Proposals
         }
 
         [Test]
+        public void Plan_WithIdleShipyardRubble_DoesNotCountRubbleAsSurplus()
+        {
+            AITurnContext context = CreateContextWithSurplusShipyards(
+                out Planet lowerValue,
+                out _,
+                maintenanceCost: 10
+            );
+            lowerValue.GetChildren<Building>().Single().MarkDestroyed();
+
+            Assert.IsEmpty(new AIFacilityRemovalPlanner().Plan(context));
+        }
+
+        [Test]
         public void Execute_WithMaintenanceDistressAndSurplus_PreservesStrategicFloor()
         {
             AITurnContext context = CreateContextWithSurplusShipyards(

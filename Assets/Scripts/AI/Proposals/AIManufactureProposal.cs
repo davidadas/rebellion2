@@ -42,6 +42,8 @@ namespace Rebellion.AI.Proposals
 
         internal bool IsProductionFacilityExpansion => IsFacilityExpansionDemand();
 
+        internal bool RestoresDestroyedBuilding => GetRebuildTarget() != null;
+
         internal override AIProposalPriority Priority =>
             Demand?.Kind == AIProductionDemandKind.ColonizationFleetSeedCapitalShip
             || Demand?.DestinationFleet?.RoleType == FleetRoleType.Colonization
@@ -203,9 +205,10 @@ namespace Rebellion.AI.Proposals
 
             if (IsCountedManufacturingDemand())
             {
+                IManufacturable product = GetRebuildTarget() ?? Product.GetReference();
                 bool started = context.Manufacturing.StartManufacturing(
                     ProducerPlanet,
-                    Product.GetReference(),
+                    product,
                     Destination,
                     GetManufacturingCount(),
                     context.Faction.InstanceID
@@ -396,7 +399,7 @@ namespace Rebellion.AI.Proposals
                 && validateOrderAcceptance
                 && !ManufacturingQueries.CanAcceptManufacturingOrder(
                     ProducerPlanet,
-                    Product.GetReference(),
+                    GetRebuildTarget() ?? Product.GetReference(),
                     Destination,
                     GetManufacturingCount(),
                     context.Faction.InstanceID
@@ -505,7 +508,8 @@ namespace Rebellion.AI.Proposals
             if (Demand.Kind == AIProductionDemandKind.BuildingUpgrade)
                 return CanReplaceProductionFacility(context, destinationPlanet, building);
 
-            if (destinationPlanet.GetAvailableEnergy() < GetManufacturingCount())
+            Building rebuild = GetRebuildTarget();
+            if (rebuild == null && destinationPlanet.GetAvailableEnergy() < GetManufacturingCount())
                 return false;
 
             if (building.GetBuildingType() != Demand.BuildingType)
@@ -513,6 +517,7 @@ namespace Rebellion.AI.Proposals
 
             if (
                 Demand.BuildingType == BuildingType.Mine
+                && rebuild == null
                 && destinationPlanet.GetUnminedResourceNodeCount() <= 0
             )
                 return false;
@@ -641,7 +646,34 @@ namespace Rebellion.AI.Proposals
         /// <returns>The manufacturing count.</returns>
         internal int GetManufacturingCount()
         {
+            if (GetRebuildTarget() != null)
+                return 1;
+
             return IsCountedManufacturingDemand() ? Demand?.QuantityNeeded ?? 0 : 1;
+        }
+
+        /// <summary>
+        /// Finds matching idle rubble that this building proposal can restore in place.
+        /// </summary>
+        /// <returns>The first matching destroyed building, or null when ordinary construction is required.</returns>
+        private Building GetRebuildTarget()
+        {
+            if (
+                Destination is not Planet destination
+                || Product?.GetReference() is not Building product
+            )
+                return null;
+
+            return destination
+                .GetChildren<Building>()
+                .Where(building =>
+                    building.IsDestroyed
+                    && building.ManufacturingStatus == ManufacturingStatus.Complete
+                    && building.OwnerInstanceID == destination.OwnerInstanceID
+                    && string.Equals(building.TypeID, product.TypeID, StringComparison.Ordinal)
+                )
+                .OrderBy(building => building.InstanceID, StringComparer.Ordinal)
+                .FirstOrDefault();
         }
 
         /// <summary>

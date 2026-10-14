@@ -2878,6 +2878,35 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void ExecuteAction_DestroyUnitsSelectedRubble_IgnoresBuilding()
+        {
+            GameRoot game = BuildGame(out Planet planet, out _);
+            planet.EnergyCapacity = 1;
+            Building rubble = new Building
+            {
+                InstanceID = "rubble",
+                OwnerInstanceID = planet.OwnerInstanceID,
+                IsDestroyed = true,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                ManufacturingProgress = 7,
+            };
+            game.AttachNode(rubble, planet);
+            DestroyUnitsAction action = new DestroyUnitsAction
+            {
+                Selectors = new List<GameEventSelector>
+                {
+                    new SelectBuildings { InstanceID = rubble.InstanceID },
+                },
+            };
+
+            List<GameResult> results = action.Execute(game);
+
+            Assert.AreSame(rubble, game.GetSceneNodeByInstanceID<Building>(rubble.InstanceID));
+            Assert.AreEqual(7, rubble.ManufacturingProgress);
+            Assert.IsEmpty(results);
+        }
+
+        [Test]
         public void ExecuteAction_DestroyUnitsParentAndChildSelected_DestroysSubtreeOnce()
         {
             GameRoot game = BuildGame(out Planet planet, out _);

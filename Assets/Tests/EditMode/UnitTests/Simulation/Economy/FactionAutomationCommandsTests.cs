@@ -689,6 +689,123 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void ProcessFaction_DestroyedBuilding_RebuildsBeforeExpansion()
+        {
+            _faction.ManageGarrisons = false;
+            AddProductionFacility(_producer, "CONSTRUCTION", ManufacturingType.Building);
+            Building rubble = AddDestroyedBuilding(
+                _destination,
+                "DESTROYED_SHIPYARD",
+                "shipyard",
+                BuildingType.Shipyard
+            );
+
+            _automation.ProcessFaction(_faction);
+
+            Assert.AreEqual(ManufacturingStatus.Building, rubble.ManufacturingStatus);
+            Assert.AreSame(
+                rubble,
+                _producer.GetManufacturingQueue()[ManufacturingType.Building].Single()
+            );
+        }
+
+        [Test]
+        public void ProcessFaction_MatchingDestroyedBuildings_RebuildsEveryAvailableCopy()
+        {
+            _faction.ManageGarrisons = false;
+            AddProductionFacility(_producer, "CONSTRUCTION", ManufacturingType.Building);
+            AddProductionFacility(_producer, "CONSTRUCTION_2", ManufacturingType.Building);
+            Building first = AddDestroyedBuilding(
+                _destination,
+                "DESTROYED_REFINERY_1",
+                "refinery",
+                BuildingType.Refinery
+            );
+            Building second = AddDestroyedBuilding(
+                _destination,
+                "DESTROYED_REFINERY_2",
+                "refinery",
+                BuildingType.Refinery
+            );
+
+            _automation.ProcessFaction(_faction);
+
+            CollectionAssert.AreEqual(
+                new[] { first, second },
+                _producer.GetManufacturingQueue()[ManufacturingType.Building]
+            );
+        }
+
+        [Test]
+        public void ProcessFaction_RebuildWithRemainingCapacity_PreservesRebuildOrder()
+        {
+            _faction.ManageGarrisons = false;
+            AddProductionFacility(_producer, "CONSTRUCTION", ManufacturingType.Building);
+            AddProductionFacility(_producer, "CONSTRUCTION_2", ManufacturingType.Building);
+            AddResourceFacility(_producer, "REFINERY_EXTRA", BuildingType.Refinery);
+            Building rubble = AddDestroyedBuilding(
+                _destination,
+                "DESTROYED_MINE",
+                "mine",
+                BuildingType.Mine
+            );
+
+            _automation.ProcessFaction(_faction);
+
+            CollectionAssert.AreEqual(
+                new[] { rubble },
+                _producer.GetManufacturingQueue()[ManufacturingType.Building]
+            );
+            Assert.AreEqual(ManufacturingStatus.Building, rubble.ManufacturingStatus);
+            Assert.AreEqual(
+                1,
+                _producer.GetAvailableManufacturingCapacity(ManufacturingType.Building)
+            );
+        }
+
+        [Test]
+        public void ProcessFaction_ReservedConstructionLane_DoesNotRebuildDestroyedBuilding()
+        {
+            _faction.ManageGarrisons = false;
+            AddProductionFacility(_producer, "CONSTRUCTION", ManufacturingType.Building);
+            _producer.SetManufacturingReserved(ManufacturingType.Building, true);
+            Building rubble = AddDestroyedBuilding(
+                _destination,
+                "DESTROYED_SHIPYARD",
+                "shipyard",
+                BuildingType.Shipyard
+            );
+
+            _automation.ProcessFaction(_faction);
+
+            Assert.AreEqual(ManufacturingStatus.Complete, rubble.ManufacturingStatus);
+            Assert.IsFalse(
+                _producer.GetManufacturingQueue().ContainsKey(ManufacturingType.Building)
+            );
+        }
+
+        [Test]
+        public void ProcessFaction_DestroyedHeadquarters_DoesNotRebuild()
+        {
+            _faction.ManageGarrisons = false;
+            AddProductionFacility(_producer, "CONSTRUCTION", ManufacturingType.Building);
+            Building headquarters = AddDestroyedBuilding(
+                _destination,
+                "DESTROYED_HEADQUARTERS",
+                "headquarters",
+                BuildingType.Headquarters
+            );
+
+            _automation.ProcessFaction(_faction);
+
+            Assert.AreEqual(ManufacturingStatus.Complete, headquarters.ManufacturingStatus);
+            CollectionAssert.DoesNotContain(
+                _producer.GetManufacturingQueue()[ManufacturingType.Building],
+                headquarters
+            );
+        }
+
+        [Test]
         public void ProcessTick_ManageProduction_UsesClosestAvailableResourceSlot()
         {
             _faction.ManageGarrisons = false;
@@ -1032,6 +1149,37 @@ namespace Rebellion.Tests.Simulation
             };
             _game.AttachNode(regiment, planet);
             return regiment;
+        }
+
+        /// <summary>
+        /// Adds an idle destroyed building to a planet.
+        /// </summary>
+        /// <param name="planet">The planet containing the rubble.</param>
+        /// <param name="instanceId">The rubble instance identifier.</param>
+        /// <param name="typeId">The building product identifier.</param>
+        /// <param name="buildingType">The building category.</param>
+        /// <returns>The attached destroyed building.</returns>
+        private Building AddDestroyedBuilding(
+            Planet planet,
+            string instanceId,
+            string typeId,
+            BuildingType buildingType
+        )
+        {
+            Building building = new Building
+            {
+                InstanceID = instanceId,
+                TypeID = typeId,
+                DisplayName = typeId,
+                OwnerInstanceID = _faction.InstanceID,
+                BuildingType = buildingType,
+                ConstructionCost = 1,
+                BaseBuildSpeed = 1,
+                IsDestroyed = true,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(building, planet);
+            return building;
         }
 
         /// <summary>

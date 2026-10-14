@@ -891,6 +891,7 @@ namespace Rebellion.AI.Planners
                 .Where(target =>
                     target.GetOwnerInstanceID() != context.Faction.InstanceID
                     && target.GetManufacturingStatus() == ManufacturingStatus.Complete
+                    && target is not Building { IsDestroyed: true }
                     && target.Movement == null
                     && !HasActiveSabotageTarget(target.InstanceID)
                 );

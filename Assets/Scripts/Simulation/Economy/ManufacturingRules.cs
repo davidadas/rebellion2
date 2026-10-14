@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.Game.Units;
 
 namespace Rebellion.Simulation
@@ -47,6 +48,40 @@ namespace Rebellion.Simulation
                 && !string.IsNullOrEmpty(order.ProductTypeID)
                 && !string.IsNullOrEmpty(requestedTypeID)
                 && string.Equals(order.ProductTypeID, requestedTypeID, StringComparison.Ordinal);
+        }
+
+        /// <summary>
+        /// Returns whether queued items represent the same ordinary product or rebuild type.
+        /// </summary>
+        /// <param name="items">The active manufacturing items.</param>
+        /// <param name="template">The requested product or destroyed building.</param>
+        /// <returns>True when the request matches the active project.</returns>
+        internal static bool MatchesProduct(
+            IReadOnlyCollection<IManufacturable> items,
+            IManufacturable template
+        )
+        {
+            if (items == null || items.Count == 0 || template == null)
+                return false;
+
+            if (template is Building { IsDestroyed: true } rebuild)
+            {
+                return items.All(item =>
+                    item is Building { IsDestroyed: true } queued
+                    && string.Equals(queued.TypeID, rebuild.TypeID, StringComparison.Ordinal)
+                    && ReferenceEquals(queued.GetParent(), rebuild.GetParent())
+                    && string.Equals(
+                        queued.OwnerInstanceID,
+                        rebuild.OwnerInstanceID,
+                        StringComparison.Ordinal
+                    )
+                );
+            }
+
+            return items.All(item =>
+                item is not Building { IsDestroyed: true }
+                && string.Equals(item.GetTypeID(), template.GetTypeID(), StringComparison.Ordinal)
+            );
         }
 
         /// <summary>

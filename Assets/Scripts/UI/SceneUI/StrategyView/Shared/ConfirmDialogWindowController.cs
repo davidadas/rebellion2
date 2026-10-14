@@ -15,6 +15,7 @@ public sealed class ConfirmDialogWindowController
     private const string _retirePrompt = "Retire these personnel?";
     private const string _scrappedChildPrefix = "  Also scrapped: ";
     private const string _scrapPrompt = "Scrap these units?";
+    private const string _removePrompt = "Remove these destroyed facilities?";
     private const string _missionAbortPrompt = "Are you sure you want to abort this mission?";
     private const string _stopConstructionPrompt =
         "Are you sure you want to stop construction of the following?";
@@ -84,7 +85,12 @@ public sealed class ConfirmDialogWindowController
     /// <param name="confirmedAction">The action to invoke after confirmation.</param>
     public void OpenScrap(IReadOnlyList<ISceneNode> sourceItems, Action confirmedAction)
     {
-        Open(sourceItems, ConfirmDialogKind.Scrap, -1, confirmedAction);
+        ConfirmDialogKind kind =
+            sourceItems?.Count > 0
+            && sourceItems.All(item => item is Building { IsDestroyed: true })
+                ? ConfirmDialogKind.Remove
+                : ConfirmDialogKind.Scrap;
+        Open(sourceItems, kind, -1, confirmedAction);
     }
 
     /// <summary>
@@ -335,6 +341,7 @@ public sealed class ConfirmDialogWindowController
         return session.Kind switch
         {
             ConfirmDialogKind.Scrap => _scrapPrompt,
+            ConfirmDialogKind.Remove => _removePrompt,
             ConfirmDialogKind.Retire => _retirePrompt,
             ConfirmDialogKind.StopConstruction => _stopConstructionPrompt,
             ConfirmDialogKind.MissionAbort => _missionAbortPrompt,
@@ -354,7 +361,7 @@ public sealed class ConfirmDialogWindowController
     {
         return kind switch
         {
-            ConfirmDialogKind.Scrap => theme?.ScrapTitleImagePath,
+            ConfirmDialogKind.Scrap or ConfirmDialogKind.Remove => theme?.ScrapTitleImagePath,
             ConfirmDialogKind.Retire => theme?.RetireTitleImagePath,
             ConfirmDialogKind.StopConstruction => theme?.StopConstructionTitleImagePath,
             ConfirmDialogKind.MissionAbort => theme?.MissionAbortTitleImagePath,

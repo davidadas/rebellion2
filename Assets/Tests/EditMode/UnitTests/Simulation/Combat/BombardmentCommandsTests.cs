@@ -160,6 +160,67 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void TryExecute_CivilianBombardment_DestroyedBuildingLeavesRubble()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "empire", energy: 1);
+            Building mine = AddBuilding(game, planet, "mine", "empire", BuildingType.Mine);
+            Fleet fleet = AddBombardmentFleet(game, planet, "alliance", bombardment: 1);
+
+            BombardmentResult result = MakeBombardment(
+                    game,
+                    new SequenceRNG(intValues: new[] { 0, 10 })
+                )
+                .TryExecute(new List<Fleet> { fleet }, planet, BombardmentType.Civilian);
+
+            CollectionAssert.Contains(result.DestroyedBuildings, mine);
+            Assert.IsTrue(mine.IsDestroyed);
+            Assert.AreSame(planet, mine.GetParent());
+            Assert.AreSame(mine, game.GetSceneNodeByInstanceID<Building>(mine.InstanceID));
+        }
+
+        [Test]
+        public void TryExecute_BuildingThenEnergyDamage_LeavesRubbleOverCapacity()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "empire", energy: 1);
+            Building mine = AddBuilding(game, planet, "mine", "empire", BuildingType.Mine);
+            Fleet fleet = AddBombardmentFleet(game, planet, "alliance", bombardment: 2);
+
+            BombardmentResult result = MakeBombardment(
+                    game,
+                    new SequenceRNG(intValues: new[] { 0, 10, 0, 10 })
+                )
+                .TryExecute(new List<Fleet> { fleet }, planet, BombardmentType.General);
+
+            CollectionAssert.Contains(result.DestroyedBuildings, mine);
+            Assert.AreEqual(1, result.EnergyCapacityDamage);
+            Assert.IsTrue(mine.IsDestroyed);
+            Assert.AreSame(planet, mine.GetParent());
+            Assert.AreEqual(1, planet.GetEnergyUsed());
+            Assert.Zero(planet.EnergyCapacity);
+            Assert.Zero(planet.GetAvailableEnergy());
+        }
+
+        [Test]
+        public void TryExecute_CivilianBombardment_RubbleIsNotTargeted()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "empire", energy: 1);
+            Building rubble = AddBuilding(game, planet, "rubble", "empire", BuildingType.Mine);
+            rubble.MarkDestroyed();
+            rubble.ManufacturingProgress = 7;
+            Fleet fleet = AddBombardmentFleet(game, planet, "alliance", bombardment: 1);
+
+            BombardmentResult result = MakeBombardment(game, new SequenceRNG())
+                .TryExecute(new List<Fleet> { fleet }, planet, BombardmentType.Civilian);
+
+            Assert.IsEmpty(result.DestroyedBuildings);
+            Assert.AreEqual(0, result.SuccessfulStrikes);
+            Assert.AreEqual(7, rubble.ManufacturingProgress);
+        }
+
+        [Test]
         public void TryExecute_CivilianBombardment_SupportFlipCarriesNotificationContext()
         {
             GameRoot game = CreateGame();

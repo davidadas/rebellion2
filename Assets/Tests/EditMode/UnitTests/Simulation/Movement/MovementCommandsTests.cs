@@ -1429,6 +1429,66 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void RequestMove_BuildingUnderConstructionToFullPlanet_DoesNotRetargetDestination()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+            origin.EnergyCapacity = 5;
+            destination.EnergyCapacity = 1;
+            Building existingBuilding = new Building
+            {
+                InstanceID = "existing",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Building building = new Building
+            {
+                InstanceID = "b1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            game.AttachNode(existingBuilding, destination);
+            game.AttachNode(building, origin);
+
+            movement.RequestMove(building, destination);
+
+            Assert.AreSame(origin, building.GetParent());
+            Assert.IsNull(building.Movement);
+        }
+
+        [Test]
+        public void RequestMove_RebuildingBuilding_DoesNotRetargetDestination()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+            origin.EnergyCapacity = 5;
+            destination.EnergyCapacity = 5;
+            Building building = new Building
+            {
+                InstanceID = "rubble",
+                OwnerInstanceID = "empire",
+                IsDestroyed = true,
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            game.AttachNode(building, origin);
+
+            movement.RequestMove(building, destination);
+
+            Assert.AreSame(origin, building.GetParent());
+            Assert.IsNull(building.Movement);
+        }
+
+        [Test]
         public void RequestMove_StarfighterUnderConstruction_RetargetsDestination()
         {
             GameConfig config = TestConfig.Create();
@@ -4177,7 +4237,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ProcessTick_BuildingInTransitDestinationChangedSides_BuildingDestroyed()
+        public void ProcessTick_BuildingInTransitDestinationChangedSides_LeavesRubbleForNewOwner()
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = TestGame.Create(config);
@@ -4235,10 +4295,9 @@ namespace Rebellion.Tests.Simulation
             for (int i = 0; i < transit; i++)
                 allResults.AddRange(new MovementTickProcessor(movement).ProcessTick(game));
 
-            Assert.IsNull(
-                game.GetSceneNodeByInstanceID<Building>(mine.InstanceID),
-                "Building should be destroyed when destination changes sides during transit."
-            );
+            Assert.AreSame(destPlanet, mine.GetParent());
+            Assert.IsTrue(mine.IsDestroyed);
+            Assert.AreEqual("rebels", mine.OwnerInstanceID);
             Assert.IsTrue(allResults.OfType<GameObjectDestroyedOnArrivalResult>().Any());
         }
 
@@ -4451,7 +4510,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ProcessTick_ManufacturedBuildingDispatchedAfterBlockadeStarted_DestroysOnArrival()
+        public void ProcessTick_ManufacturedBuildingDispatchedAfterBlockadeStarted_LeavesRubbleOnArrival()
         {
             (
                 GameRoot game,
@@ -4482,7 +4541,8 @@ namespace Rebellion.Tests.Simulation
             for (int tick = 0; tick < transitTicks; tick++)
                 results.AddRange(new MovementTickProcessor(scene.movement).ProcessTick(scene.game));
 
-            Assert.IsNull(scene.game.GetSceneNodeByInstanceID<Building>(building.InstanceID));
+            Assert.AreSame(scene.blockadedDestination, building.GetParent());
+            Assert.IsTrue(building.IsDestroyed);
             GameObjectDestroyedOnArrivalResult destroyed = results
                 .OfType<GameObjectDestroyedOnArrivalResult>()
                 .Single();

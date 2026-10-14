@@ -13,7 +13,7 @@ internal sealed class ConstructionWindowSession
     private readonly List<IManufacturable> items = new List<IManufacturable>();
     private int maximumBuildCount = _defaultMaximumBuildCount;
     private bool orderInitialized;
-    private string selectedItemTypeId;
+    private string selectedItemId;
 
     public int BuildCount { get; private set; } = _minimumBuildCount;
 
@@ -31,6 +31,8 @@ internal sealed class ConstructionWindowSession
 
     public IManufacturable SelectedItem =>
         SelectedItemIndex >= 0 && SelectedItemIndex < items.Count ? items[SelectedItemIndex] : null;
+
+    public int OrderBuildCount => BuildCount;
 
     public int SelectedItemIndex { get; private set; }
 
@@ -111,11 +113,11 @@ internal sealed class ConstructionWindowSession
         if (availableItems != null)
             items.AddRange(availableItems);
 
-        SelectedItemIndex = FindItemIndex(items, selectedItemTypeId);
+        SelectedItemIndex = FindItemIndex(items, selectedItemId);
         if (SelectedItemIndex < 0 && items.Count > 0)
             SelectedItemIndex = Math.Max(0, Math.Min(previousIndex, items.Count - 1));
 
-        selectedItemTypeId = GetItemTypeID(SelectedItem);
+        selectedItemId = GetItemSelectionID(SelectedItem);
         if (items.Count == 0)
         {
             SelectedItemIndex = 0;
@@ -126,20 +128,20 @@ internal sealed class ConstructionWindowSession
     /// <summary>
     /// Initializes the editable selection from the active manufacturing order once.
     /// </summary>
-    /// <param name="itemTypeId">The active product type identifier, or null for an empty lane.</param>
+    /// <param name="itemId">The active product or rebuild selection identifier.</param>
     /// <param name="buildCount">The active unfinished quantity.</param>
-    public void InitializeOrder(string itemTypeId, int buildCount)
+    public void InitializeOrder(string itemId, int buildCount)
     {
         if (orderInitialized || items.Count == 0)
             return;
 
         orderInitialized = true;
-        int activeIndex = FindItemIndex(items, itemTypeId);
+        int activeIndex = FindItemIndex(items, itemId);
         if (activeIndex < 0)
             return;
 
         SelectedItemIndex = activeIndex;
-        selectedItemTypeId = itemTypeId;
+        selectedItemId = itemId;
         maximumBuildCount = Math.Max(_defaultMaximumBuildCount, buildCount);
         SetBuildCount(buildCount);
     }
@@ -155,7 +157,7 @@ internal sealed class ConstructionWindowSession
             return false;
 
         SelectedItemIndex = index;
-        selectedItemTypeId = GetItemTypeID(items[index]);
+        selectedItemId = GetItemSelectionID(items[index]);
         DropdownOpen = false;
         return true;
     }
@@ -251,7 +253,7 @@ internal sealed class ConstructionWindowSession
     private void ResetDialog()
     {
         items.Clear();
-        selectedItemTypeId = null;
+        selectedItemId = null;
         orderInitialized = false;
         SelectedItemIndex = 0;
         BuildCount = _minimumBuildCount;
@@ -263,19 +265,19 @@ internal sealed class ConstructionWindowSession
     /// Finds a build template by stable type identifier.
     /// </summary>
     /// <param name="availableItems">The ordered build templates.</param>
-    /// <param name="typeId">The selected template type identifier.</param>
+    /// <param name="itemId">The selected template type or rubble instance identifier.</param>
     /// <returns>The current display index, or negative one.</returns>
-    private static int FindItemIndex(IReadOnlyList<IManufacturable> availableItems, string typeId)
+    private static int FindItemIndex(IReadOnlyList<IManufacturable> availableItems, string itemId)
     {
-        if (availableItems == null || string.IsNullOrEmpty(typeId))
+        if (availableItems == null || string.IsNullOrEmpty(itemId))
             return -1;
 
         for (int index = 0; index < availableItems.Count; index++)
         {
             if (
                 string.Equals(
-                    GetItemTypeID(availableItems[index]),
-                    typeId,
+                    GetItemSelectionID(availableItems[index]),
+                    itemId,
                     StringComparison.Ordinal
                 )
             )
@@ -286,12 +288,14 @@ internal sealed class ConstructionWindowSession
     }
 
     /// <summary>
-    /// Gets one build template's stable type identifier.
+    /// Gets one build selection's stable template or rubble identifier.
     /// </summary>
     /// <param name="item">The build template.</param>
-    /// <returns>The template type identifier, or null.</returns>
-    private static string GetItemTypeID(IManufacturable item)
+    /// <returns>The selection identifier, or null.</returns>
+    private static string GetItemSelectionID(IManufacturable item)
     {
-        return item?.GetTypeID();
+        return item is Building { IsDestroyed: true } building
+            ? building.InstanceID
+            : item?.GetTypeID();
     }
 }

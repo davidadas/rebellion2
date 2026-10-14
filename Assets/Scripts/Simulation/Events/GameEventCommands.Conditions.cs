@@ -490,7 +490,7 @@ namespace Rebellion.Simulation
                     .Any(building =>
                         building.IsEnabled
                         && building.BuildingType == definition.Type
-                        && building.ManufacturingStatus == ManufacturingStatus.Complete
+                        && building.IsOperational()
                     ) == true;
         }
 

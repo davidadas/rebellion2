@@ -13,6 +13,8 @@ public class FacilityWindowTheme
 
     public string RawResourceNodeImagePath { get; set; }
 
+    public string DestroyedFacilityImagePath { get; set; }
+
     public List<FacilityConstructionImageTheme> ConstructionImages { get; set; } =
         new List<FacilityConstructionImageTheme>();
 

@@ -635,7 +635,8 @@ namespace Rebellion.Simulation
         /// <returns>True when the unit can participate in an assault.</returns>
         private static bool IsActiveAssaultUnit(IManufacturable unit)
         {
-            return unit.ManufacturingStatus == ManufacturingStatus.Complete
+            return unit is not Building { IsDestroyed: true }
+                && unit.ManufacturingStatus == ManufacturingStatus.Complete
                 && unit.Movement == null;
         }
 

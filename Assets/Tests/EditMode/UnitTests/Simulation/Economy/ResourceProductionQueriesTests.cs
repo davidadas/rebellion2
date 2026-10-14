@@ -110,6 +110,45 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void GetSummary_IdleResourceRubble_ExcludesRubbleFromFacilityCounts()
+        {
+            Planet planet = AddPlanet("RUBBLE", rawResourceNodes: 1);
+            Building mine = AddBuilding(planet, BuildingType.Mine, processRate: 2);
+            Building refinery = AddBuilding(planet, BuildingType.Refinery, processRate: 4);
+            mine.MarkDestroyed();
+            refinery.MarkDestroyed();
+
+            ResourceEconomySummary summary = new ResourceProductionQueries(_game).GetSummary(
+                _faction
+            );
+
+            Assert.AreEqual(0, summary.Mines.Active);
+            Assert.AreEqual(0, summary.Mines.Offline);
+            Assert.AreEqual(0, summary.Mines.Building);
+            Assert.AreEqual(0, summary.Mines.EnRoute);
+            Assert.AreEqual(0, summary.Refineries.Active);
+            Assert.AreEqual(0, summary.Refineries.Offline);
+            Assert.AreEqual(0, summary.Refineries.Building);
+            Assert.AreEqual(0, summary.Refineries.EnRoute);
+        }
+
+        [Test]
+        public void GetSummary_RebuildingResourceRubble_CountsRebuildAsBuilding()
+        {
+            Planet planet = AddPlanet("REBUILDING", rawResourceNodes: 1);
+            Building mine = AddBuilding(planet, BuildingType.Mine, processRate: 2);
+            mine.MarkDestroyed();
+            mine.BeginRebuild();
+
+            ResourceEconomySummary summary = new ResourceProductionQueries(_game).GetSummary(
+                _faction
+            );
+
+            Assert.AreEqual(1, summary.Mines.Building);
+            Assert.AreEqual(0, summary.Mines.Offline);
+        }
+
+        [Test]
         public void GetSummary_HardAiMaintenanceBonus_IncreasesEffectiveCapacity()
         {
             _game.Summary = new GameSummary { Difficulty = GameDifficulty.Hard };

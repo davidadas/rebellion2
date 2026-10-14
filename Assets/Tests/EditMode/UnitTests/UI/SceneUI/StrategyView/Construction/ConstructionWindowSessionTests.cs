@@ -171,5 +171,26 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
 
             Assert.AreEqual(expected, _session.BuildCount);
         }
+
+        [Test]
+        public void IncrementBuildCount_DestroyedBuilding_IncreasesRequestedQuantity()
+        {
+            _session.SetItems(
+                new IManufacturable[]
+                {
+                    new Building
+                    {
+                        InstanceID = "rubble",
+                        TypeID = "refinery",
+                        IsDestroyed = true,
+                    },
+                }
+            );
+
+            _session.IncrementBuildCount();
+
+            Assert.AreEqual(2, _session.BuildCount);
+            Assert.AreEqual(2, _session.OrderBuildCount);
+        }
     }
 }

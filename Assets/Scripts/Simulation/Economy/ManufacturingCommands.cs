@@ -121,7 +121,7 @@ namespace Rebellion.Simulation
                 type
             );
             producer.GetManufacturingQueue().TryGetValue(type, out List<IManufacturable> queue);
-            if (ManufacturingRules.MatchesProduct(activeOrder, template))
+            if (ManufacturingRules.MatchesProduct(queue, template))
             {
                 if (count < activeOrder.Quantity)
                 {
@@ -168,6 +168,33 @@ namespace Rebellion.Simulation
             int count
         )
         {
+            if (template is Building { IsDestroyed: true } rubble)
+            {
+                if (destination is not Planet rebuildPlanet)
+                    return false;
+
+                List<Building> rebuilds = rebuildPlanet
+                    .GetChildren<Building>()
+                    .Where(building =>
+                        building.IsDestroyed
+                        && building.ManufacturingStatus == ManufacturingStatus.Complete
+                        && string.Equals(building.TypeID, rubble.TypeID, StringComparison.Ordinal)
+                        && string.Equals(
+                            building.OwnerInstanceID,
+                            rubble.OwnerInstanceID,
+                            StringComparison.Ordinal
+                        )
+                    )
+                    .OrderByDescending(building => ReferenceEquals(building, rubble))
+                    .ThenBy(building => building.InstanceID)
+                    .Take(count)
+                    .ToList();
+                if (rebuilds.Count != count)
+                    return false;
+
+                return rebuilds.All(building => QueueRebuild(producer, building, rebuildPlanet));
+            }
+
             bool started = false;
             Fleet capitalShipDestination = null;
             Planet destinationPlanet = destination as Planet;
@@ -228,6 +255,34 @@ namespace Rebellion.Simulation
             }
 
             return started;
+        }
+
+        /// <summary>
+        /// Queues an existing destroyed building for reconstruction without consuming another slot.
+        /// </summary>
+        /// <param name="producer">The planet performing the work.</param>
+        /// <param name="building">The rubble being rebuilt.</param>
+        /// <param name="destination">The planet containing the rubble.</param>
+        /// <returns>True when reconstruction was queued.</returns>
+        private bool QueueRebuild(Planet producer, Building building, Planet destination)
+        {
+            Faction faction = GetValidatedFaction(producer, building);
+            if (
+                faction == null
+                || !ReferenceEquals(building.GetParent(), destination)
+                || building.ManufacturingStatus != ManufacturingStatus.Complete
+                || !HasMaintenanceHeadroom(faction, building)
+            )
+                return false;
+
+            building.BeginRebuild();
+            building.ProducerOwnerID = producer.GetOwnerInstanceID();
+            building.ProducerPlanetID = producer.GetInstanceID();
+            producer.AddToManufacturingQueue(building);
+            GameLogger.Log(
+                $"Enqueued {building.GetDisplayName()} for reconstruction at {producer.GetDisplayName()} (cost: {building.ConstructionCost})"
+            );
+            return true;
         }
 
         /// <summary>
@@ -333,7 +388,7 @@ namespace Rebellion.Simulation
                     .TryGetValue(type, out List<IManufacturable> activeProject) != true
                 || activeProject == null
                 || activeProject.Count == 0
-                || activeProject.All(item => item.GetTypeID() == template.GetTypeID())
+                || ManufacturingRules.MatchesProduct(activeProject, template)
             )
             {
                 return;
@@ -742,6 +797,12 @@ namespace Rebellion.Simulation
         /// <returns>The former destination fleet, or null for a non-fleet destination.</returns>
         private Fleet DetachQueuedItem(IManufacturable item)
         {
+            if (item is Building { IsDestroyed: true } rebuilding)
+            {
+                rebuilding.CancelRebuild();
+                return null;
+            }
+
             if (item is IMovable movable)
                 movable.Movement = null;
 

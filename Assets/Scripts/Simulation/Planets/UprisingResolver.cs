@@ -915,11 +915,7 @@ namespace Rebellion.Simulation
         {
             List<Building> facilities = planet
                 .GetAllBuildings()
-                .Where(b =>
-                    b.GetOwnerInstanceID() == controllerInstanceId
-                    && b.ManufacturingStatus == ManufacturingStatus.Complete
-                    && b.Movement == null
-                )
+                .Where(b => b.GetOwnerInstanceID() == controllerInstanceId && b.IsOperational())
                 .ToList();
 
             DestroyRandomUprisingTarget(facilities, planet, results);
@@ -973,7 +969,7 @@ namespace Rebellion.Simulation
                 return false;
 
             ISceneNode destroyed = candidates[_provider.NextInt(0, candidates.Count)];
-            _game.DeleteNode(destroyed);
+            _game.DestroyNode(destroyed);
             results.Add(
                 new GameObjectDestroyedResult
                 {

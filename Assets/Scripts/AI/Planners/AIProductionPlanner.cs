@@ -215,7 +215,7 @@ namespace Rebellion.AI.Planners
                     continue;
 
                 int sectorFacilityCount = sector.Sum(planet =>
-                    planet.GetTotalBuildingTypeCount(capacityDemand.BuildingType)
+                    planet.GetCommittedBuildingTypeCount(capacityDemand.BuildingType)
                 );
                 int targetCount = sectorFacilityCount > 0 ? hubTarget : 1;
                 int sectorDeficit = GetSectorFacilityDeficit(
@@ -285,7 +285,7 @@ namespace Rebellion.AI.Planners
             if (target == null || target.GetAvailableEnergy() <= 0 || targetCount <= 0)
                 return false;
 
-            int currentCount = target.GetTotalBuildingTypeCount(capacityDemand.BuildingType);
+            int currentCount = target.GetCommittedBuildingTypeCount(capacityDemand.BuildingType);
             if (currentCount >= targetCount)
                 return false;
 
@@ -332,7 +332,7 @@ namespace Rebellion.AI.Planners
                 return 0;
 
             int strongestCluster = planets.Max(planet =>
-                planet.GetTotalBuildingTypeCount(buildingType)
+                planet.GetCommittedBuildingTypeCount(buildingType)
             );
             return strongestCluster == 0 ? 1 : Math.Max(0, hubTarget - strongestCluster);
         }
@@ -360,7 +360,7 @@ namespace Rebellion.AI.Planners
                 return 0;
 
             int constructionFacilityCount = planets.Sum(planet =>
-                planet.GetTotalBuildingTypeCount(BuildingType.ConstructionFacility)
+                planet.GetCommittedBuildingTypeCount(BuildingType.ConstructionFacility)
             );
             return 1 - AIUtility.Fulfillment(constructionFacilityCount, 1);
         }
@@ -691,10 +691,35 @@ namespace Rebellion.AI.Planners
             if (IsFacilityExpansionDemand(demand) && maintenanceBudget <= 0)
                 return null;
 
+            Building rebuild = demand
+                .DestinationPlanet?.GetChildren<Building>()
+                .Where(building =>
+                    building.IsDestroyed
+                    && building.ManufacturingStatus == ManufacturingStatus.Complete
+                    && building.GetOwnerInstanceID() == context.Faction.InstanceID
+                    && string.Equals(
+                        building.TypeID,
+                        demand.ProductTypeId,
+                        StringComparison.Ordinal
+                    )
+                )
+                .OrderBy(building => building.InstanceID, StringComparer.Ordinal)
+                .FirstOrDefault();
+            if (rebuild != null && rebuild.MaintenanceCost <= maintenanceBudget)
+                return new Technology(rebuild);
+
             return GetUnlockedTechnologies(context, ManufacturingType.Building)
                 .Where(technology =>
                     technology.GetReference() is Building building
                     && building.GetBuildingType() == demand.BuildingType
+                    && (
+                        string.IsNullOrEmpty(demand.ProductTypeId)
+                        || string.Equals(
+                            building.TypeID,
+                            demand.ProductTypeId,
+                            StringComparison.Ordinal
+                        )
+                    )
                     && IManufacturable.CanBeManufacturedBy(building, context.Faction.InstanceID)
                     && IsEligibleBuildingUpgrade(demand, building)
                     && GetBuildingMaintenanceCost(demand, building) <= maintenanceBudget

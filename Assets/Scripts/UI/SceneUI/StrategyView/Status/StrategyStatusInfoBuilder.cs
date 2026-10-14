@@ -767,10 +767,7 @@ internal sealed class StrategyStatusInfoBuilder
     {
         return planet
             .GetChildren<Building>()
-            .Count(building =>
-                building.GetManufacturingStatus() == ManufacturingStatus.Complete
-                && building.GetProductionType() == type
-            );
+            .Count(building => building.IsOperational() && building.GetProductionType() == type);
     }
 
     /// <summary>
@@ -846,8 +843,20 @@ internal sealed class StrategyStatusInfoBuilder
     /// <returns>The displayed status text.</returns>
     private static string GetManufacturingStatusText(IManufacturable item)
     {
+        if (
+            item is Building
+            {
+                IsDestroyed: true,
+                ManufacturingStatus: ManufacturingStatus.Building,
+            }
+        )
+            return "Rebuilding";
+
         if (item.GetManufacturingStatus() == ManufacturingStatus.Building)
             return item is Regiment or SpecialForces ? "Training" : "Under Construction";
+
+        if (item is Building { IsDestroyed: true })
+            return "Destroyed";
 
         if (item is IMovable movable && movable.GetTransitMovement() != null)
             return "Enroute";

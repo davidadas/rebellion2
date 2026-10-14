@@ -358,7 +358,8 @@ namespace Rebellion.Simulation
         /// <returns>True when the unit can participate in bombardment.</returns>
         internal static bool IsActiveBombardmentUnit(IManufacturable unit)
         {
-            return unit.ManufacturingStatus == ManufacturingStatus.Complete
+            return unit is not Building { IsDestroyed: true }
+                && unit.ManufacturingStatus == ManufacturingStatus.Complete
                 && unit.Movement == null;
         }
 

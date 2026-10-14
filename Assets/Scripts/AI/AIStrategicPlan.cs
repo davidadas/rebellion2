@@ -219,6 +219,10 @@ namespace Rebellion.AI
                     BuildingType type = building.GetBuildingType();
                     if (
                         building.GetOwnerInstanceID() == planet.GetOwnerInstanceID()
+                        && (
+                            !building.IsDestroyed
+                            || building.ManufacturingStatus == ManufacturingStatus.Building
+                        )
                         && _infrastructureCounts.ContainsKey(type)
                     )
                         _infrastructureCounts[type]++;

@@ -19,6 +19,67 @@ namespace Rebellion.AI.Demands
         private const int _completeDemandPercent = 100;
 
         /// <summary>
+        /// Adds exact reconstruction demands for destroyed facilities owned by the faction.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="demands">The demand list to update.</param>
+        internal void AddDestroyedFacilityDemands(
+            AITurnContext context,
+            ICollection<AIProductionDemand> demands
+        )
+        {
+            foreach (Planet planet in context.Assessment.OwnedPlanets.Where(IsUsablePlanet))
+            {
+                foreach (
+                    Building building in context
+                        .Assessment.GetPlanetBuildings(planet)
+                        .Where(building =>
+                            building.GetOwnerInstanceID() == context.Faction.InstanceID
+                            && building.IsDestroyed
+                            && building.ManufacturingStatus == ManufacturingStatus.Complete
+                            && building.BuildingType != BuildingType.Headquarters
+                        )
+                        .OrderBy(building => building.InstanceID, StringComparer.Ordinal)
+                )
+                {
+                    AIProductionDemandKind kind = building.BuildingType switch
+                    {
+                        BuildingType.Mine => AIProductionDemandKind.Mine,
+                        BuildingType.Refinery => AIProductionDemandKind.Refinery,
+                        BuildingType.ConstructionFacility =>
+                            AIProductionDemandKind.ConstructionFacility,
+                        BuildingType.Shipyard => AIProductionDemandKind.Shipyard,
+                        BuildingType.TrainingFacility => AIProductionDemandKind.TrainingFacility,
+                        BuildingType.Defense or BuildingType.Weapon =>
+                            AIProductionDemandKind.PlanetaryDefense,
+                        _ => AIProductionDemandKind.None,
+                    };
+                    if (kind == AIProductionDemandKind.None)
+                        continue;
+
+                    demands.Add(
+                        new AIProductionDemand(
+                            AIProductionDemand.CreateId(
+                                context.Faction.InstanceID,
+                                kind,
+                                "rebuild",
+                                building.InstanceID
+                            ),
+                            kind,
+                            ManufacturingType.Building,
+                            building.BuildingType,
+                            planet,
+                            1,
+                            productTypeId: building.TypeID,
+                            targetCount: 1,
+                            baseDemandPercent: _completeDemandPercent
+                        )
+                    );
+                }
+            }
+        }
+
+        /// <summary>
         /// Adds production-facility expansion demands.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
@@ -112,8 +173,7 @@ namespace Rebellion.AI.Demands
                 .Where(building =>
                     building.GetOwnerInstanceID() == context.Faction.InstanceID
                     && building.GetBuildingType() == buildingType
-                    && building.GetManufacturingStatus() == ManufacturingStatus.Complete
-                    && building.Movement == null
+                    && building.IsOperational()
                     && building.GetProcessRate() > 0
                 )
                 .ToList();
@@ -256,7 +316,7 @@ namespace Rebellion.AI.Demands
                 sector.FirstOrDefault()?.GetParentOfType<PlanetSector>()?.SectorType
                     == PlanetSectorType.OuterRim
                 && sector.Sum(planet =>
-                    planet.GetTotalBuildingTypeCount(BuildingType.ConstructionFacility)
+                    planet.GetCommittedBuildingTypeCount(BuildingType.ConstructionFacility)
                 ) == 0
             );
         }
@@ -374,6 +434,10 @@ namespace Rebellion.AI.Demands
                 .Assessment.GetPlanetBuildings(planet)
                 .Count(building =>
                     building.GetOwnerInstanceID() == context.Faction.InstanceID
+                    && (
+                        !building.IsDestroyed
+                        || building.ManufacturingStatus == ManufacturingStatus.Building
+                    )
                     && building.IsPlanetaryShieldGenerator()
                 );
             int shieldQuantity = Math.Min(Math.Max(0, shieldTarget - shieldCount), availableEnergy);
@@ -397,6 +461,10 @@ namespace Rebellion.AI.Demands
                 .Assessment.GetPlanetBuildings(planet)
                 .Count(building =>
                     building.GetOwnerInstanceID() == context.Faction.InstanceID
+                    && (
+                        !building.IsDestroyed
+                        || building.ManufacturingStatus == ManufacturingStatus.Building
+                    )
                     && building.GetBuildingType() == BuildingType.Weapon
                 );
             int weaponTarget = GetPlanetaryWeaponCount(context, planet, weaponCount);
@@ -621,6 +689,8 @@ namespace Rebellion.AI.Demands
             {
                 if (building.GetOwnerInstanceID() != context.Faction.InstanceID)
                     continue;
+                if (building.IsDestroyed)
+                    continue;
                 if (building.IsPlanetaryShieldGenerator())
                     shieldCount++;
                 else if (building.GetBuildingType() == BuildingType.Weapon)
@@ -800,6 +870,7 @@ namespace Rebellion.AI.Demands
             if (context?.Game == null || context.Faction == null || context.Assessment == null)
                 return requirements;
 
+            AddDestroyedFacilityDemands(context, requirements);
             AddColonyDemands(context, requirements);
             AddResourceDemands(context, requirements);
             AddPlanetaryDefenseDemands(context, requirements);
@@ -1168,7 +1239,7 @@ namespace Rebellion.AI.Demands
 
             List<Planet> targets = GetBuildingDestinations(context)
                 .Where(planet => !excludedPlanetIds.Contains(planet.InstanceID))
-                .OrderBy(planet => planet.GetTotalBuildingTypeCount(BuildingType.Refinery))
+                .OrderBy(planet => planet.GetCommittedBuildingTypeCount(BuildingType.Refinery))
                 .ThenByDescending(planet => planet.GetAvailableEnergy())
                 .ThenBy(planet => planet.InstanceID)
                 .Take(count)
@@ -1179,7 +1250,7 @@ namespace Rebellion.AI.Demands
             targets.AddRange(
                 GetBuildingDestinations(context)
                     .Where(planet => excludedPlanetIds.Contains(planet.InstanceID))
-                    .OrderBy(planet => planet.GetTotalBuildingTypeCount(BuildingType.Refinery))
+                    .OrderBy(planet => planet.GetCommittedBuildingTypeCount(BuildingType.Refinery))
                     .ThenByDescending(planet => planet.GetAvailableEnergy())
                     .ThenBy(planet => planet.InstanceID)
                     .Take(count - targets.Count)

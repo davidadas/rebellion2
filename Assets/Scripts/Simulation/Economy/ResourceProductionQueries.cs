@@ -143,6 +143,15 @@ namespace Rebellion.Simulation
 
             foreach (IManufacturable item in faction.GetAllOwnedManufacturables())
             {
+                if (
+                    item is Building
+                    {
+                        IsDestroyed: true,
+                        ManufacturingStatus: ManufacturingStatus.Complete,
+                    }
+                )
+                    continue;
+
                 int cost = item.GetMaintenanceCost();
                 if (item.GetManufacturingStatus() == ManufacturingStatus.Building)
                 {
@@ -213,8 +222,7 @@ namespace Rebellion.Simulation
                     .GetChildren<Building>()
                     .Where(building =>
                         building.BuildingType == buildingType
-                        && building.ManufacturingStatus == ManufacturingStatus.Complete
-                        && building.Movement == null
+                        && building.IsOperational()
                         && building.ProcessRate > 0
                     );
                 if (buildingType == BuildingType.Mine)
@@ -250,6 +258,11 @@ namespace Rebellion.Simulation
                     .Where(building =>
                         building.BuildingType == buildingType
                         && building.ProcessRate > 0
+                        && (
+                            !building.IsDestroyed
+                            || includeBuilding
+                                && building.ManufacturingStatus == ManufacturingStatus.Building
+                        )
                         && (
                             includeBuilding
                             || building.ManufacturingStatus != ManufacturingStatus.Building
@@ -346,6 +359,15 @@ namespace Rebellion.Simulation
                     .Where(candidate => candidate.BuildingType == buildingType)
             )
             {
+                if (
+                    facility is Building
+                    {
+                        IsDestroyed: true,
+                        ManufacturingStatus: ManufacturingStatus.Complete,
+                    }
+                )
+                    continue;
+
                 if (facility.ManufacturingStatus == ManufacturingStatus.Building)
                     building++;
                 else if (

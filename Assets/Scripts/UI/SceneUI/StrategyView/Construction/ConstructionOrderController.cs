@@ -36,21 +36,92 @@ public sealed class ConstructionOrderController
         string playerFactionId
     )
     {
+        return GetBuildSelection(manufacturingTab, playerFactionId, null);
+    }
+
+    /// <summary>
+    /// Gets build templates and rebuildable facilities available for a manufacturing panel.
+    /// </summary>
+    /// <param name="manufacturingTab">The manufacturing facility tab.</param>
+    /// <param name="playerFactionId">The player faction identifier.</param>
+    /// <param name="destination">The node that will receive completed work.</param>
+    /// <returns>The available build and rebuild selections in display order.</returns>
+    public IReadOnlyList<IManufacturable> GetBuildSelection(
+        FacilityWindowTab manufacturingTab,
+        string playerFactionId,
+        ISceneNode destination
+    )
+    {
+        return GetBuildSelection(manufacturingTab, playerFactionId, destination, null);
+    }
+
+    /// <summary>
+    /// Gets build templates and rebuildable facilities available for a manufacturing panel.
+    /// </summary>
+    /// <param name="manufacturingTab">The manufacturing facility tab.</param>
+    /// <param name="playerFactionId">The player faction identifier.</param>
+    /// <param name="destination">The node that will receive completed work.</param>
+    /// <param name="producer">The planet whose active reconstruction order remains selectable.</param>
+    /// <returns>The available build and rebuild selections in display order.</returns>
+    public IReadOnlyList<IManufacturable> GetBuildSelection(
+        FacilityWindowTab manufacturingTab,
+        string playerFactionId,
+        ISceneNode destination,
+        Planet producer
+    )
+    {
         Faction faction = GetFaction(playerFactionId);
         ManufacturingType? manufacturingType =
             FacilityManufacturingLaneCatalog.GetManufacturingType(manufacturingTab);
         if (faction == null || !manufacturingType.HasValue)
             return Array.Empty<IManufacturable>();
 
-        return faction
+        List<IManufacturable> selections = faction
             .GetUnlockedTechnologies(manufacturingType.Value)
             .Select(technology => technology.GetReference())
             .Where(item => BelongsToManufacturingTab(item, manufacturingTab))
             .Where(item => IManufacturable.CanBeManufacturedBy(item, playerFactionId))
             .OrderBy(item => item.GetResearchOrder())
             .ThenBy(item => item.GetDisplayName())
-            .ToList()
-            .AsReadOnly();
+            .ToList();
+        if (
+            manufacturingType == ManufacturingType.Building
+            && destination is Planet destinationPlanet
+        )
+        {
+            selections.AddRange(
+                destinationPlanet
+                    .GetChildren<Building>()
+                    .Where(building =>
+                        building.IsDestroyed
+                        && building.OwnerInstanceID == playerFactionId
+                        && (
+                            building.ManufacturingStatus == ManufacturingStatus.Complete
+                            || building.ManufacturingStatus == ManufacturingStatus.Building
+                                && producer != null
+                                && string.Equals(
+                                    building.ProducerPlanetID,
+                                    producer.InstanceID,
+                                    StringComparison.Ordinal
+                                )
+                        )
+                    )
+                    .GroupBy(building => building.TypeID)
+                    .Select(group =>
+                        group
+                            .OrderByDescending(building =>
+                                building.ManufacturingStatus == ManufacturingStatus.Building
+                            )
+                            .ThenBy(building => building.ManufacturingQueueSequence)
+                            .ThenBy(building => building.InstanceID)
+                            .First()
+                    )
+                    .OrderBy(building => building.ResearchOrder)
+                    .ThenBy(building => building.GetDisplayName())
+            );
+        }
+
+        return selections.AsReadOnly();
     }
 
     /// <summary>
@@ -201,6 +272,9 @@ public sealed class ConstructionOrderController
         IManufacturable selected
     )
     {
+        if (selected is Building { IsDestroyed: true })
+            return null;
+
         if (selected is not IMovable movable)
             return null;
 

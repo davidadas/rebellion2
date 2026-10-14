@@ -4750,6 +4750,120 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void SetManufacturingOrder_DestroyedBuilding_QueuesExistingBuildingInPlace()
+        {
+            Building rubble = CreateDestroyedBuilding();
+            _game.AttachNode(rubble, _coruscant);
+            _coruscant.EnergyCapacity = _coruscant.GetChildren<Building>().Count;
+
+            bool started = _manager.SetManufacturingOrder(
+                _coruscant,
+                rubble,
+                _coruscant,
+                1,
+                _empire.InstanceID
+            );
+
+            Assert.IsTrue(started);
+            Assert.AreSame(_coruscant, rubble.GetParent());
+            Assert.IsTrue(rubble.IsDestroyed);
+            Assert.AreEqual(ManufacturingStatus.Building, rubble.ManufacturingStatus);
+            Assert.AreSame(
+                rubble,
+                _coruscant.GetManufacturingQueue()[ManufacturingType.Building].Single()
+            );
+            Assert.AreEqual(0, _coruscant.GetAvailableEnergy());
+        }
+
+        [Test]
+        public void SetManufacturingOrder_TwoMatchingDestroyedBuildings_QueuesBothInPlace()
+        {
+            Building first = CreateDestroyedBuilding("DESTROYED_REFINERY_1");
+            Building second = CreateDestroyedBuilding("DESTROYED_REFINERY_2");
+            first.BuildingType = BuildingType.Refinery;
+            second.BuildingType = BuildingType.Refinery;
+            first.TypeID = "refinery";
+            second.TypeID = "refinery";
+            _game.AttachNode(first, _coruscant);
+            _game.AttachNode(second, _coruscant);
+            Assert.IsTrue(
+                _manager.SetManufacturingOrder(_coruscant, first, _coruscant, 1, _empire.InstanceID)
+            );
+            first.ManufacturingProgress = 1;
+
+            bool started = _manager.SetManufacturingOrder(
+                _coruscant,
+                first,
+                _coruscant,
+                2,
+                _empire.InstanceID
+            );
+
+            Assert.IsTrue(started);
+            Assert.AreEqual(1, first.ManufacturingProgress);
+            CollectionAssert.AreEqual(
+                new[] { first, second },
+                _coruscant.GetManufacturingQueue()[ManufacturingType.Building]
+            );
+            Assert.IsTrue(new[] { first, second }.All(building => building.IsDestroyed));
+            Assert.IsTrue(
+                new[] { first, second }.All(building =>
+                    building.ManufacturingStatus == ManufacturingStatus.Building
+                )
+            );
+        }
+
+        [Test]
+        public void CancelManufacturing_RebuildingBuilding_RestoresRubbleInPlace()
+        {
+            Building rubble = CreateDestroyedBuilding();
+            _game.AttachNode(rubble, _coruscant);
+            Assert.IsTrue(
+                _manager.SetManufacturingOrder(
+                    _coruscant,
+                    rubble,
+                    _coruscant,
+                    1,
+                    _empire.InstanceID
+                )
+            );
+
+            bool cancelled = _manager.CancelManufacturing(rubble, _empire.InstanceID);
+
+            Assert.IsTrue(cancelled);
+            Assert.AreSame(_coruscant, rubble.GetParent());
+            Assert.IsTrue(rubble.IsDestroyed);
+            Assert.AreEqual(ManufacturingStatus.Complete, rubble.ManufacturingStatus);
+            Assert.IsFalse(
+                _coruscant.GetManufacturingQueue().ContainsKey(ManufacturingType.Building)
+            );
+        }
+
+        [Test]
+        public void ProcessTick_RebuildingBuilding_RestoresExistingBuilding()
+        {
+            Building rubble = CreateDestroyedBuilding();
+            _game.AttachNode(rubble, _coruscant);
+            Assert.IsTrue(
+                _manager.SetManufacturingOrder(
+                    _coruscant,
+                    rubble,
+                    _coruscant,
+                    1,
+                    _empire.InstanceID
+                )
+            );
+
+            for (int tick = 0; tick <= rubble.ConstructionCost && rubble.IsDestroyed; tick++)
+                CreateTickProcessor(_manager).ProcessTick(_game);
+
+            Assert.AreSame(_coruscant, rubble.GetParent());
+            Assert.IsFalse(rubble.IsDestroyed);
+            Assert.IsTrue(rubble.IsOperational());
+            Assert.IsEmpty(_coruscant.GetManufacturingQueue()[ManufacturingType.Building]);
+        }
+
+        [Test]
         public void SetManufacturingOrder_SameProductAndQuantity_PreservesEntireProductionLane()
         {
             GameRoot game = CreateOrderTestGame();
@@ -5383,6 +5497,29 @@ namespace Rebellion.Tests.Simulation
                 MaintenanceCost = 0,
                 BaseBuildSpeed = 1,
                 BuildingType = BuildingType.Mine,
+            };
+        }
+
+        /// <summary>
+        /// Creates rubble that can be rebuilt by the default fixture faction.
+        /// </summary>
+        /// <param name="instanceId">The rubble instance identifier.</param>
+        /// <returns>The destroyed building.</returns>
+        private static Building CreateDestroyedBuilding(string instanceId = "DESTROYED_MINE")
+        {
+            return new Building
+            {
+                InstanceID = instanceId,
+                TypeID = "mine",
+                DisplayName = "Mine",
+                OwnerInstanceID = "EMPIRE",
+                ConstructionCost = 1,
+                MaintenanceCost = 0,
+                BaseBuildSpeed = 10,
+                BuildingType = BuildingType.Mine,
+                IsDestroyed = true,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                ManufacturingFactionInstanceIDs = new List<string> { "OTHER" },
             };
         }
 

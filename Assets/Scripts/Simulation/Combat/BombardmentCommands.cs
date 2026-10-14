@@ -527,14 +527,7 @@ namespace Rebellion.Simulation
                 case BombardmentTargetType.Building:
                     Building building = (Building)target.Entity;
                     result.DestroyedBuildings.Add(building);
-                    if (string.IsNullOrEmpty(building.OwnerInstanceID))
-                    {
-                        _game.DetachNode(building);
-                    }
-                    else
-                    {
-                        _game.DeleteNode(building);
-                    }
+                    _game.DestroyNode(building);
                     break;
                 case BombardmentTargetType.Headquarters:
                     DestroyHeadquarters(planet, defenderId, result);
@@ -560,6 +553,12 @@ namespace Rebellion.Simulation
         /// <param name="result">Bombardment result receiving the destruction flag.</param>
         private void DestroyHeadquarters(Planet planet, string defenderId, BombardmentResult result)
         {
+            Building headquarters = planet
+                .GetAllBuildings()
+                .SingleOrDefault(building => building.BuildingType == BuildingType.Headquarters);
+            if (headquarters != null)
+                _game.DeleteNode(headquarters);
+
             planet.IsHeadquarters = false;
             if (!string.IsNullOrEmpty(defenderId))
                 _game.GetFactionByOwnerInstanceID(defenderId).HQInstanceID = null;

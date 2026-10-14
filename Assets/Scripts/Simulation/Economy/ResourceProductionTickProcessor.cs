@@ -221,8 +221,7 @@ namespace Rebellion.Simulation
         {
             return facility != null
                 && facility.OwnerInstanceID == faction.InstanceID
-                && facility.ManufacturingStatus == ManufacturingStatus.Complete
-                && facility.Movement == null
+                && facility.IsOperational()
                 && !facility.ProductionInputReserved
                 && !facility.ProductionPointReady
                 && facility.GetParent() is Planet;

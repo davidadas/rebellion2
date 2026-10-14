@@ -630,7 +630,10 @@ namespace Rebellion.Game.Factions
         public int GetTotalMaintenanceCost()
         {
             return GetAllOwnedManufacturables()
-                .Where(m => m.GetManufacturingStatus() == ManufacturingStatus.Complete)
+                .Where(m =>
+                    m.GetManufacturingStatus() == ManufacturingStatus.Complete
+                    && m is not Building { IsDestroyed: true }
+                )
                 .Sum(m => m.GetMaintenanceCost());
         }
 
@@ -640,7 +643,16 @@ namespace Rebellion.Game.Factions
         /// <returns>The total projected maintenance burden for the faction.</returns>
         public int GetTotalProjectedMaintenanceCost()
         {
-            return GetAllOwnedManufacturables().Sum(m => m.GetMaintenanceCost());
+            return GetAllOwnedManufacturables()
+                .Where(m =>
+                    m
+                        is not Building
+                        {
+                            IsDestroyed: true,
+                            ManufacturingStatus: ManufacturingStatus.Complete,
+                        }
+                )
+                .Sum(m => m.GetMaintenanceCost());
         }
 
         /// <summary>

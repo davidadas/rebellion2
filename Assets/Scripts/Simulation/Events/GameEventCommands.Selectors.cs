@@ -291,7 +291,7 @@ namespace Rebellion.Simulation
         ) => SelectManufacturable(definition, game, context);
 
         /// <summary>
-        /// Returns buildings that match the authored unit and strategic-category filters.
+        /// Returns non-destroyed buildings that match the authored unit and strategic-category filters.
         /// </summary>
         /// <param name="definition">The authored selection and filters.</param>
         /// <param name="game">The game.</param>
@@ -303,6 +303,7 @@ namespace Rebellion.Simulation
             GameEventEvaluationContext context
         ) =>
             SelectManufacturable(definition, game, context)
+                .Where(building => !building.IsDestroyed)
                 .Where(building => MatchesCategory(definition, building));
 
         /// <summary>

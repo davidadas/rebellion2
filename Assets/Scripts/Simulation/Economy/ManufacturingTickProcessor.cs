@@ -171,8 +171,7 @@ namespace Rebellion.Simulation
             List<ManufacturingType> types = planet
                 .GetChildren<Building>()
                 .Where(facility =>
-                    facility.ManufacturingStatus == ManufacturingStatus.Complete
-                    && facility.Movement == null
+                    facility.IsOperational()
                     && facility.ProcessRate > 0
                     && facility.ProductionType != ManufacturingType.None
                 )
@@ -266,8 +265,7 @@ namespace Rebellion.Simulation
                 .GetChildren<Building>()
                 .Where(facility =>
                     facility.ProductionType == type
-                    && facility.ManufacturingStatus == ManufacturingStatus.Complete
-                    && facility.Movement == null
+                    && facility.IsOperational()
                     && facility.ProcessRate > 0
                 )
                 .ToList();
@@ -568,6 +566,12 @@ namespace Rebellion.Simulation
         /// <param name="item">The completed item.</param>
         private void MarkCompleteAndDispatch(Planet productionPlanet, IManufacturable item)
         {
+            if (item is Building { IsDestroyed: true } rebuilding)
+            {
+                rebuilding.CompleteRebuild();
+                return;
+            }
+
             item.ManufacturingQueueSequence = 0;
 
             ContainerNode destination = item.GetParent() as ContainerNode;

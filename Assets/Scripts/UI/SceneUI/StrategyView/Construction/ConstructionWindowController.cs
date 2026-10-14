@@ -346,14 +346,14 @@ public sealed class ConstructionWindowController
             producer,
             destination,
             items,
-            session.BuildCount,
+            session.OrderBuildCount,
             playerFactionId
         );
         IReadOnlyList<ConstructionBuildEstimate> estimates = orderController.GetBuildEstimates(
             producer,
             destination,
             items,
-            session.BuildCount,
+            session.OrderBuildCount,
             canStartSelections
         );
         view.Render(
@@ -364,7 +364,7 @@ public sealed class ConstructionWindowController
                 active,
                 items,
                 session.SelectedItemIndex,
-                session.BuildCount,
+                session.OrderBuildCount,
                 canStartSelections,
                 estimates,
                 session.DropdownOpen
@@ -536,7 +536,7 @@ public sealed class ConstructionWindowController
             GetAuthoritativePlanet(session.Planet),
             GetConstructionDestination(session),
             selected,
-            session.BuildCount,
+            session.OrderBuildCount,
             playerFactionId
         );
         if (started)
@@ -793,19 +793,32 @@ public sealed class ConstructionWindowController
         if (session == null)
             return;
 
+        Planet producer = GetAuthoritativePlanet(session.Planet);
         session.SetItems(
-            orderController.GetBuildSelection(session.ManufacturingTab, GetPlayerFactionID())
+            orderController.GetBuildSelection(
+                session.ManufacturingTab,
+                GetPlayerFactionID(),
+                GetConstructionDestination(session),
+                producer
+            )
         );
         ManufacturingType? type = FacilityManufacturingLaneCatalog.GetManufacturingType(
             session.ManufacturingTab
         );
-        Planet producer = GetAuthoritativePlanet(session.Planet);
         ManufacturingOrder activeOrder = type.HasValue
             ? ManufacturingQueries.GetManufacturingOrder(producer, type.Value)
             : null;
         if (activeOrder != null)
         {
-            session.InitializeOrder(activeOrder.ProductTypeID, activeOrder.Quantity);
+            List<IManufacturable> activeItems = null;
+            producer?.GetManufacturingQueue().TryGetValue(type.Value, out activeItems);
+            IManufacturable activeItem = activeItems?.FirstOrDefault();
+            session.InitializeOrder(
+                activeItem is Building { IsDestroyed: true } rebuilding
+                    ? rebuilding.InstanceID
+                    : activeOrder.ProductTypeID,
+                activeOrder.Quantity
+            );
             return;
         }
 

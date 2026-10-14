@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
@@ -283,6 +284,27 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(0, marker.Index);
             Assert.AreEqual(_opponentFactionId, marker.FactionInstanceId);
             Assert.IsFalse(marker.Mixed);
+        }
+
+        [TestCase(GalacticInformationFilterMode.UnitShieldGenerators)]
+        [TestCase(GalacticInformationFilterMode.PlanetaryShieldGenerators)]
+        [TestCase(GalacticInformationFilterMode.PlanetaryDefenseBatteries)]
+        public void Evaluate_DestroyedDefenseBuilding_ReturnsLowestMarker(
+            GalacticInformationFilterMode mode
+        )
+        {
+            Planet planet = CreatePlanet(_playerFactionId);
+            AddScalarValue(planet, mode);
+            planet.GetChildren<Building>().Single().IsDestroyed = true;
+
+            GalacticInformationMarker marker = GalacticInformationFilterEvaluator.Evaluate(
+                _game,
+                planet,
+                _playerFactionId,
+                CreateFilter(mode)
+            );
+
+            Assert.AreEqual(0, marker.Index);
         }
 
         [Test]

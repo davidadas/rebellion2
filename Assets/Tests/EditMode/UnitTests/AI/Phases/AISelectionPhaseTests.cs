@@ -102,6 +102,59 @@ namespace Rebellion.Tests.AI.Phases
         }
 
         [Test]
+        public void Select_WithFullDestinationAndRebuildProposal_SelectsRebuild()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "destination",
+                empire.InstanceID,
+                energyCapacity: 2,
+                rawResourceNodes: 1
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "construction-yard",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+            Building rubble = AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "destroyed-mine",
+                BuildingType.Mine,
+                ManufacturingType.None
+            );
+            rubble.IsDestroyed = true;
+            rubble.MaintenanceCost = 0;
+            AIManufactureProposal proposal = new AIManufactureProposal(
+                new AIProductionDemand(
+                    "rebuild-demand",
+                    AIProductionDemandKind.Mine,
+                    ManufacturingType.Building,
+                    BuildingType.Mine,
+                    planet,
+                    1,
+                    productTypeId: rubble.TypeID,
+                    baseDemandPercent: 100
+                ),
+                planet,
+                new Technology(rubble),
+                false
+            );
+            proposal.SetScore(100);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            context.AddProposal(proposal);
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+
+            CollectionAssert.AreEqual(new[] { proposal }, selected);
+        }
+
+        [Test]
         public void Select_WithEqualScoredConflictingProposals_UsesPersistedRandomTieBreaker()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);

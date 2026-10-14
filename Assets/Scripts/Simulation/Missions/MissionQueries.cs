@@ -1336,8 +1336,7 @@ namespace Rebellion.Simulation
                     .Any(building =>
                         building.IsDetectionBlocker
                         && building.OwnerInstanceID == mission.OwnerInstanceID
-                        && building.ManufacturingStatus == ManufacturingStatus.Complete
-                        && building.Movement == null
+                        && building.IsOperational()
                     ) == true;
         }
 

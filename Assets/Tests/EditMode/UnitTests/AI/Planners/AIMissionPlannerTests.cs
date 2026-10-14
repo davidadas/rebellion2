@@ -307,6 +307,40 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
+        public void Plan_WithDestroyedBuilding_DoesNotAddSabotageProposal()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, system, "origin", empire.InstanceID);
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
+            Building rubble = AITestSceneBuilder.AddProductionFacility(
+                game,
+                target,
+                "destroyed-shipyard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            rubble.MarkDestroyed();
+            SpecialForces participant = CreateSpecialForces(
+                "saboteur",
+                empire.InstanceID,
+                SabotageMission.MissionTypeID
+            );
+            game.AttachNode(participant, origin);
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+
+            List<AIProposal> proposals = new AIMissionPlanner().Plan(
+                AITestSceneBuilder.CreateContext(game, empire)
+            );
+
+            Assert.IsFalse(
+                proposals
+                    .OfType<AIMissionProposal>()
+                    .Any(proposal => proposal.MissionTypeID == SabotageMission.MissionTypeID)
+            );
+        }
+
+        [Test]
         public void Plan_WithDuplicateSabotageTargetTypes_OffersOneRepresentative()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);

@@ -582,8 +582,7 @@ namespace Rebellion.Game.Galaxy
             return _buildings
                 .Where(building =>
                     building.GetProductionType() == manufacturingType
-                    && building.GetManufacturingStatus() == ManufacturingStatus.Complete
-                    && building.Movement == null
+                    && building.IsOperational()
                     && building.GetProcessRate() > 0
                 )
                 .Sum(building => 1.0 / building.GetProcessRate());
@@ -720,8 +719,7 @@ namespace Rebellion.Game.Galaxy
             return _buildings
                 .Where(building =>
                     building.GetProductionType() == type
-                    && building.GetManufacturingStatus() == ManufacturingStatus.Complete
-                    && building.Movement == null
+                    && building.IsOperational()
                     && building.GetProcessRate() > 0
                 )
                 .OrderBy(building => building.GetProcessRate())
@@ -914,13 +912,30 @@ namespace Rebellion.Game.Galaxy
         }
 
         /// <summary>
+        /// Gets the completed or under-construction count for a building type, excluding idle rubble.
+        /// </summary>
+        /// <param name="buildingType">The building type to count.</param>
+        /// <returns>The buildings currently operating, moving, being built, or being rebuilt.</returns>
+        public int GetCommittedBuildingTypeCount(BuildingType buildingType)
+        {
+            return _buildings.Count(building =>
+                building.GetBuildingType() == buildingType
+                && (
+                    !building.IsDestroyed
+                    || building.ManufacturingStatus == ManufacturingStatus.Building
+                )
+            );
+        }
+
+        /// <summary>
         /// Returns whether a manufactured entity is complete and stationary.
         /// </summary>
         /// <param name="entity">The manufactured entity to inspect.</param>
         /// <returns>True when the entity is complete and has no active movement.</returns>
         private static bool IsEntityActive(IManufacturable entity)
         {
-            return entity.ManufacturingStatus == ManufacturingStatus.Complete
+            return entity is not Building { IsDestroyed: true }
+                && entity.ManufacturingStatus == ManufacturingStatus.Complete
                 && entity.Movement == null;
         }
 

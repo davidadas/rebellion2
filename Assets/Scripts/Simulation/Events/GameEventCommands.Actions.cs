@@ -1243,7 +1243,7 @@ namespace Rebellion.Simulation
                     if (unit is not Officer || selected.Contains(unit))
                         destroyed.Add(unit);
                 });
-                game.DeleteNode(root);
+                game.DestroyNode(root);
             }
 
             Planet planet = !string.IsNullOrWhiteSpace(action.PlanetBinding)

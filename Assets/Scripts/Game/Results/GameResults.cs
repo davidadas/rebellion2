@@ -675,7 +675,8 @@ namespace Rebellion.Game.Results
             WasOperational =
                 unit is not IManufacturable manufacturable
                 || (
-                    manufacturable.ManufacturingStatus == ManufacturingStatus.Complete
+                    unit is not Building { IsDestroyed: true }
+                    && manufacturable.ManufacturingStatus == ManufacturingStatus.Complete
                     && manufacturable.Movement == null
                 );
             Captured = unit is Officer { IsCaptured: true };

@@ -862,6 +862,39 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void TryScrap_DestroyedBuilding_RemovesWithoutRefund()
+        {
+            GameRoot game = CreateGame();
+            game.Config.Production.ScrapRefundDivisor = 1;
+            Faction empire = CreateFaction("empire", "Empire");
+            game.GetFactions().Add(empire);
+            PlanetSector sector = new PlanetSector { InstanceID = "s1" };
+            Planet planet = CreatePlanet("p1", "Coruscant", empire.InstanceID);
+            Building rubble = new Building
+            {
+                InstanceID = "destroyed-mine",
+                OwnerInstanceID = empire.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                ConstructionCost = 10,
+                BuildingType = BuildingType.Mine,
+                IsDestroyed = true,
+            };
+            game.AttachNode(sector, game.GetGalaxyMap());
+            game.AttachNode(planet, sector);
+            game.AttachNode(rubble, planet);
+            MaintenanceCommands maintenance = new MaintenanceCommands(game, new FixedRNG());
+
+            bool removed = maintenance.TryScrap(
+                new IManufacturable[] { rubble },
+                empire.InstanceID
+            );
+
+            Assert.IsTrue(removed);
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Building>(rubble.InstanceID));
+            Assert.AreEqual(0, empire.RefinedMaterialStockpile);
+        }
+
+        [Test]
         public void TryScrap_UnitUnderConstruction_PreservesUnitAndMaterials()
         {
             GameRoot game = CreateGame();

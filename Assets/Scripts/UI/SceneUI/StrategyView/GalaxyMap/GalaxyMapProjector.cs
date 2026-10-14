@@ -462,10 +462,7 @@ public sealed class GalaxyMapProjector
                 + planet.GetChildren<Starfighter>().Count(IsActive)
                 + planet
                     .GetChildren<Building>()
-                    .Count(building =>
-                        building.ManufacturingStatus == ManufacturingStatus.Complete
-                        && building.IsDefenseFacility()
-                    );
+                    .Count(building => building.IsOperational() && building.IsDefenseFacility());
             return new GalacticInformationMarker(
                 Math.Min(3, defenseCount),
                 planet.OwnerInstanceID,

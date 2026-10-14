@@ -670,5 +670,42 @@ namespace Rebellion.Tests.Simulation
             );
             Assert.IsFalse(_alliance.Fog.EntityLastSeenAt.ContainsKey(ship.InstanceID));
         }
+
+        [Test]
+        public void ProcessResults_BuildingDestroyedInCombat_RecordsRubbleForBothParticipants()
+        {
+            Building building = CreateBuilding("BUILDING", _empire);
+            _coruscant.EnergyCapacity = 1;
+            _game.AttachNode(building, _coruscant);
+            new FogOfWarRecorder().RecordPlanetSnapshot(_alliance, _coruscant, _coreSector, 10);
+            CombatUnitSnapshot destroyedBuilding = new CombatUnitSnapshot(building)
+            {
+                Destroyed = true,
+            };
+            building.MarkDestroyed();
+
+            _observer.ProcessResults(
+                new GameResult[]
+                {
+                    new BombardmentResult
+                    {
+                        AttackerOwnerInstanceID = _alliance.InstanceID,
+                        DefenderOwnerInstanceID = _empire.InstanceID,
+                        Planet = _coruscant,
+                        DefendingUnits = new List<CombatUnitSnapshot> { destroyedBuilding },
+                        Tick = 20,
+                    },
+                }
+            );
+
+            foreach (Faction faction in new[] { _alliance, _empire })
+            {
+                Building observed = faction
+                    .Fog.Snapshots[_coreSector.InstanceID]
+                    .Planets[_coruscant.InstanceID]
+                    .Buildings.Single(candidate => candidate.InstanceID == building.InstanceID);
+                Assert.IsTrue(observed.IsDestroyed);
+            }
+        }
     }
 }

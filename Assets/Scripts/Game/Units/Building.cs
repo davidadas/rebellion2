@@ -60,6 +60,7 @@ namespace Rebellion.Game.Units
         public List<string> ProtectedUnitTypeIDs { get; set; } = new List<string>();
         public int ProductionModifier { get; set; }
         public List<string> Upgrades { get; set; } = new List<string>();
+        public bool IsDestroyed { get; set; }
 
         // Manufacturing Info.
         public string ProducerOwnerID { get; set; }
@@ -121,6 +122,7 @@ namespace Rebellion.Game.Units
                     : new List<string>(ProtectedUnitTypeIDs);
             copy.ProductionModifier = ProductionModifier;
             copy.Upgrades = Upgrades == null ? new List<string>() : new List<string>(Upgrades);
+            copy.IsDestroyed = IsDestroyed;
             copy.ProducerOwnerID = ProducerOwnerID;
             copy.ProducerPlanetID = ProducerPlanetID;
             copy.ManufacturingQueueSequence = ManufacturingQueueSequence;
@@ -171,6 +173,92 @@ namespace Rebellion.Game.Units
         public bool IsDefenseFacility()
         {
             return BuildingType is BuildingType.Defense or BuildingType.Weapon;
+        }
+
+        /// <summary>
+        /// Returns whether this building is complete, stationary, and not destroyed.
+        /// </summary>
+        /// <returns>True when the building can participate in gameplay.</returns>
+        public bool IsOperational()
+        {
+            return !IsDestroyed
+                && ManufacturingStatus == ManufacturingStatus.Complete
+                && Movement == null;
+        }
+
+        /// <summary>
+        /// Converts this building into non-operational rubble while preserving its planet slot.
+        /// </summary>
+        public void MarkDestroyed()
+        {
+            IsDestroyed = true;
+            ManufacturingStatus = ManufacturingStatus.Complete;
+            ManufacturingProgress = 0;
+            ManufacturingQueueSequence = 0;
+            ProducerOwnerID = null;
+            ProducerPlanetID = null;
+            ProductionCycleProgress = 0;
+            ProductionCycleDuration = 0;
+            ProductionPointReady = false;
+            ProductionInputReserved = false;
+            ResourceMaintenanceAllocation = 0;
+            ResourceStartupCyclePending = true;
+            Movement = null;
+        }
+
+        /// <summary>
+        /// Starts rebuilding this destroyed building in place.
+        /// </summary>
+        /// <exception cref="InvalidOperationException">Thrown when the building is not destroyed.</exception>
+        public void BeginRebuild()
+        {
+            if (!IsDestroyed)
+                throw new InvalidOperationException("Only a destroyed building can be rebuilt.");
+
+            ManufacturingStatus = ManufacturingStatus.Building;
+            ManufacturingProgress = 0;
+            Movement = null;
+        }
+
+        /// <summary>
+        /// Restores this building to operational service after rebuilding finishes.
+        /// </summary>
+        public void CompleteRebuild()
+        {
+            IsDestroyed = false;
+            ManufacturingStatus = ManufacturingStatus.Complete;
+            ManufacturingQueueSequence = 0;
+            ProducerOwnerID = null;
+            ProducerPlanetID = null;
+            ProductionCycleProgress = 0;
+            ProductionCycleDuration = 0;
+            ProductionPointReady = false;
+            ProductionInputReserved = false;
+            ResourceMaintenanceAllocation = 0;
+            ResourceStartupCyclePending = true;
+            Movement = null;
+        }
+
+        /// <summary>
+        /// Returns an interrupted rebuild to its idle rubble state.
+        /// </summary>
+        public void CancelRebuild()
+        {
+            if (!IsDestroyed)
+                return;
+
+            ManufacturingStatus = ManufacturingStatus.Complete;
+            ManufacturingProgress = 0;
+            ManufacturingQueueSequence = 0;
+            ProducerOwnerID = null;
+            ProducerPlanetID = null;
+            ProductionCycleProgress = 0;
+            ProductionCycleDuration = 0;
+            ProductionPointReady = false;
+            ProductionInputReserved = false;
+            ResourceMaintenanceAllocation = 0;
+            ResourceStartupCyclePending = true;
+            Movement = null;
         }
 
         /// <summary>

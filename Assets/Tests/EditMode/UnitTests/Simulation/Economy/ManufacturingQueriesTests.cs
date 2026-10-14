@@ -153,6 +153,33 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void CanSetManufacturingOrder_QuantityExceedsMatchingRubble_ReturnsFalse()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet planet = CreateOrderTestConstructionPlanet(game, "p1", "empire");
+            Building rubble = new Building
+            {
+                InstanceID = "destroyed-refinery-1",
+                TypeID = "refinery",
+                OwnerInstanceID = "empire",
+                BuildingType = BuildingType.Refinery,
+                IsDestroyed = true,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(rubble, planet);
+
+            bool canSet = new ManufacturingQueries(game).CanSetManufacturingOrder(
+                planet,
+                rubble,
+                planet,
+                2,
+                "empire"
+            );
+
+            Assert.IsFalse(canSet);
+        }
+
+        [Test]
         public void CanSetManufacturingOrder_ExistingOrderConsumesMaintenance_ReleasesReservation()
         {
             GameRoot game = CreateOrderTestGame();

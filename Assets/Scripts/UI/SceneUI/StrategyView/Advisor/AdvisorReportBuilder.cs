@@ -83,7 +83,7 @@ public static class AdvisorReportBuilder
     }
 
     /// <summary>
-    /// Groups completed stationary faction assets by type for the galaxy overview.
+    /// Groups completed stationary, non-destroyed faction assets by type for the galaxy overview.
     /// </summary>
     /// <param name="faction">The faction whose assets should be summarized.</param>
     /// <returns>Overview rows ordered by unit category and type identifier.</returns>
@@ -143,10 +143,11 @@ public static class AdvisorReportBuilder
     /// Determines whether a manufacturable belongs in the overview totals.
     /// </summary>
     /// <param name="item">The candidate manufacturable.</param>
-    /// <returns>True for completed stationary assets.</returns>
+    /// <returns>True for completed stationary assets other than rubble.</returns>
     private static bool IsIncludedInGalaxyOverview(IManufacturable item)
     {
         return item != null
+            && item is not Building { IsDestroyed: true }
             && item.GetManufacturingStatus() == ManufacturingStatus.Complete
             && item.GetTransitMovement() == null;
     }

@@ -185,7 +185,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ProcessTick_ActiveUprisingWithFacility_DestroysFacility()
+        public void ProcessTick_ActiveUprisingWithFacility_LeavesDestroyedFacility()
         {
             (GameRoot game, Planet planet, UprisingResolver system) = BuildScene(
                 ownerSupport: 10,
@@ -206,8 +206,8 @@ namespace Rebellion.Tests.Simulation
             game.CurrentTick = 1;
             new UprisingTickProcessor(system).ProcessTick(game);
 
-            Assert.IsNull(
-                game.GetSceneNodeByInstanceID<Building>(facility.InstanceID),
+            Assert.IsTrue(
+                game.GetSceneNodeByInstanceID<Building>(facility.InstanceID).IsDestroyed,
                 "Facility should be destroyed by uprising case 1"
             );
             Assert.IsTrue(planet.IsInUprising, "Uprising should remain active after consequence");
@@ -503,7 +503,7 @@ namespace Rebellion.Tests.Simulation
 
             new UprisingTickProcessor(system).ProcessTick(game);
 
-            Assert.IsNull(game.GetSceneNodeByInstanceID<Building>(facility.InstanceID));
+            Assert.IsTrue(game.GetSceneNodeByInstanceID<Building>(facility.InstanceID).IsDestroyed);
             Assert.AreEqual(8, planet.GetPopularSupport("empire"));
             Assert.AreEqual(92, planet.GetPopularSupport("rebels"));
         }

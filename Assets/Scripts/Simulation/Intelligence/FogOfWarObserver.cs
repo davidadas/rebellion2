@@ -117,19 +117,22 @@ namespace Rebellion.Simulation
                 RecordCombatLosses(
                     result.AttackerOwnerInstanceID,
                     result.DefenderOwnerInstanceID,
-                    result.AttackingUnits.Concat(result.DefendingUnits)
+                    result.AttackingUnits.Concat(result.DefendingUnits),
+                    result.Tick
                 );
             foreach (BombardmentResult result in results.OfType<BombardmentResult>())
                 RecordCombatLosses(
                     result.AttackerOwnerInstanceID,
                     result.DefenderOwnerInstanceID,
-                    result.AttackingUnits.Concat(result.DefendingUnits)
+                    result.AttackingUnits.Concat(result.DefendingUnits),
+                    result.Tick
                 );
             foreach (PlanetaryAssaultResult result in results.OfType<PlanetaryAssaultResult>())
                 RecordCombatLosses(
                     result.AttackerOwnerInstanceID,
                     result.DefenderOwnerInstanceID,
-                    result.AttackingUnits.Concat(result.DefendingUnits)
+                    result.AttackingUnits.Concat(result.DefendingUnits),
+                    result.Tick
                 );
             foreach (EvacuationLossesResult result in results.OfType<EvacuationLossesResult>())
                 RecordEvacuationLosses(result);
@@ -188,6 +191,21 @@ namespace Rebellion.Simulation
             if (result?.DestroyedObject == null)
                 return;
 
+            if (result.DestroyedObject is Building { IsDestroyed: true } rubble)
+            {
+                foreach (
+                    Faction faction in GetInformedFactions(
+                        rubble,
+                        result.DestroyedBy,
+                        result.Context
+                    )
+                )
+                {
+                    _commands.ObserveEntities(faction, new[] { rubble }, result.Tick);
+                }
+                return;
+            }
+
             string entityId = result.DestroyedObject.GetInstanceID();
             if (string.IsNullOrEmpty(entityId))
                 return;
@@ -226,15 +244,17 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Removes combatants confirmed destroyed to both participating factions.
+        /// Updates both participants' knowledge of combat losses, preserving buildings as rubble.
         /// </summary>
         /// <param name="attackerFactionId">The attacking faction identifier.</param>
         /// <param name="defenderFactionId">The defending faction identifier.</param>
         /// <param name="units">The detached combat unit outcomes.</param>
+        /// <param name="tick">The tick when combat completed.</param>
         private void RecordCombatLosses(
             string attackerFactionId,
             string defenderFactionId,
-            IEnumerable<CombatUnitSnapshot> units
+            IEnumerable<CombatUnitSnapshot> units,
+            int tick
         )
         {
             List<Faction> informedFactions = new[]
@@ -246,15 +266,22 @@ namespace Rebellion.Simulation
                 .Distinct()
                 .ToList();
             foreach (
-                string entityId in (units ?? Enumerable.Empty<CombatUnitSnapshot>())
+                CombatUnitSnapshot unit in (units ?? Enumerable.Empty<CombatUnitSnapshot>())
                     .Where(unit => unit?.Destroyed == true)
-                    .Select(unit => unit.Unit?.InstanceID)
-                    .Where(entityId => !string.IsNullOrEmpty(entityId))
-                    .Distinct()
+                    .Where(unit => !string.IsNullOrEmpty(unit.Unit?.InstanceID))
+                    .GroupBy(unit => unit.Unit.InstanceID, StringComparer.Ordinal)
+                    .Select(group => group.First())
             )
             {
+                string entityId = unit.Unit.InstanceID;
+                Building rubble = _game.GetSceneNodeByInstanceID<Building>(entityId);
                 foreach (Faction faction in informedFactions)
-                    _commands.ForgetEntity(faction, entityId);
+                {
+                    if (rubble?.IsDestroyed == true)
+                        _commands.ObserveEntities(faction, new[] { rubble }, tick);
+                    else
+                        _commands.ForgetEntity(faction, entityId);
+                }
             }
         }
 
