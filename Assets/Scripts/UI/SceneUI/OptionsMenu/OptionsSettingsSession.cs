@@ -36,6 +36,7 @@ internal sealed class OptionsSettingsSession
     private int _snapshotAutosaveIntervalTicks;
     private int _snapshotAutosavesToKeep;
     private IdleBarLocation _snapshotIdleBarLocation;
+    private GameLaunchSpeed _snapshotGameLaunchSpeed;
     private string _snapshotBindingOverrides = string.Empty;
     private bool _inputDiffersFromSnapshot;
 
@@ -113,6 +114,7 @@ internal sealed class OptionsSettingsSession
         foreach (KeyValuePair<UserInterfaceOption, bool> entry in _snapshotUserInterface)
             UserInterface.SetEnabled(entry.Key, entry.Value);
         UserInterface.IdleBarLocation = _snapshotIdleBarLocation;
+        UserInterface.GameLaunchSpeed = _snapshotGameLaunchSpeed;
         Gameplay.SetAutosaveIntervalTicks(_snapshotAutosaveIntervalTicks);
         Gameplay.SetAutosavesToKeep(_snapshotAutosavesToKeep);
 
@@ -249,6 +251,16 @@ internal sealed class OptionsSettingsSession
     }
 
     /// <summary>
+    /// Sets the game speed applied when entering the galaxy view.
+    /// </summary>
+    /// <param name="speed">The requested launch-speed behavior.</param>
+    internal void SetGameLaunchSpeed(GameLaunchSpeed speed)
+    {
+        UserInterface.GameLaunchSpeed = speed;
+        RefreshDirtyState();
+    }
+
+    /// <summary>
     /// Sets the number of ticks between autosaves within the supported range.
     /// </summary>
     /// <param name="ticks">The requested autosave interval.</param>
@@ -341,6 +353,7 @@ internal sealed class OptionsSettingsSession
         _snapshotAutosaveIntervalTicks = Gameplay.AutosaveIntervalTicks;
         _snapshotAutosavesToKeep = Gameplay.AutosavesToKeep;
         _snapshotIdleBarLocation = UserInterface.IdleBarLocation;
+        _snapshotGameLaunchSpeed = UserInterface.GameLaunchSpeed;
         _snapshotBindingOverrides = _inputManager.SaveBindingOverrides();
         _inputDiffersFromSnapshot = false;
         _snapshotTactical.Clear();
@@ -366,7 +379,10 @@ internal sealed class OptionsSettingsSession
             return;
         }
 
-        if (UserInterface.IdleBarLocation != _snapshotIdleBarLocation)
+        if (
+            UserInterface.IdleBarLocation != _snapshotIdleBarLocation
+            || UserInterface.GameLaunchSpeed != _snapshotGameLaunchSpeed
+        )
         {
             IsDirty = true;
             return;

@@ -232,7 +232,35 @@ public sealed class GameFlowController : MonoBehaviour
     {
         AppBootstrap bootstrap = AppBootstrap.EnsureExists();
         GameRuntime runtime = bootstrap.GetRuntime();
-        return loadedGame ? runtime.StartLoadedGame(game) : runtime.StartGame(game);
+        GameSession session = loadedGame ? runtime.StartLoadedGame(game) : runtime.StartGame(game);
+        ApplyGameLaunchSpeed(
+            runtime.GetActiveGameManager(),
+            bootstrap.GetUserSettingsManager().Settings.UserInterface.GameLaunchSpeed
+        );
+        return session;
+    }
+
+    /// <summary>
+    /// Applies a configured galaxy-view launch speed without replacing preserved game state when no
+    /// override is selected.
+    /// </summary>
+    /// <param name="gameManager">The active game clock.</param>
+    /// <param name="speed">The configured launch-speed behavior.</param>
+    internal static void ApplyGameLaunchSpeed(GameManager gameManager, GameLaunchSpeed speed)
+    {
+        if (gameManager == null || speed == GameLaunchSpeed.Unchanged)
+            return;
+
+        TickSpeed tickSpeed = speed switch
+        {
+            GameLaunchSpeed.Paused => TickSpeed.Paused,
+            GameLaunchSpeed.VerySlow => TickSpeed.VerySlow,
+            GameLaunchSpeed.Slow => TickSpeed.Slow,
+            GameLaunchSpeed.Medium => TickSpeed.Medium,
+            GameLaunchSpeed.Fast => TickSpeed.Fast,
+            _ => throw new ArgumentOutOfRangeException(nameof(speed), speed, null),
+        };
+        gameManager.SetGameSpeed(tickSpeed);
     }
 
     /// <summary>

@@ -416,6 +416,27 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
+        public void UserInterfacePage_GameLaunchSpeedDropdown_RendersAndRaisesSelection()
+        {
+            GameLaunchSpeed? requested = null;
+            _view.GameLaunchSpeedRequested += speed => requested = speed;
+            _view.Render(
+                CreateRenderDataForTab(
+                    OptionsMenuTab.UserInterface,
+                    gameLaunchSpeed: GameLaunchSpeed.VerySlow
+                )
+            );
+            TMP_Dropdown dropdown = GetField<TMP_Dropdown>("_gameLaunchSpeedDropdown");
+
+            Assert.AreEqual(6, dropdown.options.Count);
+            Assert.AreEqual("Very slow", dropdown.captionText.text);
+
+            dropdown.value = (int)GameLaunchSpeed.Fast;
+
+            Assert.AreEqual(GameLaunchSpeed.Fast, requested);
+        }
+
+        [Test]
         public void UserInterfacePage_IdleBarLocationDropdown_UsesCompactThemedPresentation()
         {
             TMP_Dropdown dropdown = GetField<TMP_Dropdown>("_idleBarLocationDropdown");
@@ -1068,6 +1089,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         /// <param name="contentPackLabel">The content pack label.</param>
         /// <param name="showModsTab">Whether the Mods tab is visible.</param>
         /// <param name="idleBarLocation">The selected idle-bar corner.</param>
+        /// <param name="gameLaunchSpeed">The selected galaxy-view launch speed.</param>
         /// <returns>The created render data for tab.</returns>
         private static OptionsMenuRenderData CreateRenderDataForTab(
             OptionsMenuTab activeTab,
@@ -1076,7 +1098,8 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             OptionsModRow[] mods = null,
             string contentPackLabel = "",
             bool showModsTab = true,
-            IdleBarLocation idleBarLocation = IdleBarLocation.TopRight
+            IdleBarLocation idleBarLocation = IdleBarLocation.TopRight,
+            GameLaunchSpeed gameLaunchSpeed = GameLaunchSpeed.Unchanged
         )
         {
             return new OptionsMenuRenderData(
@@ -1095,6 +1118,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 -1,
                 false,
                 idleBarLocation: idleBarLocation,
+                gameLaunchSpeed: gameLaunchSpeed,
                 mods: mods,
                 contentPackLabel: contentPackLabel,
                 showModsTab: showModsTab

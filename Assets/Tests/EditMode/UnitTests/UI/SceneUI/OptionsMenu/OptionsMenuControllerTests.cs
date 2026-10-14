@@ -353,6 +353,20 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
+        public void HandleGameLaunchSpeedChanged_DropdownSelection_StagesSpeed()
+        {
+            OptionsMenuView view = OpenAndRender(OptionsMenuTab.UserInterface);
+            TMP_Dropdown dropdown = GetField<TMP_Dropdown>(view, "_gameLaunchSpeedDropdown");
+
+            dropdown.value = (int)GameLaunchSpeed.Fast;
+
+            Assert.AreEqual(
+                GameLaunchSpeed.Fast,
+                _bootstrap.GetUserSettingsManager().Settings.UserInterface.GameLaunchSpeed
+            );
+        }
+
+        [Test]
         public void HandleDefaults_ModifiedGraphicsConfirmed_ClosesPromptAndMarksSettingsDirty()
         {
             OptionsMenuView view = OpenAndRender(OptionsMenuTab.Graphics);

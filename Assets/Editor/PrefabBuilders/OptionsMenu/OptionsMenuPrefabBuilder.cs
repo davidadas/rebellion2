@@ -490,6 +490,14 @@ public static class OptionsMenuPrefabBuilder
             44,
             accent
         );
+        TMP_Dropdown gameLaunchSpeedDropdown = CreateOptionsDropdownRow(
+            userInterfacePage,
+            "GameLaunchSpeed",
+            "Default speed on load",
+            new[] { "", "Paused", "Very slow", "Slow", "Medium", "Fast" },
+            70,
+            accent
+        );
         UserInterfaceOption[] options =
         {
             UserInterfaceOption.ShowIdleBar,
@@ -506,11 +514,12 @@ public static class OptionsMenuPrefabBuilder
                 (int)options[i],
                 labels[i],
                 20,
-                70 + i * 26
+                96 + i * 26
             );
         }
 
         AssignReference(view, "_idleBarLocationDropdown", idleBarLocationDropdown);
+        AssignReference(view, "_gameLaunchSpeedDropdown", gameLaunchSpeedDropdown);
         AssignReferenceArray(view, "_userInterfaceRows", rows);
     }
 

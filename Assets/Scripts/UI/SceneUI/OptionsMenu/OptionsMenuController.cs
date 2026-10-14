@@ -235,6 +235,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
                 _settingsSession.Gameplay.AutosavesToKeep,
                 _settingsSession.GetUserInterfaceStates(),
                 _settingsSession.UserInterface.IdleBarLocation,
+                _settingsSession.UserInterface.GameLaunchSpeed,
                 BuildModRows().ToArray(),
                 GetSelectedPack()?.DisplayName ?? _selectedPackID,
                 !string.Equals(
@@ -433,6 +434,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         target.GameplayToggleRequested += HandleGameplayToggle;
         target.UserInterfaceToggleRequested += HandleUserInterfaceToggle;
         target.IdleBarLocationRequested += HandleIdleBarLocationRequested;
+        target.GameLaunchSpeedRequested += HandleGameLaunchSpeedRequested;
         target.ModToggleRequested += HandleModToggle;
         target.ContentPackStepRequested += HandleContentPackStep;
         target.AutosaveIntervalChanged += HandleAutosaveIntervalChanged;
@@ -990,6 +992,16 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     }
 
     /// <summary>
+    /// Stages the selected galaxy-view launch speed and refreshes the Options presentation.
+    /// </summary>
+    /// <param name="speed">The selected launch-speed behavior.</param>
+    private void HandleGameLaunchSpeedRequested(GameLaunchSpeed speed)
+    {
+        _settingsSession.SetGameLaunchSpeed(speed);
+        _markDirty();
+    }
+
+    /// <summary>
     /// Applies a directly entered autosave interval.
     /// </summary>
     /// <param name="value">The entered interval text.</param>
@@ -1071,6 +1083,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         destroyed.GameplayToggleRequested -= HandleGameplayToggle;
         destroyed.UserInterfaceToggleRequested -= HandleUserInterfaceToggle;
         destroyed.IdleBarLocationRequested -= HandleIdleBarLocationRequested;
+        destroyed.GameLaunchSpeedRequested -= HandleGameLaunchSpeedRequested;
         destroyed.ModToggleRequested -= HandleModToggle;
         destroyed.ContentPackStepRequested -= HandleContentPackStep;
         destroyed.AutosaveIntervalChanged -= HandleAutosaveIntervalChanged;
