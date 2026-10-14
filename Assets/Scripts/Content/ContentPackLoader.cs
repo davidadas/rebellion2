@@ -99,10 +99,14 @@ public static class ContentPackLoader
             Path.Combine(Path.GetFullPath(contentRootPath), _packsDirectoryName),
             packID
         );
+        ContentPackDefinition pack = DeserializeXml<ContentPackDefinition>(
+            Path.Combine(packRoots[0], _packFileName)
+        );
         return ContentFileResolver.Discover(
             contentRootPath,
             packRoots[0],
-            packID,
+            pack.ID,
+            pack.Version,
             disabledModIDs,
             packRoots.Skip(1)
         );
@@ -263,6 +267,7 @@ public static class ContentPackLoader
             absoluteContentRoot,
             packRoot,
             pack.ID,
+            pack.Version,
             disabledModIDs,
             packRoots.Skip(1)
         );
@@ -910,6 +915,12 @@ public static class ContentPackLoader
             }
 
             var currentPack = matches[0];
+            if (string.IsNullOrWhiteSpace(currentPack.Definition.Version))
+            {
+                throw new InvalidDataException(
+                    $"Content pack '{currentPackID}' must declare Version."
+                );
+            }
             roots.Add(currentPack.Root);
             currentPackID = currentPack.Definition.BasePackID;
         }
