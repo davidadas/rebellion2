@@ -16,6 +16,7 @@ namespace Rebellion.Tests.UserSettings
             settings.UserInterface.ShowIdleBar = true;
             settings.UserInterface.KeepIdleBarOpen = true;
             settings.UserInterface.ShowUnitCardStats = true;
+            settings.UserInterface.GameLaunchSpeed = GameLaunchSpeed.Fast;
             settings.Gameplay.ShowMissionOdds = false;
 
             string json = JsonUtility.ToJson(settings);
@@ -28,6 +29,7 @@ namespace Rebellion.Tests.UserSettings
             Assert.IsTrue(restored.UserInterface.ShowIdleBar);
             Assert.IsTrue(restored.UserInterface.KeepIdleBarOpen);
             Assert.IsTrue(restored.UserInterface.ShowUnitCardStats);
+            Assert.AreEqual(GameLaunchSpeed.Fast, restored.UserInterface.GameLaunchSpeed);
             Assert.IsFalse(restored.Gameplay.ShowMissionOdds);
         }
 
@@ -81,6 +83,7 @@ namespace Rebellion.Tests.UserSettings
                 KeepIdleBarOpen = true,
                 ShowUnitCardStats = true,
                 IdleBarLocation = IdleBarLocation.BottomLeft,
+                GameLaunchSpeed = GameLaunchSpeed.Fast,
             };
 
             settings.RestoreDefaults();
@@ -89,6 +92,7 @@ namespace Rebellion.Tests.UserSettings
             Assert.IsFalse(settings.KeepIdleBarOpen);
             Assert.IsFalse(settings.ShowUnitCardStats);
             Assert.AreEqual(IdleBarLocation.TopRight, settings.IdleBarLocation);
+            Assert.AreEqual(GameLaunchSpeed.Unchanged, settings.GameLaunchSpeed);
         }
 
         [Test]
@@ -102,6 +106,19 @@ namespace Rebellion.Tests.UserSettings
             settings.Normalize();
 
             Assert.AreEqual(IdleBarLocation.TopRight, settings.IdleBarLocation);
+        }
+
+        [Test]
+        public void UserInterfaceOptions_InvalidGameLaunchSpeed_NormalizesToUnchanged()
+        {
+            UserInterfaceSettings settings = new UserInterfaceSettings
+            {
+                GameLaunchSpeed = (GameLaunchSpeed)int.MaxValue,
+            };
+
+            settings.Normalize();
+
+            Assert.AreEqual(GameLaunchSpeed.Unchanged, settings.GameLaunchSpeed);
         }
 
         [Test]

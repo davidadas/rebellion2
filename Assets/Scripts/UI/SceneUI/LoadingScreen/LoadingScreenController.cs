@@ -17,7 +17,6 @@ internal sealed class LoadingScreenController : MonoBehaviour
     private static LoadingScreenController _activeController;
 
     private AppBootstrap _bootstrap;
-    private Action _continueAccepted;
     private Action _transitionCompleted;
     private LoadingScreenView _view;
     private Coroutine _finishRoutine;
@@ -70,7 +69,6 @@ internal sealed class LoadingScreenController : MonoBehaviour
 
         controller._bootstrap = bootstrap;
         controller._saveFileName = fileName;
-        controller._continueAccepted = null;
         controller._transitionCompleted = null;
         controller._reconstructContent = false;
         controller._recoveringFromFailure = false;
@@ -138,11 +136,7 @@ internal sealed class LoadingScreenController : MonoBehaviour
     /// Removes the persistent loading presentation after replacement gameplay is visible.
     /// </summary>
     /// <param name="transitionCompleted">The action to run after the loading view is gone.</param>
-    /// <param name="continueAccepted">The action to run when the player accepts the ready state.</param>
-    internal static void CompletePendingLoad(
-        Action transitionCompleted = null,
-        Action continueAccepted = null
-    )
+    internal static void CompletePendingLoad(Action transitionCompleted = null)
     {
         if (_activeController == null)
             return;
@@ -156,7 +150,6 @@ internal sealed class LoadingScreenController : MonoBehaviour
         if (!_activeController._loadInProgress)
             return;
 
-        _activeController._continueAccepted = continueAccepted;
         _activeController._transitionCompleted = transitionCompleted;
 
         if (_activeController._recoveringFromFailure)
@@ -171,18 +164,9 @@ internal sealed class LoadingScreenController : MonoBehaviour
         {
             _activeController._loadInProgress = false;
             _activeController._quitOnContinue = false;
-            Action accepted = _activeController._continueAccepted;
-            _activeController._continueAccepted = null;
             Action completed = _activeController._transitionCompleted;
             _activeController._transitionCompleted = null;
-            try
-            {
-                accepted?.Invoke();
-            }
-            finally
-            {
-                completed?.Invoke();
-            }
+            completed?.Invoke();
         }
     }
 
@@ -197,7 +181,6 @@ internal sealed class LoadingScreenController : MonoBehaviour
             return false;
 
         LoadingScreenController controller = _activeController;
-        controller._continueAccepted = null;
         controller._transitionCompleted = null;
         controller._reconstructContent = false;
         controller._recoveringFromFailure = true;
@@ -247,7 +230,6 @@ internal sealed class LoadingScreenController : MonoBehaviour
             Debug.LogException(exception);
 
         LoadingScreenController controller = _activeController;
-        controller._continueAccepted = null;
         controller._transitionCompleted = null;
         controller._recoveringFromFailure = false;
         controller._quitOnContinue = false;
@@ -308,7 +290,6 @@ internal sealed class LoadingScreenController : MonoBehaviour
     /// <param name="exception">The unrecoverable application failure.</param>
     private void EnterTerminalFailure(Exception exception)
     {
-        _continueAccepted = null;
         _transitionCompleted = null;
         _recoveringFromFailure = true;
         _quitOnContinue = true;
@@ -321,7 +302,6 @@ internal sealed class LoadingScreenController : MonoBehaviour
     /// </summary>
     private void OnDestroy()
     {
-        _continueAccepted = null;
         _transitionCompleted = null;
         _quitOnContinue = false;
         if (_view != null)
@@ -448,10 +428,7 @@ internal sealed class LoadingScreenController : MonoBehaviour
             return;
 
         BeginFinishTransition();
-        Action continueAccepted = _continueAccepted;
-        _continueAccepted = null;
         _quitOnContinue = false;
-        continueAccepted?.Invoke();
     }
 
     /// <summary>
@@ -479,7 +456,6 @@ internal sealed class LoadingScreenController : MonoBehaviour
         _recoveringFromFailure = false;
         _saveFileName = null;
         _finishRoutine = null;
-        _continueAccepted = null;
         Action transitionCompleted = _transitionCompleted;
         _transitionCompleted = null;
         transitionCompleted?.Invoke();
