@@ -51,6 +51,35 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
+        public void Plan_CombinedSameOwnerIncomingThreatExceedsDefense_RelocatesHeadquarters()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet origin = AddMobileHeadquarters(game, empire, sector);
+            Planet destination = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "destination",
+                empire.InstanceID,
+                energyCapacity: 1
+            );
+            AddFleet(game, origin, "incoming-a", rebels.InstanceID, 60, isMoving: true);
+            AddFleet(game, origin, "incoming-b", rebels.InstanceID, 70, isMoving: true);
+            AddFleet(game, origin, "defender", empire.InstanceID, 100, isMoving: false);
+            AITestSceneBuilder.RevealPlanet(game, empire, origin);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIHeadquartersRelocationProposal proposal = new AIHeadquartersRelocationPlanner()
+                .Plan(context)
+                .Cast<AIHeadquartersRelocationProposal>()
+                .Single();
+
+            Assert.AreSame(destination, proposal.Destination);
+            Assert.AreEqual(130, proposal.ThreatStrength);
+            Assert.AreEqual(100, proposal.DefenseStrength);
+        }
+
+        [Test]
         public void Plan_ObservedIncomingDefeatableFleet_DoesNotRelocateHeadquarters()
         {
             AITurnContext context = CreateThreatenedHeadquarters(

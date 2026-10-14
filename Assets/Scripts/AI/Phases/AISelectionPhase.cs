@@ -44,7 +44,7 @@ namespace Rebellion.AI.Phases
             {
                 if (
                     !proposal.HasScore
-                    || proposal.Priority != AIProposalPriority.Mandatory
+                    || proposal.Priority < AIProposalPriority.Mandatory
                         && proposal.Score <= minimumSelectableScore
                 )
                     continue;

@@ -14,7 +14,7 @@ namespace Rebellion.AI.Proposals
     /// </summary>
     public sealed class AIHeadquartersRelocationProposal : AIProposal
     {
-        internal override AIProposalPriority Priority => AIProposalPriority.Mandatory;
+        internal override AIProposalPriority Priority => AIProposalPriority.Critical;
 
         public Building Headquarters { get; }
 

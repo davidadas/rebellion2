@@ -101,6 +101,11 @@ namespace Rebellion.AI
         );
         private readonly Dictionary<string, int> _knownIncomingHostileFleetStrengths =
             new Dictionary<string, int>(StringComparer.Ordinal);
+        private readonly Dictionary<
+            (string PlanetId, string OwnerId),
+            int
+        > _knownIncomingHostileFleetStrengthsByOwner =
+            new Dictionary<(string PlanetId, string OwnerId), int>();
         private readonly Dictionary<string, Planet> _fleetPlanets = new Dictionary<string, Planet>(
             StringComparer.Ordinal
         );
@@ -1495,7 +1500,20 @@ namespace Rebellion.AI
                 _knownHostileFleetPlanetIds.Add(planet.InstanceID);
                 if (fleet.Movement != null)
                 {
-                    int strength = fleet.GetCombatValue();
+                    (string PlanetId, string OwnerId) key = (
+                        planet.InstanceID,
+                        fleet.GetOwnerInstanceID()
+                    );
+                    _knownIncomingHostileFleetStrengthsByOwner.TryGetValue(
+                        key,
+                        out int currentOwnerStrength
+                    );
+                    int strength = (int)
+                        Math.Min(
+                            int.MaxValue,
+                            (long)currentOwnerStrength + Math.Max(0, fleet.GetCombatValue())
+                        );
+                    _knownIncomingHostileFleetStrengthsByOwner[key] = strength;
                     if (
                         !_knownIncomingHostileFleetStrengths.TryGetValue(
                             planet.InstanceID,
