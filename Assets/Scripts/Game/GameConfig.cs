@@ -909,7 +909,7 @@ namespace Rebellion.Game
         [PersistableObject]
         public class MovementConfig
         {
-            public int DistanceDivisor { get; set; }
+            public double DistanceDivisor { get; set; }
 
             public int MinTransitTicks { get; set; }
 
