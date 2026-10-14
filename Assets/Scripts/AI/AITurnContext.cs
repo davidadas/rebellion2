@@ -30,7 +30,6 @@ namespace Rebellion.AI
         public HeadquartersCommands Headquarters { get; }
         public HeadquartersQueries HeadquartersQueries { get; }
         public ManufacturingCommands Manufacturing { get; }
-        public ManufacturingQueries ManufacturingQueries { get; }
         public MaintenanceCommands Maintenance { get; }
         public BombardmentCommands Bombardment { get; }
         public BombardmentQueries BombardmentQueries { get; }
@@ -114,7 +113,6 @@ namespace Rebellion.AI
             Headquarters = headquarters;
             HeadquartersQueries = game == null ? null : new HeadquartersQueries(game);
             Manufacturing = manufacturing;
-            ManufacturingQueries = game == null ? null : new ManufacturingQueries(game);
             Maintenance = maintenance;
             Bombardment = bombardment;
             BombardmentQueries = game == null ? null : new BombardmentQueries(game);

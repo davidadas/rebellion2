@@ -40,13 +40,7 @@ namespace Rebellion.AI.Phases
             AIMissionSelector missionSelector = new AIMissionSelector(selectionState);
             AIProductionSelector productionSelector = new AIProductionSelector(selectionState);
             float minimumSelectableScore = GetMinimumSelectableScore(context);
-            foreach (
-                AIProposal proposal in productionSelector.ScheduleProduction(
-                    context,
-                    GetSortedProposals(context),
-                    minimumSelectableScore
-                )
-            )
+            foreach (AIProposal proposal in GetSortedProposals(context))
             {
                 if (
                     !proposal.HasScore

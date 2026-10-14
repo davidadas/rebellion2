@@ -321,7 +321,7 @@ namespace Rebellion.Tests.AI.Proposals
         }
 
         [Test]
-        public void Execute_WithGarrisonBatch_RejectsUnresolvedBatch()
+        public void Execute_WithGarrisonBatch_QueuesCalculatedRegimentCount()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
@@ -362,12 +362,9 @@ namespace Rebellion.Tests.AI.Proposals
 
             proposal.Execute(context);
 
-            Assert.IsNull(
-                Rebellion.Simulation.ManufacturingQueries.GetManufacturingOrder(
-                    planet,
-                    ManufacturingType.Troop
-                )
-            );
+            List<IManufacturable> queue = planet.GetManufacturingQueue()[ManufacturingType.Troop];
+            Assert.AreEqual(6, queue.Count);
+            Assert.AreEqual(6, planet.GetAllRegiments().Count);
         }
 
         [Test]
@@ -487,7 +484,7 @@ namespace Rebellion.Tests.AI.Proposals
         }
 
         [Test]
-        public void Execute_WithDistributedStarfighterBatch_RejectsUnresolvedBatch()
+        public void Execute_WithDistributedStarfighterBatch_QueuesExactQuantity()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
@@ -540,16 +537,14 @@ namespace Rebellion.Tests.AI.Proposals
 
             proposal.Execute(context);
 
-            Assert.IsNull(
-                Rebellion.Simulation.ManufacturingQueries.GetManufacturingOrder(
-                    planet,
-                    ManufacturingType.Ship
-                )
-            );
+            List<IManufacturable> queue = planet.GetManufacturingQueue()[ManufacturingType.Ship];
+            Assert.AreEqual(3, queue.Count);
+            Assert.AreEqual(3, queue.OfType<Starfighter>().Count());
+            Assert.AreEqual(3, fleet.GetCurrentStarfighterCount());
         }
 
         [Test]
-        public void Execute_WithPlanetaryStarfighterBatch_RejectsUnresolvedBatch()
+        public void Execute_WithPlanetaryStarfighterBatch_QueuesExactQuantityAtPlanet()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
@@ -589,12 +584,11 @@ namespace Rebellion.Tests.AI.Proposals
 
             proposal.Execute(context);
 
-            Assert.IsNull(
-                Rebellion.Simulation.ManufacturingQueries.GetManufacturingOrder(
-                    planet,
-                    ManufacturingType.Ship
-                )
-            );
+            List<IManufacturable> queue = planet.GetManufacturingQueue()[ManufacturingType.Ship];
+            Assert.AreEqual(3, queue.Count);
+            Assert.AreEqual(3, queue.OfType<Starfighter>().Count());
+            Assert.AreEqual(3, planet.GetStarfighterCount());
+            Assert.IsTrue(planet.GetAllStarfighters().All(item => item.GetParent() == planet));
         }
 
         [Test]
@@ -906,7 +900,11 @@ namespace Rebellion.Tests.AI.Proposals
 
             IManufacturable queued = planet
                 .GetManufacturingQueue()[ManufacturingType.Troop]
-                .Single();
+                .First();
+            Assert.AreEqual(
+                interruptible ? 1 : 2,
+                planet.GetManufacturingQueue()[ManufacturingType.Troop].Count
+            );
             Assert.AreSame(existing, queued);
             Assert.AreEqual(1, queued.ManufacturingProgress);
             Assert.IsFalse(queued.IsAIProductionFiller);

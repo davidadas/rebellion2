@@ -228,16 +228,6 @@ namespace Rebellion.AI.Proposals
         }
 
         /// <summary>
-        /// Validates a future producer choice without committing work or requiring an idle lane.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <returns>True when the unit request and its destination remain valid.</returns>
-        internal bool CanPlan(AITurnContext context)
-        {
-            return IsStillValid(context, validateOrderAcceptance: false, allowFutureProducer: true);
-        }
-
-        /// <summary>
         /// Returns whether this proposal may execute against the current game state.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
@@ -449,13 +439,8 @@ namespace Rebellion.AI.Proposals
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="validateOrderAcceptance">Whether to validate structural order acceptance.</param>
-        /// <param name="allowFutureProducer">Whether the producer may become available later.</param>
         /// <returns>True if the proposal is still valid.</returns>
-        private bool IsStillValid(
-            AITurnContext context,
-            bool validateOrderAcceptance,
-            bool allowFutureProducer = false
-        )
+        private bool IsStillValid(AITurnContext context, bool validateOrderAcceptance)
         {
             if (
                 context?.Faction == null
@@ -484,21 +469,6 @@ namespace Rebellion.AI.Proposals
             if (_orderToAdopt != null && !ReferenceEquals(InterruptibleOrder, _orderToAdopt))
                 return false;
 
-            bool producesUnit = Product.GetReference() is not Building;
-            if (
-                producesUnit
-                && !allowFutureProducer
-                && InterruptibleOrder == null
-                && (
-                    GetManufacturingCount() != 1
-                    || ManufacturingQueries.GetManufacturingOrder(
-                        ProducerPlanet,
-                        Demand.ManufacturingType
-                    ) != null
-                )
-            )
-                return false;
-
             if (
                 Destination is Fleet destinationFleet
                 && !context.StrategicPlan.CanReinforce(destinationFleet)
@@ -511,11 +481,6 @@ namespace Rebellion.AI.Proposals
                     Demand.QuantityNeeded <= 0
                     || ProducerPlanet.GetProductionFacilityCount(ManufacturingType.Building) <= 0
                 )
-                    return false;
-            }
-            else if (allowFutureProducer && producesUnit)
-            {
-                if (Demand.QuantityNeeded <= 0)
                     return false;
             }
             else if (DistributesDemand)
@@ -558,16 +523,10 @@ namespace Rebellion.AI.Proposals
                 or AIProductionDemandKind.BuildingUpgrade
                 or AIProductionDemandKind.PlanetaryDefense => CanManufactureBuilding(context),
                 AIProductionDemandKind.FleetCapitalShip => CanManufactureCapitalShip(context),
-                AIProductionDemandKind.FleetStarfighter => CanManufactureStarfighter(
-                    context,
-                    allowFutureProducer
-                ),
+                AIProductionDemandKind.FleetStarfighter => CanManufactureStarfighter(context),
                 AIProductionDemandKind.PlanetaryStarfighterReserve =>
                     CanManufacturePlanetStarfighter(context),
-                AIProductionDemandKind.FleetRegiment => CanManufactureRegiment(
-                    context,
-                    allowFutureProducer
-                ),
+                AIProductionDemandKind.FleetRegiment => CanManufactureRegiment(context),
                 AIProductionDemandKind.GarrisonRegimentReserve => CanManufacturePlanetRegiment(
                     context
                 ),
@@ -842,17 +801,13 @@ namespace Rebellion.AI.Proposals
         /// Returns whether a starfighter can be manufactured into a fleet.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <param name="allowPlannedCapacity">Whether carrier availability is checked by a future schedule.</param>
         /// <returns>True if the starfighter can be manufactured.</returns>
-        private bool CanManufactureStarfighter(
-            AITurnContext context,
-            bool allowPlannedCapacity = false
-        )
+        private bool CanManufactureStarfighter(AITurnContext context)
         {
             return Destination is Fleet destinationFleet
                 && destinationFleet.GetOwnerInstanceID() == context.Faction.InstanceID
                 && Product.GetReference() is Starfighter
-                && (allowPlannedCapacity || destinationFleet.FindShipForStarfighter() != null);
+                && destinationFleet.FindShipForStarfighter() != null;
         }
 
         /// <summary>
@@ -887,17 +842,13 @@ namespace Rebellion.AI.Proposals
         /// Returns whether a regiment can be manufactured into a fleet.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <param name="allowPlannedCapacity">Whether carrier availability is checked by a future schedule.</param>
         /// <returns>True if the regiment can be manufactured.</returns>
-        private bool CanManufactureRegiment(
-            AITurnContext context,
-            bool allowPlannedCapacity = false
-        )
+        private bool CanManufactureRegiment(AITurnContext context)
         {
             return Destination is Fleet destinationFleet
                 && destinationFleet.GetOwnerInstanceID() == context.Faction.InstanceID
                 && Product.GetReference() is Regiment
-                && (allowPlannedCapacity || destinationFleet.FindShipForRegiment() != null);
+                && destinationFleet.FindShipForRegiment() != null;
         }
 
         /// <summary>

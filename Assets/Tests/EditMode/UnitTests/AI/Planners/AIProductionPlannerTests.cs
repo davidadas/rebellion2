@@ -155,98 +155,10 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsFalse(defense.IsAIProductionFiller);
         }
 
-        [TestCase(false)]
-        [TestCase(true)]
-        public void Plan_UnchangedHullDemandAcrossTurns_ReturnsSameBuildList(bool recreatePlanner)
-        {
-            (AITurnContext firstContext, AIProductionDemand demand) =
-                CreateStableHullPlanningScene();
-            AIProductionPlanner planner = new AIProductionPlanner();
-            string[] first = planner
-                .Plan(firstContext)
-                .OfType<AIManufactureProposal>()
-                .Select(proposal => proposal.Product.GetReference().GetTypeID())
-                .ToArray();
-            firstContext.Game.CurrentTick++;
-            AITurnContext secondContext = AITestSceneBuilder.CreateContext(
-                firstContext.Game,
-                firstContext.Faction,
-                random: new SequenceRNG(intValues: Enumerable.Repeat(1, 100).ToArray())
-            );
-            secondContext.SetProductionDemands(new[] { demand });
-
-            string[] repeated = (recreatePlanner ? new AIProductionPlanner() : planner)
-                .Plan(secondContext)
-                .OfType<AIManufactureProposal>()
-                .Select(proposal => proposal.Product.GetReference().GetTypeID())
-                .ToArray();
-
-            Assert.IsNotEmpty(first);
-            CollectionAssert.AreEqual(first, repeated);
-        }
-
-        [Test]
-        public void Plan_HypotheticalHullList_DoesNotUseGameplayRandom()
-        {
-            (AITurnContext context, AIProductionDemand demand) = CreateStableHullPlanningScene();
-            AITurnContext planning = AITestSceneBuilder.CreateContext(
-                context.Game,
-                context.Faction,
-                random: new ThrowingRNG()
-            );
-            planning.SetProductionDemands(new[] { demand });
-
-            Assert.IsNotEmpty(new AIProductionPlanner().Plan(planning));
-        }
-
-        [Test]
-        public void Plan_ChangedHullDemand_RecomputesRequiredQuantities()
-        {
-            (AITurnContext context, AIProductionDemand _) = CreateStableHullPlanningScene();
-            Technology onlyHull = context.Faction.ResearchQueue[ManufacturingType.Ship].First();
-            context.Faction.ResearchQueue[ManufacturingType.Ship] = new List<Technology>
-            {
-                onlyHull,
-            };
-            AIProductionPlanner planner = new AIProductionPlanner();
-            Fleet fleet = context.Game.GetSceneNodeByInstanceID<Fleet>("fleet");
-            context.SetProductionDemands(
-                new[]
-                {
-                    new AIProductionDemand(
-                        "fleet-hulls",
-                        AIProductionDemandKind.FleetCapitalShip,
-                        ManufacturingType.Ship,
-                        BuildingType.None,
-                        fleet,
-                        1,
-                        capitalFirepowerDeficit: 200
-                    ),
-                }
-            );
-            int before = planner.Plan(context).Count;
-            context.SetProductionDemands(
-                new[]
-                {
-                    new AIProductionDemand(
-                        "fleet-hulls",
-                        AIProductionDemandKind.FleetCapitalShip,
-                        ManufacturingType.Ship,
-                        BuildingType.None,
-                        fleet,
-                        1,
-                        capitalFirepowerDeficit: 100
-                    ),
-                }
-            );
-
-            Assert.AreEqual(before / 2, planner.Plan(context).Count);
-        }
-
         [TestCase(false, false)]
         [TestCase(true, false)]
         [TestCase(true, true)]
-        public void Plan_ThreeHullDeficitAndOneShipyard_ProposesThreeSingleUnitOrders(
+        public void Plan_MultipleHullDeficits_ProposesOnlyTheNextHull(
             bool combatStrength,
             bool targetsCapitalShips
         )
@@ -319,7 +231,7 @@ namespace Rebellion.Tests.AI.Planners
                 .OfType<AIManufactureProposal>()
                 .ToList();
 
-            Assert.AreEqual(3, proposals.Count);
+            Assert.AreEqual(1, proposals.Count);
             Assert.IsTrue(proposals.All(proposal => proposal.ManufacturingCount == 1));
             Assert.IsEmpty(fleet.GetChildren<CapitalShip>());
         }
@@ -1898,7 +1810,7 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Plan_PlanetaryStarfighterWithFasterMultiShipyardProducer_PrefersEarlierDelivery()
+        public void Plan_PlanetaryStarfighterWithAvailableProducers_PrefersNearbyProducer()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             PlanetSector destinationSector = AITestSceneBuilder.AddSector(
@@ -1988,9 +1900,8 @@ namespace Rebellion.Tests.AI.Planners
                 .OfType<AIManufactureProposal>()
                 .Single();
 
-            Assert.AreSame(largeProducer, proposal.ProducerPlanet);
-            Assert.AreEqual(1, proposal.ProducerAlternatives.Count);
-            Assert.AreSame(smallProducer, proposal.ProducerAlternatives[0].ProducerPlanet);
+            Assert.AreSame(smallProducer, proposal.ProducerPlanet);
+            Assert.IsEmpty(proposal.ProducerAlternatives);
         }
 
         [Test]
@@ -2074,8 +1985,7 @@ namespace Rebellion.Tests.AI.Planners
                 .Single();
 
             Assert.AreSame(smallProducer, proposal.ProducerPlanet);
-            Assert.AreEqual(1, proposal.ProducerAlternatives.Count);
-            Assert.AreSame(largeProducer, proposal.ProducerAlternatives[0].ProducerPlanet);
+            Assert.IsEmpty(proposal.ProducerAlternatives);
         }
 
         [Test]
@@ -2521,7 +2431,7 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Plan_WithStarfighterDeficit_ProposesSingleUnitRequests()
+        public void Plan_WithStarfighterDeficit_QueuesWorkThroughNextPlanningTick()
         {
             (GameRoot game, Faction empire, Fleet fleet, Planet firstProducer, Planet _) =
                 CreateDistributedStarfighterScene(includeSecondProducer: false);
@@ -2530,17 +2440,17 @@ namespace Rebellion.Tests.AI.Planners
 
             AIManufactureProposal proposal = PlanProduction(context)
                 .OfType<AIManufactureProposal>()
-                .First(item =>
+                .Single(item =>
                     item.Demand.Kind == AIProductionDemandKind.FleetStarfighter
                     && item.Destination == fleet
                 );
 
             Assert.AreSame(firstProducer, proposal.ProducerPlanet);
-            Assert.AreEqual(1, proposal.Demand.QuantityNeeded);
+            Assert.AreEqual(2, proposal.Demand.QuantityNeeded);
         }
 
         [Test]
-        public void Plan_WithStarfighterDeficit_OffersProducerAlternativesWithoutBatches()
+        public void Plan_WithStarfighterDeficit_DistributesBatchAcrossProducerPlanets()
         {
             (
                 GameRoot game,
@@ -2549,27 +2459,23 @@ namespace Rebellion.Tests.AI.Planners
                 Planet firstProducer,
                 Planet secondProducer
             ) = CreateDistributedStarfighterScene(includeSecondProducer: true);
+            game.Config.AI.Infrastructure.FleetProductionMinimumShipyardCount = 1;
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            List<AIManufactureProposal> proposals = PlanProduction(context)
+            Dictionary<string, int> quantities = PlanProduction(context)
                 .OfType<AIManufactureProposal>()
                 .Where(item =>
                     item.Demand.Kind == AIProductionDemandKind.FleetStarfighter
                     && item.Destination == fleet
                 )
-                .ToList();
+                .ToDictionary(
+                    item => item.ProducerPlanet.InstanceID,
+                    item => item.Demand.QuantityNeeded
+                );
 
-            Assert.AreEqual(6, proposals.Count);
-            Assert.IsTrue(proposals.All(proposal => proposal.ManufacturingCount == 1));
-            Assert.IsTrue(proposals.All(proposal => proposal.ProducerAlternatives.Count == 1));
-            CollectionAssert.AreEquivalent(
-                new[] { firstProducer, secondProducer },
-                new[]
-                {
-                    proposals[0].ProducerPlanet,
-                    proposals[0].ProducerAlternatives[0].ProducerPlanet,
-                }
-            );
+            Assert.AreEqual(2, quantities[firstProducer.InstanceID]);
+            Assert.AreEqual(2, quantities[secondProducer.InstanceID]);
+            Assert.AreEqual(4, quantities.Values.Sum());
         }
 
         [Test]
@@ -2606,27 +2512,7 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Plan_WithStarfighterDeficit_RepresentsFullDeficitWithLimitedLanes()
-        {
-            (GameRoot game, Faction empire, Fleet fleet, Planet _, Planet _) =
-                CreateDistributedStarfighterScene(includeSecondProducer: true);
-            game.Config.AI.Infrastructure.FleetProductionMinimumShipyardCount = 1;
-            game.Config.AI.Selection.PreferredStarfighterTypeCountPerFleet = 4;
-            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
-
-            int quantity = PlanProduction(context)
-                .OfType<AIManufactureProposal>()
-                .Where(item =>
-                    item.Demand.Kind == AIProductionDemandKind.FleetStarfighter
-                    && item.Destination == fleet
-                )
-                .Sum(item => item.Demand.QuantityNeeded);
-
-            Assert.AreEqual(6, quantity);
-        }
-
-        [Test]
-        public void Plan_WithBusyProducer_OffersFutureCapacityWithoutQueuingWork()
+        public void Plan_WithProducerAtQueueBudget_DoesNotPlanFutureOrders()
         {
             (GameRoot game, Faction empire, Fleet fleet, Planet firstProducer, Planet _) =
                 CreateDistributedStarfighterScene(includeSecondProducer: false);
@@ -2652,8 +2538,7 @@ namespace Rebellion.Tests.AI.Planners
                 )
                 .ToList();
 
-            Assert.AreEqual(5, proposals.Count);
-            Assert.AreEqual(1, proposals[0].ManufacturingCount);
+            Assert.IsEmpty(proposals);
             Assert.AreEqual(1, firstProducer.GetManufacturingQueue()[ManufacturingType.Ship].Count);
         }
 
@@ -2727,53 +2612,6 @@ namespace Rebellion.Tests.AI.Planners
         {
             new AIProductionDemandGenerator().Generate(context);
             return new AIProductionPlanner().Plan(context);
-        }
-
-        /// <summary>Creates an explicit hull need with multiple eligible technologies.</summary>
-        /// <returns>The planning context and its immutable unexpanded hull demand.</returns>
-        private static (
-            AITurnContext Context,
-            AIProductionDemand Demand
-        ) CreateStableHullPlanningScene()
-        {
-            (GameRoot game, Faction faction, Fleet fleet) = CreateCapitalSelectionScene();
-            game.Summary.Seed = 12345;
-            game.Config.AI.Infrastructure.FleetProductionMinimumShipyardCount = 1;
-            CapitalShip first = AITestSceneBuilder.CreateCapitalShip(
-                "first-hull",
-                faction.InstanceID,
-                combatStrength: 50,
-                regimentCapacity: 0,
-                starfighterCapacity: 0
-            );
-            CapitalShip second = AITestSceneBuilder.CreateCapitalShip(
-                "second-hull",
-                faction.InstanceID,
-                combatStrength: 100,
-                regimentCapacity: 0,
-                starfighterCapacity: 0
-            );
-            faction.ResearchQueue[ManufacturingType.Ship] = new List<Technology>
-            {
-                new Technology(first),
-                new Technology(second),
-            };
-            AITurnContext context = AITestSceneBuilder.CreateContext(
-                game,
-                faction,
-                random: new SequenceRNG(intValues: Enumerable.Repeat(0, 100).ToArray())
-            );
-            AIProductionDemand demand = new AIProductionDemand(
-                "fleet-hulls",
-                AIProductionDemandKind.FleetCapitalShip,
-                ManufacturingType.Ship,
-                BuildingType.None,
-                fleet,
-                1,
-                capitalFirepowerDeficit: 1000
-            );
-            context.SetProductionDemands(new[] { demand });
-            return (context, demand);
         }
 
         /// <summary>

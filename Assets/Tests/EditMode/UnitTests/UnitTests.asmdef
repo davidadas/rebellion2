@@ -13,9 +13,7 @@
     ],
     "overrideReferences": true,
     "precompiledReferences": [
-        "nunit.framework.dll",
-        "Google.OrTools.dll",
-        "Google.Protobuf.dll"
+        "nunit.framework.dll"
     ],
     "defineConstraints": [
         "UNITY_INCLUDE_TESTS"

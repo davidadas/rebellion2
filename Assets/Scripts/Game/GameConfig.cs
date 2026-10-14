@@ -470,9 +470,6 @@ namespace Rebellion.Game
         {
             public float MinimumSelectableScore { get; set; }
 
-            /// <summary>Gets or sets the maximum scheduling states examined in one faction decision.</summary>
-            public int ProductionScheduleSearchNodes { get; set; }
-
             public AIConsiderationConfig DemandUtility { get; set; } = new AIConsiderationConfig();
             public int PreferredStarfighterTypeCountPerFleet { get; set; }
             public int PreferredRegimentTypeCountPerDestination { get; set; }

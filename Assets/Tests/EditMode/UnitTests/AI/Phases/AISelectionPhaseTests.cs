@@ -1263,188 +1263,32 @@ namespace Rebellion.Tests.AI.Phases
         }
 
         [Test]
-        public void Select_FasterBusyShipyard_WaitsWithoutChangingExistingQueue()
+        public void Select_PreferredProducerBusy_StartsAtAvailableAlternative()
         {
             AITurnContext context = CreateUnitSchedulingContext(
                 out Planet weak,
                 out Planet strong,
                 out AIManufactureProposal request
             );
-            CapitalShip current = QueueSchedulingShip(context, strong, 4);
+            CapitalShip existing = QueueSchedulingShip(context, strong, 4);
             context.AddProposal(request);
 
-            List<AIProposal> selected = new AISelectionPhase().Select(context);
-
-            Assert.IsEmpty(selected);
-            CollectionAssert.AreEqual(
-                new[] { current },
-                strong.GetManufacturingQueue()[ManufacturingType.Ship]
-            );
-            Assert.IsNull(
-                Rebellion.Simulation.ManufacturingQueries.GetManufacturingOrder(
-                    weak,
-                    ManufacturingType.Ship
-                )
-            );
-        }
-
-        [Test]
-        public void Select_SlowerBusyShipyard_StartsAtIdleProducer()
-        {
-            AITurnContext context = CreateUnitSchedulingContext(
-                out Planet weak,
-                out Planet strong,
-                out AIManufactureProposal request
-            );
-            QueueSchedulingShip(context, strong, 1000);
-            context.AddProposal(request);
-
-            List<AIProposal> selected = new AISelectionPhase().Select(context);
-
-            Assert.AreEqual(1, selected.Count);
-            Assert.AreSame(weak, ((AIManufactureProposal)selected[0]).ProducerPlanet);
-        }
-
-        [Test]
-        public void Select_TwoRequests_AllocatesDistinctLanesInScoreOrder()
-        {
-            AITurnContext context = CreateUnitSchedulingContext(
-                out Planet weak,
-                out Planet strong,
-                out AIManufactureProposal higher
-            );
-            AIManufactureProposal lower = new AIManufactureProposal(
-                higher.Demand,
-                new[] { strong, weak },
-                new Technology(
-                    AITestSceneBuilder.CreateCapitalShip("small-ship", context.Faction.InstanceID)
-                ),
-                true
-            );
-            lower.SetScore(50);
-            context.AddProposal(lower);
-            context.AddProposal(higher);
-
-            List<AIProposal> selected = new AISelectionPhase().Select(context);
-
-            Assert.AreEqual(2, selected.Count);
-            Assert.AreSame(strong, ((AIManufactureProposal)selected[0]).ProducerPlanet);
-            Assert.AreSame(weak, ((AIManufactureProposal)selected[1]).ProducerPlanet);
-        }
-
-        [Test]
-        public void Select_BatchedUnitRequest_ExecutesOneUnit()
-        {
-            AITurnContext context = CreateUnitSchedulingContext(
-                out Planet _,
-                out Planet strong,
-                out AIManufactureProposal request
-            );
-            AIManufactureProposal batch = new AIManufactureProposal(
-                request.Demand.WithQuantity(5),
-                strong,
-                request.Product,
-                true
-            );
-            batch.SetScore(100);
-            context.AddProposal(batch);
-
-            AIManufactureProposal selected = (AIManufactureProposal)
-                new AISelectionPhase().Select(context)[0];
+            AIManufactureProposal selected = new AISelectionPhase()
+                .Select(context)
+                .OfType<AIManufactureProposal>()
+                .Single();
             selected.Execute(context);
 
-            Assert.AreEqual(1, strong.GetManufacturingQueue()[ManufacturingType.Ship].Count);
+            Assert.AreSame(weak, selected.ProducerPlanet);
+            Assert.AreSame(
+                existing,
+                strong.GetManufacturingQueue()[ManufacturingType.Ship].Single()
+            );
+            Assert.AreEqual(1, weak.GetManufacturingQueue()[ManufacturingType.Ship].Count);
         }
 
         [Test]
-        public void Select_LaneOccupiedBeforeExecution_PreservesNewWork()
-        {
-            AITurnContext context = CreateUnitSchedulingContext(
-                out Planet _,
-                out Planet strong,
-                out AIManufactureProposal request
-            );
-            context.AddProposal(request);
-            AIManufactureProposal selected = (AIManufactureProposal)
-                new AISelectionPhase().Select(context)[0];
-            CapitalShip current = QueueSchedulingShip(context, strong, 10);
-
-            selected.Execute(context);
-
-            CollectionAssert.AreEqual(
-                new[] { current },
-                strong.GetManufacturingQueue()[ManufacturingType.Ship]
-            );
-        }
-
-        [Test]
-        public void Select_ChangedRequestOnNextTick_StartsNewProductAfterLaneDrains()
-        {
-            AITurnContext context = CreateUnitSchedulingContext(
-                out Planet _,
-                out Planet strong,
-                out AIManufactureProposal request
-            );
-            CapitalShip current = QueueSchedulingShip(context, strong, 4);
-            context.AddProposal(request);
-            Assert.IsEmpty(new AISelectionPhase().Select(context));
-            strong.GetManufacturingQueue()[ManufacturingType.Ship].Clear();
-            context.Game.DetachNode(current);
-            AITurnContext next = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
-            CapitalShip replacement = AITestSceneBuilder.CreateCapitalShip(
-                "replacement",
-                context.Faction.InstanceID
-            );
-            AIManufactureProposal changed = new AIManufactureProposal(
-                request.Demand,
-                strong,
-                new Technology(replacement),
-                true
-            );
-            changed.SetScore(100);
-            next.AddProposal(changed);
-
-            AIManufactureProposal selected = (AIManufactureProposal)
-                new AISelectionPhase().Select(next)[0];
-            selected.Execute(next);
-
-            Assert.AreEqual(
-                "replacement",
-                strong.GetManufacturingQueue()[ManufacturingType.Ship][0].GetTypeID()
-            );
-        }
-
-        [Test]
-        public void Select_TwoLargeRequests_StartsOneAndForecastsNextAtFastYard()
-        {
-            AITurnContext context = CreateUnitSchedulingContext(
-                out Planet weak,
-                out Planet strong,
-                out AIManufactureProposal higher
-            );
-            AIManufactureProposal lower = new AIManufactureProposal(
-                higher.Demand,
-                new[] { weak, strong },
-                higher.Product,
-                true
-            );
-            lower.SetScore(50);
-            context.AddProposal(higher);
-            context.AddProposal(lower);
-            List<AIProposal> selected = new AISelectionPhase().Select(context);
-            selected[0].Execute(context);
-            Assert.AreEqual(1, selected.Count);
-            Assert.AreEqual(1, strong.GetManufacturingQueue()[ManufacturingType.Ship].Count);
-            Assert.IsNull(
-                Rebellion.Simulation.ManufacturingQueries.GetManufacturingOrder(
-                    weak,
-                    ManufacturingType.Ship
-                )
-            );
-        }
-
-        [Test]
-        public void Select_FasterFutureShipyards_WaitsWithoutCreatingUnit()
+        public void Select_PreferredFacilitiesStillInTransit_StartsWithCurrentCapacity()
         {
             AITurnContext context = CreateUnitSchedulingContext(
                 out Planet weak,
@@ -1457,443 +1301,40 @@ namespace Rebellion.Tests.AI.Phases
                 facility.Movement = new MovementState { TransitTicks = 5 };
             }
             context.AddProposal(request);
+
+            AIManufactureProposal selected = new AISelectionPhase()
+                .Select(context)
+                .OfType<AIManufactureProposal>()
+                .Single();
+            selected.Execute(context);
+
+            Assert.AreSame(weak, selected.ProducerPlanet);
+            Assert.IsNull(
+                ManufacturingQueries.GetManufacturingOrder(strong, ManufacturingType.Ship)
+            );
+        }
+
+        [Test]
+        public void Select_AllProducersBusy_PreservesExistingOrders()
+        {
+            AITurnContext context = CreateUnitSchedulingContext(
+                out Planet weak,
+                out Planet strong,
+                out AIManufactureProposal request
+            );
+            CapitalShip weakOrder = QueueSchedulingShip(context, weak, 4);
+            CapitalShip strongOrder = QueueSchedulingShip(context, strong, 4);
+            context.AddProposal(request);
+
             Assert.IsEmpty(new AISelectionPhase().Select(context));
-            Assert.IsNull(
-                Rebellion.Simulation.ManufacturingQueries.GetManufacturingOrder(
-                    weak,
-                    ManufacturingType.Ship
-                )
+            Assert.AreSame(
+                weakOrder,
+                weak.GetManufacturingQueue()[ManufacturingType.Ship].Single()
             );
-            Assert.IsNull(
-                Rebellion.Simulation.ManufacturingQueries.GetManufacturingOrder(
-                    strong,
-                    ManufacturingType.Ship
-                )
+            Assert.AreSame(
+                strongOrder,
+                strong.GetManufacturingQueue()[ManufacturingType.Ship].Single()
             );
-        }
-
-        [Test]
-        public void Select_DistantStrongProducer_PrefersEarlierLocalDelivery()
-        {
-            AITurnContext context = CreateUnitSchedulingContext(
-                out Planet weak,
-                out Planet strong,
-                out AIManufactureProposal request
-            );
-            strong.PositionX = 1000;
-            context.Game.Config.Movement.DistanceDivisor = 1;
-            ((CapitalShip)request.Product.GetReference()).Hyperdrive = 100;
-            context.AddProposal(request);
-            List<AIProposal> selected = new AISelectionPhase().Select(context);
-            Assert.AreSame(weak, ((AIManufactureProposal)selected[0]).ProducerPlanet);
-        }
-
-        [Test]
-        public void Select_UnownedProductTemplate_StartsWithoutMutatingTemplate()
-        {
-            AITurnContext context = CreateUnitSchedulingContext(
-                out Planet _,
-                out Planet strong,
-                out AIManufactureProposal request
-            );
-            request.Product.GetReference().OwnerInstanceID = null;
-            context.AddProposal(request);
-            List<AIProposal> selected = new AISelectionPhase().Select(context);
-            Assert.AreEqual(1, selected.Count);
-            Assert.AreSame(strong, ((AIManufactureProposal)selected[0]).ProducerPlanet);
-            Assert.IsNull(request.Product.GetReference().GetOwnerInstanceID());
-        }
-
-        [Test]
-        public void Select_FleetWithExpensiveHullAndHigherScoredFighter_AssignsFastYardToHull()
-        {
-            AITurnContext context = CreateUnitSchedulingContext(
-                out Planet weak,
-                out Planet strong,
-                out AIManufactureProposal hull
-            );
-            hull.SetScore(50);
-            CapitalShip carrier = AITestSceneBuilder.CreateCapitalShip(
-                "carrier",
-                context.Faction.InstanceID,
-                starfighterCapacity: 10
-            );
-            context.Game.AttachNode(carrier, hull.Destination);
-            Starfighter fighter = AITestSceneBuilder.CreateStarfighter(
-                "fighter",
-                context.Faction.InstanceID
-            );
-            fighter.ConstructionCost = 5;
-            AIManufactureProposal fighterRequest = new AIManufactureProposal(
-                new AIProductionDemand(
-                    "fighters",
-                    AIProductionDemandKind.FleetStarfighter,
-                    ManufacturingType.Ship,
-                    BuildingType.None,
-                    hull.Destination,
-                    1
-                ),
-                new[] { strong, weak },
-                new Technology(fighter),
-                true
-            );
-            fighterRequest.SetScore(100);
-            context.AddProposal(fighterRequest);
-            context.AddProposal(hull);
-
-            List<AIProposal> selected = new AISelectionPhase().Select(context);
-
-            Assert.AreEqual(2, selected.Count);
-            AIManufactureProposal selectedHull = selected
-                .OfType<AIManufactureProposal>()
-                .Single(proposal => proposal.Product.GetReference() is CapitalShip);
-            AIManufactureProposal selectedFighter = selected
-                .OfType<AIManufactureProposal>()
-                .Single(proposal => proposal.Product.GetReference() is Starfighter);
-            Assert.AreSame(strong, selectedHull.ProducerPlanet);
-            Assert.AreSame(weak, selectedFighter.ProducerPlanet);
-            Assert.AreSame(hull.Product, selectedHull.Product);
-            Assert.AreSame(fighterRequest.Product, selectedFighter.Product);
-        }
-
-        [Test]
-        public void Select_LowerFleetRequestBetweenPriorityFleetRequests_SchedulesPriorityFleetTogether()
-        {
-            AITurnContext context = CreateUnitSchedulingContext(
-                out Planet weak,
-                out Planet strong,
-                out AIManufactureProposal first
-            );
-            CapitalShip small = AITestSceneBuilder.CreateCapitalShip(
-                "small",
-                context.Faction.InstanceID
-            );
-            small.ConstructionCost = 1;
-            AIManufactureProposal sameFleet = new AIManufactureProposal(
-                first.Demand,
-                new[] { strong, weak },
-                new Technology(small),
-                true
-            );
-            sameFleet.SetScore(10);
-            Fleet other = EntityFactory.CreateFleet("other", context.Faction.InstanceID);
-            context.Game.AttachNode(other, weak);
-            AIManufactureProposal otherFleet = new AIManufactureProposal(
-                new AIProductionDemand(
-                    "other-request",
-                    AIProductionDemandKind.FleetCapitalShip,
-                    ManufacturingType.Ship,
-                    BuildingType.None,
-                    other,
-                    1
-                ),
-                new[] { strong, weak },
-                new Technology(small),
-                true
-            );
-            otherFleet.SetScore(90);
-            context.AddProposal(first);
-            context.AddProposal(otherFleet);
-            context.AddProposal(sameFleet);
-
-            List<AIProposal> selected = new AISelectionPhase().Select(context);
-
-            Assert.AreEqual(2, selected.Count);
-            Assert.AreSame(first.Destination, ((AIManufactureProposal)selected[1]).Destination);
-        }
-
-        [Test]
-        public void Select_UnbuiltCarrierWithFighterRequests_StartsOnlyTheCarrier()
-        {
-            AITurnContext context = CreateUnitSchedulingContext(
-                out Planet weak,
-                out Planet strong,
-                out AIManufactureProposal hull
-            );
-            ((CapitalShip)hull.Product.GetReference()).StarfighterCapacity = 2;
-            Starfighter fighter = AITestSceneBuilder.CreateStarfighter(
-                "fighter",
-                context.Faction.InstanceID
-            );
-            AIManufactureProposal request = new AIManufactureProposal(
-                new AIProductionDemand(
-                    "fighters",
-                    AIProductionDemandKind.FleetStarfighter,
-                    ManufacturingType.Ship,
-                    BuildingType.None,
-                    hull.Destination,
-                    1
-                ),
-                new[] { weak, strong },
-                new Technology(fighter),
-                true
-            );
-            request.SetScore(100);
-            context.AddProposal(hull);
-            context.AddProposal(request);
-            List<AIProposal> selected = new AISelectionPhase().Select(context);
-            Assert.AreEqual(1, selected.Count);
-            Assert.AreSame(hull.Product, ((AIManufactureProposal)selected[0]).Product);
-            Assert.IsEmpty(((Fleet)hull.Destination).GetChildren<CapitalShip>());
-        }
-
-        [TestCase(false)]
-        [TestCase(true)]
-        public void Select_FleetNeedsTwoLongAndThreeShortProducts_ExchangesAssignmentsForEarlierCompletion(
-            bool carried
-        )
-        {
-            AITurnContext context = CreateUnitSchedulingContext(
-                out Planet weak,
-                out Planet strong,
-                out AIManufactureProposal first
-            );
-            if (carried)
-            {
-                CapitalShip carrier = AITestSceneBuilder.CreateCapitalShip(
-                    "carrier",
-                    context.Faction.InstanceID,
-                    starfighterCapacity: 5
-                );
-                context.Game.AttachNode(carrier, first.Destination);
-                Starfighter fighter = AITestSceneBuilder.CreateStarfighter(
-                    "long-fighter",
-                    context.Faction.InstanceID
-                );
-                first = new AIManufactureProposal(
-                    new AIProductionDemand(
-                        "fighters",
-                        AIProductionDemandKind.FleetStarfighter,
-                        ManufacturingType.Ship,
-                        BuildingType.None,
-                        first.Destination,
-                        1
-                    ),
-                    new[] { weak, strong },
-                    new Technology(fighter),
-                    true
-                );
-                first.SetScore(100);
-            }
-            context.Game.Config.AI.TickInterval = 1;
-            context.Game.Config.Movement.SameSectorMinTransitTicks = 0;
-            List<Building> yards = strong.GetProductionFacilities(ManufacturingType.Ship);
-            for (int index = 1; index < yards.Count; index++)
-                context.Game.DetachNode(yards[index]);
-            first.Product.GetReference().ConstructionCost = 3;
-            context.AddProposal(first);
-            AIManufactureProposal second = new AIManufactureProposal(
-                first.Demand,
-                new[] { weak, strong },
-                first.Product,
-                true
-            );
-            second.SetScore(100);
-            context.AddProposal(second);
-            IManufacturable small = carried
-                ? AITestSceneBuilder.CreateStarfighter("short-fighter", context.Faction.InstanceID)
-                : AITestSceneBuilder.CreateCapitalShip("short", context.Faction.InstanceID);
-            small.ConstructionCost = 2;
-            Technology technology = new Technology(small);
-            for (int index = 0; index < 3; index++)
-            {
-                AIManufactureProposal request = new AIManufactureProposal(
-                    first.Demand,
-                    new[] { weak, strong },
-                    technology,
-                    true
-                );
-                request.SetScore(100);
-                context.AddProposal(request);
-            }
-            List<AIProposal> selected = new AISelectionPhase().Select(context);
-            Assert.AreEqual(2, selected.Count);
-            CollectionAssert.AreEquivalent(
-                new[] { first.Product, technology },
-                new[]
-                {
-                    ((AIManufactureProposal)selected[0]).Product,
-                    ((AIManufactureProposal)selected[1]).Product,
-                }
-            );
-        }
-
-        [TestCase(5, 2, 2)]
-        [TestCase(5, 1, 1)]
-        [TestCase(30, 2, 0)]
-        public void Select_ExistingCarrierAndEqualFleetCompletion_PrefersEarlierDeliveries(
-            int fighterCost,
-            int existingCapacity,
-            int expectedFighters
-        )
-        {
-            AITurnContext context = CreateUnitSchedulingContext(
-                out Planet weak,
-                out Planet strong,
-                out AIManufactureProposal hull
-            );
-            context.Game.Config.AI.TickInterval = 1;
-            context.Game.Config.Movement.SameSectorMinTransitTicks = 0;
-            List<Building> yards = strong.GetProductionFacilities(ManufacturingType.Ship);
-            for (int index = 1; index < yards.Count; index++)
-                context.Game.DetachNode(yards[index]);
-            CapitalShip carrier = AITestSceneBuilder.CreateCapitalShip(
-                "available-carrier",
-                context.Faction.InstanceID,
-                starfighterCapacity: existingCapacity
-            );
-            context.Game.AttachNode(carrier, hull.Destination);
-            hull.Product.GetReference().ConstructionCost = 20;
-            ((CapitalShip)hull.Product.GetReference()).StarfighterCapacity = 1;
-            context.AddProposal(hull);
-            AIManufactureProposal otherHull = new AIManufactureProposal(
-                hull.Demand,
-                new[] { weak, strong },
-                hull.Product,
-                true
-            );
-            otherHull.SetScore(100);
-            context.AddProposal(otherHull);
-            Starfighter fighter = AITestSceneBuilder.CreateStarfighter(
-                "early-fighter",
-                context.Faction.InstanceID
-            );
-            fighter.ConstructionCost = fighterCost;
-            for (int index = 0; index < 2; index++)
-            {
-                AIManufactureProposal request = new AIManufactureProposal(
-                    new AIProductionDemand(
-                        $"fighter-{index}",
-                        AIProductionDemandKind.FleetStarfighter,
-                        ManufacturingType.Ship,
-                        BuildingType.None,
-                        hull.Destination,
-                        1
-                    ),
-                    new[] { weak, strong },
-                    new Technology(fighter),
-                    true
-                );
-                request.SetScore(100);
-                context.AddProposal(request);
-            }
-
-            List<AIProposal> selected = new AISelectionPhase().Select(context);
-
-            Assert.AreEqual(2, selected.Count);
-            Assert.AreEqual(
-                expectedFighters,
-                selected
-                    .OfType<AIManufactureProposal>()
-                    .Count(proposal => proposal.Product.GetReference() is Starfighter)
-            );
-        }
-
-        [TestCase(5, true)]
-        [TestCase(30, false)]
-        public void Select_PriorityFleetWaitingForCarrier_UsesOnlyNonDelayingIdleGaps(
-            int cost,
-            bool starts
-        )
-        {
-            AITurnContext context = CreateUnitSchedulingContext(
-                out Planet weak,
-                out Planet strong,
-                out AIManufactureProposal lower
-            );
-            context.Game.Config.AI.TickInterval = 25;
-            lower.Product.GetReference().ConstructionCost = cost;
-            CapitalShip carrier = QueueSchedulingShip(context, strong, 5);
-            carrier.StarfighterCapacity = 2;
-            Starfighter fighter = AITestSceneBuilder.CreateStarfighter(
-                "fighter",
-                context.Faction.InstanceID
-            );
-            AIManufactureProposal higher = new AIManufactureProposal(
-                new AIProductionDemand(
-                    "higher",
-                    AIProductionDemandKind.FleetStarfighter,
-                    ManufacturingType.Ship,
-                    BuildingType.None,
-                    carrier.GetParentOfType<Fleet>(),
-                    1
-                ),
-                new[] { weak },
-                new Technology(fighter),
-                true
-            );
-            higher.SetScore(200);
-            context.AddProposal(higher);
-            context.AddProposal(lower);
-            List<AIProposal> selected = new AISelectionPhase().Select(context);
-            Assert.AreEqual(starts ? 1 : 0, selected.Count);
-            if (starts)
-            {
-                Assert.AreSame(lower.Product, ((AIManufactureProposal)selected[0]).Product);
-                Assert.AreSame(weak, ((AIManufactureProposal)selected[0]).ProducerPlanet);
-            }
-        }
-
-        [TestCase(5, true)]
-        [TestCase(30, false)]
-        public void Select_PriorityFleetWaitingForCarrier_PlanetaryProductionUsesOnlyNonDelayingIdleGaps(
-            int cost,
-            bool starts
-        )
-        {
-            AITurnContext context = CreateUnitSchedulingContext(
-                out Planet weak,
-                out Planet strong,
-                out _
-            );
-            context.Game.Config.AI.TickInterval = 25;
-            CapitalShip carrier = QueueSchedulingShip(context, strong, 5);
-            carrier.StarfighterCapacity = 2;
-            Starfighter fleetFighter = AITestSceneBuilder.CreateStarfighter(
-                "fleet-fighter",
-                context.Faction.InstanceID
-            );
-            AIManufactureProposal higher = new AIManufactureProposal(
-                new AIProductionDemand(
-                    "higher",
-                    AIProductionDemandKind.FleetStarfighter,
-                    ManufacturingType.Ship,
-                    BuildingType.None,
-                    carrier.GetParentOfType<Fleet>(),
-                    1
-                ),
-                weak,
-                new Technology(fleetFighter),
-                true
-            );
-            higher.SetScore(200);
-            Starfighter planetFighter = AITestSceneBuilder.CreateStarfighter(
-                "planet-fighter",
-                context.Faction.InstanceID
-            );
-            planetFighter.ConstructionCost = cost;
-            AIManufactureProposal lower = new AIManufactureProposal(
-                new AIProductionDemand(
-                    "lower",
-                    AIProductionDemandKind.PlanetaryStarfighterReserve,
-                    ManufacturingType.Ship,
-                    BuildingType.None,
-                    weak,
-                    1
-                ),
-                weak,
-                new Technology(planetFighter),
-                true
-            );
-            lower.SetScore(100);
-            context.AddProposal(higher);
-            context.AddProposal(lower);
-
-            List<AIProposal> selected = new AISelectionPhase().Select(context);
-
-            Assert.AreEqual(starts ? 1 : 0, selected.Count);
-            if (starts)
-                Assert.AreSame(lower.Product, ((AIManufactureProposal)selected[0]).Product);
         }
 
         /// <summary>Creates two producers and a single ranked capital-ship request.</summary>
@@ -1945,7 +1386,7 @@ namespace Rebellion.Tests.AI.Phases
             );
             request = new AIManufactureProposal(
                 demand,
-                new[] { weak, strong },
+                new[] { strong, weak },
                 new Technology(ship),
                 true
             );
@@ -1965,14 +1406,17 @@ namespace Rebellion.Tests.AI.Phases
         )
         {
             CapitalShip ship = AITestSceneBuilder.CreateCapitalShip(
-                "current-ship",
+                $"current-ship-{producer.InstanceID}",
                 context.Faction.InstanceID
             );
-            ship.InstanceID = "current-ship";
+            ship.InstanceID = $"current-ship-{producer.InstanceID}";
             ship.ConstructionCost = cost;
             ship.ManufacturingStatus = ManufacturingStatus.Building;
             ship.ProducerPlanetID = producer.InstanceID;
-            Fleet fleet = EntityFactory.CreateFleet("current-fleet", context.Faction.InstanceID);
+            Fleet fleet = EntityFactory.CreateFleet(
+                $"current-fleet-{producer.InstanceID}",
+                context.Faction.InstanceID
+            );
             context.Game.AttachNode(fleet, producer);
             context.Game.AttachNode(ship, fleet);
             producer.AddToManufacturingQueue(ship);
