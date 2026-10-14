@@ -353,9 +353,29 @@ namespace Rebellion.AI.Planners
             FleetOrder order = fleet.Order;
             Planet currentPlanet = context.Assessment.GetFleetPlanet(fleet);
 
-            if (ShouldEvacuate(context, fleet, currentPlanet))
+            Planet evacuationDestination = GetEvacuationDestination(context, fleet, currentPlanet);
+            if (evacuationDestination != null)
             {
-                proposals.Add(new AIFleetEvacuationProposal(fleet, currentPlanet));
+                proposals.Add(
+                    new AIFleetEvacuationProposal(fleet, currentPlanet, evacuationDestination)
+                );
+                return;
+            }
+
+            Planet redirectionDestination = GetReinforcementRedirectionDestination(
+                context,
+                fleet,
+                currentPlanet
+            );
+            if (redirectionDestination != null)
+            {
+                proposals.Add(
+                    new AIFleetReinforcementRedirectionProposal(
+                        fleet,
+                        currentPlanet,
+                        redirectionDestination
+                    )
+                );
                 return;
             }
 
@@ -500,16 +520,40 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns whether a stationary fleet must leave a hostile planet where it has no viable
-        /// orbital or planetary action.
+        /// Returns the friendly destination for a stationary fleet that must leave its current
+        /// planet.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="fleet">Fleet to inspect.</param>
         /// <param name="currentPlanet">Planet currently containing the fleet.</param>
-        /// <returns>True when the fleet should evacuate to friendly territory.</returns>
-        private static bool ShouldEvacuate(AITurnContext context, Fleet fleet, Planet currentPlanet)
+        /// <returns>The evacuation destination, or null when the fleet should remain.</returns>
+        private static Planet GetEvacuationDestination(
+            AITurnContext context,
+            Fleet fleet,
+            Planet currentPlanet
+        )
         {
-            return AIFleetEvacuationProposal.IsRequired(context, fleet, currentPlanet);
+            return AIFleetEvacuationProposal.IsRequired(context, fleet, currentPlanet)
+                ? AIFleetMovement.FindNearestSafeOwnedPlanet(context, fleet, currentPlanet)
+                : null;
+        }
+
+        /// <summary>
+        /// Returns a safe destination for unfinished ships assigned to an unsafe fleet.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="fleet">Fleet designated to receive the ships.</param>
+        /// <param name="currentPlanet">Planet containing the fleet.</param>
+        /// <returns>The redirection destination, or null when no redirection is required.</returns>
+        private static Planet GetReinforcementRedirectionDestination(
+            AITurnContext context,
+            Fleet fleet,
+            Planet currentPlanet
+        )
+        {
+            return AIFleetReinforcementRedirectionProposal.IsRequired(context, fleet, currentPlanet)
+                ? AIFleetReinforcementRedirectionProposal.FindDestination(context, currentPlanet)
+                : null;
         }
 
         /// <summary>
@@ -1128,8 +1172,7 @@ namespace Rebellion.AI.Planners
                 fleet == null
                 || targetPlanet == null
                 || fleet.RoleType != FleetRoleType.Battle
-                || fleet.Movement != null
-                || fleet.IsInCombat
+                || !context.StrategicPlan.CanReinforce(fleet)
             )
                 return false;
 
@@ -1340,8 +1383,7 @@ namespace Rebellion.AI.Planners
                 targetFleet == null
                 || targetPlanet == null
                 || targetFleet.RoleType != FleetRoleType.Battle
-                || targetFleet.Movement != null
-                || targetFleet.IsInCombat
+                || !context.StrategicPlan.CanReinforce(targetFleet)
             )
                 return false;
 

@@ -284,7 +284,7 @@ namespace Rebellion.Tests.AI.Fleets
         }
 
         [Test]
-        public void Execute_WithReturningDeliveryOnlyFleet_RebasesFleetAndInboundDelivery()
+        public void Execute_WithReturningDeliveryOnlyFleet_UsesPlayerValidatedMovementOrder()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
@@ -329,7 +329,7 @@ namespace Rebellion.Tests.AI.Fleets
             proposal.Execute(context);
 
             Assert.AreEqual(friendly.InstanceID, fleet.GetParentOfType<Planet>()?.InstanceID);
-            Assert.IsNull(fleet.Movement);
+            Assert.IsNotNull(fleet.Movement);
             Assert.IsNotNull(inbound.Movement);
             Assert.AreEqual(0, inbound.Movement.TicksElapsed);
             Assert.AreEqual(new Point(7500, 0), inbound.Movement.OriginPosition);

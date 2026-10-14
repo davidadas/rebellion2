@@ -1589,6 +1589,42 @@ namespace Rebellion.Tests.AI.Demands
         }
 
         [Test]
+        public void BuildDemands_WithDeliveryOnlyFleetAtBlockadedOwnedPlanet_DoesNotAddFleetReinforcementDemand()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
+            Planet enemy = AITestSceneBuilder.AddPlanet(game, system, "enemy", rebels.InstanceID);
+            Fleet fleet = AddAttackFleet(
+                game,
+                owned,
+                enemy,
+                empire.InstanceID,
+                regimentCapacity: 1
+            );
+            CapitalShip deliveringShip = fleet.GetChildren<CapitalShip>().Single();
+            deliveringShip.ManufacturingStatus = ManufacturingStatus.Delivering;
+            deliveringShip.Movement = new MovementState { TransitTicks = 10 };
+            Fleet hostileFleet = EntityFactory.CreateFleet("hostile-fleet", rebels.InstanceID);
+            game.AttachNode(hostileFleet, owned);
+            game.AttachNode(
+                AITestSceneBuilder.CreateCapitalShip(
+                    "hostile-ship",
+                    rebels.InstanceID,
+                    combatStrength: 10000
+                ),
+                hostileFleet
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            List<AIProductionDemand> demands = new AIProductionDemandGenerator().BuildDemands(
+                context
+            );
+
+            Assert.IsFalse(demands.Any(demand => demand.DestinationFleet == fleet));
+        }
+
+        [Test]
         public void BuildDemands_WithActiveAttackAndIdleUnderstrengthFleet_AddsAssemblyDemand()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);

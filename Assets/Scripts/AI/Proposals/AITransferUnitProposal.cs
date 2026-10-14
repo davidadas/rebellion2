@@ -84,10 +84,14 @@ namespace Rebellion.AI.Proposals
         /// <param name="context">The current AI turn context.</param>
         public override void Execute(AITurnContext context)
         {
-            if (!CanExecute(context))
+            if (!CanExecute(context) || Unit is not ISceneNode sceneNode)
                 return;
 
-            context.Movement.RequestMove(Unit, Destination);
+            context.Movement.TryRequestMove(
+                new ISceneNode[] { sceneNode },
+                Destination,
+                context.Faction.InstanceID
+            );
         }
 
         /// <summary>
@@ -154,7 +158,7 @@ namespace Rebellion.AI.Proposals
         /// <returns>True if the target fleet can receive the unit.</returns>
         private bool CanMoveToTargetFleet(AITurnContext context)
         {
-            if (TargetFleet.Movement != null || TargetFleet.IsInCombat)
+            if (!context.StrategicPlan.CanReinforce(TargetFleet))
                 return false;
 
             if (Unit is Regiment && TargetFleet.FindShipForRegiment() == null)

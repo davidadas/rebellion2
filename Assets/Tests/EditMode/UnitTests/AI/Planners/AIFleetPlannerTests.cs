@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.AI;
@@ -547,6 +548,12 @@ namespace Rebellion.Tests.AI.Fleets
                 "alternative-target",
                 rebels.InstanceID
             );
+            AITestSceneBuilder.AddPlanet(
+                game,
+                alternativeSystem,
+                "friendly-destination",
+                empire.InstanceID
+            );
             AddShield(game, blockedTarget, "shield-1", rebels.InstanceID);
             AddShield(game, blockedTarget, "shield-2", rebels.InstanceID);
             AITestSceneBuilder.RevealPlanet(game, empire, blockedTarget);
@@ -624,12 +631,25 @@ namespace Rebellion.Tests.AI.Fleets
         }
 
         [Test]
-        public void Plan_WithInactiveFleetAndInboundShipsAtBlockadedOwnedPlanet_AddsSelectableEvacuationProposal()
+        public void Plan_WithDeliveryOnlyFleetAndUnfinishedShipsAtBlockadedOwnedPlanet_AddsPlayerValidatedRedirectionProposal()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
             Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
-            AITestSceneBuilder.AddPlanet(game, system, "friendly", empire.InstanceID);
+            Planet friendly = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "friendly",
+                empire.InstanceID
+            );
+            foreach (
+                Planet planet in empire
+                    .GetOwnedColonizedPlanets()
+                    .Where(planet => planet != owned && planet != friendly)
+            )
+                planet.PositionX = -100000;
+            owned.PositionX = 100;
+            friendly.PositionX = 0;
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
             AITestSceneBuilder.RevealPlanet(game, empire, target);
             AddBattleFleet(
@@ -639,9 +659,28 @@ namespace Rebellion.Tests.AI.Fleets
                 "blockading-fleet",
                 combatStrength: 1000
             );
-            Fleet fleet = AddBattleFleet(game, owned, empire.InstanceID, "fleet");
-            CapitalShip inboundShip = fleet.GetChildren<CapitalShip>().Single();
-            inboundShip.Movement = new MovementState { TransitTicks = 10 };
+            Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
+            fleet.RoleType = FleetRoleType.Battle;
+            game.AttachNode(fleet, owned);
+            CapitalShip unfinishedShip = AITestSceneBuilder.CreateCapitalShip(
+                "unfinished-ship",
+                empire.InstanceID,
+                combatStrength: 50
+            );
+            unfinishedShip.ManufacturingStatus = ManufacturingStatus.Building;
+            game.AttachNode(unfinishedShip, fleet);
+            CapitalShip inboundShip = AITestSceneBuilder.CreateCapitalShip(
+                "inbound-ship",
+                empire.InstanceID,
+                combatStrength: 50
+            );
+            game.AttachNode(inboundShip, fleet);
+            inboundShip.Movement = new MovementState
+            {
+                TransitTicks = 10,
+                TicksElapsed = 1,
+                CurrentPosition = new Point(10, 0),
+            };
             fleet.Order = new FleetOrder
             {
                 OrderType = FleetOrderType.Attack,
@@ -650,12 +689,63 @@ namespace Rebellion.Tests.AI.Fleets
             };
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            AIFleetEvacuationProposal proposal = new AIFleetPlanner()
+            AIFleetReinforcementRedirectionProposal proposal = new AIFleetPlanner()
                 .Plan(context)
-                .OfType<AIFleetEvacuationProposal>()
+                .OfType<AIFleetReinforcementRedirectionProposal>()
                 .Single(candidate => candidate.Fleet == fleet);
 
             Assert.IsTrue(proposal.CanSelect(context));
+            Assert.AreSame(friendly, proposal.DestinationPlanet);
+
+            MovementState previousInboundMovement = inboundShip.Movement;
+            proposal.Execute(context);
+
+            Assert.AreSame(owned, fleet.GetParentOfType<Planet>());
+            Assert.IsNull(fleet.Movement);
+            Assert.AreSame(previousInboundMovement, inboundShip.Movement);
+            Assert.AreSame(fleet, inboundShip.GetParentOfType<Fleet>());
+            Assert.AreSame(friendly, unfinishedShip.GetParentOfType<Planet>());
+            Assert.AreNotSame(fleet, unfinishedShip.GetParentOfType<Fleet>());
+            Assert.IsNull(unfinishedShip.Movement);
+        }
+
+        [Test]
+        public void Plan_WithOperationalFleetAndIncomingThreat_DoesNotAddReinforcementRedirectionProposal()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
+            Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
+            Fleet incomingEnemy = AddBattleFleet(
+                game,
+                owned,
+                rebels.InstanceID,
+                "incoming-enemy",
+                combatStrength: 1000
+            );
+            incomingEnemy.Movement = new MovementState { TransitTicks = 20, TicksElapsed = 1 };
+            Fleet fleet = AddBattleFleet(
+                game,
+                owned,
+                empire.InstanceID,
+                "fleet",
+                combatStrength: 100
+            );
+            CapitalShip unfinishedShip = AITestSceneBuilder.CreateCapitalShip(
+                "unfinished-ship",
+                empire.InstanceID,
+                combatStrength: 50
+            );
+            unfinishedShip.ManufacturingStatus = ManufacturingStatus.Building;
+            game.AttachNode(unfinishedShip, fleet);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            List<AIProposal> proposals = new AIFleetPlanner().Plan(context);
+
+            Assert.IsFalse(
+                proposals
+                    .OfType<AIFleetReinforcementRedirectionProposal>()
+                    .Any(candidate => candidate.Fleet == fleet)
+            );
         }
 
         [Test]
@@ -1431,7 +1521,13 @@ namespace Rebellion.Tests.AI.Fleets
                 LaserCannon = 400,
                 MaxSquadronSize = 1,
             };
-            AddBattleFleet(game, staging, rebels.InstanceID, "hostile-fleet");
+            Fleet incomingHostile = AddBattleFleet(
+                game,
+                staging,
+                rebels.InstanceID,
+                "hostile-fleet"
+            );
+            incomingHostile.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 1 };
             game.AttachNode(carrier, sourceFleet);
             game.AttachNode(pendingFighter, carrier);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
@@ -1803,6 +1899,12 @@ namespace Rebellion.Tests.AI.Fleets
                 "hostile",
                 rebels.InstanceID
             );
+            Planet friendly = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "friendly",
+                empire.InstanceID
+            );
             AITestSceneBuilder.AddPlanet(game, system, "unexplored", null).IsColonized = false;
             AITestSceneBuilder.RevealPlanet(game, empire, hostile);
             Fleet fleet = AddBattleFleet(game, hostile, empire.InstanceID, "fleet");
@@ -1821,6 +1923,7 @@ namespace Rebellion.Tests.AI.Fleets
                 .Single();
 
             Assert.AreSame(hostile, proposal.CurrentPlanet);
+            Assert.AreSame(friendly, proposal.DestinationPlanet);
         }
 
         [Test]

@@ -467,7 +467,7 @@ namespace Rebellion.AI.Proposals
                 return;
             }
 
-            context.Movement?.EvacuateToNearestFriendlyPlanet(Fleet);
+            AIFleetMovement.TryMoveToNearestSafeOwnedPlanet(context, Fleet);
         }
 
         /// <summary>
