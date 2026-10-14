@@ -18,6 +18,7 @@ public sealed class ContentFileResolver
     private const string _modsDirectoryName = "Mods";
 
     private readonly IReadOnlyList<string> modContentRoots;
+    private readonly IReadOnlyList<string> packRoots;
 
     public string ContentRootPath { get; }
 
@@ -38,12 +39,14 @@ public sealed class ContentFileResolver
     /// <param name="modContentRootPaths">The mod content roots in ascending load order.</param>
     /// <param name="mods">The definitions corresponding to the mod content roots.</param>
     /// <param name="availableMods">All compatible definitions, including disabled mods.</param>
+    /// <param name="fallbackPackRootPaths">Inherited pack roots in nearest-to-farthest order.</param>
     public ContentFileResolver(
         string contentRootPath,
         string packRootPath,
         IEnumerable<string> modContentRootPaths = null,
         IEnumerable<ContentModDefinition> mods = null,
-        IEnumerable<ContentModDefinition> availableMods = null
+        IEnumerable<ContentModDefinition> availableMods = null,
+        IEnumerable<string> fallbackPackRootPaths = null
     )
     {
         ContentRootPath = Path.GetFullPath(
@@ -52,6 +55,11 @@ public sealed class ContentFileResolver
         PackRootPath = Path.GetFullPath(
             packRootPath ?? throw new ArgumentNullException(nameof(packRootPath))
         );
+        packRoots = new[] { PackRootPath }
+            .Concat(fallbackPackRootPaths ?? Enumerable.Empty<string>())
+            .Select(Path.GetFullPath)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
         modContentRoots = (modContentRootPaths ?? Enumerable.Empty<string>())
             .Select(Path.GetFullPath)
             .ToArray();
@@ -66,12 +74,14 @@ public sealed class ContentFileResolver
     /// <param name="packRootPath">The absolute selected pack root.</param>
     /// <param name="basePackID">The selected base pack identifier.</param>
     /// <param name="disabledModIDs">Mod IDs to discover without loading.</param>
+    /// <param name="fallbackPackRootPaths">Inherited pack roots in nearest-to-farthest order.</param>
     /// <returns>A resolver containing the compatible discovered mods.</returns>
     internal static ContentFileResolver Discover(
         string contentRootPath,
         string packRootPath,
         string basePackID,
-        IEnumerable<string> disabledModIDs = null
+        IEnumerable<string> disabledModIDs = null,
+        IEnumerable<string> fallbackPackRootPaths = null
     )
     {
         string modsRoot = Path.Combine(
@@ -80,7 +90,11 @@ public sealed class ContentFileResolver
             _modsDirectoryName
         );
         if (!Directory.Exists(modsRoot))
-            return new ContentFileResolver(contentRootPath, packRootPath);
+            return new ContentFileResolver(
+                contentRootPath,
+                packRootPath,
+                fallbackPackRootPaths: fallbackPackRootPaths
+            );
 
         List<string> contentRoots = new List<string>();
         List<ContentModDefinition> definitions = new List<ContentModDefinition>();
@@ -125,7 +139,8 @@ public sealed class ContentFileResolver
             packRootPath,
             contentRoots,
             definitions,
-            availableDefinitions
+            availableDefinitions,
+            fallbackPackRootPaths
         );
     }
 
@@ -149,13 +164,15 @@ public sealed class ContentFileResolver
                 return resolved;
         }
 
-        string basePath = ResolveBasePath(normalizedAddress);
-        if (File.Exists(basePath))
-            return basePath;
-        foreach (string extension in extensions)
+        foreach (string basePath in ResolveBasePaths(normalizedAddress))
         {
-            if (File.Exists(basePath + extension))
-                return basePath + extension;
+            if (File.Exists(basePath))
+                return basePath;
+            foreach (string extension in extensions)
+            {
+                if (File.Exists(basePath + extension))
+                    return basePath + extension;
+            }
         }
         return null;
     }
@@ -169,7 +186,8 @@ public sealed class ContentFileResolver
     {
         string normalizedAddress = NormalizeAddress(directoryAddress).TrimEnd('/');
         Dictionary<string, string> files = new Dictionary<string, string>(StringComparer.Ordinal);
-        AddFiles(files, ResolveBasePath(normalizedAddress));
+        foreach (string basePath in ResolveBasePaths(normalizedAddress).Reverse())
+            AddFiles(files, basePath);
         foreach (string modContentRoot in modContentRoots)
             AddFiles(files, ResolveModPath(modContentRoot, normalizedAddress));
         return files
@@ -187,7 +205,7 @@ public sealed class ContentFileResolver
         string normalizedAddress = NormalizeAddress(directoryAddress).TrimEnd('/');
         if (modContentRoots.Any(root => Directory.Exists(ResolveModPath(root, normalizedAddress))))
             return true;
-        return Directory.Exists(ResolveBasePath(normalizedAddress));
+        return ResolveBasePaths(normalizedAddress).Any(Directory.Exists);
     }
 
     /// <summary>
@@ -238,17 +256,30 @@ public sealed class ContentFileResolver
     }
 
     /// <summary>
-    /// Resolves a normalized address beneath the selected base content roots.
+    /// Resolves a normalized address through the application root or selected pack inheritance chain.
     /// </summary>
     /// <param name="normalizedAddress">The normalized scoped content address.</param>
-    /// <returns>The corresponding absolute base path.</returns>
-    private string ResolveBasePath(string normalizedAddress)
+    /// <returns>The absolute candidate paths in overriding-to-fallback order.</returns>
+    private IEnumerable<string> ResolveBasePaths(string normalizedAddress)
     {
-        return ResolveScopedPath(
-            Path.Combine(ContentRootPath, _applicationScopeName),
-            PackRootPath,
-            normalizedAddress
-        );
+        if (normalizedAddress.StartsWith(_applicationAddressPrefix, StringComparison.Ordinal))
+        {
+            yield return ResolveScopedPath(
+                Path.Combine(ContentRootPath, _applicationScopeName),
+                PackRootPath,
+                normalizedAddress
+            );
+            yield break;
+        }
+
+        foreach (string packRoot in packRoots)
+        {
+            yield return ResolveScopedPath(
+                Path.Combine(ContentRootPath, _applicationScopeName),
+                packRoot,
+                normalizedAddress
+            );
+        }
     }
 
     /// <summary>

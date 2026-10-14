@@ -1,4 +1,7 @@
+using System;
+using System.Linq;
 using System.Threading.Tasks;
+using Rebellion.Game;
 using UnityEngine;
 #if UNITY_EDITOR
 using UnityEditor;
@@ -48,6 +51,17 @@ public sealed class AppBootstrap : MonoBehaviour
     private SceneLoader _sceneLoader;
     private ContentPreloadManifest _strategyApplicationPreload;
     private UserSettingsManager _userSettingsManager;
+
+    /// <summary>
+    /// Raised immediately before a saved-game transition begins.
+    /// Scene presentations use this boundary to stop rendering the outgoing game.
+    /// </summary>
+    internal event Action SaveLoadStarting;
+
+    /// <summary>
+    /// Gets whether the application scene loader is still completing a transition.
+    /// </summary>
+    internal bool IsSceneTransitionInProgress => _sceneLoader?.IsLoading == true;
 
     /// <summary>
     /// Ensures AppBootstrap exists. Creates minimal bootstrap if missing (for scene testing).
@@ -109,17 +123,21 @@ public sealed class AppBootstrap : MonoBehaviour
         _sceneLoader = GetComponent<SceneLoader>();
         if (_sceneLoader == null)
             _sceneLoader = gameObject.AddComponent<SceneLoader>();
-        // Read the saved selection directly; the settings system loads after content.
-        UserSettingsManager.TryReadContentSelection(
-            out string selectedPackID,
-            out string selectedScenarioID,
-            out string[] disabledModIDs
-        );
-        _contentPack = ContentPackLoader.OpenActive(
-            selectedPackID,
-            selectedScenarioID,
-            disabledModIDs
-        );
+        _contentPack = GameLaunchContext.ConsumeContentPackAfterRestart();
+        if (_contentPack == null)
+        {
+            // Read the saved selection directly; the settings system loads after content.
+            UserSettingsManager.TryReadContentSelection(
+                out string selectedPackID,
+                out string selectedScenarioID,
+                out string[] disabledModIDs
+            );
+            _contentPack = ContentPackLoader.OpenActive(
+                selectedPackID,
+                selectedScenarioID,
+                disabledModIDs
+            );
+        }
         _mainMenuApplicationPreload = ContentPackLoader.LoadApplicationPreloadManifest(
             _contentPack.FileResolver,
             _mainMenuPreloadID
@@ -137,6 +155,7 @@ public sealed class AppBootstrap : MonoBehaviour
         Cursor.SetCursor(cursorTexture, Vector2.zero, CursorMode.Auto);
         _contentModelCache = new ContentModelCache(_contentAssets);
         GameLaunchContext.Reset(_contentPack);
+        GameLaunchContext.RestoreSaveLoadAfterContentRestart();
         audioManager = AudioManager.EnsureExists(transform);
         audioManager.InitializeContent(_contentAssets);
 
@@ -166,7 +185,8 @@ public sealed class AppBootstrap : MonoBehaviour
         if (inputController == null)
             inputController = CreateInputController();
 
-        inputController?.Initialize(inputManager, _cancelStack, _runtime);
+        inputController?.Initialize(inputManager, _cancelStack, _runtime, LoadSave);
+        LoadingScreenController.Prepare(this);
     }
 
     /// <summary>
@@ -203,9 +223,102 @@ public sealed class AppBootstrap : MonoBehaviour
     /// Transitions to another application scene.
     /// </summary>
     /// <param name="sceneAddress">The Unity scene name to load.</param>
-    internal void LoadScene(string sceneAddress)
+    /// <param name="loadFailed">The optional action invoked when scene loading fails.</param>
+    /// <returns>True when the transition was accepted.</returns>
+    internal bool LoadScene(string sceneAddress, Action<Exception> loadFailed = null)
     {
-        _sceneLoader.Load(sceneAddress);
+        return _sceneLoader.Load(sceneAddress, loadFailed);
+    }
+
+    /// <summary>
+    /// Loads a save under the exact content identity recorded in its metadata.
+    /// </summary>
+    /// <param name="fileName">The save identifier to load.</param>
+    /// <returns>True when loading or content reconstruction was started.</returns>
+    internal bool LoadSave(string fileName)
+    {
+        if (string.IsNullOrWhiteSpace(fileName))
+            return false;
+
+        SaveGameManager saveGameManager = SaveGameManager.Instance;
+        if (!System.IO.File.Exists(saveGameManager.GetSaveFilePath(fileName)))
+            return false;
+
+        if (LoadingScreenController.IsLoadInProgress)
+            return false;
+
+        LoadingScreenController.LoadSave(this, fileName);
+        return true;
+    }
+
+    /// <summary>
+    /// Reads save metadata and verifies any required replacement content away from the main thread.
+    /// </summary>
+    /// <param name="fileName">The save identifier to prepare.</param>
+    /// <returns>The verified loading preparation.</returns>
+    internal Task<SaveLoadPreparation> PrepareSaveLoadAsync(string fileName)
+    {
+        if (string.IsNullOrWhiteSpace(fileName))
+            throw new ArgumentException("A save file name is required.", nameof(fileName));
+
+        SaveGameManager saveGameManager = SaveGameManager.Instance;
+        ContentPack activePack = _contentPack;
+        return Task.Run(() =>
+        {
+            GameMetadata metadata = saveGameManager.GetSaveMetadata(fileName);
+            SaveContentSelection selection = activePack.MatchesContentIdentity(metadata)
+                ? null
+                : SaveContentResolver.Resolve(activePack, metadata);
+            return new SaveLoadPreparation(fileName, selection);
+        });
+    }
+
+    /// <summary>
+    /// Applies a verified loading preparation on the Unity thread.
+    /// </summary>
+    /// <param name="preparation">The verified save and content selection.</param>
+    /// <returns>True when application content must be reconstructed.</returns>
+    internal bool ApplySaveLoadPreparation(SaveLoadPreparation preparation)
+    {
+        if (preparation == null)
+            throw new ArgumentNullException(nameof(preparation));
+
+        if (!preparation.RequiresContentRestart)
+        {
+            GameLaunchContext.PrepareSaveLoad(preparation.FileName);
+            return false;
+        }
+
+        SaveContentSelection selection = preparation.ContentSelection;
+        PersistContentSelection(selection.Pack, selection.DisabledModIDs);
+        GameLaunchContext.PrepareSaveLoadAfterContentRestart(preparation.FileName, selection.Pack);
+        return true;
+    }
+
+    /// <summary>
+    /// Stops the outgoing scene and runtime after the persistent loading presentation is visible.
+    /// </summary>
+    internal void SuspendForSaveLoad()
+    {
+        SaveLoadStarting?.Invoke();
+        _runtime.EndGame();
+    }
+
+    /// <summary>
+    /// Persists a verified save-content selection for the replacement bootstrap.
+    /// </summary>
+    /// <param name="contentPack">The verified pack and scenario.</param>
+    /// <param name="disabledModIDs">Compatible mods excluded by the save.</param>
+    private void PersistContentSelection(ContentPack contentPack, string[] disabledModIDs)
+    {
+        UserContentSettings content = _userSettingsManager.Settings.Content;
+        content.ActivePackID = contentPack.Definition.ID;
+        content.ActiveScenarioID = contentPack.Scenario.ID;
+        content.SetDisabledModsForPack(
+            contentPack.FileResolver.AvailableMods.Select(mod => mod.ID),
+            disabledModIDs
+        );
+        _userSettingsManager.Save();
     }
 
     /// <summary>

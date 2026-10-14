@@ -116,6 +116,23 @@ public sealed class ContentPack
     }
 
     /// <summary>
+    /// Checks whether save metadata belongs to this pack, version, scenario, and mod set.
+    /// </summary>
+    /// <param name="metadata">The save metadata to compare.</param>
+    /// <returns>True when every content identity field matches.</returns>
+    public bool MatchesContentIdentity(GameMetadata metadata)
+    {
+        return metadata != null
+            && MatchesContentIdentity(
+                metadata.PackID,
+                metadata.PackVersion,
+                metadata.ScenarioID,
+                metadata.ModIDs,
+                metadata.ModVersions
+            );
+    }
+
+    /// <summary>
     /// Checks serialized identity values against this pack and its active mods.
     /// </summary>
     /// <param name="packID">The serialized pack identifier.</param>

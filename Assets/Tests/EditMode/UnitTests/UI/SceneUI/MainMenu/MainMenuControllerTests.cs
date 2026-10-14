@@ -65,5 +65,28 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                 GameLaunchContext.Summary.VictoryCondition
             );
         }
+
+        [Test]
+        public void GetMenuMusicPath_ConfiguredAddress_ReturnsConfiguredAddress()
+        {
+            ContentPackDefinition definition = new ContentPackDefinition
+            {
+                MainMenuMusicPath = " Pack/Shared/Audio/menu ",
+            };
+
+            Assert.AreEqual(
+                "Pack/Shared/Audio/menu",
+                MainMenuController.GetMenuMusicPath(definition)
+            );
+        }
+
+        [Test]
+        public void GetMenuMusicPath_MissingAddress_ReturnsApplicationDefault()
+        {
+            Assert.AreEqual(
+                "Application/MainMenu/Audio/battle-of-endor-1-medley",
+                MainMenuController.GetMenuMusicPath(new ContentPackDefinition())
+            );
+        }
     }
 }
