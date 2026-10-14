@@ -169,11 +169,11 @@ namespace Rebellion.AI.Proposals
             );
             if (origin?.GetOwnerInstanceID() == context.Faction.InstanceID)
             {
-                context.Movement?.RequestMove(Fleet, origin);
+                AIFleetMovement.TryMove(context, Fleet, origin);
                 return;
             }
 
-            context.Movement?.EvacuateToNearestFriendlyPlanet(Fleet);
+            AIFleetMovement.TryMoveToNearestSafeOwnedPlanet(context, Fleet);
         }
 
         /// <summary>

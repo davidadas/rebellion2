@@ -1442,7 +1442,7 @@ namespace Rebellion.AI.Demands
         private Fleet GetPriorityDefenseFleet(AITurnContext context)
         {
             return context
-                .Assessment.OwnedFleets.Where(CanReinforceFleet)
+                .Assessment.OwnedFleets.Where(fleet => CanReinforceFleet(context, fleet))
                 .Select(fleet => new { Fleet = fleet, Target = GetDefenseTarget(context, fleet) })
                 .Where(candidate => candidate.Target != null)
                 .OrderByDescending(candidate =>
@@ -1465,7 +1465,7 @@ namespace Rebellion.AI.Demands
         private IReadOnlyList<Fleet> GetPriorityAttackFleets(AITurnContext context)
         {
             return context
-                .Assessment.AttackOrderedFleets.Where(CanReinforceFleet)
+                .Assessment.AttackOrderedFleets.Where(fleet => CanReinforceFleet(context, fleet))
                 .Select(fleet => new
                 {
                     Fleet = fleet,
@@ -1544,7 +1544,8 @@ namespace Rebellion.AI.Demands
         {
             return context
                 .Assessment.OwnedFleets.Where(fleet =>
-                    fleet.RoleType == FleetRoleType.Colonization && CanReinforceFleet(fleet)
+                    fleet.RoleType == FleetRoleType.Colonization
+                    && CanReinforceFleet(context, fleet)
                 )
                 .OrderByDescending(fleet =>
                     AIFleetProductionAllocationScorer.ScoreColonization(context, fleet)
@@ -1563,7 +1564,7 @@ namespace Rebellion.AI.Demands
             return context
                 .Assessment.OwnedFleets.Where(fleet =>
                     fleet.RoleType == FleetRoleType.Battle
-                    && CanReinforceFleet(fleet)
+                    && CanReinforceFleet(context, fleet)
                     && fleet.Order == null
                     && context.StrategicPlan.CanFleetDepart(fleet)
                 )
@@ -1884,12 +1885,13 @@ namespace Rebellion.AI.Demands
         /// <summary>
         /// Returns whether a fleet can receive reinforcement demand.
         /// </summary>
+        /// <param name="context">The current AI turn context.</param>
         /// <param name="fleet">Fleet to inspect.</param>
         /// <returns>True if the fleet can receive reinforcement.</returns>
-        private bool CanReinforceFleet(Fleet fleet)
+        private bool CanReinforceFleet(AITurnContext context, Fleet fleet)
         {
             return fleet?.RoleType is FleetRoleType.Battle or FleetRoleType.Colonization
-                && fleet.Movement == null
+                && context.StrategicPlan.CanReinforce(fleet)
                 && (
                     HasPresentOrUnderConstructionCapitalShips(fleet)
                     || fleet.Order?.OrderType is FleetOrderType.Attack or FleetOrderType.Defend
