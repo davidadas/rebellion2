@@ -781,6 +781,8 @@ public static class ContentPackLoader
             throw new InvalidDataException("ContentPack.ID is required.");
         if (string.IsNullOrWhiteSpace(pack.Version))
             throw new InvalidDataException("ContentPack.Version is required.");
+        if (string.IsNullOrWhiteSpace(pack.MainMenuMusicPath))
+            throw new InvalidDataException("ContentPack.MainMenuMusicPath is required.");
         EnsureUniqueIDs(factions.Select(faction => faction.ID), "faction");
         EnsureUniqueIDs(scenarios.Select(scenario => scenario.ID), "scenario");
 
