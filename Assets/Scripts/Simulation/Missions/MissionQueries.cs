@@ -1310,14 +1310,9 @@ namespace Rebellion.Simulation
         /// <returns>True for a planetary objective.</returns>
         internal bool IsPlanetaryObjective(Mission mission)
         {
-            string targetID = mission switch
-            {
-                AbductionMission abduction => abduction.TargetOfficerInstanceID,
-                AssassinationMission assassination => assassination.TargetOfficerInstanceID,
-                RescueMission rescue => rescue.TargetOfficerInstanceID,
-                SabotageMission sabotage => sabotage.SabotageTargetInstanceID,
-                _ => mission.LocationInstanceID,
-            };
+            string targetID = mission is IEntityTargetingMission targetedMission
+                ? targetedMission.TargetEntityInstanceID
+                : mission.LocationInstanceID;
             ISceneNode target = _game.GetSceneNodeByInstanceID<ISceneNode>(targetID);
             return UsesPlanetaryDetectors(MissionEncounterPhase.PreObjective, target);
         }

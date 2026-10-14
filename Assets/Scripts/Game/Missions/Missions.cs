@@ -17,7 +17,7 @@ namespace Rebellion.Game.Missions
     /// <summary>
     /// Mission that attempts to capture an enemy officer and return them with the mission team.
     /// </summary>
-    public class AbductionMission : Mission
+    public class AbductionMission : Mission, IEntityTargetingMission
     {
         public const string MissionTypeID = "Abduction";
 
@@ -25,6 +25,8 @@ namespace Rebellion.Game.Missions
         /// Instance ID of the officer selected as the abduction target.
         /// </summary>
         public string TargetOfficerInstanceID { get; set; }
+
+        string IEntityTargetingMission.TargetEntityInstanceID => TargetOfficerInstanceID;
 
         /// <summary>
         /// Creates an empty abduction mission copy.
@@ -277,7 +279,7 @@ namespace Rebellion.Game.Missions
     /// <summary>
     /// Mission that attempts to injure or kill an enemy officer.
     /// </summary>
-    public class AssassinationMission : Mission
+    public class AssassinationMission : Mission, IEntityTargetingMission
     {
         public const string MissionTypeID = "Assassination";
 
@@ -285,6 +287,8 @@ namespace Rebellion.Game.Missions
         /// Instance ID of the officer selected as the assassination target.
         /// </summary>
         public string TargetOfficerInstanceID { get; set; }
+
+        string IEntityTargetingMission.TargetEntityInstanceID => TargetOfficerInstanceID;
 
         /// <summary>
         /// Creates an empty assassination mission copy.
@@ -1973,7 +1977,7 @@ namespace Rebellion.Game.Missions
     /// <summary>
     /// Mission that attempts to free a captured friendly officer.
     /// </summary>
-    public class RescueMission : Mission
+    public class RescueMission : Mission, IEntityTargetingMission
     {
         public const string MissionTypeID = "Rescue";
 
@@ -1981,6 +1985,8 @@ namespace Rebellion.Game.Missions
         /// Instance ID of the officer selected as the rescue target.
         /// </summary>
         public string TargetOfficerInstanceID { get; set; }
+
+        string IEntityTargetingMission.TargetEntityInstanceID => TargetOfficerInstanceID;
 
         /// <summary>
         /// Creates an empty rescue mission copy.
@@ -2564,7 +2570,7 @@ namespace Rebellion.Game.Missions
     /// <summary>
     /// Mission that attempts to destroy or damage a selected enemy target.
     /// </summary>
-    public class SabotageMission : Mission
+    public class SabotageMission : Mission, IEntityTargetingMission
     {
         public const string MissionTypeID = "Sabotage";
 
@@ -2572,6 +2578,8 @@ namespace Rebellion.Game.Missions
         /// Instance ID of the selected sabotage target.
         /// </summary>
         public string SabotageTargetInstanceID { get; set; }
+
+        string IEntityTargetingMission.TargetEntityInstanceID => SabotageTargetInstanceID;
 
         /// <summary>
         /// Creates an empty sabotage mission copy.

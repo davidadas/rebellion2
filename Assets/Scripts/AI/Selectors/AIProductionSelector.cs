@@ -13,6 +13,7 @@ namespace Rebellion.AI.Selectors
     /// </summary>
     internal sealed class AIProductionSelector
     {
+        private const int _buildingEnergyCost = 1;
         private const string _mixedProductType = "*";
         private static readonly AIProductionProposalScorer _scorer = new();
         private readonly AISelectionState _selectionState;
@@ -57,6 +58,24 @@ namespace Rebellion.AI.Selectors
                 return false;
 
             _selectionState.Reserve(reservations);
+            return true;
+        }
+
+        /// <summary>
+        /// Attempts to select a headquarters relocation and reserves its destination capacity.
+        /// </summary>
+        /// <param name="context">Current AI turn context.</param>
+        /// <param name="proposal">Headquarters-relocation proposal.</param>
+        /// <returns>True when the proposal is valid and nonconflicting.</returns>
+        internal bool TrySelect(AITurnContext context, AIHeadquartersRelocationProposal proposal)
+        {
+            List<AISelectionReservation> reservations = GetReservations(proposal);
+            if (!_selectionState.CanReserve(reservations) || proposal?.CanSelect(context) != true)
+                return false;
+
+            _selectionState.Reserve(reservations);
+            ReserveDestinationEnergy(proposal.Destination, _buildingEnergyCost);
+            ReserveMaintenanceCost(proposal.MaintenanceHeadroomCost);
             return true;
         }
 
@@ -129,7 +148,7 @@ namespace Rebellion.AI.Selectors
             _selectionState.Reserve(GetReservations(proposal));
             ReserveProducerCapacity(proposal);
             ReserveDestinationEnergy(proposal);
-            _selectedMaintenanceCost += proposal.GetMaintenanceCost();
+            ReserveMaintenanceCost(proposal.GetMaintenanceCost());
             if (proposal.Demand?.Kind == AIProductionDemandKind.PlanetaryStarfighterReserve)
                 _selectedPlanetaryStarfighterCount += proposal.GetManufacturingCount();
         }
@@ -420,14 +439,33 @@ namespace Rebellion.AI.Selectors
             )
                 return;
 
+            ReserveDestinationEnergy(destination, proposal.GetManufacturingCount());
+        }
+
+        /// <summary>
+        /// Reserves a number of building slots at a destination planet.
+        /// </summary>
+        /// <param name="destination">Planet whose building capacity is reserved.</param>
+        /// <param name="count">Number of building slots to reserve.</param>
+        private void ReserveDestinationEnergy(Planet destination, int count)
+        {
             int reserved = _reservedDestinationEnergy.TryGetValue(
                 destination.InstanceID,
                 out int reservedEnergy
             )
                 ? reservedEnergy
                 : 0;
-            _reservedDestinationEnergy[destination.InstanceID] =
-                reserved + proposal.GetManufacturingCount();
+            _reservedDestinationEnergy[destination.InstanceID] = reserved + count;
+        }
+
+        /// <summary>
+        /// Reserves maintenance headroom consumed by an accepted action.
+        /// </summary>
+        /// <param name="maintenanceCost">The non-negative maintenance cost to reserve.</param>
+        private void ReserveMaintenanceCost(int maintenanceCost)
+        {
+            long reserved = (long)_selectedMaintenanceCost + Math.Max(0, maintenanceCost);
+            _selectedMaintenanceCost = (int)Math.Min(int.MaxValue, reserved);
         }
 
         /// <summary>
@@ -470,6 +508,37 @@ namespace Rebellion.AI.Selectors
                     AISelectionReservationKind.FacilityAllocation,
                     removal.Planet?.InstanceID,
                     removal.BuildingType.ToString()
+                );
+                return reservations;
+            }
+
+            if (proposal is AIHeadquartersRelocationProposal relocation)
+            {
+                Add(
+                    reservations,
+                    AISelectionReservationKind.FacilityAllocation,
+                    relocation.Destination?.InstanceID,
+                    relocation.BuildingToRemove?.GetBuildingType().ToString()
+                );
+                Add(
+                    reservations,
+                    AISelectionReservationKind.ProductionBuildingReplacement,
+                    relocation.BuildingToRemove?.InstanceID
+                );
+                foreach (Fleet fleet in relocation.DefensiveFleets)
+                {
+                    Add(reservations, AISelectionReservationKind.FleetOrder, fleet.InstanceID);
+                    Add(reservations, AISelectionReservationKind.FleetMovement, fleet.InstanceID);
+                }
+                Add(
+                    reservations,
+                    AISelectionReservationKind.MissionActor,
+                    relocation.EspionageAgent?.InstanceID
+                );
+                Add(
+                    reservations,
+                    AISelectionReservationKind.Mission,
+                    relocation.EspionageMission?.InstanceID
                 );
                 return reservations;
             }

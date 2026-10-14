@@ -531,6 +531,34 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void TryExecute_DefenseFireDestroysLastBlockadingShip_ReportsBlockadeEnd()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "empire", energy: 1);
+            Building groundCannon = AddBuilding(
+                game,
+                planet,
+                "ground-cannon",
+                "empire",
+                BuildingType.Weapon
+            );
+            groundCannon.WeaponPower = 100;
+            Fleet fleet = AddBombardmentFleet(game, planet, "alliance", bombardment: 1);
+
+            BombardmentResult result = MakeBombardment(
+                    game,
+                    new SequenceRNG(intValues: new[] { 0 })
+                )
+                .TryExecute(new List<Fleet> { fleet }, planet, BombardmentType.General);
+
+            Assert.IsFalse(planet.IsBlockaded());
+            BlockadeChangedResult blockade = result.Events.OfType<BlockadeChangedResult>().Single();
+            Assert.AreSame(planet, blockade.Planet);
+            Assert.IsNull(blockade.BlockadingFleet);
+            Assert.IsFalse(blockade.Blockaded);
+        }
+
+        [Test]
         public void TryExecute_GroundCannonDestroysCarrier_DestroysEmbarkedCombatUnits()
         {
             GameRoot game = CreateGame();

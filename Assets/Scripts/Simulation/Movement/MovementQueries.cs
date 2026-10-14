@@ -1388,7 +1388,7 @@ namespace Rebellion.Simulation
         )
         {
             int distance = (int)destination.GetRawDistanceTo(originPos);
-            int distanceDivisor = _game.GetConfig().Movement.DistanceDivisor;
+            double distanceDivisor = _game.GetConfig().Movement.DistanceDivisor;
             if (distanceDivisor <= 0)
             {
                 throw new InvalidOperationException(
@@ -1398,7 +1398,7 @@ namespace Rebellion.Simulation
 
             int slowestHyperdriveRating = Math.Max(GetMovementHyperdrive(unit), 1);
             int baseTicks = IntegerMath.ScaleByPercent(
-                distance / distanceDivisor,
+                (int)(distance / distanceDivisor),
                 slowestHyperdriveRating
             );
             if (distance > 0)

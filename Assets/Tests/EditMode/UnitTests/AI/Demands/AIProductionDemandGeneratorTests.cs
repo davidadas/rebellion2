@@ -1620,6 +1620,42 @@ namespace Rebellion.Tests.AI.Demands
         }
 
         [Test]
+        public void BuildDemands_WithDeliveryOnlyFleetAtBlockadedOwnedPlanet_DoesNotAddFleetReinforcementDemand()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
+            Planet enemy = AITestSceneBuilder.AddPlanet(game, system, "enemy", rebels.InstanceID);
+            Fleet fleet = AddAttackFleet(
+                game,
+                owned,
+                enemy,
+                empire.InstanceID,
+                regimentCapacity: 1
+            );
+            CapitalShip deliveringShip = fleet.GetChildren<CapitalShip>().Single();
+            deliveringShip.ManufacturingStatus = ManufacturingStatus.Delivering;
+            deliveringShip.Movement = new MovementState { TransitTicks = 10 };
+            Fleet hostileFleet = EntityFactory.CreateFleet("hostile-fleet", rebels.InstanceID);
+            game.AttachNode(hostileFleet, owned);
+            game.AttachNode(
+                AITestSceneBuilder.CreateCapitalShip(
+                    "hostile-ship",
+                    rebels.InstanceID,
+                    combatStrength: 10000
+                ),
+                hostileFleet
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            List<AIProductionDemand> demands = new AIProductionDemandGenerator().BuildDemands(
+                context
+            );
+
+            Assert.IsFalse(demands.Any(demand => demand.DestinationFleet == fleet));
+        }
+
+        [Test]
         public void BuildDemands_WithActiveAttackAndIdleUnderstrengthFleet_AddsAssemblyDemand()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
@@ -2607,6 +2643,168 @@ namespace Rebellion.Tests.AI.Demands
                 "commandos",
                 empire.InstanceID,
                 SabotageMission.MissionTypeID
+            );
+            empire.ResearchQueue[ManufacturingType.Troop] = new List<Technology>
+            {
+                new Technology(template),
+            };
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            Assert.IsFalse(
+                new AIProductionDemandGenerator()
+                    .BuildDemands(context)
+                    .Any(item => item.Kind == AIProductionDemandKind.SpecialForces)
+            );
+        }
+
+        [Test]
+        public void BuildDemands_MobileHeadquartersWithoutEspionageAgent_AddsPriorityDemandAtHeadquarters()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet headquarters = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "headquarters",
+                empire.InstanceID
+            );
+            headquarters.IsHeadquarters = true;
+            empire.HQInstanceID = headquarters.InstanceID;
+            empire.Settings.Headquarters.IsMobile = true;
+            SpecialForces template = AITestSceneBuilder.CreateSpecialForces(
+                "espionage-agent",
+                empire.InstanceID,
+                MissionTypeIDs.Espionage
+            );
+            empire.ResearchQueue[ManufacturingType.Troop] = new List<Technology>
+            {
+                new Technology(template),
+            };
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIProductionDemand demand = new AIProductionDemandGenerator()
+                .BuildDemands(context)
+                .Single(item => item.Kind == AIProductionDemandKind.SpecialForces);
+
+            Assert.AreSame(headquarters, demand.DestinationPlanet);
+            Assert.AreEqual(1, demand.QuantityNeeded);
+            Assert.AreEqual("espionage-agent", demand.ProductTypeId);
+            Assert.AreEqual(
+                game.Config.AI.Infrastructure.MobileHeadquartersEspionageDemandPercent,
+                demand.BaseDemandPercent
+            );
+            Assert.AreEqual(
+                game.Config.AI.Infrastructure.MobileHeadquartersEspionageDemandPercent,
+                AIProductionProposalScorer.GetDemandPressure(context, demand)
+            );
+        }
+
+        [Test]
+        public void BuildDemands_MobileHeadquartersAgentOnMission_AddsReplacementDemand()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet headquarters = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "headquarters",
+                empire.InstanceID
+            );
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
+            headquarters.IsHeadquarters = true;
+            empire.HQInstanceID = headquarters.InstanceID;
+            empire.Settings.Headquarters.IsMobile = true;
+            SpecialForces template = AITestSceneBuilder.CreateSpecialForces(
+                "espionage-agent",
+                empire.InstanceID,
+                MissionTypeIDs.Espionage
+            );
+            empire.ResearchQueue[ManufacturingType.Troop] = new List<Technology>
+            {
+                new Technology(template),
+            };
+            SpecialForces activeAgent = AITestSceneBuilder.CreateSpecialForces(
+                "espionage-agent",
+                empire.InstanceID,
+                MissionTypeIDs.Espionage
+            );
+            activeAgent.InstanceID = "active-agent";
+            StubMission mission = EntityFactory.CreateMission(
+                "active-espionage",
+                empire.InstanceID,
+                target.InstanceID
+            );
+            mission.ConfigKey = MissionTypeIDs.Espionage;
+            game.AttachNode(mission, target);
+            game.AttachNode(activeAgent, mission);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIProductionDemand demand = new AIProductionDemandGenerator()
+                .BuildDemands(context)
+                .Single(item => item.Kind == AIProductionDemandKind.SpecialForces);
+
+            Assert.AreSame(headquarters, demand.DestinationPlanet);
+            Assert.AreEqual(1, demand.QuantityNeeded);
+        }
+
+        [Test]
+        public void BuildDemands_MobileHeadquartersAgentAlreadyBuilding_DoesNotAddReplacementDemand()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet headquarters = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "headquarters",
+                empire.InstanceID
+            );
+            headquarters.IsHeadquarters = true;
+            empire.HQInstanceID = headquarters.InstanceID;
+            empire.Settings.Headquarters.IsMobile = true;
+            SpecialForces template = AITestSceneBuilder.CreateSpecialForces(
+                "espionage-agent",
+                empire.InstanceID,
+                MissionTypeIDs.Espionage
+            );
+            empire.ResearchQueue[ManufacturingType.Troop] = new List<Technology>
+            {
+                new Technology(template),
+            };
+            SpecialForces buildingAgent = AITestSceneBuilder.CreateSpecialForces(
+                "espionage-agent",
+                empire.InstanceID,
+                MissionTypeIDs.Espionage
+            );
+            buildingAgent.InstanceID = "building-agent";
+            buildingAgent.ManufacturingStatus = ManufacturingStatus.Building;
+            game.AttachNode(buildingAgent, headquarters);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            Assert.IsFalse(
+                new AIProductionDemandGenerator()
+                    .BuildDemands(context)
+                    .Any(item => item.Kind == AIProductionDemandKind.SpecialForces)
+            );
+        }
+
+        [Test]
+        public void BuildDemands_FixedHeadquartersWithoutEspionageAgent_DoesNotAddPriorityDemand()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet headquarters = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "headquarters",
+                empire.InstanceID
+            );
+            headquarters.IsHeadquarters = true;
+            empire.HQInstanceID = headquarters.InstanceID;
+            empire.Settings.Headquarters.IsMobile = false;
+            SpecialForces template = AITestSceneBuilder.CreateSpecialForces(
+                "espionage-agent",
+                empire.InstanceID,
+                MissionTypeIDs.Espionage
             );
             empire.ResearchQueue[ManufacturingType.Troop] = new List<Technology>
             {

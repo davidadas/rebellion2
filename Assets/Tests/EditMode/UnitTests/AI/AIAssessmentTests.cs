@@ -1679,5 +1679,64 @@ namespace Rebellion.Tests.AI
             fleet.Order.TargetPlanetId = "missing";
             Assert.IsNull(assessment.GetAttackTargetPlanet(fleet));
         }
+
+        [Test]
+        public void GetKnownIncomingHostileFleetStrength_StaleSnapshot_DoesNotPolluteFleetCombatCache()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet planet = AITestSceneBuilder.AddPlanet(game, sector, "owned", empire.InstanceID);
+            Fleet inboundFleet = EntityFactory.CreateFleet("inbound", rebels.InstanceID);
+            inboundFleet.Movement = new MovementState { TransitTicks = 10 };
+            CapitalShip inboundShip = AITestSceneBuilder.CreateCapitalShip(
+                "inbound-ship",
+                rebels.InstanceID,
+                combatStrength: 100
+            );
+            game.AttachNode(inboundFleet, planet);
+            game.AttachNode(inboundShip, inboundFleet);
+            AITestSceneBuilder.RevealPlanet(game, empire, planet);
+            inboundShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser][0] = 300;
+
+            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+
+            Assert.AreEqual(100, assessment.GetKnownIncomingHostileFleetStrength(planet));
+            Assert.Greater(assessment.GetFleetCombatValue(inboundFleet), 100);
+        }
+
+        [Test]
+        public void GetKnownIncomingHostileFleetStrength_MultipleSameOwnerFleets_ReturnsCombinedStrength()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet planet = AITestSceneBuilder.AddPlanet(game, sector, "owned", empire.InstanceID);
+            Fleet firstFleet = EntityFactory.CreateFleet("first-inbound", rebels.InstanceID);
+            firstFleet.Movement = new MovementState { TransitTicks = 10 };
+            game.AttachNode(firstFleet, planet);
+            game.AttachNode(
+                AITestSceneBuilder.CreateCapitalShip(
+                    "first-inbound-ship",
+                    rebels.InstanceID,
+                    combatStrength: 60
+                ),
+                firstFleet
+            );
+            Fleet secondFleet = EntityFactory.CreateFleet("second-inbound", rebels.InstanceID);
+            secondFleet.Movement = new MovementState { TransitTicks = 20 };
+            game.AttachNode(secondFleet, planet);
+            game.AttachNode(
+                AITestSceneBuilder.CreateCapitalShip(
+                    "second-inbound-ship",
+                    rebels.InstanceID,
+                    combatStrength: 70
+                ),
+                secondFleet
+            );
+            AITestSceneBuilder.RevealPlanet(game, empire, planet);
+
+            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+
+            Assert.AreEqual(130, assessment.GetKnownIncomingHostileFleetStrength(planet));
+        }
     }
 }

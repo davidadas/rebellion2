@@ -9,6 +9,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 using Rebellion.Simulation;
 
 namespace Rebellion.Tests.Simulation
@@ -228,6 +229,61 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void ProcessTick_FleetContinuesFromBlockadedWaypoint_ReportsTransientBlockadeStart()
+        {
+            (Planet blockadedPlanet, Planet nextPlanet, Fleet fleet, Building delivery) =
+                CreateTransientBlockadeScenario();
+            List<BlockadeChangedResult> observed = new List<BlockadeChangedResult>();
+            using IDisposable observation = _session.Results.Observe<BlockadeChangedResult>(
+                observed.AddRange
+            );
+
+            _tick.ProcessTick();
+
+            Assert.AreSame(delivery, _game.GetSceneNodeByInstanceID<Building>(delivery.InstanceID));
+            Assert.IsTrue(delivery.IsDestroyed);
+            Assert.AreSame(nextPlanet, fleet.GetParentOfType<Planet>());
+            Assert.IsNotNull(fleet.Movement);
+            Assert.AreEqual(
+                1,
+                observed.Count(result =>
+                    result.Blockaded && ReferenceEquals(result.Planet, blockadedPlanet)
+                )
+            );
+        }
+
+        [Test]
+        public void ProcessTick_TransientWaypointBlockade_DoesNotRedirectInboundRegiment()
+        {
+            (Planet blockadedPlanet, _, _, _) = CreateTransientBlockadeScenario();
+            const string empireId = "TRANSIENT_EMPIRE";
+            Planet sourcePlanet = new Planet
+            {
+                InstanceID = "TRANSIENT_REGIMENT_SOURCE",
+                OwnerInstanceID = empireId,
+                IsColonized = true,
+                PositionX = 10,
+                PositionY = 100,
+            };
+            _game.AttachNode(sourcePlanet, blockadedPlanet.GetParent());
+            Regiment regiment = EntityFactory.CreateRegiment(
+                "TRANSIENT_INBOUND_REGIMENT",
+                empireId
+            );
+            regiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            _game.AttachNode(regiment, sourcePlanet);
+            MovementCommands movement = _session.GetService<MovementCommands>();
+            movement.RequestMove(regiment, blockadedPlanet);
+            regiment.Movement.TransitTicks = 10;
+
+            _tick.ProcessTick();
+
+            Assert.AreSame(regiment, _game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
+            Assert.AreSame(blockadedPlanet, regiment.GetParentOfType<Planet>());
+            Assert.IsNotNull(regiment.Movement);
+        }
+
+        [Test]
         public void Reset_SuspendedIterator_PreservesBusyGuardUntilDisposal()
         {
             _game.GetFactions().Add(new Faction { InstanceID = "AI", DisplayName = "AI" });
@@ -314,6 +370,126 @@ namespace Rebellion.Tests.Simulation
                 _session.GetService<ManufacturingCommands>().Enqueue(planet, order, planet)
             );
             return order;
+        }
+
+        /// <summary>
+        /// Creates a manufactured delivery and hostile fleet that finish the same waypoint leg.
+        /// </summary>
+        /// <returns>The transient blockade scenario.</returns>
+        private (
+            Planet BlockadedPlanet,
+            Planet NextPlanet,
+            Fleet Fleet,
+            Building Delivery
+        ) CreateTransientBlockadeScenario()
+        {
+            const string empireId = "TRANSIENT_EMPIRE";
+            const string allianceId = "TRANSIENT_ALLIANCE";
+            AddHumanFaction(empireId);
+            AddHumanFaction(allianceId);
+            PlanetSector sector = new PlanetSector { InstanceID = "TRANSIENT_SECTOR" };
+            Planet origin = new Planet
+            {
+                InstanceID = "TRANSIENT_ORIGIN",
+                OwnerInstanceID = allianceId,
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            Planet blockadedPlanet = new Planet
+            {
+                InstanceID = "TRANSIENT_BLOCKADED",
+                OwnerInstanceID = empireId,
+                IsColonized = true,
+                EnergyCapacity = 10,
+                PositionX = 10,
+                PositionY = 0,
+            };
+            Planet nextPlanet = new Planet
+            {
+                InstanceID = "TRANSIENT_NEXT",
+                OwnerInstanceID = allianceId,
+                IsColonized = true,
+                PositionX = 20,
+                PositionY = 0,
+            };
+            _game.AttachNode(sector, _game.Galaxy);
+            _game.AttachNode(origin, sector);
+            _game.AttachNode(blockadedPlanet, sector);
+            _game.AttachNode(nextPlanet, sector);
+
+            Fleet fleet = AttachOperationalFleet(origin, allianceId, "TRANSIENT_FLEET");
+            MovementCommands movement = _session.GetService<MovementCommands>();
+            Assert.IsTrue(
+                movement.TrySetFleetWaypointRoute(
+                    new ISceneNode[] { fleet },
+                    new[] { blockadedPlanet.InstanceID, nextPlanet.InstanceID },
+                    allianceId
+                )
+            );
+            fleet.Movement.TicksElapsed = fleet.Movement.TransitTicks - 1;
+
+            Building delivery = new Building
+            {
+                InstanceID = "TRANSIENT_DELIVERY",
+                DisplayName = "Advanced training facility",
+                OwnerInstanceID = empireId,
+                BuildingType = BuildingType.TrainingFacility,
+                ManufacturingStatus = ManufacturingStatus.Delivering,
+                Movement = new MovementState
+                {
+                    TransitTicks = 1,
+                    TicksElapsed = 0,
+                    OriginPosition = origin.GetPosition(),
+                    CurrentPosition = origin.GetPosition(),
+                },
+            };
+            _game.AttachNode(delivery, blockadedPlanet);
+
+            return (blockadedPlanet, nextPlanet, fleet, delivery);
+        }
+
+        /// <summary>
+        /// Adds a human-controlled faction to the active test game.
+        /// </summary>
+        /// <param name="instanceId">The faction identifier.</param>
+        /// <returns>The added faction.</returns>
+        private Faction AddHumanFaction(string instanceId)
+        {
+            Faction faction = new Faction { InstanceID = instanceId, DisplayName = instanceId };
+            _game.GetFactions().Add(faction);
+            _game.SetFactionController(
+                instanceId,
+                $"{instanceId}_PLAYER",
+                PlayerControllerType.Human
+            );
+            return faction;
+        }
+
+        /// <summary>
+        /// Attaches a fleet with one completed capital ship to a planet.
+        /// </summary>
+        /// <param name="planet">The fleet's planet.</param>
+        /// <param name="ownerInstanceId">The owning faction identifier.</param>
+        /// <param name="fleetInstanceId">The fleet identifier.</param>
+        /// <returns>The attached operational fleet.</returns>
+        private Fleet AttachOperationalFleet(
+            Planet planet,
+            string ownerInstanceId,
+            string fleetInstanceId
+        )
+        {
+            Fleet fleet = EntityFactory.CreateFleet(fleetInstanceId, ownerInstanceId);
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = $"{fleetInstanceId}_SHIP",
+                OwnerInstanceID = ownerInstanceId,
+                Hyperdrive = 100,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(fleet, planet);
+            _game.AttachNode(ship, fleet);
+            return fleet;
         }
 
         /// <summary>

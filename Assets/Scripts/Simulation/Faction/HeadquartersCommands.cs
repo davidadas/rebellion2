@@ -42,12 +42,31 @@ namespace Rebellion.Simulation
         /// <returns>True when the movement order was accepted.</returns>
         public bool TryRelocate(Building headquarters, Planet destination)
         {
-            if (!_queries.CanRelocate(headquarters, destination))
+            return TryRelocate(headquarters, destination, Array.Empty<ISceneNode>());
+        }
+
+        /// <summary>
+        /// Starts a validated headquarters relocation with accompanying owned units and clears its
+        /// planetary marker in transit.
+        /// </summary>
+        /// <param name="headquarters">The headquarters building to move.</param>
+        /// <param name="destination">The requested destination planet.</param>
+        /// <param name="accompanyingUnits">Owned units that must depart with the headquarters.</param>
+        /// <returns>True when the complete movement order was accepted.</returns>
+        public bool TryRelocate(
+            Building headquarters,
+            Planet destination,
+            IReadOnlyList<ISceneNode> accompanyingUnits
+        )
+        {
+            if (!_queries.CanRelocate(headquarters, destination) || accompanyingUnits == null)
                 return false;
 
             Planet origin = headquarters.GetParentOfType<Planet>();
+            List<ISceneNode> relocationGroup = new List<ISceneNode> { headquarters };
+            relocationGroup.AddRange(accompanyingUnits);
             bool moved = _movement.TryRequestMove(
-                new List<ISceneNode> { headquarters },
+                relocationGroup,
                 destination,
                 headquarters.OwnerInstanceID
             );

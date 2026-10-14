@@ -68,6 +68,7 @@ namespace Rebellion.Simulation
             if (!_queries.CanExecute(fleets, targetPlanet, type))
                 return null;
 
+            bool wasBlockaded = targetPlanet.IsBlockaded();
             BombardmentResult result = new BombardmentResult
             {
                 Planet = targetPlanet,
@@ -128,6 +129,8 @@ namespace Rebellion.Simulation
                 RecordUnitOutcomes(result);
                 SetBombardmentCombatState(fleets, targetPlanet, false);
             }
+
+            BlockadeTransitions.AddChangedResult(_game, targetPlanet, wasBlockaded, result.Events);
 
             List<GameResult> results = new List<GameResult> { result };
             results.AddRange(result.Events);
