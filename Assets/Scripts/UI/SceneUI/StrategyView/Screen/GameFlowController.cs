@@ -349,6 +349,7 @@ public sealed class GameFlowController : MonoBehaviour
             {
                 strategyController.ResumeMusic();
                 FinishGameplayActivation(session, clock, metadata, playBriefing);
+                StrategyController.PlayStrategyReadySound();
             });
             return;
         }
