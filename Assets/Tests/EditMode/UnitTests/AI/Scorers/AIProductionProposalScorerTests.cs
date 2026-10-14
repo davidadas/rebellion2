@@ -18,6 +18,51 @@ namespace Rebellion.Tests.AI.Scorers
     public class AIProductionProposalScorerTests
     {
         [Test]
+        public void GetDemandPressure_ShieldsElsewhereExceedPortfolio_KeepsLocalDefenseRequest()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
+            game.Config.AI.Infrastructure.StaticDefensePortfolioPercent = 1;
+            game.Config.AI.Infrastructure.DemandUtility.FacilityPortfolio.Weight = 1000;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet destination = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "hub",
+                faction.InstanceID
+            );
+            Planet defended = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "defended",
+                faction.InstanceID
+            );
+            for (int index = 0; index < 4; index++)
+            {
+                Building shield = AITestSceneBuilder.AddProductionFacility(
+                    game,
+                    defended,
+                    $"shield-{index}",
+                    BuildingType.Defense,
+                    ManufacturingType.None
+                );
+                shield.ShieldStrength = 80;
+            }
+            AIProductionDemand demand = new(
+                "missing-shield",
+                AIProductionDemandKind.PlanetaryDefense,
+                ManufacturingType.Building,
+                BuildingType.Defense,
+                destination,
+                1,
+                targetCount: 1,
+                baseDemandPercent: 50
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
+
+            Assert.Greater(AIProductionProposalScorer.GetDemandPressure(context, demand), 0);
+        }
+
+        [Test]
         public void Score_FacilityRemovalProposal_ReturnsZero()
         {
             AIProductionProposalScorer scorer = new AIProductionProposalScorer();

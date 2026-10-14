@@ -27,6 +27,7 @@ namespace Rebellion.AI
         public MovementCommands Movement { get; }
         public MovementQueries MovementQueries { get; }
         public ManufacturingCommands Manufacturing { get; }
+        public ManufacturingQueries ManufacturingQueries { get; }
         public MaintenanceCommands Maintenance { get; }
         public BombardmentCommands Bombardment { get; }
         public BombardmentQueries BombardmentQueries { get; }
@@ -104,6 +105,7 @@ namespace Rebellion.AI
             Movement = movement;
             MovementQueries = game == null ? null : new MovementQueries(game);
             Manufacturing = manufacturing;
+            ManufacturingQueries = game == null ? null : new ManufacturingQueries(game);
             Maintenance = maintenance;
             Bombardment = bombardment;
             BombardmentQueries = game == null ? null : new BombardmentQueries(game);

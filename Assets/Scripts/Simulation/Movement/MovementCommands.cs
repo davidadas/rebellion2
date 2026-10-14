@@ -78,37 +78,6 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Moves a fleet and keeps units already joining it synchronized with its arrival.
-        /// </summary>
-        /// <param name="fleet">The fleet receiving the movement order.</param>
-        /// <param name="destination">The requested destination.</param>
-        internal void RequestCoordinatedMove(Fleet fleet, ContainerNode destination)
-        {
-            RequestMove(fleet, destination);
-            AlignInboundUnits(fleet);
-        }
-
-        /// <summary>
-        /// Delays units already joining a moving fleet so they arrive with it.
-        /// </summary>
-        /// <param name="fleet">The moving destination fleet.</param>
-        private static void AlignInboundUnits(Fleet fleet)
-        {
-            if (fleet?.Movement == null)
-                return;
-
-            int fleetTransitTicks = fleet.Movement.TicksRemaining();
-            foreach (IMovable joiner in fleet.GetChildren<IMovable>(recursive: true))
-            {
-                if (joiner.Movement == null)
-                    continue;
-
-                joiner.Movement.TransitTicks = fleetTransitTicks;
-                joiner.Movement.TicksElapsed = 0;
-            }
-        }
-
-        /// <summary>
         /// Attempts to move a complete unit group to the first destination that accepts it.
         /// </summary>
         /// <param name="units">The units that must move together.</param>

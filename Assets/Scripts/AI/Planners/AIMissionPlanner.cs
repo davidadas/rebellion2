@@ -783,16 +783,8 @@ namespace Rebellion.AI.Planners
         /// <returns>Candidate planets ordered by campaign relevance and target value.</returns>
         private IEnumerable<Planet> GetSabotageCandidatePlanets(AITurnContext context)
         {
-            return _sabotageCandidates ??= GetFreshEnemyPlanets(context)
-                .Concat(
-                    context.Assessment.EnemyPlanets.Where(planet =>
-                        context.GetAttackDemand(planet)?.IsAssaultBlockedByShields == true
-                        && context.Assessment.IsAttackPreparationTarget(planet)
-                    )
-                )
-                .GroupBy(planet => planet.InstanceID, StringComparer.Ordinal)
-                .Select(group => group.First())
-                .Where(planet => GetSabotageTargets(context, planet).Any())
+            return _sabotageCandidates ??= context
+                .Assessment.EnemyPlanets.Where(planet => GetSabotageTargets(context, planet).Any())
                 .Shuffle(context.Random)
                 .OrderByDescending(context.Assessment.IsAttackPreparationTarget)
                 .ThenByDescending(planet =>
@@ -876,7 +868,9 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns completed enemy units and facilities not already targeted for sabotage.
+        /// Returns completed, stationary targets allowed by the planet's current campaign.
+        /// Attack campaigns exclude economic facilities. Other planets offer production facilities
+        /// first and economic facilities only when no production target remains available.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="planet">The planet to evaluate.</param>
@@ -886,13 +880,48 @@ namespace Rebellion.AI.Planners
             Planet planet
         )
         {
-            return planet
+            List<IManufacturable> eligible = planet
                 .GetChildren<IManufacturable>()
+                .Concat(
+                    context
+                        .Assessment.GetHostileFleets(planet)
+                        .SelectMany(fleet => fleet.GetChildren<CapitalShip>())
+                )
                 .Where(target =>
                     target.GetOwnerInstanceID() != context.Faction.InstanceID
                     && target.GetManufacturingStatus() == ManufacturingStatus.Complete
                     && target.Movement == null
                     && !HasActiveSabotageTarget(target.InstanceID)
+                )
+                .ToList();
+
+            if (context.Assessment.IsAttackPreparationTarget(planet))
+            {
+                return eligible.Where(target =>
+                    target is not Building building
+                    || building.IsDefenseFacility()
+                    || building.GetBuildingType()
+                        is BuildingType.Shipyard
+                            or BuildingType.TrainingFacility
+                            or BuildingType.ConstructionFacility
+                );
+            }
+
+            List<IManufacturable> productionFacilities = eligible
+                .Where(target =>
+                    target
+                        is Building
+                        {
+                            BuildingType: BuildingType.Shipyard
+                                or BuildingType.TrainingFacility
+                                or BuildingType.ConstructionFacility,
+                        }
+                )
+                .ToList();
+            return productionFacilities.Count > 0
+                ? productionFacilities
+                : eligible.Where(target =>
+                    target is Building { BuildingType: BuildingType.Mine or BuildingType.Refinery }
                 );
         }
 

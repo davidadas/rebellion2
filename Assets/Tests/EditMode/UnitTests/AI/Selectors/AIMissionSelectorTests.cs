@@ -12,6 +12,7 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
+using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Tests.AI.Helpers;
@@ -21,6 +22,121 @@ namespace Rebellion.Tests.AI.Selectors
     [TestFixture]
     public class AIMissionSelectorTests
     {
+        [TestCase(ResearchDiscipline.ShipDesign, true)]
+        [TestCase(ResearchDiscipline.ShipDesign, false)]
+        [TestCase(ResearchDiscipline.FacilityDesign, true)]
+        [TestCase(ResearchDiscipline.FacilityDesign, false)]
+        [TestCase(ResearchDiscipline.TroopTraining, true)]
+        [TestCase(ResearchDiscipline.TroopTraining, false)]
+        public void TrySelect_DistinctResearchersInSameDiscipline_AcceptsBothProposals(
+            ResearchDiscipline discipline,
+            bool samePlanet
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out _);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet firstPlanet = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "first-planet",
+                faction.InstanceID
+            );
+            Planet secondPlanet = samePlanet
+                ? firstPlanet
+                : AITestSceneBuilder.AddPlanet(game, sector, "second-planet", faction.InstanceID);
+            Officer firstOfficer = EntityFactory.CreateOfficer("first-officer", faction.InstanceID);
+            Officer secondOfficer = EntityFactory.CreateOfficer(
+                "second-officer",
+                faction.InstanceID
+            );
+            firstOfficer.SetBaseRating(Officer.GetRatingForResearchDiscipline(discipline), 60);
+            secondOfficer.SetBaseRating(Officer.GetRatingForResearchDiscipline(discipline), 60);
+            game.AttachNode(firstOfficer, firstPlanet);
+            game.AttachNode(secondOfficer, secondPlanet);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
+            AIMissionProposal first = new(
+                new[] { firstOfficer },
+                MissionTypeIDs.Research,
+                firstPlanet,
+                discipline: discipline
+            );
+            AIMissionProposal second = new(
+                new[] { secondOfficer },
+                MissionTypeIDs.Research,
+                secondPlanet,
+                discipline: discipline
+            );
+            AIMissionSelector selector = new(new AISelectionState());
+
+            Assert.IsTrue(selector.TrySelect(context, first));
+            Assert.IsTrue(selector.TrySelect(context, second));
+        }
+
+        [Test]
+        public void TrySelect_SameResearcherInDifferentDisciplines_RejectsSecondProposal()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out _);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "planet",
+                faction.InstanceID
+            );
+            Officer officer = EntityFactory.CreateOfficer("officer", faction.InstanceID);
+            officer.ShipResearch = 60;
+            officer.FacilityResearch = 60;
+            game.AttachNode(officer, planet);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
+            AIMissionProposal first = new(
+                new[] { officer },
+                MissionTypeIDs.Research,
+                planet,
+                discipline: ResearchDiscipline.ShipDesign
+            );
+            AIMissionProposal second = new(
+                new[] { officer },
+                MissionTypeIDs.Research,
+                planet,
+                discipline: ResearchDiscipline.FacilityDesign
+            );
+            AIMissionSelector selector = new(new AISelectionState());
+
+            Assert.IsTrue(selector.TrySelect(context, first));
+            Assert.IsFalse(selector.TrySelect(context, second));
+        }
+
+        [Test]
+        public void TrySelect_DistinctDiplomatsAtSamePlanet_RejectsSecondProposal()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out _);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "planet",
+                faction.InstanceID
+            );
+            Officer firstOfficer = EntityFactory.CreateOfficer("first-officer", faction.InstanceID);
+            Officer secondOfficer = EntityFactory.CreateOfficer(
+                "second-officer",
+                faction.InstanceID
+            );
+            game.AttachNode(firstOfficer, planet);
+            game.AttachNode(secondOfficer, planet);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
+            AIMissionProposal first = new(new[] { firstOfficer }, MissionTypeIDs.Diplomacy, planet);
+            AIMissionProposal second = new(
+                new[] { secondOfficer },
+                MissionTypeIDs.Diplomacy,
+                planet
+            );
+            AIMissionSelector selector = new(new AISelectionState());
+
+            Assert.IsTrue(selector.TrySelect(context, first));
+            Assert.IsFalse(selector.TrySelect(context, second));
+        }
+
         [Test]
         public void Execute_WithOfficerLedHostileMission_AssignsDecoyIntentUnit()
         {
@@ -169,7 +285,7 @@ namespace Rebellion.Tests.AI.Selectors
         }
 
         [Test]
-        public void Execute_WithSpecialForcesLedMission_DoesNotAssignDecoy()
+        public void FinalizeSelection_WithSpecialForcesLedMission_AssignsCompatibleDecoy()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
@@ -195,7 +311,148 @@ namespace Rebellion.Tests.AI.Selectors
             AIMissionProposal selected = context
                 .SelectedProposals.OfType<AIMissionProposal>()
                 .Single();
-            Assert.IsEmpty(selected.DecoyParticipants);
+            CollectionAssert.AreEqual(new[] { decoy }, selected.DecoyParticipants);
+        }
+
+        [TestCase(2)]
+        [TestCase(3)]
+        [TestCase(4)]
+        public void FinalizeSelection_WithSelectedSpecialForcesMissions_PairsWithoutReusingParticipants(
+            int participantCount
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, sector, "origin", empire.InstanceID);
+            Planet target = AITestSceneBuilder.AddPlanet(game, sector, "target", rebels.InstanceID);
+            List<AIMissionProposal> missions = new();
+            for (int index = 0; index < participantCount; index++)
+            {
+                SpecialForces participant = CreateSpecialForces(
+                    $"participant-{index}",
+                    empire.InstanceID
+                );
+                game.AttachNode(participant, origin);
+                AIMissionProposal mission = new(
+                    new[] { participant },
+                    EspionageMission.MissionTypeID,
+                    target
+                );
+                mission.SetScore(50 - index);
+                missions.Add(mission);
+            }
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            context.SetSelectedProposals(missions);
+
+            new AIMissionSelector(new AISelectionState()).FinalizeSelection(context);
+
+            List<AIMissionProposal> selected = context
+                .SelectedProposals.OfType<AIMissionProposal>()
+                .ToList();
+            Assert.AreEqual(participantCount / 2, selected.Count);
+            Assert.AreSame(missions[0].Participant, selected[0].Participant);
+            Assert.IsTrue(selected.All(mission => mission.DecoyParticipants.Count == 1));
+            Assert.AreEqual(
+                selected.Count * 2,
+                selected.SelectMany(mission => mission.Participants).Distinct().Count()
+            );
+        }
+
+        [Test]
+        public void FinalizeSelection_WithPairedSpecialForces_StartsMissionWithBothParticipants()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, sector, "origin", empire.InstanceID);
+            Planet target = AITestSceneBuilder.AddPlanet(game, sector, "target", rebels.InstanceID);
+            SpecialForces primary = CreateSpecialForces("primary", empire.InstanceID);
+            SpecialForces partner = CreateSpecialForces("partner", empire.InstanceID);
+            game.AttachNode(primary, origin);
+            game.AttachNode(partner, origin);
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIMissionProposal proposal = new(
+                new[] { primary },
+                EspionageMission.MissionTypeID,
+                target
+            );
+            proposal.SetScore(50);
+            context.SetSelectedProposals(new[] { proposal });
+
+            new AIMissionSelector(new AISelectionState()).FinalizeSelection(context);
+            context.SelectedProposals.OfType<AIMissionProposal>().Single().Execute(context);
+
+            Mission mission = game.GetSceneNodesByType<Mission>().Single();
+            CollectionAssert.AreEqual(new[] { primary }, mission.GetMainParticipants());
+            CollectionAssert.AreEqual(new[] { partner }, mission.GetDecoyParticipants());
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void FinalizeSelection_WithUnclaimedSpecialForces_RequiresCompatiblePartner(
+            bool compatible
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, sector, "origin", empire.InstanceID);
+            Planet target = AITestSceneBuilder.AddPlanet(game, sector, "target", rebels.InstanceID);
+            SpecialForces primary = CreateSpecialForces("primary", empire.InstanceID);
+            SpecialForces partner = CreateSpecialForces("partner", empire.InstanceID);
+            if (!compatible)
+                partner.AllowedMissionTypeIDs = new List<string> { MissionTypeIDs.Reconnaissance };
+            game.AttachNode(primary, origin);
+            game.AttachNode(partner, origin);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIMissionProposal mission = new(
+                new[] { primary },
+                EspionageMission.MissionTypeID,
+                target
+            );
+            mission.SetScore(50);
+            context.SetSelectedProposals(new[] { mission });
+
+            new AIMissionSelector(new AISelectionState()).FinalizeSelection(context);
+
+            AIMissionProposal selected = context
+                .SelectedProposals.OfType<AIMissionProposal>()
+                .SingleOrDefault();
+            if (compatible)
+                CollectionAssert.AreEqual(new[] { partner }, selected.DecoyParticipants);
+            else
+                Assert.IsNull(selected);
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void FinalizeSelection_WithSoloSpecialForces_HoldsOnlyHostileMission(bool hostile)
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, sector, "origin", empire.InstanceID);
+            Planet target = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "target",
+                hostile ? rebels.InstanceID : empire.InstanceID
+            );
+            SpecialForces primary = CreateSpecialForces("primary", empire.InstanceID);
+            game.AttachNode(primary, origin);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIMissionProposal mission = new(
+                new[] { primary },
+                EspionageMission.MissionTypeID,
+                target
+            );
+            mission.SetScore(50);
+            context.SetSelectedProposals(new[] { mission });
+
+            new AIMissionSelector(new AISelectionState()).FinalizeSelection(context);
+
+            Assert.AreEqual(
+                hostile ? 0 : 1,
+                context.SelectedProposals.OfType<AIMissionProposal>().Count()
+            );
         }
 
         [Test]

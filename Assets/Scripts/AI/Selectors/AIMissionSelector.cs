@@ -10,7 +10,7 @@ using Rebellion.Game.Units;
 namespace Rebellion.AI.Selectors
 {
     /// <summary>
-    /// Assigns available decoys to officer-led hostile missions.
+    /// Assigns decoys to hostile missions and requires partners for special-forces teams.
     /// </summary>
     internal sealed class AIMissionSelector
     {
@@ -68,16 +68,6 @@ namespace Rebellion.AI.Selectors
                     AISelectionReservationKind.MissionRecruitment,
                     mission.Participant?.OwnerInstanceID
                 );
-            else if (
-                mission.MissionTypeID == MissionTypeIDs.Research
-                && mission.Discipline.HasValue
-            )
-                Add(
-                    reservations,
-                    AISelectionReservationKind.MissionResearch,
-                    mission.Participant?.OwnerInstanceID,
-                    mission.Discipline.Value.ToString()
-                );
             else if (mission.TargetOfficer != null)
                 Add(
                     reservations,
@@ -90,7 +80,7 @@ namespace Rebellion.AI.Selectors
                     AISelectionReservationKind.MissionTarget,
                     mission.SelectedTarget.InstanceID
                 );
-            else
+            else if (mission.MissionTypeID != MissionTypeIDs.Research)
                 Add(
                     reservations,
                     AISelectionReservationKind.MissionAtPlanet,
@@ -180,10 +170,94 @@ namespace Rebellion.AI.Selectors
                 origins
             );
             RemoveUnsafeOfficerMissions(context, selected);
+            PairSpecialForcesMissions(context, selected);
 
             foreach (SpecialForces unusedDecoy in decoys.OfType<SpecialForces>())
-                context.SetSpecialForcesIntent(unusedDecoy, SpecialForcesIntent.Reserve);
+            {
+                if (
+                    !selected
+                        .OfType<AIMissionProposal>()
+                        .Any(mission => mission.Participants.Contains(unusedDecoy))
+                )
+                    context.SetSpecialForcesIntent(unusedDecoy, SpecialForcesIntent.Reserve);
+            }
             context.SetSelectedProposals(selected);
+        }
+
+        /// <summary>
+        /// Pairs hostile special-forces missions with compatible unclaimed units or lower-priority
+        /// mission leaders, leaving unmatched teams available for a later turn.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="selected">The selected proposals after officer protection.</param>
+        private static void PairSpecialForcesMissions(
+            AITurnContext context,
+            IList<AIProposal> selected
+        )
+        {
+            List<AIMissionProposal> missions = selected
+                .OfType<AIMissionProposal>()
+                .Where(mission =>
+                    mission.Participant is SpecialForces
+                    && mission.DecoyParticipants.Count == 0
+                    && context.Assessment.IsEnemyPlanet(mission.TargetPlanet)
+                )
+                .OrderByDescending(mission => GetUnprotectedFoilRisk(context, mission))
+                .ThenByDescending(mission => mission.Score)
+                .ThenBy(mission => mission.GetSortKey(), StringComparer.Ordinal)
+                .ToList();
+            if (missions.Count == 0)
+                return;
+
+            Dictionary<AIMissionProposal, int> indexes = selected
+                .Select((proposal, index) => (Mission: proposal as AIMissionProposal, Index: index))
+                .Where(entry => entry.Mission != null)
+                .ToDictionary(entry => entry.Mission, entry => entry.Index);
+            HashSet<IMissionParticipant> claimed = selected
+                .OfType<AIMissionProposal>()
+                .SelectMany(mission => mission.Participants)
+                .ToHashSet();
+            List<IMissionParticipant> available = context
+                .Assessment.AvailableMissionParticipants.OfType<SpecialForces>()
+                .Cast<IMissionParticipant>()
+                .ToList();
+            Dictionary<IMissionParticipant, Planet> origins = available.ToDictionary(
+                participant => participant,
+                participant => participant.GetParentOfType<Planet>()
+            );
+            List<IMissionParticipant> unclaimed = available
+                .Where(participant => !claimed.Contains(participant))
+                .ToList();
+
+            for (int index = 0; index < missions.Count; index++)
+            {
+                AIMissionProposal mission = missions[index];
+                if (selected[indexes[mission]] == null)
+                    continue;
+
+                IMissionParticipant partner = SelectDecoy(mission, unclaimed, origins);
+                if (partner == null)
+                {
+                    List<AIMissionProposal> partners = missions
+                        .Skip(index + 1)
+                        .Where(candidate => selected[indexes[candidate]] != null)
+                        .ToList();
+                    partner = SelectDecoy(
+                        mission,
+                        partners.Select(candidate => candidate.Participant),
+                        origins
+                    );
+                    if (partner != null)
+                        selected[
+                            indexes[partners.Single(candidate => candidate.Participant == partner)]
+                        ] = null;
+                }
+
+                selected[indexes[mission]] =
+                    partner == null ? null : mission.WithAdditionalDecoy(partner);
+                if (partner != null)
+                    unclaimed.Remove(partner);
+            }
         }
 
         /// <summary>

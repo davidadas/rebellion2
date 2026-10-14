@@ -270,8 +270,10 @@ namespace Rebellion.Tests.Game.Units
         public void SerializeAndDeserialize_WithPopulatedSpecialForces_MaintainsState()
         {
             _specialForces.ManufacturingQueueSequence = 7;
+            _specialForces.IsAIProductionFiller = true;
             string serialized = SerializationHelper.Serialize(_specialForces);
             SpecialForces deserialized = SerializationHelper.Deserialize<SpecialForces>(serialized);
+            Assert.IsTrue(deserialized.IsAIProductionFiller);
 
             Assert.AreEqual(
                 _specialForces.InstanceID,

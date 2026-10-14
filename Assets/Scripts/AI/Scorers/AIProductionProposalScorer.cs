@@ -78,7 +78,9 @@ namespace Rebellion.AI.Scorers
             );
 
             int projectedHeadroom =
-                context.Assessment.ProjectedMaintenanceHeadroom - maintenanceCost;
+                context.Assessment.ProjectedMaintenanceHeadroom
+                - maintenanceCost
+                + proposal.ReplacedMaintenanceCost;
             if (
                 maintenanceCost > 0
                 && proposal.Demand.RestoresMaintenanceCapacity == false
@@ -146,6 +148,7 @@ namespace Rebellion.AI.Scorers
                         )
                 ),
                 AIProductionDemandKind.BuildingUpgrade => GetUpgradePressure(context, demand),
+                AIProductionDemandKind.IdleSpecialForces => demand.BaseDemandPercent,
                 AIProductionDemandKind.ConstructionFacility
                 or AIProductionDemandKind.Shipyard
                 or AIProductionDemandKind.TrainingFacility => GetFacilityPressure(context, demand),
@@ -426,7 +429,10 @@ namespace Rebellion.AI.Scorers
                 utility.DefenseThreat
             );
             if (demand.Kind == AIProductionDemandKind.PlanetaryDefense)
-                pressure += GetPortfolioPressure(context, AIProductionDemandKind.PlanetaryDefense);
+                pressure += Math.Max(
+                    0,
+                    GetPortfolioPressure(context, AIProductionDemandKind.PlanetaryDefense)
+                );
 
             double boundedPressure = Math.Max(0, Math.Min(100, pressure));
             if (!demand.EstablishesInitialShield)
@@ -560,7 +566,9 @@ namespace Rebellion.AI.Scorers
                     context,
                     fleet,
                     targetPlanet,
-                    demand.QuantityNeeded
+                    demand.Kind == AIProductionDemandKind.FleetCapitalShip
+                        ? demand.QuantityNeeded
+                        : demand.DeficitCount
                 );
                 if (
                     demand.Kind

@@ -89,7 +89,6 @@ namespace Rebellion.AI.Selectors
         MissionActor,
         Mission,
         MissionRecruitment,
-        MissionResearch,
         MissionOfficer,
         MissionTarget,
         MissionAtPlanet,

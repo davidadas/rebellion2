@@ -179,6 +179,9 @@ namespace Rebellion.Game.Units
         public int ManufacturingProgress { get; set; } = 0;
         public ManufacturingStatus ManufacturingStatus { get; set; } = ManufacturingStatus.Building;
 
+        /// <summary>Gets or sets whether this unfinished order was started using spare AI capacity.</summary>
+        public bool IsAIProductionFiller { get; set; }
+
         // Movement Info.
         public MovementState Movement { get; set; }
 
@@ -234,6 +237,7 @@ namespace Rebellion.Game.Units
             copy.ManufacturingQueueSequence = ManufacturingQueueSequence;
             copy.ManufacturingProgress = ManufacturingProgress;
             copy.ManufacturingStatus = ManufacturingStatus;
+            copy.IsAIProductionFiller = IsAIProductionFiller;
             copy.Movement = Movement?.CreateCopy();
         }
 

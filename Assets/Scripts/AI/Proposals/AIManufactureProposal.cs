@@ -18,6 +18,7 @@ namespace Rebellion.AI.Proposals
     /// </summary>
     public sealed class AIManufactureProposal : AIProposal
     {
+        private readonly IManufacturable _orderToAdopt;
         public AIProductionDemand Demand { get; }
 
         public Planet ProducerPlanet { get; }
@@ -35,15 +36,63 @@ namespace Rebellion.AI.Proposals
 
         public ContainerNode Destination => Demand?.Destination;
 
+        /// <summary>Gets the unfinished filler order that this demanded action may replace.</summary>
+        private IManufacturable InterruptibleOrder =>
+            _orderToAdopt != null
+                ? ProducerPlanet
+                    ?.GetManufacturingQueue()
+                    .TryGetValue(Demand.ManufacturingType, out var queue) == true
+                && queue.Contains(_orderToAdopt)
+                && _orderToAdopt.ManufacturingStatus == ManufacturingStatus.Building
+                && !_orderToAdopt.IsManufacturingComplete()
+                    ? _orderToAdopt
+                    : null
+                : Demand?.IsProductionFiller == false
+                    ? ManufacturingQueries.GetInterruptibleManufacturingOrder(
+                        ProducerPlanet,
+                        Demand?.ManufacturingType ?? ManufacturingType.None
+                    )
+                    : null;
+
+        /// <summary>Gets maintenance released by replacing an unfinished filler order.</summary>
+        internal int ReplacedMaintenanceCost =>
+            ReusesFillerProduction ? 0 : InterruptibleOrder?.MaintenanceCost ?? 0;
+
+        /// <summary>Gets whether the unfinished filler matches this requested product and destination.</summary>
+        internal bool ReusesFillerProduction =>
+            InterruptibleOrder is ISceneNode node
+            && InterruptibleOrder.GetTypeID() == Product?.GetReference()?.GetTypeID()
+            && ReferenceEquals(node.GetParent(), Destination);
+
+        /// <summary>Gets destination space released by the producer's replaceable unfinished building.</summary>
+        internal int ReleasedDestinationSpace =>
+            InterruptibleOrder is Building building
+            && ReferenceEquals(building.GetParent(), Destination)
+                ? 1
+                : 0;
+
+        /// <summary>Gets whether this demanded action can replace the producer's filler order.</summary>
+        internal bool InterruptsFillerProduction => InterruptibleOrder != null;
+
+        /// <summary>Gets usable producer capacity, including a lane occupied only by interruptible filler.</summary>
+        internal int AvailableProducerCapacity =>
+            InterruptibleOrder != null
+                ? ProducerPlanet.GetProductionFacilityCount(Demand.ManufacturingType)
+                : ProducerPlanet.GetAvailableManufacturingCapacity(Demand.ManufacturingType);
+
         internal bool DistributesDemand { get; }
 
         internal bool UsesSharedProducerCapacity =>
-            !IsFacilityExpansionDemand() && !DistributesDemand;
+            !IsFacilityExpansionDemand()
+            && !DistributesDemand
+            && Demand?.IsProductionFiller != true;
 
         internal bool IsProductionFacilityExpansion => IsFacilityExpansionDemand();
 
         internal override AIProposalPriority Priority =>
-            Demand?.Kind == AIProductionDemandKind.ColonizationFleetSeedCapitalShip
+            Demand?.IsEmergencyDefense == true ? AIProposalPriority.Mandatory
+            : Demand?.Kind == AIProductionDemandKind.IdleSpecialForces ? AIProposalPriority.Filler
+            : Demand?.Kind == AIProductionDemandKind.ColonizationFleetSeedCapitalShip
             || Demand?.DestinationFleet?.RoleType == FleetRoleType.Colonization
                 ? AIProposalPriority.Mandatory
             : Demand?.Kind == AIProductionDemandKind.PlanetaryDefense
@@ -57,17 +106,20 @@ namespace Rebellion.AI.Proposals
         /// <param name="producerPlanet">Planet that will produce the item.</param>
         /// <param name="product">Technology to manufacture.</param>
         /// <param name="distributesDemand">Whether the proposal may satisfy demand across producers.</param>
+        /// <param name="orderToAdopt">An existing project to protect without restarting construction.</param>
         internal AIManufactureProposal(
             AIProductionDemand demand,
             Planet producerPlanet,
             Technology product,
-            bool distributesDemand
+            bool distributesDemand,
+            IManufacturable orderToAdopt = null
         )
         {
             Demand = demand;
             ProducerPlanet = producerPlanet;
             Product = product;
             DistributesDemand = distributesDemand;
+            _orderToAdopt = orderToAdopt;
             ProducerAlternatives = Array.Empty<AIManufactureProposal>();
         }
 
@@ -114,6 +166,7 @@ namespace Rebellion.AI.Proposals
             ProducerPlanet = first?.ProducerPlanet;
             Product = first?.Product;
             DistributesDemand = first?.DistributesDemand == true;
+            _orderToAdopt = first?._orderToAdopt;
             ProducerAlternatives =
                 candidates?.Skip(1).ToList() ?? new List<AIManufactureProposal>();
         }
@@ -175,6 +228,16 @@ namespace Rebellion.AI.Proposals
         }
 
         /// <summary>
+        /// Validates a future producer choice without committing work or requiring an idle lane.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <returns>True when the unit request and its destination remain valid.</returns>
+        internal bool CanPlan(AITurnContext context)
+        {
+            return IsStillValid(context, validateOrderAcceptance: false, allowFutureProducer: true);
+        }
+
+        /// <summary>
         /// Returns whether this proposal may execute against the current game state.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
@@ -194,10 +257,23 @@ namespace Rebellion.AI.Proposals
             if (!CanExecute(context))
                 return;
 
+            int maintenanceCredit = ReplacedMaintenanceCost;
+            IManufacturable filler = InterruptibleOrder;
+            if (ReusesFillerProduction)
+            {
+                filler.IsAIProductionFiller = false;
+                return;
+            }
+            if (
+                filler != null
+                && !context.Manufacturing.CancelManufacturing(filler, context.Faction.InstanceID)
+            )
+                return;
+
             if (Demand.Kind == AIProductionDemandKind.BuildingUpgrade)
             {
                 if (ExecuteBuildingUpgrade(context))
-                    CommitMaintenance(context);
+                    CommitMaintenance(context, maintenanceCredit);
                 return;
             }
 
@@ -205,7 +281,7 @@ namespace Rebellion.AI.Proposals
             {
                 bool started = context.Manufacturing.StartManufacturing(
                     ProducerPlanet,
-                    Product.GetReference(),
+                    GetProductionTemplate(),
                     Destination,
                     GetManufacturingCount(),
                     context.Faction.InstanceID
@@ -213,11 +289,12 @@ namespace Rebellion.AI.Proposals
                 if (!started)
                     LogEnqueueFailure();
                 else
-                    CommitMaintenance(context);
+                    CommitMaintenance(context, maintenanceCredit);
                 return;
             }
 
             IManufacturable manufacturable = Product.GetReferenceCopy();
+            manufacturable.IsAIProductionFiller = Demand.IsProductionFiller;
             if (manufacturable is not ISceneNode sceneNode)
                 return;
 
@@ -234,7 +311,7 @@ namespace Rebellion.AI.Proposals
                 if (!EnqueueFleetSeed(context, capitalShip, fleetPlanet))
                     LogEnqueueFailure();
                 else
-                    CommitMaintenance(context);
+                    CommitMaintenance(context, maintenanceCredit);
                 return;
             }
 
@@ -243,7 +320,7 @@ namespace Rebellion.AI.Proposals
                 if (!EnqueueAtPlanet(context, planet, manufacturable))
                     LogEnqueueFailure();
                 else
-                    CommitMaintenance(context);
+                    CommitMaintenance(context, maintenanceCredit);
                 return;
             }
 
@@ -252,7 +329,7 @@ namespace Rebellion.AI.Proposals
                 if (!context.Manufacturing.Enqueue(ProducerPlanet, manufacturable, fleet))
                     LogEnqueueFailure();
                 else
-                    CommitMaintenance(context);
+                    CommitMaintenance(context, maintenanceCredit);
             }
         }
 
@@ -262,6 +339,8 @@ namespace Rebellion.AI.Proposals
         /// <returns>The maintenance cost.</returns>
         public int GetMaintenanceCost()
         {
+            if (ReusesFillerProduction)
+                return 0;
             long totalMaintenanceCost = (long)GetUnitMaintenanceCost() * GetManufacturingCount();
             return totalMaintenanceCost > int.MaxValue ? int.MaxValue : (int)totalMaintenanceCost;
         }
@@ -272,6 +351,8 @@ namespace Rebellion.AI.Proposals
         /// <returns>The per-item maintenance cost.</returns>
         internal int GetUnitMaintenanceCost()
         {
+            if (ReusesFillerProduction)
+                return 0;
             int maintenanceCost = Product?.GetReference()?.GetMaintenanceCost() ?? 0;
             if (
                 Demand?.Kind != AIProductionDemandKind.BuildingUpgrade
@@ -289,18 +370,41 @@ namespace Rebellion.AI.Proposals
         /// <returns>The proposal representing the accepted prefix.</returns>
         internal AIManufactureProposal WithManufacturingCount(int count)
         {
-            if (!IsCountedManufacturingDemand() || Demand == null)
+            if (
+                !IsCountedManufacturingDemand()
+                || Demand == null
+                || count == GetManufacturingCount()
+            )
                 return this;
 
             AIManufactureProposal resolved = new AIManufactureProposal(
                 Demand.WithQuantity(Math.Max(0, Math.Min(count, Demand.QuantityNeeded))),
                 ProducerPlanet,
                 Product,
-                DistributesDemand
+                DistributesDemand,
+                _orderToAdopt
             );
             if (HasScore)
                 resolved.SetScore(Score);
             return resolved;
+        }
+
+        /// <summary>Fixes an adoption decision so later execution cannot turn it into new construction.</summary>
+        /// <returns>This proposal or an action tied to the existing matching project.</returns>
+        internal AIManufactureProposal WithAdoptedFiller()
+        {
+            if (_orderToAdopt != null || !ReusesFillerProduction)
+                return this;
+            AIManufactureProposal adopted = new AIManufactureProposal(
+                Demand,
+                ProducerPlanet,
+                Product,
+                DistributesDemand,
+                InterruptibleOrder
+            );
+            if (HasScore)
+                adopted.SetScore(Score);
+            return adopted;
         }
 
         /// <summary>
@@ -345,8 +449,13 @@ namespace Rebellion.AI.Proposals
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="validateOrderAcceptance">Whether to validate structural order acceptance.</param>
+        /// <param name="allowFutureProducer">Whether the producer may become available later.</param>
         /// <returns>True if the proposal is still valid.</returns>
-        private bool IsStillValid(AITurnContext context, bool validateOrderAcceptance)
+        private bool IsStillValid(
+            AITurnContext context,
+            bool validateOrderAcceptance,
+            bool allowFutureProducer = false
+        )
         {
             if (
                 context?.Faction == null
@@ -363,6 +472,33 @@ namespace Rebellion.AI.Proposals
             if (!ProducerPlanet.IsColonized || ProducerPlanet.IsDestroyed)
                 return false;
 
+            if (
+                Demand.IsProductionFiller
+                && ManufacturingQueries.GetManufacturingOrder(
+                    ProducerPlanet,
+                    Demand.ManufacturingType
+                ) != null
+            )
+                return false;
+
+            if (_orderToAdopt != null && !ReferenceEquals(InterruptibleOrder, _orderToAdopt))
+                return false;
+
+            bool producesUnit = Product.GetReference() is not Building;
+            if (
+                producesUnit
+                && !allowFutureProducer
+                && InterruptibleOrder == null
+                && (
+                    GetManufacturingCount() != 1
+                    || ManufacturingQueries.GetManufacturingOrder(
+                        ProducerPlanet,
+                        Demand.ManufacturingType
+                    ) != null
+                )
+            )
+                return false;
+
             if (Destination is Fleet destinationFleet && destinationFleet.Movement != null)
                 return false;
 
@@ -374,6 +510,11 @@ namespace Rebellion.AI.Proposals
                 )
                     return false;
             }
+            else if (allowFutureProducer && producesUnit)
+            {
+                if (Demand.QuantityNeeded <= 0)
+                    return false;
+            }
             else if (DistributesDemand)
             {
                 if (
@@ -382,9 +523,7 @@ namespace Rebellion.AI.Proposals
                 )
                     return false;
             }
-            else if (
-                ProducerPlanet.GetAvailableManufacturingCapacity(Demand.ManufacturingType) <= 0
-            )
+            else if (AvailableProducerCapacity <= 0)
                 return false;
 
             if (Product.GetReference().GetManufacturingType() != Demand.ManufacturingType)
@@ -399,7 +538,8 @@ namespace Rebellion.AI.Proposals
                     Product.GetReference(),
                     Destination,
                     GetManufacturingCount(),
-                    context.Faction.InstanceID
+                    context.Faction.InstanceID,
+                    InterruptibleOrder
                 )
             )
                 return false;
@@ -415,14 +555,21 @@ namespace Rebellion.AI.Proposals
                 or AIProductionDemandKind.BuildingUpgrade
                 or AIProductionDemandKind.PlanetaryDefense => CanManufactureBuilding(context),
                 AIProductionDemandKind.FleetCapitalShip => CanManufactureCapitalShip(context),
-                AIProductionDemandKind.FleetStarfighter => CanManufactureStarfighter(context),
+                AIProductionDemandKind.FleetStarfighter => CanManufactureStarfighter(
+                    context,
+                    allowFutureProducer
+                ),
                 AIProductionDemandKind.PlanetaryStarfighterReserve =>
                     CanManufacturePlanetStarfighter(context),
-                AIProductionDemandKind.FleetRegiment => CanManufactureRegiment(context),
+                AIProductionDemandKind.FleetRegiment => CanManufactureRegiment(
+                    context,
+                    allowFutureProducer
+                ),
                 AIProductionDemandKind.GarrisonRegimentReserve => CanManufacturePlanetRegiment(
                     context
                 ),
-                AIProductionDemandKind.SpecialForces => CanManufactureSpecialForces(context),
+                AIProductionDemandKind.SpecialForces or AIProductionDemandKind.IdleSpecialForces =>
+                    CanManufactureSpecialForces(context),
                 AIProductionDemandKind.FleetSeedCapitalShip
                 or AIProductionDemandKind.ColonizationFleetSeedCapitalShip =>
                     CanManufactureFleetSeed(context),
@@ -505,7 +652,16 @@ namespace Rebellion.AI.Proposals
             if (Demand.Kind == AIProductionDemandKind.BuildingUpgrade)
                 return CanReplaceProductionFacility(context, destinationPlanet, building);
 
-            if (destinationPlanet.GetAvailableEnergy() < GetManufacturingCount())
+            if (
+                Math.Min(
+                    destinationPlanet.GetAvailableEnergy() + ReleasedDestinationSpace,
+                    context.StrategicPlan.GetAvailableConstructionSpace(
+                        destinationPlanet,
+                        building.BuildingType,
+                        Demand.IsEmergencyDefense
+                    )
+                ) < GetManufacturingCount()
+            )
                 return false;
 
             if (building.GetBuildingType() != Demand.BuildingType)
@@ -619,10 +775,11 @@ namespace Rebellion.AI.Proposals
         /// Commits this successfully queued order to the turn-scoped maintenance budget.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        private void CommitMaintenance(AITurnContext context)
+        /// <param name="maintenanceCredit">Maintenance released by interrupting filler before this action.</param>
+        private void CommitMaintenance(AITurnContext context, int maintenanceCredit = 0)
         {
             if (Demand?.RestoresMaintenanceCapacity != true)
-                context.CommitManufacturingMaintenance(GetMaintenanceCost());
+                context.CommitManufacturingMaintenance(GetMaintenanceCost() - maintenanceCredit);
         }
 
         /// <summary>
@@ -641,7 +798,18 @@ namespace Rebellion.AI.Proposals
         /// <returns>The manufacturing count.</returns>
         internal int GetManufacturingCount()
         {
+            if (Demand?.IsProductionFiller == true || ReusesFillerProduction)
+                return 1;
             return IsCountedManufacturingDemand() ? Demand?.QuantityNeeded ?? 0 : 1;
+        }
+
+        /// <summary>Creates a queue template carrying the selection's spare-capacity designation.</summary>
+        /// <returns>A copy of the selected product with the appropriate filler state.</returns>
+        private IManufacturable GetProductionTemplate()
+        {
+            IManufacturable template = Product.GetReferenceCopy();
+            template.IsAIProductionFiller = Demand.IsProductionFiller;
+            return template;
         }
 
         /// <summary>
@@ -671,13 +839,17 @@ namespace Rebellion.AI.Proposals
         /// Returns whether a starfighter can be manufactured into a fleet.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
+        /// <param name="allowPlannedCapacity">Whether carrier availability is checked by a future schedule.</param>
         /// <returns>True if the starfighter can be manufactured.</returns>
-        private bool CanManufactureStarfighter(AITurnContext context)
+        private bool CanManufactureStarfighter(
+            AITurnContext context,
+            bool allowPlannedCapacity = false
+        )
         {
             return Destination is Fleet destinationFleet
                 && destinationFleet.GetOwnerInstanceID() == context.Faction.InstanceID
                 && Product.GetReference() is Starfighter
-                && destinationFleet.FindShipForStarfighter() != null;
+                && (allowPlannedCapacity || destinationFleet.FindShipForStarfighter() != null);
         }
 
         /// <summary>
@@ -712,13 +884,17 @@ namespace Rebellion.AI.Proposals
         /// Returns whether a regiment can be manufactured into a fleet.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
+        /// <param name="allowPlannedCapacity">Whether carrier availability is checked by a future schedule.</param>
         /// <returns>True if the regiment can be manufactured.</returns>
-        private bool CanManufactureRegiment(AITurnContext context)
+        private bool CanManufactureRegiment(
+            AITurnContext context,
+            bool allowPlannedCapacity = false
+        )
         {
             return Destination is Fleet destinationFleet
                 && destinationFleet.GetOwnerInstanceID() == context.Faction.InstanceID
                 && Product.GetReference() is Regiment
-                && destinationFleet.FindShipForRegiment() != null;
+                && (allowPlannedCapacity || destinationFleet.FindShipForRegiment() != null);
         }
 
         /// <summary>
@@ -777,7 +953,9 @@ namespace Rebellion.AI.Proposals
                 return true;
 
             int minimumHeadroom = GetMinimumMaintenanceHeadroom(context);
-            return context.AvailableProjectedMaintenanceHeadroom - maintenanceCost
+            return context.AvailableProjectedMaintenanceHeadroom
+                    - maintenanceCost
+                    + ReplacedMaintenanceCost
                 >= minimumHeadroom;
         }
     }

@@ -717,6 +717,38 @@ namespace Rebellion.Tests.AI.Scorers
             Assert.Greater(starfighterScore, shipyardScore);
         }
 
+        [TestCase(BuildingType.Shipyard)]
+        [TestCase(BuildingType.TrainingFacility)]
+        [TestCase(BuildingType.ConstructionFacility)]
+        public void Score_SabotageProductionFacility_ExceedsEconomicFacility(BuildingType type)
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, sector, "origin", empire.InstanceID);
+            Planet target = AITestSceneBuilder.AddPlanet(game, sector, "target", rebels.InstanceID);
+            Building production = AITestSceneBuilder.CreateBuildingTemplate("production", type);
+            Building mine = AITestSceneBuilder.CreateBuildingTemplate("mine", BuildingType.Mine);
+            production.OwnerInstanceID = rebels.InstanceID;
+            mine.OwnerInstanceID = rebels.InstanceID;
+            game.AttachNode(production, target);
+            game.AttachNode(mine, target);
+            SpecialForces saboteur = AITestSceneBuilder.CreateSpecialForces(
+                "saboteur",
+                empire.InstanceID
+            );
+            saboteur.AllowedMissionTypeIDs.Add(MissionTypeIDs.Sabotage);
+            saboteur.Ratings[SkillRating.Espionage] = 100;
+            game.AttachNode(saboteur, origin);
+            game.Config.AI.MissionPlanning.Utility.Sabotage.Infrastructure.Weight = 1;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIMissionProposalScorer scorer = new AIMissionProposalScorer();
+
+            double productionScore = ScoreSabotage(scorer, context, saboteur, target, production);
+            double economicScore = ScoreSabotage(scorer, context, saboteur, target, mine);
+
+            Assert.Greater(productionScore, economicScore);
+        }
+
         [Test]
         public void Score_SabotageProposal_WithDestabilizingRegiment_PrioritizesTarget()
         {

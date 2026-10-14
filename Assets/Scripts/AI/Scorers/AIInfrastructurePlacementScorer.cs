@@ -187,6 +187,143 @@ namespace Rebellion.AI.Scorers
         }
 
         /// <summary>
+        /// Ranks destinations for one facility hub, preserving specialization and target feasibility.
+        /// </summary>
+        /// <param name="candidates">Eligible destination planets.</param>
+        /// <param name="demandPlanet">The planet whose demand prompted expansion.</param>
+        /// <param name="manufacturingType">The manufacturing category being expanded.</param>
+        /// <param name="buildingType">The production-facility type being expanded.</param>
+        /// <param name="targetCount">The completed hub size the destination must support.</param>
+        /// <param name="availableEnergy">Returns currently available planetary energy.</param>
+        /// <returns>Destinations ordered from the strongest hub assignment to the weakest.</returns>
+        public IReadOnlyList<Planet> RankHubDestinations(
+            IReadOnlyList<Planet> candidates,
+            Planet demandPlanet,
+            ManufacturingType manufacturingType,
+            BuildingType buildingType,
+            int targetCount,
+            Func<Planet, int> availableEnergy
+        )
+        {
+            return ScoreDestinations(
+                    candidates,
+                    demandPlanet,
+                    manufacturingType,
+                    buildingType,
+                    availableEnergy
+                )
+                .OrderBy(candidate => GetFacilityAssignmentTier(candidate.Planet, buildingType))
+                .ThenByDescending(candidate =>
+                    CanReachHubTarget(candidate.Planet, buildingType, targetCount, availableEnergy)
+                )
+                .ThenByDescending(candidate =>
+                    GetAchievableFacilityCount(
+                        candidate.Planet,
+                        buildingType,
+                        targetCount,
+                        availableEnergy
+                    )
+                )
+                .ThenByDescending(candidate =>
+                    candidate.Planet.GetTotalBuildingTypeCount(buildingType)
+                )
+                .ThenBy(candidate =>
+                    GetOtherProductionFacilityCount(candidate.Planet, buildingType)
+                )
+                .ThenByDescending(candidate => candidate.Score)
+                .ThenBy(candidate => candidate.Planet.InstanceID, StringComparer.Ordinal)
+                .Select(candidate => candidate.Planet)
+                .ToList();
+        }
+
+        /// <summary>
+        /// Returns whether a planet can reach a facility target using its assigned and free energy.
+        /// </summary>
+        /// <param name="planet">The candidate destination.</param>
+        /// <param name="buildingType">The facility category.</param>
+        /// <param name="targetCount">The desired hub size.</param>
+        /// <param name="availableEnergy">Returns currently available planetary energy.</param>
+        /// <returns>True when the full hub target fits.</returns>
+        private static bool CanReachHubTarget(
+            Planet planet,
+            BuildingType buildingType,
+            int targetCount,
+            Func<Planet, int> availableEnergy
+        )
+        {
+            return GetAchievableFacilityCount(planet, buildingType, targetCount, availableEnergy)
+                >= targetCount;
+        }
+
+        /// <summary>
+        /// Returns the facility count a destination could reach with its current free energy.
+        /// </summary>
+        /// <param name="planet">The candidate destination.</param>
+        /// <param name="buildingType">The facility category.</param>
+        /// <param name="targetCount">The desired hub size.</param>
+        /// <param name="availableEnergy">Returns currently available planetary energy.</param>
+        /// <returns>The target-capped achievable facility count.</returns>
+        private static int GetAchievableFacilityCount(
+            Planet planet,
+            BuildingType buildingType,
+            int targetCount,
+            Func<Planet, int> availableEnergy
+        )
+        {
+            int existingCount = planet?.GetTotalBuildingTypeCount(buildingType) ?? 0;
+            int freeEnergy = Math.Max(0, availableEnergy?.Invoke(planet) ?? 0);
+            return Math.Min(Math.Max(0, targetCount), existingCount + freeEnergy);
+        }
+
+        /// <summary>
+        /// Returns the deterministic specialization tier for a facility destination.
+        /// </summary>
+        /// <param name="planet">The candidate destination.</param>
+        /// <param name="buildingType">The facility category being placed.</param>
+        /// <returns>Zero for a dedicated destination, one for a mixed same-type hub, and two for a conflicting hub.</returns>
+        private int GetFacilityAssignmentTier(Planet planet, BuildingType buildingType)
+        {
+            int targetFacilityCount = Math.Max(
+                planet?.GetTotalBuildingTypeCount(buildingType) ?? 0,
+                _context.StrategicPlan.GetAllocatedInfrastructureTarget(planet, buildingType)
+            );
+            int otherFacilityCount = GetOtherProductionFacilityCount(planet, buildingType);
+            if (otherFacilityCount == 0)
+                return 0;
+            if (targetFacilityCount > 0)
+                return 1;
+
+            return 2;
+        }
+
+        /// <summary>
+        /// Returns production facilities on a planet that belong to other manufacturing categories.
+        /// </summary>
+        /// <param name="planet">The candidate destination.</param>
+        /// <param name="buildingType">The facility category being placed.</param>
+        /// <returns>The number of construction, ship, and training facilities from other categories.</returns>
+        private int GetOtherProductionFacilityCount(Planet planet, BuildingType buildingType)
+        {
+            if (planet == null)
+                return 0;
+
+            BuildingType[] productionFacilityTypes =
+            {
+                BuildingType.ConstructionFacility,
+                BuildingType.Shipyard,
+                BuildingType.TrainingFacility,
+            };
+            return productionFacilityTypes
+                .Where(type => type != buildingType)
+                .Sum(type =>
+                    Math.Max(
+                        planet.GetTotalBuildingTypeCount(type),
+                        _context.StrategicPlan.GetAllocatedInfrastructureTarget(planet, type)
+                    )
+                );
+        }
+
+        /// <summary>
         /// Returns the weighted strategic value of one facility destination.
         /// </summary>
         /// <param name="planet">The candidate planet.</param>

@@ -1,0 +1,6 @@
+{
+  "Google.OrTools": "9.15.6755",
+  "Google.Protobuf": "3.33.1",
+  "runtimes": ["win-x64", "osx-x64", "osx-arm64", "linux-x64"],
+  "macOS": "Universal libraries combined from the Intel and Apple Silicon packages"
+}

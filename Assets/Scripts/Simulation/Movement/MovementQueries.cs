@@ -241,12 +241,14 @@ namespace Rebellion.Simulation
         /// <param name="origin">The production planet.</param>
         /// <param name="destination">The requested destination.</param>
         /// <param name="transitTicks">The estimated delivery duration when transit is required.</param>
+        /// <param name="ownerInstanceId">The prospective owner for an unowned manufacturing template.</param>
         /// <returns>True if the destination can be evaluated; otherwise false.</returns>
         public bool TryEstimateManufacturedTransitTicks(
             IMovable unit,
             Planet origin,
             ContainerNode destination,
-            out int transitTicks
+            out int transitTicks,
+            string ownerInstanceId = null
         )
         {
             transitTicks = 0;
@@ -266,8 +268,14 @@ namespace Rebellion.Simulation
             }
 
             if (
-                destinationPlanet.GetOwnerInstanceID() != unit.GetOwnerInstanceID()
-                && !CanEnterHostileOrbit(unit, destination)
+                destinationPlanet.GetOwnerInstanceID()
+                    != (ownerInstanceId ?? unit.GetOwnerInstanceID())
+                && !(
+                    ownerInstanceId == null
+                        ? CanEnterHostileOrbit(unit, destination)
+                        : destination is Fleet or CapitalShip
+                            && destination.GetOwnerInstanceID() == ownerInstanceId
+                )
             )
             {
                 return false;
@@ -275,7 +283,9 @@ namespace Rebellion.Simulation
 
             if (
                 unit is Starfighter
-                && destinationPlanet.IsBlockadedFor(GetMovementControlOwner(unit))
+                && destinationPlanet.IsBlockadedFor(
+                    ownerInstanceId ?? GetMovementControlOwner(unit)
+                )
             )
             {
                 return false;

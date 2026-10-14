@@ -326,7 +326,7 @@ public static partial class HeadlessSimulationRunner
     }
 
     /// <summary>
-    /// Summarizes units by display label.
+    /// Summarizes capital ships by hull type and other units by display label.
     /// </summary>
     /// <typeparam name="T">The unit type to summarize.</typeparam>
     /// <param name="units">The units to summarize.</param>
@@ -342,7 +342,7 @@ public static partial class HeadlessSimulationRunner
     }
 
     /// <summary>
-    /// Gets a display label for a summarized unit.
+    /// Gets a hull type identifier for a capital ship or a display label for another unit.
     /// </summary>
     /// <typeparam name="T">The unit type to label.</typeparam>
     /// <param name="unit">The unit to label.</param>
@@ -352,6 +352,8 @@ public static partial class HeadlessSimulationRunner
     {
         switch (unit)
         {
+            case CapitalShip ship:
+                return ship.GetTypeID();
             case IGameEntity entity when !string.IsNullOrEmpty(entity.GetDisplayName()):
                 return entity.GetDisplayName();
             case IGameEntity entity:

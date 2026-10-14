@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using NUnit.Framework;
 using Rebellion.AI;
 using Rebellion.Game;
@@ -11,6 +12,177 @@ namespace Rebellion.Tests.AI
     [TestFixture]
     public class AIStrategicPlanTests
     {
+        [Test]
+        public void TryAllocateInfrastructureHub_ExactIndustrialAndShieldSpace_PreservesFinishedLayout()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
+            game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit = 2;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "hub",
+                faction.InstanceID,
+                energyCapacity: 7
+            );
+            AIStrategicPlan plan = AITestSceneBuilder.CreateContext(game, faction).StrategicPlan;
+
+            Assert.IsTrue(plan.TryAllocateInfrastructureHub(planet, BuildingType.Shipyard, 6));
+            Assert.AreEqual(
+                6,
+                plan.GetAllocatedInfrastructureTarget(planet, BuildingType.Shipyard)
+            );
+            Assert.AreEqual(6, plan.GetAvailableConstructionSpace(planet, BuildingType.Shipyard));
+            Assert.AreEqual(0, plan.GetAvailableConstructionSpace(planet, BuildingType.Mine));
+            Assert.AreEqual(1, plan.GetAvailableConstructionSpace(planet, BuildingType.Defense));
+        }
+
+        [Test]
+        public void TryAllocateInfrastructureHub_NoSpaceForShield_RejectsLayout()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
+            game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit = 2;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "hub",
+                faction.InstanceID,
+                energyCapacity: 6
+            );
+            AIStrategicPlan plan = AITestSceneBuilder.CreateContext(game, faction).StrategicPlan;
+
+            Assert.IsFalse(plan.TryAllocateInfrastructureHub(planet, BuildingType.Shipyard, 6));
+            Assert.AreEqual(
+                0,
+                plan.GetAllocatedInfrastructureTarget(planet, BuildingType.Shipyard)
+            );
+        }
+
+        [TestCase(ManufacturingStatus.Complete)]
+        [TestCase(ManufacturingStatus.Building)]
+        public void GetAvailableConstructionSpace_CommittedShield_DoesNotReserveItsSlotTwice(
+            ManufacturingStatus status
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
+            game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit = 2;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "hub",
+                faction.InstanceID,
+                energyCapacity: 7
+            );
+            Building shield = AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "shield",
+                BuildingType.Defense,
+                ManufacturingType.None
+            );
+            shield.ShieldStrength = 80;
+            shield.ManufacturingStatus = status;
+            AIStrategicPlan plan = AITestSceneBuilder.CreateContext(game, faction).StrategicPlan;
+
+            Assert.IsTrue(plan.TryAllocateInfrastructureHub(planet, BuildingType.Shipyard, 6));
+            Assert.AreEqual(6, plan.GetAvailableConstructionSpace(planet, BuildingType.Shipyard));
+            Assert.AreEqual(0, plan.GetAvailableConstructionSpace(planet, BuildingType.Refinery));
+        }
+
+        [Test]
+        public void TryAllocateInfrastructureHub_AnotherCategoryAlreadyPlanned_PreventsOverbooking()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
+            game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit = 2;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "hub",
+                faction.InstanceID,
+                energyCapacity: 10
+            );
+            AIStrategicPlan plan = AITestSceneBuilder.CreateContext(game, faction).StrategicPlan;
+
+            Assert.IsTrue(plan.TryAllocateInfrastructureHub(planet, BuildingType.Shipyard, 6));
+            Assert.IsFalse(
+                plan.TryAllocateInfrastructureHub(planet, BuildingType.TrainingFacility, 4)
+            );
+            Assert.AreEqual(
+                3,
+                plan.GetAvailableConstructionSpace(planet, BuildingType.TrainingFacility)
+            );
+        }
+
+        [Test]
+        public void GetAvailableConstructionSpace_IndustryQueued_ReleasesOnlyItsSatisfiedReservation()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
+            game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit = 2;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "hub",
+                faction.InstanceID,
+                energyCapacity: 8
+            );
+            AIStrategicPlan plan = AITestSceneBuilder.CreateContext(game, faction).StrategicPlan;
+            Assert.IsTrue(plan.TryAllocateInfrastructureHub(planet, BuildingType.Shipyard, 6));
+            for (int index = 0; index < 6; index++)
+            {
+                Building shipyard = AITestSceneBuilder.AddProductionFacility(
+                    game,
+                    planet,
+                    $"yard-{index}",
+                    BuildingType.Shipyard,
+                    ManufacturingType.Ship
+                );
+                shipyard.ManufacturingStatus = ManufacturingStatus.Building;
+            }
+
+            Assert.AreEqual(1, plan.GetAvailableConstructionSpace(planet, BuildingType.Refinery));
+            Assert.AreEqual(2, plan.GetAvailableConstructionSpace(planet, BuildingType.Defense));
+            Assert.AreEqual(1, plan.GetPlanetaryShieldTarget(planet, true));
+        }
+
+        [Test]
+        public void GetAvailableConstructionSpace_SelectedIndustry_DoesNotReserveItTwice()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
+            game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit = 2;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "hub",
+                faction.InstanceID,
+                energyCapacity: 7
+            );
+            AIStrategicPlan plan = AITestSceneBuilder.CreateContext(game, faction).StrategicPlan;
+            Assert.IsTrue(plan.TryAllocateInfrastructureHub(planet, BuildingType.Shipyard, 6));
+            var selected = new Dictionary<BuildingType, int> { [BuildingType.Shipyard] = 6 };
+
+            Assert.AreEqual(
+                1,
+                plan.GetAvailableConstructionSpace(
+                    planet,
+                    BuildingType.Defense,
+                    selectedBuildings: selected
+                )
+            );
+            Assert.AreEqual(
+                0,
+                plan.GetAvailableConstructionSpace(
+                    planet,
+                    BuildingType.Mine,
+                    selectedBuildings: selected
+                )
+            );
+        }
+
         [Test]
         public void FleetCountChange_Default_RedistributesIndependentMobileStrengthTarget()
         {

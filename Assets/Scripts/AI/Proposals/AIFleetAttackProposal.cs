@@ -280,7 +280,7 @@ namespace Rebellion.AI.Proposals
                 return;
 
             Fleet.Order.Status = FleetOrderStatus.Readying;
-            context.Movement.RequestCoordinatedMove(Fleet, liveTarget);
+            context.Movement.RequestMove(Fleet, liveTarget);
         }
 
         /// <summary>
@@ -318,8 +318,7 @@ namespace Rebellion.AI.Proposals
         private bool IsReadyToLaunch(AITurnContext context)
         {
             return context.StrategicPlan.CanFleetDepart(Fleet)
-                && IsReadyToAttack(context, TargetPlanet)
-                && !HasInboundUnitThatWouldArriveAfterFleet(context);
+                && IsReadyToAttack(context, TargetPlanet);
         }
 
         /// <summary>
@@ -415,43 +414,6 @@ namespace Rebellion.AI.Proposals
                 && context.Assessment.GetFleetBombardmentStrength(Fleet)
                     > context.Assessment.GetBombardmentShieldStrength(targetPlanet)
                 && context.Assessment.HasBombardmentTargets(targetPlanet);
-        }
-
-        /// <summary>
-        /// Returns whether launching now would leave an inbound unit unable to reach the hostile
-        /// destination by the fleet's arrival tick.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <returns>True when an inbound unit would arrive after the fleet.</returns>
-        private bool HasInboundUnitThatWouldArriveAfterFleet(AITurnContext context)
-        {
-            if (
-                context.MovementQueries == null
-                || !context.MovementQueries.TryGetTransitTicks(
-                    new List<IMovable> { Fleet },
-                    TargetPlanet,
-                    out int fleetTransitTicks
-                )
-            )
-                return false;
-
-            foreach (IMovable inboundUnit in Fleet.GetChildren<IMovable>(recursive: true))
-            {
-                if (
-                    inboundUnit.Movement != null
-                    && context.MovementQueries.TryEstimateRetargetedTransitTicks(
-                        inboundUnit,
-                        TargetPlanet,
-                        out int inboundTransitTicks
-                    )
-                    && inboundTransitTicks > fleetTransitTicks
-                )
-                {
-                    return true;
-                }
-            }
-
-            return false;
         }
 
         /// <summary>

@@ -90,6 +90,9 @@ public static partial class HeadlessSimulationRunner
                             pair.Value.OfficerLedHostileStartedWithDecoy,
                         OfficerLedHostileStartedWithSpecialForcesDecoy =
                             pair.Value.OfficerLedHostileStartedWithSpecialForcesDecoy,
+                        SpecialForcesLedStarted = pair.Value.SpecialForcesLedStarted,
+                        SpecialForcesLedStartedWithDecoy =
+                            pair.Value.SpecialForcesLedStartedWithDecoy,
                         Ended = pair.Value.Ended,
                         Active = _activeMissions.Values.Count(mission =>
                             mission.FactionId == faction.InstanceID
@@ -195,6 +198,12 @@ public static partial class HeadlessSimulationRunner
                         missionCounts.OfficerLedHostileStartedWithDecoy++;
                     if (mission.HasSpecialForcesDecoy)
                         missionCounts.OfficerLedHostileStartedWithSpecialForcesDecoy++;
+                }
+                if (mission.SpecialForcesLed)
+                {
+                    missionCounts.SpecialForcesLedStarted++;
+                    if (mission.HasDecoy)
+                        missionCounts.SpecialForcesLedStartedWithDecoy++;
                 }
                 MissionTargetCounts targetCounts = GetMissionTargetCounts(mission);
                 targetCounts.Started++;
@@ -462,6 +471,8 @@ public static partial class HeadlessSimulationRunner
             public int OfficerLedHostileStarted;
             public int OfficerLedHostileStartedWithDecoy;
             public int OfficerLedHostileStartedWithSpecialForcesDecoy;
+            public int SpecialForcesLedStarted;
+            public int SpecialForcesLedStartedWithDecoy;
             public int Ended;
         }
 
@@ -505,6 +516,7 @@ public static partial class HeadlessSimulationRunner
             public bool WaitingForParticipants;
             public int MainRating;
             public bool OfficerLedHostile;
+            public bool SpecialForcesLed;
             public bool HasDecoy;
             public bool HasSpecialForcesDecoy;
 
@@ -536,6 +548,9 @@ public static partial class HeadlessSimulationRunner
                     CurrentProgress = mission.CurrentProgress,
                     MaxProgress = mission.MaxProgress,
                     WaitingForParticipants = mission.IsWaitingForParticipants(),
+                    SpecialForcesLed =
+                        mainParticipants.Count > 0
+                        && mainParticipants.All(participant => participant is SpecialForces),
                     OfficerLedHostile =
                         mainParticipants.OfType<Officer>().Any()
                         && !string.IsNullOrEmpty(targetPlanet?.GetOwnerInstanceID())

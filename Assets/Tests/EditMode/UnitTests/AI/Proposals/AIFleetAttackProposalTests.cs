@@ -89,7 +89,7 @@ namespace Rebellion.Tests.AI.Fleets
         }
 
         [Test]
-        public void Execute_WithInboundShipArrivingAtTargetAfterFleet_WaitsAtStagingPlanet()
+        public void Execute_WithInboundShipArrivingAtTargetAfterFleet_LaunchesWithLaterArrival()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             ConfigureMinimalAttackRequirements(game);
@@ -126,12 +126,14 @@ namespace Rebellion.Tests.AI.Fleets
 
             proposal.Execute(context);
 
-            Assert.IsNull(fleet.Movement);
-            Assert.AreEqual(FleetOrderStatus.Building, fleet.Order.Status);
+            Assert.IsNotNull(fleet.Movement);
+            Assert.IsNotNull(inbound.Movement);
+            Assert.Greater(inbound.Movement.TransitTicks, fleet.Movement.TransitTicks);
+            Assert.AreEqual(FleetOrderStatus.Readying, fleet.Order.Status);
         }
 
         [Test]
-        public void Execute_WithInboundShipArrivingAtTargetBeforeFleet_SynchronizesArrival()
+        public void Execute_WithInboundShipArrivingAtTargetBeforeFleet_PreservesEarlierArrival()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             ConfigureMinimalAttackRequirements(game);
@@ -170,7 +172,7 @@ namespace Rebellion.Tests.AI.Fleets
 
             Assert.IsNotNull(fleet.Movement);
             Assert.IsNotNull(inbound.Movement);
-            Assert.AreEqual(fleet.Movement.TransitTicks, inbound.Movement.TransitTicks);
+            Assert.Less(inbound.Movement.TransitTicks, fleet.Movement.TransitTicks);
         }
 
         [Test]

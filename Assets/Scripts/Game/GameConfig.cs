@@ -467,6 +467,9 @@ namespace Rebellion.Game
         {
             public float MinimumSelectableScore { get; set; }
 
+            /// <summary>Gets or sets the maximum scheduling states examined in one faction decision.</summary>
+            public int ProductionScheduleSearchNodes { get; set; }
+
             public AIConsiderationConfig DemandUtility { get; set; } = new AIConsiderationConfig();
             public int PreferredStarfighterTypeCountPerFleet { get; set; }
             public int PreferredRegimentTypeCountPerDestination { get; set; }
@@ -617,6 +620,9 @@ namespace Rebellion.Game
             public int IdleShipyardFighterReserveCount { get; set; }
             public int IdleShipyardFighterDemandPercent { get; set; }
             public int PlanetaryWeaponTargetCount { get; set; }
+
+            /// <summary>Preserves the stored defense preference when loading existing configurations.</summary>
+            public bool RequireEstablishedIndustryForStaticDefense { get; set; }
             public int PlanetaryDefenseSurplusBatchSize { get; set; }
             public int PlanetaryShieldDemandPercent { get; set; }
             public int PlanetaryWeaponDemandPercent { get; set; }

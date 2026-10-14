@@ -4,6 +4,7 @@ namespace Rebellion.AI.Proposals
 {
     internal enum AIProposalPriority
     {
+        Filler = -1,
         DeferredPlanetaryDefense,
         Optional,
         Mandatory,

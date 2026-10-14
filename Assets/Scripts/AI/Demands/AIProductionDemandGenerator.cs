@@ -346,7 +346,7 @@ namespace Rebellion.AI.Demands
                     building.GetOwnerInstanceID() == context.Faction.InstanceID
                     && building.GetBuildingType() == BuildingType.Weapon
                 );
-            int weaponTarget = GetPlanetaryWeaponCount(context, planet, weaponCount);
+            int weaponTarget = GetPlanetaryWeaponCount(context, planet);
             int weaponDeficit = weaponTarget - weaponCount;
             if (weaponDeficit <= 0 || availableEnergy <= 0)
                 return;
@@ -398,7 +398,8 @@ namespace Rebellion.AI.Demands
                 deficit,
                 targetCount: targetCount,
                 baseDemandPercent: basePercent,
-                establishesInitialShield: isInitialShield
+                establishesInitialShield: isInitialShield,
+                isEmergencyDefense: context.Assessment.GetHostileFleets(planet).Any()
             );
         }
 
@@ -480,27 +481,7 @@ namespace Rebellion.AI.Demands
         /// <returns>The required shield-generator count.</returns>
         internal int GetPlanetaryShieldCount(AITurnContext context, Planet planet)
         {
-            if (
-                context?.Assessment == null
-                || !context.Assessment.IsOwnedPlanet(planet)
-                || context.Game?.Config == null
-            )
-                return 0;
-
-            int limit = context.Game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit;
-            if (
-                context.Assessment.IsPriorityDefensePlanet(planet)
-                || context.Assessment.IsPlanetThreatened(planet)
-            )
-                return limit;
-
-            bool hasSupportRisk =
-                context.Assessment.GetFactionPopularSupport(planet)
-                    < context.Game.Config.AI.Garrison.SupportThreshold
-                || context.Assessment.GetDefensiveSupportRisk(planet) > 0;
-            return hasSupportRisk || HasProductionInfrastructure(context, planet)
-                ? Math.Min(1, limit)
-                : 0;
+            return context?.StrategicPlan?.GetPlanetaryShieldTarget(planet) ?? 0;
         }
 
         /// <summary>
@@ -508,24 +489,10 @@ namespace Rebellion.AI.Demands
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="planet">The planet to inspect.</param>
-        /// <param name="currentCount">The current weapon-emplacement count.</param>
         /// <returns>The required weapon-emplacement count.</returns>
-        internal int GetPlanetaryWeaponCount(AITurnContext context, Planet planet, int currentCount)
+        internal int GetPlanetaryWeaponCount(AITurnContext context, Planet planet)
         {
-            if (
-                context?.Assessment == null
-                || !context.Assessment.IsOwnedPlanet(planet)
-                || context.Game?.Config == null
-                || !context.Assessment.IsPriorityDefensePlanet(planet)
-                    && !context.Assessment.IsPlanetThreatened(planet)
-            )
-                return 0;
-
-            GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
-            return Math.Max(
-                config.PlanetaryWeaponTargetCount,
-                currentCount + config.PlanetaryDefenseSurplusBatchSize
-            );
+            return context?.StrategicPlan?.GetPlanetaryWeaponTarget(planet) ?? 0;
         }
 
         /// <summary>
@@ -575,7 +542,7 @@ namespace Rebellion.AI.Demands
             }
 
             return shieldCount >= shieldTarget
-                && weaponCount >= GetPlanetaryWeaponCount(context, planet, weaponCount);
+                && weaponCount >= GetPlanetaryWeaponCount(context, planet);
         }
 
         /// <summary>
@@ -759,6 +726,7 @@ namespace Rebellion.AI.Demands
             AddProductionFacilityDemands(context, requirements);
             AddProductionFacilityUpgradeDemands(context, requirements);
             AddIdleShipyardDemands(context, requirements);
+            AddIdleSpecialForcesDemands(context, requirements);
 
             return requirements;
         }
@@ -1089,7 +1057,7 @@ namespace Rebellion.AI.Demands
         {
             return count <= 0
                 ? Enumerable.Empty<Planet>()
-                : GetBuildingDestinations(context)
+                : GetBuildingDestinations(context, BuildingType.Mine)
                     .Where(planet => planet.GetUnminedResourceNodeCount() > 0)
                     .OrderByDescending(planet => planet.GetUnminedResourceNodeCount())
                     .ThenByDescending(planet => planet.GetAvailableEnergy())
@@ -1113,7 +1081,7 @@ namespace Rebellion.AI.Demands
             if (count <= 0)
                 return Enumerable.Empty<Planet>();
 
-            List<Planet> targets = GetBuildingDestinations(context)
+            List<Planet> targets = GetBuildingDestinations(context, BuildingType.Refinery)
                 .Where(planet => !excludedPlanetIds.Contains(planet.InstanceID))
                 .OrderBy(planet => planet.GetTotalBuildingTypeCount(BuildingType.Refinery))
                 .ThenByDescending(planet => planet.GetAvailableEnergy())
@@ -1124,7 +1092,7 @@ namespace Rebellion.AI.Demands
                 return targets;
 
             targets.AddRange(
-                GetBuildingDestinations(context)
+                GetBuildingDestinations(context, BuildingType.Refinery)
                     .Where(planet => excludedPlanetIds.Contains(planet.InstanceID))
                     .OrderBy(planet => planet.GetTotalBuildingTypeCount(BuildingType.Refinery))
                     .ThenByDescending(planet => planet.GetAvailableEnergy())
@@ -1138,11 +1106,16 @@ namespace Rebellion.AI.Demands
         /// Returns owned planets that can receive an economy building.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
+        /// <param name="buildingType">The economic building to place.</param>
         /// <returns>Eligible building destinations.</returns>
-        private static IEnumerable<Planet> GetBuildingDestinations(AITurnContext context)
+        private static IEnumerable<Planet> GetBuildingDestinations(
+            AITurnContext context,
+            BuildingType buildingType
+        )
         {
             return context.Assessment.OwnedPlanets.Where(planet =>
-                planet?.IsDestroyed == false && planet.GetAvailableEnergy() > 0
+                planet?.IsDestroyed == false
+                && context.StrategicPlan.GetAvailableConstructionSpace(planet, buildingType) > 0
             );
         }
 
@@ -1313,7 +1286,7 @@ namespace Rebellion.AI.Demands
 
             IReadOnlyList<Fleet> attackFleets = GetPriorityAttackFleets(context);
             AddAttackShipDemands(context, demands, attackFleets);
-            AddPriorityAttackRegimentDemand(context, demands, attackFleets);
+            AddAttackRegimentDemands(context, demands, attackFleets);
 
             foreach (Fleet colonizationFleet in GetPriorityColonizationFleets(context))
                 AddFleetDemands(context, demands, colonizationFleet);
@@ -1361,12 +1334,12 @@ namespace Rebellion.AI.Demands
         }
 
         /// <summary>
-        /// Adds regiment demand for the highest-priority attack fleet that still needs troops.
+        /// Adds regiment demand for attack fleets in reinforcement priority order.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demands">The demand list to update.</param>
         /// <param name="fleets">Attack fleets in reinforcement priority order.</param>
-        private void AddPriorityAttackRegimentDemand(
+        private void AddAttackRegimentDemands(
             AITurnContext context,
             List<AIProductionDemand> demands,
             IReadOnlyList<Fleet> fleets
@@ -1374,10 +1347,7 @@ namespace Rebellion.AI.Demands
         {
             foreach (Fleet fleet in fleets)
             {
-                int initialCount = demands.Count;
                 AddFleetRegimentDemand(context, demands, fleet);
-                if (demands.Count > initialCount)
-                    return;
             }
         }
 
@@ -1566,9 +1536,7 @@ namespace Rebellion.AI.Demands
                 targetCapitalFirepower
                 - context.Assessment.GetProjectedFleetFirepowerAgainstCapitalShips(fleet);
             int capitalFirepowerDeficit =
-                targetPlanet == null
-                    ? combatDeficit
-                    : Math.Max(measuredCapitalFirepowerDeficit, combatDeficit);
+                targetPlanet == null ? 0 : Math.Max(0, measuredCapitalFirepowerDeficit);
             int targetStarfighterFirepower =
                 targetPlanet == null
                     ? 0
@@ -1673,6 +1641,8 @@ namespace Rebellion.AI.Demands
                         ? context.Game.Config.AI.Infrastructure.ColonizationFleetDemandPercent
                         : context.Game.Config.AI.Infrastructure.FleetCapitalShipDemandPercent,
                     deficitCount: deficitPercent,
+                    referencePlanet: targetPlanet,
+                    combatStrengthDeficit: combatDeficit,
                     capitalFirepowerDeficit: capitalFirepowerDeficit,
                     starfighterFirepowerDeficit: starfighterFirepowerDeficit,
                     starfighterCapacityDeficit: starfighterCapacityDeficit,
@@ -2111,6 +2081,96 @@ namespace Rebellion.AI.Demands
                         baseDemandPercent: config.SpecialForcesDemandPercent
                     )
                 );
+            }
+        }
+
+        /// <summary>Mixes local espionage and sabotage units across idle training lanes without a stock limit.</summary>
+        /// <param name="context">The faction's current planning context.</param>
+        /// <param name="demands">The production demands receiving the filler request.</param>
+        private static void AddIdleSpecialForcesDemands(
+            AITurnContext context,
+            ICollection<AIProductionDemand> demands
+        )
+        {
+            List<SpecialForces> templates = context
+                .Faction.GetUnlockedTechnologies(ManufacturingType.Troop)
+                .Select(technology => technology.GetReference())
+                .OfType<SpecialForces>()
+                .Where(unit =>
+                    IManufacturable.CanBeManufacturedBy(unit, context.Faction.InstanceID)
+                )
+                .OrderBy(unit => unit.ConstructionCost)
+                .ThenBy(unit => unit.MaintenanceCost)
+                .ThenBy(unit => unit.TypeID, StringComparer.Ordinal)
+                .ToList();
+            Dictionary<string, SpecialForces> templatesByMission = new(StringComparer.Ordinal);
+            Dictionary<string, int> committedByMission = new(StringComparer.Ordinal);
+            List<SpecialForces> owned = context.Faction.GetOwnedUnitsByType<SpecialForces>();
+            foreach (
+                string missionTypeId in new[] { MissionTypeIDs.Espionage, MissionTypeIDs.Sabotage }
+            )
+            {
+                SpecialForces template = templates.FirstOrDefault(unit =>
+                    unit.AllowedMissionTypeIDs.Contains(missionTypeId)
+                );
+                if (template == null)
+                    continue;
+                templatesByMission.Add(missionTypeId, template);
+                committedByMission.Add(
+                    missionTypeId,
+                    owned.Count(unit =>
+                        !unit.IsRetired && unit.AllowedMissionTypeIDs.Contains(missionTypeId)
+                    )
+                );
+            }
+            if (templatesByMission.Count == 0)
+                return;
+            foreach (Planet planet in context.Assessment.OwnedPlanets)
+            {
+                if (
+                    !IsUsablePlanet(planet)
+                    || planet.GetAvailableManufacturingCapacity(ManufacturingType.Troop) <= 0
+                    || planet
+                        .GetManufacturingQueue()
+                        .TryGetValue(ManufacturingType.Troop, out List<IManufacturable> queue)
+                        && queue.Any(item => item?.IsManufacturingComplete() == false)
+                )
+                    continue;
+
+                string missionTypeId = templatesByMission
+                    .Keys.OrderBy(typeId => committedByMission[typeId])
+                    .ThenBy(typeId => templatesByMission[typeId].ConstructionCost)
+                    .ThenBy(typeId => templatesByMission[typeId].MaintenanceCost)
+                    .ThenBy(typeId => typeId, StringComparer.Ordinal)
+                    .First();
+                SpecialForces template = templatesByMission[missionTypeId];
+                demands.Add(
+                    new AIProductionDemand(
+                        AIProductionDemand.CreateId(
+                            context.Faction.InstanceID,
+                            AIProductionDemandKind.IdleSpecialForces,
+                            template.TypeID,
+                            planet.InstanceID
+                        ),
+                        AIProductionDemandKind.IdleSpecialForces,
+                        ManufacturingType.Troop,
+                        BuildingType.None,
+                        planet,
+                        1,
+                        template.TypeID,
+                        baseDemandPercent: context
+                            .Game
+                            .Config
+                            .AI
+                            .Infrastructure
+                            .SpecialForcesDemandPercent
+                    )
+                );
+                foreach (string supportedMission in templatesByMission.Keys)
+                {
+                    if (template.AllowedMissionTypeIDs.Contains(supportedMission))
+                        committedByMission[supportedMission]++;
+                }
             }
         }
 

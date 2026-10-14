@@ -318,6 +318,39 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(estimated);
         }
 
+        [TestCase(false, false, true)]
+        [TestCase(true, false, false)]
+        [TestCase(false, true, false)]
+        public void TryEstimateManufacturedTransitTicks_UnownedTemplate_UsesProspectiveOwner(
+            bool hostile,
+            bool blockaded,
+            bool expected
+        )
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer _,
+                MovementQueries movement
+            ) = BuildScene();
+            Starfighter template = new Starfighter();
+            if (hostile)
+                destination.OwnerInstanceID = "rebels";
+            if (blockaded)
+                AddBlockadingFleet(game, destination);
+
+            bool estimated = movement.TryEstimateManufacturedTransitTicks(
+                template,
+                origin,
+                destination,
+                out _,
+                "empire"
+            );
+
+            Assert.AreEqual(expected, estimated);
+        }
+
         [Test]
         public void GetPersonnelEncounterOdds_HostileDetector_ReturnsCompleteProjection()
         {

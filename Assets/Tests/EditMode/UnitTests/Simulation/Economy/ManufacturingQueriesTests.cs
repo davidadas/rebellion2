@@ -13,6 +13,84 @@ namespace Rebellion.Tests.Simulation
     [TestFixture]
     public class ManufacturingQueriesTests
     {
+        [TestCase(true, ManufacturingStatus.Building, true)]
+        [TestCase(false, ManufacturingStatus.Building, false)]
+        [TestCase(true, ManufacturingStatus.Complete, false)]
+        public void GetInterruptibleManufacturingOrder_SingleBuilding_ReturnsOnlyUnfinishedMarkedOrder(
+            bool marked,
+            ManufacturingStatus status,
+            bool expected
+        )
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet planet = CreateOrderTestConstructionPlanet(game, "p1", "empire");
+            Building building = CreateOrderTestBuildingTemplate("shield");
+            building.OwnerInstanceID = "empire";
+            building.ProducerPlanetID = planet.InstanceID;
+            building.ManufacturingStatus = status;
+            building.IsAIProductionFiller = marked;
+            game.AttachNode(building, planet);
+            planet.AddToManufacturingQueue(building);
+
+            Assert.AreEqual(
+                expected ? building : null,
+                ManufacturingQueries.GetInterruptibleManufacturingOrder(
+                    planet,
+                    ManufacturingType.Building
+                )
+            );
+        }
+
+        [Test]
+        public void GetInterruptibleManufacturingOrder_MixedQueue_DoesNotInterruptWork()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet planet = CreateOrderTestConstructionPlanet(game, "p1", "empire");
+            foreach (string typeId in new[] { "shield", "required" })
+            {
+                Building building = CreateOrderTestBuildingTemplate(typeId);
+                building.OwnerInstanceID = "empire";
+                building.ProducerPlanetID = planet.InstanceID;
+                building.ManufacturingStatus = ManufacturingStatus.Building;
+                building.IsAIProductionFiller = typeId == "shield";
+                game.AttachNode(building, planet);
+                planet.AddToManufacturingQueue(building);
+            }
+
+            Assert.IsNull(
+                ManufacturingQueries.GetInterruptibleManufacturingOrder(
+                    planet,
+                    ManufacturingType.Building
+                )
+            );
+        }
+
+        [TestCase(true, 1)]
+        [TestCase(false, 0)]
+        public void GetAvailableBuildingSpace_FullPlanet_IncludesOnlyReplaceableProject(
+            bool marked,
+            int expected
+        )
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet producer = CreateOrderTestConstructionPlanet(game, "p1", "empire");
+            Planet destination = CreateOrderTestPlanet(game, "p2", "empire");
+            destination.EnergyCapacity = 1;
+            Building building = CreateOrderTestBuildingTemplate("shield");
+            building.OwnerInstanceID = "empire";
+            building.ProducerPlanetID = producer.InstanceID;
+            building.ManufacturingStatus = ManufacturingStatus.Building;
+            building.IsAIProductionFiller = marked;
+            game.AttachNode(building, destination);
+            producer.AddToManufacturingQueue(building);
+
+            Assert.AreEqual(0, ManufacturingQueries.GetAvailableBuildingSpace(game, destination));
+            Assert.AreEqual(
+                expected,
+                ManufacturingQueries.GetAvailableBuildingSpace(game, destination, true)
+            );
+        }
+
         [Test]
         public void Constructor_NullGame_ThrowsArgumentNullException()
         {
@@ -730,6 +808,244 @@ namespace Rebellion.Tests.Simulation
             int? estimate = ManufacturingQueries.EstimateCompletionTicks(planet, item);
 
             Assert.AreEqual(3, estimate);
+        }
+
+        [Test]
+        public void EstimateScheduledCompletionTicks_ShipyardUnderConstruction_IncludesFutureCapacity()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet planet = CreateOrderTestShipyardPlanet(game, "p1", "empire");
+            game.AttachNode(
+                CreateOrderTestConstructionFacility("construction", "empire", 1),
+                planet
+            );
+            Building pending = AddProjectedShipyard(game, planet, ManufacturingStatus.Building);
+            pending.ConstructionCost = 5;
+            pending.ProducerPlanetID = planet.InstanceID;
+            planet.AddToManufacturingQueue(pending);
+            CapitalShip ship = CreateOrderTestCapitalShipTemplate("ship", "ship", 0);
+            ship.ConstructionCost = 20;
+
+            int? estimate = new ManufacturingQueries(game).EstimateScheduledCompletionTicks(
+                planet,
+                ship,
+                20
+            );
+
+            Assert.AreEqual(13, estimate);
+            Assert.AreEqual(0, pending.ManufacturingProgress);
+            CollectionAssert.AreEqual(
+                new[] { pending },
+                planet.GetManufacturingQueue()[ManufacturingType.Building]
+            );
+        }
+
+        [Test]
+        public void EstimateScheduledCompletionTicks_FirstShipyardInTransit_WaitsForDecisionAfterArrival()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet planet = CreateOrderTestPlanet(game, "p1", "empire");
+            Building pending = AddProjectedShipyard(game, planet, ManufacturingStatus.Delivering);
+            pending.Movement = new MovementState { TransitTicks = 5 };
+            CapitalShip ship = CreateOrderTestCapitalShipTemplate("ship", "ship", 0);
+
+            int? estimate = new ManufacturingQueries(game).EstimateScheduledCompletionTicks(
+                planet,
+                ship,
+                20
+            );
+
+            Assert.AreEqual(30, estimate);
+            Assert.AreEqual(5, pending.Movement.TicksRemaining());
+        }
+
+        [Test]
+        public void EstimateScheduledCompletionTicks_UnqueuedFacility_IgnoresFutureCapacity()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet planet = CreateOrderTestShipyardPlanet(game, "p1", "empire");
+            AddProjectedShipyard(game, planet, ManufacturingStatus.Building);
+            CapitalShip ship = CreateOrderTestCapitalShipTemplate("ship", "ship", 0);
+
+            Assert.AreEqual(
+                10,
+                new ManufacturingQueries(game).EstimateScheduledCompletionTicks(planet, ship, 20)
+            );
+        }
+
+        [Test]
+        public void EstimateScheduledCompletionTicks_BusyLane_IncludesDecisionDelay()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet planet = CreateOrderTestShipyardPlanet(game, "p1", "empire");
+            CapitalShip current = CreateOrderTestCapitalShipTemplate("current", "current", 0);
+            current.ManufacturingStatus = ManufacturingStatus.Building;
+            current.ManufacturingProgress = 9;
+            current.OwnerInstanceID = "empire";
+            Fleet fleet = EntityFactory.CreateFleet("current-fleet", "empire");
+            game.AttachNode(fleet, planet);
+            game.AttachNode(current, fleet);
+            planet.AddToManufacturingQueue(current);
+            CapitalShip next = CreateOrderTestCapitalShipTemplate("next", "next", 0);
+
+            int? estimate = new ManufacturingQueries(game).EstimateScheduledCompletionTicks(
+                planet,
+                next,
+                20
+            );
+
+            Assert.AreEqual(30, estimate);
+            Assert.AreEqual(9, current.ManufacturingProgress);
+            Assert.AreEqual(1, planet.GetManufacturingQueue()[ManufacturingType.Ship].Count);
+        }
+
+        [Test]
+        public void EstimateScheduledCompletionTicks_ReadyProductionPoint_PreservesCyclePhase()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet planet = CreateOrderTestShipyardPlanet(game, "p1", "empire");
+            Building yard = planet.GetProductionFacilities(ManufacturingType.Ship).Single();
+            yard.ProcessRate = 4;
+            yard.ProductionCycleProgress = 1;
+            yard.ProductionPointReady = true;
+            CapitalShip ship = CreateOrderTestCapitalShipTemplate("ship", "ship", 0);
+
+            Assert.AreEqual(
+                36,
+                new ManufacturingQueries(game).EstimateScheduledCompletionTicks(planet, ship, 20)
+            );
+            Assert.AreEqual(1, yard.ProductionCycleProgress);
+            Assert.IsTrue(yard.ProductionPointReady);
+        }
+
+        [Test]
+        public void EstimateScheduledCompletionTicks_Uprising_ReturnsNull()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet planet = CreateOrderTestShipyardPlanet(game, "p1", "empire");
+            planet.IsInUprising = true;
+            CapitalShip ship = CreateOrderTestCapitalShipTemplate("ship", "ship", 0);
+
+            Assert.IsNull(
+                new ManufacturingQueries(game).EstimateScheduledCompletionTicks(planet, ship, 20)
+            );
+        }
+
+        [Test]
+        public void EstimateScheduledCompletionTicks_TwoPrecedingOrders_ForecastsWithoutQueueing()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet planet = CreateOrderTestShipyardPlanet(game, "p1", "empire");
+            CapitalShip ship = CreateOrderTestCapitalShipTemplate("ship", "ship", 0);
+            Assert.AreEqual(
+                50,
+                new ManufacturingQueries(game).EstimateScheduledCompletionTicks(
+                    planet,
+                    ship,
+                    20,
+                    new IManufacturable[] { ship, ship }
+                )
+            );
+            Assert.IsNull(
+                ManufacturingQueries.GetManufacturingOrder(planet, ManufacturingType.Ship)
+            );
+        }
+
+        [Test]
+        public void EstimateScheduledCompletionTicks_DestinationReadyAtTurn35_StartsAtTurn40()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet planet = CreateOrderTestShipyardPlanet(game, "p1", "empire");
+            CapitalShip ship = CreateOrderTestCapitalShipTemplate("ship", "ship", 0);
+            int? completion = new ManufacturingQueries(game).EstimateScheduledCompletionTicks(
+                planet,
+                ship,
+                20,
+                earliestStartTicks: 35
+            );
+            Assert.AreEqual(50, completion);
+        }
+
+        [Test]
+        public void EstimateScheduledCompletionTicks_PrecedingOrderWaitsForCapacity_PreservesItsDelay()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet planet = CreateOrderTestShipyardPlanet(game, "p1", "empire");
+            CapitalShip ship = CreateOrderTestCapitalShipTemplate("ship", "ship", 0);
+            int? completion = new ManufacturingQueries(game).EstimateScheduledCompletionTicks(
+                planet,
+                ship,
+                20,
+                new[] { ship },
+                precedingStartTicks: new[] { 35 }
+            );
+            Assert.AreEqual(70, completion);
+        }
+
+        [Test]
+        public void EstimateScheduledCompletionTicks_MultipleOrders_ReturnsEveryCompletionWithoutQueueing()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet planet = CreateOrderTestShipyardPlanet(game, "p1", "empire");
+            CapitalShip ship = CreateOrderTestCapitalShipTemplate("ship", "ship", 0);
+            CollectionAssert.AreEqual(
+                new[] { 10, 50, 70 },
+                new ManufacturingQueries(game).EstimateScheduledCompletionTicks(
+                    planet,
+                    new IManufacturable[] { ship, ship, ship },
+                    20,
+                    new[] { 0, 35, 0 }
+                )
+            );
+            Assert.IsNull(
+                ManufacturingQueries.GetManufacturingOrder(planet, ManufacturingType.Ship)
+            );
+        }
+
+        [TestCase(1, 3, 3)]
+        [TestCase(17, 3, 51)]
+        [TestCase(int.MaxValue, 1, int.MaxValue)]
+        [TestCase(int.MaxValue, 3, int.MaxValue)]
+        public void EstimateScheduledCompletionTicks_ConstructionCostAndFacilityRate_ReturnsFirstCompletionTick(
+            int constructionCost,
+            int processRate,
+            int expectedTicks
+        )
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet planet = CreateOrderTestShipyardPlanet(game, "producer", "empire");
+            planet.GetProductionFacilities(ManufacturingType.Ship)[0].ProcessRate = processRate;
+            CapitalShip ship = CreateOrderTestCapitalShipTemplate("ship", "ship", 0);
+            ship.ConstructionCost = constructionCost;
+
+            Assert.AreEqual(
+                expectedTicks,
+                new ManufacturingQueries(game).EstimateScheduledCompletionTicks(planet, ship, 1)
+            );
+        }
+
+        /// <summary>Adds a shipyard in the requested manufacturing state.</summary>
+        /// <param name="game">The game containing the planet.</param>
+        /// <param name="planet">The shipyard's destination planet.</param>
+        /// <param name="status">The shipyard's manufacturing status.</param>
+        /// <returns>The attached shipyard.</returns>
+        private static Building AddProjectedShipyard(
+            GameRoot game,
+            Planet planet,
+            ManufacturingStatus status
+        )
+        {
+            Building facility = new Building
+            {
+                InstanceID = "future-yard",
+                OwnerInstanceID = "empire",
+                BuildingType = BuildingType.Shipyard,
+                ProductionType = ManufacturingType.Ship,
+                ProcessRate = 1,
+                ManufacturingStatus = status,
+            };
+            game.AttachNode(facility, planet);
+            return facility;
         }
 
         /// <summary>

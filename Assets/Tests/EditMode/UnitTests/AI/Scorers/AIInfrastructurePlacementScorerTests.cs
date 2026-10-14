@@ -1,3 +1,4 @@
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.AI;
 using Rebellion.AI.Demands;
@@ -155,6 +156,142 @@ namespace Rebellion.Tests.AI.Scorers
             );
 
             Assert.AreSame(industrialWorld, selected);
+        }
+
+        [Test]
+        public void RankHubDestinations_WithUnassignedAlternative_AvoidsMixingFacilityCategories()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
+            Planet mixedPlanet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "a-mixed",
+                empire.InstanceID,
+                energyCapacity: 10
+            );
+            Planet unassignedPlanet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "z-unassigned",
+                empire.InstanceID,
+                energyCapacity: 10
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                mixedPlanet,
+                "construction-yard",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            Planet selected = new AIInfrastructurePlacementScorer(context)
+                .RankHubDestinations(
+                    new[] { mixedPlanet, unassignedPlanet },
+                    null,
+                    ManufacturingType.Ship,
+                    BuildingType.Shipyard,
+                    6,
+                    planet => planet.GetAvailableEnergy()
+                )
+                .First();
+
+            Assert.AreSame(unassignedPlanet, selected);
+        }
+
+        [Test]
+        public void RankHubDestinations_WithMixedTargetFacility_PrefersUnassignedPlanet()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
+            Planet existingHub = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "existing-hub",
+                empire.InstanceID,
+                energyCapacity: 10
+            );
+            Planet unassignedPlanet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "unassigned",
+                empire.InstanceID,
+                energyCapacity: 10
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                existingHub,
+                "shipyard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                existingHub,
+                "construction-yard",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            Planet selected = new AIInfrastructurePlacementScorer(context)
+                .RankHubDestinations(
+                    new[] { unassignedPlanet, existingHub },
+                    null,
+                    ManufacturingType.Ship,
+                    BuildingType.Shipyard,
+                    6,
+                    planet => planet.GetAvailableEnergy()
+                )
+                .First();
+
+            Assert.AreSame(unassignedPlanet, selected);
+        }
+
+        [Test]
+        public void RankHubDestinations_WithExistingHubUnableToReachTarget_PrefersViableSite()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
+            Planet constrainedHub = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "constrained-hub",
+                empire.InstanceID,
+                energyCapacity: 5
+            );
+            Planet viablePlanet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "viable",
+                empire.InstanceID,
+                energyCapacity: 10
+            );
+            for (int index = 0; index < 4; index++)
+            {
+                AITestSceneBuilder.AddProductionFacility(
+                    game,
+                    constrainedHub,
+                    $"shipyard-{index}",
+                    BuildingType.Shipyard,
+                    ManufacturingType.Ship
+                );
+            }
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            Planet selected = new AIInfrastructurePlacementScorer(context)
+                .RankHubDestinations(
+                    new[] { constrainedHub, viablePlanet },
+                    null,
+                    ManufacturingType.Ship,
+                    BuildingType.Shipyard,
+                    6,
+                    planet => planet.GetAvailableEnergy()
+                )
+                .First();
+
+            Assert.AreSame(viablePlanet, selected);
         }
     }
 }

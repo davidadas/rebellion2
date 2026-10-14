@@ -4,6 +4,7 @@ using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
+using Rebellion.Simulation;
 using Rebellion.Util.Mathematics;
 
 namespace Rebellion.AI
@@ -20,6 +21,10 @@ namespace Rebellion.AI
         private readonly Dictionary<BuildingType, int> _infrastructureCounts = new();
         private readonly Dictionary<BuildingType, int> _infrastructureTargets = new();
         private readonly Dictionary<BuildingType, int> _infrastructureDeficits = new();
+        private readonly Dictionary<
+            string,
+            Dictionary<BuildingType, int>
+        > _infrastructureTargetsByPlanetId = new(StringComparer.Ordinal);
         private readonly Dictionary<string, AIPlanetDefenseCommitment> _defenseByPlanetId =
             new Dictionary<string, AIPlanetDefenseCommitment>(StringComparer.Ordinal);
 
@@ -150,6 +155,288 @@ namespace Rebellion.AI
         {
             int target = GetInfrastructureTarget(buildingType);
             return target > 0 ? GetInfrastructureDeficit(buildingType) / (double)target : 0;
+        }
+
+        /// <summary>
+        /// Returns the industrial target assigned to one planet for this turn.
+        /// </summary>
+        /// <param name="planet">The planned industrial destination.</param>
+        /// <param name="buildingType">The production category.</param>
+        /// <returns>The assigned target, or zero when this category has no allocation.</returns>
+        public int GetAllocatedInfrastructureTarget(Planet planet, BuildingType buildingType)
+        {
+            return
+                planet != null
+                && _infrastructureTargetsByPlanetId.TryGetValue(planet.InstanceID, out var targets)
+                && targets.TryGetValue(buildingType, out int target)
+                ? target
+                : 0;
+        }
+
+        /// <summary>
+        /// Checks whether an industrial hub and its required defenses fit together.
+        /// </summary>
+        /// <param name="planet">The proposed hub destination.</param>
+        /// <param name="buildingType">The production category being assigned.</param>
+        /// <param name="targetCount">The finished industrial target.</param>
+        /// <returns>True when the whole allocation fits without removing completed buildings.</returns>
+        public bool CanAllocateInfrastructureHub(
+            Planet planet,
+            BuildingType buildingType,
+            int targetCount
+        )
+        {
+            return IsInfrastructureType(buildingType)
+                && targetCount > 0
+                && planet?.IsDestroyed == false
+                && _assessment.IsOwnedPlanet(planet)
+                && GetConstructionSpace(planet, buildingType, false)
+                    >= Math.Max(0, targetCount - planet.GetTotalBuildingTypeCount(buildingType));
+        }
+
+        /// <summary>
+        /// Allocates the finished industrial target while retaining its defense space.
+        /// </summary>
+        /// <param name="planet">The chosen hub destination.</param>
+        /// <param name="buildingType">The production category being assigned.</param>
+        /// <param name="targetCount">The finished industrial target.</param>
+        /// <returns>True when the allocation fits and has been recorded.</returns>
+        public bool TryAllocateInfrastructureHub(
+            Planet planet,
+            BuildingType buildingType,
+            int targetCount
+        )
+        {
+            if (!CanAllocateInfrastructureHub(planet, buildingType, targetCount))
+                return false;
+            if (!_infrastructureTargetsByPlanetId.TryGetValue(planet.InstanceID, out var targets))
+            {
+                targets = new Dictionary<BuildingType, int>();
+                _infrastructureTargetsByPlanetId.Add(planet.InstanceID, targets);
+            }
+            targets[buildingType] = targetCount;
+            return true;
+        }
+
+        /// <summary>
+        /// Returns space usable by a building without consuming the rest of the planned layout.
+        /// </summary>
+        /// <param name="planet">The construction destination.</param>
+        /// <param name="buildingType">The building category being placed.</param>
+        /// <param name="isEmergencyDefense">Whether an immediate defense may precede unfinished industry.</param>
+        /// <param name="selectedBuildings">Building counts already accepted for this destination during selection.</param>
+        /// <returns>The uncommitted space available to this building category.</returns>
+        public int GetAvailableConstructionSpace(
+            Planet planet,
+            BuildingType buildingType,
+            bool isEmergencyDefense = false,
+            IReadOnlyDictionary<BuildingType, int> selectedBuildings = null
+        )
+        {
+            return Math.Max(
+                0,
+                GetConstructionSpace(planet, buildingType, isEmergencyDefense, selectedBuildings)
+            );
+        }
+
+        /// <summary>
+        /// Returns the shield target for a planet's current or planned strategic role.
+        /// </summary>
+        /// <param name="planet">The owned planet.</param>
+        /// <param name="plannedInfrastructure">Whether the proposed layout adds production infrastructure.</param>
+        /// <returns>The required shield-generator count.</returns>
+        public int GetPlanetaryShieldTarget(Planet planet, bool plannedInfrastructure = false)
+        {
+            if (
+                _game?.Config == null
+                || planet?.IsDestroyed != false
+                || !_assessment.IsOwnedPlanet(planet)
+            )
+                return 0;
+            int limit = _game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit;
+            if (
+                _assessment.IsPriorityDefensePlanet(planet)
+                || _assessment.IsPlanetThreatened(planet)
+                || _assessment.GetHostileFleets(planet).Any()
+            )
+                return limit;
+            bool hasInfrastructure =
+                plannedInfrastructure
+                || _infrastructureTargetsByPlanetId.ContainsKey(planet.InstanceID)
+                || planet
+                    .GetAllBuildings()
+                    .Any(building =>
+                        building.GetOwnerInstanceID() == planet.GetOwnerInstanceID()
+                        && IsInfrastructureType(building.BuildingType)
+                    );
+            return
+                hasInfrastructure
+                || _assessment.GetFactionPopularSupport(planet)
+                    < _game.Config.AI.Garrison.SupportThreshold
+                || _assessment.GetDefensiveSupportRisk(planet) > 0
+                ? Math.Min(1, limit)
+                : 0;
+        }
+
+        /// <summary>
+        /// Returns the battery target for a planet's strategic exposure.
+        /// </summary>
+        /// <param name="planet">The owned planet.</param>
+        /// <returns>The configured battery target when the planet requires protection, otherwise zero.</returns>
+        public int GetPlanetaryWeaponTarget(Planet planet)
+        {
+            return
+                _game?.Config != null
+                && planet?.IsDestroyed == false
+                && _assessment.IsOwnedPlanet(planet)
+                && (
+                    _assessment.IsPriorityDefensePlanet(planet)
+                    || _assessment.IsPlanetThreatened(planet)
+                    || _assessment.GetHostileFleets(planet).Any()
+                )
+                ? _game.Config.AI.Infrastructure.PlanetaryWeaponTargetCount
+                : 0;
+        }
+
+        /// <summary>
+        /// Calculates remaining space after the other industrial and defensive commitments.
+        /// </summary>
+        /// <param name="planet">The construction destination.</param>
+        /// <param name="buildingType">The building category being placed.</param>
+        /// <param name="isEmergencyDefense">Whether an immediate defense takes priority over unfinished industry.</param>
+        /// <param name="selectedBuildings">Building counts already accepted for this destination.</param>
+        /// <returns>The signed remaining space before clamping an overcommitted layout.</returns>
+        private int GetConstructionSpace(
+            Planet planet,
+            BuildingType buildingType,
+            bool isEmergencyDefense,
+            IReadOnlyDictionary<BuildingType, int> selectedBuildings = null
+        )
+        {
+            if (
+                _game?.Config == null
+                || planet?.IsDestroyed != false
+                || !_assessment.IsOwnedPlanet(planet)
+            )
+                return 0;
+            int available = ManufacturingQueries.GetAvailableBuildingSpace(_game, planet, true);
+            available -= selectedBuildings?.Values.Sum() ?? 0;
+            if (
+                !isEmergencyDefense
+                && _infrastructureTargetsByPlanetId.TryGetValue(planet.InstanceID, out var targets)
+            )
+                foreach (var target in targets)
+                    if (target.Key != buildingType)
+                        available -= Math.Max(
+                            0,
+                            target.Value
+                                - planet.GetTotalBuildingTypeCount(target.Key)
+                                - GetSelectedBuildingCount(selectedBuildings, target.Key)
+                        );
+
+            bool protectsLayout =
+                IsInfrastructureType(buildingType)
+                || _infrastructureTargetsByPlanetId.ContainsKey(planet.InstanceID)
+                || planet
+                    .GetAllBuildings()
+                    .Any(building =>
+                        building.GetOwnerInstanceID() == planet.GetOwnerInstanceID()
+                        && IsInfrastructureType(building.BuildingType)
+                    )
+                || _assessment.IsPriorityDefensePlanet(planet)
+                || _assessment.IsPlanetThreatened(planet)
+                || _assessment.GetHostileFleets(planet).Any();
+            int shieldDeficit = protectsLayout
+                ? Math.Max(
+                    0,
+                    GetPlanetaryShieldTarget(planet, IsInfrastructureType(buildingType))
+                        - CountCommittedDefense(planet, true)
+                        - GetSelectedBuildingCount(selectedBuildings, BuildingType.Defense)
+                )
+                : 0;
+            int weaponDeficit = protectsLayout
+                ? Math.Max(
+                    0,
+                    GetPlanetaryWeaponTarget(planet)
+                        - CountCommittedDefense(planet, false)
+                        - GetSelectedBuildingCount(selectedBuildings, BuildingType.Weapon)
+                )
+                : 0;
+            if (buildingType != BuildingType.Defense)
+                available -= shieldDeficit;
+            if (buildingType is not BuildingType.Defense and not BuildingType.Weapon)
+                available -= weaponDeficit;
+            return available;
+        }
+
+        /// <summary>
+        /// Counts defenses whose occupied space cannot be reclaimed by another order.
+        /// </summary>
+        /// <param name="planet">The defense destination.</param>
+        /// <param name="shield">Whether to count shield generators instead of batteries.</param>
+        /// <returns>The completed and protected queued defense count.</returns>
+        private int CountCommittedDefense(Planet planet, bool shield)
+        {
+            return planet
+                .GetAllBuildings()
+                .Count(building =>
+                {
+                    if (
+                        building.GetOwnerInstanceID() != planet.GetOwnerInstanceID()
+                        || (
+                            shield
+                                ? !building.IsPlanetaryShieldGenerator()
+                                : building.BuildingType != BuildingType.Weapon
+                        )
+                    )
+                        return false;
+                    if (
+                        !building.IsAIProductionFiller
+                        || string.IsNullOrEmpty(building.ProducerPlanetID)
+                    )
+                        return true;
+                    Planet producer = _game.GetSceneNodeByInstanceID<Planet>(
+                        building.ProducerPlanetID
+                    );
+                    return !ReferenceEquals(
+                        building,
+                        ManufacturingQueries.GetInterruptibleManufacturingOrder(
+                            producer,
+                            ManufacturingType.Building
+                        )
+                    );
+                });
+        }
+
+        /// <summary>
+        /// Returns the accepted count for one building category.
+        /// </summary>
+        /// <param name="selectedBuildings">Accepted destination building counts.</param>
+        /// <param name="buildingType">The building category.</param>
+        /// <returns>The accepted count, or zero when none have been selected.</returns>
+        private static int GetSelectedBuildingCount(
+            IReadOnlyDictionary<BuildingType, int> selectedBuildings,
+            BuildingType buildingType
+        )
+        {
+            return
+                selectedBuildings != null
+                && selectedBuildings.TryGetValue(buildingType, out int count)
+                ? count
+                : 0;
+        }
+
+        /// <summary>
+        /// Identifies the industrial categories that require planned defense space.
+        /// </summary>
+        /// <param name="buildingType">The building category.</param>
+        /// <returns>True for construction, shipbuilding, and troop-training infrastructure.</returns>
+        private static bool IsInfrastructureType(BuildingType buildingType)
+        {
+            return buildingType
+                is BuildingType.ConstructionFacility
+                    or BuildingType.Shipyard
+                    or BuildingType.TrainingFacility;
         }
 
         /// <summary>

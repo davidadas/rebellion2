@@ -268,7 +268,15 @@ namespace Rebellion.AI.Scorers
             bool isGarrisonRegiment = target is Regiment && IsGarrisonedAtPlanet(planet, target);
             bool isGarrisonStarfighter =
                 target is Starfighter && IsGarrisonedAtPlanet(planet, target);
-            score.Add(building != null ? 1 : 0, utility.Infrastructure);
+            score.Add(
+                building?.GetBuildingType()
+                    is BuildingType.Shipyard
+                        or BuildingType.TrainingFacility
+                        or BuildingType.ConstructionFacility
+                    ? 1
+                    : 0,
+                utility.Infrastructure
+            );
             score.Add(isPlanetaryDefense ? 1 : 0, utility.Defense);
             score.Add(building?.IsShieldGenerator() == true ? 1 : 0, utility.Shield);
             score.Add(isAttackTarget ? 1 : 0, utility.AttackTarget);

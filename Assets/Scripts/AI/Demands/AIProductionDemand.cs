@@ -2,6 +2,7 @@ using System;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Simulation;
 
 namespace Rebellion.AI.Demands
 {
@@ -27,6 +28,7 @@ namespace Rebellion.AI.Demands
         FleetSeedCapitalShip,
         ColonizationFleetSeedCapitalShip,
         BuildingUpgrade,
+        IdleSpecialForces,
     }
 
     /// <summary>
@@ -72,6 +74,7 @@ namespace Rebellion.AI.Demands
         public int TargetCount { get; }
         public int BaseDemandPercent { get; }
         public int CapitalFirepowerDeficit { get; }
+        public int CombatStrengthDeficit { get; }
         public int StarfighterFirepowerDeficit { get; }
         public int StarfighterCapacityDeficit { get; }
         public int RegimentCapacityDeficit { get; }
@@ -83,6 +86,10 @@ namespace Rebellion.AI.Demands
         public int EscortDeficit { get; }
         public Planet ReferencePlanet { get; }
         public bool EstablishesInitialShield { get; }
+        public bool IsEmergencyDefense { get; }
+        public bool IsProductionFiller =>
+            Kind == AIProductionDemandKind.IdleSpecialForces
+            || Kind == AIProductionDemandKind.PlanetaryDefense && !IsEmergencyDefense;
         public bool UsesIdleShipyardCapacity { get; }
         public int InfrastructureHubIndex { get; }
 
@@ -134,6 +141,8 @@ namespace Rebellion.AI.Demands
         /// <param name="embarkedStarfighterDeficit">Unmet embarked-starfighter count.</param>
         /// <param name="escortDeficit">Unmet armed escort count.</param>
         /// <param name="infrastructureHubIndex">Zero-based infrastructure hub position, or negative one when the demand is not for a hub.</param>
+        /// <param name="combatStrengthDeficit">Unmet durability-adjusted combat strength.</param>
+        /// <param name="isEmergencyDefense">Whether a known hostile fleet requires immediate static defense.</param>
         public AIProductionDemand(
             string id,
             AIProductionDemandKind kind,
@@ -160,7 +169,9 @@ namespace Rebellion.AI.Demands
             int embarkedRegimentDeficit = 0,
             int embarkedStarfighterDeficit = 0,
             int escortDeficit = 0,
-            int infrastructureHubIndex = -1
+            int infrastructureHubIndex = -1,
+            int combatStrengthDeficit = 0,
+            bool isEmergencyDefense = false
         )
         {
             Id = id;
@@ -174,11 +185,13 @@ namespace Rebellion.AI.Demands
             BaseDemandPercent = baseDemandPercent;
             ReferencePlanet = referencePlanet;
             EstablishesInitialShield = establishesInitialShield;
+            IsEmergencyDefense = isEmergencyDefense;
             UsesIdleShipyardCapacity = usesIdleShipyardCapacity;
             ProductTypeId = productTypeId;
             CapitalShipRole = capitalShipRole;
             BuildingToReplace = buildingToReplace;
             CapitalFirepowerDeficit = Math.Max(0, capitalFirepowerDeficit);
+            CombatStrengthDeficit = Math.Max(0, combatStrengthDeficit);
             StarfighterFirepowerDeficit = Math.Max(0, starfighterFirepowerDeficit);
             StarfighterCapacityDeficit = Math.Max(0, starfighterCapacityDeficit);
             RegimentCapacityDeficit = Math.Max(0, regimentCapacityDeficit);
@@ -224,7 +237,99 @@ namespace Rebellion.AI.Demands
                 EmbarkedRegimentDeficit,
                 EmbarkedStarfighterDeficit,
                 EscortDeficit,
-                InfrastructureHubIndex
+                InfrastructureHubIndex,
+                CombatStrengthDeficit,
+                IsEmergencyDefense
+            );
+        }
+
+        /// <summary>Copies a demand for one selected product without changing its strategic need.</summary>
+        /// <param name="productTypeId">The selected product identifier.</param>
+        /// <returns>The single-unit demand for that product.</returns>
+        internal AIProductionDemand WithProduct(string productTypeId)
+        {
+            return new AIProductionDemand(
+                Id,
+                Kind,
+                ManufacturingType,
+                BuildingType,
+                Destination,
+                1,
+                productTypeId,
+                CapitalShipRole,
+                BuildingToReplace,
+                TargetCount,
+                BaseDemandPercent,
+                ReferencePlanet,
+                EstablishesInitialShield,
+                DeficitCount,
+                UsesIdleShipyardCapacity,
+                CapitalFirepowerDeficit,
+                StarfighterFirepowerDeficit,
+                StarfighterCapacityDeficit,
+                RegimentCapacityDeficit,
+                PlanetDestroyerDeficit,
+                BombardmentDeficit,
+                InterdictionDeficit,
+                EmbarkedRegimentDeficit,
+                EmbarkedStarfighterDeficit,
+                EscortDeficit,
+                InfrastructureHubIndex,
+                CombatStrengthDeficit,
+                IsEmergencyDefense
+            );
+        }
+
+        /// <summary>Subtracts the capabilities supplied by a hypothetical hull from the remaining need.</summary>
+        /// <param name="ship">The hull template assigned in this turn's plan.</param>
+        /// <param name="combatStrength">The hull's projected combat strength for this demand.</param>
+        /// <returns>The remaining need without creating or attaching any game entity.</returns>
+        internal AIProductionDemand AfterPlanning(CapitalShip ship, int combatStrength)
+        {
+            return new AIProductionDemand(
+                Id,
+                Kind,
+                ManufacturingType,
+                BuildingType,
+                Destination,
+                QuantityNeeded,
+                ProductTypeId,
+                CapitalShipRole,
+                BuildingToReplace,
+                TargetCount,
+                BaseDemandPercent,
+                ReferencePlanet,
+                EstablishesInitialShield,
+                DeficitCount,
+                UsesIdleShipyardCapacity,
+                Math.Max(
+                    0,
+                    CapitalFirepowerDeficit
+                        - SpaceCombatStrengthCalculator.GetCapitalShipFirepowerAgainstCapitalShips(
+                            ship
+                        )
+                ),
+                Math.Max(
+                    0,
+                    StarfighterFirepowerDeficit
+                        - SpaceCombatStrengthCalculator.GetCapitalShipFirepowerAgainstStarfighters(
+                            ship
+                        )
+                ),
+                Math.Max(0, StarfighterCapacityDeficit - ship.StarfighterCapacity),
+                Math.Max(0, RegimentCapacityDeficit - ship.RegimentCapacity),
+                Math.Max(0, PlanetDestroyerDeficit - (ship.CanDestroyPlanets ? 1 : 0)),
+                Math.Max(0, BombardmentDeficit - ship.Bombardment),
+                Math.Max(0, InterdictionDeficit - (ship.HasGravityWell ? 1 : 0)),
+                EmbarkedRegimentDeficit,
+                EmbarkedStarfighterDeficit,
+                Math.Max(
+                    0,
+                    EscortDeficit - (SpaceCombatStrengthCalculator.IsArmedEscort(ship) ? 1 : 0)
+                ),
+                InfrastructureHubIndex,
+                Math.Max(0, CombatStrengthDeficit - combatStrength),
+                IsEmergencyDefense
             );
         }
 
