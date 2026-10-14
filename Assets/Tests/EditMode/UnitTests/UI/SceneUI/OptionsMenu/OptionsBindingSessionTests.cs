@@ -76,6 +76,20 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
+        public void Rebuild_CloseAllWindowsBinding_ShowsPlatformShortcut()
+        {
+            using OptionsBindingSession session = new OptionsBindingSession(_inputManager);
+
+            session.Rebuild();
+
+            OptionsBindingRow row = session.Rows.Single(candidate =>
+                candidate.Action == "Close All Windows"
+            );
+            string modifier = Application.platform == RuntimePlatform.OSXEditor ? "CMD" : "CTRL";
+            Assert.AreEqual($"{modifier}+W", row.Primary);
+        }
+
+        [Test]
         public void CompositeSignatures_EquivalentChordOverrides_Match()
         {
             InputAction expected = _inputManager.Asset.FindAction(

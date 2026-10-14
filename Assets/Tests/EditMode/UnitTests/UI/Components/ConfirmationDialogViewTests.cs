@@ -3,6 +3,7 @@ using System.Reflection;
 using NUnit.Framework;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace Rebellion.Tests.UI.Components
@@ -12,7 +13,9 @@ namespace Rebellion.Tests.UI.Components
     {
         private const string _prefabPath = "Assets/Prefabs/UI/OptionsMenu/OptionsMenu.prefab";
 
+        private EventSystem _eventSystem;
         private GameObject _rootObject;
+        private GameObject _eventSystemObject;
         private ConfirmationDialogView _view;
 
         /// <summary>
@@ -21,6 +24,9 @@ namespace Rebellion.Tests.UI.Components
         [SetUp]
         public void SetUp()
         {
+            _eventSystemObject = new GameObject("EventSystem", typeof(EventSystem));
+            _eventSystem = _eventSystemObject.GetComponent<EventSystem>();
+            UIComponentTestHelper.InvokeLifecycle(_eventSystem, "OnEnable");
             _rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
             _view = _rootObject.GetComponentInChildren<ConfirmationDialogView>(true);
             UIComponentTestHelper.InvokeLifecycle(_view, "Awake");
@@ -33,6 +39,8 @@ namespace Rebellion.Tests.UI.Components
         public void TearDown()
         {
             UnityEngine.Object.DestroyImmediate(_rootObject);
+            UIComponentTestHelper.InvokeLifecycle(_eventSystem, "OnDisable");
+            UnityEngine.Object.DestroyImmediate(_eventSystemObject);
         }
 
         [Test]
@@ -86,6 +94,17 @@ namespace Rebellion.Tests.UI.Components
             _view.Show(null);
 
             Assert.AreEqual(string.Empty, GetField<TextMeshProUGUI>("messageTextField").text);
+        }
+
+        [Test]
+        public void Show_VisibleDialog_SelectsConfirmButton()
+        {
+            _view.Show("Confirm");
+
+            Assert.AreSame(
+                GetField<Button>("confirmButton").gameObject,
+                _eventSystem.currentSelectedGameObject
+            );
         }
 
         [Test]

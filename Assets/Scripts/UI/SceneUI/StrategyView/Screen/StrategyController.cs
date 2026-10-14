@@ -3581,6 +3581,7 @@ public sealed class StrategyController
         );
         BindInputAction(asset, "Strategy/DecreaseGameSpeed", () => StepGameSpeed(false));
         BindInputAction(asset, "Strategy/IncreaseGameSpeed", () => StepGameSpeed(true));
+        BindInputAction(asset, "Strategy/CloseAllWindows", CloseAllWindows);
 
         BindGalacticInformationAction(
             asset,
@@ -3746,6 +3747,14 @@ public sealed class StrategyController
                 ? AppInputController.GetFasterGameSpeed(current)
                 : AppInputController.GetSlowerGameSpeed(current)
         );
+    }
+
+    /// <summary>
+    /// Closes every registered strategy window through its semantic close path.
+    /// </summary>
+    private void CloseAllWindows()
+    {
+        strategyWindowManager?.TryRequestCloseAll();
     }
 
     /// <summary>
