@@ -990,28 +990,10 @@ namespace Rebellion.AI.Demands
         {
             return context.Assessment.PendingRawMaterialRequestCount > 0
                 || context.Assessment.PendingRefinedMaterialRequestCount > 0
-                || GetProjectedRefinedMaterialPercent(context)
+                || context.Assessment.ProjectedRefinedMaterialPercent
                     <= context.Game.Config.AI.Selection.RefinedMaterialEconomyWarningPercent
                 || context.Assessment.ProjectedEconomyMaintenanceHeadroom
                     < context.Game.Config.AI.Selection.MaintenanceHeadroomTarget;
-        }
-
-        /// <summary>
-        /// Returns projected uncommitted refined materials as a percentage of supply.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <returns>The projected refined-material percentage.</returns>
-        private static int GetProjectedRefinedMaterialPercent(AITurnContext context)
-        {
-            long projectedStockpile = Math.Max(
-                0,
-                (long)context.Assessment.RefinedMaterialStockpile
-                    - context.Assessment.NearTermRefinedMaterialCommitment
-            );
-            int supply = context.Assessment.RefinedMaterialSupply;
-            if (supply <= 0)
-                return projectedStockpile > 0 ? 100 : 0;
-            return (int)Math.Min(100, projectedStockpile * 100 / supply);
         }
 
         /// <summary>
@@ -2094,8 +2076,7 @@ namespace Rebellion.AI.Demands
         )
         {
             GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
-            List<SpecialForces> existingUnits =
-                context.Faction.GetOwnedUnitsByType<SpecialForces>();
+            IReadOnlyList<SpecialForces> existingUnits = context.Assessment.OwnedSpecialForces;
             Dictionary<string, int> existingSupplyByRole = new Dictionary<string, int>(
                 StringComparer.Ordinal
             );
@@ -2104,33 +2085,47 @@ namespace Rebellion.AI.Demands
             foreach (SpecialForces unit in existingUnits)
                 IncrementCount(existingSupplyByRole, GetRoleId(unit));
 
-            foreach (
-                IGrouping<string, SpecialForces> role in context
-                    .Faction.GetUnlockedTechnologies(ManufacturingType.Troop)
-                    .Select(technology => technology.GetReference())
-                    .OfType<SpecialForces>()
-                    .Where(template => template.AllowedMissionTypeIDs.Count > 0)
-                    .GroupBy(GetRoleId, StringComparer.Ordinal)
-                    .OrderBy(group => group.Key, StringComparer.Ordinal)
-            )
+            List<IGrouping<string, SpecialForces>> roles = context
+                .UnlockedSpecialForcesTemplates.Where(template =>
+                    template.AllowedMissionTypeIDs.Count > 0
+                )
+                .GroupBy(GetRoleId, StringComparer.Ordinal)
+                .OrderBy(group => group.Key, StringComparer.Ordinal)
+                .ToList();
+            Planet headquarters = GetMobileHeadquarters(context);
+            bool needsHeadquartersEspionageAgent =
+                headquarters != null
+                && !existingUnits.Any(unit =>
+                    unit.CanPerformMission(MissionTypeIDs.Espionage)
+                    && unit.GetParentOfType<Planet>() == headquarters
+                );
+            GameConfig.AIConsiderationConfig buildEfficiency = context
+                .Game
+                .Config
+                .AI
+                .Selection
+                .TechnologyUtility
+                .SpecialForces
+                .BuildEfficiency;
+            SpecialForces headquartersEspionageTemplate = needsHeadquartersEspionageAgent
+                ? SelectPreferredSpecialForcesTemplate(
+                    roles
+                        .SelectMany(role => role)
+                        .Where(template => template.CanPerformMission(MissionTypeIDs.Espionage)),
+                    buildEfficiency
+                )
+                : null;
+            string headquartersEspionageRole =
+                headquartersEspionageTemplate == null
+                    ? null
+                    : GetRoleId(headquartersEspionageTemplate);
+
+            foreach (IGrouping<string, SpecialForces> role in roles)
             {
-                GameConfig.AIConsiderationConfig buildEfficiency = context
-                    .Game
-                    .Config
-                    .AI
-                    .Selection
-                    .TechnologyUtility
-                    .SpecialForces
-                    .BuildEfficiency;
-                SpecialForces template = role.OrderByDescending(candidate =>
-                        AIUtility.Evaluate(
-                            1 - AIUtility.Fulfillment(candidate.ConstructionCost, buildEfficiency),
-                            buildEfficiency
-                        )
-                    )
-                    .ThenBy(candidate => candidate.MaintenanceCost)
-                    .ThenBy(candidate => candidate.GetTypeID(), StringComparer.Ordinal)
-                    .First();
+                SpecialForces template = SelectPreferredSpecialForcesTemplate(
+                    role,
+                    buildEfficiency
+                );
                 existingSupplyByRole.TryGetValue(role.Key, out int existingSupply);
                 int activeMissionDemand = template.AllowedMissionTypeIDs.Sum(missionTypeId =>
                     activeOfficerMissionsByType.TryGetValue(missionTypeId, out int count)
@@ -2141,13 +2136,27 @@ namespace Rebellion.AI.Demands
                     activeMissionDemand,
                     config.SpecialForcesMissionCoveragePercent
                 );
-                int deficit = desiredSupply - existingSupply;
+                int coverageDeficit = desiredSupply - existingSupply;
+                bool suppliesHeadquartersEspionage =
+                    role.Key == headquartersEspionageRole && headquartersEspionageTemplate != null;
+                int headquartersDeficit = suppliesHeadquartersEspionage ? 1 : 0;
+                int deficit = Math.Max(coverageDeficit, headquartersDeficit);
                 if (deficit <= 0)
                     continue;
 
-                Planet destination = FindDestination(context);
+                Planet destination = suppliesHeadquartersEspionage
+                    ? headquarters
+                    : FindDestination(context);
                 if (destination == null)
                     return;
+
+                int targetCount = Math.Max(desiredSupply, existingSupply + headquartersDeficit);
+                int baseDemandPercent = suppliesHeadquartersEspionage
+                    ? Math.Max(
+                        config.SpecialForcesDemandPercent,
+                        config.MobileHeadquartersEspionageDemandPercent
+                    )
+                    : config.SpecialForcesDemandPercent;
 
                 demands.Add(
                     new AIProductionDemand(
@@ -2162,11 +2171,50 @@ namespace Rebellion.AI.Demands
                         destination,
                         deficit,
                         template.GetTypeID(),
-                        targetCount: desiredSupply,
-                        baseDemandPercent: config.SpecialForcesDemandPercent
+                        targetCount: targetCount,
+                        baseDemandPercent: baseDemandPercent
                     )
                 );
             }
+        }
+
+        /// <summary>
+        /// Returns the active, usable headquarters for a faction whose headquarters can move.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <returns>The headquarters planet, or null when this policy does not apply.</returns>
+        private static Planet GetMobileHeadquarters(AITurnContext context)
+        {
+            Planet headquarters = context?.Assessment?.FactionHeadquarters;
+            return
+                context?.Faction?.Settings?.Headquarters?.IsMobile == true
+                && headquarters?.IsColonized == true
+                && !headquarters.IsDestroyed
+                ? headquarters
+                : null;
+        }
+
+        /// <summary>
+        /// Chooses the most efficient special-forces template from an eligible set.
+        /// </summary>
+        /// <param name="templates">The eligible special-forces templates.</param>
+        /// <param name="buildEfficiency">The configured build-efficiency consideration.</param>
+        /// <returns>The preferred template, or null when no eligible template exists.</returns>
+        private static SpecialForces SelectPreferredSpecialForcesTemplate(
+            IEnumerable<SpecialForces> templates,
+            GameConfig.AIConsiderationConfig buildEfficiency
+        )
+        {
+            return templates
+                .OrderByDescending(candidate =>
+                    AIUtility.Evaluate(
+                        1 - AIUtility.Fulfillment(candidate.ConstructionCost, buildEfficiency),
+                        buildEfficiency
+                    )
+                )
+                .ThenBy(candidate => candidate.MaintenanceCost)
+                .ThenBy(candidate => candidate.GetTypeID(), StringComparer.Ordinal)
+                .FirstOrDefault();
         }
 
         /// <summary>

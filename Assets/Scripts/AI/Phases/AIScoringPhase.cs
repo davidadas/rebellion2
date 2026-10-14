@@ -19,6 +19,7 @@ namespace Rebellion.AI.Phases
             : this(
                 new IAIProposalScorer[]
                 {
+                    new AIHeadquartersRelocationProposalScorer(),
                     new AIMissionProposalScorer(),
                     new AIFleetProposalScorer(),
                     new AIProductionProposalScorer(),

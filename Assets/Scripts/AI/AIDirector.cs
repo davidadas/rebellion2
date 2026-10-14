@@ -24,6 +24,7 @@ namespace Rebellion.AI
         private readonly MissionCommands _missions;
         private readonly MissionQueries _missionQueries;
         private readonly MovementCommands _movement;
+        private readonly HeadquartersCommands _headquarters;
         private readonly ManufacturingCommands _manufacturing;
         private readonly MaintenanceCommands _maintenance;
         private readonly BombardmentCommands _bombardment;
@@ -63,6 +64,7 @@ namespace Rebellion.AI
         /// <param name="planetaryAssault">Planetary-assault system used by fleet attack proposals.</param>
         /// <param name="random">RNG provider used by probabilistic AI decisions.</param>
         /// <param name="maintenance">Maintenance system used to project production capacity.</param>
+        /// <param name="headquarters">Headquarters system used by relocation proposals.</param>
         public AIDirector(
             GameRoot game,
             MissionCommands missions,
@@ -71,7 +73,8 @@ namespace Rebellion.AI
             BombardmentCommands bombardment,
             PlanetaryAssaultCommands planetaryAssault,
             IRandomNumberProvider random,
-            MaintenanceCommands maintenance = null
+            MaintenanceCommands maintenance = null,
+            HeadquartersCommands headquarters = null
         )
         {
             _game = game;
@@ -80,6 +83,7 @@ namespace Rebellion.AI
             _missions = missions;
             _missionQueries = game == null ? null : new MissionQueries(game);
             _movement = movement;
+            _headquarters = headquarters;
             _manufacturing = manufacturing;
             _maintenance = maintenance;
             _bombardment = bombardment;
@@ -99,6 +103,7 @@ namespace Rebellion.AI
                     {
                         new AIAbortMissionPlanner(),
                         new AIFacilityRemovalPlanner(),
+                        new AIHeadquartersRelocationPlanner(),
                         new AIMissionPlanner(),
                         new AIOrbitalEngagementPlanner(),
                         new AIFleetPlanner(),
@@ -191,7 +196,8 @@ namespace Rebellion.AI
                     assessment,
                     strategicPlan,
                     factionView,
-                    _maintenance
+                    _maintenance,
+                    _headquarters
                 );
             }
             finally

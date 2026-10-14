@@ -297,6 +297,7 @@ namespace Rebellion.Tests.AI.Helpers
         /// <param name="planetaryAssault">The planetary assault.</param>
         /// <param name="random">The random.</param>
         /// <param name="maintenance">The maintenance.</param>
+        /// <param name="headquarters">The headquarters system.</param>
         /// <returns>The created context.</returns>
         public static AITurnContext CreateContext(
             GameRoot game,
@@ -307,22 +308,20 @@ namespace Rebellion.Tests.AI.Helpers
             BombardmentCommands bombardment = null,
             PlanetaryAssaultCommands planetaryAssault = null,
             IRandomNumberProvider random = null,
-            MaintenanceCommands maintenance = null
+            MaintenanceCommands maintenance = null,
+            HeadquartersCommands headquarters = null
         )
         {
             IRandomNumberProvider provider = random ?? new StubRNG();
             FogOfWarCommands fog = new FogOfWarCommands(game);
             FogOfWarQueries fogQueries = new FogOfWarQueries(game);
             FleetCommands fleetSystem = new FleetCommands(game);
+            HeadquartersQueries headquartersQueries = new HeadquartersQueries(game);
+            MovementQueries movementQueries = new MovementQueries(game);
+            movementQueries.SetCompletedBuildingMovementPolicy(headquartersQueries.CanMove);
             MovementCommands movementSystem =
                 movement
-                ?? new MovementCommands(
-                    game,
-                    fog,
-                    fleetSystem,
-                    fogQueries,
-                    new MovementQueries(game)
-                );
+                ?? new MovementCommands(game, fog, fleetSystem, fogQueries, movementQueries);
             MissionCommands missionSystem =
                 missions ?? TestSystems.CreateMissionCommands(game, provider, movementSystem);
             ManufacturingCommands manufacturingSystem =
@@ -349,6 +348,10 @@ namespace Rebellion.Tests.AI.Helpers
                     planetaryControl,
                     new PlanetaryAssaultQueries(game)
                 );
+            MaintenanceCommands maintenanceSystem =
+                maintenance ?? new MaintenanceCommands(game, provider);
+            HeadquartersCommands headquartersSystem =
+                headquarters ?? new HeadquartersCommands(game, movementSystem, headquartersQueries);
             GalaxyMap factionView = fogQueries.BuildFactionView(faction);
             AIAssessment assessment = new AIAssessment(game, faction, factionView);
             AIStrategicPlan strategicPlan = new AIStrategicPlan(game, assessment);
@@ -365,7 +368,8 @@ namespace Rebellion.Tests.AI.Helpers
                 assessment,
                 strategicPlan,
                 factionView,
-                maintenance
+                maintenanceSystem,
+                headquartersSystem
             );
             new AIAttackDemandGenerator().Generate(context);
             return context;

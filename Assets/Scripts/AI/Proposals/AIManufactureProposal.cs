@@ -625,7 +625,7 @@ namespace Rebellion.AI.Proposals
         private void CommitMaintenance(AITurnContext context)
         {
             if (Demand?.RestoresMaintenanceCapacity != true)
-                context.CommitManufacturingMaintenance(GetMaintenanceCost());
+                context.CommitMaintenanceCost(GetMaintenanceCost());
         }
 
         /// <summary>

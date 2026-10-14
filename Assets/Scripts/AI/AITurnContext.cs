@@ -6,6 +6,7 @@ using Rebellion.AI.Proposals;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Simulation;
@@ -26,6 +27,8 @@ namespace Rebellion.AI
         public MissionQueries MissionQueries { get; }
         public MovementCommands Movement { get; }
         public MovementQueries MovementQueries { get; }
+        public HeadquartersCommands Headquarters { get; }
+        public HeadquartersQueries HeadquartersQueries { get; }
         public ManufacturingCommands Manufacturing { get; }
         public MaintenanceCommands Maintenance { get; }
         public BombardmentCommands Bombardment { get; }
@@ -35,13 +38,14 @@ namespace Rebellion.AI
         public GalaxyMap FactionView { get; }
         public AIAssessment Assessment { get; }
         public AIStrategicPlan StrategicPlan { get; }
+        public IReadOnlyList<SpecialForces> UnlockedSpecialForcesTemplates { get; }
         public int AvailableProjectedMaintenanceHeadroom
         {
             get
             {
                 long available =
                     (long)(Assessment?.ProjectedMaintenanceHeadroom ?? 0)
-                    - _committedManufacturingMaintenance;
+                    - _committedMaintenanceCost;
                 return (int)Math.Max(int.MinValue, Math.Min(int.MaxValue, available));
             }
         }
@@ -64,8 +68,9 @@ namespace Rebellion.AI
         private readonly List<GameResult> _results = new List<GameResult>();
         private readonly Dictionary<SpecialForces, SpecialForcesIntent> _specialForcesIntents =
             new Dictionary<SpecialForces, SpecialForcesIntent>();
+        private readonly HashSet<SpecialForces> _headquartersEspionageAgents;
         private readonly HashSet<string> _unlockedSpecialForcesMissionTypes;
-        private long _committedManufacturingMaintenance;
+        private long _committedMaintenanceCost;
 
         /// <summary>
         /// Creates a turn context.
@@ -82,6 +87,7 @@ namespace Rebellion.AI
         /// <param name="strategicPlan">The strategic allocations derived from the assessment.</param>
         /// <param name="factionView">The faction-visible galaxy state for this turn.</param>
         /// <param name="maintenance">Maintenance system used to project production capacity.</param>
+        /// <param name="headquarters">Headquarters system used by relocation proposals.</param>
         public AITurnContext(
             GameRoot game,
             Faction faction,
@@ -94,7 +100,8 @@ namespace Rebellion.AI
             AIAssessment assessment,
             AIStrategicPlan strategicPlan,
             GalaxyMap factionView = null,
-            MaintenanceCommands maintenance = null
+            MaintenanceCommands maintenance = null,
+            HeadquartersCommands headquarters = null
         )
         {
             Game = game;
@@ -103,6 +110,8 @@ namespace Rebellion.AI
             MissionQueries = game == null ? null : new MissionQueries(game);
             Movement = movement;
             MovementQueries = game == null ? null : new MovementQueries(game);
+            Headquarters = headquarters;
+            HeadquartersQueries = game == null ? null : new HeadquartersQueries(game);
             Manufacturing = manufacturing;
             Maintenance = maintenance;
             Bombardment = bombardment;
@@ -113,14 +122,27 @@ namespace Rebellion.AI
             FactionView = factionView;
             Assessment = assessment;
             StrategicPlan = strategicPlan;
-            _unlockedSpecialForcesMissionTypes =
+            UnlockedSpecialForcesTemplates =
                 faction
                     ?.GetUnlockedTechnologies(ManufacturingType.Troop)
                     .Select(technology => technology.GetReference())
                     .OfType<SpecialForces>()
-                    .SelectMany(unit => unit.AllowedMissionTypeIDs)
-                    .ToHashSet(StringComparer.Ordinal)
-                ?? new HashSet<string>(StringComparer.Ordinal);
+                    .ToList()
+                ?? new List<SpecialForces>();
+            _unlockedSpecialForcesMissionTypes = UnlockedSpecialForcesTemplates
+                .SelectMany(unit => unit.AllowedMissionTypeIDs)
+                .ToHashSet(StringComparer.Ordinal);
+            _headquartersEspionageAgents =
+                faction?.Settings?.Headquarters?.IsMobile == true
+                && assessment?.FactionHeadquarters != null
+                    ? assessment
+                        .AvailableMissionParticipants.OfType<SpecialForces>()
+                        .Where(unit =>
+                            unit.CanPerformMission(MissionTypeIDs.Espionage)
+                            && unit.GetParentOfType<Planet>() == assessment.FactionHeadquarters
+                        )
+                        .ToHashSet()
+                    : new HashSet<SpecialForces>();
         }
 
         /// <summary>
@@ -216,12 +238,12 @@ namespace Rebellion.AI
         }
 
         /// <summary>
-        /// Records maintenance committed by a manufacturing order that executed this turn.
+        /// Records maintenance headroom consumed by an action that executed this turn.
         /// </summary>
-        /// <param name="maintenanceCost">The non-negative maintenance committed.</param>
-        public void CommitManufacturingMaintenance(int maintenanceCost)
+        /// <param name="maintenanceCost">The non-negative maintenance cost committed.</param>
+        public void CommitMaintenanceCost(int maintenanceCost)
         {
-            _committedManufacturingMaintenance += Math.Max(0, maintenanceCost);
+            _committedMaintenanceCost += Math.Max(0, maintenanceCost);
         }
 
         /// <summary>
@@ -256,6 +278,17 @@ namespace Rebellion.AI
         {
             return !string.IsNullOrEmpty(missionTypeId)
                 && _unlockedSpecialForcesMissionTypes.Contains(missionTypeId);
+        }
+
+        /// <summary>
+        /// Returns whether an available special-forces unit is an espionage agent stationed at
+        /// this mobile faction's headquarters for the current turn.
+        /// </summary>
+        /// <param name="unit">The special-forces unit to inspect.</param>
+        /// <returns>True when the unit is an available headquarters espionage agent.</returns>
+        public bool IsHeadquartersEspionageAgent(SpecialForces unit)
+        {
+            return unit != null && _headquartersEspionageAgents.Contains(unit);
         }
 
         /// <summary>

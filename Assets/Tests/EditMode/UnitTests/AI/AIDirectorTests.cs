@@ -52,7 +52,7 @@ namespace Rebellion.Tests.Systems
 
             int completedSteps = system.ProcessTickIncrementally(results).Count();
 
-            Assert.AreEqual(17, completedSteps);
+            Assert.AreEqual(18, completedSteps);
             Assert.IsNotNull(fleet.Order);
             Assert.AreEqual(FleetOrderType.Attack, fleet.Order.OrderType);
         }
@@ -125,7 +125,8 @@ namespace Rebellion.Tests.Systems
                 context.Bombardment,
                 context.PlanetaryAssault,
                 context.Random,
-                context.Maintenance
+                context.Maintenance,
+                context.Headquarters
             );
 
             return (game, fleet, system);

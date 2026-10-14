@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.AI;
 using Rebellion.AI.Demands;
@@ -13,6 +14,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
+using Rebellion.Simulation;
 using Rebellion.Tests.AI.Helpers;
 
 namespace Rebellion.Tests.AI.Phases
@@ -217,6 +219,109 @@ namespace Rebellion.Tests.AI.Phases
             List<AIProposal> selected = new AISelectionPhase().Select(context);
 
             Assert.AreEqual(0, selected.Count);
+        }
+
+        [Test]
+        public void Select_HigherScoringMandatoryManufacturingCompetesWithRelocation_SelectsOnlyRelocation()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.Selection.MaintenanceHeadroomReserve = 0;
+            empire.Settings.Headquarters = new HeadquartersSettings
+            {
+                FacilityTypeID = "mobile-headquarters",
+                IsMobile = true,
+            };
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet origin = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "origin",
+                empire.InstanceID,
+                energyCapacity: 4
+            );
+            origin.IsHeadquarters = true;
+            empire.HQInstanceID = origin.InstanceID;
+            Building headquarters = AITestSceneBuilder.CreateBuildingTemplate(
+                "mobile-headquarters",
+                BuildingType.Headquarters
+            );
+            headquarters.OwnerInstanceID = empire.InstanceID;
+            game.AttachNode(headquarters, origin);
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                origin,
+                "construction-yard",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                origin,
+                "shipyard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                origin,
+                "refinery",
+                BuildingType.Refinery,
+                ManufacturingType.None
+            );
+            Planet destination = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "destination",
+                empire.InstanceID,
+                energyCapacity: 1,
+                rawResourceNodes: 1
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                destination,
+                "mine",
+                BuildingType.Mine,
+                ManufacturingType.None
+            );
+            Fleet incoming = EntityFactory.CreateFleet("incoming", rebels.InstanceID);
+            incoming.Movement = new MovementState { TransitTicks = 10 };
+            game.AttachNode(incoming, origin);
+            game.AttachNode(
+                AITestSceneBuilder.CreateCapitalShip("incoming-ship", rebels.InstanceID, 200),
+                incoming
+            );
+            Fleet defender = EntityFactory.CreateFleet("defender", empire.InstanceID);
+            defender.RoleType = FleetRoleType.Battle;
+            game.AttachNode(defender, origin);
+            game.AttachNode(
+                AITestSceneBuilder.CreateCapitalShip("defender-ship", empire.InstanceID, 100),
+                defender
+            );
+            AITestSceneBuilder.RevealPlanet(game, empire, origin);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIHeadquartersRelocationProposal relocation = new AIHeadquartersRelocationPlanner()
+                .Plan(context)
+                .Cast<AIHeadquartersRelocationProposal>()
+                .Single();
+            AIManufactureProposal manufacture = CreateManufactureProposal(
+                context,
+                origin,
+                AIProductionDemandKind.ColonizationFleetSeedCapitalShip,
+                BuildingType.None,
+                score: 0.99,
+                maintenanceCost: 1
+            );
+            relocation.SetScore(
+                new AIHeadquartersRelocationProposalScorer().Score(context, relocation)
+            );
+            context.AddProposal(relocation);
+            context.AddProposal(manufacture);
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+
+            Assert.Greater(manufacture.Score, relocation.Score);
+            Assert.Greater(relocation.MaintenanceHeadroomCost, 0);
+            CollectionAssert.AreEqual(new[] { relocation }, selected);
         }
 
         [TestCase(AIProductionDemandKind.Mine, BuildingType.Mine)]
@@ -994,13 +1099,15 @@ namespace Rebellion.Tests.AI.Phases
         /// <param name="kind">The demand category.</param>
         /// <param name="buildingType">The manufactured building type.</param>
         /// <param name="score">The proposal score.</param>
+        /// <param name="maintenanceCost">The manufactured building's maintenance cost.</param>
         /// <returns>The scored manufacturing proposal.</returns>
         private static AIManufactureProposal CreateBuildingProposal(
             Planet destination,
             Planet producer,
             AIProductionDemandKind kind,
             BuildingType buildingType,
-            double score
+            double score,
+            int maintenanceCost = 0
         )
         {
             Building building = AITestSceneBuilder.CreateBuildingTemplate(
@@ -1008,7 +1115,7 @@ namespace Rebellion.Tests.AI.Phases
                 buildingType,
                 ManufacturingType.None
             );
-            building.MaintenanceCost = 0;
+            building.MaintenanceCost = maintenanceCost;
             AIManufactureProposal proposal = new AIManufactureProposal(
                 new AIProductionDemand(
                     $"{kind}-demand",
@@ -1037,13 +1144,15 @@ namespace Rebellion.Tests.AI.Phases
         /// <param name="context">The context.</param>
         /// <param name="constructionCost">The construction cost.</param>
         /// <param name="score">The score.</param>
+        /// <param name="maintenanceCost">The manufactured product's maintenance cost.</param>
         private static AIManufactureProposal CreateManufactureProposal(
             AITurnContext context,
             Planet producer,
             AIProductionDemandKind kind,
             BuildingType buildingType,
             int constructionCost = 10,
-            double score = 100
+            double score = 100,
+            int maintenanceCost = 0
         )
         {
             IManufacturable product;
@@ -1086,7 +1195,7 @@ namespace Rebellion.Tests.AI.Phases
             }
 
             product.ConstructionCost = constructionCost;
-            product.MaintenanceCost = 0;
+            product.MaintenanceCost = maintenanceCost;
 
             if (
                 kind
