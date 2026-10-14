@@ -27,9 +27,6 @@ public sealed class ContentPackDefinition
     public string BasePackID { get; set; }
 
     [XmlElement]
-    public string BasePackVersion { get; set; }
-
-    [XmlElement]
     public string Version { get; set; }
 
     [XmlElement]

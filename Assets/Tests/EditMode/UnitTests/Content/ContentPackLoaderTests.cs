@@ -205,26 +205,19 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
-        public void DiscoverModResolver_BasePackVersionMismatch_ThrowsInvalidDataException()
+        public void DiscoverModResolver_PackWithoutVersion_ThrowsInvalidDataException()
         {
             string contentRoot = Path.Combine(
                 Path.GetTempPath(),
                 "content-pack-version-" + Guid.NewGuid().ToString("N")
             );
-            WritePackDefinition(contentRoot, "Base", "base-pack", null);
-            WritePackDefinition(
-                contentRoot,
-                "Derived",
-                "derived-pack",
-                "base-pack",
-                basePackVersion: "2.0.0"
-            );
+            WritePackDefinition(contentRoot, "Pack", "pack", null, version: null);
             try
             {
                 Assert.Throws<InvalidDataException>(() =>
                     ContentPackLoader.DiscoverModResolver(
                         contentRoot,
-                        "derived-pack",
+                        "pack",
                         Array.Empty<string>()
                     )
                 );
@@ -406,23 +399,20 @@ namespace Rebellion.Tests.Content
         /// <param name="packID">The declared pack identifier.</param>
         /// <param name="basePackID">The optional inherited pack identifier.</param>
         /// <param name="version">The declared pack version.</param>
-        /// <param name="basePackVersion">The required inherited pack version.</param>
         /// <returns>The created pack root.</returns>
         private static string WritePackDefinition(
             string contentRoot,
             string directoryName,
             string packID,
             string basePackID,
-            string version = "1.0.0",
-            string basePackVersion = "1.0.0"
+            string version = "1.0.0"
         )
         {
             string packRoot = Path.Combine(contentRoot, "Packs", directoryName);
             Directory.CreateDirectory(packRoot);
             string baseElement = string.IsNullOrWhiteSpace(basePackID)
                 ? string.Empty
-                : $"<BasePackID>{basePackID}</BasePackID>"
-                    + $"<BasePackVersion>{basePackVersion}</BasePackVersion>";
+                : $"<BasePackID>{basePackID}</BasePackID>";
             File.WriteAllText(
                 Path.Combine(packRoot, "pack.xml"),
                 $"<ContentPack><ID>{packID}</ID>{baseElement}<Version>{version}</Version></ContentPack>"
