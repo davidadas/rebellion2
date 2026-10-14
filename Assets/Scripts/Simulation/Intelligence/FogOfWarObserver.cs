@@ -316,7 +316,10 @@ namespace Rebellion.Simulation
                 targetedMission.TargetEntityInstanceID,
                 true
             );
-            if (target?.GetParentOfType<Planet>()?.InstanceID == result.Location.InstanceID)
+            if (
+                target?.GetParentOfType<Planet>()?.InstanceID == result.Location.InstanceID
+                && (target is not IMovable movable || movable.GetTransitMovement() == null)
+            )
                 return;
 
             Faction owner = FindFaction(result.Mission.OwnerInstanceID);

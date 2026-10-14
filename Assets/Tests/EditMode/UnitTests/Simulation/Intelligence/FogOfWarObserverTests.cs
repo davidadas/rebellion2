@@ -340,6 +340,23 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void ProcessResults_SabotageTargetAboardInTransitFleet_RemovesOwnersStaleLocation()
+        {
+            Starfighter target = (Starfighter)CreateFleetSabotageTarget(
+                SabotageTargetKind.Starfighter
+            );
+            SabotageMission mission = SabotageMission.TryCreate(
+                CreateTargetingMissionContext(target)
+            );
+            new FogOfWarRecorder().RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
+            target.GetParentOfType<Fleet>().Movement = new MovementState();
+
+            ProcessUnavailableTarget(mission);
+
+            AssertTargetForgotten(target.InstanceID);
+        }
+
+        [Test]
         public void HandleResults_NullResultAfterValidObservation_KeepsEarlierSnapshotAndThrows()
         {
             Assert.Throws<System.NullReferenceException>(() =>
