@@ -3797,8 +3797,9 @@ namespace Rebellion.Tests.Simulation
 
             movement.RequestMove(fleet, destination);
 
-            int expectedTransitTicks =
-                (int)destination.GetRawDistanceTo(origin) / config.Movement.DistanceDivisor;
+            int expectedTransitTicks = (int)(
+                (int)destination.GetRawDistanceTo(origin) / config.Movement.DistanceDivisor
+            );
             Assert.Greater(fleet.Movement.TransitTicks, fastTransitTicks);
             Assert.AreEqual(expectedTransitTicks, fleet.Movement.TransitTicks);
 

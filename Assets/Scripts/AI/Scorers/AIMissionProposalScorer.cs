@@ -582,7 +582,7 @@ namespace Rebellion.AI.Scorers
         /// <returns>The normalized travel penalty.</returns>
         private static double GetTravelCost(AITurnContext context, AIMissionProposal proposal)
         {
-            int distanceDivisor = context.Game.Config.Movement.DistanceDivisor;
+            double distanceDivisor = context.Game.Config.Movement.DistanceDivisor;
             if (proposal.TargetPlanet == null || distanceDivisor <= 0)
                 return 0;
 

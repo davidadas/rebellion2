@@ -829,7 +829,7 @@ namespace Rebellion.AI.Scorers
             if (producerPlanet == null || destinationPlanet == null)
                 return 0;
 
-            int distanceDivisor = context.Game.Config.Movement.DistanceDivisor;
+            double distanceDivisor = context.Game.Config.Movement.DistanceDivisor;
             if (distanceDivisor <= 0)
                 return 0;
 
