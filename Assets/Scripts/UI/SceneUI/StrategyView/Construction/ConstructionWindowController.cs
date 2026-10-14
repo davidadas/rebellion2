@@ -45,6 +45,10 @@ public sealed class ConstructionWindowController
     private readonly IServiceLocator services;
     private readonly Func<int, int, Vector2Int> getConstructionWindowPosition;
     private readonly Func<Vector2Int> getUtilityWindowPosition;
+    private readonly Dictionary<
+        (string FactionId, FacilityWindowTab Tab),
+        string
+    > lastOrderedItemTypeIds = new Dictionary<(string FactionId, FacilityWindowTab Tab), string>();
     private readonly Action markDirty;
     private readonly ConstructionOrderController orderController;
     private readonly ConstructionWindowProjector projector;
@@ -541,6 +545,8 @@ public sealed class ConstructionWindowController
         );
         if (started)
         {
+            lastOrderedItemTypeIds[(playerFactionId, session.ManufacturingTab)] =
+                selected.GetTypeID();
             actions.RefreshAfterConstruction();
             closeWindow(session.Window);
         }
@@ -809,6 +815,10 @@ public sealed class ConstructionWindowController
             return;
         }
 
-        session.InitializeOrder(null, 1);
+        lastOrderedItemTypeIds.TryGetValue(
+            (GetPlayerFactionID(), session.ManufacturingTab),
+            out string lastOrderedItemTypeId
+        );
+        session.InitializeOrder(lastOrderedItemTypeId, 1);
     }
 }
