@@ -18,6 +18,9 @@ public sealed class ContentModDefinition
     [PersistableMember(Name = nameof(BasePackID))]
     private string _basePackId;
 
+    [PersistableMember(Name = nameof(BasePackVersion))]
+    private string _basePackVersion;
+
     /// <summary>
     /// Gets the stable mod identifier.
     /// </summary>
@@ -37,4 +40,9 @@ public sealed class ContentModDefinition
     /// Gets the identifier of the content pack this mod extends.
     /// </summary>
     public string BasePackID => _basePackId;
+
+    /// <summary>
+    /// Gets the exact content-pack version this mod extends.
+    /// </summary>
+    public string BasePackVersion => _basePackVersion;
 }

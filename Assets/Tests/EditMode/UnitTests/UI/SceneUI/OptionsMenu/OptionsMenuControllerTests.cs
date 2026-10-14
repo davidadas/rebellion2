@@ -196,6 +196,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 $"<ContentModDefinition><ID>{compatibleModID}</ID><Version>1.0.0</Version>"
                     + "<DisplayName>Compatible Mod</DisplayName>"
                     + $"<BasePackID>{contentPack.Definition.ID}</BasePackID>"
+                    + $"<BasePackVersion>{contentPack.Definition.Version}</BasePackVersion>"
                     + "</ContentModDefinition>"
             );
             _bootstrap.GetUserSettingsManager().Settings.Content.DisabledModIDs = new[]

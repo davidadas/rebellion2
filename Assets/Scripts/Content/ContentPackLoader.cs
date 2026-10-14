@@ -99,10 +99,14 @@ public static class ContentPackLoader
             Path.Combine(Path.GetFullPath(contentRootPath), _packsDirectoryName),
             packID
         );
+        ContentPackDefinition pack = DeserializeXml<ContentPackDefinition>(
+            Path.Combine(packRoots[0], _packFileName)
+        );
         return ContentFileResolver.Discover(
             contentRootPath,
             packRoots[0],
-            packID,
+            pack.ID,
+            pack.Version,
             disabledModIDs,
             packRoots.Skip(1)
         );
@@ -263,6 +267,7 @@ public static class ContentPackLoader
             absoluteContentRoot,
             packRoot,
             pack.ID,
+            pack.Version,
             disabledModIDs,
             packRoots.Skip(1)
         );
@@ -886,6 +891,7 @@ public static class ContentPackLoader
         List<string> roots = new List<string>();
         HashSet<string> visited = new HashSet<string>(StringComparer.Ordinal);
         string currentPackID = packID;
+        string requiredVersion = null;
         while (!string.IsNullOrWhiteSpace(currentPackID))
         {
             if (!visited.Add(currentPackID))
@@ -908,8 +914,44 @@ public static class ContentPackLoader
             }
 
             var currentPack = matches[0];
+            if (string.IsNullOrWhiteSpace(currentPack.Definition.Version))
+            {
+                throw new InvalidDataException(
+                    $"Content pack '{currentPackID}' must declare Version."
+                );
+            }
+            if (
+                requiredVersion != null
+                && !string.Equals(
+                    currentPack.Definition.Version,
+                    requiredVersion,
+                    StringComparison.Ordinal
+                )
+            )
+            {
+                throw new InvalidDataException(
+                    $"Content pack '{currentPackID}' version '{currentPack.Definition.Version}' does not satisfy required version '{requiredVersion}'."
+                );
+            }
             roots.Add(currentPack.Root);
+            if (string.IsNullOrWhiteSpace(currentPack.Definition.BasePackID))
+            {
+                if (!string.IsNullOrWhiteSpace(currentPack.Definition.BasePackVersion))
+                {
+                    throw new InvalidDataException(
+                        $"Content pack '{currentPackID}' declares BasePackVersion without BasePackID."
+                    );
+                }
+                break;
+            }
+            if (string.IsNullOrWhiteSpace(currentPack.Definition.BasePackVersion))
+            {
+                throw new InvalidDataException(
+                    $"Content pack '{currentPackID}' must declare BasePackVersion when BasePackID is set."
+                );
+            }
             currentPackID = currentPack.Definition.BasePackID;
+            requiredVersion = currentPack.Definition.BasePackVersion;
         }
 
         return roots;
