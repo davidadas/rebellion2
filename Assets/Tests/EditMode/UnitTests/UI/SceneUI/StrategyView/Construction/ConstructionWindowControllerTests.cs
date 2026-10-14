@@ -538,6 +538,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
                 DisplayName = "Corellia",
                 OwnerInstanceID = _playerFactionId,
                 IsColonized = true,
+                EnergyCapacity = 1,
             };
             game.AttachNode(planet, planetSector);
             return new GalaxyMapPlanet(planetSector, planet, _playerFactionId);
