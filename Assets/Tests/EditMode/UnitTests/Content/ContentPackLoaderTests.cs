@@ -21,7 +21,7 @@ namespace Rebellion.Tests.Content
         <xs:element name=""Movement"">
           <xs:complexType>
             <xs:all>
-              <xs:element name=""DistanceDivisor"" type=""xs:positiveInteger""/>
+              <xs:element name=""DistanceDivisor"" type=""xs:decimal""/>
             </xs:all>
           </xs:complexType>
         </xs:element>
@@ -131,6 +131,80 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        public void GetDefaultPackID_CatalogSelection_ReturnsConfiguredPack()
+        {
+            string contentRoot = Path.Combine(
+                Path.GetTempPath(),
+                "content-catalog-" + Guid.NewGuid().ToString("N")
+            );
+            Directory.CreateDirectory(contentRoot);
+            File.WriteAllText(
+                Path.Combine(contentRoot, "catalog.xml"),
+                "<ContentCatalog><ActivePackID>default-pack</ActivePackID>"
+                    + "<ActiveScenarioID>standard</ActiveScenarioID></ContentCatalog>"
+            );
+            try
+            {
+                Assert.AreEqual("default-pack", ContentPackLoader.GetDefaultPackID(contentRoot));
+            }
+            finally
+            {
+                Directory.Delete(contentRoot, true);
+            }
+        }
+
+        [Test]
+        public void DiscoverModResolver_DerivedPackMissingFile_UsesBasePackFile()
+        {
+            string contentRoot = CreateDerivedPackFixture(
+                out string basePackRoot,
+                out string derivedPackRoot
+            );
+            try
+            {
+                string inheritedFile = WriteFile(basePackRoot, "Data/ships.xml", "base");
+
+                ContentFileResolver resolver = ContentPackLoader.DiscoverModResolver(
+                    contentRoot,
+                    "derived-pack",
+                    Array.Empty<string>()
+                );
+
+                Assert.AreEqual(inheritedFile, resolver.ResolveFile("Pack/Data/ships.xml"));
+                Assert.AreEqual(derivedPackRoot, resolver.PackRootPath);
+            }
+            finally
+            {
+                Directory.Delete(contentRoot, true);
+            }
+        }
+
+        [Test]
+        public void DiscoverModResolver_PackInheritanceCycle_ThrowsInvalidDataException()
+        {
+            string contentRoot = Path.Combine(
+                Path.GetTempPath(),
+                "content-pack-inheritance-" + Guid.NewGuid().ToString("N")
+            );
+            WritePackDefinition(contentRoot, "First", "first-pack", "second-pack");
+            WritePackDefinition(contentRoot, "Second", "second-pack", "first-pack");
+            try
+            {
+                Assert.Throws<InvalidDataException>(() =>
+                    ContentPackLoader.DiscoverModResolver(
+                        contentRoot,
+                        "first-pack",
+                        Array.Empty<string>()
+                    )
+                );
+            }
+            finally
+            {
+                Directory.Delete(contentRoot, true);
+            }
+        }
+
+        [Test]
         public void LoadGameConfig_NoPackOverridePath_UsesApplicationDefaults()
         {
             GameConfig config = LoadGameConfigFromFixture(
@@ -147,10 +221,10 @@ namespace Rebellion.Tests.Content
         {
             GameConfig config = LoadGameConfigFromFixture(
                 _fixtureCompleteDefaultsXml,
-                "<GameConfig><Movement><DistanceDivisor>7</DistanceDivisor></Movement></GameConfig>"
+                "<GameConfig><Movement><DistanceDivisor>2.5</DistanceDivisor></Movement></GameConfig>"
             );
 
-            Assert.AreEqual(7, config.Movement.DistanceDivisor);
+            Assert.AreEqual(2.5, config.Movement.DistanceDivisor);
             Assert.AreEqual(1, config.Research.BaseResearchPoints);
         }
 
@@ -266,6 +340,76 @@ namespace Rebellion.Tests.Content
                 if (Directory.Exists(contentRoot))
                     Directory.Delete(contentRoot, true);
             }
+        }
+
+        /// <summary>
+        /// Creates a content root containing one base pack and one derived pack.
+        /// </summary>
+        /// <param name="basePackRoot">Receives the base pack root.</param>
+        /// <param name="derivedPackRoot">Receives the derived pack root.</param>
+        /// <returns>The temporary content root.</returns>
+        private static string CreateDerivedPackFixture(
+            out string basePackRoot,
+            out string derivedPackRoot
+        )
+        {
+            string contentRoot = Path.Combine(
+                Path.GetTempPath(),
+                "content-pack-inheritance-" + Guid.NewGuid().ToString("N")
+            );
+            basePackRoot = WritePackDefinition(contentRoot, "Base", "base-pack", null);
+            derivedPackRoot = WritePackDefinition(
+                contentRoot,
+                "Derived",
+                "derived-pack",
+                "base-pack"
+            );
+            return contentRoot;
+        }
+
+        /// <summary>
+        /// Writes a minimal content-pack definition beneath a temporary content root.
+        /// </summary>
+        /// <param name="contentRoot">The temporary content root.</param>
+        /// <param name="directoryName">The pack directory name.</param>
+        /// <param name="packID">The declared pack identifier.</param>
+        /// <param name="basePackID">The optional inherited pack identifier.</param>
+        /// <returns>The created pack root.</returns>
+        private static string WritePackDefinition(
+            string contentRoot,
+            string directoryName,
+            string packID,
+            string basePackID
+        )
+        {
+            string packRoot = Path.Combine(contentRoot, "Packs", directoryName);
+            Directory.CreateDirectory(packRoot);
+            string baseElement = string.IsNullOrWhiteSpace(basePackID)
+                ? string.Empty
+                : $"<BasePackID>{basePackID}</BasePackID>";
+            File.WriteAllText(
+                Path.Combine(packRoot, "pack.xml"),
+                $"<ContentPack><ID>{packID}</ID>{baseElement}</ContentPack>"
+            );
+            return packRoot;
+        }
+
+        /// <summary>
+        /// Writes a file beneath a temporary pack root.
+        /// </summary>
+        /// <param name="packRoot">The pack root.</param>
+        /// <param name="relativePath">The pack-relative file path.</param>
+        /// <param name="contents">The file contents.</param>
+        /// <returns>The absolute file path.</returns>
+        private static string WriteFile(string packRoot, string relativePath, string contents)
+        {
+            string path = Path.Combine(
+                packRoot,
+                relativePath.Replace('/', Path.DirectorySeparatorChar)
+            );
+            Directory.CreateDirectory(Path.GetDirectoryName(path));
+            File.WriteAllText(path, contents);
+            return path;
         }
     }
 }

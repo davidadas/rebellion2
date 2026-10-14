@@ -7,6 +7,18 @@ public enum UserInterfaceOption
 {
     ShowIdleBar,
     KeepIdleBarOpen,
+    ShowUnitCardStats,
+}
+
+/// <summary>
+/// Identifies the strategy-desktop corner occupied by the idle bar.
+/// </summary>
+public enum IdleBarLocation
+{
+    TopRight,
+    TopLeft,
+    BottomRight,
+    BottomLeft,
 }
 
 /// <summary>
@@ -17,6 +29,17 @@ public sealed class UserInterfaceSettings
 {
     public bool ShowIdleBar = true;
     public bool KeepIdleBarOpen;
+    public bool ShowUnitCardStats;
+    public IdleBarLocation IdleBarLocation = global::IdleBarLocation.TopRight;
+
+    /// <summary>
+    /// Replaces unsupported persisted values with interface defaults.
+    /// </summary>
+    public void Normalize()
+    {
+        if (!Enum.IsDefined(typeof(IdleBarLocation), IdleBarLocation))
+            IdleBarLocation = global::IdleBarLocation.TopRight;
+    }
 
     /// <summary>
     /// Gets whether a user-interface presentation option is enabled.
@@ -29,6 +52,7 @@ public sealed class UserInterfaceSettings
         {
             UserInterfaceOption.ShowIdleBar => ShowIdleBar,
             UserInterfaceOption.KeepIdleBarOpen => KeepIdleBarOpen,
+            UserInterfaceOption.ShowUnitCardStats => ShowUnitCardStats,
             _ => throw new ArgumentOutOfRangeException(nameof(option), option, null),
         };
     }
@@ -48,6 +72,9 @@ public sealed class UserInterfaceSettings
             case UserInterfaceOption.KeepIdleBarOpen:
                 KeepIdleBarOpen = enabled;
                 break;
+            case UserInterfaceOption.ShowUnitCardStats:
+                ShowUnitCardStats = enabled;
+                break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(option), option, null);
         }
@@ -60,5 +87,7 @@ public sealed class UserInterfaceSettings
     {
         ShowIdleBar = true;
         KeepIdleBarOpen = false;
+        ShowUnitCardStats = false;
+        IdleBarLocation = global::IdleBarLocation.TopRight;
     }
 }

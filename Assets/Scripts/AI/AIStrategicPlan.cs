@@ -511,6 +511,28 @@ namespace Rebellion.AI
         }
 
         /// <summary>
+        /// Returns whether a stationary fleet can receive additional units at its current
+        /// location without feeding an opposing fleet at an owned planet.
+        /// </summary>
+        /// <param name="fleet">Fleet that would receive the reinforcements.</param>
+        /// <returns>
+        /// True when the fleet is stationary and its owned planet has no opposing stationary
+        /// fleet.
+        /// </returns>
+        public bool CanReinforce(Fleet fleet)
+        {
+            if (fleet == null || fleet.Movement != null || fleet.IsInCombat)
+                return false;
+
+            Planet currentPlanet = _assessment.GetFleetPlanet(fleet);
+            if (currentPlanet == null)
+                return false;
+
+            return !_assessment.IsOwnedPlanet(currentPlanet)
+                || _assessment.GetStrongestHostileFleetStrength(currentPlanet) <= 0;
+        }
+
+        /// <summary>
         /// Builds the allocations shared by one faction AI turn.
         /// </summary>
         /// <param name="game">The game whose strategy is being planned.</param>

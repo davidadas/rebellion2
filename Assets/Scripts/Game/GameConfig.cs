@@ -220,6 +220,9 @@ namespace Rebellion.Game
 
             public AIConsiderationConfig Espionage { get; set; } = new AIConsiderationConfig();
 
+            public AIConsiderationConfig MobileHeadquartersEspionage { get; set; } =
+                new AIConsiderationConfig();
+
             public AIConsiderationConfig Diplomacy { get; set; } = new AIConsiderationConfig();
         }
 
@@ -610,6 +613,8 @@ namespace Rebellion.Game
             public int ColonizationFleetDemandPercent { get; set; }
             public int SpecialForcesDemandPercent { get; set; }
 
+            public int MobileHeadquartersEspionageDemandPercent { get; set; }
+
             public int SpecialForcesMissionCoveragePercent { get; set; }
 
             public int StarfighterParentFillPercent { get; set; }
@@ -910,7 +915,7 @@ namespace Rebellion.Game
         [PersistableObject]
         public class MovementConfig
         {
-            public int DistanceDivisor { get; set; }
+            public double DistanceDivisor { get; set; }
 
             public int MinTransitTicks { get; set; }
 

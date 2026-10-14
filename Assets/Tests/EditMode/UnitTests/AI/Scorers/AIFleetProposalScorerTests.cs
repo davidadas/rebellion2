@@ -61,6 +61,12 @@ namespace Rebellion.Tests.AI.Fleets
                 "hostile",
                 rebels.InstanceID
             );
+            Planet destination = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "destination",
+                empire.InstanceID
+            );
             Fleet fleet = AddBattleFleet(
                 game,
                 hostile,
@@ -69,7 +75,47 @@ namespace Rebellion.Tests.AI.Fleets
                 combatStrength: 100
             );
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
-            AIFleetEvacuationProposal proposal = new AIFleetEvacuationProposal(fleet, hostile);
+            AIFleetEvacuationProposal proposal = new AIFleetEvacuationProposal(
+                fleet,
+                hostile,
+                destination
+            );
+            AIFleetProposalScorer scorer = new AIFleetProposalScorer();
+
+            double score = scorer.Score(context, proposal);
+
+            Assert.IsTrue(scorer.CanScore(proposal));
+            Assert.AreEqual(1, score);
+            Assert.AreEqual(AIProposalPriority.Mandatory, proposal.Priority);
+        }
+
+        [Test]
+        public void Score_FleetReinforcementRedirection_ReturnsHighestScore()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
+            Planet current = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "current",
+                empire.InstanceID
+            );
+            Planet destination = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "destination",
+                empire.InstanceID
+            );
+            Fleet fleet = AddBattleFleet(
+                game,
+                current,
+                "fleet",
+                empire.InstanceID,
+                combatStrength: 100
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIFleetReinforcementRedirectionProposal proposal =
+                new AIFleetReinforcementRedirectionProposal(fleet, current, destination);
             AIFleetProposalScorer scorer = new AIFleetProposalScorer();
 
             double score = scorer.Score(context, proposal);

@@ -9,6 +9,7 @@ public enum OptionsMenuTab
 {
     Gameplay,
     Graphics,
+    UserInterface,
     Audio,
     Controls,
     Mods,
@@ -146,6 +147,7 @@ public sealed class OptionsMenuRenderData
     public IReadOnlyDictionary<UserTacticalOption, bool> TacticalStates { get; }
     public IReadOnlyDictionary<UserGameplayOption, bool> GameplayStates { get; }
     public IReadOnlyDictionary<UserInterfaceOption, bool> UserInterfaceStates { get; }
+    public IdleBarLocation IdleBarLocation { get; }
     public int AutosaveIntervalTicks { get; }
     public int AutosavesToKeep { get; }
 
@@ -156,6 +158,7 @@ public sealed class OptionsMenuRenderData
     public IReadOnlyList<OptionsModRow> Mods { get; }
     public string ContentPackLabel { get; }
     public bool ContentRestartRequired { get; }
+    public bool ShowModsTab { get; }
 
     public bool HasActiveGame { get; }
     public bool CanSave { get; }
@@ -181,9 +184,11 @@ public sealed class OptionsMenuRenderData
     /// <param name="autosaveIntervalTicks">The number of ticks between autosaves.</param>
     /// <param name="autosavesToKeep">The maximum number of autosaves to retain.</param>
     /// <param name="userInterfaceStates">The current user-interface toggle states.</param>
+    /// <param name="idleBarLocation">The selected idle-bar corner.</param>
     /// <param name="mods">The loaded mods in load order.</param>
     /// <param name="contentPackLabel">The selected content pack's display name.</param>
     /// <param name="contentRestartRequired">Whether content changes require a restart.</param>
+    /// <param name="showModsTab">Whether the host exposes content management.</param>
     public OptionsMenuRenderData(
         int x,
         int y,
@@ -203,9 +208,11 @@ public sealed class OptionsMenuRenderData
         int autosaveIntervalTicks = UserGameplaySettings.DefaultAutosaveIntervalTicks,
         int autosavesToKeep = UserGameplaySettings.DefaultAutosavesToKeep,
         IReadOnlyDictionary<UserInterfaceOption, bool> userInterfaceStates = null,
+        IdleBarLocation idleBarLocation = IdleBarLocation.TopRight,
         IReadOnlyList<OptionsModRow> mods = null,
         string contentPackLabel = "",
-        bool contentRestartRequired = false
+        bool contentRestartRequired = false,
+        bool showModsTab = true
     )
     {
         X = x;
@@ -216,6 +223,7 @@ public sealed class OptionsMenuRenderData
         TacticalStates = tacticalStates ?? new Dictionary<UserTacticalOption, bool>();
         GameplayStates = gameplayStates ?? new Dictionary<UserGameplayOption, bool>();
         UserInterfaceStates = userInterfaceStates ?? new Dictionary<UserInterfaceOption, bool>();
+        IdleBarLocation = idleBarLocation;
         AutosaveIntervalTicks = autosaveIntervalTicks;
         AutosavesToKeep = autosavesToKeep;
         Volumes = volumes ?? Array.Empty<float>();
@@ -224,6 +232,7 @@ public sealed class OptionsMenuRenderData
         Mods = mods ?? Array.Empty<OptionsModRow>();
         ContentPackLabel = contentPackLabel ?? string.Empty;
         ContentRestartRequired = contentRestartRequired;
+        ShowModsTab = showModsTab;
         SelectedSlot = selectedSlot;
         HasActiveGame = hasActiveGame;
         CanSave = canSave;

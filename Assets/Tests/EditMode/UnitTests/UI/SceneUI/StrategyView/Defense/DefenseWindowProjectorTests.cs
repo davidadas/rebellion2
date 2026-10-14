@@ -114,6 +114,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             _planet.AddTestChild(officer);
             _session.Reconcile();
             _session.SelectItem(0);
+            _projector = new DefenseWindowProjector(() => _uiContext, () => true);
 
             DefenseWindowRenderData data = _projector.Build(_session, _window, true);
 
@@ -145,6 +146,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.IsNull(card.EnrouteOverlayTexture);
             Assert.IsNull(card.DamagedOverlayTexture);
             Assert.IsTrue(card.CanDrag);
+            Assert.IsNotNull(card.StatsOverlay);
         }
 
         [Test]

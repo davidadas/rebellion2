@@ -97,7 +97,14 @@ public sealed class FleetWindowController
             fleetCommandController
             ?? throw new ArgumentNullException(nameof(fleetCommandController));
         this.getUIContext = getUIContext ?? throw new ArgumentNullException(nameof(getUIContext));
-        projector = new FleetWindowProjector(getUIContext);
+        projector = new FleetWindowProjector(
+            getUIContext,
+            () =>
+                AppBootstrap
+                    .Instance?.GetUserSettingsManager()
+                    ?.Settings?.UserInterface?.ShowUnitCardStats
+                ?? false
+        );
         this.targetingController =
             targetingController ?? throw new ArgumentNullException(nameof(targetingController));
         this.windowLayer = windowLayer ?? throw new ArgumentNullException(nameof(windowLayer));

@@ -499,7 +499,10 @@ namespace Rebellion.AI.Proposals
             )
                 return false;
 
-            if (Destination is Fleet destinationFleet && destinationFleet.Movement != null)
+            if (
+                Destination is Fleet destinationFleet
+                && !context.StrategicPlan.CanReinforce(destinationFleet)
+            )
                 return false;
 
             if (IsFacilityExpansionDemand())
@@ -779,7 +782,7 @@ namespace Rebellion.AI.Proposals
         private void CommitMaintenance(AITurnContext context, int maintenanceCredit = 0)
         {
             if (Demand?.RestoresMaintenanceCapacity != true)
-                context.CommitManufacturingMaintenance(GetMaintenanceCost() - maintenanceCredit);
+                context.CommitMaintenanceCost(GetMaintenanceCost() - maintenanceCredit);
         }
 
         /// <summary>

@@ -113,8 +113,15 @@ namespace Rebellion.AI.Planners
                 )
             )
             {
-                if (OfficersCoverEveryMissionCapability(availableOfficers, roleUnits.First()))
-                    SetSpecialForcesIntent(context, roleUnits.Skip(1), SpecialForcesIntent.Decoy);
+                List<SpecialForces> orderedRoleUnits = roleUnits
+                    .OrderByDescending(context.IsHeadquartersEspionageAgent)
+                    .ToList();
+                if (OfficersCoverEveryMissionCapability(availableOfficers, orderedRoleUnits[0]))
+                    SetSpecialForcesIntent(
+                        context,
+                        orderedRoleUnits.Skip(1),
+                        SpecialForcesIntent.Decoy
+                    );
             }
         }
 
@@ -501,6 +508,21 @@ namespace Rebellion.AI.Planners
         {
             if (!participant.CanPerformMission(MissionTypeIDs.Espionage))
                 return;
+
+            Planet headquarters = context.Assessment.FactionHeadquarters;
+            if (
+                participant is SpecialForces specialForces
+                && context.IsHeadquartersEspionageAgent(specialForces)
+                && headquarters != null
+                && !HasActiveMissionAtPlanet(MissionTypeIDs.Espionage, headquarters.InstanceID)
+            )
+                TryAddMissionProposal(
+                    context,
+                    proposals,
+                    participant,
+                    MissionTypeIDs.Espionage,
+                    headquarters
+                );
 
             foreach (Planet planet in GetEspionageCandidatePlanets(context))
                 TryAddMissionProposal(

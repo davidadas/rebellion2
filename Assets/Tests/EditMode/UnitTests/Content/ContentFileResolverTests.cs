@@ -71,6 +71,35 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        public void ResolveFile_DerivedPackDoesNotContainAddress_FallsBackToInheritedPack()
+        {
+            string inheritedPackRoot = Path.Combine(_contentRoot, "Packs", "Inherited");
+            string inheritedFile = WriteFile(inheritedPackRoot, "Data/ships.xml", "inherited");
+            ContentFileResolver resolver = new ContentFileResolver(
+                _contentRoot,
+                _packRoot,
+                fallbackPackRootPaths: new[] { inheritedPackRoot }
+            );
+
+            Assert.AreEqual(inheritedFile, resolver.ResolveFile("Pack/Data/ships.xml"));
+        }
+
+        [Test]
+        public void ResolveFile_DerivedAndInheritedPacksContainAddress_DerivedPackWins()
+        {
+            string inheritedPackRoot = Path.Combine(_contentRoot, "Packs", "Inherited");
+            WriteFile(inheritedPackRoot, "Data/ships.xml", "inherited");
+            string derivedFile = WriteFile(_packRoot, "Data/ships.xml", "derived");
+            ContentFileResolver resolver = new ContentFileResolver(
+                _contentRoot,
+                _packRoot,
+                fallbackPackRootPaths: new[] { inheritedPackRoot }
+            );
+
+            Assert.AreEqual(derivedFile, resolver.ResolveFile("Pack/Data/ships.xml"));
+        }
+
+        [Test]
         public void ResolveFile_ModUsesDifferentExtension_ModStillWins()
         {
             WriteFile(_packRoot, "UI/portrait.png", "base");
@@ -106,6 +135,28 @@ namespace Rebellion.Tests.Content
 
             CollectionAssert.AreEqual(
                 new[] { "Pack/UI/added.png", "Pack/UI/base.png", "Pack/UI/replaced.png" },
+                addresses
+            );
+        }
+
+        [Test]
+        public void EnumerateFileAddresses_DerivedAndInheritedPacks_ReturnsLayeredUnion()
+        {
+            string inheritedPackRoot = Path.Combine(_contentRoot, "Packs", "Inherited");
+            WriteFile(inheritedPackRoot, "UI/inherited.png", "inherited");
+            WriteFile(inheritedPackRoot, "UI/replaced.png", "inherited");
+            WriteFile(_packRoot, "UI/replaced.png", "derived");
+            WriteFile(_packRoot, "UI/derived.png", "derived");
+            ContentFileResolver resolver = new ContentFileResolver(
+                _contentRoot,
+                _packRoot,
+                fallbackPackRootPaths: new[] { inheritedPackRoot }
+            );
+
+            string[] addresses = resolver.EnumerateFileAddresses("Pack/UI").ToArray();
+
+            CollectionAssert.AreEqual(
+                new[] { "Pack/UI/derived.png", "Pack/UI/inherited.png", "Pack/UI/replaced.png" },
                 addresses
             );
         }

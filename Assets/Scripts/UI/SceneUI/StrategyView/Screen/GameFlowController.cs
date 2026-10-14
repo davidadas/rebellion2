@@ -75,7 +75,7 @@ public sealed class GameFlowController : MonoBehaviour
 
             if (GameLaunchContext.IsLoadGame)
             {
-                LoadGame();
+                await LoadGameAsync();
                 GameSession session = StartGameSession(loadedGame: true);
                 InitializeStrategy(session);
                 ActivateGameplay(session, false);
@@ -85,7 +85,8 @@ public sealed class GameFlowController : MonoBehaviour
         }
         catch (Exception exception)
         {
-            Debug.LogException(exception);
+            if (!LoadingScreenController.RecoverFromLoadFailure(exception))
+                Debug.LogException(exception);
         }
     }
 
@@ -185,14 +186,15 @@ public sealed class GameFlowController : MonoBehaviour
     /// <summary>
     /// Loads and validates the requested save file.
     /// </summary>
-    private void LoadGame()
+    /// <returns>A task representing asynchronous save deserialization.</returns>
+    private async Task LoadGameAsync()
     {
         string fileName = GameLaunchContext.SaveFileName;
 
         if (string.IsNullOrEmpty(fileName))
             throw new InvalidOperationException("LoadGame called but SaveFileName is null.");
 
-        game = SaveGameManager.Instance.LoadGameData(fileName);
+        game = await SaveGameManager.Instance.LoadGameDataAsync(fileName);
         AppBootstrap.Instance.GetRuntime().ValidateGameContent(game);
     }
 
@@ -298,7 +300,8 @@ public sealed class GameFlowController : MonoBehaviour
     /// <param name="requestBriefing">Whether launch state requested the opening briefing.</param>
     private void ActivateGameplay(GameSession session, bool requestBriefing)
     {
-        strategyController.ActivatePresentation();
+        bool loadingTransitionActive = LoadingScreenController.IsLoadInProgress;
+        strategyController.ActivatePresentation(startMusic: !loadingTransitionActive);
         GameManager clock = AppBootstrap.Instance.GetRuntime().GetActiveGameManager();
         GameRoot activeGame = session.Game;
         GameMetadata metadata = activeGame.Metadata ??= new GameMetadata();
@@ -311,6 +314,37 @@ public sealed class GameFlowController : MonoBehaviour
             briefingsDisabled
         );
         GameLaunchContext.PlayIntroCutscene = false;
+
+        if (loadingTransitionActive)
+        {
+            LoadingScreenController.CompletePendingLoad(
+                () =>
+                {
+                    strategyController.ResumeMusic();
+                    FinishGameplayActivation(session, clock, metadata, playBriefing);
+                },
+                StrategyController.PlayStrategyReadySound
+            );
+            return;
+        }
+
+        FinishGameplayActivation(session, clock, metadata, playBriefing);
+    }
+
+    /// <summary>
+    /// Enables strategy ticking after any loading handoff and optional opening briefing completes.
+    /// </summary>
+    /// <param name="session">The prepared game session.</param>
+    /// <param name="clock">The prepared game clock.</param>
+    /// <param name="metadata">The active game's mutable metadata.</param>
+    /// <param name="playBriefing">Whether the opening briefing should play first.</param>
+    private void FinishGameplayActivation(
+        GameSession session,
+        GameManager clock,
+        GameMetadata metadata,
+        bool playBriefing
+    )
+    {
         if (playBriefing)
         {
             strategyController.PlayBriefing(() =>

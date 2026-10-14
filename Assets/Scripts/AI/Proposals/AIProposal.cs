@@ -8,6 +8,7 @@ namespace Rebellion.AI.Proposals
         DeferredPlanetaryDefense,
         Optional,
         Mandatory,
+        Critical,
     }
 
     /// <summary>

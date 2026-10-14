@@ -1011,7 +1011,7 @@ namespace Rebellion.Input
                 {
                     ""name"": ""Modifier"",
                     ""id"": ""00000000-0000-0000-0000-000000000062"",
-                    ""path"": ""<Keyboard>/leftMeta"",
+                    ""path"": ""<Keyboard>/ctrl"",
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": ""Keyboard&Mouse"",
@@ -1022,7 +1022,7 @@ namespace Rebellion.Input
                 {
                     ""name"": ""Binding"",
                     ""id"": ""00000000-0000-0000-0000-000000000063"",
-                    ""path"": ""<Keyboard>/minus"",
+                    ""path"": ""<Mouse>/scroll/down"",
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": ""Keyboard&Mouse"",
@@ -1099,7 +1099,7 @@ namespace Rebellion.Input
                 {
                     ""name"": ""Modifier"",
                     ""id"": ""00000000-0000-0000-0000-000000000080"",
-                    ""path"": ""<Keyboard>/leftMeta"",
+                    ""path"": ""<Keyboard>/ctrl"",
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": ""Keyboard&Mouse"",
@@ -1110,7 +1110,7 @@ namespace Rebellion.Input
                 {
                     ""name"": ""Binding"",
                     ""id"": ""00000000-0000-0000-0000-000000000081"",
-                    ""path"": ""<Keyboard>/equals"",
+                    ""path"": ""<Mouse>/scroll/up"",
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": ""Keyboard&Mouse"",

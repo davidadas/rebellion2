@@ -153,6 +153,8 @@ public sealed class MessagesWindowController
         MessagesWindowSession session = GetSession(view);
         session.SelectTab(MessagesTabCatalog.Clamp((int)tab));
         RefreshSession(session);
+        foreach (Message message in session.Messages)
+            MarkMessageRead(message);
     }
 
     /// <summary>

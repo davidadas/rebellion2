@@ -51,7 +51,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void RequestMove_RankedOfficerFromFleetToOccupiedPlanet_PreservesBothRanks()
+        public void RequestMove_AdmiralFromFleetToPlanet_ResignsOfficer()
         {
             (
                 GameRoot game,
@@ -62,24 +62,29 @@ namespace Rebellion.Tests.Simulation
             ) = BuildScene();
             Fleet fleet = EntityFactory.CreateFleet("source-fleet", "empire");
             CapitalShip ship = CreateMovableCapitalShip("source-ship");
-            officer.CurrentRank = OfficerRank.Commander;
-            Officer incumbent = EntityFactory.CreateOfficer("incumbent", "empire");
-            incumbent.CurrentRank = OfficerRank.Commander;
+            officer.CurrentRank = OfficerRank.Admiral;
             game.AttachNode(fleet, origin);
             game.AttachNode(ship, fleet);
             game.MoveNode(officer, ship);
-            game.AttachNode(incumbent, destination);
 
             movement.RequestMove(officer, destination);
 
             Assert.AreSame(destination, officer.GetParent());
-            Assert.AreEqual(OfficerRank.Commander, officer.CurrentRank);
-            Assert.AreEqual(OfficerRank.Commander, incumbent.CurrentRank);
-            Assert.IsEmpty(
-                new MovementTickProcessor(movement)
-                    .ProcessTick(game)
-                    .OfType<CommandKindChangedResult>()
+            Assert.AreEqual(OfficerRank.None, officer.CurrentRank);
+            IReadOnlyList<GameResult> results = new MovementTickProcessor(movement).ProcessTick(
+                game
             );
+            CommandKindChangedResult rankResult = results
+                .OfType<CommandKindChangedResult>()
+                .Single();
+            Assert.AreSame(officer, rankResult.Officer);
+            Assert.AreEqual((int)OfficerRank.None, rankResult.CommandKind);
+            Assert.AreEqual((int)OfficerRank.Admiral, rankResult.Detail);
+            OfficerCommandingResult commandingResult = results
+                .OfType<OfficerCommandingResult>()
+                .Single();
+            Assert.IsNull(commandingResult.CommandTarget);
+            Assert.AreSame(fleet, commandingResult.Context);
         }
 
         [Test]
@@ -104,6 +109,37 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(OfficerRank.Admiral, officer.CurrentRank);
             Assert.AreSame(fleet, officer.GetParentOfType<Fleet>());
             Assert.IsNotNull(fleet.Movement);
+        }
+
+        [Test]
+        public void RequestMove_GeneralToOccupiedPlanet_ResignsRelocatedOfficer()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer relocated,
+                MovementCommands movement
+            ) = BuildScene();
+            Officer incumbent = EntityFactory.CreateOfficer("incumbent", "empire");
+            relocated.CurrentRank = OfficerRank.General;
+            incumbent.CurrentRank = OfficerRank.General;
+            game.AttachNode(incumbent, destination);
+
+            movement.RequestMove(relocated, destination);
+
+            Assert.AreSame(destination, relocated.GetParent());
+            Assert.AreEqual(OfficerRank.None, relocated.CurrentRank);
+            Assert.AreEqual(OfficerRank.General, incumbent.CurrentRank);
+            IReadOnlyList<GameResult> results = new MovementTickProcessor(movement).ProcessTick(
+                game
+            );
+            CommandKindChangedResult rankResult = results
+                .OfType<CommandKindChangedResult>()
+                .Single();
+            Assert.AreSame(relocated, rankResult.Officer);
+            Assert.AreEqual((int)OfficerRank.General, rankResult.Detail);
+            Assert.AreSame(origin, results.OfType<OfficerCommandingResult>().Single().Context);
         }
 
         [Test]
@@ -1911,7 +1947,7 @@ namespace Rebellion.Tests.Simulation
                 Planet blockadedDestination,
                 Planet nearestSafeDestination,
                 Planet fartherSafeDestination,
-                BlockadeTracker blockade,
+                Planet blockade,
                 MovementCommands movement,
                 GameResultBus resultBus
             ) scene = BuildBlockadeRetargetingScene();
@@ -1948,7 +1984,7 @@ namespace Rebellion.Tests.Simulation
                 Planet blockadedDestination,
                 Planet nearestSafeDestination,
                 Planet fartherSafeDestination,
-                BlockadeTracker blockade,
+                Planet blockade,
                 MovementCommands movement,
                 GameResultBus resultBus
             ) scene = BuildBlockadeRetargetingScene();
@@ -2026,6 +2062,27 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNotNull(evacResult, "Should emit EvacuationLossesResult");
             Assert.AreEqual(origin, evacResult.Location);
             Assert.AreEqual(1, evacResult.LostRegiments.Count);
+        }
+
+        [Test]
+        public void RequestMove_LastBlockadingFleetDeparts_ReportsBlockadeEnd()
+        {
+            (GameRoot game, Planet origin, Planet destination, MovementCommands movement) =
+                BuildBlockadeScene(new FixedRNG());
+            Fleet blockadingFleet = origin.GetChildren<Fleet>().Single();
+
+            movement.RequestMove(blockadingFleet, destination);
+            IReadOnlyList<GameResult> results = new MovementTickProcessor(movement).ProcessTick(
+                game
+            );
+
+            Assert.IsFalse(origin.IsBlockaded());
+            BlockadeChangedResult blockade = results
+                .OfType<BlockadeChangedResult>()
+                .Single(result => ReferenceEquals(result.Planet, origin) && !result.Blockaded);
+            Assert.AreSame(origin, blockade.Planet);
+            Assert.IsNull(blockade.BlockadingFleet);
+            Assert.IsFalse(blockade.Blockaded);
         }
 
         [Test]
@@ -2439,6 +2496,11 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual("empire", destination.GetOwnerInstanceID());
             Assert.AreEqual(100, destination.GetPopularSupport("empire"));
             Assert.AreEqual(destination, regiment.GetParent());
+            PlanetOwnershipChangedResult ownershipChange = movement
+                .TakePendingResults()
+                .OfType<PlanetOwnershipChangedResult>()
+                .Single();
+            CollectionAssert.Contains(ownershipChange.BlockadedFactionInstanceIDs, "rebels");
         }
 
         [Test]
@@ -2976,7 +3038,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void CompleteMissionAtLocation_RankedOfficerToOccupiedCommand_PreservesBothRanks()
+        public void CompleteMissionAtLocation_RankedOfficerToOccupiedCommand_ResignsOfficer()
         {
             (
                 GameRoot game,
@@ -3000,7 +3062,7 @@ namespace Rebellion.Tests.Simulation
 
             Assert.IsEmpty(stranded);
             Assert.AreSame(destination, officer.GetParent());
-            Assert.AreEqual(OfficerRank.Commander, officer.CurrentRank);
+            Assert.AreEqual(OfficerRank.None, officer.CurrentRank);
             Assert.AreEqual(OfficerRank.Commander, incumbent.CurrentRank);
         }
 
@@ -3735,8 +3797,9 @@ namespace Rebellion.Tests.Simulation
 
             movement.RequestMove(fleet, destination);
 
-            int expectedTransitTicks =
-                (int)destination.GetRawDistanceTo(origin) / config.Movement.DistanceDivisor;
+            int expectedTransitTicks = (int)(
+                (int)destination.GetRawDistanceTo(origin) / config.Movement.DistanceDivisor
+            );
             Assert.Greater(fleet.Movement.TransitTicks, fastTransitTicks);
             Assert.AreEqual(expectedTransitTicks, fleet.Movement.TransitTicks);
 
@@ -4423,7 +4486,7 @@ namespace Rebellion.Tests.Simulation
                 Planet blockadedDestination,
                 Planet nearestSafeDestination,
                 Planet fartherSafeDestination,
-                BlockadeTracker blockade,
+                Planet blockade,
                 MovementCommands movement,
                 GameResultBus resultBus
             ) scene = BuildBlockadeRetargetingScene();
@@ -4435,7 +4498,7 @@ namespace Rebellion.Tests.Simulation
                 ManufacturingStatus = ManufacturingStatus.Building,
             };
             scene.game.AttachNode(building, scene.blockadedDestination);
-            AddBlockadingFleet(scene.game, scene.blockadedDestination);
+            (Fleet blockadingFleet, _) = AddBlockadingFleet(scene.game, scene.blockadedDestination);
             ProcessBlockadeStart(scene.game, scene.blockade, scene.resultBus);
 
             building.ManufacturingStatus = ManufacturingStatus.Delivering;
@@ -4451,6 +4514,7 @@ namespace Rebellion.Tests.Simulation
                 .OfType<GameObjectDestroyedOnArrivalResult>()
                 .Single();
             Assert.AreSame(building, destroyed.DestroyedObject);
+            Assert.AreSame(blockadingFleet, destroyed.DestroyedBy);
             Assert.AreSame(scene.blockadedDestination, destroyed.Context);
             Assert.IsFalse(
                 results
@@ -4468,7 +4532,7 @@ namespace Rebellion.Tests.Simulation
                 Planet blockadedDestination,
                 Planet nearestSafeDestination,
                 Planet fartherSafeDestination,
-                BlockadeTracker blockade,
+                Planet blockade,
                 MovementCommands movement,
                 GameResultBus resultBus
             ) scene = BuildBlockadeRetargetingScene();
@@ -4479,7 +4543,7 @@ namespace Rebellion.Tests.Simulation
                 ManufacturingStatus = ManufacturingStatus.Building,
             };
             scene.game.AttachNode(regiment, scene.blockadedDestination);
-            AddBlockadingFleet(scene.game, scene.blockadedDestination);
+            (Fleet blockadingFleet, _) = AddBlockadingFleet(scene.game, scene.blockadedDestination);
             ProcessBlockadeStart(scene.game, scene.blockade, scene.resultBus);
 
             regiment.ManufacturingStatus = ManufacturingStatus.Delivering;
@@ -4495,6 +4559,7 @@ namespace Rebellion.Tests.Simulation
                 .OfType<GameObjectDestroyedOnArrivalResult>()
                 .Single();
             Assert.AreSame(regiment, destroyed.DestroyedObject);
+            Assert.AreSame(blockadingFleet, destroyed.DestroyedBy);
             Assert.AreSame(scene.blockadedDestination, destroyed.Context);
             Assert.IsFalse(
                 results
@@ -4512,7 +4577,7 @@ namespace Rebellion.Tests.Simulation
                 Planet blockadedDestination,
                 Planet nearestSafeDestination,
                 Planet fartherSafeDestination,
-                BlockadeTracker blockade,
+                Planet blockade,
                 MovementCommands movement,
                 GameResultBus resultBus
             ) scene = BuildBlockadeRetargetingScene();
@@ -4530,9 +4595,6 @@ namespace Rebellion.Tests.Simulation
             building.ManufacturingStatus = ManufacturingStatus.Delivering;
             scene.movement.RequestMove(building, scene.blockadedDestination, scene.origin);
             scene.game.DetachNode(blockadingFleet);
-            scene.resultBus.Publish(
-                new BlockadeTickProcessor(scene.blockade).ProcessTick(scene.game)
-            );
 
             int transitTicks = building.Movement.TransitTicks;
             List<GameResult> results = new List<GameResult>();
@@ -5070,7 +5132,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void TryRequestMove_ShipWithRankedOfficerToOccupiedCommand_PreservesBothRanks()
+        public void TryRequestMove_ShipWithRankedOfficerToOccupiedCommand_ResignsRelocatedOfficer()
         {
             (GameRoot game, Planet origin, Planet _, Officer _, MovementCommands movement) =
                 BuildScene();
@@ -5097,7 +5159,7 @@ namespace Rebellion.Tests.Simulation
 
             Assert.IsTrue(moved);
             Assert.AreSame(destinationFleet, sourceShip.GetParent());
-            Assert.AreEqual(OfficerRank.Admiral, relocated.CurrentRank);
+            Assert.AreEqual(OfficerRank.None, relocated.CurrentRank);
             Assert.AreEqual(OfficerRank.Admiral, incumbent.CurrentRank);
         }
 
@@ -5786,7 +5848,7 @@ namespace Rebellion.Tests.Simulation
             Planet blockadedDestination,
             Planet nearestSafeDestination,
             Planet fartherSafeDestination,
-            BlockadeTracker blockade,
+            Planet blockade,
             MovementCommands movement,
             GameResultBus resultBus
         ) BuildBlockadeRetargetingScene()
@@ -5841,7 +5903,7 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(nearestSafeDestination, sector);
             game.AttachNode(fartherSafeDestination, sector);
 
-            BlockadeTracker blockade = new BlockadeTracker(game);
+            Planet blockade = blockadedDestination;
             MovementCommands movement = new MovementCommands(
                 game,
                 new FogOfWarCommands(game),
@@ -5944,16 +6006,31 @@ namespace Rebellion.Tests.Simulation
         /// Processes blockade start.
         /// </summary>
         /// <param name="game">The game being processed.</param>
-        /// <param name="blockade">The blockade.</param>
+        /// <param name="blockade">The blockaded planet.</param>
         /// <param name="resultBus">The bus that delivers blockade reactions.</param>
         /// <returns>The result of process blockade start.</returns>
         private static List<GameResult> ProcessBlockadeStart(
             GameRoot game,
-            BlockadeTracker blockade,
+            Planet blockade,
             GameResultBus resultBus
         )
         {
-            return resultBus.Publish(new BlockadeTickProcessor(blockade).ProcessTick(game));
+            Fleet blockadingFleet = blockade
+                .GetChildren<Fleet>()
+                .First(fleet =>
+                    fleet.Movement == null
+                    && fleet.OwnerInstanceID != blockade.OwnerInstanceID
+                    && fleet.HasOperationalCapitalShips()
+                );
+            return resultBus.Publish(
+                new BlockadeChangedResult
+                {
+                    Planet = blockade,
+                    BlockadingFleet = blockadingFleet,
+                    Blockaded = true,
+                    Tick = game.CurrentTick,
+                }
+            );
         }
 
         /// <summary>

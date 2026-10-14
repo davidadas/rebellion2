@@ -36,6 +36,8 @@ public static class OptionsMenuPrefabBuilder
         "Application/OptionsMenu/UI/ui_settingsmenu_toggle_icon";
     private const string _optionsKnobAddress =
         "Application/OptionsMenu/UI/ui_settingsmenu_slider_knob";
+    private const string _contextMenuCheckMarkAddress =
+        "Pack/Shared/Strategy/UI/ContextMenus/context-menu-check-mark.png";
     private const string _restoreDefaultIconAddress =
         "Application/OptionsMenu/UI/ui_settingsmenu_restore_default_icon";
     private const string _scrollAreaPrefabPath = "Assets/Prefabs/UI/Common/ScrollArea.prefab";
@@ -155,6 +157,8 @@ public static class OptionsMenuPrefabBuilder
 
         RectTransform gameplayPage = CreateChildLayer("GameplayPage", contentRoot);
         SetSourceRect(gameplayPage, 228, 69, 382, 365);
+        RectTransform userInterfacePage = CreateChildLayer("UserInterfacePage", contentRoot);
+        SetSourceRect(userInterfacePage, 228, 69, 382, 365);
         RectTransform graphicsPage = CreateChildLayer("GraphicsPage", contentRoot);
         SetSourceRect(graphicsPage, 228, 69, 382, 365);
         RectTransform audioPage = CreateChildLayer("AudioPage", contentRoot);
@@ -167,6 +171,7 @@ public static class OptionsMenuPrefabBuilder
         SetSourceRect(modsPage, 228, 69, 382, 365);
 
         // Hidden Pages.
+        userInterfacePage.gameObject.SetActive(false);
         graphicsPage.gameObject.SetActive(false);
         audioPage.gameObject.SetActive(false);
         saveLoadPage.gameObject.SetActive(false);
@@ -175,7 +180,7 @@ public static class OptionsMenuPrefabBuilder
 
         BuildGameplayPage(view, gameplayPage, accent);
 
-        BuildIdleBarOptions(view, gameplayPage);
+        BuildUserInterfacePage(view, userInterfacePage, accent);
 
         BuildGraphicsPage(view, graphicsPage, accent);
 
@@ -199,6 +204,7 @@ public static class OptionsMenuPrefabBuilder
         AssignString(view, "_rowIdleSpriteAddress", _optionsRowAddress);
         AssignString(view, "_rowActiveSpriteAddress", _optionsRowActiveAddress);
         AssignReference(view, "_gameplayPage", gameplayPage.gameObject);
+        AssignReference(view, "_userInterfacePage", userInterfacePage.gameObject);
         AssignReference(view, "_graphicsPage", graphicsPage.gameObject);
         AssignReference(view, "_audioPage", audioPage.gameObject);
         AssignReference(view, "_saveLoadPage", saveLoadPage.gameObject);
@@ -224,11 +230,21 @@ public static class OptionsMenuPrefabBuilder
         Color textColor
     )
     {
-        string[] tabNames = { "GAMEPLAY", "GRAPHICS", "AUDIO", "CONTROLS", "MODS", "SAVE / LOAD" };
+        string[] tabNames =
+        {
+            "GAMEPLAY",
+            "GRAPHICS",
+            "UI",
+            "AUDIO",
+            "CONTROLS",
+            "MODS",
+            "SAVE / LOAD",
+        };
         string[] tabObjectNames =
         {
             "GameplayTab",
             "GraphicsTab",
+            "UserInterfaceTab",
             "AudioTab",
             "ControlsTab",
             "ModsTab",
@@ -289,32 +305,32 @@ public static class OptionsMenuPrefabBuilder
         status.color = textDim;
         status.fontSize = 11;
         status.alignment = TextAlignmentOptions.TopLeft;
-        SetSourceRect(status.rectTransform, 20, 101, 160, 18);
+        SetSourceRect(status.rectTransform, 20, 101, 348, 18);
 
         TextMeshProUGUI restart = CreateTextLabel("ModsRestartTextField", modsPage);
-        restart.text = "RESTART REQUIRED";
+        restart.text = "A RESTART MAY BE REQUIRED";
         restart.color = new Color(0.95f, 0.25f, 0.25f);
         restart.fontSize = 11;
         restart.fontStyle = FontStyles.Bold;
-        restart.alignment = TextAlignmentOptions.TopRight;
-        SetSourceRect(restart.rectTransform, 180, 101, 180, 18);
+        restart.alignment = TextAlignmentOptions.Center;
+        SetSourceRect(restart.rectTransform, 20, 313, 348, 18);
         restart.gameObject.SetActive(false);
 
         ScrollAreaView modsScrollArea = CreateScrollAreaView(
             modsPage,
             "ModsScrollArea",
             20,
-            128,
+            126,
             348,
-            214,
+            176,
             0,
             0,
             330,
-            214,
+            176,
             334,
             0,
             12,
-            214,
+            176,
             out RectTransform modsContent
         );
         OptionsToggleRowView rowTemplate = CreateOptionsToggleRow(
@@ -448,32 +464,207 @@ public static class OptionsMenuPrefabBuilder
     }
 
     /// <summary>
-    /// Builds and wires the Idle Bar controls in the Gameplay page's Galaxy View section.
+    /// Builds and wires the User Interface page's Galaxy View controls.
     /// </summary>
     /// <param name="view">The Options view receiving the authored references.</param>
-    /// <param name="gameplayPage">The authored Gameplay page root.</param>
-    private static void BuildIdleBarOptions(OptionsMenuView view, RectTransform gameplayPage)
+    /// <param name="userInterfacePage">The authored User Interface page root.</param>
+    /// <param name="accent">The Options accent color.</param>
+    private static void BuildUserInterfacePage(
+        OptionsMenuView view,
+        RectTransform userInterfacePage,
+        Color accent
+    )
     {
+        CreateOptionsSectionHeader(
+            userInterfacePage,
+            "GalaxyViewHeader",
+            "GALAXY VIEW",
+            16,
+            accent
+        );
+        TMP_Dropdown idleBarLocationDropdown = CreateOptionsDropdownRow(
+            userInterfacePage,
+            "IdleBarLocation",
+            "Idle Bar Location",
+            new[] { "Top Right", "Top Left", "Bottom Right", "Bottom Left" },
+            44,
+            accent
+        );
         UserInterfaceOption[] options =
         {
             UserInterfaceOption.ShowIdleBar,
             UserInterfaceOption.KeepIdleBarOpen,
+            UserInterfaceOption.ShowUnitCardStats,
         };
-        string[] labels = { "Show Idle Bar", "Keep Idle Bar Open" };
+        string[] labels = { "Show Idle Bar", "Keep Idle Bar Open", "Show Unit Card Stats" };
         OptionsToggleRowView[] rows = new OptionsToggleRowView[options.Length];
         for (int i = 0; i < options.Length; i++)
         {
             rows[i] = CreateOptionsToggleRow(
-                gameplayPage,
+                userInterfacePage,
                 $"UserInterface{options[i]}",
                 (int)options[i],
                 labels[i],
                 20,
-                240 + i * 26
+                70 + i * 26
             );
         }
 
+        AssignReference(view, "_idleBarLocationDropdown", idleBarLocationDropdown);
         AssignReferenceArray(view, "_userInterfaceRows", rows);
+    }
+
+    /// <summary>
+    /// Creates a themed Options dropdown row with a complete popup template.
+    /// </summary>
+    /// <param name="parent">The page receiving the row.</param>
+    /// <param name="name">The generated control name.</param>
+    /// <param name="label">The row label.</param>
+    /// <param name="options">The dropdown options in presentation order.</param>
+    /// <param name="y">The source-space row coordinate.</param>
+    /// <param name="accent">The Options accent color.</param>
+    /// <returns>The generated dropdown.</returns>
+    private static TMP_Dropdown CreateOptionsDropdownRow(
+        Transform parent,
+        string name,
+        string label,
+        IReadOnlyList<string> options,
+        int y,
+        Color accent
+    )
+    {
+        const int controlWidth = 120;
+        const int controlRight = 349;
+        const int controlHeight = 18;
+        const int itemHeight = 18;
+
+        TextMeshProUGUI labelField = CreateTextLabel($"{name}Label", parent);
+        labelField.text = label;
+        labelField.color = new Color(0.875f, 0.910f, 0.941f);
+        labelField.fontSize = 11;
+        labelField.alignment = TextAlignmentOptions.MidlineLeft;
+        SetSourceRect(labelField.rectTransform, 20, y, 165, controlHeight);
+
+        Image surface = CreateSlicedImage(
+            $"{name}Dropdown",
+            parent,
+            _optionsBadgeAddress,
+            _badgeBorder,
+            controlRight - controlWidth,
+            y,
+            controlWidth,
+            controlHeight,
+            Color.white
+        );
+        surface.raycastTarget = true;
+        TMP_Dropdown dropdown = surface.gameObject.AddComponent<TMP_Dropdown>();
+        dropdown.targetGraphic = surface;
+
+        TextMeshProUGUI caption = CreateTextLabel("Label", surface.transform);
+        caption.color = new Color(0.875f, 0.910f, 0.941f);
+        caption.fontSize = 10;
+        caption.alignment = TextAlignmentOptions.MidlineLeft;
+        caption.overflowMode = TextOverflowModes.Ellipsis;
+        SetSourceRect(caption.rectTransform, 7, 1, controlWidth - 25, controlHeight - 2);
+        dropdown.captionText = caption;
+
+        TextMeshProUGUI arrow = CreateTextLabel("Arrow", surface.transform);
+        arrow.text = "V";
+        arrow.color = accent;
+        arrow.fontSize = 9;
+        arrow.alignment = TextAlignmentOptions.Center;
+        SetSourceRect(arrow.rectTransform, controlWidth - 19, 1, 14, controlHeight - 2);
+
+        int popupHeight = options.Count * itemHeight + 4;
+        Image templateImage = CreateSlicedImage(
+            "Template",
+            surface.transform,
+            _optionsPanelAddress,
+            _panelBorder,
+            0,
+            controlHeight,
+            controlWidth,
+            popupHeight,
+            Color.white
+        );
+        templateImage.raycastTarget = true;
+        RectTransform template = templateImage.rectTransform;
+        ScrollRect scrollRect = templateImage.gameObject.AddComponent<ScrollRect>();
+        scrollRect.horizontal = false;
+        scrollRect.vertical = true;
+        scrollRect.movementType = ScrollRect.MovementType.Clamped;
+
+        GameObject viewportObject = new GameObject(
+            "Viewport",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image),
+            typeof(Mask)
+        );
+        viewportObject.transform.SetParent(template, false);
+        RectTransform viewport = viewportObject.GetComponent<RectTransform>();
+        SetSourceRect(viewport, 2, 2, controlWidth - 4, popupHeight - 4);
+        Image viewportImage = viewportObject.GetComponent<Image>();
+        viewportImage.color = Color.white;
+        viewportImage.raycastTarget = true;
+        viewportObject.GetComponent<Mask>().showMaskGraphic = false;
+
+        GameObject contentObject = new GameObject("Content", typeof(RectTransform));
+        contentObject.transform.SetParent(viewport, false);
+        RectTransform content = contentObject.GetComponent<RectTransform>();
+        SetSourceRect(content, 0, 0, controlWidth - 4, options.Count * itemHeight);
+
+        Image itemImage = CreateSlicedImage(
+            "Item",
+            content,
+            _optionsRowAddress,
+            _panelBorder,
+            0,
+            0,
+            controlWidth - 4,
+            itemHeight,
+            _buttonSurfaceColor
+        );
+        itemImage.raycastTarget = true;
+        Toggle item = itemImage.gameObject.AddComponent<Toggle>();
+        item.targetGraphic = itemImage;
+        item.transition = Selectable.Transition.ColorTint;
+        ColorBlock colors = item.colors;
+        colors.normalColor = Color.white;
+        colors.highlightedColor = new Color(0.55f, 0.75f, 0.95f);
+        colors.selectedColor = colors.highlightedColor;
+        colors.pressedColor = new Color(0.42f, 0.63f, 0.85f);
+        item.colors = colors;
+
+        RawImage checkmark = CreateRawImage(
+            "Item Checkmark",
+            itemImage.transform,
+            _contextMenuCheckMarkAddress,
+            5,
+            3,
+            10,
+            10
+        );
+        checkmark.color = accent;
+        item.graphic = checkmark;
+
+        TextMeshProUGUI itemLabel = CreateTextLabel("Item Label", itemImage.transform);
+        itemLabel.color = new Color(0.875f, 0.910f, 0.941f);
+        itemLabel.fontSize = 10;
+        itemLabel.alignment = TextAlignmentOptions.MidlineLeft;
+        SetSourceRect(itemLabel.rectTransform, 18, 1, controlWidth - 25, itemHeight - 2);
+
+        scrollRect.viewport = viewport;
+        scrollRect.content = content;
+        dropdown.template = template;
+        dropdown.itemText = itemLabel;
+        dropdown.options.Clear();
+        foreach (string option in options)
+            dropdown.options.Add(new TMP_Dropdown.OptionData(option));
+        dropdown.value = 0;
+        dropdown.RefreshShownValue();
+        template.gameObject.SetActive(false);
+        return dropdown;
     }
 
     /// <summary>

@@ -9,7 +9,8 @@ using UnityEngine;
 public sealed class MainMenuController : MonoBehaviour
 {
     private const string _creditsVideoPath = "Application/Credits/Videos/credits";
-    private const string _menuMusicPath = "Application/MainMenu/Audio/battle-of-endor-1-medley";
+    private const string _defaultMenuMusicPath =
+        "Application/MainMenu/Audio/battle-of-endor-1-medley";
     private const string _selectSfxPath = "Application/MainMenu/Audio/select";
 
     [SerializeField]
@@ -27,6 +28,7 @@ public sealed class MainMenuController : MonoBehaviour
     private OptionsMenuController optionsMenuController;
     private bool optionsDirty;
     private AppInputController _appInputController;
+    private AppBootstrap _appBootstrap;
 
     /// <summary>
     /// Resets launch state and renders the authored initial selections.
@@ -39,7 +41,9 @@ public sealed class MainMenuController : MonoBehaviour
                 throw new MissingReferenceException($"{name} has no main-menu view.");
         }
 
-        ContentPack contentPack = AppBootstrap.EnsureExists().GetContentPack();
+        _appBootstrap = AppBootstrap.EnsureExists();
+        _appBootstrap.SaveLoadStarting += HandleSaveLoadStarting;
+        ContentPack contentPack = _appBootstrap.GetContentPack();
         GameLaunchContext.Reset(contentPack);
         currentVictoryCondition = GameLaunchContext.Summary.VictoryCondition;
 
@@ -97,12 +101,23 @@ public sealed class MainMenuController : MonoBehaviour
             view?.RenderFactions(contentPack.Scenario.PlayableFactionIDs);
             AudioManager audioManager = bootstrap.GetAudioManager();
             audioManager.PreloadSfx(view?.GetAudioCuePaths());
-            audioManager.PlayTrack(_menuMusicPath, true);
             mainMenuCanvas.enabled = true;
+            if (LoadingScreenController.IsLoadInProgress)
+            {
+                LoadingScreenController.CompletePendingLoad(() =>
+                    audioManager.PlayTrack(GetMenuMusicPath(contentPack.Definition), true)
+                );
+            }
+            else
+                audioManager.PlayTrack(GetMenuMusicPath(contentPack.Definition), true);
         }
         catch (System.Exception exception)
         {
-            Debug.LogException(exception);
+            if (mainMenuCanvas != null)
+                mainMenuCanvas.enabled = true;
+
+            if (!LoadingScreenController.CompleteFailedRecovery(exception))
+                Debug.LogException(exception);
         }
     }
 
@@ -135,11 +150,26 @@ public sealed class MainMenuController : MonoBehaviour
     /// </summary>
     private void OnDestroy()
     {
+        if (_appBootstrap != null)
+        {
+            _appBootstrap.SaveLoadStarting -= HandleSaveLoadStarting;
+            _appBootstrap = null;
+        }
+
         if (optionsMenuController == null)
             return;
 
         optionsMenuController.Dispose();
         optionsMenuController = null;
+    }
+
+    /// <summary>
+    /// Conceals the outgoing menu before saved-game loading begins.
+    /// </summary>
+    private void HandleSaveLoadStarting()
+    {
+        if (mainMenuCanvas != null)
+            mainMenuCanvas.enabled = false;
     }
 
     /// <summary>
@@ -284,9 +314,10 @@ public sealed class MainMenuController : MonoBehaviour
             windowManager.DestroyWindow,
             bootstrap,
             bootstrap.GetRuntime().SaveGame,
-            RequestSavedGameLaunch,
+            bootstrap.LoadSave,
             MarkOptionsDirty,
-            SaveGameManager.Instance
+            SaveGameManager.Instance,
+            showModsTab: true
         );
     }
 
@@ -315,25 +346,6 @@ public sealed class MainMenuController : MonoBehaviour
     }
 
     /// <summary>
-    /// Starts the selected saved game through the normal Main Menu launch context.
-    /// </summary>
-    /// <param name="fileName">The save identifier to load.</param>
-    /// <returns>True when the Strategy scene transition was requested.</returns>
-    private static bool RequestSavedGameLaunch(string fileName)
-    {
-        AppBootstrap bootstrap = AppBootstrap.Instance;
-        if (bootstrap == null || string.IsNullOrEmpty(fileName))
-            return false;
-
-        bootstrap.GetRuntime()?.EndGame();
-        GameLaunchContext.IsLoadGame = true;
-        GameLaunchContext.SaveFileName = fileName;
-        GameLaunchContext.PlayIntroCutscene = false;
-        bootstrap.LoadScene("StrategyView");
-        return true;
-    }
-
-    /// <summary>
     /// Requests that the open Options window render its changed state.
     /// </summary>
     private void MarkOptionsDirty()
@@ -358,7 +370,20 @@ public sealed class MainMenuController : MonoBehaviour
     /// </summary>
     private void OnCreditsFinished()
     {
-        AudioManager.EnsureExists().PlayTrack(_menuMusicPath, true);
+        ContentPack contentPack = AppBootstrap.EnsureExists().GetContentPack();
+        AudioManager.EnsureExists().PlayTrack(GetMenuMusicPath(contentPack.Definition), true);
+    }
+
+    /// <summary>
+    /// Resolves the active pack's main-menu music address.
+    /// </summary>
+    /// <param name="definition">The active content-pack definition.</param>
+    /// <returns>The configured address, or the application default when none is configured.</returns>
+    internal static string GetMenuMusicPath(ContentPackDefinition definition)
+    {
+        return string.IsNullOrWhiteSpace(definition?.MainMenuMusicPath)
+            ? _defaultMenuMusicPath
+            : definition.MainMenuMusicPath.Trim();
     }
 
     /// <summary>

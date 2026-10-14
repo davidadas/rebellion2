@@ -320,6 +320,28 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
+        public void Open_CategoryTab_MarksPresentedMessagesRead()
+        {
+            Message first = CreateMessage("first");
+            Message second = CreateMessage("second");
+            (GameObject root, Faction faction, _, _) = OpenMessagesWindow(
+                new[] { first, second },
+                () => default
+            );
+
+            try
+            {
+                Assert.IsTrue(first.Read);
+                Assert.IsTrue(second.Read);
+                Assert.IsFalse(faction.HasUnreadMessages());
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(root);
+            }
+        }
+
+        [Test]
         public void HasNavigationTarget_AnyNavigationIdentifier_ReturnsTrue()
         {
             Message primary = new StatusMessage { NavigationTargetInstanceID = "primary" };

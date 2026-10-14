@@ -50,7 +50,7 @@ namespace Rebellion.AI.Phases
             {
                 if (
                     !proposal.HasScore
-                    || proposal.Priority != AIProposalPriority.Mandatory
+                    || proposal.Priority < AIProposalPriority.Mandatory
                         && proposal.Score <= minimumSelectableScore
                 )
                     continue;
@@ -86,6 +86,8 @@ namespace Rebellion.AI.Phases
                 else if (
                     selectedProposal is AIFacilityRemovalProposal removalProposal
                         ? !productionSelector.TrySelect(context, removalProposal)
+                    : selectedProposal is AIHeadquartersRelocationProposal relocationProposal
+                        ? !productionSelector.TrySelect(context, relocationProposal)
                     : selectedProposal is AIMissionProposal or AIAbortMissionProposal
                         ? !missionSelector.TrySelect(context, selectedProposal)
                     : IsFleetDomainProposal(selectedProposal)

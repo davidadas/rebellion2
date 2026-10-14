@@ -59,6 +59,30 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void ForgetEntityAt_NewerLocationKnown_PreservesNewerObservation()
+        {
+            Officer vader = CreateOfficer("VADER", _empire);
+            _game.AttachNode(vader, _coruscant);
+            _commands.ObservePlanet(_alliance, _coruscant);
+            MakeTatooineImperial();
+            _game.MoveNode(vader, _tatooine);
+            _commands.ObservePlanet(_alliance, _tatooine);
+
+            bool forgotten = _commands.ForgetEntityAt(_alliance, vader.InstanceID, _coruscant);
+
+            Assert.IsTrue(forgotten);
+            Assert.AreEqual(_tatooine.InstanceID, _alliance.Fog.EntityLastSeenAt[vader.InstanceID]);
+            Assert.AreEqual(
+                vader.InstanceID,
+                _alliance
+                    .Fog.Snapshots[_outerRim.InstanceID]
+                    .Planets[_tatooine.InstanceID]
+                    .Officers.Single()
+                    .InstanceID
+            );
+        }
+
+        [Test]
         public void ObservePlanet_PlanetWithAllEntities_CreatesAccurateSnapshot()
         {
             _coruscant.NumRawResourceNodes = 5;

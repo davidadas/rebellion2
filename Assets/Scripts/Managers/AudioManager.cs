@@ -354,7 +354,12 @@ public sealed class AudioManager : MonoBehaviour
     public void FadeOutMusic(float duration)
     {
         EnsureAudioSources();
+        StopPlaylist();
         StopFadeOut();
+        StopMusicLoad();
+
+        _activeTrackPath = null;
+        _activeTrackLoop = false;
 
         _fadeOutCoroutine = StartCoroutine(FadeOut(musicSource, duration));
     }

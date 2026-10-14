@@ -7,7 +7,7 @@ using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 /// <summary>
-/// Renders the idle bar in the strategy desktop's upper-right corner.
+/// Renders the idle bar in its configured strategy-desktop corner.
 /// </summary>
 public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
 {
@@ -25,7 +25,7 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
     private const int _scrollbarGap = 1;
     private const int _scrollbarWidth = 13;
     private const int _slotSize = 28;
-    private const int _topPadding = 4;
+    private const int _verticalOuterPadding = 4;
     private const int _verticalPadding = 3;
 
     [SerializeField]
@@ -290,8 +290,14 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
         int shelfWidth =
             2 * _horizontalPadding + gridWidth + (scrollable ? _scrollbarWidth + _scrollbarGap : 0);
         int shelfHeight = viewportHeight + 2 * _verticalPadding;
-        int shelfX = currentData.DesktopBounds.xMax - _outerPadding - shelfWidth;
-        int shelfY = currentData.DesktopBounds.yMin + _topPadding;
+        Vector2Int shelfPosition = GetShelfPosition(
+            currentData.DesktopBounds,
+            shelfWidth,
+            shelfHeight,
+            currentData.Location
+        );
+        int shelfX = shelfPosition.x;
+        int shelfY = shelfPosition.y;
         int gridX = _horizontalPadding;
         int scrollbarX = _horizontalPadding + gridWidth + _scrollbarGap;
 
@@ -352,6 +358,35 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
         int contentHeight = rowCount * _slotSize + Math.Max(0, rowCount - 1) * _rowGap;
         entriesScrollArea.SetContentHeight(contentHeight, _slotSize + _rowGap, resetScroll);
         UpdateHoverLabel();
+    }
+
+    /// <summary>
+    /// Resolves the shelf's source-space origin for its configured desktop corner.
+    /// </summary>
+    /// <param name="desktopBounds">The available strategy desktop.</param>
+    /// <param name="shelfWidth">The current shelf width.</param>
+    /// <param name="shelfHeight">The current shelf height.</param>
+    /// <param name="location">The corner occupied by the shelf.</param>
+    /// <returns>The shelf's source-space upper-left position.</returns>
+    private static Vector2Int GetShelfPosition(
+        RectInt desktopBounds,
+        int shelfWidth,
+        int shelfHeight,
+        IdleBarLocation location
+    )
+    {
+        int left = desktopBounds.xMin + _outerPadding;
+        int right = desktopBounds.xMax - _outerPadding - shelfWidth;
+        int top = desktopBounds.yMin + _verticalOuterPadding;
+        int bottom = desktopBounds.yMax - _verticalOuterPadding - shelfHeight;
+        return location switch
+        {
+            IdleBarLocation.TopRight => new Vector2Int(right, top),
+            IdleBarLocation.TopLeft => new Vector2Int(left, top),
+            IdleBarLocation.BottomRight => new Vector2Int(right, bottom),
+            IdleBarLocation.BottomLeft => new Vector2Int(left, bottom),
+            _ => new Vector2Int(right, top),
+        };
     }
 
     /// <summary>
@@ -486,7 +521,7 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
     }
 
     /// <summary>
-    /// Positions the hovered entry name beneath the current shelf.
+    /// Positions the hovered entry name inward from the current shelf.
     /// </summary>
     private void UpdateHoverLabel()
     {
@@ -511,8 +546,21 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
             )
         );
         RectTransform shelf = shelfHitArea.rectTransform;
-        int x = Mathf.RoundToInt(shelf.anchoredPosition.x + (shelf.sizeDelta.x - width) / 2f);
-        int y = Mathf.RoundToInt(-shelf.anchoredPosition.y + shelf.sizeDelta.y + _hoverLabelGap);
+        int desiredX = Mathf.RoundToInt(
+            shelf.anchoredPosition.x + (shelf.sizeDelta.x - width) / 2f
+        );
+        int x = Mathf.Clamp(
+            desiredX,
+            currentData.DesktopBounds.xMin + _outerPadding,
+            currentData.DesktopBounds.xMax - _outerPadding - width
+        );
+        int shelfY = Mathf.RoundToInt(-shelf.anchoredPosition.y);
+        bool atBottom =
+            currentData.Location == IdleBarLocation.BottomRight
+            || currentData.Location == IdleBarLocation.BottomLeft;
+        int y = atBottom
+            ? shelfY - _hoverLabelGap - _hoverLabelHeight
+            : shelfY + Mathf.RoundToInt(shelf.sizeDelta.y) + _hoverLabelGap;
         SetSourceRect(hoverLabelRoot, x, y, width, _hoverLabelHeight);
         hoverLabelRoot.gameObject.SetActive(true);
         hoverLabelRoot.SetAsLastSibling();

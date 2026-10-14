@@ -40,6 +40,8 @@ internal sealed class IdleBarRenderData
 
     internal bool AlwaysOpen { get; }
 
+    internal IdleBarLocation Location { get; }
+
     /// <summary>
     /// Creates one idle-bar presentation.
     /// </summary>
@@ -47,16 +49,19 @@ internal sealed class IdleBarRenderData
     /// <param name="entries">The ordered entries to display.</param>
     /// <param name="desktopBounds">The strategy desktop bounds.</param>
     /// <param name="alwaysOpen">Whether the idle bar remains expanded without pointer hover.</param>
+    /// <param name="location">The strategy-desktop corner occupied by the idle bar.</param>
     internal IdleBarRenderData(
         bool visible,
         IReadOnlyList<IdleBarEntry> entries,
         RectInt desktopBounds,
-        bool alwaysOpen = false
+        bool alwaysOpen = false,
+        IdleBarLocation location = IdleBarLocation.TopRight
     )
     {
         Visible = visible;
         Entries = entries ?? Array.Empty<IdleBarEntry>();
         DesktopBounds = desktopBounds;
         AlwaysOpen = alwaysOpen;
+        Location = location;
     }
 }
