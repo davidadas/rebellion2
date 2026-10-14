@@ -47,8 +47,7 @@ public sealed class ConstructionOrderController
             .Select(technology => technology.GetReference())
             .Where(item => BelongsToManufacturingTab(item, manufacturingTab))
             .Where(item => IManufacturable.CanBeManufacturedBy(item, playerFactionId))
-            .OrderBy(item => item.GetResearchOrder())
-            .ThenBy(item => item.GetDisplayName())
+            .OrderBy(item => item.GetDisplayName(), StringComparer.CurrentCultureIgnoreCase)
             .ToList()
             .AsReadOnly();
     }
