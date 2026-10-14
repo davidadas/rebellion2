@@ -38,6 +38,28 @@ namespace Rebellion.AI.Selectors
             if (!_state.CanReserve(reservations) || proposal?.CanSelect(context) != true)
                 return false;
 
+            if (
+                proposal is AIMissionProposal { IsTeamFinal: true } mission
+                && mission.MainParticipants.OfType<Officer>().Any()
+            )
+            {
+                MissionOdds odds = context.MissionQueries.GetMissionOdds(
+                    mission.CreateContext(),
+                    context.Assessment.GetMissionDetectors
+                );
+                if (
+                    odds == null
+                    || odds.PersonnelLossProbability
+                        > context
+                            .Game
+                            .Config
+                            .AI
+                            .MissionPlanning
+                            .MaximumOfficerMissionLossProbability
+                )
+                    return false;
+            }
+
             _state.Reserve(reservations);
             return true;
         }
@@ -199,6 +221,7 @@ namespace Rebellion.AI.Selectors
                 .OfType<AIMissionProposal>()
                 .Where(mission =>
                     mission.Participant is SpecialForces
+                    && !mission.IsTeamFinal
                     && mission.DecoyParticipants.Count == 0
                     && context.Assessment.IsEnemyPlanet(mission.TargetPlanet)
                 )
@@ -328,6 +351,7 @@ namespace Rebellion.AI.Selectors
             {
                 if (
                     selected[index] is not AIMissionProposal mission
+                    || mission.IsTeamFinal
                     || !mission.MainParticipants.OfType<Officer>().Any()
                 )
                     continue;
@@ -396,7 +420,8 @@ namespace Rebellion.AI.Selectors
             AIMissionProposal proposal
         )
         {
-            return proposal.DecoyParticipants.Count == 0
+            return !proposal.IsTeamFinal
+                && proposal.DecoyParticipants.Count == 0
                 && proposal.Participant is Officer
                 && context.Assessment.IsEnemyPlanet(proposal.TargetPlanet);
         }

@@ -45,14 +45,28 @@ namespace Rebellion.AI.Scorers
             )
                 return 0;
 
-            MissionOdds odds = context.MissionQueries.GetOperationalMissionOdds(
-                missionProposal.CreateContext(),
-                context.Assessment.GetMissionDetectors
-            );
+            MissionOdds odds =
+                missionProposal.OperationalOdds
+                ?? context.MissionQueries.GetOperationalMissionOdds(
+                    missionProposal.CreateContext(),
+                    context.Assessment.GetMissionDetectors
+                );
             if (odds == null)
                 return 0;
 
-            double successProbability = odds.ObjectiveSuccessProbability;
+            bool isSabotage = missionProposal.MissionTypeID == MissionTypeIDs.Sabotage;
+            double successProbability = isSabotage
+                ? odds.OverallSuccessProbability
+                : odds.ObjectiveSuccessProbability;
+            if (
+                isSabotage
+                && (
+                    successProbability <= 0
+                    || successProbability
+                        < context.Game.Config.AI.MissionPlanning.MinimumSabotageSuccessPercent
+                )
+            )
+                return 0;
             if (!MeetsUprisingMissionProbabilityFloor(context, missionProposal, successProbability))
                 return 0;
 
@@ -583,7 +597,11 @@ namespace Rebellion.AI.Scorers
         )
         {
             if (
-                proposal.Participant is not Officer
+                (
+                    proposal.IsTeamFinal
+                        ? !proposal.MainParticipants.OfType<Officer>().Any()
+                        : proposal.Participant is not Officer
+                )
                 || proposal.TargetPlanet?.GetOwnerInstanceID() == null
                 || proposal.TargetPlanet.GetOwnerInstanceID() == context.Faction.InstanceID
                 || !context.HasUnlockedSpecialForcesForMission(proposal.MissionTypeID)

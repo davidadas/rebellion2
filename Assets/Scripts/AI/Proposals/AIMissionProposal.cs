@@ -37,6 +37,10 @@ namespace Rebellion.AI.Proposals
         // Mission Assessment.
         public double FoilProbability { get; private set; }
 
+        internal bool IsTeamFinal { get; }
+
+        internal MissionOdds OperationalOdds { get; private set; }
+
         /// <summary>
         /// Creates a mission proposal.
         /// </summary>
@@ -47,6 +51,7 @@ namespace Rebellion.AI.Proposals
         /// <param name="targetOfficer">Officer targeted by the mission.</param>
         /// <param name="discipline">Research discipline advanced by the mission.</param>
         /// <param name="decoyParticipants">Participants assigned to distract mission defenders.</param>
+        /// <param name="teamIsFinal">Whether the planner has evaluated the complete participant roles.</param>
         public AIMissionProposal(
             IEnumerable<IMissionParticipant> mainParticipants,
             string missionTypeId,
@@ -54,7 +59,8 @@ namespace Rebellion.AI.Proposals
             ISceneNode selectedTarget = null,
             Officer targetOfficer = null,
             ResearchDiscipline? discipline = null,
-            IEnumerable<IMissionParticipant> decoyParticipants = null
+            IEnumerable<IMissionParticipant> decoyParticipants = null,
+            bool teamIsFinal = false
         )
         {
             MainParticipants =
@@ -69,6 +75,7 @@ namespace Rebellion.AI.Proposals
             SelectedTarget = selectedTarget;
             TargetOfficer = targetOfficer;
             Discipline = discipline;
+            IsTeamFinal = teamIsFinal;
             _sortKey = BuildSortKey();
         }
 
@@ -149,7 +156,8 @@ namespace Rebellion.AI.Proposals
                 SelectedTarget,
                 TargetOfficer,
                 Discipline,
-                DecoyParticipants.Concat(new[] { decoy })
+                DecoyParticipants.Concat(new[] { decoy }),
+                IsTeamFinal
             );
             if (HasScore)
                 proposal.SetScore(Score);
@@ -164,6 +172,13 @@ namespace Rebellion.AI.Proposals
         internal void SetFoilProbability(double probability)
         {
             FoilProbability = probability;
+        }
+
+        /// <summary>Records evaluated odds for this immutable team during the current planning turn.</summary>
+        /// <param name="odds">The operational odds for the proposal's exact participant roles.</param>
+        internal void SetOperationalOdds(MissionOdds odds)
+        {
+            OperationalOdds = odds;
         }
 
         /// <summary>

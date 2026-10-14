@@ -48,6 +48,7 @@ namespace Rebellion.AI.Planners
         private List<(Planet Planet, Officer TargetOfficer)> _officerTargetCandidates;
         private List<Planet> _recruitmentCandidates;
         private List<Planet> _sabotageCandidates;
+        private readonly List<IMissionParticipant> _sabotageParticipants = new();
 
         // Research Disciplines.
         private readonly ResearchDiscipline[] _researchDisciplines =
@@ -70,6 +71,7 @@ namespace Rebellion.AI.Planners
             AssignSpecialForcesIntent(context);
             _candidateSelector.Reset();
             _sabotageTargets.Clear();
+            _sabotageParticipants.Clear();
             BuildActiveMissionIndexes(context.Assessment.ActiveMissions);
             _diplomacyCandidates = null;
             _preferredRecruiter = null;
@@ -216,9 +218,15 @@ namespace Rebellion.AI.Planners
                 AddRescueProposals(context, participant, proposals);
                 AddEspionageProposals(context, participant, proposals);
                 AddInciteUprisingProposals(context, participant, proposals);
-                AddSabotageProposals(context, participant, proposals);
+                if (
+                    participant.CanPerformMission(MissionTypeIDs.Sabotage)
+                    && participant.GetParentOfType<Planet>() != null
+                )
+                    _sabotageParticipants.Add(participant);
                 AddOfficerTargetMissionProposals(context, participant, proposals);
             }
+
+            AddSabotageProposals(context, proposals);
 
             return proposals;
         }
@@ -568,35 +576,165 @@ namespace Rebellion.AI.Planners
                 );
         }
 
-        /// <summary>
-        /// Adds sabotage proposals.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="participant">The mission participant.</param>
-        /// <param name="proposals">The proposal collection to update.</param>
-        private void AddSabotageProposals(
+        /// <summary>Builds bounded complete sabotage teams before mission scoring and selection.</summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="proposals">The proposal collection to extend.</param>
+        private void AddSabotageProposals(AITurnContext context, List<AIProposal> proposals)
+        {
+            if (_sabotageParticipants.Count == 0)
+                return;
+
+            GameConfig.AIMissionPlanningConfig config = context.Game.Config.AI.MissionPlanning;
+            List<IMissionParticipant> available = context
+                .Assessment.AvailableMissionParticipants.Where(participant =>
+                    participant.CanPerformMission(MissionTypeIDs.Sabotage)
+                    && participant.GetParentOfType<Planet>() != null
+                    && (participant is SpecialForces || _sabotageParticipants.Contains(participant))
+                )
+                .ToList();
+            foreach (Planet planet in GetSabotageCandidatePlanets(context))
+            {
+                List<IMissionParticipant> candidates = available
+                    .OrderByDescending(participant =>
+                        participant.GetEffectiveRating(SkillRating.Espionage)
+                    )
+                    .ThenByDescending(participant =>
+                        participant.GetEffectiveRating(SkillRating.Combat)
+                    )
+                    .ThenBy(participant =>
+                        participant.GetParentOfType<Planet>().GetRawDistanceTo(planet)
+                    )
+                    .ThenBy(participant => participant.InstanceID, StringComparer.Ordinal)
+                    .Take(Math.Max(1, config.SabotageTeamCandidateCount))
+                    .ToList();
+                List<IMissionParticipant> leaders = _sabotageParticipants
+                    .OrderByDescending(participant =>
+                        participant.GetEffectiveRating(SkillRating.Espionage)
+                        + participant.GetEffectiveRating(SkillRating.Combat)
+                    )
+                    .ThenBy(participant =>
+                        participant.GetParentOfType<Planet>().GetRawDistanceTo(planet)
+                    )
+                    .ThenBy(participant => participant.InstanceID, StringComparer.Ordinal)
+                    .Take(Math.Max(1, config.SabotageTeamAlternativesPerTarget))
+                    .ToList();
+                foreach (IManufacturable target in GetSabotageTargets(context, planet))
+                foreach (IMissionParticipant leader in leaders)
+                    AddSabotageTeamProposals(
+                        context,
+                        planet,
+                        (ISceneNode)target,
+                        leader,
+                        candidates,
+                        proposals
+                    );
+            }
+        }
+
+        /// <summary>Explores bounded participant-role additions and retains viable team prefixes.</summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="planet">The known mission destination.</param>
+        /// <param name="target">The exact sabotage objective.</param>
+        /// <param name="leader">The first main participant.</param>
+        /// <param name="candidates">The bounded pool of eligible helpers.</param>
+        /// <param name="proposals">The collection receiving scored team alternatives.</param>
+        private void AddSabotageTeamProposals(
             AITurnContext context,
-            IMissionParticipant participant,
+            Planet planet,
+            ISceneNode target,
+            IMissionParticipant leader,
+            IReadOnlyList<IMissionParticipant> candidates,
             List<AIProposal> proposals
         )
         {
-            if (!participant.CanPerformMission(MissionTypeIDs.Sabotage))
+            AIMissionProposal team = new(
+                new[] { leader },
+                MissionTypeIDs.Sabotage,
+                planet,
+                selectedTarget: target,
+                teamIsFinal: true
+            );
+            MissionOdds odds = EvaluateSabotageTeam(context, team);
+            if (odds == null)
                 return;
 
-            foreach (Planet planet in GetSabotageCandidatePlanets(context))
+            int maximumSize = Math.Max(
+                1,
+                context.Game.Config.AI.MissionPlanning.MaximumSabotageTeamSize
+            );
+            while (true)
             {
-                foreach (IManufacturable target in GetSabotageTargets(context, planet))
+                TryAddProposal(context, proposals, team);
+                if (team.Participants.Count >= maximumSize)
+                    return;
+
+                AIMissionProposal bestAddition = null;
+                double bestProbability = odds.OverallSuccessProbability;
+                foreach (IMissionParticipant candidate in candidates.Except(team.Participants))
                 {
-                    TryAddMissionProposal(
-                        context,
-                        proposals,
-                        participant,
-                        MissionTypeIDs.Sabotage,
-                        planet,
-                        selectedTarget: target
-                    );
+                    foreach (bool asDecoy in new[] { false, true })
+                    {
+                        AIMissionProposal alternative = new(
+                            asDecoy
+                                ? team.MainParticipants
+                                : team.MainParticipants.Concat(new[] { candidate }),
+                            MissionTypeIDs.Sabotage,
+                            planet,
+                            selectedTarget: target,
+                            decoyParticipants: asDecoy
+                                ? team.DecoyParticipants.Concat(new[] { candidate })
+                                : team.DecoyParticipants,
+                            teamIsFinal: true
+                        );
+                        MissionOdds alternativeOdds = EvaluateSabotageTeam(context, alternative);
+                        if (
+                            alternativeOdds == null
+                            || alternativeOdds.OverallSuccessProbability < bestProbability
+                        )
+                            continue;
+                        if (
+                            alternativeOdds.OverallSuccessProbability == bestProbability
+                            && (
+                                bestAddition != null
+                                || !asDecoy
+                                || odds.FoilProbability <= 0
+                                || odds.OverallSuccessProbability
+                                    >= context
+                                        .Game
+                                        .Config
+                                        .AI
+                                        .MissionPlanning
+                                        .MinimumSabotageSuccessPercent
+                            )
+                        )
+                            continue;
+                        bestAddition = alternative;
+                        bestProbability = alternativeOdds.OverallSuccessProbability;
+                    }
                 }
+
+                if (bestAddition == null)
+                    return;
+                team = bestAddition;
+                odds = team.OperationalOdds;
             }
+        }
+
+        /// <summary>Evaluates and caches odds for one exact sabotage team without changing gameplay.</summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="proposal">The immutable participant roles being considered.</param>
+        /// <returns>The operational mission odds, or null when the team is invalid.</returns>
+        private static MissionOdds EvaluateSabotageTeam(
+            AITurnContext context,
+            AIMissionProposal proposal
+        )
+        {
+            MissionOdds odds = context.MissionQueries.GetOperationalMissionOdds(
+                proposal.CreateContext(),
+                context.Assessment.GetMissionDetectors
+            );
+            proposal.SetOperationalOdds(odds);
+            return odds;
         }
 
         /// <summary>

@@ -22,6 +22,37 @@ namespace Rebellion.Tests.AI.Selectors
     [TestFixture]
     public class AIMissionSelectorTests
     {
+        [Test]
+        public void FinalizeSelection_WithCompleteSabotageTeam_PreservesChosenRoles()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, sector, "origin", empire.InstanceID);
+            Planet target = AITestSceneBuilder.AddPlanet(game, sector, "target", rebels.InstanceID);
+            SpecialForces first = CreateSpecialForces("first", empire.InstanceID);
+            SpecialForces second = CreateSpecialForces("second", empire.InstanceID);
+            SpecialForces spare = CreateSpecialForces("spare", empire.InstanceID);
+            game.AttachNode(first, origin);
+            game.AttachNode(second, origin);
+            game.AttachNode(spare, origin);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIMissionProposal proposal = new(
+                new[] { first, second },
+                MissionTypeIDs.Sabotage,
+                target,
+                teamIsFinal: true
+            );
+            context.SetSelectedProposals(new[] { proposal });
+
+            new AIMissionSelector(new AISelectionState()).FinalizeSelection(context);
+
+            AIMissionProposal selected = context
+                .SelectedProposals.OfType<AIMissionProposal>()
+                .Single();
+            CollectionAssert.AreEqual(new[] { first, second }, selected.MainParticipants);
+            Assert.IsEmpty(selected.DecoyParticipants);
+        }
+
         [TestCase(ResearchDiscipline.ShipDesign, true)]
         [TestCase(ResearchDiscipline.ShipDesign, false)]
         [TestCase(ResearchDiscipline.FacilityDesign, true)]

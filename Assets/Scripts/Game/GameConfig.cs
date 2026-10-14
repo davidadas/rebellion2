@@ -148,6 +148,14 @@ namespace Rebellion.Game
 
             public int MinimumUprisingMissionSuccessPercent { get; set; }
 
+            public int MinimumSabotageSuccessPercent { get; set; }
+
+            public int MaximumSabotageTeamSize { get; set; }
+
+            public int SabotageTeamCandidateCount { get; set; }
+
+            public int SabotageTeamAlternativesPerTarget { get; set; }
+
             public int MaximumOfficerMissionLossProbability { get; set; }
 
             public int HostileMissionIntelAgeFoilPenaltyPerRefreshInterval { get; set; }

@@ -602,6 +602,7 @@ namespace Rebellion.Tests.AI.Scorers
         public void Score_SabotageProposal_AddsTargetPriorityBonus()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.MissionPlanning.MinimumSabotageSuccessPercent = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet origin = AITestSceneBuilder.AddPlanet(game, system, "origin", empire.InstanceID);
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
@@ -659,6 +660,7 @@ namespace Rebellion.Tests.AI.Scorers
         public void Score_SabotageProposal_UsesTacticalTargetPriorityOrder()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.MissionPlanning.MinimumSabotageSuccessPercent = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet origin = AITestSceneBuilder.AddPlanet(game, system, "origin", empire.InstanceID);
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
