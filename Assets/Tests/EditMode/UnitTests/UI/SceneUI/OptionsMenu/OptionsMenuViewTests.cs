@@ -429,11 +429,48 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             TMP_Dropdown dropdown = GetField<TMP_Dropdown>("_gameLaunchSpeedDropdown");
 
             Assert.AreEqual(6, dropdown.options.Count);
+            Assert.AreEqual("None", dropdown.options[0].text);
             Assert.AreEqual("Very slow", dropdown.captionText.text);
 
             dropdown.value = (int)GameLaunchSpeed.Fast;
 
             Assert.AreEqual(GameLaunchSpeed.Fast, requested);
+        }
+
+        [Test]
+        public void UserInterfacePage_DropdownItem_SelectedStateUsesActiveRowArtwork()
+        {
+            TMP_Dropdown dropdown = GetField<TMP_Dropdown>("_gameLaunchSpeedDropdown");
+            Toggle item = dropdown.template.GetComponentInChildren<Toggle>(true);
+
+            Assert.AreEqual(Selectable.Transition.SpriteSwap, item.transition);
+            Assert.AreEqual(
+                "ui_settingsmenu_row_selected_background",
+                item.spriteState.selectedSprite.name
+            );
+        }
+
+        [Test]
+        public void UserInterfacePage_DropdownControl_HighlightIsBrighterThanNormal()
+        {
+            TMP_Dropdown dropdown = GetField<TMP_Dropdown>("_gameLaunchSpeedDropdown");
+
+            Assert.AreEqual(Selectable.Transition.ColorTint, dropdown.transition);
+            Assert.Greater(
+                dropdown.colors.highlightedColor.grayscale,
+                dropdown.colors.normalColor.grayscale
+            );
+        }
+
+        [Test]
+        public void UserInterfacePage_DropdownPopup_DisablesDraggingWhenAllOptionsFit()
+        {
+            TMP_Dropdown dropdown = GetField<TMP_Dropdown>("_gameLaunchSpeedDropdown");
+            ScrollRect scrollRect = dropdown.template.GetComponent<ScrollRect>();
+
+            Assert.IsFalse(scrollRect.horizontal);
+            Assert.IsFalse(scrollRect.vertical);
+            Assert.IsFalse(scrollRect.inertia);
         }
 
         [Test]

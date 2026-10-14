@@ -493,8 +493,8 @@ public static class OptionsMenuPrefabBuilder
         TMP_Dropdown gameLaunchSpeedDropdown = CreateOptionsDropdownRow(
             userInterfacePage,
             "GameLaunchSpeed",
-            "Default speed on load",
-            new[] { "", "Paused", "Very slow", "Slow", "Medium", "Fast" },
+            "Galaxy speed override",
+            new[] { "None", "Paused", "Very slow", "Slow", "Medium", "Fast" },
             70,
             accent
         );
@@ -567,7 +567,7 @@ public static class OptionsMenuPrefabBuilder
         );
         surface.raycastTarget = true;
         TMP_Dropdown dropdown = surface.gameObject.AddComponent<TMP_Dropdown>();
-        dropdown.targetGraphic = surface;
+        ApplyOptionsDropdownFeedback(dropdown, surface);
 
         TextMeshProUGUI caption = CreateTextLabel("Label", surface.transform);
         caption.color = new Color(0.875f, 0.910f, 0.941f);
@@ -600,7 +600,8 @@ public static class OptionsMenuPrefabBuilder
         RectTransform template = templateImage.rectTransform;
         ScrollRect scrollRect = templateImage.gameObject.AddComponent<ScrollRect>();
         scrollRect.horizontal = false;
-        scrollRect.vertical = true;
+        scrollRect.vertical = false;
+        scrollRect.inertia = false;
         scrollRect.movementType = ScrollRect.MovementType.Clamped;
 
         GameObject viewportObject = new GameObject(
@@ -637,13 +638,13 @@ public static class OptionsMenuPrefabBuilder
         itemImage.raycastTarget = true;
         Toggle item = itemImage.gameObject.AddComponent<Toggle>();
         item.targetGraphic = itemImage;
-        item.transition = Selectable.Transition.ColorTint;
-        ColorBlock colors = item.colors;
-        colors.normalColor = Color.white;
-        colors.highlightedColor = new Color(0.55f, 0.75f, 0.95f);
-        colors.selectedColor = colors.highlightedColor;
-        colors.pressedColor = new Color(0.42f, 0.63f, 0.85f);
-        item.colors = colors;
+        item.transition = Selectable.Transition.SpriteSwap;
+        Sprite activeRowSprite = LoadSprite(_optionsRowActiveAddress, _panelBorder);
+        SpriteState itemSprites = item.spriteState;
+        itemSprites.highlightedSprite = activeRowSprite;
+        itemSprites.selectedSprite = activeRowSprite;
+        itemSprites.pressedSprite = activeRowSprite;
+        item.spriteState = itemSprites;
 
         RawImage checkmark = CreateRawImage(
             "Item Checkmark",
@@ -1208,18 +1209,18 @@ public static class OptionsMenuPrefabBuilder
     }
 
     /// <summary>
-    /// Adds pronounced hover feedback to a button's visible cut-corner surface.
+    /// Adds pronounced hover feedback to a selectable control's visible cut-corner surface.
     /// </summary>
-    /// <param name="button">The button to restyle.</param>
+    /// <param name="selectable">The selectable control to restyle.</param>
     /// <param name="surface">The visible surface receiving the tint.</param>
-    private static void ApplyOptionsSurfaceButtonFeedback(Button button, Graphic surface)
+    private static void ApplyOptionsSurfaceFeedback(Selectable selectable, Graphic surface)
     {
-        if (button == null || surface == null)
+        if (selectable == null || surface == null)
             return;
 
-        button.targetGraphic = surface;
-        button.transition = Selectable.Transition.ColorTint;
-        ColorBlock colors = button.colors;
+        selectable.targetGraphic = surface;
+        selectable.transition = Selectable.Transition.ColorTint;
+        ColorBlock colors = selectable.colors;
         colors.normalColor = Color.white;
         colors.highlightedColor = new Color(1.55f, 1.55f, 1.55f, 1f);
         colors.pressedColor = new Color(1.85f, 1.85f, 1.85f, 1f);
@@ -1227,7 +1228,30 @@ public static class OptionsMenuPrefabBuilder
         colors.disabledColor = new Color(0.55f, 0.55f, 0.55f, 0.55f);
         colors.colorMultiplier = 1f;
         colors.fadeDuration = 0.06f;
-        button.colors = colors;
+        selectable.colors = colors;
+    }
+
+    /// <summary>
+    /// Adds visible pointer feedback to a dropdown's light-colored surface.
+    /// </summary>
+    /// <param name="dropdown">The dropdown to restyle.</param>
+    /// <param name="surface">The visible surface receiving the tint.</param>
+    private static void ApplyOptionsDropdownFeedback(TMP_Dropdown dropdown, Graphic surface)
+    {
+        if (dropdown == null || surface == null)
+            return;
+
+        dropdown.targetGraphic = surface;
+        dropdown.transition = Selectable.Transition.ColorTint;
+        ColorBlock colors = dropdown.colors;
+        colors.normalColor = new Color(0.76f, 0.82f, 0.90f, 1f);
+        colors.highlightedColor = Color.white;
+        colors.pressedColor = new Color(0.60f, 0.69f, 0.82f, 1f);
+        colors.selectedColor = colors.normalColor;
+        colors.disabledColor = new Color(0.45f, 0.48f, 0.54f, 0.4f);
+        colors.colorMultiplier = 1f;
+        colors.fadeDuration = 0.06f;
+        dropdown.colors = colors;
     }
 
     /// <summary>
@@ -1328,7 +1352,7 @@ public static class OptionsMenuPrefabBuilder
         labelField.fontSizeMax = 13;
         labelField.alignment = TextAlignmentOptions.MidlineLeft;
         SetSourceRect(labelField.rectTransform, 14, 0, 140, _navigationRowHeight);
-        ApplyOptionsSurfaceButtonFeedback(button, surface);
+        ApplyOptionsSurfaceFeedback(button, surface);
         AddOptionsButtonBorder(buttonFrame);
         return button;
     }
@@ -1411,7 +1435,7 @@ public static class OptionsMenuPrefabBuilder
         text.fontSize = 11;
         text.alignment = TextAlignmentOptions.Midline;
         SetSourceRect(text.rectTransform, 0, 4, width, 14);
-        ApplyOptionsSurfaceButtonFeedback(button, surface);
+        ApplyOptionsSurfaceFeedback(button, surface);
         AddOptionsButtonBorder(buttonFrame);
         return button;
     }
