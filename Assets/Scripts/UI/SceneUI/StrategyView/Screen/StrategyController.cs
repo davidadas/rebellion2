@@ -920,8 +920,7 @@ public sealed class StrategyController
     {
         RequestInitialTextures();
         SetContentReady(true);
-        if (!LoadingScreenController.IsLoadInProgress)
-            PlayStrategyReadySound();
+        PlayStrategyReadySound();
     }
 
     /// <summary>
@@ -1950,8 +1949,7 @@ public sealed class StrategyController
         strategyMusicController.Resume();
         RefreshStrategyState();
         RestoreWindows();
-        if (!LoadingScreenController.IsLoadInProgress)
-            PlayStrategyReadySound();
+        PlayStrategyReadySound();
     }
 
     /// <summary>
