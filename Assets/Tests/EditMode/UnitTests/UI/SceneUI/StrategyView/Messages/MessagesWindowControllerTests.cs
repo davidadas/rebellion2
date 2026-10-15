@@ -372,7 +372,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
-        public void DestroyWindow_PresentedMessages_AcknowledgesNotifications()
+        public void DestroyWindow_PresentedMessages_ClearsNotifications()
         {
             Message first = CreateMessage("first");
             Message second = CreateMessage("second");

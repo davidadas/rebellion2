@@ -93,6 +93,7 @@ public sealed class MessagesWindowController
         this.markDirty = markDirty ?? throw new ArgumentNullException(nameof(markDirty));
         this.getSelectionModifiers =
             getSelectionModifiers ?? throw new ArgumentNullException(nameof(getSelectionModifiers));
+        this.windowManager.WindowClosed += HandleWindowClosed;
     }
 
     /// <summary>
@@ -153,7 +154,10 @@ public sealed class MessagesWindowController
         MessagesWindowSession session = GetSession(view);
         MessagesTab requestedTab = MessagesTabCatalog.Clamp((int)tab);
         if (session.HasPresentedTab && session.ActiveTab != requestedTab)
-            AcknowledgeMessages(session.Messages);
+        {
+            if (AcknowledgeMessages(session.Messages))
+                markDirty();
+        }
 
         session.SelectTab(requestedTab);
         RefreshSession(session);
@@ -381,16 +385,40 @@ public sealed class MessagesWindowController
     /// Acknowledges notifications for the supplied messages without changing their read state.
     /// </summary>
     /// <param name="messages">The messages whose notifications were presented.</param>
-    internal static void AcknowledgeMessages(IEnumerable<Message> messages)
+    /// <returns>True when at least one notification changed.</returns>
+    internal static bool AcknowledgeMessages(IEnumerable<Message> messages)
     {
         if (messages == null)
-            return;
+            return false;
+
+        bool changed = false;
 
         foreach (Message message in messages)
         {
-            if (message != null)
+            if (message?.NotificationAcknowledged == false)
+            {
                 message.NotificationAcknowledged = true;
+                changed = true;
+            }
         }
+
+        return changed;
+    }
+
+    /// <summary>
+    /// Acknowledges notifications presented by one Messages window before it closes.
+    /// </summary>
+    /// <param name="window">The Messages window being closed.</param>
+    private void AcknowledgeWindow(UIWindow window)
+    {
+        if (window == null)
+            return;
+
+        MessagesWindowSession session = sessions.Values.FirstOrDefault(candidate =>
+            candidate.Window == window
+        );
+        if (session?.HasPresentedTab == true && AcknowledgeMessages(session.Messages))
+            markDirty();
     }
 
     /// <summary>
@@ -549,9 +577,8 @@ public sealed class MessagesWindowController
         if (TryGetSession(view, out MessagesWindowSession session))
         {
             StopMessageDetailAudio();
-            AcknowledgeMessages(session.Messages);
+            AcknowledgeWindow(session.Window);
             closeWindow(session.Window);
-            markDirty();
         }
     }
 
@@ -792,7 +819,6 @@ public sealed class MessagesWindowController
         )
             return;
 
-        AcknowledgeMessages(session.Messages);
         sessions.Remove(view);
 
         StopMessageDetailAudio();
@@ -812,6 +838,15 @@ public sealed class MessagesWindowController
         view.MessageTargetRequested -= HandleMessageTargetRequested;
         view.NotificationToggleRequested -= HandleNotificationToggleRequested;
         view.TabRequested -= HandleTabRequested;
+    }
+
+    /// <summary>
+    /// Acknowledges notifications after a Messages window leaves the window registry.
+    /// </summary>
+    /// <param name="window">The window that closed.</param>
+    private void HandleWindowClosed(UIWindow window)
+    {
+        AcknowledgeWindow(window);
     }
 
     /// <summary>
