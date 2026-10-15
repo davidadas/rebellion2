@@ -78,7 +78,7 @@ namespace Rebellion.Tests.App
         }
 
         [Test]
-        public void LoadSave_ActiveContent_BeginsPresentedSceneTransition()
+        public void LoadSave_ActiveContent_BeginsUnpresentedSceneTransition()
         {
             UIComponentTestHelper.InvokeLifecycle(_bootstrap, "InitializeRuntimeCore");
             ContentPack contentPack = _bootstrap.GetContentPack();
@@ -114,6 +114,9 @@ namespace Rebellion.Tests.App
                 Assert.IsNull(musicSource.clip);
                 Assert.IsNotNull(
                     Object.FindAnyObjectByType<LoadingScreenController>(FindObjectsInactive.Include)
+                );
+                Assert.IsNull(
+                    Object.FindAnyObjectByType<LoadingScreenView>(FindObjectsInactive.Include)
                 );
             }
             finally
