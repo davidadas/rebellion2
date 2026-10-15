@@ -4,6 +4,7 @@ using System.Reflection;
 using NUnit.Framework;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
@@ -15,6 +16,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             "Assets/Prefabs/UI/StrategyView/ConfirmDialogWindow.prefab";
 
         private Texture2D _backgroundTexture;
+        private EventSystem _eventSystem;
+        private GameObject _eventSystemObject;
         private GameObject _rootObject;
         private Texture2D _titleTexture;
         private ConfirmDialogWindowView _view;
@@ -25,6 +28,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         [SetUp]
         public void SetUp()
         {
+            _eventSystemObject = new GameObject("EventSystem", typeof(EventSystem));
+            _eventSystem = _eventSystemObject.GetComponent<EventSystem>();
+            UIComponentTestHelper.InvokeLifecycle(_eventSystem, "OnEnable");
             _rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
             _view = _rootObject.GetComponent<ConfirmDialogWindowView>();
             _backgroundTexture = new Texture2D(330, 220);
@@ -42,6 +48,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             UnityEngine.Object.DestroyImmediate(_titleTexture);
             UnityEngine.Object.DestroyImmediate(_backgroundTexture);
             UnityEngine.Object.DestroyImmediate(_rootObject);
+            UIComponentTestHelper.InvokeLifecycle(_eventSystem, "OnDisable");
+            UnityEngine.Object.DestroyImmediate(_eventSystemObject);
         }
 
         [Test]
@@ -107,6 +115,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         {
             Assert.Throws<ArgumentNullException>(() =>
                 new ConfirmDialogWindowRenderData(125, 80, _backgroundTexture, _titleTexture, null)
+            );
+        }
+
+        [Test]
+        public void Render_VisibleDialog_SelectsConfirmButton()
+        {
+            _view.Render(CreateData("Confirm move"));
+
+            Assert.AreSame(
+                GetField<Button>(_view, "confirmButton").gameObject,
+                _eventSystem.currentSelectedGameObject
             );
         }
 

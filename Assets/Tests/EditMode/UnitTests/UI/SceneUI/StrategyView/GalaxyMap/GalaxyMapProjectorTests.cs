@@ -325,7 +325,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         [Test]
         public void Project_CorellianPlanets_ReturnsCorrectedSeloniaAndDurosOffsets()
         {
-            GalaxyPlanetSector planetSector = TestContent.Data.PlanetSectors.Single(candidate =>
+            ContentPack classicPack = ContentPackLoader.OpenActive(
+                "classic-galactic-civil-war",
+                "standard"
+            );
+            GalaxyPlanetSector planetSector = classicPack.GameData.PlanetSectors.Single(candidate =>
                 candidate.TypeID == "PSCOR"
             );
             Planet selonia = planetSector

@@ -132,6 +132,7 @@ public sealed class ConfirmDialogWindowView : MonoBehaviour, IContentInitializab
         cancelButtonPressVisual.SetTextures(cancelButtonUpTexture, cancelButtonDownTexture);
         RenderLines(data.Lines);
         gameObject.SetActive(true);
+        confirmButton.Select();
     }
 
     /// <summary>

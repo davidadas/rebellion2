@@ -377,10 +377,124 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             CollectionAssert.Contains(labels, "GALAXY VIEW");
             CollectionAssert.Contains(labels, "Show Idle Bar");
             CollectionAssert.Contains(labels, "Keep Idle Bar Open");
+            CollectionAssert.Contains(labels, "Idle Bar Location");
             CollectionAssert.Contains(labels, "RETURN TO GAME");
             CollectionAssert.Contains(labels, "RETURN TO MAIN MENU");
 
             Assert.IsFalse(fields.Any(field => field.text == "IDLE BAR"));
+        }
+
+        [Test]
+        public void Render_UserInterfaceTab_ShowsOnlyUserInterfacePage()
+        {
+            _view.Render(CreateRenderDataForTab(OptionsMenuTab.UserInterface));
+
+            Assert.IsTrue(GetField<GameObject>("_userInterfacePage").activeSelf);
+            Assert.IsFalse(GetField<GameObject>("_gameplayPage").activeSelf);
+            Assert.AreEqual("UI", GetField<TextMeshProUGUI>("_pageTitleTextField").text);
+        }
+
+        [Test]
+        public void UserInterfacePage_IdleBarLocationDropdown_RendersAndRaisesSelection()
+        {
+            IdleBarLocation? requested = null;
+            _view.IdleBarLocationRequested += location => requested = location;
+            _view.Render(
+                CreateRenderDataForTab(
+                    OptionsMenuTab.UserInterface,
+                    idleBarLocation: IdleBarLocation.BottomRight
+                )
+            );
+            TMP_Dropdown dropdown = GetField<TMP_Dropdown>("_idleBarLocationDropdown");
+
+            Assert.AreEqual(4, dropdown.options.Count);
+            Assert.AreEqual("Bottom Right", dropdown.captionText.text);
+
+            dropdown.value = (int)IdleBarLocation.BottomLeft;
+
+            Assert.AreEqual(IdleBarLocation.BottomLeft, requested);
+        }
+
+        [Test]
+        public void UserInterfacePage_GameLaunchSpeedDropdown_RendersAndRaisesSelection()
+        {
+            GameLaunchSpeed? requested = null;
+            _view.GameLaunchSpeedRequested += speed => requested = speed;
+            _view.Render(
+                CreateRenderDataForTab(
+                    OptionsMenuTab.UserInterface,
+                    gameLaunchSpeed: GameLaunchSpeed.VerySlow
+                )
+            );
+            TMP_Dropdown dropdown = GetField<TMP_Dropdown>("_gameLaunchSpeedDropdown");
+
+            Assert.AreEqual(6, dropdown.options.Count);
+            Assert.AreEqual("None", dropdown.options[0].text);
+            Assert.AreEqual("Very slow", dropdown.captionText.text);
+
+            dropdown.value = (int)GameLaunchSpeed.Fast;
+
+            Assert.AreEqual(GameLaunchSpeed.Fast, requested);
+        }
+
+        [Test]
+        public void UserInterfacePage_DropdownItem_SelectedStateUsesActiveRowArtwork()
+        {
+            TMP_Dropdown dropdown = GetField<TMP_Dropdown>("_gameLaunchSpeedDropdown");
+            Toggle item = dropdown.template.GetComponentInChildren<Toggle>(true);
+
+            Assert.AreEqual(Selectable.Transition.SpriteSwap, item.transition);
+            Assert.AreEqual(
+                "ui_settingsmenu_row_selected_background",
+                item.spriteState.selectedSprite.name
+            );
+        }
+
+        [Test]
+        public void UserInterfacePage_DropdownControl_HighlightIsBrighterThanNormal()
+        {
+            TMP_Dropdown dropdown = GetField<TMP_Dropdown>("_gameLaunchSpeedDropdown");
+
+            Assert.AreEqual(Selectable.Transition.ColorTint, dropdown.transition);
+            Assert.Greater(
+                dropdown.colors.highlightedColor.grayscale,
+                dropdown.colors.normalColor.grayscale
+            );
+        }
+
+        [Test]
+        public void UserInterfacePage_DropdownPopup_DisablesDraggingWhenAllOptionsFit()
+        {
+            TMP_Dropdown dropdown = GetField<TMP_Dropdown>("_gameLaunchSpeedDropdown");
+            ScrollRect scrollRect = dropdown.template.GetComponent<ScrollRect>();
+
+            Assert.IsFalse(scrollRect.horizontal);
+            Assert.IsFalse(scrollRect.vertical);
+            Assert.IsFalse(scrollRect.inertia);
+        }
+
+        [Test]
+        public void UserInterfacePage_IdleBarLocationDropdown_UsesCompactThemedPresentation()
+        {
+            TMP_Dropdown dropdown = GetField<TMP_Dropdown>("_idleBarLocationDropdown");
+            RectInt dropdownRect = UILayout.GetSourceRect(dropdown.transform as RectTransform);
+            TextMeshProUGUI arrow = dropdown
+                .GetComponentsInChildren<TextMeshProUGUI>(true)
+                .Single(field => field.name == "Arrow");
+            RawImage checkmark = dropdown
+                .GetComponentsInChildren<RawImage>(true)
+                .Single(field => field.name == "Item Checkmark");
+
+            Assert.AreEqual(new RectInt(229, 44, 120, 18), dropdownRect);
+            Assert.AreEqual("V", arrow.text);
+            Assert.AreEqual(
+                new RectInt(5, 3, 10, 10),
+                UILayout.GetSourceRect(checkmark.rectTransform)
+            );
+            Assert.AreEqual(
+                "Pack/Shared/Strategy/UI/ContextMenus/context-menu-check-mark",
+                checkmark.GetComponent<ContentTextureBinding>().Address
+            );
         }
 
         [Test]
@@ -497,10 +611,10 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void Tabs_PresentModsBeforeSaveLoad_AndRouteSelections()
+        public void Tabs_UserInterfaceAndUtilityPages_RouteSelections()
         {
             CollectionAssert.AreEqual(
-                new[] { "GAMEPLAY", "GRAPHICS", "AUDIO", "CONTROLS", "MODS", "SAVE / LOAD" },
+                new[] { "GAMEPLAY", "GRAPHICS", "UI", "AUDIO", "CONTROLS", "MODS", "SAVE / LOAD" },
                 GetField<TextMeshProUGUI[]>("_tabLabelFields").Select(label => label.text).ToArray()
             );
 
@@ -508,12 +622,52 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             _view.TabSelected += tab => selectedTab = tab;
             Button[] tabButtons = GetField<Button[]>("_tabButtons");
 
-            tabButtons[3].onClick.Invoke();
-            Assert.AreEqual(OptionsMenuTab.Controls, selectedTab);
+            tabButtons[1].onClick.Invoke();
+            Assert.AreEqual(OptionsMenuTab.Graphics, selectedTab);
+            tabButtons[2].onClick.Invoke();
+            Assert.AreEqual(OptionsMenuTab.UserInterface, selectedTab);
             tabButtons[4].onClick.Invoke();
-            Assert.AreEqual(OptionsMenuTab.Mods, selectedTab);
+            Assert.AreEqual(OptionsMenuTab.Controls, selectedTab);
             tabButtons[5].onClick.Invoke();
+            Assert.AreEqual(OptionsMenuTab.Mods, selectedTab);
+            tabButtons[6].onClick.Invoke();
             Assert.AreEqual(OptionsMenuTab.SaveLoad, selectedTab);
+        }
+
+        [Test]
+        public void Render_ModsTabHidden_CompactsSaveLoadIntoAvailableNavigationSlot()
+        {
+            Button[] tabButtons = GetField<Button[]>("_tabButtons");
+            RectInt modsSlot = UILayout.GetSourceRect(
+                tabButtons[(int)OptionsMenuTab.Mods].transform as RectTransform
+            );
+            RectInt saveLoadSlot = UILayout.GetSourceRect(
+                tabButtons[(int)OptionsMenuTab.SaveLoad].transform as RectTransform
+            );
+
+            _view.Render(CreateRenderDataForTab(OptionsMenuTab.Gameplay, showModsTab: false));
+
+            Assert.IsFalse(tabButtons[(int)OptionsMenuTab.Mods].gameObject.activeSelf);
+            Assert.AreEqual(
+                modsSlot.position,
+                UILayout
+                    .GetSourceRect(
+                        tabButtons[(int)OptionsMenuTab.SaveLoad].transform as RectTransform
+                    )
+                    .position
+            );
+
+            _view.Render(CreateRenderDataForTab(OptionsMenuTab.Gameplay, showModsTab: true));
+
+            Assert.IsTrue(tabButtons[(int)OptionsMenuTab.Mods].gameObject.activeSelf);
+            Assert.AreEqual(
+                saveLoadSlot.position,
+                UILayout
+                    .GetSourceRect(
+                        tabButtons[(int)OptionsMenuTab.SaveLoad].transform as RectTransform
+                    )
+                    .position
+            );
         }
 
         [Test]
@@ -537,8 +691,18 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             );
             TextMeshProUGUI restart = GetField<TextMeshProUGUI>("_modsRestartTextField");
             Assert.IsTrue(restart.gameObject.activeSelf);
-            Assert.AreEqual("RESTART REQUIRED", restart.text);
+            Assert.AreEqual("A RESTART MAY BE REQUIRED", restart.text);
             Assert.AreEqual(FontStyles.Bold, restart.fontStyle);
+            Assert.AreEqual(TextAlignmentOptions.Center, restart.alignment);
+            RectInt statusRect = UILayout.GetSourceRect(
+                GetField<TextMeshProUGUI>("_modsStatusTextField").rectTransform
+            );
+            RectInt restartRect = UILayout.GetSourceRect(restart.rectTransform);
+            RectInt scrollRect = UILayout.GetSourceRect(
+                GetField<ScrollAreaView>("_modsScrollArea").transform as RectTransform
+            );
+            Assert.GreaterOrEqual(scrollRect.y, statusRect.yMax);
+            Assert.GreaterOrEqual(restartRect.y, scrollRect.yMax);
             Assert.AreEqual(
                 "Classic Galactic Civil War",
                 GetField<TextMeshProUGUI>("_contentPackValueField").text
@@ -562,7 +726,15 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             _view.ModToggleRequested += index => requestedMod = index;
             GetPrivateField<Button>(rows[1], "_button").onClick.Invoke();
             Assert.AreEqual(1, requestedMod);
-            Assert.IsFalse(GetField<GameObject>("_settingsActions").activeSelf);
+            Assert.IsTrue(GetField<GameObject>("_settingsActions").activeSelf);
+            Assert.IsTrue(GetField<Button>("_applyButton").gameObject.activeSelf);
+            Assert.IsTrue(GetField<Button>("_defaultsButton").gameObject.activeSelf);
+            Assert.AreEqual(
+                313,
+                UILayout
+                    .GetSourceRect(GetField<TextMeshProUGUI>("_modsRestartTextField").rectTransform)
+                    .y
+            );
         }
 
         [Test]
@@ -952,13 +1124,19 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         /// <param name="bindings">The bindings.</param>
         /// <param name="mods">The mods.</param>
         /// <param name="contentPackLabel">The content pack label.</param>
+        /// <param name="showModsTab">Whether the Mods tab is visible.</param>
+        /// <param name="idleBarLocation">The selected idle-bar corner.</param>
+        /// <param name="gameLaunchSpeed">The selected galaxy-view launch speed.</param>
         /// <returns>The created render data for tab.</returns>
         private static OptionsMenuRenderData CreateRenderDataForTab(
             OptionsMenuTab activeTab,
             OptionsSaveSlot[] saveSlots = null,
             OptionsBindingRow[] bindings = null,
             OptionsModRow[] mods = null,
-            string contentPackLabel = ""
+            string contentPackLabel = "",
+            bool showModsTab = true,
+            IdleBarLocation idleBarLocation = IdleBarLocation.TopRight,
+            GameLaunchSpeed gameLaunchSpeed = GameLaunchSpeed.Unchanged
         )
         {
             return new OptionsMenuRenderData(
@@ -976,8 +1154,11 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 true,
                 -1,
                 false,
+                idleBarLocation: idleBarLocation,
+                gameLaunchSpeed: gameLaunchSpeed,
                 mods: mods,
-                contentPackLabel: contentPackLabel
+                contentPackLabel: contentPackLabel,
+                showModsTab: showModsTab
             );
         }
     }

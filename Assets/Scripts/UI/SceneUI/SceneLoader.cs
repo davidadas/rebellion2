@@ -20,50 +20,90 @@ public sealed class SceneLoader : MonoBehaviour
     /// Begins a scene transition unless another transition is already active.
     /// </summary>
     /// <param name="sceneName">The Unity scene name to load.</param>
-    internal void Load(string sceneName)
+    /// <param name="loadFailed">The optional action invoked when initialization or scene loading fails.</param>
+    /// <returns>True when the scene transition was accepted.</returns>
+    internal bool Load(string sceneName, Action<Exception> loadFailed = null)
     {
         if (string.IsNullOrWhiteSpace(sceneName))
             throw new ArgumentException("Scene name cannot be empty.", nameof(sceneName));
         if (_loadCoroutine != null)
-            return;
+            return false;
 
         AudioManager.Instance?.StopSfx();
-        _loadCoroutine = StartCoroutine(LoadScene(sceneName));
+        _loadCoroutine = StartCoroutine(LoadScene(sceneName, loadFailed));
+        return true;
     }
 
     /// <summary>
     /// Waits for scene content and then performs the requested scene transition.
     /// </summary>
     /// <param name="sceneName">The Unity scene name to load.</param>
+    /// <param name="loadFailed">The optional action invoked when the transition fails.</param>
     /// <returns>The transition coroutine.</returns>
-    private IEnumerator LoadScene(string sceneName)
+    private IEnumerator LoadScene(string sceneName, Action<Exception> loadFailed)
     {
-        Task initialization = GetSceneInitializationAsync(sceneName);
+        Task initialization;
+        try
+        {
+            initialization = GetSceneInitializationAsync(sceneName);
+        }
+        catch (Exception exception)
+        {
+            ReportFailure(exception, loadFailed);
+            yield break;
+        }
+
         while (!initialization.IsCompleted)
             yield return null;
 
-        if (initialization.IsFaulted)
+        if (initialization.IsCanceled || initialization.IsFaulted)
         {
-            _loadCoroutine = null;
-            Debug.LogException(
+            ReportFailure(
                 initialization.Exception?.GetBaseException()
                     ?? new InvalidOperationException(
-                        "Local content initialization failed without an exception."
-                    )
+                        "Local content initialization was canceled before the scene could load."
+                    ),
+                loadFailed
             );
             yield break;
         }
 
-        AsyncOperation operation = SceneManager.LoadSceneAsync(sceneName, LoadSceneMode.Single);
+        AsyncOperation operation;
+        try
+        {
+            operation = SceneManager.LoadSceneAsync(sceneName, LoadSceneMode.Single);
+        }
+        catch (Exception exception)
+        {
+            ReportFailure(exception, loadFailed);
+            yield break;
+        }
+
         if (operation == null)
         {
-            _loadCoroutine = null;
-            Debug.LogException(new InvalidOperationException($"Scene was not found: {sceneName}"));
+            ReportFailure(
+                new InvalidOperationException($"Scene was not found: {sceneName}"),
+                loadFailed
+            );
             yield break;
         }
 
         yield return operation;
         _loadCoroutine = null;
+    }
+
+    /// <summary>
+    /// Releases the active transition, logs its error, and notifies the requesting workflow.
+    /// </summary>
+    /// <param name="exception">The transition failure.</param>
+    /// <param name="loadFailed">The optional failure callback.</param>
+    private void ReportFailure(Exception exception, Action<Exception> loadFailed)
+    {
+        _loadCoroutine = null;
+        if (loadFailed != null)
+            loadFailed(exception);
+        else
+            Debug.LogException(exception);
     }
 
     /// <summary>

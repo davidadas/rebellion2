@@ -167,6 +167,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsNotNull(card.TroopBadgeTexture);
             Assert.IsNotNull(card.PersonnelBadgeTexture);
             Assert.IsTrue(card.CanDrag);
+            Assert.IsNull(card.StatsOverlay);
+        }
+
+        [Test]
+        public void Build_StatsOverlayEnabled_ReturnsGeneratedCardOverlay()
+        {
+            FleetWindowProjector projector = new FleetWindowProjector(() => _uiContext, () => true);
+
+            FleetWindowRenderData data = projector.Build(_session, _window, true);
+
+            Assert.IsNotNull(data.DetailItems.Single().StatsOverlay);
         }
 
         [Test]

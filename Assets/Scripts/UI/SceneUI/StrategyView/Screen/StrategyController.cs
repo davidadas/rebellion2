@@ -148,6 +148,7 @@ public sealed class StrategyController
     private StrategyScreenInputController inputController;
     private OptionsMenuController _optionsMenuController;
     private AppInputController _appInputController;
+    private AppBootstrap _appBootstrap;
 
     private IReadOnlyList<GalaxyMapSector> Sectors =>
         galaxyMapController?.Sectors ?? Array.Empty<GalaxyMapSector>();
@@ -186,6 +187,9 @@ public sealed class StrategyController
         runtime = gameRuntime ?? throw new ArgumentNullException(nameof(gameRuntime));
         gameManager = manager;
         uiContext = context;
+        _appBootstrap = AppBootstrap.Instance;
+        if (_appBootstrap != null)
+            _appBootstrap.SaveLoadStarting += HandleSaveLoadStarting;
         PreloadStrategySfx();
         cancelStack = AppBootstrap.Instance?.GetCancelStack();
         strategyContextMenu.Initialize(uiContext);
@@ -223,7 +227,8 @@ public sealed class StrategyController
     /// <summary>
     /// Reveals the initialized strategy presentation and starts its ambient behavior.
     /// </summary>
-    public void ActivatePresentation()
+    /// <param name="startMusic">Whether strategy music should begin immediately.</param>
+    public void ActivatePresentation(bool startMusic)
     {
         if (!initialized)
             throw new InvalidOperationException("StrategyController has not been initialized.");
@@ -238,7 +243,7 @@ public sealed class StrategyController
         presentationActive = true;
         AppBootstrap.Instance?.GetInputController()?.SetContext(InputContext.Strategy);
         RegisterCancelHandlers();
-        OnGameReady();
+        OnGameReady(startMusic);
         RestoreWindows();
         LoadInitialContent();
     }
@@ -298,7 +303,12 @@ public sealed class StrategyController
                 AppBootstrap
                     .Instance?.GetUserSettingsManager()
                     ?.Settings?.UserInterface?.KeepIdleBarOpen
-                ?? false
+                ?? false,
+            () =>
+                AppBootstrap
+                    .Instance?.GetUserSettingsManager()
+                    ?.Settings?.UserInterface?.IdleBarLocation
+                ?? IdleBarLocation.TopRight
         );
         idleBarController.Initialize(this);
         idleBarController.BindView(idleBar);
@@ -629,9 +639,10 @@ public sealed class StrategyController
             CloseWindow,
             bootstrap,
             settingsRuntime.SaveGame,
-            settingsRuntime.LoadGame,
+            bootstrap.LoadSave,
             MarkDirty,
-            saveGameManager
+            saveGameManager,
+            showModsTab: false
         );
         _appInputController = bootstrap.GetInputController();
         if (_appInputController != null)
@@ -886,10 +897,20 @@ public sealed class StrategyController
     /// <summary>
     /// Starts strategy music and builds the initial strategy snapshot.
     /// </summary>
-    private void OnGameReady()
+    /// <param name="startMusic">Whether strategy music should begin immediately.</param>
+    private void OnGameReady(bool startMusic)
+    {
+        if (startMusic)
+            ResumeMusic();
+        RebuildSnapshot();
+    }
+
+    /// <summary>
+    /// Starts strategy music after a deferred presentation transition finishes.
+    /// </summary>
+    internal void ResumeMusic()
     {
         strategyMusicController.Resume();
-        RebuildSnapshot();
     }
 
     /// <summary>
@@ -899,7 +920,8 @@ public sealed class StrategyController
     {
         RequestInitialTextures();
         SetContentReady(true);
-        PlayStrategyReadySound();
+        if (!LoadingScreenController.IsLoadInProgress)
+            PlayStrategyReadySound();
     }
 
     /// <summary>
@@ -942,6 +964,12 @@ public sealed class StrategyController
     /// </summary>
     private void OnDestroy()
     {
+        if (_appBootstrap != null)
+        {
+            _appBootstrap.SaveLoadStarting -= HandleSaveLoadStarting;
+            _appBootstrap = null;
+        }
+
         if (saveGameManager != null)
             saveGameManager.Saving -= CaptureChangedWindows;
         SetBriefingInteractionEnabled(true);
@@ -1451,6 +1479,14 @@ public sealed class StrategyController
     }
 
     /// <summary>
+    /// Conceals the complete outgoing strategy presentation before saved-game loading begins.
+    /// </summary>
+    private void HandleSaveLoadStarting()
+    {
+        SetContentReady(false);
+    }
+
+    /// <summary>
     /// Projects current game resources, speed, and message state into the HUD.
     /// </summary>
     private void RenderHud()
@@ -1914,13 +1950,14 @@ public sealed class StrategyController
         strategyMusicController.Resume();
         RefreshStrategyState();
         RestoreWindows();
-        PlayStrategyReadySound();
+        if (!LoadingScreenController.IsLoadInProgress)
+            PlayStrategyReadySound();
     }
 
     /// <summary>
     /// Plays the established galaxy-presentation change cue when strategy becomes ready.
     /// </summary>
-    private static void PlayStrategyReadySound()
+    internal static void PlayStrategyReadySound()
     {
         PlayStrategySfx(StrategyUISoundPaths.GalacticInformationControl);
     }
@@ -3434,7 +3471,7 @@ public sealed class StrategyController
     /// </summary>
     void IIdleBarActions.CancelIdleBarItemDrag()
     {
-        if (!strategyDragController.TryCancelDirectItemInteraction())
+        if (strategyDragController?.TryCancelDirectItemInteraction() != true)
             return;
 
         RenderOverlay();
@@ -3544,6 +3581,7 @@ public sealed class StrategyController
         );
         BindInputAction(asset, "Strategy/DecreaseGameSpeed", () => StepGameSpeed(false));
         BindInputAction(asset, "Strategy/IncreaseGameSpeed", () => StepGameSpeed(true));
+        BindInputAction(asset, "Strategy/CloseAllWindows", CloseAllWindows);
 
         BindGalacticInformationAction(
             asset,
@@ -3709,6 +3747,14 @@ public sealed class StrategyController
                 ? AppInputController.GetFasterGameSpeed(current)
                 : AppInputController.GetSlowerGameSpeed(current)
         );
+    }
+
+    /// <summary>
+    /// Closes every registered strategy window through its semantic close path.
+    /// </summary>
+    private void CloseAllWindows()
+    {
+        strategyWindowManager?.TryRequestCloseAll();
     }
 
     /// <summary>

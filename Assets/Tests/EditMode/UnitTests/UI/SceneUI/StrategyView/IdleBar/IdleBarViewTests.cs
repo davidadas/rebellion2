@@ -125,6 +125,50 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Assert.AreEqual(new Color(0.08f, 0.09f, 0.11f, 0.9f), hitArea.color);
         }
 
+        [TestCase(IdleBarLocation.TopRight, 409, 34)]
+        [TestCase(IdleBarLocation.TopLeft, 55, 34)]
+        [TestCase(IdleBarLocation.BottomRight, 409, 342)]
+        [TestCase(IdleBarLocation.BottomLeft, 55, 342)]
+        public void Render_ConfiguredLocation_AnchorsShelfToRequestedCorner(
+            IdleBarLocation location,
+            int expectedX,
+            int expectedY
+        )
+        {
+            _view.Render(
+                new IdleBarRenderData(
+                    true,
+                    new[] { new IdleBarEntry(CreateOfficer("Officer"), null) },
+                    new RectInt(50, 30, 400, 350),
+                    location: location
+                )
+            );
+
+            RectTransform shelf = GetField<Image>("shelfHitArea").rectTransform;
+            Assert.AreEqual(expectedX, shelf.anchoredPosition.x);
+            Assert.AreEqual(-expectedY, shelf.anchoredPosition.y);
+        }
+
+        [Test]
+        public void PointerHover_BottomLocation_ExpandsUpwardWithoutMovingAnchoredEdge()
+        {
+            _view.Render(
+                new IdleBarRenderData(
+                    true,
+                    CreateEntries(20),
+                    new RectInt(50, 30, 400, 350),
+                    location: IdleBarLocation.BottomLeft
+                )
+            );
+            RectTransform shelf = GetField<Image>("shelfHitArea").rectTransform;
+            float collapsedBottom = -shelf.anchoredPosition.y + shelf.sizeDelta.y;
+
+            _view.OnPointerEnter(null);
+
+            Assert.AreEqual(55f, shelf.anchoredPosition.x);
+            Assert.AreEqual(collapsedBottom, -shelf.anchoredPosition.y + shelf.sizeDelta.y);
+        }
+
         [Test]
         public void PointerHover_Default_ExpandsPortraitWithinFixedSlot()
         {

@@ -138,6 +138,56 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
+        public void RestoreDefaults_GameplaySelected_PreservesUserInterfaceSettings()
+        {
+            _session.ToggleUserInterface(UserInterfaceOption.ShowUnitCardStats);
+
+            _session.RestoreDefaults(OptionsMenuTab.Gameplay);
+
+            Assert.IsTrue(_session.UserInterface.ShowUnitCardStats);
+        }
+
+        [Test]
+        public void RestoreDefaults_UserInterfaceSelected_RestoresUserInterfaceSettings()
+        {
+            _session.ToggleUserInterface(UserInterfaceOption.ShowIdleBar);
+            _session.ToggleUserInterface(UserInterfaceOption.KeepIdleBarOpen);
+            _session.ToggleUserInterface(UserInterfaceOption.ShowUnitCardStats);
+            _session.SetIdleBarLocation(IdleBarLocation.BottomLeft);
+            _session.SetGameLaunchSpeed(GameLaunchSpeed.Fast);
+
+            _session.RestoreDefaults(OptionsMenuTab.UserInterface);
+
+            Assert.IsTrue(_session.UserInterface.ShowIdleBar);
+            Assert.IsFalse(_session.UserInterface.KeepIdleBarOpen);
+            Assert.IsFalse(_session.UserInterface.ShowUnitCardStats);
+            Assert.AreEqual(IdleBarLocation.TopRight, _session.UserInterface.IdleBarLocation);
+            Assert.AreEqual(GameLaunchSpeed.Unchanged, _session.UserInterface.GameLaunchSpeed);
+        }
+
+        [Test]
+        public void IdleBarLocation_ReturnedToSnapshot_ClearsDirtyState()
+        {
+            _session.SetIdleBarLocation(IdleBarLocation.BottomRight);
+            Assert.IsTrue(_session.IsDirty);
+
+            _session.SetIdleBarLocation(IdleBarLocation.TopRight);
+
+            Assert.IsFalse(_session.IsDirty);
+        }
+
+        [Test]
+        public void GameLaunchSpeed_ReturnedToSnapshot_ClearsDirtyState()
+        {
+            _session.SetGameLaunchSpeed(GameLaunchSpeed.Medium);
+            Assert.IsTrue(_session.IsDirty);
+
+            _session.SetGameLaunchSpeed(GameLaunchSpeed.Unchanged);
+
+            Assert.IsFalse(_session.IsDirty);
+        }
+
+        [Test]
         public void AutosaveChanges_ReturnedToSnapshot_ClearDirtyState()
         {
             _session.SetAutosaveInterval(125);

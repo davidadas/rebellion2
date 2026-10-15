@@ -1,3 +1,4 @@
+using System.IO;
 using NUnit.Framework;
 using Rebellion.Game;
 using UnityEngine;
@@ -63,6 +64,28 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.AreEqual(
                 GameVictoryCondition.Headquarters,
                 GameLaunchContext.Summary.VictoryCondition
+            );
+        }
+
+        [Test]
+        public void GetMenuMusicPath_ConfiguredAddress_ReturnsConfiguredAddress()
+        {
+            ContentPackDefinition definition = new ContentPackDefinition
+            {
+                MainMenuMusicPath = " Pack/Shared/Audio/menu ",
+            };
+
+            Assert.AreEqual(
+                "Pack/Shared/Audio/menu",
+                MainMenuController.GetMenuMusicPath(definition)
+            );
+        }
+
+        [Test]
+        public void GetMenuMusicPath_MissingAddress_ThrowsInvalidDataException()
+        {
+            Assert.Throws<InvalidDataException>(() =>
+                MainMenuController.GetMenuMusicPath(new ContentPackDefinition())
             );
         }
     }

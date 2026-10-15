@@ -62,5 +62,55 @@ namespace Rebellion.Tests.UI.SceneUI
 
             Assert.AreNotSame(original, GameLaunchContext.Summary);
         }
+
+        [Test]
+        public void PrepareSaveLoad_ValidFileName_ConfiguresSavedGameLaunch()
+        {
+            GameLaunchContext.PlayIntroCutscene = true;
+
+            GameLaunchContext.PrepareSaveLoad("campaign");
+
+            Assert.AreEqual("campaign", GameLaunchContext.SaveFileName);
+            Assert.IsTrue(GameLaunchContext.IsLoadGame);
+            Assert.IsFalse(GameLaunchContext.PlayIntroCutscene);
+        }
+
+        [Test]
+        public void RestoreSaveLoadAfterContentRestart_PreservedRequest_RestoresSavedGameLaunch()
+        {
+            GameLaunchContext.PrepareSaveLoadAfterContentRestart("campaign");
+            GameLaunchContext.Reset(TestContent.Pack);
+
+            GameLaunchContext.RestoreSaveLoadAfterContentRestart();
+
+            Assert.AreEqual("campaign", GameLaunchContext.SaveFileName);
+            Assert.IsTrue(GameLaunchContext.IsLoadGame);
+            Assert.IsFalse(GameLaunchContext.PlayIntroCutscene);
+        }
+
+        [Test]
+        public void RestoreSaveLoadAfterContentRestart_ConsumedRequest_DoesNotRestoreTwice()
+        {
+            GameLaunchContext.PrepareSaveLoadAfterContentRestart("campaign");
+            GameLaunchContext.RestoreSaveLoadAfterContentRestart();
+            GameLaunchContext.Reset(TestContent.Pack);
+
+            GameLaunchContext.RestoreSaveLoadAfterContentRestart();
+
+            Assert.IsNull(GameLaunchContext.SaveFileName);
+            Assert.IsFalse(GameLaunchContext.IsLoadGame);
+        }
+
+        [Test]
+        public void ConsumeContentPackAfterRestart_PreparedPack_ReturnsPackOnce()
+        {
+            GameLaunchContext.PrepareSaveLoadAfterContentRestart("campaign", TestContent.Pack);
+
+            ContentPack first = GameLaunchContext.ConsumeContentPackAfterRestart();
+            ContentPack second = GameLaunchContext.ConsumeContentPackAfterRestart();
+
+            Assert.AreSame(TestContent.Pack, first);
+            Assert.IsNull(second);
+        }
     }
 }

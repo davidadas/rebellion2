@@ -15,6 +15,8 @@ namespace Rebellion.Tests.UserSettings
             settings.Gameplay.PauseWhenSpaceBattleBegins = true;
             settings.UserInterface.ShowIdleBar = true;
             settings.UserInterface.KeepIdleBarOpen = true;
+            settings.UserInterface.ShowUnitCardStats = true;
+            settings.UserInterface.GameLaunchSpeed = GameLaunchSpeed.Fast;
             settings.Gameplay.ShowMissionOdds = false;
 
             string json = JsonUtility.ToJson(settings);
@@ -26,6 +28,8 @@ namespace Rebellion.Tests.UserSettings
             Assert.IsTrue(restored.Gameplay.PauseWhenSpaceBattleBegins);
             Assert.IsTrue(restored.UserInterface.ShowIdleBar);
             Assert.IsTrue(restored.UserInterface.KeepIdleBarOpen);
+            Assert.IsTrue(restored.UserInterface.ShowUnitCardStats);
+            Assert.AreEqual(GameLaunchSpeed.Fast, restored.UserInterface.GameLaunchSpeed);
             Assert.IsFalse(restored.Gameplay.ShowMissionOdds);
         }
 
@@ -77,12 +81,44 @@ namespace Rebellion.Tests.UserSettings
             {
                 ShowIdleBar = false,
                 KeepIdleBarOpen = true,
+                ShowUnitCardStats = true,
+                IdleBarLocation = IdleBarLocation.BottomLeft,
+                GameLaunchSpeed = GameLaunchSpeed.Fast,
             };
 
             settings.RestoreDefaults();
 
             Assert.IsTrue(settings.ShowIdleBar);
             Assert.IsFalse(settings.KeepIdleBarOpen);
+            Assert.IsFalse(settings.ShowUnitCardStats);
+            Assert.AreEqual(IdleBarLocation.TopRight, settings.IdleBarLocation);
+            Assert.AreEqual(GameLaunchSpeed.Unchanged, settings.GameLaunchSpeed);
+        }
+
+        [Test]
+        public void UserInterfaceOptions_InvalidIdleBarLocation_NormalizesToTopRight()
+        {
+            UserInterfaceSettings settings = new UserInterfaceSettings
+            {
+                IdleBarLocation = (IdleBarLocation)int.MaxValue,
+            };
+
+            settings.Normalize();
+
+            Assert.AreEqual(IdleBarLocation.TopRight, settings.IdleBarLocation);
+        }
+
+        [Test]
+        public void UserInterfaceOptions_InvalidGameLaunchSpeed_NormalizesToUnchanged()
+        {
+            UserInterfaceSettings settings = new UserInterfaceSettings
+            {
+                GameLaunchSpeed = (GameLaunchSpeed)int.MaxValue,
+            };
+
+            settings.Normalize();
+
+            Assert.AreEqual(GameLaunchSpeed.Unchanged, settings.GameLaunchSpeed);
         }
 
         [Test]

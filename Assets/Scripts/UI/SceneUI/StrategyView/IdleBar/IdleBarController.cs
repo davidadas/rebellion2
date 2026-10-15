@@ -136,6 +136,7 @@ public sealed class IdleBarController
     private readonly Func<UIContext> getUIContext;
     private readonly Func<bool> getVisibility;
     private readonly Func<bool> getAlwaysOpen;
+    private readonly Func<IdleBarLocation> getLocation;
     private readonly IdleBarProjector projector;
     private readonly Func<string, ISceneNode> resolveEntity;
 
@@ -160,6 +161,7 @@ public sealed class IdleBarController
     /// <param name="getVisibility">Returns whether the experimental feature is enabled.</param>
     /// <param name="resolveEntity">Resolves an entity by its stable instance identifier.</param>
     /// <param name="getAlwaysOpen">Returns whether the idle bar remains expanded.</param>
+    /// <param name="getLocation">Returns the strategy-desktop corner occupied by the idle bar.</param>
     public IdleBarController(
         Func<Faction> getFaction,
         List<IgnoredItem> ignoredItems,
@@ -167,7 +169,8 @@ public sealed class IdleBarController
         Func<UIContext> getUIContext,
         Func<bool> getVisibility,
         Func<string, ISceneNode> resolveEntity,
-        Func<bool> getAlwaysOpen = null
+        Func<bool> getAlwaysOpen = null,
+        Func<IdleBarLocation> getLocation = null
     )
     {
         this.getFaction = getFaction ?? throw new ArgumentNullException(nameof(getFaction));
@@ -180,6 +183,7 @@ public sealed class IdleBarController
         this.resolveEntity =
             resolveEntity ?? throw new ArgumentNullException(nameof(resolveEntity));
         this.getAlwaysOpen = getAlwaysOpen ?? (() => false);
+        this.getLocation = getLocation ?? (() => IdleBarLocation.TopRight);
         projector = new IdleBarProjector(getUIContext);
         contextMenuController.RequestClosed += HandleContextMenuClosed;
     }
@@ -245,7 +249,13 @@ public sealed class IdleBarController
         )
             ClearLocationHighlight();
         requiredView.Render(
-            new IdleBarRenderData(true, entries, projected.DesktopBounds, getAlwaysOpen())
+            new IdleBarRenderData(
+                true,
+                entries,
+                projected.DesktopBounds,
+                getAlwaysOpen(),
+                getLocation()
+            )
         );
     }
 

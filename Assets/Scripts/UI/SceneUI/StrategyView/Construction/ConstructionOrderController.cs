@@ -81,8 +81,6 @@ public sealed class ConstructionOrderController
             .Select(technology => technology.GetReference())
             .Where(item => BelongsToManufacturingTab(item, manufacturingTab))
             .Where(item => IManufacturable.CanBeManufacturedBy(item, playerFactionId))
-            .OrderBy(item => item.GetResearchOrder())
-            .ThenBy(item => item.GetDisplayName())
             .ToList();
         if (
             manufacturingType == ManufacturingType.Building
@@ -116,12 +114,13 @@ public sealed class ConstructionOrderController
                             .ThenBy(building => building.InstanceID)
                             .First()
                     )
-                    .OrderBy(building => building.ResearchOrder)
-                    .ThenBy(building => building.GetDisplayName())
             );
         }
 
-        return selections.AsReadOnly();
+        return selections
+            .OrderBy(item => item.GetDisplayName(), StringComparer.CurrentCultureIgnoreCase)
+            .ToList()
+            .AsReadOnly();
     }
 
     /// <summary>
