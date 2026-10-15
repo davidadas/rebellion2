@@ -6,7 +6,6 @@ using Rebellion.AI.Proposals;
 using Rebellion.AI.Scorers;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
-using Rebellion.Simulation;
 
 namespace Rebellion.AI.Selectors
 {

@@ -2,7 +2,6 @@ using System;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Simulation;
 
 namespace Rebellion.AI.Demands
 {
