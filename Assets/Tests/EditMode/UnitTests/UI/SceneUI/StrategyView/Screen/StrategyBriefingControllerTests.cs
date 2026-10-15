@@ -9,6 +9,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Units;
 using UnityEngine;
+using GalaxyMapModel = Rebellion.Game.Galaxy.GalaxyMap;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
@@ -497,8 +498,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             game.AttachNode(sector, game.Galaxy);
             game.AttachNode(headquarters, sector);
 
-            GalaxyMap factionView = new GalaxyMap();
-            PlanetSector viewSector = (PlanetSector)sector.CreateCopy();
+            GalaxyMapModel factionView = new GalaxyMapModel();
+            GalaxyPlanetSector viewSector = (GalaxyPlanetSector)sector.CreateCopy();
             Planet unexploredHeadquarters = new Planet
             {
                 InstanceID = headquarters.InstanceID,
@@ -536,8 +537,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             game.AttachNode(sector, game.Galaxy);
             game.AttachNode(headquarters, sector);
 
-            GalaxyMap factionView = new GalaxyMap();
-            PlanetSector viewSector = (PlanetSector)sector.CreateCopy();
+            GalaxyMapModel factionView = new GalaxyMapModel();
+            GalaxyPlanetSector viewSector = (GalaxyPlanetSector)sector.CreateCopy();
             Planet knownHeadquarters = (Planet)headquarters.CreateCopy();
             viewSector.SetParent(factionView);
             factionView.AddChild(viewSector);
