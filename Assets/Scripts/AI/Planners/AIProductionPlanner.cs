@@ -1073,7 +1073,7 @@ namespace Rebellion.AI.Planners
                     ? maintenanceBudget / product.GetMaintenanceCost()
                     : int.MaxValue;
             int destinationLimit =
-                product is Building
+                product is Building && !IsInPlaceRebuild(demand, product)
                     ? demand.DestinationPlanet?.GetAvailableEnergy() ?? 0
                     : int.MaxValue;
 
@@ -1146,7 +1146,9 @@ namespace Rebellion.AI.Planners
                     );
             int laneLimit = Math.Max(0, facilityCount - laneReserve);
             int queueLimit = GetQueueBatchCapacity(context, producerPlanet, building);
-            int energyLimit = demand.DestinationPlanet.GetAvailableEnergy();
+            int energyLimit = IsInPlaceRebuild(demand, building)
+                ? int.MaxValue
+                : demand.DestinationPlanet.GetAvailableEnergy();
 
             return Math.Max(
                 0,
@@ -1158,6 +1160,18 @@ namespace Rebellion.AI.Planners
                     )
                 )
             );
+        }
+
+        /// <summary>
+        /// Returns whether a production demand restores a destroyed building in its existing slot.
+        /// </summary>
+        /// <param name="demand">The production demand.</param>
+        /// <param name="product">The selected manufacturable product.</param>
+        /// <returns>True when the product is destroyed and already belongs to the destination planet.</returns>
+        private static bool IsInPlaceRebuild(AIProductionDemand demand, IManufacturable product)
+        {
+            return product is Building { IsDestroyed: true } building
+                && ReferenceEquals(building.GetParent(), demand?.DestinationPlanet);
         }
 
         /// <summary>

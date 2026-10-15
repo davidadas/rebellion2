@@ -157,6 +157,120 @@ namespace Rebellion.Tests.AI.Phases
         }
 
         [Test]
+        public void Select_SameTypeRebuildsAtDifferentDestinations_SelectsOneProject()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet producer = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "producer",
+                empire.InstanceID
+            );
+            for (int index = 0; index < 2; index++)
+            {
+                AITestSceneBuilder.AddProductionFacility(
+                    game,
+                    producer,
+                    $"construction-yard-{index}",
+                    BuildingType.ConstructionFacility,
+                    ManufacturingType.Building
+                );
+            }
+
+            Planet firstDestination = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "first-destination",
+                empire.InstanceID,
+                energyCapacity: 1,
+                rawResourceNodes: 1
+            );
+            Planet secondDestination = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "second-destination",
+                empire.InstanceID,
+                energyCapacity: 1,
+                rawResourceNodes: 1
+            );
+            Building firstRubble = AddRubble(game, firstDestination, "first-rubble", "mine-type");
+            Building secondRubble = AddRubble(
+                game,
+                secondDestination,
+                "second-rubble",
+                "mine-type"
+            );
+            AIManufactureProposal first = CreateRebuildProposal(producer, firstRubble, 100);
+            AIManufactureProposal second = CreateRebuildProposal(producer, secondRubble, 90);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            context.AddProposal(first);
+            context.AddProposal(second);
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+            context.SetSelectedProposals(selected);
+            new AIExecutionPhase().Execute(context);
+
+            CollectionAssert.AreEqual(new[] { first }, selected);
+            Assert.IsTrue(firstRubble.IsRebuilding());
+            Assert.IsTrue(secondRubble.IsRubble());
+        }
+
+        [Test]
+        public void Select_SameTypeConstructionAlreadyQueued_DoesNotReplaceWithRebuild()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet producer = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "producer",
+                empire.InstanceID
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                producer,
+                "construction-yard",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+            Building queued = AITestSceneBuilder.CreateBuildingTemplate(
+                "queued-mine",
+                BuildingType.Mine
+            );
+            queued.TypeID = "mine-type";
+            queued.OwnerInstanceID = empire.InstanceID;
+            queued.ManufacturingStatus = ManufacturingStatus.Building;
+            queued.ManufacturingProgress = 5;
+            game.AttachNode(queued, producer);
+            producer.AddToManufacturingQueue(queued);
+            Planet destination = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "destination",
+                empire.InstanceID,
+                energyCapacity: 1,
+                rawResourceNodes: 1
+            );
+            Building rubble = AddRubble(game, destination, "rubble", queued.TypeID);
+            AIManufactureProposal rebuild = CreateRebuildProposal(producer, rubble, 100);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            context.AddProposal(rebuild);
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+            context.SetSelectedProposals(selected);
+            new AIExecutionPhase().Execute(context);
+
+            Assert.IsEmpty(selected);
+            CollectionAssert.AreEqual(
+                new IManufacturable[] { queued },
+                producer.GetManufacturingQueue()[ManufacturingType.Building]
+            );
+            Assert.AreEqual(5, queued.ManufacturingProgress);
+            Assert.IsTrue(rubble.IsRubble());
+        }
+
+        [Test]
         public void Select_WithEqualScoredConflictingProposals_UsesPersistedRandomTieBreaker()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
@@ -1181,6 +1295,67 @@ namespace Rebellion.Tests.AI.Phases
                 ),
                 producer,
                 new Technology(building),
+                false
+            );
+            proposal.SetScore(score);
+            return proposal;
+        }
+
+        /// <summary>
+        /// Adds a destroyed mine with a shared product type to a planet.
+        /// </summary>
+        /// <param name="game">The game receiving the building.</param>
+        /// <param name="planet">The planet that owns the rubble.</param>
+        /// <param name="instanceId">The rubble instance identifier.</param>
+        /// <param name="typeId">The shared product type identifier.</param>
+        /// <returns>The destroyed building.</returns>
+        private static Building AddRubble(
+            GameRoot game,
+            Planet planet,
+            string instanceId,
+            string typeId
+        )
+        {
+            Building rubble = AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                instanceId,
+                BuildingType.Mine,
+                ManufacturingType.None
+            );
+            rubble.TypeID = typeId;
+            rubble.MarkDestroyed();
+            return rubble;
+        }
+
+        /// <summary>
+        /// Creates a scored proposal that rebuilds one destroyed mine.
+        /// </summary>
+        /// <param name="producer">The building producer.</param>
+        /// <param name="rubble">The destroyed mine to rebuild.</param>
+        /// <param name="score">The proposal score.</param>
+        /// <returns>The rebuild proposal.</returns>
+        private static AIManufactureProposal CreateRebuildProposal(
+            Planet producer,
+            Building rubble,
+            double score
+        )
+        {
+            Planet destination = rubble.GetParentOfType<Planet>();
+            AIProductionDemand demand = new AIProductionDemand(
+                $"rebuild-{rubble.InstanceID}",
+                AIProductionDemandKind.Mine,
+                ManufacturingType.Building,
+                BuildingType.Mine,
+                destination,
+                1,
+                productTypeId: rubble.TypeID,
+                baseDemandPercent: 100
+            );
+            AIManufactureProposal proposal = new AIManufactureProposal(
+                demand,
+                producer,
+                new Technology(rubble),
                 false
             );
             proposal.SetScore(score);

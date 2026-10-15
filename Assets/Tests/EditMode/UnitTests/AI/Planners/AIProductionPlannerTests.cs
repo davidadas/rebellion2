@@ -411,6 +411,92 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreSame(first.Product.GetReference(), second.Product.GetReference());
         }
 
+        [TestCase(BuildingType.ConstructionFacility, ManufacturingType.Building)]
+        [TestCase(BuildingType.Shipyard, ManufacturingType.Ship)]
+        [TestCase(BuildingType.TrainingFacility, ManufacturingType.Troop)]
+        public void Plan_FullPlanetWithDestroyedProductionFacility_AddsRebuildProposal(
+            BuildingType buildingType,
+            ManufacturingType productionType
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Selection.MaintenanceHeadroomReserve = 0;
+            game.Config.AI.Infrastructure.FacilityConstructionLaneReserve = 0;
+            game.Config.AI.Infrastructure.PlanetaryDefenseMaintenanceReservePercent = 0;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "full-world",
+                empire.InstanceID,
+                energyCapacity: 4,
+                rawResourceNodes: 1
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "construction-yard",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+            AddMaintenanceCapacity(game, planet, 1);
+            Building rubble = AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "destroyed-facility",
+                buildingType,
+                productionType
+            );
+            rubble.MarkDestroyed();
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIManufactureProposal proposal = PlanProduction(context)
+                .OfType<AIManufactureProposal>()
+                .Single(item => ReferenceEquals(item.Product.GetReference(), rubble));
+
+            Assert.AreSame(planet, proposal.Demand.DestinationPlanet);
+        }
+
+        [Test]
+        public void Plan_FullPlanetWithDestroyedDefense_AddsRebuildProposal()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Selection.MaintenanceHeadroomReserve = 0;
+            game.Config.AI.Infrastructure.PlanetaryDefenseMaintenanceReservePercent = 0;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "full-world",
+                empire.InstanceID,
+                energyCapacity: 4,
+                rawResourceNodes: 1
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "construction-yard",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+            AddMaintenanceCapacity(game, planet, 1);
+            Building rubble = AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "destroyed-defense",
+                BuildingType.Defense,
+                ManufacturingType.None
+            );
+            rubble.MarkDestroyed();
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIManufactureProposal proposal = PlanProduction(context)
+                .OfType<AIManufactureProposal>()
+                .Single(item => ReferenceEquals(item.Product.GetReference(), rubble));
+
+            Assert.AreSame(planet, proposal.Demand.DestinationPlanet);
+        }
+
         [Test]
         public void Plan_WithPlanetaryShieldDemand_SelectsStrongestShield()
         {

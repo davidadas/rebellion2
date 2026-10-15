@@ -166,6 +166,37 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void ChangeOwnership_MixedSelectionContainingHeadquarters_RejectsWithoutMutation()
+        {
+            _empirePlanet.EnergyCapacity = 2;
+            Building building = new Building
+            {
+                InstanceID = "building",
+                OwnerInstanceID = _empire.InstanceID,
+            };
+            Building headquarters = new Building
+            {
+                InstanceID = "headquarters",
+                OwnerInstanceID = _empire.InstanceID,
+                BuildingType = BuildingType.Headquarters,
+            };
+            _game.AttachNode(building, _empirePlanet);
+            _game.AttachNode(headquarters, _empirePlanet);
+
+            Assert.Throws<InvalidOperationException>(() =>
+                _commands.ChangeOwnership(
+                    _rebels,
+                    new[] { _empirePlanet },
+                    new ISceneNode[] { building, headquarters }
+                )
+            );
+
+            Assert.AreEqual(_empire.InstanceID, _empirePlanet.OwnerInstanceID);
+            Assert.AreEqual(_empire.InstanceID, building.OwnerInstanceID);
+            Assert.AreEqual(_empire.InstanceID, headquarters.OwnerInstanceID);
+        }
+
+        [Test]
         public void TransferPlanet_OwnershipTransition_ReportsBeforeAndAfterOwnerMutation()
         {
             string ownerWhileChanging = "not-called";

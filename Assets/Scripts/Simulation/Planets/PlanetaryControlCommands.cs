@@ -197,6 +197,11 @@ namespace Rebellion.Simulation
             IReadOnlyList<ISceneNode> units
         )
         {
+            if (units.Any(unit => unit is Building { BuildingType: BuildingType.Headquarters }))
+                throw new InvalidOperationException(
+                    "Headquarters ownership cannot be transferred directly."
+                );
+
             List<GameResult> results = new List<GameResult>();
             foreach (Planet planet in planets)
             {
@@ -206,11 +211,6 @@ namespace Rebellion.Simulation
 
             foreach (ISceneNode unit in units)
             {
-                if (unit is Building { BuildingType: BuildingType.Headquarters })
-                    throw new InvalidOperationException(
-                        "Headquarters ownership cannot be transferred directly."
-                    );
-
                 Faction previousOwner = _game.GetFactionByOwnerInstanceID(unit.OwnerInstanceID);
                 if (previousOwner == newOwner)
                     continue;

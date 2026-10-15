@@ -5,6 +5,7 @@ using Rebellion.AI.Proposals;
 using Rebellion.AI.Scorers;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
+using Rebellion.Simulation;
 
 namespace Rebellion.AI.Selectors
 {
@@ -14,7 +15,6 @@ namespace Rebellion.AI.Selectors
     internal sealed class AIProductionSelector
     {
         private const int _buildingEnergyCost = 1;
-        private const string _mixedProductType = "*";
         private static readonly AIProductionProposalScorer _scorer = new();
         private readonly AISelectionState _selectionState;
         private readonly Dictionary<string, int> _reservedProducerCapacity = new(
@@ -23,10 +23,7 @@ namespace Rebellion.AI.Selectors
         private readonly Dictionary<string, int> _availableProducerCapacity = new(
             StringComparer.Ordinal
         );
-        private readonly Dictionary<string, string> _selectedProducerProducts = new(
-            StringComparer.Ordinal
-        );
-        private readonly Dictionary<string, string> _currentProducerProducts = new(
+        private readonly Dictionary<string, IManufacturable> _selectedProducerProducts = new(
             StringComparer.Ordinal
         );
         private readonly Dictionary<string, int> _reservedDestinationEnergy = new(
@@ -318,61 +315,32 @@ namespace Rebellion.AI.Selectors
         private bool ContinuesProductionStream(AIManufactureProposal proposal)
         {
             string capacityKey = proposal.GetProducerCapacityKey();
-            string proposedTypeId = proposal.Product?.GetReference()?.GetTypeID();
-            if (string.IsNullOrEmpty(proposedTypeId))
+            IManufacturable proposedProduct = proposal.Product?.GetReference();
+            if (proposedProduct == null)
                 return false;
 
-            if (_selectedProducerProducts.TryGetValue(capacityKey, out string selectedTypeId))
-                return selectedTypeId == proposedTypeId;
+            if (
+                _selectedProducerProducts.TryGetValue(
+                    capacityKey,
+                    out IManufacturable selectedProduct
+                )
+            )
+                return ManufacturingRules.MatchesProduct(selectedProduct, proposedProduct);
             if (_drainingProducerStreams.Contains(capacityKey))
                 return false;
 
-            string currentTypeId = GetCurrentProductTypeId(proposal, capacityKey);
-            if (string.IsNullOrEmpty(currentTypeId) || currentTypeId == proposedTypeId)
+            if (
+                !proposal
+                    .ProducerPlanet.GetManufacturingQueue()
+                    .TryGetValue(proposal.Demand.ManufacturingType, out List<IManufacturable> queue)
+                || queue == null
+                || queue.Count == 0
+                || ManufacturingRules.MatchesProduct(queue, proposedProduct)
+            )
                 return true;
 
             _drainingProducerStreams.Add(capacityKey);
             return false;
-        }
-
-        /// <summary>
-        /// Returns the product type currently queued by a producer stream.
-        /// </summary>
-        /// <param name="proposal">A proposal targeting the producer stream.</param>
-        /// <param name="capacityKey">The producer stream key.</param>
-        /// <returns>The queued type, an empty value, or the mixed-type marker.</returns>
-        private string GetCurrentProductTypeId(AIManufactureProposal proposal, string capacityKey)
-        {
-            if (_currentProducerProducts.TryGetValue(capacityKey, out string currentTypeId))
-                return currentTypeId;
-
-            currentTypeId = string.Empty;
-            if (
-                proposal
-                    .ProducerPlanet.GetManufacturingQueue()
-                    .TryGetValue(proposal.Demand.ManufacturingType, out List<IManufacturable> queue)
-                && queue != null
-            )
-            {
-                foreach (IManufacturable item in queue)
-                {
-                    string itemTypeId = item?.GetTypeID();
-                    if (string.IsNullOrEmpty(currentTypeId))
-                    {
-                        currentTypeId = itemTypeId ?? string.Empty;
-                        continue;
-                    }
-
-                    if (currentTypeId != itemTypeId)
-                    {
-                        currentTypeId = _mixedProductType;
-                        break;
-                    }
-                }
-            }
-
-            _currentProducerProducts.Add(capacityKey, currentTypeId);
-            return currentTypeId;
         }
 
         /// <summary>
@@ -382,7 +350,7 @@ namespace Rebellion.AI.Selectors
         private void ReserveProducerCapacity(AIManufactureProposal proposal)
         {
             string capacityKey = proposal.GetProducerCapacityKey();
-            _selectedProducerProducts[capacityKey] = proposal.Product.GetReference().GetTypeID();
+            _selectedProducerProducts[capacityKey] = proposal.Product.GetReference();
             if (!proposal.UsesSharedProducerCapacity)
             {
                 _reservedProducerCapacity[capacityKey] = int.MaxValue;

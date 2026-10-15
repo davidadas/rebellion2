@@ -49,24 +49,34 @@ namespace Rebellion.Simulation
             if (items == null || items.Count == 0 || template == null)
                 return false;
 
+            return items.All(item => MatchesProduct(item, template));
+        }
+
+        /// <summary>
+        /// Returns whether two items represent the same ordinary product or reconstruction project.
+        /// </summary>
+        /// <param name="item">The existing manufacturing item.</param>
+        /// <param name="template">The requested product or destroyed building.</param>
+        /// <returns>True when both items belong to the same manufacturing project.</returns>
+        internal static bool MatchesProduct(IManufacturable item, IManufacturable template)
+        {
+            if (item == null || template == null)
+                return false;
+
             if (template is Building { IsDestroyed: true } rebuild)
             {
-                return items.All(item =>
-                    item is Building { IsDestroyed: true } queued
+                return item is Building { IsDestroyed: true } queued
                     && string.Equals(queued.TypeID, rebuild.TypeID, StringComparison.Ordinal)
                     && ReferenceEquals(queued.GetParent(), rebuild.GetParent())
                     && string.Equals(
                         queued.OwnerInstanceID,
                         rebuild.OwnerInstanceID,
                         StringComparison.Ordinal
-                    )
-                );
+                    );
             }
 
-            return items.All(item =>
-                item is not Building { IsDestroyed: true }
-                && string.Equals(item.GetTypeID(), template.GetTypeID(), StringComparison.Ordinal)
-            );
+            return item is not Building { IsDestroyed: true }
+                && string.Equals(item.GetTypeID(), template.GetTypeID(), StringComparison.Ordinal);
         }
 
         /// <summary>

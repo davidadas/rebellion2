@@ -1,8 +1,10 @@
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
+using Rebellion.Simulation;
 
 namespace Rebellion.Tests.Game.Units
 {
@@ -98,6 +100,41 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        public void Destroy_HeadquartersInTransit_LeavesOriginStateCleared()
+        {
+            Faction faction = _game.GetFactionByOwnerInstanceID(_ownerId);
+            faction.Settings = new FactionSettings
+            {
+                Headquarters = new HeadquartersSettings
+                {
+                    FacilityTypeID = "headquarters-type",
+                    IsMobile = true,
+                },
+            };
+            faction.HQInstanceID = _planet.InstanceID;
+            _planet.IsHeadquarters = true;
+            Building headquarters = CreateBuilding("headquarters", BuildingType.Headquarters);
+            headquarters.TypeID = "headquarters-type";
+            Planet destination = new Planet
+            {
+                InstanceID = "destination",
+                OwnerInstanceID = _ownerId,
+                IsColonized = true,
+                EnergyCapacity = 1,
+                PositionX = 100,
+            };
+            _game.AttachNode(destination, _planet.GetParent());
+
+            Assert.IsTrue(CreateHeadquartersCommands().TryRelocate(headquarters, destination));
+            _commands.Destroy(headquarters);
+
+            Assert.IsFalse(_planet.IsHeadquarters);
+            Assert.IsFalse(destination.IsHeadquarters);
+            Assert.IsNull(faction.HQInstanceID);
+            Assert.IsNull(_game.GetSceneNodeByInstanceID<Building>(headquarters.InstanceID));
+        }
+
+        [Test]
         public void RemovePermanently_BuildingWithMaterialRequests_ClearsRequests()
         {
             Building building = CreateBuilding("mine", BuildingType.Mine);
@@ -135,6 +172,25 @@ namespace Rebellion.Tests.Game.Units
             };
             _game.AttachNode(building, _planet);
             return building;
+        }
+
+        /// <summary>
+        /// Creates headquarters operations with the active game's movement dependencies.
+        /// </summary>
+        /// <returns>The headquarters commands.</returns>
+        private HeadquartersCommands CreateHeadquartersCommands()
+        {
+            MovementQueries movementQueries = new MovementQueries(_game);
+            HeadquartersQueries headquartersQueries = new HeadquartersQueries(_game);
+            movementQueries.SetCompletedBuildingMovementPolicy(headquartersQueries.CanMove);
+            MovementCommands movement = new MovementCommands(
+                _game,
+                new FogOfWarCommands(_game),
+                new FleetCommands(_game),
+                new FogOfWarQueries(_game),
+                movementQueries
+            );
+            return new HeadquartersCommands(_game, movement, headquartersQueries);
         }
     }
 }
