@@ -201,7 +201,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         }
 
         [Test]
-        public void GetUnreadMessageTypes_MixedMessages_ReturnsUnreadCategories()
+        public void GetUnacknowledgedMessageTypes_MixedMessages_ReturnsPendingCategories()
         {
             Faction faction = new Faction
             {
@@ -209,23 +209,28 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 {
                     [MessageType.Fleet] = new List<Message>
                     {
-                        new StatusMessage { Read = true },
-                        new StatusMessage { Read = false },
+                        new StatusMessage { NotificationAcknowledged = true },
+                        new StatusMessage { NotificationAcknowledged = false },
                     },
-                    [MessageType.Mission] = new List<Message> { new StatusMessage { Read = true } },
+                    [MessageType.Mission] = new List<Message>
+                    {
+                        new StatusMessage { NotificationAcknowledged = true },
+                    },
                     [MessageType.Resource] = null,
                 },
             };
 
-            HashSet<MessageType> types = StrategyHudController.GetUnreadMessageTypes(faction);
+            HashSet<MessageType> types = StrategyHudController.GetUnacknowledgedMessageTypes(
+                faction
+            );
 
             CollectionAssert.AreEquivalent(new[] { MessageType.Fleet }, types);
         }
 
         [Test]
-        public void GetUnreadMessageTypes_MissingFaction_ReturnsEmptyCollection()
+        public void GetUnacknowledgedMessageTypes_MissingFaction_ReturnsEmptyCollection()
         {
-            HashSet<MessageType> types = StrategyHudController.GetUnreadMessageTypes(null);
+            HashSet<MessageType> types = StrategyHudController.GetUnacknowledgedMessageTypes(null);
 
             Assert.IsEmpty(types);
         }

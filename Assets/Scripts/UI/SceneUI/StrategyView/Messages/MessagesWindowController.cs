@@ -151,10 +151,13 @@ public sealed class MessagesWindowController
     {
         StopMessageDetailAudio();
         MessagesWindowSession session = GetSession(view);
-        session.SelectTab(MessagesTabCatalog.Clamp((int)tab));
+        MessagesTab requestedTab = MessagesTabCatalog.Clamp((int)tab);
+        if (session.HasPresentedTab && session.ActiveTab != requestedTab)
+            AcknowledgeMessages(session.Messages);
+
+        session.SelectTab(requestedTab);
         RefreshSession(session);
-        foreach (Message message in session.Messages)
-            MarkMessageRead(message);
+        session.MarkTabPresented();
     }
 
     /// <summary>
@@ -375,6 +378,22 @@ public sealed class MessagesWindowController
     }
 
     /// <summary>
+    /// Acknowledges notifications for the supplied messages without changing their read state.
+    /// </summary>
+    /// <param name="messages">The messages whose notifications were presented.</param>
+    internal static void AcknowledgeMessages(IEnumerable<Message> messages)
+    {
+        if (messages == null)
+            return;
+
+        foreach (Message message in messages)
+        {
+            if (message != null)
+                message.NotificationAcknowledged = true;
+        }
+    }
+
+    /// <summary>
     /// Plays the detail audio assigned to a message.
     /// </summary>
     /// <param name="message">The message whose detail was presented.</param>
@@ -530,7 +549,9 @@ public sealed class MessagesWindowController
         if (TryGetSession(view, out MessagesWindowSession session))
         {
             StopMessageDetailAudio();
+            AcknowledgeMessages(session.Messages);
             closeWindow(session.Window);
+            markDirty();
         }
     }
 
@@ -765,8 +786,14 @@ public sealed class MessagesWindowController
     /// <param name="view">The destroyed Messages view.</param>
     private void HandleViewDestroyed(MessagesWindowView view)
     {
-        if (ReferenceEquals(view, null) || !sessions.Remove(view))
+        if (
+            ReferenceEquals(view, null)
+            || !sessions.TryGetValue(view, out MessagesWindowSession session)
+        )
             return;
+
+        AcknowledgeMessages(session.Messages);
+        sessions.Remove(view);
 
         StopMessageDetailAudio();
         view.ChatRequested -= HandleChatRequested;

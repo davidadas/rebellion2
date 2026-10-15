@@ -308,11 +308,11 @@ public sealed class StrategyHudController : IContextMenuReceiver
     }
 
     /// <summary>
-    /// Collects message categories containing at least one unread message.
+    /// Collects message categories containing at least one unacknowledged notification.
     /// </summary>
     /// <param name="faction">The faction whose message state is projected into the HUD.</param>
-    /// <returns>The unread message categories.</returns>
-    internal static HashSet<MessageType> GetUnreadMessageTypes(Faction faction)
+    /// <returns>The message categories with unacknowledged notifications.</returns>
+    internal static HashSet<MessageType> GetUnacknowledgedMessageTypes(Faction faction)
     {
         HashSet<MessageType> types = new HashSet<MessageType>();
         if (faction?.Messages == null)
@@ -325,7 +325,7 @@ public sealed class StrategyHudController : IContextMenuReceiver
 
             foreach (Message message in entry.Value)
             {
-                if (message?.Read == false)
+                if (message?.NotificationAcknowledged == false)
                 {
                     types.Add(entry.Key);
                     break;
@@ -517,7 +517,7 @@ public sealed class StrategyHudController : IContextMenuReceiver
                     $"HUD message-notification theme {i} is missing SourceLayout."
                 );
 
-            string imagePath = data.HasUnreadMessageType(theme.MessageType)
+            string imagePath = data.HasUnacknowledgedMessageType(theme.MessageType)
                 ? theme.HighlightedImagePath
                 : theme.DefaultImagePath;
             notifications.Add(

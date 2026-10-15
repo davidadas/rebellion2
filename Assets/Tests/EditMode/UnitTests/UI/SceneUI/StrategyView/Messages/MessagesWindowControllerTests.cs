@@ -320,7 +320,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
-        public void Open_CategoryTab_MarksPresentedMessagesRead()
+        public void Open_CategoryTab_PreservesIndividualUnreadState()
         {
             Message first = CreateMessage("first");
             Message second = CreateMessage("second");
@@ -331,14 +331,59 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
 
             try
             {
-                Assert.IsTrue(first.Read);
-                Assert.IsTrue(second.Read);
-                Assert.IsFalse(faction.HasUnreadMessages());
+                Assert.IsFalse(first.Read);
+                Assert.IsFalse(second.Read);
+                Assert.IsFalse(first.NotificationAcknowledged);
+                Assert.IsFalse(second.NotificationAcknowledged);
+                Assert.IsTrue(faction.HasUnreadMessages());
             }
             finally
             {
                 UnityEngine.Object.DestroyImmediate(root);
             }
+        }
+
+        [Test]
+        public void OpenTab_DifferentTab_AcknowledgesPreviousTabWithoutMarkingMessagesRead()
+        {
+            Message first = CreateMessage("first");
+            Message second = CreateMessage("second");
+            (
+                GameObject root,
+                Faction faction,
+                MessagesWindowController controller,
+                MessagesWindowView view
+            ) = OpenMessagesWindow(new[] { first, second }, () => default);
+
+            try
+            {
+                controller.OpenTab(view, MessagesTab.Mission);
+
+                Assert.IsTrue(first.NotificationAcknowledged);
+                Assert.IsTrue(second.NotificationAcknowledged);
+                Assert.IsFalse(first.Read);
+                Assert.IsFalse(second.Read);
+                Assert.IsTrue(faction.HasUnreadMessages());
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(root);
+            }
+        }
+
+        [Test]
+        public void DestroyWindow_PresentedTab_AcknowledgesMessagesWithoutMarkingThemRead()
+        {
+            Message first = CreateMessage("first");
+            Message second = CreateMessage("second");
+            (GameObject root, _, _, _) = OpenMessagesWindow(new[] { first, second }, () => default);
+
+            UnityEngine.Object.DestroyImmediate(root);
+
+            Assert.IsTrue(first.NotificationAcknowledged);
+            Assert.IsTrue(second.NotificationAcknowledged);
+            Assert.IsFalse(first.Read);
+            Assert.IsFalse(second.Read);
         }
 
         [Test]
