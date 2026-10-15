@@ -9,7 +9,7 @@ using UnityEngine;
 /// </summary>
 public sealed class StrategyHudRenderData
 {
-    private readonly HashSet<MessageType> unreadMessageTypes;
+    private readonly HashSet<MessageType> unacknowledgedMessageTypes;
 
     public string TickText { get; }
 
@@ -30,14 +30,14 @@ public sealed class StrategyHudRenderData
     /// <param name="rawMaterialsText">The displayed raw-material total.</param>
     /// <param name="refinedMaterialsText">The displayed refined-material total.</param>
     /// <param name="speed">The current strategy speed.</param>
-    /// <param name="unreadMessageTypes">The message categories containing unread messages.</param>
+    /// <param name="unacknowledgedMessageTypes">The message categories with pending notifications.</param>
     /// <param name="resourceBreakdown">The current resource-facility totals.</param>
     public StrategyHudRenderData(
         string tickText,
         string rawMaterialsText,
         string refinedMaterialsText,
         TickSpeed speed,
-        IEnumerable<MessageType> unreadMessageTypes,
+        IEnumerable<MessageType> unacknowledgedMessageTypes,
         StrategyHudResourceBreakdown resourceBreakdown = null
     )
     {
@@ -50,20 +50,20 @@ public sealed class StrategyHudRenderData
             resourceBreakdown == null
                 ? string.Empty
                 : ResourceBreakdown.MaintenanceHeadroom.ToString();
-        this.unreadMessageTypes =
-            unreadMessageTypes == null
+        this.unacknowledgedMessageTypes =
+            unacknowledgedMessageTypes == null
                 ? new HashSet<MessageType>()
-                : new HashSet<MessageType>(unreadMessageTypes);
+                : new HashSet<MessageType>(unacknowledgedMessageTypes);
     }
 
     /// <summary>
-    /// Returns whether a message category contains at least one unread message.
+    /// Returns whether a message category contains an unacknowledged notification.
     /// </summary>
     /// <param name="messageType">The message category to inspect.</param>
-    /// <returns>True when the category contains an unread message.</returns>
-    public bool HasUnreadMessageType(MessageType messageType)
+    /// <returns>True when the category contains an unacknowledged notification.</returns>
+    public bool HasUnacknowledgedMessageType(MessageType messageType)
     {
-        return unreadMessageTypes.Contains(messageType);
+        return unacknowledgedMessageTypes.Contains(messageType);
     }
 }
 
