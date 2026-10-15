@@ -39,14 +39,33 @@ namespace Rebellion.Tests.AI.Phases
         }
 
         [Test]
-        public void ExecuteIncrementally_WithSelectedProposals_YieldsAfterEachProposal()
+        public void ExecuteIncrementally_ProposalsWithinTimeBudget_ExecutesBeforeYield()
         {
             AITurnContext context = CreateContext();
             TestAIProposal first = new TestAIProposal(canExecute: true);
             TestAIProposal second = new TestAIProposal(canExecute: true);
             context.SetSelectedProposals(new List<AIProposal> { first, second });
 
-            IEnumerator<object> execution = new AIExecutionPhase()
+            IEnumerator<object> execution = new AIExecutionPhase(() => 0, 4)
+                .ExecuteIncrementally(context)
+                .GetEnumerator();
+
+            Assert.IsTrue(execution.MoveNext());
+            Assert.AreEqual(1, first.ExecuteCount);
+            Assert.AreEqual(1, second.ExecuteCount);
+            Assert.IsFalse(execution.MoveNext());
+        }
+
+        [Test]
+        public void ExecuteIncrementally_ExceededTimeBudget_YieldsBeforeNextProposal()
+        {
+            AITurnContext context = CreateContext();
+            TestAIProposal first = new TestAIProposal(canExecute: true);
+            TestAIProposal second = new TestAIProposal(canExecute: true);
+            context.SetSelectedProposals(new List<AIProposal> { first, second });
+            long GetTimestamp() => (first.ExecuteCount + second.ExecuteCount) * 5;
+
+            IEnumerator<object> execution = new AIExecutionPhase(GetTimestamp, 4)
                 .ExecuteIncrementally(context)
                 .GetEnumerator();
 

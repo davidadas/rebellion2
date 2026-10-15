@@ -70,19 +70,89 @@ namespace Rebellion.Simulation
             string ownerInstanceId
         )
         {
+            return StartManufacturing(
+                producer,
+                template,
+                destination,
+                count,
+                ownerInstanceId,
+                validateMaintenanceHeadroom: true
+            );
+        }
+
+        /// <summary>
+        /// Starts an order whose maintenance cost was reserved by the current AI turn.
+        /// </summary>
+        /// <param name="producer">The planet performing the manufacturing.</param>
+        /// <param name="template">The unit or facility template to manufacture.</param>
+        /// <param name="destination">The node that receives completed items.</param>
+        /// <param name="count">The number of copies to queue.</param>
+        /// <param name="ownerInstanceId">The faction requesting the order.</param>
+        /// <returns>True when the complete order was queued.</returns>
+        internal bool StartManufacturingWithReservedMaintenance(
+            Planet producer,
+            IManufacturable template,
+            ISceneNode destination,
+            int count,
+            string ownerInstanceId
+        )
+        {
+            return StartManufacturing(
+                producer,
+                template,
+                destination,
+                count,
+                ownerInstanceId,
+                validateMaintenanceHeadroom: false
+            );
+        }
+
+        /// <summary>
+        /// Validates and starts one manufacturing order.
+        /// </summary>
+        /// <param name="producer">The planet performing the manufacturing.</param>
+        /// <param name="template">The unit or facility template to manufacture.</param>
+        /// <param name="destination">The node that receives completed items.</param>
+        /// <param name="count">The number of copies to queue.</param>
+        /// <param name="ownerInstanceId">The faction requesting the order.</param>
+        /// <param name="validateMaintenanceHeadroom">Whether to recalculate faction maintenance before queuing.</param>
+        /// <returns>True when the complete order was queued.</returns>
+        private bool StartManufacturing(
+            Planet producer,
+            IManufacturable template,
+            ISceneNode destination,
+            int count,
+            string ownerInstanceId,
+            bool validateMaintenanceHeadroom
+        )
+        {
             if (
-                !_queries.CanStartManufacturing(
-                    producer,
-                    template,
-                    destination,
-                    count,
-                    ownerInstanceId
-                )
+                validateMaintenanceHeadroom
+                    ? !_queries.CanStartManufacturing(
+                        producer,
+                        template,
+                        destination,
+                        count,
+                        ownerInstanceId
+                    )
+                    : !ManufacturingQueries.CanAcceptManufacturingOrder(
+                        producer,
+                        template,
+                        destination,
+                        count,
+                        ownerInstanceId
+                    )
             )
                 return false;
 
             CancelConflictingProject(producer, template);
-            return QueueManufacturingItems(producer, template, destination, count);
+            return QueueManufacturingItems(
+                producer,
+                template,
+                destination,
+                count,
+                validateMaintenanceHeadroom: false
+            );
         }
 
         /// <summary>
@@ -136,7 +206,8 @@ namespace Rebellion.Simulation
                     producer,
                     template,
                     destination,
-                    count - activeOrder.Quantity
+                    count - activeOrder.Quantity,
+                    validateMaintenanceHeadroom: false
                 );
             }
 
@@ -147,7 +218,13 @@ namespace Rebellion.Simulation
                 producer.GetManufacturingQueue().Remove(type);
             }
 
-            bool started = QueueManufacturingItems(producer, template, destination, count);
+            bool started = QueueManufacturingItems(
+                producer,
+                template,
+                destination,
+                count,
+                validateMaintenanceHeadroom: false
+            );
             RemoveEmptyFleets(productionFleets);
 
             return started;
@@ -160,12 +237,14 @@ namespace Rebellion.Simulation
         /// <param name="template">The unit or facility template to manufacture.</param>
         /// <param name="destination">The node that receives completed items.</param>
         /// <param name="count">The number of copies to queue.</param>
+        /// <param name="validateMaintenanceHeadroom">Whether each item requires a maintenance check.</param>
         /// <returns>True when at least one copy was queued.</returns>
         private bool QueueManufacturingItems(
             Planet producer,
             IManufacturable template,
             ISceneNode destination,
-            int count
+            int count,
+            bool validateMaintenanceHeadroom
         )
         {
             bool started = false;
@@ -192,11 +271,21 @@ namespace Rebellion.Simulation
                 bool enqueued;
                 if (destinationFleet != null)
                 {
-                    enqueued = Enqueue(producer, item, destinationFleet);
+                    enqueued = Enqueue(
+                        producer,
+                        item,
+                        destinationFleet,
+                        validateMaintenanceHeadroom
+                    );
                 }
                 else if (destinationShip != null)
                 {
-                    enqueued = Enqueue(producer, item, destinationShip);
+                    enqueued = Enqueue(
+                        producer,
+                        item,
+                        destinationShip,
+                        validateMaintenanceHeadroom
+                    );
                 }
                 else if (destinationPlanet != null && item is CapitalShip)
                 {
@@ -207,11 +296,21 @@ namespace Rebellion.Simulation
                     if (capitalShipDestination == null)
                         return started;
 
-                    enqueued = Enqueue(producer, item, capitalShipDestination);
+                    enqueued = Enqueue(
+                        producer,
+                        item,
+                        capitalShipDestination,
+                        validateMaintenanceHeadroom
+                    );
                 }
                 else if (destinationPlanet != null)
                 {
-                    enqueued = Enqueue(producer, item, destinationPlanet);
+                    enqueued = Enqueue(
+                        producer,
+                        item,
+                        destinationPlanet,
+                        validateMaintenanceHeadroom
+                    );
                 }
                 else
                 {
@@ -353,6 +452,61 @@ namespace Rebellion.Simulation
         /// <returns>True when the item was queued; otherwise, false.</returns>
         public bool Enqueue(Planet planet, IManufacturable item, Planet destination)
         {
+            return Enqueue(planet, item, destination, validateMaintenanceHeadroom: true);
+        }
+
+        /// <summary>
+        /// Enqueues an item for a caller that already reserved its maintenance cost.
+        /// </summary>
+        /// <param name="planet">The planet where production occurs.</param>
+        /// <param name="item">The item to manufacture.</param>
+        /// <param name="destination">The node receiving the completed item.</param>
+        /// <returns>True when the item was queued; otherwise false.</returns>
+        internal bool EnqueueWithReservedMaintenance(
+            Planet planet,
+            IManufacturable item,
+            ISceneNode destination
+        )
+        {
+            return destination switch
+            {
+                Planet destinationPlanet => Enqueue(
+                    planet,
+                    item,
+                    destinationPlanet,
+                    validateMaintenanceHeadroom: false
+                ),
+                Fleet destinationFleet => Enqueue(
+                    planet,
+                    item,
+                    destinationFleet,
+                    validateMaintenanceHeadroom: false
+                ),
+                CapitalShip destinationShip => Enqueue(
+                    planet,
+                    item,
+                    destinationShip,
+                    validateMaintenanceHeadroom: false
+                ),
+                _ => false,
+            };
+        }
+
+        /// <summary>
+        /// Enqueues an item for delivery to a planet after applying current structural checks.
+        /// </summary>
+        /// <param name="planet">The planet where production occurs.</param>
+        /// <param name="item">The item to manufacture.</param>
+        /// <param name="destination">The planet receiving the completed item.</param>
+        /// <param name="validateMaintenanceHeadroom">Whether to recalculate faction maintenance before queuing.</param>
+        /// <returns>True when the item was queued; otherwise false.</returns>
+        private bool Enqueue(
+            Planet planet,
+            IManufacturable item,
+            Planet destination,
+            bool validateMaintenanceHeadroom
+        )
+        {
             Faction faction = GetValidatedFaction(planet, item);
             if (faction == null || !IsLiveDestination(destination))
                 return false;
@@ -372,7 +526,7 @@ namespace Rebellion.Simulation
             if (!destination.CanAcceptChild(item))
                 return false;
 
-            if (!HasMaintenanceHeadroom(faction, item))
+            if (validateMaintenanceHeadroom && !HasMaintenanceHeadroom(faction, item))
                 return false;
 
             _game.AttachNode(item, destination);
@@ -401,6 +555,24 @@ namespace Rebellion.Simulation
         /// <param name="destination">The fleet receiving the completed item.</param>
         /// <returns>True when the item was queued; otherwise, false.</returns>
         public bool Enqueue(Planet planet, IManufacturable item, Fleet destination)
+        {
+            return Enqueue(planet, item, destination, validateMaintenanceHeadroom: true);
+        }
+
+        /// <summary>
+        /// Enqueues an item for delivery to a fleet after applying current structural checks.
+        /// </summary>
+        /// <param name="planet">The planet where production occurs.</param>
+        /// <param name="item">The item to manufacture.</param>
+        /// <param name="destination">The fleet receiving the completed item.</param>
+        /// <param name="validateMaintenanceHeadroom">Whether to recalculate faction maintenance before queuing.</param>
+        /// <returns>True when the item was queued; otherwise false.</returns>
+        private bool Enqueue(
+            Planet planet,
+            IManufacturable item,
+            Fleet destination,
+            bool validateMaintenanceHeadroom
+        )
         {
             Faction faction = GetValidatedFaction(planet, item);
             if (faction == null || !IsLiveDestination(destination))
@@ -445,7 +617,7 @@ namespace Rebellion.Simulation
             if (!parent.CanAcceptChild(item))
                 return false;
 
-            if (!HasMaintenanceHeadroom(faction, item))
+            if (validateMaintenanceHeadroom && !HasMaintenanceHeadroom(faction, item))
                 return false;
 
             _game.AttachNode(item, parent);
@@ -473,6 +645,24 @@ namespace Rebellion.Simulation
         /// <returns>True when the item was queued; otherwise false.</returns>
         public bool Enqueue(Planet planet, IManufacturable item, CapitalShip destination)
         {
+            return Enqueue(planet, item, destination, validateMaintenanceHeadroom: true);
+        }
+
+        /// <summary>
+        /// Enqueues an item for delivery to a ship after applying current structural checks.
+        /// </summary>
+        /// <param name="planet">The planet where production occurs.</param>
+        /// <param name="item">The item to manufacture.</param>
+        /// <param name="destination">The ship receiving the completed item.</param>
+        /// <param name="validateMaintenanceHeadroom">Whether to recalculate faction maintenance before queuing.</param>
+        /// <returns>True when the item was queued; otherwise false.</returns>
+        private bool Enqueue(
+            Planet planet,
+            IManufacturable item,
+            CapitalShip destination,
+            bool validateMaintenanceHeadroom
+        )
+        {
             Faction faction = GetValidatedFaction(planet, item);
             if (faction == null || !IsLiveDestination(destination))
                 return false;
@@ -495,7 +685,7 @@ namespace Rebellion.Simulation
             if (!destination.CanAcceptChild(item))
                 return false;
 
-            if (!HasMaintenanceHeadroom(faction, item))
+            if (validateMaintenanceHeadroom && !HasMaintenanceHeadroom(faction, item))
                 return false;
 
             _game.AttachNode(item, destination);
