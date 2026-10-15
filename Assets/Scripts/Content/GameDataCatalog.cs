@@ -130,6 +130,14 @@ public sealed class GameDataCatalog
                     throw new InvalidDataException(
                         $"Building '{building.TypeID}' references missing upgrade '{upgradeTypeID}'."
                     );
+                if (buildingsByTypeID[upgradeTypeID].BuildingType != building.BuildingType)
+                    throw new InvalidDataException(
+                        $"Building '{building.TypeID}' references upgrade '{upgradeTypeID}' from a different facility category."
+                    );
+                if (buildingsByTypeID[upgradeTypeID].ProductionType != building.ProductionType)
+                    throw new InvalidDataException(
+                        $"Building '{building.TypeID}' references upgrade '{upgradeTypeID}' with a different production category."
+                    );
                 if (upgradeTypeID == building.TypeID)
                     throw new InvalidDataException(
                         $"Building '{building.TypeID}' cannot upgrade to itself."

@@ -18,6 +18,9 @@ public sealed class FacilityInventoryItemView : MonoBehaviour, IStrategyStatusDo
     [SerializeField]
     private RawImage selectionImage;
 
+    [SerializeField]
+    private RawImage upgradeImage;
+
     private Texture defaultItemTexture;
     private UIPointerGestureRelay pointerGestures;
 
@@ -82,6 +85,10 @@ public sealed class FacilityInventoryItemView : MonoBehaviour, IStrategyStatusDo
             frame.width,
             frame.height
         );
+        UILayout.SetImageTexture(upgradeImage, data.Upgrading ? data.UpgradeTexture : null);
+        upgradeImage.enabled = data.Upgrading && data.UpgradeTexture != null;
+        upgradeImage.gameObject.SetActive(data.Upgrading && data.UpgradeTexture != null);
+        upgradeImage.raycastTarget = false;
         gameObject.SetActive(true);
     }
 
@@ -159,6 +166,8 @@ public sealed class FacilityInventoryItemView : MonoBehaviour, IStrategyStatusDo
             throw new MissingReferenceException($"{name}/ItemImage is missing.");
         if (selectionImage == null)
             throw new MissingReferenceException($"{name}/SelectionImage is missing.");
+        if (upgradeImage == null)
+            throw new MissingReferenceException($"{name}/UpgradeImage is missing.");
     }
 
     /// <summary>

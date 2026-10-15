@@ -305,7 +305,7 @@ public sealed class ConstructionWindowController
         )
             return;
 
-        ISceneNode item = session.SelectedItem;
+        ISceneNode item = GetInformationTarget(session.SelectedItem);
         switch (strategyCommand.Action)
         {
             case StrategyMenuAction.Encyclopedia when item != null:
@@ -412,8 +412,8 @@ public sealed class ConstructionWindowController
         if (view == null || !sessions.TryGetValue(view, out ConstructionWindowSession session))
             return null;
 
-        IManufacturable item = session.SelectedItem;
-        return item is ISceneNode node ? new StrategyStatusTarget(session.Planet, node) : null;
+        ISceneNode item = GetInformationTarget(session.SelectedItem);
+        return item != null ? new StrategyStatusTarget(session.Planet, item) : null;
     }
 
     /// <summary>
@@ -499,7 +499,8 @@ public sealed class ConstructionWindowController
             return;
 
         session.Window.RequestFocus();
-        if (session.SelectedItem is ISceneNode item)
+        ISceneNode item = GetInformationTarget(session.SelectedItem);
+        if (item != null)
             actions.OpenConstructionInfo(item);
     }
 
@@ -814,14 +815,31 @@ public sealed class ConstructionWindowController
             producer?.GetManufacturingQueue().TryGetValue(type.Value, out activeItems);
             IManufacturable activeItem = activeItems?.FirstOrDefault();
             session.InitializeOrder(
-                activeItem is Building { IsDestroyed: true } rebuilding
-                    ? rebuilding.InstanceID
-                    : activeOrder.ProductTypeID,
+                activeItem switch
+                {
+                    Building { IsDestroyed: true } rebuilding => rebuilding.InstanceID,
+                    Building upgrading when upgrading.IsUpgrading() =>
+                        BuildingUpgradeSelection.GetSelectionID(
+                            upgrading.TypeID,
+                            upgrading.UpgradeTargetTypeID
+                        ),
+                    _ => activeOrder.ProductTypeID,
+                },
                 activeOrder.Quantity
             );
             return;
         }
 
         session.InitializeOrder(null, 1);
+    }
+
+    /// <summary>
+    /// Resolves the authored definition represented by a construction selection.
+    /// </summary>
+    /// <param name="item">The selected construction operation.</param>
+    /// <returns>The authored information target, or null.</returns>
+    private static ISceneNode GetInformationTarget(IManufacturable item)
+    {
+        return item is BuildingUpgradeSelection upgrade ? upgrade.Target : item as ISceneNode;
     }
 }

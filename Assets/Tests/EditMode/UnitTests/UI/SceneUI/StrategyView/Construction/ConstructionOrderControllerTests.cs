@@ -302,6 +302,98 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Assert.IsNull(estimate.DeploymentTicks);
         }
 
+        [Test]
+        public void GetBuildSelection_UpgradeableBuilding_IncludesUpgradeOperation()
+        {
+            var scenario = CreateUpgradeScenario();
+
+            IReadOnlyList<IManufacturable> selection = scenario.Controller.GetBuildSelection(
+                FacilityWindowTab.Construction,
+                scenario.Source.OwnerInstanceID,
+                scenario.Destination,
+                scenario.Producer
+            );
+
+            BuildingUpgradeSelection upgrade = selection
+                .OfType<BuildingUpgradeSelection>()
+                .Single();
+            Assert.AreSame(scenario.Source, upgrade.Source);
+            Assert.AreSame(scenario.Target, upgrade.Target);
+        }
+
+        [Test]
+        public void TrySetConstructionOrder_UpgradeOperation_QueuesSourceInPlace()
+        {
+            var scenario = CreateUpgradeScenario();
+            BuildingUpgradeSelection upgrade = scenario
+                .Controller.GetBuildSelection(
+                    FacilityWindowTab.Construction,
+                    scenario.Source.OwnerInstanceID,
+                    scenario.Destination,
+                    scenario.Producer
+                )
+                .OfType<BuildingUpgradeSelection>()
+                .Single();
+
+            bool started = scenario.Controller.TrySetConstructionOrder(
+                scenario.Producer,
+                scenario.Destination,
+                upgrade,
+                1,
+                scenario.Source.OwnerInstanceID
+            );
+
+            Assert.IsTrue(started);
+            Assert.AreSame(scenario.Destination, scenario.Source.GetParent());
+            Assert.AreSame(
+                scenario.Source,
+                scenario.Producer.GetManufacturingQueue()[ManufacturingType.Building].Single()
+            );
+        }
+
+        [Test]
+        public void TrySetConstructionOrder_TwoMatchingBuildings_QueuesBothSourcesInPlace()
+        {
+            var scenario = CreateUpgradeScenario();
+            Building secondSource = new Building
+            {
+                InstanceID = "basic-shipyard-instance-2",
+                TypeID = scenario.Source.TypeID,
+                DisplayName = scenario.Source.DisplayName,
+                OwnerInstanceID = scenario.Source.OwnerInstanceID,
+                BuildingType = scenario.Source.BuildingType,
+                ProductionType = scenario.Source.ProductionType,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                Upgrades = { scenario.Target.TypeID },
+            };
+            scenario.Game.AttachNode(secondSource, scenario.Destination);
+            BuildingUpgradeSelection upgrade = scenario
+                .Controller.GetBuildSelection(
+                    FacilityWindowTab.Construction,
+                    scenario.Source.OwnerInstanceID,
+                    scenario.Destination,
+                    scenario.Producer
+                )
+                .OfType<BuildingUpgradeSelection>()
+                .Single();
+
+            bool started = scenario.Controller.TrySetConstructionOrder(
+                scenario.Producer,
+                scenario.Destination,
+                upgrade,
+                2,
+                scenario.Source.OwnerInstanceID
+            );
+
+            Assert.IsTrue(started);
+            CollectionAssert.AreEquivalent(
+                new[] { scenario.Source, secondSource },
+                scenario.Producer.GetManufacturingQueue()[ManufacturingType.Building]
+            );
+            Assert.IsTrue(scenario.Source.IsUpgrading());
+            Assert.IsTrue(secondSource.IsUpgrading());
+        }
+
         /// <summary>
         /// Creates a construction controller with the active test services.
         /// </summary>
@@ -319,6 +411,78 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             container.AddSingletonInstance(new MovementQueries(game));
             container.AddSingletonInstance(new ManufacturingQueries(game));
             return new ConstructionOrderController(container.BuildServiceLocator());
+        }
+
+        /// <summary>
+        /// Creates an unlocked remote building-upgrade scenario.
+        /// </summary>
+        /// <returns>The controller, planets, source, and target for the scenario.</returns>
+        private static (
+            GameRoot Game,
+            ConstructionOrderController Controller,
+            Planet Producer,
+            Planet Destination,
+            Building Source,
+            Building Target
+        ) CreateUpgradeScenario()
+        {
+            const string ownerId = "owner";
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            Building target = new Building
+            {
+                TypeID = "advanced-shipyard",
+                DisplayName = "Advanced shipyard",
+                BuildingType = BuildingType.Shipyard,
+                ProductionType = ManufacturingType.Ship,
+                ConstructionCost = 10,
+                MaintenanceCost = 0,
+                ManufacturingFactionInstanceIDs = new List<string> { ownerId },
+            };
+            Faction owner = new Faction { InstanceID = ownerId };
+            owner.RebuildResearchCatalog(new IManufacturable[] { target });
+            owner.SetHighestUnlockedOrder(ManufacturingType.Building, target.ResearchOrder);
+            game.GetFactions().Add(owner);
+            GalaxyPlanetSector sector = new GalaxyPlanetSector { InstanceID = "sector" };
+            Planet producer = CreatePlanet("producer", ownerId, 10);
+            Planet destination = CreatePlanet("destination", ownerId, 10);
+            Building source = new Building
+            {
+                InstanceID = "basic-shipyard-instance",
+                TypeID = "basic-shipyard",
+                DisplayName = "Basic shipyard",
+                OwnerInstanceID = ownerId,
+                BuildingType = BuildingType.Shipyard,
+                ProductionType = ManufacturingType.Ship,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                Upgrades = { target.TypeID },
+            };
+            game.AttachNode(sector, game.GetGalaxyMap());
+            game.AttachNode(producer, sector);
+            game.AttachNode(destination, sector);
+            game.AttachNode(CreateConstructionFacility(ownerId), producer);
+            game.AttachNode(source, destination);
+            FleetCommands fleetSystem = new FleetCommands(game);
+            MovementCommands movement = new MovementCommands(
+                game,
+                new FogOfWarCommands(game),
+                fleetSystem,
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
+            ManufacturingCommands manufacturing = new ManufacturingCommands(
+                game,
+                fleetSystem,
+                new ManufacturingQueries(game),
+                movement
+            );
+            return (
+                game,
+                CreateController(game, manufacturing),
+                producer,
+                destination,
+                source,
+                target
+            );
         }
 
         /// <summary>

@@ -367,6 +367,74 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        public void BeginUpgrade_AuthoredUpgrade_UsesTargetCostsWithoutReplacingSourceData()
+        {
+            Building building = CreateUpgradeSource();
+            Building upgrade = CreateUpgradeTarget();
+
+            building.BeginUpgrade(upgrade);
+
+            Assert.IsTrue(building.IsUpgrading());
+            Assert.AreEqual("basic", building.TypeID);
+            Assert.AreEqual("advanced", building.UpgradeTargetTypeID);
+            Assert.AreEqual("Advanced facility", building.GetDisplayName());
+            Assert.AreEqual(30, building.GetConstructionCost());
+            Assert.AreEqual(9, building.GetMaintenanceCost());
+            Assert.AreEqual(10, building.ConstructionCost);
+            Assert.AreEqual(4, building.MaintenanceCost);
+            Assert.IsFalse(building.IsOperational());
+        }
+
+        [Test]
+        public void CancelUpgrade_ActiveUpgrade_RestoresOperationalSource()
+        {
+            Building building = CreateUpgradeSource();
+            building.BeginUpgrade(CreateUpgradeTarget());
+            building.ManufacturingProgress = 12;
+
+            building.CancelUpgrade();
+
+            Assert.AreEqual("basic", building.TypeID);
+            Assert.AreEqual("Basic facility", building.GetDisplayName());
+            Assert.AreEqual(ManufacturingStatus.Complete, building.ManufacturingStatus);
+            Assert.AreEqual(0, building.ManufacturingProgress);
+            Assert.IsFalse(building.IsUpgrading());
+            Assert.IsTrue(building.IsOperational());
+        }
+
+        [Test]
+        public void CompleteUpgrade_ActiveUpgrade_AppliesTargetDefinition()
+        {
+            Building building = CreateUpgradeSource();
+            Building upgrade = CreateUpgradeTarget();
+            building.BeginUpgrade(upgrade);
+
+            building.CompleteUpgrade(upgrade);
+
+            Assert.AreEqual("advanced", building.TypeID);
+            Assert.AreEqual("Advanced facility", building.DisplayName);
+            Assert.AreEqual(30, building.ConstructionCost);
+            Assert.AreEqual(9, building.MaintenanceCost);
+            Assert.AreEqual(8, building.ProcessRate);
+            Assert.AreEqual(ManufacturingStatus.Complete, building.ManufacturingStatus);
+            Assert.IsFalse(building.IsUpgrading());
+            Assert.IsTrue(building.IsOperational());
+        }
+
+        [Test]
+        public void MarkDestroyed_ActiveUpgrade_CreatesSourceRubble()
+        {
+            Building building = CreateUpgradeSource();
+            building.BeginUpgrade(CreateUpgradeTarget());
+
+            building.MarkDestroyed();
+
+            Assert.AreEqual("basic", building.TypeID);
+            Assert.IsTrue(building.IsRubble());
+            Assert.IsFalse(building.IsUpgrading());
+        }
+
+        [Test]
         public void SerializeAndDeserialize_PopulatedBuilding_RetainsProperties()
         {
             Building building = new Building
@@ -398,6 +466,10 @@ namespace Rebellion.Tests.Game.Units
                 IsDetectionBlocker = true,
                 IsDestroyed = true,
                 Upgrades = { "advanced-building" },
+                UpgradeTargetTypeID = "advanced-building",
+                UpgradeTargetDisplayName = "Advanced building",
+                UpgradeConstructionCost = 75,
+                UpgradeMaintenanceCost = 60,
                 Movement = null,
             };
 
@@ -417,6 +489,19 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(building.DefenseWeaponEffect, deserializedBuilding.DefenseWeaponEffect);
             Assert.AreEqual(building.IsDetectionBlocker, deserializedBuilding.IsDetectionBlocker);
             Assert.AreEqual(building.IsDestroyed, deserializedBuilding.IsDestroyed);
+            Assert.AreEqual(building.UpgradeTargetTypeID, deserializedBuilding.UpgradeTargetTypeID);
+            Assert.AreEqual(
+                building.UpgradeTargetDisplayName,
+                deserializedBuilding.UpgradeTargetDisplayName
+            );
+            Assert.AreEqual(
+                building.UpgradeConstructionCost,
+                deserializedBuilding.UpgradeConstructionCost
+            );
+            Assert.AreEqual(
+                building.UpgradeMaintenanceCost,
+                deserializedBuilding.UpgradeMaintenanceCost
+            );
             CollectionAssert.AreEqual(
                 building.ProtectedUnitTypeIDs,
                 deserializedBuilding.ProtectedUnitTypeIDs
@@ -467,6 +552,40 @@ namespace Rebellion.Tests.Game.Units
                 ((IMovable)deserializedBuilding).GetPosition().Y
             );
             Assert.AreEqual(building.Movement, deserializedBuilding.Movement);
+        }
+
+        /// <summary>
+        /// Creates an operational building with one authored upgrade.
+        /// </summary>
+        /// <returns>The upgrade source.</returns>
+        private static Building CreateUpgradeSource()
+        {
+            return new Building
+            {
+                TypeID = "basic",
+                DisplayName = "Basic facility",
+                ConstructionCost = 10,
+                MaintenanceCost = 4,
+                ProcessRate = 4,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                Upgrades = { "advanced" },
+            };
+        }
+
+        /// <summary>
+        /// Creates the authored target used by upgrade lifecycle tests.
+        /// </summary>
+        /// <returns>The upgrade target.</returns>
+        private static Building CreateUpgradeTarget()
+        {
+            return new Building
+            {
+                TypeID = "advanced",
+                DisplayName = "Advanced facility",
+                ConstructionCost = 30,
+                MaintenanceCost = 9,
+                ProcessRate = 8,
+            };
         }
     }
 }

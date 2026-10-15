@@ -441,6 +441,38 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
         }
 
         [Test]
+        public void Build_UpgradingBuilding_ReturnsUpgradingStatus()
+        {
+            Building building = new Building
+            {
+                InstanceID = "shipyard",
+                TypeID = "basic-shipyard",
+                DisplayName = "Basic shipyard",
+                OwnerInstanceID = _ownerId,
+                BuildingType = BuildingType.Shipyard,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                Upgrades = { "advanced-shipyard" },
+            };
+            building.BeginUpgrade(
+                new Building
+                {
+                    TypeID = "advanced-shipyard",
+                    DisplayName = "Advanced shipyard",
+                    BuildingType = BuildingType.Shipyard,
+                    MaintenanceCost = 9,
+                }
+            );
+            AttachBuilding(building);
+
+            StrategyStatusInfo info = _builder.Build(
+                new StrategyStatusTarget(_mapPlanet, building)
+            );
+
+            Assert.AreEqual("Upgrading", info.Rows.Single(row => row.Left == "Status:").Right);
+            Assert.AreEqual("9", info.Rows.Single(row => row.Left == "Maintenance Cost:").Right);
+        }
+
+        [Test]
         public void Build_Rubble_ReturnsZeroMaintenance()
         {
             Building building = new Building

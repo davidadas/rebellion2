@@ -129,15 +129,28 @@ public sealed class FacilityInventoryItemRenderData
 
     public bool Selected { get; }
 
+    public bool Upgrading { get; }
+
+    public Texture UpgradeTexture { get; }
+
     /// <summary>
     /// Creates an inventory item presentation.
     /// </summary>
     /// <param name="texture">The displayed facility or resource image.</param>
     /// <param name="selected">Whether the item is selected.</param>
-    public FacilityInventoryItemRenderData(Texture texture, bool selected)
+    /// <param name="upgrading">Whether the represented building is being upgraded.</param>
+    /// <param name="upgradeTexture">The overlay shown while the building is being upgraded.</param>
+    public FacilityInventoryItemRenderData(
+        Texture texture,
+        bool selected,
+        bool upgrading = false,
+        Texture upgradeTexture = null
+    )
     {
         Texture = texture;
         Selected = selected;
+        Upgrading = upgrading;
+        UpgradeTexture = upgradeTexture;
     }
 }
 

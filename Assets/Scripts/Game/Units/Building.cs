@@ -61,6 +61,10 @@ namespace Rebellion.Game.Units
         public int ProductionModifier { get; set; }
         public List<string> Upgrades { get; set; } = new List<string>();
         public bool IsDestroyed { get; set; }
+        public string UpgradeTargetTypeID { get; set; }
+        public string UpgradeTargetDisplayName { get; set; }
+        public int UpgradeConstructionCost { get; set; }
+        public int UpgradeMaintenanceCost { get; set; }
 
         // Manufacturing Info.
         public string ProducerOwnerID { get; set; }
@@ -123,6 +127,10 @@ namespace Rebellion.Game.Units
             copy.ProductionModifier = ProductionModifier;
             copy.Upgrades = Upgrades == null ? new List<string>() : new List<string>(Upgrades);
             copy.IsDestroyed = IsDestroyed;
+            copy.UpgradeTargetTypeID = UpgradeTargetTypeID;
+            copy.UpgradeTargetDisplayName = UpgradeTargetDisplayName;
+            copy.UpgradeConstructionCost = UpgradeConstructionCost;
+            copy.UpgradeMaintenanceCost = UpgradeMaintenanceCost;
             copy.ProducerOwnerID = ProducerOwnerID;
             copy.ProducerPlanetID = ProducerPlanetID;
             copy.ManufacturingQueueSequence = ManufacturingQueueSequence;
@@ -163,7 +171,115 @@ namespace Rebellion.Game.Units
         /// <returns>True when the replacement is an authored upgrade for this building.</returns>
         public bool CanUpgradeTo(Building upgrade)
         {
-            return upgrade != null && Upgrades?.Contains(upgrade.TypeID) == true;
+            return upgrade != null
+                && upgrade.BuildingType == BuildingType
+                && upgrade.ProductionType == ProductionType
+                && Upgrades?.Contains(upgrade.TypeID) == true;
+        }
+
+        /// <summary>
+        /// Returns whether this building is being upgraded in place.
+        /// </summary>
+        /// <returns>True while an authored upgrade is in progress.</returns>
+        public bool IsUpgrading()
+        {
+            return !string.IsNullOrEmpty(UpgradeTargetTypeID)
+                && ManufacturingStatus == ManufacturingStatus.Building;
+        }
+
+        /// <summary>
+        /// Returns the construction cost of the active upgrade or this building.
+        /// </summary>
+        /// <returns>The effective construction cost.</returns>
+        public int GetConstructionCost()
+        {
+            return IsUpgrading() ? UpgradeConstructionCost : ConstructionCost;
+        }
+
+        /// <summary>
+        /// Returns the maintenance cost of the active upgrade or this building.
+        /// </summary>
+        /// <returns>The effective maintenance cost.</returns>
+        public int GetMaintenanceCost()
+        {
+            return IsUpgrading() ? UpgradeMaintenanceCost : MaintenanceCost;
+        }
+
+        /// <summary>
+        /// Returns the upgrade target name while an upgrade is active.
+        /// </summary>
+        /// <returns>The effective display name.</returns>
+        public override string GetDisplayName()
+        {
+            return IsUpgrading() && !string.IsNullOrEmpty(UpgradeTargetDisplayName)
+                ? UpgradeTargetDisplayName
+                : base.GetDisplayName();
+        }
+
+        /// <summary>
+        /// Starts an authored upgrade while preserving this building's occupied planet slot.
+        /// </summary>
+        /// <param name="upgrade">The authored upgrade definition.</param>
+        /// <exception cref="InvalidOperationException">Thrown when the upgrade is not valid.</exception>
+        public void BeginUpgrade(Building upgrade)
+        {
+            if (!IsOperational() || !CanUpgradeTo(upgrade))
+                throw new InvalidOperationException("The building cannot start that upgrade.");
+
+            UpgradeTargetTypeID = upgrade.TypeID;
+            UpgradeTargetDisplayName = upgrade.DisplayName;
+            UpgradeConstructionCost = upgrade.ConstructionCost;
+            UpgradeMaintenanceCost = upgrade.MaintenanceCost;
+            ManufacturingStatus = ManufacturingStatus.Building;
+            ManufacturingProgress = 0;
+            Movement = null;
+        }
+
+        /// <summary>
+        /// Applies an authored upgrade definition and returns the building to operational service.
+        /// </summary>
+        /// <param name="upgrade">The authored upgrade definition.</param>
+        /// <exception cref="InvalidOperationException">Thrown when the active upgrade does not match.</exception>
+        public void CompleteUpgrade(Building upgrade)
+        {
+            if (
+                !IsUpgrading()
+                || upgrade == null
+                || !string.Equals(upgrade.TypeID, UpgradeTargetTypeID, StringComparison.Ordinal)
+            )
+                throw new InvalidOperationException("The active building upgrade does not match.");
+
+            ApplyAuthoredDefinition(upgrade);
+            ClearUpgradeState();
+            ManufacturingStatus = ManufacturingStatus.Complete;
+            ManufacturingProgress = 0;
+            ManufacturingQueueSequence = 0;
+            ProducerOwnerID = null;
+            ProducerPlanetID = null;
+            ProductionCycleProgress = 0;
+            ProductionCycleDuration = 0;
+            ProductionPointReady = false;
+            ProductionInputReserved = false;
+            ResourceMaintenanceAllocation = 0;
+            ResourceStartupCyclePending = true;
+            Movement = null;
+        }
+
+        /// <summary>
+        /// Cancels an active upgrade and restores the original building identity.
+        /// </summary>
+        public void CancelUpgrade()
+        {
+            if (!IsUpgrading())
+                return;
+
+            ClearUpgradeState();
+            ManufacturingStatus = ManufacturingStatus.Complete;
+            ManufacturingProgress = 0;
+            ManufacturingQueueSequence = 0;
+            ProducerOwnerID = null;
+            ProducerPlanetID = null;
+            Movement = null;
         }
 
         /// <summary>
@@ -213,6 +329,7 @@ namespace Rebellion.Game.Units
                 return;
 
             IsDestroyed = true;
+            ClearUpgradeState();
             ManufacturingStatus = ManufacturingStatus.Complete;
             ManufacturingProgress = 0;
             ManufacturingQueueSequence = 0;
@@ -280,6 +397,69 @@ namespace Rebellion.Game.Units
             ResourceMaintenanceAllocation = 0;
             ResourceStartupCyclePending = true;
             Movement = null;
+        }
+
+        /// <summary>
+        /// Copies authored facility data from an upgrade definition without changing runtime identity.
+        /// </summary>
+        /// <param name="upgrade">The authored upgrade definition.</param>
+        private void ApplyAuthoredDefinition(Building upgrade)
+        {
+            TypeID = upgrade.TypeID;
+            DisplayName = upgrade.DisplayName;
+            DisplayStatus = upgrade.DisplayStatus;
+            DisplayImagePath = upgrade.DisplayImagePath;
+            SmallDisplayImagePath = upgrade.SmallDisplayImagePath;
+            MessageImagePath = upgrade.MessageImagePath;
+            InTransitImagePath = upgrade.InTransitImagePath;
+            InTransitSmallImagePath = upgrade.InTransitSmallImagePath;
+            DamagedImagePath = upgrade.DamagedImagePath;
+            DamagedSmallImagePath = upgrade.DamagedSmallImagePath;
+            CapturedOverlayImagePath = upgrade.CapturedOverlayImagePath;
+            InjuredImagePath = upgrade.InjuredImagePath;
+            Description = upgrade.Description;
+            EncyclopediaImagePath = upgrade.EncyclopediaImagePath;
+            EncyclopediaDescription = upgrade.EncyclopediaDescription;
+            EncyclopediaStats =
+                upgrade.EncyclopediaStats == null
+                    ? new List<EncyclopediaEntryStat>()
+                    : new List<EncyclopediaEntryStat>(upgrade.EncyclopediaStats);
+            ConstructionCost = upgrade.ConstructionCost;
+            MaintenanceCost = upgrade.MaintenanceCost;
+            BaseBuildSpeed = upgrade.BaseBuildSpeed;
+            ManufacturingFactionInstanceIDs =
+                upgrade.ManufacturingFactionInstanceIDs == null
+                    ? null
+                    : new List<string>(upgrade.ManufacturingFactionInstanceIDs);
+            ResearchOrder = upgrade.ResearchOrder;
+            ResearchDifficulty = upgrade.ResearchDifficulty;
+            BuildingType = upgrade.BuildingType;
+            ProcessRate = upgrade.ProcessRate;
+            Bombardment = upgrade.Bombardment;
+            WeaponStrength = upgrade.WeaponStrength;
+            ShieldStrength = upgrade.ShieldStrength;
+            WeaponPower = upgrade.WeaponPower;
+            DefenseWeaponEffect = upgrade.DefenseWeaponEffect;
+            IsDetectionBlocker = upgrade.IsDetectionBlocker;
+            ProtectedUnitTypeIDs =
+                upgrade.ProtectedUnitTypeIDs == null
+                    ? new List<string>()
+                    : new List<string>(upgrade.ProtectedUnitTypeIDs);
+            ProductionModifier = upgrade.ProductionModifier;
+            Upgrades =
+                upgrade.Upgrades == null ? new List<string>() : new List<string>(upgrade.Upgrades);
+            ProductionType = upgrade.ProductionType;
+        }
+
+        /// <summary>
+        /// Clears persisted state used only while an upgrade is active.
+        /// </summary>
+        private void ClearUpgradeState()
+        {
+            UpgradeTargetTypeID = null;
+            UpgradeTargetDisplayName = null;
+            UpgradeConstructionCost = 0;
+            UpgradeMaintenanceCost = 0;
         }
 
         /// <summary>

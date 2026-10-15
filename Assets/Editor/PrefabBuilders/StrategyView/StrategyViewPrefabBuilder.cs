@@ -5933,10 +5933,16 @@ public static class StrategyViewPrefabBuilder
         SetSourceRect(itemImage.rectTransform, 0, 0, 67, 40);
         RawImage selectionImage = CreateRawButton("SelectionImage", item.transform, null);
         SetSourceRect(selectionImage.rectTransform, 0, 0, 67, 40);
+        RawImage upgradeImage = CreateRawButton("UpgradeImage", item.transform, null);
+        upgradeImage.uvRect = new Rect(0.2361111f, 0.23157895f, 0.5277778f, 0.5368421f);
+        upgradeImage.rectTransform.localEulerAngles = new Vector3(0f, 0f, -90f);
+        SetSourceRect(upgradeImage.rectTransform, 50, 0, 14, 18);
+        upgradeImage.gameObject.SetActive(false);
 
         AssignReference(view, "hitAreaImage", hitArea);
         AssignReference(view, "itemImage", itemImage);
         AssignReference(view, "selectionImage", selectionImage);
+        AssignReference(view, "upgradeImage", upgradeImage);
         AddTemplateLayoutElement(item.GetComponent<RectTransform>());
         item.SetActive(false);
         return view;

@@ -223,7 +223,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
                 new[]
                 {
                     new FacilityInventoryItemRenderData(_texture, true),
-                    new FacilityInventoryItemRenderData(_texture, false),
+                    new FacilityInventoryItemRenderData(
+                        _texture,
+                        false,
+                        upgrading: true,
+                        upgradeTexture: _texture
+                    ),
                     new FacilityInventoryItemRenderData(null, false),
                 }
             );
@@ -244,6 +249,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.AreEqual(2, items[2].Index);
             Assert.IsTrue(FindInventoryObject(items[0], "SelectionImage").activeSelf);
             Assert.IsFalse(FindInventoryObject(items[1], "SelectionImage").activeSelf);
+            Assert.IsFalse(FindInventoryObject(items[0], "UpgradeImage").activeSelf);
+            Assert.IsTrue(FindInventoryObject(items[1], "UpgradeImage").activeSelf);
             Assert.IsTrue(FindInventoryObject(items[2], "ItemImage").activeSelf);
             Assert.IsFalse(FindCard("ShipyardsManufacturingLaneCard").gameObject.activeSelf);
         }

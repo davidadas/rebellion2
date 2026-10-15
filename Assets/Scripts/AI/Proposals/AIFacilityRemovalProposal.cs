@@ -88,6 +88,12 @@ namespace Rebellion.AI.Proposals
             if (_surplus.Count == 0 && !CanExecute(context))
                 return;
 
+            List<IManufacturable> upgrading = _surplus
+                .Where(building => building.IsUpgrading())
+                .Cast<IManufacturable>()
+                .ToList();
+            context.Manufacturing.CancelManufacturing(upgrading, context.Faction.InstanceID);
+
             List<IManufacturable> completed = _surplus
                 .Where(building => building.ManufacturingStatus == ManufacturingStatus.Complete)
                 .Cast<IManufacturable>()

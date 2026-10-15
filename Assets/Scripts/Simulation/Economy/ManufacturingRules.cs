@@ -23,7 +23,7 @@ namespace Rebellion.Simulation
             string productTypeID = null;
             foreach (IManufacturable item in items)
             {
-                string itemTypeID = item?.GetTypeID();
+                string itemTypeID = GetProductTypeID(item);
                 if (string.IsNullOrEmpty(itemTypeID))
                     return null;
 
@@ -63,10 +63,58 @@ namespace Rebellion.Simulation
                 );
             }
 
+            if (template is Building requestedUpgrade && requestedUpgrade.IsUpgrading())
+            {
+                return IsBuildingUpgradeProject(items, requestedUpgrade.UpgradeTargetTypeID);
+            }
+
+            if (items.Any(item => item is Building upgrading && upgrading.IsUpgrading()))
+                return false;
+
             return items.All(item =>
                 item is not Building { IsDestroyed: true }
-                && string.Equals(item.GetTypeID(), template.GetTypeID(), StringComparison.Ordinal)
+                && string.Equals(
+                    GetProductTypeID(item),
+                    GetProductTypeID(template),
+                    StringComparison.Ordinal
+                )
             );
+        }
+
+        /// <summary>
+        /// Returns whether a lane contains only in-place upgrades to one target type.
+        /// </summary>
+        /// <param name="items">The active manufacturing items.</param>
+        /// <param name="targetTypeID">The authored upgrade target type.</param>
+        /// <returns>True when every queued item is an upgrade to the requested target.</returns>
+        internal static bool IsBuildingUpgradeProject(
+            IReadOnlyCollection<IManufacturable> items,
+            string targetTypeID
+        )
+        {
+            return items?.Count > 0
+                && !string.IsNullOrEmpty(targetTypeID)
+                && items.All(item =>
+                    item is Building queuedUpgrade
+                    && queuedUpgrade.IsUpgrading()
+                    && string.Equals(
+                        queuedUpgrade.UpgradeTargetTypeID,
+                        targetTypeID,
+                        StringComparison.Ordinal
+                    )
+                );
+        }
+
+        /// <summary>
+        /// Gets the product represented by one ordinary order or in-place upgrade.
+        /// </summary>
+        /// <param name="item">The manufacturing item.</param>
+        /// <returns>The product type identifier.</returns>
+        private static string GetProductTypeID(IManufacturable item)
+        {
+            return item is Building upgrading && upgrading.IsUpgrading()
+                ? upgrading.UpgradeTargetTypeID
+                : item?.GetTypeID();
         }
 
         /// <summary>

@@ -569,6 +569,12 @@ namespace Rebellion.Simulation
         /// <param name="item">The completed item.</param>
         private void MarkCompleteAndDispatch(Planet productionPlanet, IManufacturable item)
         {
+            if (item is Building upgrading && upgrading.IsUpgrading())
+            {
+                upgrading.CompleteUpgrade(GetUpgradeDefinition(upgrading));
+                return;
+            }
+
             if (item is Building { IsDestroyed: true } rebuilding)
             {
                 rebuilding.CompleteRebuild();
@@ -591,6 +597,32 @@ namespace Rebellion.Simulation
             _movementSystem.RequestMove(item, destination, productionPlanet);
             if (item.Movement == null)
                 item.ManufacturingStatus = ManufacturingStatus.Complete;
+        }
+
+        /// <summary>
+        /// Resolves the unlocked authored definition for an active building upgrade.
+        /// </summary>
+        /// <param name="building">The building whose upgrade is completing.</param>
+        /// <returns>The matching authored upgrade definition.</returns>
+        /// <exception cref="InvalidOperationException">Thrown when the upgrade definition is unavailable.</exception>
+        private Building GetUpgradeDefinition(Building building)
+        {
+            Faction faction = _game.GetFactionByOwnerInstanceID(building.GetOwnerInstanceID());
+            Building upgrade = faction
+                .GetUnlockedTechnologies(ManufacturingType.Building)
+                .Select(technology => technology.GetReference())
+                .OfType<Building>()
+                .FirstOrDefault(candidate =>
+                    string.Equals(
+                        candidate.TypeID,
+                        building.UpgradeTargetTypeID,
+                        StringComparison.Ordinal
+                    )
+                );
+            return upgrade
+                ?? throw new InvalidOperationException(
+                    $"Building upgrade definition '{building.UpgradeTargetTypeID}' is unavailable."
+                );
         }
 
         /// <summary>

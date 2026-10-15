@@ -268,13 +268,20 @@ internal sealed class FacilityWindowProjector
         int total = session.GetDisplayCount(activeTab);
         List<FacilityInventoryItemRenderData> presentations =
             new List<FacilityInventoryItemRenderData>(total);
+        Texture2D upgradeTexture = uiContext.GetTexture(
+            uiContext
+                .GetTheme(ownerFactionId)
+                ?.GalacticInformationDisplay?.SubmenuArrowActiveImagePath
+        );
         for (int index = 0; index < total; index++)
         {
             Building item = index < items.Count ? items[index] : null;
             presentations.Add(
                 new FacilityInventoryItemRenderData(
                     GetInventoryTexture(uiContext, ownerFactionId, activeTab, item),
-                    item != null && session.SelectedBuildingIds.Contains(item.InstanceID)
+                    item != null && session.SelectedBuildingIds.Contains(item.InstanceID),
+                    item?.IsUpgrading() == true,
+                    upgradeTexture
                 )
             );
         }
@@ -315,7 +322,10 @@ internal sealed class FacilityWindowProjector
                 return movementTexture;
         }
 
-        if (building.GetManufacturingStatus() == ManufacturingStatus.Building)
+        if (
+            building.GetManufacturingStatus() == ManufacturingStatus.Building
+            && !building.IsUpgrading()
+        )
         {
             string constructionPath = uiContext
                 .GetTheme(ownerFactionId)

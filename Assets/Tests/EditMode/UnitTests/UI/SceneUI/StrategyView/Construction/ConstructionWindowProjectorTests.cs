@@ -302,6 +302,45 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
         }
 
         [Test]
+        public void CreateRenderData_UpgradeOperation_ProjectsTargetAndNetMaintenance()
+        {
+            AddTexture("advanced-display");
+            Building source = new Building
+            {
+                InstanceID = "source",
+                DisplayName = "Basic shipyard",
+                MaintenanceCost = 4,
+            };
+            Building target = new Building
+            {
+                TypeID = "advanced",
+                DisplayName = "Advanced shipyard",
+                DisplayImagePath = "advanced-display",
+                ConstructionCost = 20,
+                MaintenanceCost = 9,
+            };
+            BuildingUpgradeSelection selection = new BuildingUpgradeSelection(source, target);
+
+            ConstructionWindowRenderData data = _projector.CreateRenderData(
+                0,
+                0,
+                _ownerId,
+                true,
+                new IManufacturable[] { selection },
+                0,
+                1,
+                new[] { 0 },
+                new[] { new ConstructionBuildEstimate(20, null) },
+                false
+            );
+
+            Assert.AreEqual("Upgrade Basic shipyard to Advanced shipyard", data.SelectedName);
+            Assert.AreSame(_textures["advanced-display"], data.SelectedTexture);
+            Assert.AreEqual("20", data.ConstructionCost);
+            Assert.AreEqual("5", data.MaintenanceCost);
+        }
+
+        [Test]
         public void CreateRenderData_EmptySelection_ProjectsHiddenSelectionState()
         {
             ConstructionWindowRenderData data = _projector.CreateRenderData(

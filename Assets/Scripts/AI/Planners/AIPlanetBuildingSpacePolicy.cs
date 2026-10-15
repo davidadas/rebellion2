@@ -151,7 +151,10 @@ namespace Rebellion.AI.Planners
             if (building.IsDestroyed)
                 return AIPlanetBuildingRemovalPriority.Rubble;
 
-            if (building.ManufacturingStatus == ManufacturingStatus.Building)
+            if (
+                building.ManufacturingStatus == ManufacturingStatus.Building
+                && !building.IsUpgrading()
+            )
                 return AIPlanetBuildingRemovalPriority.Unfinished;
 
             BuildingType buildingType = building.GetBuildingType();

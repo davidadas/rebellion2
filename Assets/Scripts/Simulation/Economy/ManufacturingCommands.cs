@@ -86,6 +86,118 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
+        /// Queues an authored building upgrade without consuming another planet slot.
+        /// </summary>
+        /// <param name="producer">The planet performing the upgrade.</param>
+        /// <param name="building">The operational building being upgraded.</param>
+        /// <param name="upgrade">The authored upgrade definition.</param>
+        /// <param name="ownerInstanceId">The faction requesting the upgrade.</param>
+        /// <returns>True when the upgrade was queued.</returns>
+        public bool StartBuildingUpgrade(
+            Planet producer,
+            Building building,
+            Building upgrade,
+            string ownerInstanceId
+        )
+        {
+            List<IManufacturable> activeProject = null;
+            producer
+                ?.GetManufacturingQueue()
+                .TryGetValue(ManufacturingType.Building, out activeProject);
+            List<Building> buildings = ManufacturingRules.IsBuildingUpgradeProject(
+                activeProject,
+                upgrade?.TypeID
+            )
+                ? activeProject.OfType<Building>().Append(building).ToList()
+                : new List<Building> { building };
+            return SetBuildingUpgradeOrder(
+                producer,
+                buildings,
+                upgrade,
+                buildings.Count,
+                ownerInstanceId
+            );
+        }
+
+        /// <summary>
+        /// Sets the installed buildings assigned to one in-place upgrade lane.
+        /// </summary>
+        /// <param name="producer">The planet performing the upgrades.</param>
+        /// <param name="buildings">The installed buildings available to the order.</param>
+        /// <param name="upgrade">The authored upgrade definition.</param>
+        /// <param name="count">The requested total upgrade count.</param>
+        /// <param name="ownerInstanceId">The faction requesting the upgrades.</param>
+        /// <returns>True when the complete upgrade order was applied.</returns>
+        public bool SetBuildingUpgradeOrder(
+            Planet producer,
+            IReadOnlyList<Building> buildings,
+            Building upgrade,
+            int count,
+            string ownerInstanceId
+        )
+        {
+            if (
+                !_queries.CanSetBuildingUpgradeOrder(
+                    producer,
+                    buildings,
+                    upgrade,
+                    count,
+                    ownerInstanceId
+                )
+            )
+                return false;
+
+            producer
+                .GetManufacturingQueue()
+                .TryGetValue(ManufacturingType.Building, out List<IManufacturable> activeProject);
+            bool compatibleProject = ManufacturingRules.IsBuildingUpgradeProject(
+                activeProject,
+                upgrade.TypeID
+            );
+            HashSet<Building> desired = buildings.Take(count).ToHashSet();
+            if (compatibleProject)
+            {
+                foreach (
+                    Building removed in activeProject
+                        .OfType<Building>()
+                        .Where(building => !desired.Contains(building))
+                        .ToList()
+                )
+                {
+                    CancelManufacturing(removed, ownerInstanceId);
+                }
+            }
+            else
+            {
+                ClearQueue(producer, ManufacturingType.Building);
+            }
+
+            producer
+                .GetManufacturingQueue()
+                .TryGetValue(ManufacturingType.Building, out List<IManufacturable> queue);
+            HashSet<Building> queued =
+                queue?.OfType<Building>().ToHashSet() ?? new HashSet<Building>();
+            foreach (
+                Building building in buildings
+                    .Take(count)
+                    .Where(building => !queued.Contains(building))
+            )
+            {
+                building.BeginUpgrade(upgrade);
+                building.ProducerOwnerID = producer.GetOwnerInstanceID();
+                building.ProducerPlanetID = producer.GetInstanceID();
+                producer.AddToManufacturingQueue(building);
+                _game
+                    .GetFactionByOwnerInstanceID(ownerInstanceId)
+                    ?.CancelMaterialRequests(building);
+                GameLogger.Log(
+                    $"Enqueued {building.GetDisplayName()} upgrade at {producer.GetDisplayName()} (cost: {building.GetConstructionCost()})"
+                );
+            }
+            return true;
+        }
+
+        /// <summary>
         /// Sets the product and total unfinished quantity for one manufacturing lane.
         /// </summary>
         /// <param name="producer">The planet performing the manufacturing.</param>
@@ -809,6 +921,12 @@ namespace Rebellion.Simulation
         /// <returns>The former destination fleet, or null for a non-fleet destination.</returns>
         private Fleet DetachQueuedItem(IManufacturable item)
         {
+            if (item is Building upgrading && upgrading.IsUpgrading())
+            {
+                upgrading.CancelUpgrade();
+                return null;
+            }
+
             if (item is Building { IsDestroyed: true } rebuilding)
             {
                 rebuilding.CancelRebuild();

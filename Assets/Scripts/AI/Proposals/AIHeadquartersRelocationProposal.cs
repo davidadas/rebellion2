@@ -163,11 +163,14 @@ namespace Rebellion.AI.Proposals
         {
             if (BuildingToRemove.ManufacturingStatus == ManufacturingStatus.Building)
             {
+                bool wasUpgrading = BuildingToRemove.IsUpgrading();
                 bool cancelled = context.Manufacturing.CancelManufacturing(
                     BuildingToRemove,
                     context.Faction.InstanceID
                 );
-                if (!cancelled || !BuildingToRemove.IsDestroyed)
+                if (!cancelled)
+                    return false;
+                if (!wasUpgrading && !BuildingToRemove.IsDestroyed)
                     return cancelled;
             }
 

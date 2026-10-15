@@ -44,6 +44,38 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        public void ValidateBuildingUpgrades_DifferentFacilityCategory_ThrowsInvalidDataException()
+        {
+            Building basic = CreateBuilding("basic", "advanced");
+            basic.BuildingType = BuildingType.Shipyard;
+            Building advanced = CreateBuilding("advanced");
+            advanced.BuildingType = BuildingType.TrainingFacility;
+
+            InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+                GameDataCatalog.ValidateBuildingUpgrades(new[] { basic, advanced })
+            );
+
+            StringAssert.Contains("different facility category", exception.Message);
+        }
+
+        [Test]
+        public void ValidateBuildingUpgrades_DifferentProductionCategory_ThrowsInvalidDataException()
+        {
+            Building basic = CreateBuilding("basic", "advanced");
+            basic.BuildingType = BuildingType.Shipyard;
+            basic.ProductionType = ManufacturingType.Ship;
+            Building advanced = CreateBuilding("advanced");
+            advanced.BuildingType = BuildingType.Shipyard;
+            advanced.ProductionType = ManufacturingType.Troop;
+
+            InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+                GameDataCatalog.ValidateBuildingUpgrades(new[] { basic, advanced })
+            );
+
+            StringAssert.Contains("different production category", exception.Message);
+        }
+
+        [Test]
         public void ValidateBuildingUpgrades_SelfUpgrade_ThrowsInvalidDataException()
         {
             Building building = CreateBuilding("basic", "basic");

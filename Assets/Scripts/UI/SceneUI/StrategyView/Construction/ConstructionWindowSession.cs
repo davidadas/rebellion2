@@ -118,6 +118,7 @@ internal sealed class ConstructionWindowSession
             SelectedItemIndex = Math.Max(0, Math.Min(previousIndex, items.Count - 1));
 
         selectedItemId = GetItemSelectionID(SelectedItem);
+        UpdateMaximumBuildCount();
         if (items.Count == 0)
         {
             SelectedItemIndex = 0;
@@ -142,7 +143,9 @@ internal sealed class ConstructionWindowSession
 
         SelectedItemIndex = activeIndex;
         selectedItemId = itemId;
-        maximumBuildCount = Math.Max(_defaultMaximumBuildCount, buildCount);
+        maximumBuildCount = SelectedItem is BuildingUpgradeSelection upgrade
+            ? upgrade.Sources.Count
+            : Math.Max(_defaultMaximumBuildCount, buildCount);
         SetBuildCount(buildCount);
     }
 
@@ -158,6 +161,7 @@ internal sealed class ConstructionWindowSession
 
         SelectedItemIndex = index;
         selectedItemId = GetItemSelectionID(items[index]);
+        UpdateMaximumBuildCount();
         DropdownOpen = false;
         return true;
     }
@@ -294,8 +298,22 @@ internal sealed class ConstructionWindowSession
     /// <returns>The selection identifier, or null.</returns>
     private static string GetItemSelectionID(IManufacturable item)
     {
-        return item is Building { IsDestroyed: true } building
-            ? building.InstanceID
-            : item?.GetTypeID();
+        return item switch
+        {
+            BuildingUpgradeSelection upgrade => upgrade.GetSelectionID(),
+            Building { IsDestroyed: true } building => building.InstanceID,
+            _ => item?.GetTypeID(),
+        };
+    }
+
+    /// <summary>
+    /// Applies the quantity limit for the selected construction operation.
+    /// </summary>
+    private void UpdateMaximumBuildCount()
+    {
+        maximumBuildCount = SelectedItem is BuildingUpgradeSelection upgrade
+            ? upgrade.Sources.Count
+            : Math.Max(_defaultMaximumBuildCount, BuildCount);
+        SetBuildCount(BuildCount);
     }
 }

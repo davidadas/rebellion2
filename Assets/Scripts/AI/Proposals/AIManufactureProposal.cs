@@ -596,29 +596,14 @@ namespace Rebellion.AI.Proposals
         private bool ExecuteBuildingUpgrade(AITurnContext context)
         {
             Building replacement = Demand.BuildingToReplace;
-            Planet destinationPlanet = Destination as Planet;
-            context.Game.DetachNode(replacement);
+            bool started = context.Manufacturing.StartBuildingUpgrade(
+                ProducerPlanet,
+                replacement,
+                Product.GetReference() as Building,
+                context.Faction.InstanceID
+            );
 
-            bool started = false;
-            try
-            {
-                started = context.Manufacturing.StartManufacturing(
-                    ProducerPlanet,
-                    Product.GetReference(),
-                    destinationPlanet,
-                    1,
-                    context.Faction.InstanceID
-                );
-            }
-            finally
-            {
-                if (!started && replacement.GetParent() == null)
-                    context.Game.AttachNode(replacement, destinationPlanet);
-            }
-
-            if (started)
-                context.Faction.CancelMaterialRequests(replacement);
-            else
+            if (!started)
                 LogEnqueueFailure();
             return started;
         }

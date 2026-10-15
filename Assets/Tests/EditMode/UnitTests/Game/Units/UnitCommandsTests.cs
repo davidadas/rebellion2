@@ -63,6 +63,25 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        public void Destroy_UpgradingBuilding_RemovesQueueAndPreservesSourceRubble()
+        {
+            Building building = CreateBuilding("shipyard", BuildingType.Shipyard);
+            building.TypeID = "basic-shipyard";
+            building.Upgrades.Add("advanced-shipyard");
+            building.BeginUpgrade(
+                new Building { TypeID = "advanced-shipyard", BuildingType = BuildingType.Shipyard }
+            );
+            building.ProducerPlanetID = _planet.InstanceID;
+            _planet.AddToManufacturingQueue(building);
+
+            _commands.Destroy(building);
+
+            Assert.IsFalse(_planet.GetManufacturingQueue().ContainsKey(ManufacturingType.Building));
+            Assert.AreEqual("basic-shipyard", building.TypeID);
+            Assert.IsTrue(building.IsRubble());
+        }
+
+        [Test]
         public void Destroy_FacilityWithMaterialRequests_ClearsRequests()
         {
             Building building = CreateBuilding("mine", BuildingType.Mine);

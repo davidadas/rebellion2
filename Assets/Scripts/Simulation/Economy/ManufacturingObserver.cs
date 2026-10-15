@@ -86,6 +86,8 @@ namespace Rebellion.Simulation
 
                     if (string.IsNullOrEmpty(manufacturable.ProducerPlanetID))
                     {
+                        if (manufacturable is Building upgrading && upgrading.IsUpgrading())
+                            upgrading.CancelUpgrade();
                         if (manufacturable is Building rebuilding && rebuilding.IsRebuilding())
                             rebuilding.CancelRebuild();
                         return;
@@ -96,6 +98,8 @@ namespace Rebellion.Simulation
                     );
                     if (producer == null)
                     {
+                        if (manufacturable is Building upgrading && upgrading.IsUpgrading())
+                            upgrading.CancelUpgrade();
                         if (manufacturable is Building rebuilding && rebuilding.IsRebuilding())
                             rebuilding.CancelRebuild();
                         return;

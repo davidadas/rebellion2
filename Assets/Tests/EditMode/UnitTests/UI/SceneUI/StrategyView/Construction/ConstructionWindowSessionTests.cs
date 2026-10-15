@@ -98,6 +98,23 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
         }
 
         [Test]
+        public void InitializeOrder_ActiveUpgrade_CapsQuantityAtAvailableSourceCount()
+        {
+            Building firstSource = new Building { InstanceID = "source-1", TypeID = "source" };
+            Building secondSource = new Building { InstanceID = "source-2", TypeID = "source" };
+            BuildingUpgradeSelection active = new BuildingUpgradeSelection(
+                new[] { firstSource, secondSource },
+                new Building { TypeID = "target" }
+            );
+            _session.SetItems(new IManufacturable[] { active });
+
+            _session.InitializeOrder(active.GetSelectionID(), 2);
+            _session.IncrementBuildCount();
+
+            Assert.AreEqual(2, _session.BuildCount);
+        }
+
+        [Test]
         public void InitializeOrder_AfterUserEdit_PreservesEditedState()
         {
             CapitalShip first = new CapitalShip { TypeID = "first" };
@@ -191,6 +208,56 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
 
             Assert.AreEqual(2, _session.BuildCount);
             Assert.AreEqual(2, _session.OrderBuildCount);
+        }
+
+        [Test]
+        public void IncrementBuildCount_UpgradeOperation_IncreasesToAvailableSourceCount()
+        {
+            Building firstSource = new Building { InstanceID = "source-1" };
+            Building secondSource = new Building { InstanceID = "source-2" };
+            Building target = new Building { TypeID = "target" };
+            _session.SetItems(
+                new IManufacturable[]
+                {
+                    new CapitalShip { TypeID = "ship" },
+                    new BuildingUpgradeSelection(new[] { firstSource, secondSource }, target),
+                }
+            );
+            _session.SetBuildCount(5);
+
+            _session.SelectItem(1);
+            _session.IncrementBuildCount();
+            _session.IncrementBuildCount();
+
+            Assert.AreEqual(2, _session.BuildCount);
+            Assert.AreEqual(2, _session.OrderBuildCount);
+        }
+
+        [Test]
+        public void SetItems_RecreatedUpgradeOperation_PreservesSourceAndTargetSelection()
+        {
+            Building source = new Building { InstanceID = "source", TypeID = "source" };
+            Building target = new Building { TypeID = "target" };
+            BuildingUpgradeSelection selected = new BuildingUpgradeSelection(source, target);
+            _session.SetItems(
+                new IManufacturable[]
+                {
+                    new CapitalShip { TypeID = "ship" },
+                    selected,
+                }
+            );
+            _session.SelectItem(1);
+            BuildingUpgradeSelection replacement = new BuildingUpgradeSelection(source, target);
+
+            _session.SetItems(
+                new IManufacturable[]
+                {
+                    replacement,
+                    new CapitalShip { TypeID = "ship" },
+                }
+            );
+
+            Assert.AreSame(replacement, _session.SelectedItem);
         }
     }
 }

@@ -129,9 +129,13 @@ internal sealed class ConstructionWindowProjector
     /// <returns>The displayed construction name.</returns>
     private static string GetItemDisplayName(IManufacturable item)
     {
-        return item is Building { IsDestroyed: true }
-            ? $"Rebuild {item.GetDisplayName()}"
-            : item?.GetDisplayName();
+        return item switch
+        {
+            BuildingUpgradeSelection upgrade =>
+                $"Upgrade {upgrade.Source.GetDisplayName()} to {upgrade.Target.GetDisplayName()}",
+            Building { IsDestroyed: true } => $"Rebuild {item.GetDisplayName()}",
+            _ => item?.GetDisplayName(),
+        };
     }
 
     /// <summary>
@@ -154,6 +158,9 @@ internal sealed class ConstructionWindowProjector
     /// <returns>The resolved display texture, or null.</returns>
     private static Texture2D GetItemTexture(UIContext uiContext, IManufacturable item)
     {
+        if (item is BuildingUpgradeSelection upgrade)
+            item = upgrade.Target;
+
         if (item is CapitalShip capitalShip)
         {
             Texture2D battleResultTexture = uiContext.GetTexture(capitalShip.BattleResultImagePath);

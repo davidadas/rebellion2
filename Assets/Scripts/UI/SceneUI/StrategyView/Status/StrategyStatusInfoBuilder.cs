@@ -266,7 +266,7 @@ internal sealed class StrategyStatusInfoBuilder
         info.Rows.Add(
             new StrategyStatusRow(
                 "Maintenance Cost:",
-                (building.IsRubble() ? 0 : building.MaintenanceCost).ToString()
+                (building.IsRubble() ? 0 : building.GetMaintenanceCost()).ToString()
             )
         );
         if (!defense)
@@ -846,6 +846,9 @@ internal sealed class StrategyStatusInfoBuilder
     /// <returns>The displayed status text.</returns>
     private static string GetManufacturingStatusText(IManufacturable item)
     {
+        if (item is Building upgrading && upgrading.IsUpgrading())
+            return "Upgrading";
+
         if (
             item is Building
             {

@@ -96,6 +96,38 @@ namespace Rebellion.Tests.AI.Proposals
         }
 
         [Test]
+        public void Execute_FullDestinationWithUpgradingBuilding_RemovesSourceAndRelocatesHeadquarters()
+        {
+            AITurnContext context = CreateContext(
+                unfinishedDestinationBuilding: false,
+                out Planet origin,
+                out Planet destination,
+                out Building headquarters,
+                out Building upgrading
+            );
+            Building target = AITestSceneBuilder.CreateBuildingTemplate(
+                "advanced-defense",
+                BuildingType.Defense
+            );
+            upgrading.Upgrades.Add(target.TypeID);
+            upgrading.BeginUpgrade(target);
+            upgrading.ProducerOwnerID = context.Faction.InstanceID;
+            upgrading.ProducerPlanetID = origin.InstanceID;
+            origin.AddToManufacturingQueue(upgrading);
+            context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+            AIHeadquartersRelocationProposal proposal = new AIHeadquartersRelocationPlanner()
+                .Plan(context)
+                .Cast<AIHeadquartersRelocationProposal>()
+                .Single();
+
+            proposal.Execute(context);
+
+            Assert.IsNull(context.Game.GetSceneNodeByInstanceID<Building>(upgrading.InstanceID));
+            Assert.AreSame(destination, headquarters.GetParent());
+            Assert.IsNotNull(headquarters.Movement);
+        }
+
+        [Test]
         public void Execute_ResourceFacilityRemoval_CommitsMaintenanceHeadroomCost()
         {
             AITurnContext context = CreateContext(

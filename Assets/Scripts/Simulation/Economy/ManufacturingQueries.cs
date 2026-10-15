@@ -91,6 +91,171 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
+        /// Determines whether an owned operational building can be upgraded in place.
+        /// </summary>
+        /// <param name="producer">The planet performing the upgrade.</param>
+        /// <param name="building">The building being upgraded.</param>
+        /// <param name="upgrade">The authored upgrade definition.</param>
+        /// <param name="ownerInstanceId">The faction requesting the upgrade.</param>
+        /// <returns>True when the upgrade can be queued.</returns>
+        public bool CanStartBuildingUpgrade(
+            Planet producer,
+            Building building,
+            Building upgrade,
+            string ownerInstanceId
+        )
+        {
+            return CanSetBuildingUpgradeOrder(
+                producer,
+                new[] { building },
+                upgrade,
+                1,
+                ownerInstanceId
+            );
+        }
+
+        /// <summary>
+        /// Determines whether a construction lane can contain the requested number of upgrades.
+        /// </summary>
+        /// <param name="producer">The planet performing the upgrades.</param>
+        /// <param name="buildings">The installed buildings available to the order.</param>
+        /// <param name="upgrade">The authored upgrade definition.</param>
+        /// <param name="count">The requested total upgrade count.</param>
+        /// <param name="ownerInstanceId">The faction requesting the upgrades.</param>
+        /// <returns>True when the complete upgrade order can be applied atomically.</returns>
+        public bool CanSetBuildingUpgradeOrder(
+            Planet producer,
+            IReadOnlyList<Building> buildings,
+            Building upgrade,
+            int count,
+            string ownerInstanceId
+        )
+        {
+            if (
+                producer == null
+                || buildings == null
+                || upgrade == null
+                || count <= 0
+                || string.IsNullOrEmpty(ownerInstanceId)
+                || !string.Equals(
+                    producer.GetOwnerInstanceID(),
+                    ownerInstanceId,
+                    StringComparison.Ordinal
+                )
+                || !IManufacturable.CanBeManufacturedBy(upgrade, ownerInstanceId)
+            )
+            {
+                return false;
+            }
+
+            Faction faction = _game.GetFactionByOwnerInstanceID(ownerInstanceId);
+            if (
+                faction
+                    ?.GetUnlockedTechnologies(ManufacturingType.Building)
+                    .Any(technology => ReferenceEquals(technology.GetReference(), upgrade)) != true
+            )
+            {
+                return false;
+            }
+
+            List<Building> distinctBuildings = buildings
+                .Where(building => building != null)
+                .GroupBy(building => building.InstanceID, StringComparer.Ordinal)
+                .Select(group => group.First())
+                .ToList();
+            if (distinctBuildings.Count < count)
+                return false;
+
+            producer
+                .GetManufacturingQueue()
+                .TryGetValue(ManufacturingType.Building, out List<IManufacturable> activeProject);
+            bool compatibleProject = ManufacturingRules.IsBuildingUpgradeProject(
+                activeProject,
+                upgrade.TypeID
+            );
+            HashSet<Building> activeUpgrades = compatibleProject
+                ? activeProject.OfType<Building>().ToHashSet()
+                : new HashSet<Building>();
+            List<Building> desired = distinctBuildings.Take(count).ToList();
+            foreach (Building building in desired)
+            {
+                if (
+                    !string.Equals(
+                        building.GetOwnerInstanceID(),
+                        ownerInstanceId,
+                        StringComparison.Ordinal
+                    )
+                    || building.GetParent() is not Planet destination
+                    || !string.Equals(
+                        destination.GetOwnerInstanceID(),
+                        ownerInstanceId,
+                        StringComparison.Ordinal
+                    )
+                    || _game.GetSceneNodeByInstanceID<Building>(building.InstanceID) != building
+                    || !building.CanUpgradeTo(upgrade)
+                    || !activeUpgrades.Contains(building) && !building.IsOperational()
+                )
+                {
+                    return false;
+                }
+            }
+
+            int availableProductionFacilities = producer.GetProductionFacilityCount(
+                ManufacturingType.Building
+            );
+            IEnumerable<Building> cancelledUpgrades = compatibleProject
+                ? activeUpgrades.Except(desired)
+                : activeProject?.OfType<Building>().Where(building => building.IsUpgrading())
+                    ?? Enumerable.Empty<Building>();
+            availableProductionFacilities += cancelledUpgrades.Count(building =>
+                IsConstructionProducerAt(building, producer)
+            );
+            availableProductionFacilities -= desired.Count(building =>
+                !activeUpgrades.Contains(building) && IsConstructionProducerAt(building, producer)
+            );
+            if (availableProductionFacilities <= 0)
+                return false;
+
+            List<Building> addedUpgrades = desired
+                .Where(building => !activeUpgrades.Contains(building))
+                .ToList();
+            if (compatibleProject && addedUpgrades.Count == 0)
+                return true;
+
+            int projectedMaintenance = faction.GetTotalProjectedMaintenanceCost();
+            if (compatibleProject)
+            {
+                projectedMaintenance -= activeUpgrades
+                    .Except(desired)
+                    .Sum(GetCancelledMaintenanceReduction);
+            }
+            else
+            {
+                projectedMaintenance -= GetReplacementMaintenanceRefund(activeProject);
+            }
+
+            projectedMaintenance += addedUpgrades.Sum(building =>
+                upgrade.GetMaintenanceCost() - building.GetMaintenanceCost()
+            );
+            return ManufacturingRules.IsResourceFacility(upgrade)
+                || projectedMaintenance
+                    <= ResourceProductionQueries.CalculateMaintenanceCapacity(_game, faction);
+        }
+
+        /// <summary>
+        /// Returns whether a building supplies construction production at the requested planet.
+        /// </summary>
+        /// <param name="building">The building to inspect.</param>
+        /// <param name="producer">The construction producer.</param>
+        /// <returns>True when cancelling or starting its upgrade changes construction capacity.</returns>
+        private static bool IsConstructionProducerAt(Building building, Planet producer)
+        {
+            return ReferenceEquals(building?.GetParent(), producer)
+                && building.ProductionType == ManufacturingType.Building
+                && building.ProcessRate > 0;
+        }
+
+        /// <summary>
         /// Determines whether an owner can set the total order for one manufacturing lane.
         /// </summary>
         /// <param name="producer">The planet performing the manufacturing.</param>
@@ -212,12 +377,12 @@ namespace Rebellion.Simulation
         /// Returns maintenance released when the active lane is replaced.
         /// </summary>
         /// <param name="items">The unfinished items removed from the lane.</param>
-        /// <returns>The non-negative maintenance released by removing the items.</returns>
+        /// <returns>The maintenance change produced by cancelling the items.</returns>
         private static int GetReplacementMaintenanceRefund(
             IReadOnlyCollection<IManufacturable> items
         )
         {
-            return items?.Sum(item => Math.Max(0, item?.GetMaintenanceCost() ?? 0)) ?? 0;
+            return items?.Sum(GetCancelledMaintenanceReduction) ?? 0;
         }
 
         /// <summary>
@@ -243,7 +408,20 @@ namespace Rebellion.Simulation
                 return 0;
             }
 
-            return activeProject.Sum(item => Math.Max(0, item.GetMaintenanceCost()));
+            return activeProject.Sum(GetCancelledMaintenanceReduction);
+        }
+
+        /// <summary>
+        /// Gets the projected maintenance removed when one queued item is cancelled.
+        /// </summary>
+        /// <param name="item">The queued item.</param>
+        /// <returns>The maintenance reduction, including restored source cost for upgrades.</returns>
+        private static int GetCancelledMaintenanceReduction(IManufacturable item)
+        {
+            if (item is Building upgrading && upgrading.IsUpgrading())
+                return upgrading.GetMaintenanceCost() - upgrading.MaintenanceCost;
+
+            return Math.Max(0, item?.GetMaintenanceCost() ?? 0);
         }
 
         /// <summary>
@@ -336,7 +514,10 @@ namespace Rebellion.Simulation
                     Building building => planet.GetAvailableEnergy()
                         + CountReplacedItems<Building>(
                             replacedItems,
-                            item => !item.IsDestroyed && ReferenceEquals(item.GetParent(), planet)
+                            item =>
+                                !item.IsDestroyed
+                                && !item.IsUpgrading()
+                                && ReferenceEquals(item.GetParent(), planet)
                         )
                         >= count
                         && (
@@ -346,6 +527,7 @@ namespace Rebellion.Simulation
                                     replacedItems,
                                     item =>
                                         !item.IsDestroyed
+                                        && !item.IsUpgrading()
                                         && item.BuildingType == BuildingType.Mine
                                         && ReferenceEquals(item.GetParent(), planet)
                                 )

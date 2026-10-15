@@ -241,7 +241,7 @@ namespace Rebellion.Tests.AI.Proposals
         }
 
         [Test]
-        public void Execute_WithFacilityUpgrade_ReplacesExactlyOneFacility()
+        public void Execute_WithFacilityUpgrade_QueuesSelectedFacilityInPlace()
         {
             (
                 GameRoot _,
@@ -259,10 +259,13 @@ namespace Rebellion.Tests.AI.Proposals
                 .GetManufacturingQueue()[ManufacturingType.Building]
                 .OfType<Building>()
                 .ToList();
-            Assert.IsNull(replacement.GetParent());
+            Assert.AreSame(planet, replacement.GetParent());
             Assert.AreSame(planet, remaining.GetParent());
             Assert.AreEqual(1, queued.Count);
-            Assert.AreEqual("advanced-shipyard", queued[0].GetDisplayName());
+            Assert.AreSame(replacement, queued[0]);
+            Assert.AreEqual("legacy-shipyard-0", queued[0].TypeID);
+            Assert.AreEqual("advanced-shipyard", queued[0].UpgradeTargetTypeID);
+            Assert.IsTrue(queued[0].IsUpgrading());
             Assert.AreEqual(ManufacturingStatus.Building, queued[0].ManufacturingStatus);
             Assert.AreEqual(2, planet.GetTotalBuildingTypeCount(BuildingType.Shipyard));
         }
@@ -1014,6 +1017,10 @@ namespace Rebellion.Tests.AI.Proposals
             advancedShipyard.ProcessRate = 2;
             advancedShipyard.ResearchOrder = 5;
             advancedShipyard.MaintenanceCost = upgradeMaintenance;
+            empire.ResearchQueue[ManufacturingType.Building] = new List<Technology>
+            {
+                new Technology(advancedShipyard),
+            };
             AIProductionDemand demand = new AIProductionDemand(
                 "facility-upgrade",
                 AIProductionDemandKind.BuildingUpgrade,

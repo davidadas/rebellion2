@@ -97,6 +97,33 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.AreEqual(1, remaining);
         }
 
+        [Test]
+        public void Execute_UpgradingSurplusShipyard_RemovesRestoredSource()
+        {
+            AITurnContext context = CreateContextWithSurplusShipyards(
+                out Planet lowerValue,
+                out _,
+                maintenanceCost: 10
+            );
+            Building upgrading = lowerValue.GetChildren<Building>().Single();
+            Building target = AITestSceneBuilder.CreateBuildingTemplate(
+                "advanced-shipyard",
+                BuildingType.Shipyard
+            );
+            target.ProductionType = ManufacturingType.Ship;
+            target.MaintenanceCost = upgrading.MaintenanceCost;
+            upgrading.Upgrades.Add(target.TypeID);
+            upgrading.BeginUpgrade(target);
+            upgrading.ProducerOwnerID = context.Faction.InstanceID;
+            upgrading.ProducerPlanetID = lowerValue.InstanceID;
+            lowerValue.AddToManufacturingQueue(upgrading);
+            AIProposal proposal = new AIFacilityRemovalPlanner().Plan(context).Single();
+
+            proposal.Execute(context);
+
+            Assert.IsNull(context.Game.GetSceneNodeByInstanceID<Building>(upgrading.InstanceID));
+        }
+
         /// <summary>
         /// Creates a faction with two shipyards and a strategic requirement for one.
         /// </summary>

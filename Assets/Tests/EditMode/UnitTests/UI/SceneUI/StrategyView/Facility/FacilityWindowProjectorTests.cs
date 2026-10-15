@@ -302,6 +302,38 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         }
 
         [Test]
+        public void CreateRenderData_UpgradingInventoryBuilding_ReturnsEntityTextureAndOverlay()
+        {
+            Building mine = CreateBuilding(
+                "basic-mine",
+                "Basic Mine",
+                BuildingType.Mine,
+                ManufacturingStatus.Complete
+            );
+            mine.Upgrades.Add("advanced-mine");
+            mine.BeginUpgrade(
+                new Building
+                {
+                    TypeID = "advanced-mine",
+                    DisplayName = "Advanced Mine",
+                    BuildingType = BuildingType.Mine,
+                }
+            );
+            _planet.AddTestChild(mine);
+            _session.Reconcile();
+            _session.SetActiveTab(FacilityWindowTab.Mines);
+
+            FacilityWindowRenderData data = _projector.CreateRenderData(_window, _session, null);
+
+            Assert.AreSame(
+                _uiContext.GetTexture(mine.SmallDisplayImagePath),
+                data.InventoryItems[0].Texture
+            );
+            Assert.IsTrue(data.InventoryItems[0].Upgrading);
+            Assert.AreSame(_uiContext.GetTexture("upgrade"), data.InventoryItems[0].UpgradeTexture);
+        }
+
+        [Test]
         public void CreateRenderData_QueuedBuilding_UsesCompactEntityTexture()
         {
             Building building = CreateBuilding(
@@ -410,6 +442,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
                 ["ship-display"] = new Texture2D(1, 1),
                 ["ship-small"] = new Texture2D(1, 1),
                 ["construction"] = _constructionTexture,
+                ["upgrade"] = new Texture2D(1, 1),
             };
             _textures = textures.Values.Distinct().ToList();
             return textures;
@@ -424,6 +457,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             return new FactionTheme
             {
                 FactionInstanceID = _ownerId,
+                GalacticInformationDisplay = new GalacticInformationDisplayTheme
+                {
+                    SubmenuArrowActiveImagePath = "upgrade",
+                },
                 WindowTitleTheme = new WindowTitleTheme
                 {
                     ActiveImagePath = "title-active",

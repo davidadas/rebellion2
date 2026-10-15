@@ -10,6 +10,84 @@ using Rebellion.Simulation;
 using Rebellion.Util.DependencyInjection;
 
 /// <summary>
+/// Adapts installed buildings and their authored replacement into a construction selection.
+/// </summary>
+internal sealed class BuildingUpgradeSelection : Building
+{
+    private const string _selectionPrefix = "upgrade";
+
+    public IReadOnlyList<Building> Sources { get; }
+
+    public Building Source => Sources[0];
+
+    public Building Target { get; }
+
+    /// <summary>
+    /// Creates an in-place building upgrade selection.
+    /// </summary>
+    /// <param name="source">The installed building that will be replaced.</param>
+    /// <param name="target">The authored replacement definition.</param>
+    public BuildingUpgradeSelection(Building source, Building target)
+        : this(new[] { source }, target) { }
+
+    /// <summary>
+    /// Creates a grouped in-place building upgrade selection.
+    /// </summary>
+    /// <param name="sources">The installed buildings available to the order.</param>
+    /// <param name="target">The authored replacement definition.</param>
+    public BuildingUpgradeSelection(IReadOnlyList<Building> sources, Building target)
+    {
+        if (sources == null)
+            throw new ArgumentNullException(nameof(sources));
+        if (sources.Count == 0 || sources.Any(source => source == null))
+            throw new ArgumentException(
+                "At least one installed building is required.",
+                nameof(sources)
+            );
+
+        Sources = new List<Building>(sources).AsReadOnly();
+        Target = target ?? throw new ArgumentNullException(nameof(target));
+        TypeID = target.TypeID;
+        DisplayName = target.DisplayName;
+        DisplayImagePath = target.DisplayImagePath;
+        SmallDisplayImagePath = target.SmallDisplayImagePath;
+        MessageImagePath = target.MessageImagePath;
+        ConstructionCost = target.GetConstructionCost();
+        MaintenanceCost = Math.Max(0, target.GetMaintenanceCost() - Source.GetMaintenanceCost());
+        BaseBuildSpeed = target.BaseBuildSpeed;
+        ManufacturingFactionInstanceIDs = target.ManufacturingFactionInstanceIDs;
+        ResearchOrder = target.ResearchOrder;
+        ResearchDifficulty = target.ResearchDifficulty;
+        BuildingType = target.BuildingType;
+        ProductionType = ManufacturingType.Building;
+        ManufacturingStatus = ManufacturingStatus.Complete;
+        OwnerInstanceID = Source.OwnerInstanceID;
+    }
+
+    /// <summary>
+    /// Gets the stable identity for this source and target pair.
+    /// </summary>
+    /// <returns>The construction selection identifier.</returns>
+    public string GetSelectionID()
+    {
+        return GetSelectionID(Source.TypeID, Target.TypeID);
+    }
+
+    /// <summary>
+    /// Creates a stable identity for one active or available upgrade.
+    /// </summary>
+    /// <param name="sourceTypeID">The installed building type being upgraded.</param>
+    /// <param name="targetTypeID">The authored replacement type.</param>
+    /// <returns>The construction selection identifier, or null for incomplete input.</returns>
+    public static string GetSelectionID(string sourceTypeID, string targetTypeID)
+    {
+        return string.IsNullOrEmpty(sourceTypeID) || string.IsNullOrEmpty(targetTypeID)
+            ? null
+            : $"{_selectionPrefix}:{sourceTypeID}:{targetTypeID}";
+    }
+}
+
+/// <summary>
 /// Evaluates and starts construction orders against the current game state.
 /// </summary>
 public sealed class ConstructionOrderController
@@ -89,6 +167,7 @@ public sealed class ConstructionOrderController
             && destination is Planet destinationPlanet
         )
         {
+            IReadOnlyList<Building> unlockedBuildings = selections.OfType<Building>().ToList();
             selections.AddRange(
                 destinationPlanet
                     .GetChildren<Building>()
@@ -119,6 +198,17 @@ public sealed class ConstructionOrderController
                     .OrderBy(building => building.ResearchOrder)
                     .ThenBy(building => building.GetDisplayName())
             );
+            if (producer != null)
+            {
+                selections.AddRange(
+                    GetUpgradeSelections(
+                        destinationPlanet,
+                        producer,
+                        playerFactionId,
+                        unlockedBuildings
+                    )
+                );
+            }
         }
 
         return selections.AsReadOnly();
@@ -147,17 +237,29 @@ public sealed class ConstructionOrderController
 
         for (int index = 0; index < items.Count; index++)
         {
-            if (
-                services
+            IManufacturable item = items[index];
+            bool canStart = item is BuildingUpgradeSelection upgrade
+                ? upgrade.Sources.All(source => ReferenceEquals(source.GetParent(), destination))
+                    && IsOwnedUpgrade(producer, upgrade, playerFactionId)
+                    && services
+                        .GetService<ManufacturingQueries>()
+                        .CanSetBuildingUpgradeOrder(
+                            producer,
+                            upgrade.Sources,
+                            upgrade.Target,
+                            buildCount,
+                            playerFactionId
+                        )
+                : services
                     .GetService<ManufacturingQueries>()
                     .CanSetManufacturingOrder(
                         producer,
-                        items[index],
+                        item,
                         destination,
                         buildCount,
                         playerFactionId
-                    )
-            )
+                    );
+            if (canStart)
                 selections.Add(index);
         }
 
@@ -216,6 +318,27 @@ public sealed class ConstructionOrderController
         string playerFactionId
     )
     {
+        if (selected is BuildingUpgradeSelection upgrade)
+        {
+            if (
+                !upgrade.Sources.All(source => ReferenceEquals(source.GetParent(), destination))
+                || !IsOwnedUpgrade(producer, upgrade, playerFactionId)
+            )
+            {
+                return false;
+            }
+
+            return services
+                .GetService<ManufacturingCommands>()
+                .SetBuildingUpgradeOrder(
+                    producer,
+                    upgrade.Sources,
+                    upgrade.Target,
+                    buildCount,
+                    playerFactionId
+                );
+        }
+
         return services
             .GetService<ManufacturingCommands>()
             .SetManufacturingOrder(producer, selected, destination, buildCount, playerFactionId);
@@ -256,6 +379,18 @@ public sealed class ConstructionOrderController
         int buildCount
     )
     {
+        if (selected is BuildingUpgradeSelection upgrade)
+        {
+            Building activeSource = upgrade.Sources.FirstOrDefault(source =>
+                IsActiveUpgrade(producer, source, upgrade.Target.TypeID)
+            );
+            return ManufacturingQueries.EstimateManufacturingOrderTicks(
+                producer,
+                activeSource ?? upgrade,
+                buildCount
+            );
+        }
+
         return ManufacturingQueries.EstimateManufacturingOrderTicks(producer, selected, buildCount);
     }
 
@@ -272,7 +407,7 @@ public sealed class ConstructionOrderController
         IManufacturable selected
     )
     {
-        if (selected is Building { IsDestroyed: true })
+        if (selected is BuildingUpgradeSelection or Building { IsDestroyed: true })
             return null;
 
         if (selected is not IMovable movable)
@@ -311,6 +446,123 @@ public sealed class ConstructionOrderController
             FacilityWindowTab.Construction => item is Building,
             _ => false,
         };
+    }
+
+    /// <summary>
+    /// Gets available in-place upgrades for the selected destination.
+    /// </summary>
+    /// <param name="destination">The planet containing the installed buildings.</param>
+    /// <param name="producer">The planet operating the construction lane.</param>
+    /// <param name="ownerInstanceId">The faction requesting construction.</param>
+    /// <param name="unlockedBuildings">The faction's unlocked building definitions.</param>
+    /// <returns>The available upgrade selections in display order.</returns>
+    private static IEnumerable<BuildingUpgradeSelection> GetUpgradeSelections(
+        Planet destination,
+        Planet producer,
+        string ownerInstanceId,
+        IReadOnlyList<Building> unlockedBuildings
+    )
+    {
+        return destination
+            .GetChildren<Building>()
+            .Where(source =>
+                !source.IsDestroyed
+                && string.Equals(source.OwnerInstanceID, ownerInstanceId, StringComparison.Ordinal)
+                && (
+                    source.IsOperational()
+                    || source.IsUpgrading()
+                        && string.Equals(
+                            source.ProducerPlanetID,
+                            producer.InstanceID,
+                            StringComparison.Ordinal
+                        )
+                )
+            )
+            .SelectMany(source =>
+                unlockedBuildings
+                    .Where(target =>
+                        source.CanUpgradeTo(target)
+                        && (
+                            !source.IsUpgrading()
+                            || string.Equals(
+                                source.UpgradeTargetTypeID,
+                                target.TypeID,
+                                StringComparison.Ordinal
+                            )
+                        )
+                    )
+                    .Select(target => (Source: source, Target: target))
+            )
+            .GroupBy(selection =>
+                (SourceTypeID: selection.Source.TypeID, TargetTypeID: selection.Target.TypeID)
+            )
+            .Select(group => new BuildingUpgradeSelection(
+                group
+                    .Select(selection => selection.Source)
+                    .OrderByDescending(source =>
+                        IsActiveUpgrade(producer, source, group.Key.TargetTypeID)
+                    )
+                    .ThenBy(source => source.InstanceID, StringComparer.Ordinal)
+                    .ToList(),
+                group.First().Target
+            ))
+            .OrderBy(selection => selection.Target.ResearchOrder)
+            .ThenBy(selection => selection.Target.GetDisplayName(), StringComparer.Ordinal)
+            .ThenBy(selection => selection.Source.GetDisplayName(), StringComparer.Ordinal);
+    }
+
+    /// <summary>
+    /// Returns whether a selection represents the producer's current in-place upgrade.
+    /// </summary>
+    /// <param name="producer">The planet operating the construction lane.</param>
+    /// <param name="source">The installed building.</param>
+    /// <param name="targetTypeID">The authored upgrade target type.</param>
+    /// <returns>True when the exact source and target are currently queued.</returns>
+    private static bool IsActiveUpgrade(Planet producer, Building source, string targetTypeID)
+    {
+        if (
+            producer == null
+            || source?.IsUpgrading() != true
+            || !string.Equals(source.UpgradeTargetTypeID, targetTypeID, StringComparison.Ordinal)
+            || !producer
+                .GetManufacturingQueue()
+                .TryGetValue(ManufacturingType.Building, out List<IManufacturable> queue)
+        )
+        {
+            return false;
+        }
+
+        return queue?.Any(item => ReferenceEquals(item, source)) == true;
+    }
+
+    /// <summary>
+    /// Returns whether the player owns both sides of an upgrade operation.
+    /// </summary>
+    /// <param name="producer">The planet operating the construction lane.</param>
+    /// <param name="selection">The upgrade selection.</param>
+    /// <param name="ownerInstanceId">The faction requesting the operation.</param>
+    /// <returns>True when the producer and installed building have the requested owner.</returns>
+    private static bool IsOwnedUpgrade(
+        Planet producer,
+        BuildingUpgradeSelection selection,
+        string ownerInstanceId
+    )
+    {
+        return producer != null
+            && selection?.Sources?.Count > 0
+            && !string.IsNullOrEmpty(ownerInstanceId)
+            && string.Equals(
+                producer.GetOwnerInstanceID(),
+                ownerInstanceId,
+                StringComparison.Ordinal
+            )
+            && selection.Sources.All(source =>
+                string.Equals(
+                    source.GetOwnerInstanceID(),
+                    ownerInstanceId,
+                    StringComparison.Ordinal
+                )
+            );
     }
 
     /// <summary>

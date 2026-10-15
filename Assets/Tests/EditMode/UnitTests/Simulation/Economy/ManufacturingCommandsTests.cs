@@ -5,6 +5,7 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Research;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -4240,6 +4241,39 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void RebuildQueues_ActiveUpgrade_RestoresBuildingLane()
+        {
+            Building source = CreateUpgradeSource();
+            source.BeginUpgrade(CreateUpgradeTarget());
+            source.ProducerOwnerID = _empire.InstanceID;
+            source.ProducerPlanetID = _coruscant.InstanceID;
+            source.ManufacturingQueueSequence = 1;
+            _game.AttachNode(source, _coruscant);
+
+            new ManufacturingObserver(_game, _manager).RebuildQueues();
+
+            Assert.AreSame(
+                source,
+                _coruscant.ManufacturingQueue[ManufacturingType.Building].Single()
+            );
+            Assert.IsTrue(source.IsUpgrading());
+        }
+
+        [Test]
+        public void RebuildQueues_UpgradeWithoutProducer_RestoresOperationalSource()
+        {
+            Building source = CreateUpgradeSource();
+            source.BeginUpgrade(CreateUpgradeTarget());
+            _game.AttachNode(source, _coruscant);
+
+            new ManufacturingObserver(_game, _manager).RebuildQueues();
+
+            Assert.IsEmpty(_coruscant.GetManufacturingQueue());
+            Assert.AreEqual("basic-shipyard", source.TypeID);
+            Assert.IsTrue(source.IsOperational());
+        }
+
+        [Test]
         public void RebuildQueues_InvalidProducerPlanetID_SkipsItem()
         {
             GameConfig config = TestConfig.Create();
@@ -5251,6 +5285,311 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void StartBuildingUpgrade_EligibleBuilding_QueuesSameInstanceInPlace()
+        {
+            Building source = CreateUpgradeSource();
+            Building upgrade = CreateUpgradeTarget();
+            UnlockBuilding(upgrade);
+            _game.AttachNode(source, _coruscant);
+
+            bool started = _manager.StartBuildingUpgrade(
+                _coruscant,
+                source,
+                upgrade,
+                _empire.InstanceID
+            );
+
+            Assert.IsTrue(started);
+            Assert.AreSame(_coruscant, source.GetParent());
+            Assert.AreEqual("UPGRADE_SOURCE", source.InstanceID);
+            Assert.IsTrue(source.IsUpgrading());
+            Assert.AreEqual("basic-shipyard", source.TypeID);
+            Assert.AreEqual("advanced-shipyard", source.UpgradeTargetTypeID);
+            Assert.AreSame(
+                source,
+                _coruscant.ManufacturingQueue[ManufacturingType.Building].Single()
+            );
+            Assert.AreEqual(
+                "advanced-shipyard",
+                ManufacturingQueries
+                    .GetManufacturingOrder(_coruscant, ManufacturingType.Building)
+                    .ProductTypeID
+            );
+        }
+
+        [Test]
+        public void SetBuildingUpgradeOrder_TwoEligibleBuildings_QueuesBothInPlace()
+        {
+            Building firstSource = CreateUpgradeSource();
+            Building secondSource = CreateUpgradeSource();
+            secondSource.InstanceID = "UPGRADE_SOURCE_2";
+            Building upgrade = CreateUpgradeTarget();
+            UnlockBuilding(upgrade);
+            _game.AttachNode(firstSource, _coruscant);
+            _game.AttachNode(secondSource, _coruscant);
+
+            bool started = _manager.SetBuildingUpgradeOrder(
+                _coruscant,
+                new[] { firstSource, secondSource },
+                upgrade,
+                2,
+                _empire.InstanceID
+            );
+
+            Assert.IsTrue(started);
+            CollectionAssert.AreEquivalent(
+                new[] { firstSource, secondSource },
+                _coruscant.ManufacturingQueue[ManufacturingType.Building]
+            );
+            Assert.IsTrue(firstSource.IsUpgrading());
+            Assert.IsTrue(secondSource.IsUpgrading());
+        }
+
+        [Test]
+        public void SetBuildingUpgradeOrder_ReducedCount_RestoresRemovedSource()
+        {
+            Building firstSource = CreateUpgradeSource();
+            Building secondSource = CreateUpgradeSource();
+            secondSource.InstanceID = "UPGRADE_SOURCE_2";
+            Building upgrade = CreateUpgradeTarget();
+            UnlockBuilding(upgrade);
+            _game.AttachNode(firstSource, _coruscant);
+            _game.AttachNode(secondSource, _coruscant);
+            Assert.IsTrue(
+                _manager.SetBuildingUpgradeOrder(
+                    _coruscant,
+                    new[] { firstSource, secondSource },
+                    upgrade,
+                    2,
+                    _empire.InstanceID
+                )
+            );
+
+            bool resized = _manager.SetBuildingUpgradeOrder(
+                _coruscant,
+                new[] { firstSource, secondSource },
+                upgrade,
+                1,
+                _empire.InstanceID
+            );
+
+            Assert.IsTrue(resized);
+            Assert.AreSame(
+                firstSource,
+                _coruscant.ManufacturingQueue[ManufacturingType.Building].Single()
+            );
+            Assert.IsTrue(firstSource.IsUpgrading());
+            Assert.IsTrue(secondSource.IsOperational());
+        }
+
+        [Test]
+        public void StartBuildingUpgrade_OrdinaryTargetAlreadyQueued_ReplacesLaneWithUpgrade()
+        {
+            Building source = CreateUpgradeSource();
+            Building upgrade = CreateUpgradeTarget();
+            UnlockBuilding(upgrade);
+            _game.AttachNode(source, _coruscant);
+            Assert.IsTrue(
+                _manager.StartManufacturing(_coruscant, upgrade, _coruscant, 1, _empire.InstanceID)
+            );
+            Building ordinaryBuild = _coruscant
+                .ManufacturingQueue[ManufacturingType.Building]
+                .OfType<Building>()
+                .Single();
+
+            bool started = _manager.StartBuildingUpgrade(
+                _coruscant,
+                source,
+                upgrade,
+                _empire.InstanceID
+            );
+
+            Assert.IsTrue(started);
+            Assert.AreSame(
+                source,
+                _coruscant.ManufacturingQueue[ManufacturingType.Building].Single()
+            );
+            Assert.IsNull(ordinaryBuild.GetParent());
+        }
+
+        [Test]
+        public void SetManufacturingOrder_FullPlanetWithActiveUpgrade_DoesNotReuseSourceSlot()
+        {
+            Building source = CreateUpgradeSource();
+            Building upgrade = CreateUpgradeTarget();
+            UnlockBuilding(upgrade);
+            _game.AttachNode(source, _coruscant);
+            _coruscant.EnergyCapacity = _coruscant.GetChildren<Building>().Count;
+            Assert.IsTrue(
+                _manager.StartBuildingUpgrade(_coruscant, source, upgrade, _empire.InstanceID)
+            );
+
+            bool started = _manager.SetManufacturingOrder(
+                _coruscant,
+                upgrade,
+                _coruscant,
+                1,
+                _empire.InstanceID
+            );
+
+            Assert.IsFalse(started);
+            Assert.IsTrue(source.IsUpgrading());
+            Assert.AreSame(
+                source,
+                _coruscant.ManufacturingQueue[ManufacturingType.Building].Single()
+            );
+        }
+
+        [Test]
+        public void CancelManufacturing_ActiveBuildingUpgrade_RestoresSourceBuilding()
+        {
+            Building source = CreateUpgradeSource();
+            Building upgrade = CreateUpgradeTarget();
+            UnlockBuilding(upgrade);
+            _game.AttachNode(source, _coruscant);
+            Assert.IsTrue(
+                _manager.StartBuildingUpgrade(_coruscant, source, upgrade, _empire.InstanceID)
+            );
+
+            bool cancelled = _manager.CancelManufacturing(source, _empire.InstanceID);
+
+            Assert.IsTrue(cancelled);
+            Assert.AreEqual("basic-shipyard", source.TypeID);
+            Assert.IsTrue(source.IsOperational());
+            Assert.AreSame(_coruscant, source.GetParent());
+            Assert.IsFalse(_coruscant.ManufacturingQueue.ContainsKey(ManufacturingType.Building));
+        }
+
+        [Test]
+        public void ProcessTick_CompletedBuildingUpgrade_AppliesUpgradeDefinitionInPlace()
+        {
+            Building source = CreateUpgradeSource();
+            Building upgrade = CreateUpgradeTarget();
+            upgrade.ConstructionCost = 1;
+            UnlockBuilding(upgrade);
+            _game.AttachNode(source, _coruscant);
+            Assert.IsTrue(
+                _manager.StartBuildingUpgrade(_coruscant, source, upgrade, _empire.InstanceID)
+            );
+
+            CreateTickProcessor(_manager).ProcessTick(_game);
+
+            Assert.AreEqual("UPGRADE_SOURCE", source.InstanceID);
+            Assert.AreEqual("advanced-shipyard", source.TypeID);
+            Assert.AreEqual("Advanced shipyard", source.DisplayName);
+            Assert.AreEqual(8, source.ProcessRate);
+            Assert.IsTrue(source.IsOperational());
+            Assert.IsFalse(source.IsUpgrading());
+            Assert.AreSame(_coruscant, source.GetParent());
+        }
+
+        [Test]
+        public void StartBuildingUpgrade_SoleConstructionFacility_ReturnsFalse()
+        {
+            _shipyard.TypeID = "basic-construction";
+            _shipyard.Upgrades.Add("advanced-construction");
+            Building upgrade = new Building
+            {
+                TypeID = "advanced-construction",
+                BuildingType = BuildingType.ConstructionFacility,
+                ProductionType = ManufacturingType.Building,
+                ProcessRate = 1,
+                ConstructionCost = 1,
+                ManufacturingFactionInstanceIDs = new List<string> { _empire.InstanceID },
+            };
+            UnlockBuilding(upgrade);
+
+            bool started = _manager.StartBuildingUpgrade(
+                _coruscant,
+                _shipyard,
+                upgrade,
+                _empire.InstanceID
+            );
+
+            Assert.IsFalse(started);
+            Assert.IsTrue(_shipyard.IsOperational());
+        }
+
+        [Test]
+        public void SetBuildingUpgradeOrder_AllConstructionFacilitiesSelected_ReturnsFalse()
+        {
+            _shipyard.TypeID = "basic-construction";
+            _shipyard.Upgrades.Add("advanced-construction");
+            Building secondSource = new Building
+            {
+                InstanceID = "SECOND_CONSTRUCTION",
+                TypeID = "basic-construction",
+                OwnerInstanceID = _empire.InstanceID,
+                BuildingType = BuildingType.ConstructionFacility,
+                ProductionType = ManufacturingType.Building,
+                ProcessRate = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                Upgrades = { "advanced-construction" },
+            };
+            _game.AttachNode(secondSource, _coruscant);
+            Building upgrade = new Building
+            {
+                TypeID = "advanced-construction",
+                BuildingType = BuildingType.ConstructionFacility,
+                ProductionType = ManufacturingType.Building,
+                ProcessRate = 2,
+                ConstructionCost = 1,
+                ManufacturingFactionInstanceIDs = new List<string> { _empire.InstanceID },
+            };
+            UnlockBuilding(upgrade);
+
+            bool started = _manager.SetBuildingUpgradeOrder(
+                _coruscant,
+                new[] { _shipyard, secondSource },
+                upgrade,
+                2,
+                _empire.InstanceID
+            );
+
+            Assert.IsFalse(started);
+            Assert.IsTrue(_shipyard.IsOperational());
+            Assert.IsTrue(secondSource.IsOperational());
+        }
+
+        [Test]
+        public void StartBuildingUpgrade_LockedUpgrade_ReturnsFalse()
+        {
+            Building source = CreateUpgradeSource();
+            Building upgrade = CreateUpgradeTarget();
+            _game.AttachNode(source, _coruscant);
+
+            bool started = _manager.StartBuildingUpgrade(
+                _coruscant,
+                source,
+                upgrade,
+                _empire.InstanceID
+            );
+
+            Assert.IsFalse(started);
+            Assert.IsTrue(source.IsOperational());
+        }
+
+        [Test]
+        public void StartBuildingUpgrade_MatchingTypeButUnauthoredInstance_ReturnsFalse()
+        {
+            Building source = CreateUpgradeSource();
+            Building unlocked = CreateUpgradeTarget();
+            Building unauthored = CreateUpgradeTarget();
+            UnlockBuilding(unlocked);
+            _game.AttachNode(source, _coruscant);
+
+            bool started = _manager.StartBuildingUpgrade(
+                _coruscant,
+                source,
+                unauthored,
+                _empire.InstanceID
+            );
+
+            Assert.IsFalse(started);
+            Assert.IsTrue(source.IsOperational());
+        }
+
+        [Test]
         public void StartManufacturing_SpecialForcesDestinationFleet_BoardsAvailableShip()
         {
             GameRoot game = CreateOrderTestGame();
@@ -5608,6 +5947,57 @@ namespace Rebellion.Tests.Simulation
                 MaintenanceCost = 0,
                 BaseBuildSpeed = 1,
                 BuildingType = BuildingType.Mine,
+            };
+        }
+
+        /// <summary>
+        /// Adds a building definition to the fixture faction's unlocked technologies.
+        /// </summary>
+        /// <param name="building">The building definition to unlock.</param>
+        private void UnlockBuilding(Building building)
+        {
+            _empire.RebuildResearchCatalog(new IManufacturable[] { building });
+            _empire.SetHighestUnlockedOrder(ManufacturingType.Building, building.ResearchOrder);
+        }
+
+        /// <summary>
+        /// Creates an operational shipyard with one authored upgrade.
+        /// </summary>
+        /// <returns>The upgrade source.</returns>
+        private static Building CreateUpgradeSource()
+        {
+            return new Building
+            {
+                InstanceID = "UPGRADE_SOURCE",
+                TypeID = "basic-shipyard",
+                DisplayName = "Basic shipyard",
+                OwnerInstanceID = "EMPIRE",
+                BuildingType = BuildingType.Shipyard,
+                ProductionType = ManufacturingType.Ship,
+                ProcessRate = 4,
+                ConstructionCost = 10,
+                MaintenanceCost = 4,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                Upgrades = { "advanced-shipyard" },
+            };
+        }
+
+        /// <summary>
+        /// Creates the authored shipyard upgrade used by manufacturing tests.
+        /// </summary>
+        /// <returns>The upgrade target.</returns>
+        private static Building CreateUpgradeTarget()
+        {
+            return new Building
+            {
+                TypeID = "advanced-shipyard",
+                DisplayName = "Advanced shipyard",
+                BuildingType = BuildingType.Shipyard,
+                ProductionType = ManufacturingType.Ship,
+                ProcessRate = 8,
+                ConstructionCost = 10,
+                MaintenanceCost = 0,
+                ManufacturingFactionInstanceIDs = new List<string> { "EMPIRE" },
             };
         }
 
