@@ -372,18 +372,26 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
-        public void DestroyWindow_PresentedTab_AcknowledgesMessagesWithoutMarkingThemRead()
+        public void DestroyWindow_PresentedMessages_AcknowledgesNotifications()
         {
             Message first = CreateMessage("first");
             Message second = CreateMessage("second");
             (GameObject root, _, _, _) = OpenMessagesWindow(new[] { first, second }, () => default);
 
-            UnityEngine.Object.DestroyImmediate(root);
+            try
+            {
+                UIWindowManager windowManager = root.GetComponentInChildren<UIWindowManager>(true);
+                windowManager.DestroyWindow(windowManager.Windows.Single());
 
-            Assert.IsTrue(first.NotificationAcknowledged);
-            Assert.IsTrue(second.NotificationAcknowledged);
-            Assert.IsFalse(first.Read);
-            Assert.IsFalse(second.Read);
+                Assert.IsTrue(first.NotificationAcknowledged);
+                Assert.IsTrue(second.NotificationAcknowledged);
+                Assert.IsFalse(first.Read);
+                Assert.IsFalse(second.Read);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(root);
+            }
         }
 
         [Test]
