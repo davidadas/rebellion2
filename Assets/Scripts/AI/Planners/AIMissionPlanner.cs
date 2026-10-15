@@ -594,19 +594,6 @@ namespace Rebellion.AI.Planners
                 .ToList();
             foreach (Planet planet in GetSabotageCandidatePlanets(context))
             {
-                List<IMissionParticipant> candidates = available
-                    .OrderByDescending(participant =>
-                        participant.GetEffectiveRating(SkillRating.Espionage)
-                    )
-                    .ThenByDescending(participant =>
-                        participant.GetEffectiveRating(SkillRating.Combat)
-                    )
-                    .ThenBy(participant =>
-                        participant.GetParentOfType<Planet>().GetRawDistanceTo(planet)
-                    )
-                    .ThenBy(participant => participant.InstanceID, StringComparer.Ordinal)
-                    .Take(Math.Max(1, config.SabotageTeamCandidateCount))
-                    .ToList();
                 List<IMissionParticipant> leaders = _sabotageParticipants
                     .OrderByDescending(participant =>
                         participant.GetEffectiveRating(SkillRating.Espionage)
@@ -620,6 +607,22 @@ namespace Rebellion.AI.Planners
                     .ToList();
                 foreach (IManufacturable target in GetSabotageTargets(context, planet))
                 foreach (IMissionParticipant leader in leaders)
+                {
+                    List<IMissionParticipant> candidates = available
+                        .Where(participant => leader is Officer || participant is SpecialForces)
+                        .OrderByDescending(participant => participant is SpecialForces)
+                        .ThenByDescending(participant =>
+                            participant.GetEffectiveRating(SkillRating.Espionage)
+                        )
+                        .ThenByDescending(participant =>
+                            participant.GetEffectiveRating(SkillRating.Combat)
+                        )
+                        .ThenBy(participant =>
+                            participant.GetParentOfType<Planet>().GetRawDistanceTo(planet)
+                        )
+                        .ThenBy(participant => participant.InstanceID, StringComparer.Ordinal)
+                        .Take(Math.Max(1, config.SabotageTeamCandidateCount))
+                        .ToList();
                     AddSabotageTeamProposals(
                         context,
                         planet,
@@ -628,6 +631,7 @@ namespace Rebellion.AI.Planners
                         candidates,
                         proposals
                     );
+                }
             }
         }
 
@@ -664,16 +668,20 @@ namespace Rebellion.AI.Planners
             );
             while (true)
             {
-                TryAddProposal(context, proposals, team);
+                bool needsDecoy = team.DecoyParticipants.Count == 0;
+                if (!needsDecoy)
+                    TryAddProposal(context, proposals, team);
                 if (team.Participants.Count >= maximumSize)
                     return;
 
                 AIMissionProposal bestAddition = null;
-                double bestProbability = odds.OverallSuccessProbability;
+                double bestProbability = needsDecoy ? -1 : odds.OverallSuccessProbability;
                 foreach (IMissionParticipant candidate in candidates.Except(team.Participants))
                 {
                     foreach (bool asDecoy in new[] { false, true })
                     {
+                        if (needsDecoy && !asDecoy)
+                            continue;
                         AIMissionProposal alternative = new(
                             asDecoy
                                 ? team.MainParticipants

@@ -31,15 +31,21 @@ namespace Rebellion.Tests.AI.Selectors
             Planet target = AITestSceneBuilder.AddPlanet(game, sector, "target", rebels.InstanceID);
             SpecialForces first = CreateSpecialForces("first", empire.InstanceID);
             SpecialForces second = CreateSpecialForces("second", empire.InstanceID);
+            SpecialForces decoy = CreateSpecialForces("decoy", empire.InstanceID);
             SpecialForces spare = CreateSpecialForces("spare", empire.InstanceID);
+            first.AllowedMissionTypeIDs.Add(MissionTypeIDs.Sabotage);
+            second.AllowedMissionTypeIDs.Add(MissionTypeIDs.Sabotage);
+            decoy.AllowedMissionTypeIDs.Add(MissionTypeIDs.Sabotage);
             game.AttachNode(first, origin);
             game.AttachNode(second, origin);
+            game.AttachNode(decoy, origin);
             game.AttachNode(spare, origin);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
             AIMissionProposal proposal = new(
                 new[] { first, second },
                 MissionTypeIDs.Sabotage,
                 target,
+                decoyParticipants: new[] { decoy },
                 teamIsFinal: true
             );
             context.SetSelectedProposals(new[] { proposal });
@@ -50,7 +56,49 @@ namespace Rebellion.Tests.AI.Selectors
                 .SelectedProposals.OfType<AIMissionProposal>()
                 .Single();
             CollectionAssert.AreEqual(new[] { first, second }, selected.MainParticipants);
-            Assert.IsEmpty(selected.DecoyParticipants);
+            CollectionAssert.AreEqual(new[] { decoy }, selected.DecoyParticipants);
+        }
+
+        [Test]
+        public void TrySelect_UnprotectedFinalSpecialForcesTeam_DoesNotReserveParticipants()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, sector, "origin", empire.InstanceID);
+            Planet target = AITestSceneBuilder.AddPlanet(game, sector, "target", rebels.InstanceID);
+            SpecialForces main = CreateSpecialForces("main", empire.InstanceID);
+            SpecialForces decoy = CreateSpecialForces("decoy", empire.InstanceID);
+            main.AllowedMissionTypeIDs.Add(MissionTypeIDs.Sabotage);
+            decoy.AllowedMissionTypeIDs.Add(MissionTypeIDs.Sabotage);
+            Building objective = AITestSceneBuilder.AddProductionFacility(
+                game,
+                target,
+                "yard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            game.AttachNode(main, origin);
+            game.AttachNode(decoy, origin);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIMissionSelector selector = new(new AISelectionState());
+            AIMissionProposal unprotected = new(
+                new[] { main },
+                MissionTypeIDs.Sabotage,
+                target,
+                selectedTarget: objective,
+                teamIsFinal: true
+            );
+            AIMissionProposal protectedTeam = new(
+                new[] { main },
+                MissionTypeIDs.Sabotage,
+                target,
+                selectedTarget: objective,
+                decoyParticipants: new[] { decoy },
+                teamIsFinal: true
+            );
+
+            Assert.IsFalse(selector.TrySelect(context, unprotected));
+            Assert.IsTrue(selector.TrySelect(context, protectedTeam));
         }
 
         [TestCase(ResearchDiscipline.ShipDesign, true)]

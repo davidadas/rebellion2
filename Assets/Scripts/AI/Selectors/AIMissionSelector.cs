@@ -34,6 +34,13 @@ namespace Rebellion.AI.Selectors
         /// <returns>True when the proposal is valid and nonconflicting.</returns>
         internal bool TrySelect(AITurnContext context, AIProposal proposal)
         {
+            if (
+                proposal is AIMissionProposal { IsTeamFinal: true } completeTeam
+                && completeTeam.MissionTypeID == MissionTypeIDs.Sabotage
+                && completeTeam.DecoyParticipants.Count == 0
+            )
+                return false;
+
             List<AISelectionReservation> reservations = GetReservations(proposal);
             if (!_state.CanReserve(reservations) || proposal?.CanSelect(context) != true)
                 return false;
