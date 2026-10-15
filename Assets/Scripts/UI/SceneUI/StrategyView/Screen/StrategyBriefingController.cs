@@ -269,7 +269,11 @@ public sealed class StrategyBriefingController
     /// <param name="segment">The segment whose playback is starting.</param>
     private void PresentSegment(StrategyBriefingSegmentTheme segment)
     {
-        StrategyBriefingMapPresentation presentation = CreateMapPresentation(game, segment);
+        StrategyBriefingMapPresentation presentation = CreateMapPresentation(
+            game,
+            segment,
+            galaxyMapController.VisibleGalaxyMap
+        );
         if (presentation.DimBackground)
             playPresentationSfx();
 
@@ -281,10 +285,12 @@ public sealed class StrategyBriefingController
     /// </summary>
     /// <param name="game">The active game.</param>
     /// <param name="segment">The segment whose playback is starting.</param>
+    /// <param name="factionView">The player's fog-of-war-filtered galaxy view.</param>
     /// <returns>The resolved map presentation.</returns>
     internal static StrategyBriefingMapPresentation CreateMapPresentation(
         GameRoot game,
-        StrategyBriefingSegmentTheme segment
+        StrategyBriefingSegmentTheme segment,
+        GalaxyMap factionView = null
     )
     {
         if (game == null)
@@ -295,15 +301,35 @@ public sealed class StrategyBriefingController
         string targetID = segment.TargetInstanceID;
         Faction playerFaction = game.GetPlayerFaction();
         Faction opponentFaction = game.GetFactions().Single(faction => faction != playerFaction);
+        bool opponentHeadquartersFocus =
+            segment.Focus == StrategyBriefingFocus.OpponentHeadquarters;
+        Planet knownOpponentHeadquarters = null;
         if (segment.Focus == StrategyBriefingFocus.PlayerHeadquarters)
             targetID = playerFaction?.HQInstanceID;
-        else if (segment.Focus == StrategyBriefingFocus.OpponentHeadquarters)
+        else if (opponentHeadquartersFocus)
+        {
             targetID = opponentFaction?.HQInstanceID;
+            if (!string.IsNullOrEmpty(targetID))
+            {
+                knownOpponentHeadquarters = factionView
+                    ?.GetChildren<Planet>(recursive: true)
+                    .FirstOrDefault(planet => planet.InstanceID == targetID);
+            }
+            if (
+                knownOpponentHeadquarters?.IsUnexploredView == true
+                || knownOpponentHeadquarters?.IsHeadquarters != true
+            )
+            {
+                targetID = null;
+            }
+        }
 
         bool requiresTarget =
             segment.Focus == StrategyBriefingFocus.Target
             || segment.Focus == StrategyBriefingFocus.PlayerHeadquarters
             || segment.Focus == StrategyBriefingFocus.OpponentHeadquarters;
+        if (opponentHeadquartersFocus && !string.IsNullOrEmpty(opponentFaction?.HQInstanceID))
+            requiresTarget = !string.IsNullOrEmpty(targetID);
         if (requiresTarget && string.IsNullOrEmpty(targetID))
         {
             throw new InvalidOperationException(
@@ -311,7 +337,10 @@ public sealed class StrategyBriefingController
             );
         }
 
-        ISceneNode target = game.GetSceneNodeByInstanceID<ISceneNode>(targetID);
+        ISceneNode target =
+            opponentHeadquartersFocus && !string.IsNullOrEmpty(targetID)
+                ? knownOpponentHeadquarters
+                : game.GetSceneNodeByInstanceID<ISceneNode>(targetID);
         if (requiresTarget && target == null)
             throw new InvalidOperationException($"Briefing target '{targetID}' was not found.");
 

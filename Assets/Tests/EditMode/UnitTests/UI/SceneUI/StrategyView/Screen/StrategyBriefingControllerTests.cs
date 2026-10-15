@@ -482,6 +482,80 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         }
 
         [Test]
+        public void CreateMapPresentation_UnknownOpponentHeadquarters_DoesNotRevealLocation()
+        {
+            GameRoot game = CreateGame();
+            Faction opponent = game.GetFactions()
+                .Single(faction => faction.InstanceID == _opponentFactionID);
+            opponent.HQInstanceID = "REBEL_HQ";
+            GalaxyPlanetSector sector = new GalaxyPlanetSector { InstanceID = "SECTOR" };
+            Planet headquarters = new Planet
+            {
+                InstanceID = opponent.HQInstanceID,
+                IsHeadquarters = true,
+            };
+            game.AttachNode(sector, game.Galaxy);
+            game.AttachNode(headquarters, sector);
+
+            GalaxyMap factionView = new GalaxyMap();
+            PlanetSector viewSector = (PlanetSector)sector.CreateCopy();
+            Planet unexploredHeadquarters = new Planet
+            {
+                InstanceID = headquarters.InstanceID,
+                IsUnexploredView = true,
+            };
+            viewSector.SetParent(factionView);
+            factionView.AddChild(viewSector);
+            unexploredHeadquarters.SetParent(viewSector);
+            viewSector.AddChild(unexploredHeadquarters);
+            StrategyBriefingSegmentTheme segment = new StrategyBriefingSegmentTheme
+            {
+                Focus = StrategyBriefingFocus.OpponentHeadquarters,
+            };
+
+            StrategyBriefingMapPresentation presentation =
+                StrategyBriefingController.CreateMapPresentation(game, segment, factionView);
+
+            Assert.IsNull(presentation.TargetSectorInstanceID);
+            Assert.IsNull(presentation.TargetPlanetInstanceID);
+        }
+
+        [Test]
+        public void CreateMapPresentation_KnownOpponentHeadquarters_UsesFactionViewLocation()
+        {
+            GameRoot game = CreateGame();
+            Faction opponent = game.GetFactions()
+                .Single(faction => faction.InstanceID == _opponentFactionID);
+            opponent.HQInstanceID = "REBEL_HQ";
+            GalaxyPlanetSector sector = new GalaxyPlanetSector { InstanceID = "SECTOR" };
+            Planet headquarters = new Planet
+            {
+                InstanceID = opponent.HQInstanceID,
+                IsHeadquarters = true,
+            };
+            game.AttachNode(sector, game.Galaxy);
+            game.AttachNode(headquarters, sector);
+
+            GalaxyMap factionView = new GalaxyMap();
+            PlanetSector viewSector = (PlanetSector)sector.CreateCopy();
+            Planet knownHeadquarters = (Planet)headquarters.CreateCopy();
+            viewSector.SetParent(factionView);
+            factionView.AddChild(viewSector);
+            knownHeadquarters.SetParent(viewSector);
+            viewSector.AddChild(knownHeadquarters);
+            StrategyBriefingSegmentTheme segment = new StrategyBriefingSegmentTheme
+            {
+                Focus = StrategyBriefingFocus.OpponentHeadquarters,
+            };
+
+            StrategyBriefingMapPresentation presentation =
+                StrategyBriefingController.CreateMapPresentation(game, segment, factionView);
+
+            Assert.AreEqual(sector.InstanceID, presentation.TargetSectorInstanceID);
+            Assert.AreEqual(headquarters.InstanceID, presentation.TargetPlanetInstanceID);
+        }
+
+        [Test]
         public void CreateMapPresentation_TargetOutsidePlanetSector_ThrowsInvalidOperationException()
         {
             GameRoot game = CreateGame();
