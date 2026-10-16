@@ -31,9 +31,13 @@ public sealed class LoadingScreenView : MonoBehaviour
     private const int _presentationLayer = 31;
     private const int _renderTextureWidth = 1280;
     private const int _renderTextureHeight = 720;
-    private const float _maximumYaw = 45f;
-    private const float _yawDegreesPerScreen = 110f;
-    private const float _orbitSmoothTime = 0.1f;
+    private const float _maximumFlightYaw = 24f;
+    private const float _maximumFlightPitch = 15f;
+    private const float _maximumFlightRoll = 10f;
+    private const float _maximumFlightOffsetX = 1.35f;
+    private const float _maximumFlightOffsetY = 0.55f;
+    private const float _flightPositionSmoothTime = 0.28f;
+    private const float _flightAttitudeSmoothTime = 0.08f;
 
     [SerializeField]
     private TextMeshProUGUI statusText;
@@ -82,9 +86,10 @@ public sealed class LoadingScreenView : MonoBehaviour
     private Transform[] shuttleExhaustPlumes;
     private Vector3[] shuttleExhaustScales;
     private RenderTexture shuttleRenderTexture;
-    private LimitedYawDrag yawDrag;
-    private float displayedYaw;
-    private float yawVelocity;
+    private Vector2 flightOffset;
+    private Vector2 flightOffsetVelocity;
+    private Vector2 flightSteering;
+    private Vector2 flightSteeringVelocity;
     private Quaternion shuttleCameraOrbitRestRotation;
     private Vector3 shuttleRestPosition;
     private Quaternion shuttleRestRotation;
@@ -128,7 +133,6 @@ public sealed class LoadingScreenView : MonoBehaviour
         failureDetailText.gameObject.SetActive(false);
         continueButton.onClick.AddListener(RequestContinue);
         continueButton.gameObject.SetActive(false);
-        yawDrag = new LimitedYawDrag(_maximumYaw, _yawDegreesPerScreen);
         shuttleCameraOrbitRestRotation = shuttleCameraOrbit.localRotation;
         presentationVisible = gameObject.activeInHierarchy && presentationGroup.alpha > 0f;
         cancellation = new CancellationTokenSource();
@@ -185,12 +189,28 @@ public sealed class LoadingScreenView : MonoBehaviour
         )
             RequestContinue();
 
-        UpdateCameraDragInput();
-        displayedYaw = Mathf.SmoothDampAngle(
-            displayedYaw,
-            yawDrag.TargetYaw,
-            ref yawVelocity,
-            _orbitSmoothTime,
+        Vector2 targetInput = GetPointerFlightInput();
+        Vector2 targetOffset = new Vector2(
+            targetInput.x * _maximumFlightOffsetX,
+            targetInput.y * _maximumFlightOffsetY
+        );
+        flightOffset = Vector2.SmoothDamp(
+            flightOffset,
+            targetOffset,
+            ref flightOffsetVelocity,
+            _flightPositionSmoothTime,
+            Mathf.Infinity,
+            Time.unscaledDeltaTime
+        );
+        Vector2 remainingFlight = new Vector2(
+            targetInput.x - flightOffset.x / _maximumFlightOffsetX,
+            targetInput.y - flightOffset.y / _maximumFlightOffsetY
+        );
+        flightSteering = Vector2.SmoothDamp(
+            flightSteering,
+            Vector2.ClampMagnitude(remainingFlight, 1f),
+            ref flightSteeringVelocity,
+            _flightAttitudeSmoothTime,
             Mathf.Infinity,
             Time.unscaledDeltaTime
         );
@@ -200,48 +220,63 @@ public sealed class LoadingScreenView : MonoBehaviour
             shuttleModelRoot.localPosition =
                 shuttleRestPosition
                 + new Vector3(
-                    Mathf.Sin(time * 0.37f) * 0.022f,
-                    Mathf.Sin(time * 0.53f) * 0.035f,
+                    flightOffset.x + Mathf.Sin(time * 0.37f) * 0.022f,
+                    flightOffset.y + Mathf.Sin(time * 0.53f) * 0.035f,
                     Mathf.Sin(time * 0.41f) * 0.018f
                 );
-            shuttleModelRoot.localRotation =
-                shuttleRestRotation
-                * Quaternion.Euler(
-                    Mathf.Sin(time * 0.55f) * 0.8f,
-                    Mathf.Sin(time * 0.31f) * 1.35f,
-                    Mathf.Sin(time * 0.42f) * 0.55f
-                );
+            shuttleModelRoot.localRotation = shuttleRestRotation * GetFlightRotation(time);
             shuttleModelRoot.localScale = shuttleRestScale * Mathf.Lerp(0.997f, 1.004f, thrust);
             UpdateEngineExhaust(time);
         }
 
-        UpdateCameraView();
+        KeepCameraCentered();
     }
 
     /// <summary>
-    /// Captures and updates a left-button horizontal drag independently from scene event systems.
+    /// Converts the pointer position into centered horizontal and vertical flight input.
     /// </summary>
-    private void UpdateCameraDragInput()
+    /// <returns>The clamped flight input, or zero while the pointer is unavailable.</returns>
+    private static Vector2 GetPointerFlightInput()
     {
-        if (Input.GetMouseButtonDown(0))
-            yawDrag.Begin(Input.mousePosition.x, displayedYaw);
+        if (!Application.isFocused || Screen.width <= 0 || Screen.height <= 0)
+            return Vector2.zero;
 
-        if (Input.GetMouseButton(0))
-            yawDrag.Move(Input.mousePosition.x, Screen.width);
+        Vector3 pointer = Input.mousePosition;
+        if (
+            pointer.x < 0f
+            || pointer.x > Screen.width
+            || pointer.y < 0f
+            || pointer.y > Screen.height
+        )
+            return Vector2.zero;
 
-        if (Input.GetMouseButtonUp(0))
-            yawDrag.End();
+        return new Vector2(
+            Mathf.Clamp(pointer.x / Screen.width * 2f - 1f, -1f, 1f),
+            Mathf.Clamp(pointer.y / Screen.height * 2f - 1f, -1f, 1f)
+        );
     }
 
     /// <summary>
-    /// Orbits the camera around the shuttle and keeps the camera aimed at it.
+    /// Builds the shuttle attitude from cursor steering and subtle in-flight drift.
     /// </summary>
-    private void UpdateCameraView()
+    /// <param name="time">The current unscaled presentation time.</param>
+    /// <returns>The local rotation relative to the shuttle's resting orientation.</returns>
+    private Quaternion GetFlightRotation(float time)
     {
-        shuttleCameraOrbit.localRotation =
-            Quaternion.Euler(0f, displayedYaw, 0f) * shuttleCameraOrbitRestRotation;
+        return Quaternion.Euler(
+            -flightSteering.y * _maximumFlightPitch + Mathf.Sin(time * 0.55f) * 0.8f,
+            flightSteering.x * _maximumFlightYaw + Mathf.Sin(time * 0.31f) * 1.35f,
+            -flightSteering.x * _maximumFlightRoll + Mathf.Sin(time * 0.42f) * 0.55f
+        );
+    }
 
-        starfield.SetViewYaw(displayedYaw / _maximumYaw);
+    /// <summary>
+    /// Holds the viewpoint behind the shuttle while cursor input moves only the model.
+    /// </summary>
+    private void KeepCameraCentered()
+    {
+        shuttleCameraOrbit.localRotation = shuttleCameraOrbitRestRotation;
+        starfield.SetViewYaw(0f);
     }
 
     /// <summary>
@@ -252,7 +287,7 @@ public sealed class LoadingScreenView : MonoBehaviour
     {
         if (visible)
         {
-            ResetCameraInteraction();
+            ResetFlightInteraction();
             presentationGroup.alpha = 1f;
             presentationVisible = true;
             StartFlightAudio();
@@ -260,7 +295,6 @@ public sealed class LoadingScreenView : MonoBehaviour
         }
         else
         {
-            yawDrag?.End();
             presentationState = PresentationState.Continuing;
             continueButton.gameObject.SetActive(false);
             presentationVisible = false;
@@ -283,7 +317,7 @@ public sealed class LoadingScreenView : MonoBehaviour
         continueKeyboardHint.text = "PRESS ENTER";
         continueButton.interactable = true;
         continueButton.gameObject.SetActive(false);
-        ResetCameraInteraction();
+        ResetFlightInteraction();
         presentationGroup.alpha = 0f;
         presentationVisible = false;
         StopFlightAudio();
@@ -419,14 +453,15 @@ public sealed class LoadingScreenView : MonoBehaviour
     }
 
     /// <summary>
-    /// Recenters the camera and clears any active drag gesture.
+    /// Recenters the shuttle attitude and restores the fixed rear viewpoint.
     /// </summary>
-    private void ResetCameraInteraction()
+    private void ResetFlightInteraction()
     {
-        yawDrag?.Reset();
-        displayedYaw = 0f;
-        yawVelocity = 0f;
-        UpdateCameraView();
+        flightOffset = Vector2.zero;
+        flightOffsetVelocity = Vector2.zero;
+        flightSteering = Vector2.zero;
+        flightSteeringVelocity = Vector2.zero;
+        KeepCameraCentered();
     }
 
     /// <summary>
@@ -436,7 +471,6 @@ public sealed class LoadingScreenView : MonoBehaviour
     {
         if (continueButton != null)
             continueButton.onClick.RemoveListener(RequestContinue);
-
         cancellation?.Cancel();
         cancellation?.Dispose();
         cancellation = null;
@@ -479,7 +513,6 @@ public sealed class LoadingScreenView : MonoBehaviour
                 DestroyImmediate(shuttleExhaustMesh);
             shuttleExhaustMesh = null;
         }
-
         if (shuttleCamera != null)
             shuttleCamera.targetTexture = null;
         if (shuttleViewport != null)

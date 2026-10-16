@@ -738,6 +738,26 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
+        public async Task LoadGameDataAsync_UnknownElement_SkipsElementWithoutWarning()
+        {
+            GameRoot game = new GameRoot
+            {
+                Summary = new GameSummary(),
+                Galaxy = new GalaxyMap(),
+                CurrentTick = 20,
+            };
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            string savePath = _saveGameManager.GetSaveFilePath(_saveFileName);
+            string xml = File.ReadAllText(savePath)
+                .Replace("<GameRoot>", "<GameRoot><FutureField/>");
+            File.WriteAllText(savePath, xml);
+
+            GameRoot loadedGame = await _saveGameManager.LoadGameDataAsync(_saveFileName);
+
+            Assert.AreEqual(20, loadedGame.CurrentTick);
+        }
+
+        [Test]
         public void SaveAndLoadGame_GameWithFactionAndPlanet_PreservesGameState()
         {
             GameSummary summary = new GameSummary

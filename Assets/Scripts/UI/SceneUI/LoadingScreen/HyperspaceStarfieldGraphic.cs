@@ -109,18 +109,13 @@ public sealed class HyperspaceStarfieldGraphic : MaskableGraphic
     }
 
     /// <summary>
-    /// Draws the deep-blue vertical background gradient and central transit glow.
+    /// Draws the black space backdrop and subtle central transit glow.
     /// </summary>
     /// <param name="vertexHelper">The mesh receiving geometry.</param>
     /// <param name="bounds">The presentation bounds.</param>
     private static void AddBackdrop(VertexHelper vertexHelper, Rect bounds)
     {
-        AddQuad(
-            vertexHelper,
-            bounds,
-            new Color(0.002f, 0.008f, 0.02f, 1f),
-            new Color(0.014f, 0.035f, 0.075f, 1f)
-        );
+        AddQuad(vertexHelper, bounds, Color.black, Color.black);
 
         float glowWidth = bounds.width * 0.48f;
         float glowHeight = bounds.height * 0.62f;
@@ -129,8 +124,8 @@ public sealed class HyperspaceStarfieldGraphic : MaskableGraphic
             new Vector2(0f, bounds.height * 0.055f),
             glowWidth,
             glowHeight,
-            new Color(0.05f, 0.28f, 0.55f, 0.16f),
-            new Color(0.01f, 0.04f, 0.12f, 0f)
+            new Color(0.18f, 0.22f, 0.28f, 0.1f),
+            Color.clear
         );
     }
 
@@ -211,7 +206,7 @@ public sealed class HyperspaceStarfieldGraphic : MaskableGraphic
         float sideWidth = bounds.width * 0.13f;
         float verticalHeight = bounds.height * 0.12f;
         Color32 clear = new Color(0f, 0f, 0f, 0f);
-        Color32 dark = new Color(0f, 0.004f, 0.012f, 0.72f);
+        Color32 dark = new Color(0f, 0f, 0f, 0.72f);
         AddQuad(
             vertexHelper,
             new Rect(bounds.xMin, bounds.yMin, sideWidth, bounds.height),

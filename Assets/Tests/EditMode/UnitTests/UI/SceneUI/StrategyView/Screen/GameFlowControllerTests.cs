@@ -283,7 +283,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             {
                 GameLaunchContext.SaveFileName = null;
 
-                Task load = (Task)InvokePrivate("LoadGameAsync");
+                Task load = (Task)InvokePrivate("LoadGameAsync", new object[] { null });
 
                 Assert.ThrowsAsync<InvalidOperationException>(async () => await load);
             }

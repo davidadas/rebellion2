@@ -4,25 +4,53 @@ using System.Threading.Tasks;
 using UnityEngine;
 
 /// <summary>
-/// Coordinates saved-game loading and reconstructs application content only when required.
+/// Presents saved-game loading and reconstructs application content only when required.
 /// </summary>
 internal sealed class LoadingScreenController : MonoBehaviour
 {
+    private const string _viewResourcePath = "UI/LoadingScreen";
     private const string _objectName = "Loading Screen Controller";
+    private const float _fadeToBlackDuration = 0.55f;
+    private const float _fadeFromBlackDuration = 0.26f;
+    private const float _failureDisplayDuration = 1.5f;
 
     private static LoadingScreenController _activeController;
 
     private AppBootstrap _bootstrap;
     private Action _transitionCompleted;
+    private Action _continueAccepted;
+    private LoadingScreenView _view;
+    private Coroutine _finishRoutine;
+    private Coroutine _prepareRoutine;
     private Coroutine _recoveryRoutine;
     private string _saveFileName;
     private bool _reconstructContent;
     private bool _loadInProgress;
+    private bool _recoveringFromFailure;
+    private bool _quitOnContinue;
 
     /// <summary>
     /// Gets whether a saved-game loading transition is currently active.
     /// </summary>
     internal static bool IsLoadInProgress => _activeController && _activeController._loadInProgress;
+
+    /// <summary>
+    /// Starts preparing the persistent loading presentation after the application has rendered its
+    /// initial frame.
+    /// </summary>
+    /// <param name="bootstrap">The active application bootstrap.</param>
+    internal static void Prepare(AppBootstrap bootstrap)
+    {
+        if (!Application.isPlaying || bootstrap == null)
+            return;
+
+        LoadingScreenController controller = GetOrCreateController();
+        controller._bootstrap = bootstrap;
+        if (controller._view == null && controller._prepareRoutine == null)
+            controller._prepareRoutine = controller.StartCoroutine(
+                controller.PreparePresentation()
+            );
+    }
 
     /// <summary>
     /// Starts a one-shot saved-game transition owned independently from the current scene.
@@ -43,12 +71,17 @@ internal sealed class LoadingScreenController : MonoBehaviour
         controller._bootstrap = bootstrap;
         controller._saveFileName = fileName;
         controller._transitionCompleted = null;
+        controller._continueAccepted = null;
         controller._reconstructContent = false;
+        controller._recoveringFromFailure = false;
+        controller._quitOnContinue = false;
+        controller.EnsurePresentation();
         controller._loadInProgress = true;
 
         if (!Application.isPlaying)
         {
             AudioManager.Instance?.StopMusic();
+            controller._view.SetVisible(true);
             SaveLoadPreparation preparation = bootstrap
                 .PrepareSaveLoadAsync(fileName)
                 .GetAwaiter()
@@ -58,7 +91,8 @@ internal sealed class LoadingScreenController : MonoBehaviour
             return;
         }
 
-        AudioManager.Instance?.StopMusic();
+        AudioManager.Instance?.FadeOutMusic(_fadeToBlackDuration);
+        controller._view.PrepareEntrance();
         controller.StartCoroutine(controller.LoadStrategy());
     }
 
@@ -79,29 +113,75 @@ internal sealed class LoadingScreenController : MonoBehaviour
     }
 
     /// <summary>
-    /// Releases the active loading transition after replacement gameplay is ready.
+    /// Instantiates and begins warming the hidden loading view.
     /// </summary>
-    /// <param name="transitionCompleted">The action to run after loading completes.</param>
-    internal static void CompletePendingLoad(Action transitionCompleted = null)
+    private void EnsurePresentation()
     {
-        LoadingScreenController controller = _activeController;
-        if (controller?._loadInProgress != true)
+        if (_view != null)
+            return;
+
+        LoadingScreenView prefab = Resources.Load<LoadingScreenView>(_viewResourcePath);
+        if (prefab == null)
+        {
+            throw new MissingReferenceException(
+                $"Loading-screen prefab is missing: {_viewResourcePath}"
+            );
+        }
+
+        _view = Instantiate(prefab, transform, false);
+        _view.ContinueRequested += HandleContinueRequested;
+        _view.Initialize(_bootstrap.GetContentPack().ContentRootPath);
+        _view.SetVisible(false);
+    }
+
+    /// <summary>
+    /// Removes the persistent loading presentation after replacement gameplay is visible.
+    /// </summary>
+    /// <param name="transitionCompleted">The action to run after the loading view is gone.</param>
+    /// <param name="presentationReady">The action to run when the loading view becomes ready.</param>
+    /// <param name="continueAccepted">The action to run when the player accepts the ready state.</param>
+    internal static void CompletePendingLoad(
+        Action transitionCompleted = null,
+        Action presentationReady = null,
+        Action continueAccepted = null
+    )
+    {
+        if (_activeController == null)
             return;
 
         if (!Application.isPlaying)
         {
-            controller._loadInProgress = false;
-            DestroyImmediate(controller.gameObject);
-            transitionCompleted?.Invoke();
+            DestroyImmediate(_activeController.gameObject);
             return;
         }
 
-        controller._transitionCompleted = transitionCompleted;
-        controller.ReleaseTransition();
+        if (!_activeController._loadInProgress)
+            return;
+
+        _activeController._transitionCompleted = transitionCompleted;
+        _activeController._continueAccepted = continueAccepted;
+
+        if (_activeController._recoveringFromFailure)
+        {
+            _activeController.BeginFinishTransition();
+        }
+        else if (_activeController._view != null)
+        {
+            _activeController._view.ShowReady();
+            presentationReady?.Invoke();
+        }
+        else if (_activeController._view == null)
+        {
+            _activeController._loadInProgress = false;
+            _activeController._quitOnContinue = false;
+            Action completed = _activeController._transitionCompleted;
+            _activeController._transitionCompleted = null;
+            completed?.Invoke();
+        }
     }
 
     /// <summary>
-    /// Returns a failed save load to the main menu.
+    /// Keeps the loading presentation active while a failed save load returns to the main menu.
     /// </summary>
     /// <param name="exception">The optional failure shown and logged during recovery.</param>
     /// <returns>True when an active saved-game transition began recovery.</returns>
@@ -112,7 +192,11 @@ internal sealed class LoadingScreenController : MonoBehaviour
 
         LoadingScreenController controller = _activeController;
         controller._transitionCompleted = null;
+        controller._continueAccepted = null;
         controller._reconstructContent = false;
+        controller._recoveringFromFailure = true;
+        controller._quitOnContinue = false;
+        controller._view?.ShowLoadFailure(exception?.Message);
 
         if (exception != null)
             Debug.LogException(exception);
@@ -129,7 +213,7 @@ internal sealed class LoadingScreenController : MonoBehaviour
             bootstrap = AppBootstrap.Instance;
         if (bootstrap == null)
         {
-            controller.EnterTerminalFailure();
+            controller.EnterTerminalFailure(exception);
             return true;
         }
 
@@ -158,6 +242,9 @@ internal sealed class LoadingScreenController : MonoBehaviour
 
         LoadingScreenController controller = _activeController;
         controller._transitionCompleted = null;
+        controller._continueAccepted = null;
+        controller._recoveringFromFailure = false;
+        controller._quitOnContinue = false;
         if (!Application.isPlaying)
         {
             controller._loadInProgress = false;
@@ -165,7 +252,13 @@ internal sealed class LoadingScreenController : MonoBehaviour
             return true;
         }
 
-        controller.ReleaseTransition();
+        if (controller._view == null)
+        {
+            controller._loadInProgress = false;
+            return true;
+        }
+
+        controller.BeginFinishTransition();
         return true;
     }
 
@@ -177,6 +270,8 @@ internal sealed class LoadingScreenController : MonoBehaviour
     /// <returns>The recovery-navigation coroutine.</returns>
     private IEnumerator ReturnToMainMenu(AppBootstrap bootstrap)
     {
+        yield return new WaitForSecondsRealtime(_failureDisplayDuration);
+
         while (bootstrap.IsSceneTransitionInProgress)
             yield return null;
 
@@ -192,24 +287,27 @@ internal sealed class LoadingScreenController : MonoBehaviour
     }
 
     /// <summary>
-    /// Releases a failed recovery when the main menu cannot be loaded.
+    /// Hides a failed recovery presentation when the main menu cannot be loaded.
     /// </summary>
     /// <param name="exception">The recovery-scene failure.</param>
     private void HandleRecoverySceneFailure(Exception exception)
     {
         Debug.LogException(exception);
-        EnterTerminalFailure();
+        EnterTerminalFailure(exception);
     }
 
     /// <summary>
-    /// Releases loading state when application recovery cannot continue.
+    /// Keeps the loading presentation interactive when application recovery cannot continue.
     /// </summary>
-    private void EnterTerminalFailure()
+    /// <param name="exception">The unrecoverable application failure.</param>
+    private void EnterTerminalFailure(Exception exception)
     {
         _transitionCompleted = null;
-        _loadInProgress = false;
-        if (Application.isPlaying)
-            Destroy(gameObject);
+        _continueAccepted = null;
+        _recoveringFromFailure = true;
+        _quitOnContinue = true;
+        _loadInProgress = true;
+        _view?.ShowTerminalFailure(exception?.Message);
     }
 
     /// <summary>
@@ -218,32 +316,38 @@ internal sealed class LoadingScreenController : MonoBehaviour
     private void OnDestroy()
     {
         _transitionCompleted = null;
+        _continueAccepted = null;
+        _quitOnContinue = false;
+        if (_view != null)
+            _view.ContinueRequested -= HandleContinueRequested;
 
         if (_activeController == this)
             _activeController = null;
     }
 
     /// <summary>
-    /// Clears loading state, invokes the pending transition callback, and removes the coordinator.
+    /// Defers presentation construction until startup has had time to become responsive.
     /// </summary>
-    private void ReleaseTransition()
+    /// <returns>The preparation coroutine.</returns>
+    private IEnumerator PreparePresentation()
     {
-        _loadInProgress = false;
-        _saveFileName = null;
-        Action transitionCompleted = _transitionCompleted;
-        _transitionCompleted = null;
-        if (_activeController == this)
-            _activeController = null;
-        transitionCompleted?.Invoke();
-        Destroy(gameObject);
+        yield return null;
+        yield return null;
+        EnsurePresentation();
+        _prepareRoutine = null;
     }
 
     /// <summary>
-    /// Optionally replaces content services and opens the strategy scene for the pending save.
+    /// Gives the loading presentation a frame, optionally replaces content services, and opens the
+    /// strategy scene for the pending save.
     /// </summary>
     /// <returns>The saved-game transition coroutine.</returns>
     private IEnumerator LoadStrategy()
     {
+        yield return FadeBlack(0f, 1f, _fadeToBlackDuration);
+        _view.SetPresentationVisible(true);
+        yield return FadeBlack(1f, 0f, _fadeFromBlackDuration);
+
         Task<SaveLoadPreparation> preparationTask;
         try
         {
@@ -318,5 +422,80 @@ internal sealed class LoadingScreenController : MonoBehaviour
     private void HandleStrategySceneFailure(Exception exception)
     {
         RecoverFromLoadFailure(exception);
+    }
+
+    /// <summary>
+    /// Begins removing the loading presentation after the player accepts the ready state.
+    /// </summary>
+    private void HandleContinueRequested()
+    {
+        if (!_loadInProgress)
+            return;
+
+        if (_quitOnContinue)
+        {
+            Application.Quit();
+            return;
+        }
+
+        if (_recoveringFromFailure)
+            return;
+
+        _continueAccepted?.Invoke();
+        _continueAccepted = null;
+        BeginFinishTransition();
+        _quitOnContinue = false;
+    }
+
+    /// <summary>
+    /// Starts the exit transition once and only after the loaded scene is ready.
+    /// </summary>
+    private void BeginFinishTransition()
+    {
+        if (_view == null || _finishRoutine != null)
+            return;
+
+        _finishRoutine = StartCoroutine(FinishTransition());
+    }
+
+    /// <summary>
+    /// Fades the loading presentation through black into the newly activated strategy view.
+    /// </summary>
+    /// <returns>The exit-transition coroutine.</returns>
+    private IEnumerator FinishTransition()
+    {
+        yield return FadeBlack(0f, 1f, _fadeToBlackDuration);
+        _view.SetPresentationVisible(false);
+        yield return FadeBlack(1f, 0f, _fadeFromBlackDuration);
+        _view.SetVisible(false);
+        _loadInProgress = false;
+        _recoveringFromFailure = false;
+        _saveFileName = null;
+        _finishRoutine = null;
+        Action transitionCompleted = _transitionCompleted;
+        _transitionCompleted = null;
+        _continueAccepted = null;
+        transitionCompleted?.Invoke();
+    }
+
+    /// <summary>
+    /// Animates the full-screen black layer with unscaled time.
+    /// </summary>
+    /// <param name="from">The starting opacity.</param>
+    /// <param name="to">The ending opacity.</param>
+    /// <param name="duration">The transition duration in seconds.</param>
+    /// <returns>The fade coroutine.</returns>
+    private IEnumerator FadeBlack(float from, float to, float duration)
+    {
+        float elapsed = 0f;
+        _view.SetBlackOpacity(from);
+        while (elapsed < duration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            float progress = Mathf.Clamp01(elapsed / duration);
+            _view.SetBlackOpacity(Mathf.Lerp(from, to, Mathf.SmoothStep(0f, 1f, progress)));
+            yield return null;
+        }
+        _view.SetBlackOpacity(to);
     }
 }
