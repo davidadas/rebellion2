@@ -542,7 +542,7 @@ public sealed class LoadingScreenView : MonoBehaviour
         )
         {
             name = "Loading Shuttle",
-            antiAliasing = 4,
+            antiAliasing = 1,
             useMipMap = false,
             filterMode = FilterMode.Bilinear,
             wrapMode = TextureWrapMode.Clamp,

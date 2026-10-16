@@ -84,7 +84,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         /// <returns>The created material.</returns>
         private Material CreateMaterial(Texture baseTexture)
         {
-            Shader shader = Shader.Find("Universal Render Pipeline/Lit");
+            Shader shader = Shader.Find("HDRP/Lit");
             Assert.IsNotNull(shader);
             Material material = new Material(shader) { mainTexture = baseTexture };
             _createdObjects.Add(material);

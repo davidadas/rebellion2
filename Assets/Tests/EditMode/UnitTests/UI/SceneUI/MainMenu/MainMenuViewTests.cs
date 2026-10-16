@@ -7,7 +7,7 @@ using TMPro;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.EventSystems;
-using UnityEngine.Rendering.Universal;
+using UnityEngine.Rendering.HighDefinition;
 using UnityEngine.UI;
 
 namespace Rebellion.Tests.UI.SceneUI.MainMenu
@@ -191,11 +191,12 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Light sun = _prefabRoot.transform.Find("PlanetRig/PlanetSun").GetComponent<Light>();
             Assert.AreEqual(LightType.Directional, sun.type);
             Assert.AreEqual(1f, sun.intensity);
+            Assert.IsNotNull(sun.GetComponent<HDAdditionalLightData>());
             Assert.AreEqual(1 << 31, sun.cullingMask);
 
             Camera camera = _prefabRoot.transform.Find("PlanetRig/Camera").GetComponent<Camera>();
             Assert.IsTrue(camera.allowHDR);
-            Assert.IsNotNull(camera.GetUniversalAdditionalCameraData());
+            Assert.IsNotNull(camera.GetComponent<HDAdditionalCameraData>());
             Assert.IsNotNull(planet.material);
             Assert.AreEqual("Custom/PremultipliedTexture", planet.material.shader.name);
         }

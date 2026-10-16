@@ -163,6 +163,7 @@ public static class MainMenuPrefabBuilder
         GameObject root = new GameObject("MainMenuRoot");
         try
         {
+            HdrpRenderTargetBuilder.AddIsolatedVolume(root.transform);
             BuildBaseHierarchy(root);
             RebuildViewBindings(root);
             InstallPlanet(root);
@@ -2072,8 +2073,8 @@ public static class MainMenuPrefabBuilder
         sunObject.transform.localRotation = Quaternion.Euler(23.84f, -35f, 0f);
         Light sun = sunObject.GetComponent<Light>();
         sun.type = LightType.Directional;
+        HdrpRenderTargetBuilder.ConfigureLight(sun, 1f);
         sun.color = new Color(1f, 0.98389596f, 0.8726415f, 1f);
-        sun.intensity = 1f;
         sun.cullingMask = 1 << planetLayer;
         sun.shadows = LightShadows.Soft;
 
@@ -2089,8 +2090,9 @@ public static class MainMenuPrefabBuilder
         camera.farClipPlane = 50f;
         camera.cullingMask = 1 << planetLayer;
         camera.allowHDR = true;
+        camera.allowMSAA = false;
         camera.targetTexture = renderTexture;
-        cameraObject.AddComponent<UnityEngine.Rendering.Universal.UniversalAdditionalCameraData>();
+        HdrpRenderTargetBuilder.ConfigureCamera(camera);
     }
 
     /// <summary>
@@ -2107,12 +2109,14 @@ public static class MainMenuPrefabBuilder
                 existing.width != size
                 || existing.height != size
                 || existing.format != RenderTextureFormat.ARGBHalf
+                || existing.antiAliasing != 1
             )
             {
                 existing.Release();
                 existing.width = size;
                 existing.height = size;
                 existing.format = RenderTextureFormat.ARGBHalf;
+                existing.antiAliasing = 1;
                 EditorUtility.SetDirty(existing);
             }
             return existing;
@@ -2121,7 +2125,7 @@ public static class MainMenuPrefabBuilder
         RenderTexture created = new RenderTexture(size, size, 16, RenderTextureFormat.ARGBHalf)
         {
             name = "Planet",
-            antiAliasing = 4,
+            antiAliasing = 1,
         };
         EnsureAssetFolder(Path.GetDirectoryName(_renderTexturePath));
         AssetDatabase.CreateAsset(created, _renderTexturePath);
@@ -2475,15 +2479,17 @@ public static class MainMenuPrefabBuilder
         camera.orthographicSize = 0.7f;
         camera.nearClipPlane = 0.1f;
         camera.farClipPlane = 20f;
+        camera.allowMSAA = false;
         camera.targetTexture = renderTexture;
+        HdrpRenderTargetBuilder.ConfigureCamera(camera);
 
         GameObject underLightObject = new GameObject("UnderLight", typeof(Light));
         underLightObject.transform.SetParent(rig.transform, false);
         underLightObject.transform.localPosition = new Vector3(0f, -2.5f, -1.5f);
         Light underLight = underLightObject.GetComponent<Light>();
         underLight.type = LightType.Point;
+        HdrpRenderTargetBuilder.ConfigureLight(underLight, 2f);
         underLight.range = 8f;
-        underLight.intensity = 2f;
         underLight.color = Color.white;
 
         return spinner;
@@ -2508,11 +2514,12 @@ public static class MainMenuPrefabBuilder
         if (existing != null)
         {
             // Re-assert the intended dimensions in case an older square asset is on disk.
-            if (existing.width != width || existing.height != height)
+            if (existing.width != width || existing.height != height || existing.antiAliasing != 1)
             {
                 existing.Release();
                 existing.width = width;
                 existing.height = height;
+                existing.antiAliasing = 1;
                 EditorUtility.SetDirty(existing);
             }
             return existing;
@@ -2521,7 +2528,7 @@ public static class MainMenuPrefabBuilder
         RenderTexture created = new RenderTexture(width, height, 16, RenderTextureFormat.ARGB32)
         {
             name = $"Icon_{factionId}",
-            antiAliasing = 4,
+            antiAliasing = 1,
         };
         EnsureAssetFolder(Path.GetDirectoryName(path));
         AssetDatabase.CreateAsset(created, path);
@@ -2600,7 +2607,9 @@ public static class MainMenuPrefabBuilder
         camera.orthographicSize = 1.3f;
         camera.nearClipPlane = 0.1f;
         camera.farClipPlane = 20f;
+        camera.allowMSAA = false;
         camera.targetTexture = renderTexture;
+        HdrpRenderTargetBuilder.ConfigureCamera(camera);
 
         if (face.UnderLightIntensity > 0f)
         {
@@ -2609,8 +2618,8 @@ public static class MainMenuPrefabBuilder
             underLightObject.transform.localPosition = new Vector3(0f, -2.5f, -1.5f);
             Light underLight = underLightObject.GetComponent<Light>();
             underLight.type = LightType.Point;
+            HdrpRenderTargetBuilder.ConfigureLight(underLight, face.UnderLightIntensity);
             underLight.range = 8f;
-            underLight.intensity = face.UnderLightIntensity;
             underLight.color = Color.white;
         }
     }
@@ -2674,7 +2683,7 @@ public static class MainMenuPrefabBuilder
         lightObject.transform.localRotation = rotation;
         Light light = lightObject.GetComponent<Light>();
         light.type = LightType.Directional;
-        light.intensity = intensity;
+        HdrpRenderTargetBuilder.ConfigureLight(light, intensity);
         light.color = color;
         light.shadows = shadows;
         light.cullingMask = ~(1 << 31);

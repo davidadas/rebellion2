@@ -2,7 +2,7 @@ using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
-using UnityEngine.Rendering.Universal;
+using UnityEngine.Rendering.HighDefinition;
 
 /// <summary>
 /// Verifies the project-wide render pipeline configuration.
@@ -10,10 +10,13 @@ using UnityEngine.Rendering.Universal;
 [TestFixture]
 public sealed class RenderPipelineConfigurationTests
 {
+    /// <summary>
+    /// Verifies that every quality tier uses the same HDRP project configuration.
+    /// </summary>
     [Test]
-    public void RenderPipeline_AllQualityLevels_UsesUniversalRenderPipeline()
+    public void RenderPipeline_AllQualityLevels_UsesHighDefinitionRenderPipeline()
     {
-        Assert.IsInstanceOf<UniversalRenderPipelineAsset>(GraphicsSettings.defaultRenderPipeline);
+        Assert.IsInstanceOf<HDRenderPipelineAsset>(GraphicsSettings.defaultRenderPipeline);
         Assert.AreSame(
             GraphicsSettings.defaultRenderPipeline,
             QualitySettings.GetRenderPipelineAssetAt(QualitySettings.GetQualityLevel())
@@ -21,121 +24,56 @@ public sealed class RenderPipelineConfigurationTests
 
         for (int index = 0; index < QualitySettings.names.Length; index++)
         {
-            Assert.IsInstanceOf<UniversalRenderPipelineAsset>(
+            Assert.IsInstanceOf<HDRenderPipelineAsset>(
                 QualitySettings.GetRenderPipelineAssetAt(index),
                 QualitySettings.names[index]
             );
         }
     }
 
-    [TestCase(
-        0,
-        LightRenderingMode.Disabled,
-        LightRenderingMode.PerVertex,
-        4,
-        false,
-        1,
-        1024,
-        15f,
-        1,
-        false
-    )]
-    [TestCase(
-        1,
-        LightRenderingMode.Disabled,
-        LightRenderingMode.PerVertex,
-        4,
-        false,
-        1,
-        1024,
-        20f,
-        1,
-        false
-    )]
-    [TestCase(
-        2,
-        LightRenderingMode.PerPixel,
-        LightRenderingMode.PerPixel,
-        1,
-        true,
-        1,
-        1024,
-        20f,
-        1,
-        false
-    )]
-    [TestCase(
-        3,
-        LightRenderingMode.PerPixel,
-        LightRenderingMode.PerPixel,
-        2,
-        true,
-        1,
-        2048,
-        40f,
-        2,
-        true
-    )]
-    [TestCase(
-        4,
-        LightRenderingMode.PerPixel,
-        LightRenderingMode.PerPixel,
-        3,
-        true,
-        2,
-        4096,
-        70f,
-        2,
-        true
-    )]
-    [TestCase(
-        5,
-        LightRenderingMode.PerPixel,
-        LightRenderingMode.PerPixel,
-        4,
-        true,
-        2,
-        4096,
-        150f,
-        4,
-        true
-    )]
-    public void QualityPipeline_ConvertedTier_PreservesEquivalentSettings(
-        int qualityIndex,
-        LightRenderingMode mainLightMode,
-        LightRenderingMode additionalLightMode,
-        int additionalLightCount,
-        bool shadowsEnabled,
-        int msaaSamples,
-        int shadowResolution,
-        float shadowDistance,
-        int shadowCascades,
-        bool softShadows
-    )
+    /// <summary>
+    /// Verifies that HDRP has the capabilities required by raster and ray-traced effects.
+    /// </summary>
+    [Test]
+    public void RenderPipeline_ProjectConfiguration_EnablesRayTracingCapabilities()
     {
-        UniversalRenderPipelineAsset pipeline =
-            QualitySettings.GetRenderPipelineAssetAt(qualityIndex) as UniversalRenderPipelineAsset;
+        HDRenderPipelineAsset pipeline =
+            GraphicsSettings.defaultRenderPipeline as HDRenderPipelineAsset;
 
         Assert.IsNotNull(pipeline);
-        Assert.AreEqual(mainLightMode, pipeline.mainLightRenderingMode);
-        Assert.AreEqual(additionalLightMode, pipeline.additionalLightsRenderingMode);
-        Assert.AreEqual(additionalLightCount, pipeline.maxAdditionalLightsCount);
-        Assert.AreEqual(shadowsEnabled, pipeline.supportsMainLightShadows);
-        Assert.AreEqual(shadowsEnabled, pipeline.supportsAdditionalLightShadows);
-        Assert.AreEqual(msaaSamples, pipeline.msaaSampleCount);
-        Assert.AreEqual(shadowResolution, pipeline.mainLightShadowmapResolution);
-        Assert.AreEqual(shadowResolution, pipeline.additionalLightsShadowmapResolution);
-        Assert.AreEqual(shadowDistance, pipeline.shadowDistance);
-        Assert.AreEqual(shadowCascades, pipeline.shadowCascadeCount);
-        Assert.AreEqual(softShadows, pipeline.supportsSoftShadows);
+        RenderPipelineSettings settings = pipeline.currentPlatformRenderPipelineSettings;
+        Assert.IsTrue(settings.supportRayTracing);
+        Assert.IsTrue(settings.supportSSR);
+        Assert.IsTrue(settings.supportSSRTransparent);
+        Assert.IsTrue(settings.supportSSGI);
+        Assert.IsTrue(settings.supportSSAO);
+        Assert.IsTrue(settings.hdShadowInitParams.supportScreenSpaceShadows);
     }
 
+    /// <summary>
+    /// Verifies that Windows starts with DirectX 12 while retaining the raster DirectX 11 fallback.
+    /// </summary>
+    [Test]
+    public void WindowsGraphicsApi_ProjectConfiguration_PrioritizesDirect3D12WithFallback()
+    {
+        CollectionAssert.AreEqual(
+            new[] { GraphicsDeviceType.Direct3D12, GraphicsDeviceType.Direct3D11 },
+            PlayerSettings.GetGraphicsAPIs(BuildTarget.StandaloneWindows64)
+        );
+    }
+
+    /// <summary>
+    /// Verifies that the project performs lighting calculations in linear color space.
+    /// </summary>
     [Test]
     public void ColorSpace_ProjectConfiguration_UsesLinearColor()
     {
         Assert.AreEqual(ColorSpace.Linear, QualitySettings.activeColorSpace);
     }
 
+    /// <summary>
+    /// Verifies that project lighting uses linear intensity and color temperature.
+    /// </summary>
     [Test]
     public void Lighting_ProjectConfiguration_UsesLinearIntensityAndColorTemperature()
     {
@@ -147,13 +85,17 @@ public sealed class RenderPipelineConfigurationTests
         Assert.IsTrue(graphicsSettings.FindProperty("m_LightsUseColorTemperature").boolValue);
     }
 
+    /// <summary>
+    /// Verifies that each custom shader compiles for the active high-definition pipeline.
+    /// </summary>
+    /// <param name="shaderName">The shader name to resolve.</param>
     [TestCase("Custom/PlanetAtmosphere")]
     [TestCase("Custom/LoadingShuttleExhaust")]
     [TestCase("Custom/PlanetClouds")]
     [TestCase("Custom/PlanetDayNightShade")]
     [TestCase("Custom/PlanetSurface")]
     [TestCase("Custom/PremultipliedTexture")]
-    public void CustomShader_UniversalPipeline_IsSupported(string shaderName)
+    public void CustomShader_HighDefinitionPipeline_IsSupported(string shaderName)
     {
         Shader shader = Shader.Find(shaderName);
 
@@ -161,6 +103,10 @@ public sealed class RenderPipelineConfigurationTests
         Assert.IsTrue(shader.isSupported, shaderName);
     }
 
+    /// <summary>
+    /// Verifies that runtime glTF materials remain included in player builds.
+    /// </summary>
+    /// <param name="shaderName">The glTF shader name to resolve.</param>
     [TestCase("Shader Graphs/glTF-pbrMetallicRoughness")]
     [TestCase("Shader Graphs/glTF-pbrSpecularGlossiness")]
     [TestCase("Shader Graphs/glTF-unlit")]

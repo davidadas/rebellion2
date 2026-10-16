@@ -11,7 +11,7 @@ Shader "Custom/LoadingShuttleExhaust"
         {
             "Queue" = "Transparent"
             "RenderType" = "Transparent"
-            "RenderPipeline" = "UniversalPipeline"
+            "RenderPipeline" = "HDRenderPipeline"
         }
 
         Blend SrcAlpha One
@@ -20,15 +20,16 @@ Shader "Custom/LoadingShuttleExhaust"
 
         Pass
         {
-            Name "ForwardUnlit"
-            Tags { "LightMode" = "SRPDefaultUnlit" }
+            Name "ForwardOnly"
+            Tags { "LightMode" = "ForwardOnly" }
 
             HLSLPROGRAM
-            #pragma target 2.0
+            #pragma target 4.5
             #pragma vertex Vert
             #pragma fragment Frag
 
-            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
+            #include "Packages/com.unity.render-pipelines.high-definition/Runtime/ShaderLibrary/ShaderVariables.hlsl"
 
             struct Attributes
             {
