@@ -61,6 +61,18 @@ namespace Rebellion.Tests.Game
                 StartingFactionIDs = new string[] { "FACTION1", "FACTION2" },
                 StartingResearchLevel = 3,
                 PlayerFactionID = "FACTION1",
+                PlayerDifficultyModifiers = new DifficultyModifiers
+                {
+                    MineOutputPercent = 125,
+                    MissionSuccessChancePoints = 10,
+                    DetectionRatingMultiplier = 1.1,
+                },
+                AIDifficultyModifiers = new DifficultyModifiers
+                {
+                    ManufacturingSpeedPercent = 150,
+                    MissionFoilChancePoints = 20,
+                    DetectionRatingMultiplier = 1.25,
+                },
             };
 
             string serialized = SerializationHelper.Serialize(summary);
@@ -100,6 +112,36 @@ namespace Rebellion.Tests.Game
                 summary.PlayerFactionID,
                 deserialized.PlayerFactionID,
                 "PlayerFactionID should be correctly deserialized."
+            );
+            Assert.AreEqual(
+                125,
+                deserialized.PlayerDifficultyModifiers.MineOutputPercent,
+                "Player modifiers should be correctly deserialized."
+            );
+            Assert.AreEqual(
+                10,
+                deserialized.PlayerDifficultyModifiers.MissionSuccessChancePoints,
+                "Player mission modifiers should be correctly deserialized."
+            );
+            Assert.AreEqual(
+                1.1,
+                deserialized.PlayerDifficultyModifiers.DetectionRatingMultiplier,
+                "Player detection modifiers should be correctly deserialized."
+            );
+            Assert.AreEqual(
+                150,
+                deserialized.AIDifficultyModifiers.ManufacturingSpeedPercent,
+                "AI modifiers should be correctly deserialized."
+            );
+            Assert.AreEqual(
+                20,
+                deserialized.AIDifficultyModifiers.MissionFoilChancePoints,
+                "AI mission modifiers should be correctly deserialized."
+            );
+            Assert.AreEqual(
+                1.25,
+                deserialized.AIDifficultyModifiers.DetectionRatingMultiplier,
+                "AI detection modifiers should be correctly deserialized."
             );
         }
     }

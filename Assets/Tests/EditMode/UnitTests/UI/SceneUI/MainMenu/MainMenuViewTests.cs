@@ -134,7 +134,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.IsNotNull(viewport.Find("SpaceBackdrop/Planet"));
             Assert.IsNotNull(viewport.Find("Cockpit"));
             Assert.AreSame(viewport, viewport.Find("MainMenuControls").parent);
-            Assert.AreEqual(7, _prefabRoot.GetComponentsInChildren<AutoRotate>(true).Length);
+            Assert.AreEqual(8, _prefabRoot.GetComponentsInChildren<AutoRotate>(true).Length);
         }
 
         [Test]
@@ -147,7 +147,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                 .ToArray();
 
             CollectionAssert.AreEqual(
-                new[] { 1f / 3f, 120f, 240f, 240f, 240f, 240f, 240f },
+                new[] { 1f / 3f, 120f, 120f, 240f, 240f, 240f, 240f, 240f },
                 speeds
             );
         }
@@ -346,6 +346,20 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                 );
 
             Assert.IsFalse(hasLoadBinding);
+        }
+
+        [Test]
+        public void NewGameSettingsButton_PointerUp_RaisesSelectionCue()
+        {
+            EventTrigger trigger = _prefabRoot
+                .transform.Find("UI/Canvas/Viewport/MainMenuControls/NewGameSettingsButton")
+                .GetComponent<EventTrigger>();
+            string cue = null;
+            _view.AudioCueRequested += path => cue = path;
+
+            InvokeTrigger(trigger, EventTriggerType.PointerUp);
+
+            Assert.AreEqual("Application/MainMenu/Audio/select", cue);
         }
 
         [Test]

@@ -49,6 +49,12 @@ namespace Rebellion.Game
         [PersistableMember(Name = nameof(ResourceAvailability))]
         private GameResourceAvailability _resourceAvailability = GameResourceAvailability.Normal;
 
+        [PersistableMember(Name = nameof(PlayerDifficultyModifiers))]
+        private DifficultyModifiers _playerDifficultyModifiers;
+
+        [PersistableMember(Name = nameof(AIDifficultyModifiers))]
+        private DifficultyModifiers _aiDifficultyModifiers;
+
         [PersistableMember(Name = nameof(StartingFactionIDs))]
         private string[] _startingFactionIds = Array.Empty<string>();
 
@@ -102,6 +108,20 @@ namespace Rebellion.Game
         {
             get => _resourceAvailability;
             set => _resourceAvailability = value;
+        }
+
+        [PersistableIgnore]
+        public DifficultyModifiers PlayerDifficultyModifiers
+        {
+            get => _playerDifficultyModifiers;
+            set => _playerDifficultyModifiers = value;
+        }
+
+        [PersistableIgnore]
+        public DifficultyModifiers AIDifficultyModifiers
+        {
+            get => _aiDifficultyModifiers;
+            set => _aiDifficultyModifiers = value;
         }
 
         [PersistableIgnore]

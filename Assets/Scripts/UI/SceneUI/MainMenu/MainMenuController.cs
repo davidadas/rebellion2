@@ -7,7 +7,7 @@ using UnityEngine;
 /// <summary>
 /// Owns main-menu launch state, audio, cutscenes, and scene navigation.
 /// </summary>
-public sealed class MainMenuController : MonoBehaviour
+public sealed class MainMenuController : MonoBehaviour, ICancelable
 {
     private const string _creditsVideoPath = "Application/Credits/Videos/credits";
     private const string _selectSfxPath = "Application/MainMenu/Audio/select";
@@ -17,6 +17,12 @@ public sealed class MainMenuController : MonoBehaviour
 
     [SerializeField]
     private OptionsMenuView _optionsMenuPrefab;
+
+    [SerializeField]
+    private NewGameSettingsView _newGameSettingsPrefab;
+
+    private UIWindow _newGameSettingsWindow;
+    private NewGameSettingsView _newGameSettingsView;
 
     [SerializeField]
     [Min(0f)]
@@ -77,6 +83,7 @@ public sealed class MainMenuController : MonoBehaviour
         view.SaveLoadMenuRequested += OpenSaveLoadMenu;
         view.ExitRequested += ExitApplication;
         view.CreditsRequested += ShowCredits;
+        view.NewGameSettingsRequested += OpenNewGameSettings;
         view.AudioCueRequested += PlayAudioCue;
     }
 
@@ -125,6 +132,7 @@ public sealed class MainMenuController : MonoBehaviour
     /// </summary>
     private void OnDisable()
     {
+        CloseNewGameSettings();
         if (view == null)
             return;
 
@@ -135,6 +143,7 @@ public sealed class MainMenuController : MonoBehaviour
         view.SaveLoadMenuRequested -= OpenSaveLoadMenu;
         view.ExitRequested -= ExitApplication;
         view.CreditsRequested -= ShowCredits;
+        view.NewGameSettingsRequested -= OpenNewGameSettings;
         view.AudioCueRequested -= PlayAudioCue;
 
         if (_appInputController != null)
@@ -176,6 +185,8 @@ public sealed class MainMenuController : MonoBehaviour
     /// </summary>
     private void HandleOptionsMenuRequested()
     {
+        if (TryCancel())
+            return;
         EnsureOptionsController();
         if (optionsMenuController == null)
             return;
@@ -278,7 +289,7 @@ public sealed class MainMenuController : MonoBehaviour
     /// </summary>
     private void Update()
     {
-        bool open = optionsMenuController?.IsOpen == true;
+        bool open = optionsMenuController?.IsOpen == true || _newGameSettingsWindow != null;
         view?.RenderOptionsOverlay(open);
         if (!open || !optionsDirty)
             return;
@@ -326,6 +337,8 @@ public sealed class MainMenuController : MonoBehaviour
     /// <param name="tab">The page to show initially.</param>
     private void OpenOptions(OptionsMenuTab tab)
     {
+        if (_newGameSettingsWindow != null)
+            return;
         EnsureOptionsController();
         if (optionsMenuController == null)
             return;
@@ -350,6 +363,94 @@ public sealed class MainMenuController : MonoBehaviour
     private void MarkOptionsDirty()
     {
         optionsDirty = true;
+    }
+
+    /// <summary>
+    /// Opens the campaign-settings editor through the existing main-menu modal surface.
+    /// </summary>
+    private void OpenNewGameSettings()
+    {
+        if (_newGameSettingsWindow != null || optionsMenuController?.IsOpen == true)
+            return;
+        AppBootstrap bootstrap = AppBootstrap.EnsureExists();
+        UIWindowManager manager = view.OptionsWindowManager;
+        manager.SetContentSource(bootstrap.GetContentAssets());
+        Vector2Int position = view.GetOptionsWindowPosition(_newGameSettingsPrefab);
+        Vector2 size = ((RectTransform)_newGameSettingsPrefab.transform).sizeDelta;
+        view.RenderOptionsOverlay(true);
+        try
+        {
+            _newGameSettingsWindow = manager.CreateWindow(
+                _newGameSettingsPrefab,
+                view.OptionsWindowLayer,
+                "NewGameSettings",
+                position.x,
+                position.y,
+                new Vector2Int((int)size.x, (int)size.y),
+                true,
+                true,
+                false,
+                false,
+                out _newGameSettingsView
+            );
+            _newGameSettingsView.CloseRequested += CloseNewGameSettings;
+            _newGameSettingsView.ApplyRequested += ApplyNewGameDifficultyModifiers;
+            _newGameSettingsView.Initialize(bootstrap.GetContentPack(), GameLaunchContext.Summary);
+            bootstrap.GetCancelStack()?.Register(this);
+        }
+        catch
+        {
+            CloseNewGameSettings();
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Stores applied difficulty modifiers in the pending new-game summary.
+    /// </summary>
+    /// <param name="playerModifiers">The modifiers for the player-controlled faction.</param>
+    /// <param name="aiModifiers">The modifiers for AI-controlled factions.</param>
+    private static void ApplyNewGameDifficultyModifiers(
+        DifficultyModifiers playerModifiers,
+        DifficultyModifiers aiModifiers
+    )
+    {
+        GameLaunchContext.Summary.PlayerDifficultyModifiers = playerModifiers.CreateCopy();
+        GameLaunchContext.Summary.AIDifficultyModifiers = aiModifiers.CreateCopy();
+    }
+
+    /// <summary>
+    /// Closes the campaign-settings editor.
+    /// </summary>
+    private void CloseNewGameSettings()
+    {
+        if (_newGameSettingsWindow == null)
+            return;
+        if (_newGameSettingsView != null)
+        {
+            _newGameSettingsView.CloseRequested -= CloseNewGameSettings;
+            _newGameSettingsView.ApplyRequested -= ApplyNewGameDifficultyModifiers;
+        }
+        AppBootstrap.Instance?.GetCancelStack()?.Unregister(this);
+        if (view?.OptionsWindowManager != null)
+        {
+            view.OptionsWindowManager.DestroyWindow(_newGameSettingsWindow);
+            view.RenderOptionsOverlay(false);
+        }
+        _newGameSettingsWindow = null;
+        _newGameSettingsView = null;
+    }
+
+    /// <summary>
+    /// Handles cancellation only while this scene owns the new-campaign preview.
+    /// </summary>
+    /// <returns>Whether the preview consumed cancellation.</returns>
+    public bool TryCancel()
+    {
+        if (_newGameSettingsWindow == null)
+            return false;
+        CloseNewGameSettings();
+        return true;
     }
 
     /// <summary>

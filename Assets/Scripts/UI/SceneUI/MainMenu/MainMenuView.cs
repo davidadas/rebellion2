@@ -142,6 +142,9 @@ public sealed class MainMenuView : MonoBehaviour
     [SerializeField]
     private Button victoryConditionButton;
 
+    [SerializeField]
+    private Button newGameSettingsButton;
+
     [Header("Launch Options")]
     [SerializeField]
     private GalaxySizeBinding[] galaxySizeBindings = Array.Empty<GalaxySizeBinding>();
@@ -238,6 +241,8 @@ public sealed class MainMenuView : MonoBehaviour
     /// Occurs when the player requests the credits sequence.
     /// </summary>
     public event Action CreditsRequested;
+
+    public event Action NewGameSettingsRequested;
 
     /// <summary>
     /// Occurs when a configured pointer interaction requests an audio cue.
@@ -357,7 +362,7 @@ public sealed class MainMenuView : MonoBehaviour
     /// </summary>
     /// <param name="prefab">The Options window prefab being positioned.</param>
     /// <returns>The centered source-coordinate position.</returns>
-    internal Vector2Int GetOptionsWindowPosition(OptionsMenuView prefab)
+    internal Vector2Int GetOptionsWindowPosition(MonoBehaviour prefab)
     {
         if (prefab == null)
             throw new ArgumentNullException(nameof(prefab));
@@ -448,6 +453,7 @@ public sealed class MainMenuView : MonoBehaviour
             || exitConfirmationDialog == null
             || creditsButton == null
             || victoryConditionButton == null
+            || newGameSettingsButton == null
             || victoryConditionIcon == null
             || victoryConditionText == null
             || victoryConditionSpinner == null
@@ -566,6 +572,7 @@ public sealed class MainMenuView : MonoBehaviour
         BindButton(exitButton, ShowExitConfirmation);
         BindButton(creditsButton, () => CreditsRequested?.Invoke());
         BindButton(victoryConditionButton, () => VictoryConditionToggleRequested?.Invoke());
+        BindButton(newGameSettingsButton, () => NewGameSettingsRequested?.Invoke());
 
         foreach (GalaxySizeBinding binding in galaxySizeBindings)
         {
