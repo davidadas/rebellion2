@@ -2037,8 +2037,8 @@ public static class MainMenuPrefabBuilder
         rect.anchorMin = new Vector2(0.5f, 0.63f);
         rect.anchorMax = new Vector2(0.5f, 0.63f);
         rect.pivot = new Vector2(0.5f, 0.5f);
-        rect.sizeDelta = new Vector2(2400f, 2280f);
-        rect.anchoredPosition = new Vector2(60f, -135f);
+        rect.sizeDelta = new Vector2(3770.957f, 3526.246f);
+        rect.anchoredPosition = new Vector2(74f, -734f);
         rect.localRotation = Quaternion.identity;
     }
 
