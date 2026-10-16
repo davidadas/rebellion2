@@ -193,15 +193,14 @@ public sealed class GameFlowController : MonoBehaviour
     /// <returns>A task representing asynchronous save deserialization.</returns>
     private async Task LoadGameAsync(GameRuntime runtime)
     {
-        if (runtime == null)
-            throw new InvalidOperationException(
-                "The application runtime is unavailable before save deserialization."
-            );
-
         string fileName = GameLaunchContext.SaveFileName;
 
         if (string.IsNullOrEmpty(fileName))
             throw new InvalidOperationException("LoadGame called but SaveFileName is null.");
+        if (runtime == null)
+            throw new InvalidOperationException(
+                "The application runtime is unavailable before save deserialization."
+            );
 
         game = await SaveGameManager.Instance.LoadGameDataAsync(fileName);
         runtime.ValidateGameContent(game);
