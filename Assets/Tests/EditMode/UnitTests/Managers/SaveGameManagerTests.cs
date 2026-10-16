@@ -738,7 +738,7 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public async Task LoadGameDataAsync_UnknownElement_SkipsElementWithoutWarning()
+        public async Task LoadGameDataAsync_UnknownElement_SkipsElementWithoutWarningAsync()
         {
             GameRoot game = new GameRoot
             {

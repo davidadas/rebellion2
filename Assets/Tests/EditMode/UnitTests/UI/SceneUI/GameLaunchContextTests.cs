@@ -102,6 +102,21 @@ namespace Rebellion.Tests.UI.SceneUI
         }
 
         [Test]
+        public void PrepareContentRestart_PendingSavedGame_ClearsSavedGameRestoration()
+        {
+            GameLaunchContext.PrepareSaveLoadAfterContentRestart("old-campaign", TestContent.Pack);
+
+            GameLaunchContext.PrepareContentRestart(TestContent.Pack);
+            ContentPack selected = GameLaunchContext.ConsumeContentPackAfterRestart();
+            GameLaunchContext.Reset(selected);
+            GameLaunchContext.RestoreSaveLoadAfterContentRestart();
+
+            Assert.AreSame(TestContent.Pack, selected);
+            Assert.IsNull(GameLaunchContext.SaveFileName);
+            Assert.IsFalse(GameLaunchContext.IsLoadGame);
+        }
+
+        [Test]
         public void ConsumeContentPackAfterRestart_PreparedPack_ReturnsPackOnce()
         {
             GameLaunchContext.PrepareSaveLoadAfterContentRestart("campaign", TestContent.Pack);

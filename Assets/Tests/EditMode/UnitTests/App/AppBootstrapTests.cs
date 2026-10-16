@@ -1,6 +1,7 @@
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Simulation;
@@ -13,6 +14,7 @@ namespace Rebellion.Tests.App
     {
         private AppBootstrap _bootstrap;
         private GameObject _gameObject;
+        private string _packDirectory;
 
         /// <summary>
         /// Sets up.
@@ -44,7 +46,96 @@ namespace Rebellion.Tests.App
                 Object.DestroyImmediate(loadingController.gameObject);
             Object.DestroyImmediate(_gameObject);
             DestroyAudioManagers();
+            if (_packDirectory != null && Directory.Exists(_packDirectory))
+                Directory.Delete(_packDirectory, true);
+            _packDirectory = null;
             GameLaunchContext.Reset(TestContent.Pack);
+        }
+
+        [Test]
+        public void PrepareContentReloadAsync_DerivedPack_LoadsSelectedPackWithoutReplacingActiveContent()
+        {
+            UIComponentTestHelper.InvokeLifecycle(_bootstrap, "InitializeRuntimeCore");
+            ContentPack active = _bootstrap.GetContentPack();
+            string packID = CreateDerivedPack(active);
+
+            ContentPack selected = _bootstrap
+                .PrepareContentReloadAsync(packID, System.Array.Empty<string>())
+                .GetAwaiter()
+                .GetResult();
+
+            Assert.AreEqual(packID, selected.Definition.ID);
+            Assert.AreEqual(active.Scenario.ID, selected.Scenario.ID);
+            Assert.AreSame(active, _bootstrap.GetContentPack());
+            Assert.IsFalse(LoadingScreenController.IsLoadInProgress);
+        }
+
+        [Test]
+        public void PrepareContentReloadAsync_MissingPack_RejectsSelectionWithoutFallingBack()
+        {
+            UIComponentTestHelper.InvokeLifecycle(_bootstrap, "InitializeRuntimeCore");
+            ContentPack active = _bootstrap.GetContentPack();
+
+            Assert.Throws<System.InvalidOperationException>(() =>
+                _bootstrap
+                    .PrepareContentReloadAsync("not-installed", System.Array.Empty<string>())
+                    .GetAwaiter()
+                    .GetResult()
+            );
+
+            Assert.AreSame(active, _bootstrap.GetContentPack());
+        }
+
+        [Test]
+        public void ReloadContent_ActiveCampaign_LeavesCampaignRunning()
+        {
+            UIComponentTestHelper.InvokeLifecycle(_bootstrap, "InitializeRuntimeCore");
+            GameRuntime runtime = _bootstrap.GetRuntime();
+            GameRoot game = CreateCompatibleGame(_bootstrap.GetContentPack(), 42);
+            runtime.StartGame(game);
+
+            bool started = _bootstrap.ReloadContent(
+                TestContent.Pack.Definition.ID,
+                System.Array.Empty<string>()
+            );
+
+            Assert.IsFalse(started);
+            Assert.AreSame(game, runtime.GetActiveGame());
+            Assert.IsFalse(LoadingScreenController.IsLoadInProgress);
+        }
+
+        [Test]
+        public void ReloadContent_MainMenu_StartsContentTransitionWithoutSaveRequest()
+        {
+            UIComponentTestHelper.InvokeLifecycle(_bootstrap, "InitializeRuntimeCore");
+            int transitions = 0;
+            _bootstrap.SaveLoadStarting += () => transitions++;
+
+            bool started = _bootstrap.ReloadContent(
+                _bootstrap.GetContentPack().Definition.ID,
+                System.Array.Empty<string>()
+            );
+
+            Assert.IsTrue(started);
+            Assert.IsTrue(LoadingScreenController.IsLoadInProgress);
+            Assert.AreEqual(1, transitions);
+            Assert.IsFalse(GameLaunchContext.IsLoadGame);
+            Assert.IsNull(GameLaunchContext.SaveFileName);
+            Assert.IsNotNull(GameLaunchContext.ConsumeContentPackAfterRestart());
+            LoadingScreenController.CompletePendingLoad();
+        }
+
+        [Test]
+        public void ReloadContent_PendingTransition_RejectsDuplicateRequest()
+        {
+            UIComponentTestHelper.InvokeLifecycle(_bootstrap, "InitializeRuntimeCore");
+            string packID = _bootstrap.GetContentPack().Definition.ID;
+            Assert.IsTrue(_bootstrap.ReloadContent(packID, System.Array.Empty<string>()));
+
+            Assert.IsFalse(_bootstrap.ReloadContent(packID, System.Array.Empty<string>()));
+
+            GameLaunchContext.ConsumeContentPackAfterRestart();
+            LoadingScreenController.CompletePendingLoad();
         }
 
         [Test]
@@ -194,6 +285,24 @@ namespace Rebellion.Tests.App
             await preload;
 
             Assert.IsNull(AppBootstrap.Instance);
+        }
+
+        /// <summary>
+        /// Creates a distinct installed pack that inherits the active pack's content.
+        /// </summary>
+        /// <param name="active">The installed base pack.</param>
+        /// <returns>The derived pack identifier.</returns>
+        private string CreateDerivedPack(ContentPack active)
+        {
+            string packID = $"reload-test-{System.Guid.NewGuid():N}";
+            _packDirectory = Path.Combine(active.ContentRootPath, "Packs", packID);
+            Directory.CreateDirectory(_packDirectory);
+            XDocument definition = XDocument.Load(Path.Combine(active.PackRootPath, "pack.xml"));
+            definition.Root.SetElementValue("ID", packID);
+            definition.Root.SetElementValue("DisplayName", "Reload test pack");
+            definition.Root.SetElementValue("BasePackID", active.Definition.ID);
+            definition.Save(Path.Combine(_packDirectory, "pack.xml"));
+            return packID;
         }
 
         /// <summary>

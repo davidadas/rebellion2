@@ -69,6 +69,13 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         public void TearDown()
         {
             _controller?.Dispose();
+            LoadingScreenController loadingController =
+                UnityEngine.Object.FindAnyObjectByType<LoadingScreenController>(
+                    FindObjectsInactive.Include
+                );
+            if (loadingController != null)
+                UnityEngine.Object.DestroyImmediate(loadingController.gameObject);
+            GameLaunchContext.ConsumeContentPackAfterRestart();
             if (_windowRoot != null)
                 UnityEngine.Object.DestroyImmediate(_windowRoot);
             if (_bootstrapObject != null)
@@ -217,6 +224,8 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             );
             GetField<Button>(view, "_applyButton").onClick.Invoke();
 
+            Assert.IsFalse(_controller.IsOpen);
+            Assert.IsTrue(LoadingScreenController.IsLoadInProgress);
             CollectionAssert.AreEqual(
                 new[] { compatibleModID, otherPackModID },
                 _bootstrap.GetUserSettingsManager().Settings.Content.DisabledModIDs

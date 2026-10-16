@@ -1013,14 +1013,14 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     }
 
     /// <summary>
-    /// Applies the settings and releases pointer focus so hover feedback resumes immediately.
+    /// Releases pointer focus before notifying an owner that may close the Options window.
     /// </summary>
     private void HandleApplyClicked()
     {
-        ApplyRequested?.Invoke();
         EventSystem eventSystem = EventSystem.current;
         if (eventSystem?.currentSelectedGameObject == _applyButton.gameObject)
             eventSystem.SetSelectedGameObject(null);
+        ApplyRequested?.Invoke();
     }
 
     /// <summary>

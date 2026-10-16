@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 using UnityEngine;
 
 /// <summary>
-/// Presents saved-game loading and reconstructs application content only when required.
+/// Presents saved-game and main-menu content transitions independently from the outgoing scene.
 /// </summary>
 internal sealed class LoadingScreenController : MonoBehaviour
 {
@@ -24,13 +24,14 @@ internal sealed class LoadingScreenController : MonoBehaviour
     private Coroutine _prepareRoutine;
     private Coroutine _recoveryRoutine;
     private string _saveFileName;
+    private Task<ContentPack> _contentPreparationTask;
     private bool _reconstructContent;
     private bool _loadInProgress;
     private bool _recoveringFromFailure;
     private bool _quitOnContinue;
 
     /// <summary>
-    /// Gets whether a saved-game loading transition is currently active.
+    /// Gets whether a saved-game or content loading transition is currently active.
     /// </summary>
     internal static bool IsLoadInProgress => _activeController && _activeController._loadInProgress;
 
@@ -64,12 +65,43 @@ internal sealed class LoadingScreenController : MonoBehaviour
         if (string.IsNullOrWhiteSpace(fileName))
             throw new ArgumentException("A save file name is required.", nameof(fileName));
 
+        BeginLoad(bootstrap, fileName, null);
+    }
+
+    /// <summary>
+    /// Reloads verified content and returns to the main menu within the running application.
+    /// </summary>
+    /// <param name="bootstrap">The bootstrap that owns the outgoing content.</param>
+    /// <param name="preparation">The pending content validation task.</param>
+    internal static void ReloadContent(AppBootstrap bootstrap, Task<ContentPack> preparation)
+    {
+        if (bootstrap == null)
+            throw new ArgumentNullException(nameof(bootstrap));
+        if (preparation == null)
+            throw new ArgumentNullException(nameof(preparation));
+
+        BeginLoad(bootstrap, null, preparation);
+    }
+
+    /// <summary>
+    /// Initializes the shared persistent presentation for a scene or content transition.
+    /// </summary>
+    /// <param name="bootstrap">The bootstrap that owns the outgoing content.</param>
+    /// <param name="fileName">The save identifier, or null when returning to the main menu.</param>
+    /// <param name="contentPreparation">The replacement content, or null for saved-game loading.</param>
+    private static void BeginLoad(
+        AppBootstrap bootstrap,
+        string fileName,
+        Task<ContentPack> contentPreparation
+    )
+    {
         LoadingScreenController controller = GetOrCreateController();
         if (controller._loadInProgress)
             return;
 
         controller._bootstrap = bootstrap;
         controller._saveFileName = fileName;
+        controller._contentPreparationTask = contentPreparation;
         controller._transitionCompleted = null;
         controller._continueAccepted = null;
         controller._reconstructContent = false;
@@ -82,18 +114,26 @@ internal sealed class LoadingScreenController : MonoBehaviour
         {
             AudioManager.Instance?.StopMusic();
             controller._view.SetVisible(true);
-            SaveLoadPreparation preparation = bootstrap
-                .PrepareSaveLoadAsync(fileName)
-                .GetAwaiter()
-                .GetResult();
-            controller._reconstructContent = bootstrap.ApplySaveLoadPreparation(preparation);
+            if (contentPreparation != null)
+            {
+                bootstrap.ApplyContentReload(contentPreparation.GetAwaiter().GetResult());
+                controller._reconstructContent = true;
+            }
+            else
+            {
+                SaveLoadPreparation preparation = bootstrap
+                    .PrepareSaveLoadAsync(fileName)
+                    .GetAwaiter()
+                    .GetResult();
+                controller._reconstructContent = bootstrap.ApplySaveLoadPreparation(preparation);
+            }
             bootstrap.SuspendForSaveLoad();
             return;
         }
 
         AudioManager.Instance?.FadeOutMusic(_fadeToBlackDuration);
         controller._view.PrepareEntrance();
-        controller.StartCoroutine(controller.LoadStrategy());
+        controller.StartCoroutine(controller.LoadContent());
     }
 
     /// <summary>
@@ -161,7 +201,10 @@ internal sealed class LoadingScreenController : MonoBehaviour
         _activeController._transitionCompleted = transitionCompleted;
         _activeController._continueAccepted = continueAccepted;
 
-        if (_activeController._recoveringFromFailure)
+        if (
+            _activeController._recoveringFromFailure
+            || _activeController._contentPreparationTask != null
+        )
         {
             _activeController.BeginFinishTransition();
         }
@@ -338,20 +381,26 @@ internal sealed class LoadingScreenController : MonoBehaviour
     }
 
     /// <summary>
-    /// Gives the loading presentation a frame, optionally replaces content services, and opens the
-    /// strategy scene for the pending save.
+    /// Validates content, optionally replaces application services, and opens the destination scene.
     /// </summary>
-    /// <returns>The saved-game transition coroutine.</returns>
-    private IEnumerator LoadStrategy()
+    /// <returns>The content transition coroutine.</returns>
+    private IEnumerator LoadContent()
     {
         yield return FadeBlack(0f, 1f, _fadeToBlackDuration);
         _view.SetPresentationVisible(true);
         yield return FadeBlack(1f, 0f, _fadeFromBlackDuration);
 
-        Task<SaveLoadPreparation> preparationTask;
+        Task<SaveLoadPreparation> savePreparationTask = null;
+        Task preparationTask;
         try
         {
-            preparationTask = _bootstrap.PrepareSaveLoadAsync(_saveFileName);
+            if (_contentPreparationTask != null)
+                preparationTask = _contentPreparationTask;
+            else
+            {
+                savePreparationTask = _bootstrap.PrepareSaveLoadAsync(_saveFileName);
+                preparationTask = savePreparationTask;
+            }
         }
         catch (Exception exception)
         {
@@ -366,14 +415,22 @@ internal sealed class LoadingScreenController : MonoBehaviour
         {
             RecoverFromLoadFailure(
                 preparationTask.Exception?.GetBaseException()
-                    ?? new InvalidOperationException("Saved-game preparation was canceled.")
+                    ?? new InvalidOperationException("Content preparation was canceled.")
             );
             yield break;
         }
 
         try
         {
-            _reconstructContent = _bootstrap.ApplySaveLoadPreparation(preparationTask.Result);
+            if (_contentPreparationTask != null)
+            {
+                _bootstrap.ApplyContentReload(_contentPreparationTask.Result);
+                _reconstructContent = true;
+            }
+            else
+                _reconstructContent = _bootstrap.ApplySaveLoadPreparation(
+                    savePreparationTask.Result
+                );
         }
         catch (Exception exception)
         {
@@ -407,19 +464,22 @@ internal sealed class LoadingScreenController : MonoBehaviour
             }
         }
 
-        if (!_bootstrap.LoadScene("StrategyView", HandleStrategySceneFailure))
+        string destinationScene = _saveFileName == null ? "MainMenu" : "StrategyView";
+        if (!_bootstrap.LoadScene(destinationScene, HandleSceneLoadFailure))
         {
-            HandleStrategySceneFailure(
-                new InvalidOperationException("The strategy scene could not start loading.")
+            HandleSceneLoadFailure(
+                new InvalidOperationException(
+                    $"The {destinationScene} scene could not start loading."
+                )
             );
         }
     }
 
     /// <summary>
-    /// Returns a failed strategy-scene transition to the application recovery path.
+    /// Returns a failed scene transition to the application recovery path.
     /// </summary>
     /// <param name="exception">The scene-transition failure.</param>
-    private void HandleStrategySceneFailure(Exception exception)
+    private void HandleSceneLoadFailure(Exception exception)
     {
         RecoverFromLoadFailure(exception);
     }
@@ -471,6 +531,7 @@ internal sealed class LoadingScreenController : MonoBehaviour
         _loadInProgress = false;
         _recoveringFromFailure = false;
         _saveFileName = null;
+        _contentPreparationTask = null;
         _finishRoutine = null;
         Action transitionCompleted = _transitionCompleted;
         _transitionCompleted = null;

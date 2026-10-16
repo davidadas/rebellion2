@@ -369,18 +369,12 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     }
 
     /// <summary>
-    /// Persists the pending content selection for the next application start.
+    /// Reloads the pending content selection through the persistent loading presentation.
     /// </summary>
     private void ApplyContentSelection()
     {
-        UserSettingsManager settingsManager = _bootstrap.GetUserSettingsManager();
-        settingsManager.Settings.Content.ActivePackID = _selectedPackID;
-        settingsManager.Settings.Content.ActiveScenarioID = string.Empty;
-        settingsManager.Settings.Content.DisabledModIDs = _selectedDisabledModIDs
-            .OrderBy(disabledModID => disabledModID, StringComparer.Ordinal)
-            .ToArray();
-        settingsManager.Save();
-        _markDirty();
+        if (_bootstrap.ReloadContent(_selectedPackID, _selectedDisabledModIDs.ToArray()))
+            Close();
     }
 
     /// <summary>

@@ -252,6 +252,74 @@ public sealed class AppBootstrap : MonoBehaviour
     }
 
     /// <summary>
+    /// Reloads selected content and returns to the main menu without exiting the application.
+    /// </summary>
+    /// <param name="packID">The installed pack to select.</param>
+    /// <param name="disabledModIDs">The mods excluded from the new selection.</param>
+    /// <returns>True when a main-menu content transition was started.</returns>
+    internal bool ReloadContent(string packID, string[] disabledModIDs)
+    {
+        if (
+            string.IsNullOrWhiteSpace(packID)
+            || _runtime.HasActiveGame
+            || LoadingScreenController.IsLoadInProgress
+            || IsSceneTransitionInProgress
+        )
+            return false;
+
+        LoadingScreenController.ReloadContent(
+            this,
+            PrepareContentReloadAsync(packID, disabledModIDs)
+        );
+        return true;
+    }
+
+    /// <summary>
+    /// Validates an installed pack and its default scenario before active content is replaced.
+    /// </summary>
+    /// <param name="packID">The installed pack to validate.</param>
+    /// <param name="disabledModIDs">The mods excluded from the selected content.</param>
+    /// <returns>The verified replacement content pack.</returns>
+    internal Task<ContentPack> PrepareContentReloadAsync(string packID, string[] disabledModIDs)
+    {
+        string contentRoot = _contentPack.ContentRootPath;
+        string[] disabled = disabledModIDs?.ToArray() ?? Array.Empty<string>();
+        return Task.Run(() =>
+        {
+            ContentPackDefinition definition = ContentPackLoader
+                .DiscoverPacks(contentRoot)
+                .FirstOrDefault(pack => string.Equals(pack.ID, packID, StringComparison.Ordinal));
+            if (definition == null)
+                throw new InvalidOperationException($"Content pack '{packID}' is not installed.");
+
+            return ContentPackLoader.OpenExact(
+                contentRoot,
+                packID,
+                definition.DefaultScenarioID,
+                disabled
+            );
+        });
+    }
+
+    /// <summary>
+    /// Persists verified content and transfers it to the replacement application bootstrap.
+    /// </summary>
+    /// <param name="contentPack">The verified pack selected from the main menu.</param>
+    internal void ApplyContentReload(ContentPack contentPack)
+    {
+        if (contentPack == null)
+            throw new ArgumentNullException(nameof(contentPack));
+
+        string[] enabledModIDs = contentPack.FileResolver.Mods.Select(mod => mod.ID).ToArray();
+        string[] disabledModIDs = contentPack
+            .FileResolver.AvailableMods.Where(mod => !enabledModIDs.Contains(mod.ID))
+            .Select(mod => mod.ID)
+            .ToArray();
+        PersistContentSelection(contentPack, disabledModIDs);
+        GameLaunchContext.PrepareContentRestart(contentPack);
+    }
+
+    /// <summary>
     /// Reads save metadata and verifies any required replacement content away from the main thread.
     /// </summary>
     /// <param name="fileName">The save identifier to prepare.</param>
