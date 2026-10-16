@@ -148,6 +148,7 @@ public sealed class RenderPipelineConfigurationTests
     }
 
     [TestCase("Custom/PlanetAtmosphere")]
+    [TestCase("Custom/LoadingShuttleExhaust")]
     [TestCase("Custom/PlanetClouds")]
     [TestCase("Custom/PlanetDayNightShade")]
     [TestCase("Custom/PlanetSurface")]

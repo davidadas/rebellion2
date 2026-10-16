@@ -275,6 +275,10 @@ namespace Rebellion.Tests.UI.SceneUI.LoadingScreen
                 {
                     exhaustPlumeCount++;
                     Assert.AreEqual(engineRoot, child.parent);
+                    Assert.AreEqual(
+                        "Custom/LoadingShuttleExhaust",
+                        child.GetComponent<MeshRenderer>().sharedMaterial.shader.name
+                    );
                 }
             }
             Assert.IsNotNull(engineRoot);
