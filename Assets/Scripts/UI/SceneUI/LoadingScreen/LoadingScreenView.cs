@@ -705,8 +705,15 @@ public sealed class LoadingScreenView : MonoBehaviour
         }
 
         SetLayerRecursively(model.gameObject, _presentationLayer);
-        if (TryGetNamedRendererBounds(model, "ion-engine_39", out Bounds engineBounds))
-            CreateEngineExhaust(engineBounds);
+        if (
+            TryGetNamedRendererBounds(
+                model,
+                "ion-engine_39",
+                out Transform engineRoot,
+                out Bounds engineBounds
+            )
+        )
+            CreateEngineExhaust(engineRoot, engineBounds);
         else
             Debug.LogWarning("Loading shuttle exhaust skipped because its engine mesh is missing.");
         shuttleRestPosition = shuttleModelRoot.localPosition;
@@ -717,8 +724,9 @@ public sealed class LoadingScreenView : MonoBehaviour
     /// <summary>
     /// Adds compact blue exhaust plumes directly behind the shuttle's engine banks.
     /// </summary>
-    /// <param name="engineBounds">The bounds of the shuttle's ion-engine mesh.</param>
-    private void CreateEngineExhaust(Bounds engineBounds)
+    /// <param name="engineRoot">The authored ion-engine transform.</param>
+    /// <param name="engineBounds">The ion-engine bounds in engine-root space.</param>
+    private void CreateEngineExhaust(Transform engineRoot, Bounds engineBounds)
     {
         Shader exhaustShader = Shader.Find("Legacy Shaders/Particles/Additive");
         if (exhaustShader == null)
@@ -743,8 +751,10 @@ public sealed class LoadingScreenView : MonoBehaviour
         );
         shuttleExhaustMesh = CreateExhaustPlumeMesh();
 
-        Vector3 rearCenter = shuttleModelRoot.InverseTransformPoint(
-            new Vector3(engineBounds.center.x, engineBounds.center.y, engineBounds.min.z)
+        Vector3 rearCenter = new Vector3(
+            engineBounds.center.x,
+            engineBounds.center.y,
+            engineBounds.min.z
         );
         float width = engineBounds.size.x;
         float bankWidth = width * 0.49f;
@@ -760,6 +770,7 @@ public sealed class LoadingScreenView : MonoBehaviour
             CreateEnginePlume(
                 plumeIndex++,
                 "EnginePlumeOuter",
+                engineRoot,
                 position,
                 new Vector3(bankWidth, bankHeight, plumeLength),
                 shuttleExhaustMaterial
@@ -767,6 +778,7 @@ public sealed class LoadingScreenView : MonoBehaviour
             CreateEnginePlume(
                 plumeIndex++,
                 "EnginePlumeCore",
+                engineRoot,
                 position + new Vector3(0f, 0f, -0.01f),
                 new Vector3(bankWidth * 0.82f, bankHeight * 0.52f, plumeLength * 0.62f),
                 shuttleExhaustCoreMaterial
@@ -779,12 +791,14 @@ public sealed class LoadingScreenView : MonoBehaviour
     /// </summary>
     /// <param name="index">The plume's animation slot.</param>
     /// <param name="name">The plume object name.</param>
-    /// <param name="localPosition">The engine position in shuttle-root space.</param>
+    /// <param name="parent">The authored engine transform.</param>
+    /// <param name="localPosition">The plume position in engine-root space.</param>
     /// <param name="localScale">The plume width, height, and length.</param>
     /// <param name="material">The additive plume material.</param>
     private void CreateEnginePlume(
         int index,
         string name,
+        Transform parent,
         Vector3 localPosition,
         Vector3 localScale,
         Material material
@@ -792,7 +806,7 @@ public sealed class LoadingScreenView : MonoBehaviour
     {
         GameObject plumeObject = new GameObject(name, typeof(MeshFilter), typeof(MeshRenderer));
         plumeObject.layer = _presentationLayer;
-        plumeObject.transform.SetParent(shuttleModelRoot, false);
+        plumeObject.transform.SetParent(parent, false);
         plumeObject.transform.localPosition = localPosition;
         plumeObject.transform.localScale = localScale;
         plumeObject.GetComponent<MeshFilter>().sharedMesh = shuttleExhaustMesh;
@@ -942,11 +956,13 @@ public sealed class LoadingScreenView : MonoBehaviour
     /// </summary>
     /// <param name="model">The model hierarchy to search.</param>
     /// <param name="nodeName">The exact authored node name.</param>
-    /// <param name="bounds">The combined bounds when the node and renderers exist.</param>
+    /// <param name="node">The matching authored node.</param>
+    /// <param name="bounds">The combined bounds in matching-node space.</param>
     /// <returns>True when the named node contains at least one renderer.</returns>
     private static bool TryGetNamedRendererBounds(
         Transform model,
         string nodeName,
+        out Transform node,
         out Bounds bounds
     )
     {
@@ -959,14 +975,52 @@ public sealed class LoadingScreenView : MonoBehaviour
             if (renderers.Length == 0)
                 break;
 
-            bounds = renderers[0].bounds;
+            node = candidate;
+            bounds = GetRendererBounds(candidate, renderers[0]);
             for (int index = 1; index < renderers.Length; index++)
-                bounds.Encapsulate(renderers[index].bounds);
+                bounds.Encapsulate(GetRendererBounds(candidate, renderers[index]));
             return true;
         }
 
+        node = null;
         bounds = default;
         return false;
+    }
+
+    /// <summary>
+    /// Converts one renderer's local bounds into an axis-aligned box in an ancestor's space.
+    /// </summary>
+    /// <param name="ancestor">The space in which to express the result.</param>
+    /// <param name="renderer">The renderer to measure.</param>
+    /// <returns>The renderer bounds in ancestor space.</returns>
+    private static Bounds GetRendererBounds(Transform ancestor, Renderer renderer)
+    {
+        Bounds localBounds = renderer.localBounds;
+        Vector3 minimum = localBounds.min;
+        Vector3 maximum = localBounds.max;
+        Vector3 firstCorner = ancestor.InverseTransformPoint(
+            renderer.transform.TransformPoint(minimum)
+        );
+        Bounds bounds = new Bounds(firstCorner, Vector3.zero);
+        for (int x = 0; x < 2; x++)
+        {
+            for (int y = 0; y < 2; y++)
+            {
+                for (int z = 0; z < 2; z++)
+                {
+                    Vector3 corner = new Vector3(
+                        x == 0 ? minimum.x : maximum.x,
+                        y == 0 ? minimum.y : maximum.y,
+                        z == 0 ? minimum.z : maximum.z
+                    );
+                    bounds.Encapsulate(
+                        ancestor.InverseTransformPoint(renderer.transform.TransformPoint(corner))
+                    );
+                }
+            }
+        }
+
+        return bounds;
     }
 
     /// <summary>
