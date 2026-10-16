@@ -265,12 +265,19 @@ namespace Rebellion.Tests.UI.SceneUI.LoadingScreen
             }
 
             Assert.IsNotEmpty(modelRoot.GetComponentsInChildren<Renderer>());
+            Transform engineRoot = null;
             int exhaustPlumeCount = 0;
             foreach (Transform child in modelRoot.GetComponentsInChildren<Transform>())
             {
+                if (child.name == "ion-engine_39")
+                    engineRoot = child;
                 if (child.name.StartsWith("EnginePlume", System.StringComparison.Ordinal))
+                {
                     exhaustPlumeCount++;
+                    Assert.AreEqual(engineRoot, child.parent);
+                }
             }
+            Assert.IsNotNull(engineRoot);
             Assert.AreEqual(4, exhaustPlumeCount);
             Assert.IsEmpty(modelRoot.GetComponentsInChildren<ParticleSystem>());
             Assert.IsEmpty(modelRoot.GetComponentsInChildren<Light>());
