@@ -8,6 +8,12 @@ using UnityEngine;
 /// </summary>
 internal sealed class LoadingScreenController : MonoBehaviour
 {
+    private enum TransitionKind
+    {
+        SavedGame,
+        ContentReload,
+    }
+
     private const string _viewResourcePath = "UI/LoadingScreen";
     private const string _objectName = "Loading Screen Controller";
     private const float _fadeToBlackDuration = 0.55f;
@@ -23,6 +29,7 @@ internal sealed class LoadingScreenController : MonoBehaviour
     private Coroutine _finishRoutine;
     private Coroutine _prepareRoutine;
     private Coroutine _recoveryRoutine;
+    private TransitionKind _transitionKind;
     private string _saveFileName;
     private Task<ContentPack> _contentPreparationTask;
     private bool _reconstructContent;
@@ -65,7 +72,7 @@ internal sealed class LoadingScreenController : MonoBehaviour
         if (string.IsNullOrWhiteSpace(fileName))
             throw new ArgumentException("A save file name is required.", nameof(fileName));
 
-        BeginLoad(bootstrap, fileName, null);
+        BeginLoad(bootstrap, TransitionKind.SavedGame, fileName, null);
     }
 
     /// <summary>
@@ -80,17 +87,19 @@ internal sealed class LoadingScreenController : MonoBehaviour
         if (preparation == null)
             throw new ArgumentNullException(nameof(preparation));
 
-        BeginLoad(bootstrap, null, preparation);
+        BeginLoad(bootstrap, TransitionKind.ContentReload, null, preparation);
     }
 
     /// <summary>
     /// Initializes the shared persistent presentation for a scene or content transition.
     /// </summary>
     /// <param name="bootstrap">The bootstrap that owns the outgoing content.</param>
+    /// <param name="transitionKind">The loading workflow to perform.</param>
     /// <param name="fileName">The save identifier, or null when returning to the main menu.</param>
     /// <param name="contentPreparation">The replacement content, or null for saved-game loading.</param>
     private static void BeginLoad(
         AppBootstrap bootstrap,
+        TransitionKind transitionKind,
         string fileName,
         Task<ContentPack> contentPreparation
     )
@@ -100,6 +109,7 @@ internal sealed class LoadingScreenController : MonoBehaviour
             return;
 
         controller._bootstrap = bootstrap;
+        controller._transitionKind = transitionKind;
         controller._saveFileName = fileName;
         controller._contentPreparationTask = contentPreparation;
         controller._transitionCompleted = null;
@@ -114,7 +124,7 @@ internal sealed class LoadingScreenController : MonoBehaviour
         {
             AudioManager.Instance?.StopMusic();
             controller._view.SetVisible(true);
-            if (contentPreparation != null)
+            if (transitionKind == TransitionKind.ContentReload)
             {
                 bootstrap.ApplyContentReload(contentPreparation.GetAwaiter().GetResult());
                 controller._reconstructContent = true;
@@ -127,7 +137,7 @@ internal sealed class LoadingScreenController : MonoBehaviour
                     .GetResult();
                 controller._reconstructContent = bootstrap.ApplySaveLoadPreparation(preparation);
             }
-            bootstrap.SuspendForSaveLoad();
+            bootstrap.SuspendForLoad();
             return;
         }
 
@@ -203,7 +213,7 @@ internal sealed class LoadingScreenController : MonoBehaviour
 
         if (
             _activeController._recoveringFromFailure
-            || _activeController._contentPreparationTask != null
+            || _activeController._transitionKind == TransitionKind.ContentReload
         )
         {
             _activeController.BeginFinishTransition();
@@ -224,10 +234,10 @@ internal sealed class LoadingScreenController : MonoBehaviour
     }
 
     /// <summary>
-    /// Keeps the loading presentation active while a failed save load returns to the main menu.
+    /// Keeps the loading presentation active while a failed load returns to the main menu.
     /// </summary>
     /// <param name="exception">The optional failure shown and logged during recovery.</param>
-    /// <returns>True when an active saved-game transition began recovery.</returns>
+    /// <returns>True when an active loading transition began recovery.</returns>
     internal static bool RecoverFromLoadFailure(Exception exception = null)
     {
         if (!_activeController || !_activeController._loadInProgress)
@@ -394,7 +404,7 @@ internal sealed class LoadingScreenController : MonoBehaviour
         Task preparationTask;
         try
         {
-            if (_contentPreparationTask != null)
+            if (_transitionKind == TransitionKind.ContentReload)
                 preparationTask = _contentPreparationTask;
             else
             {
@@ -422,7 +432,7 @@ internal sealed class LoadingScreenController : MonoBehaviour
 
         try
         {
-            if (_contentPreparationTask != null)
+            if (_transitionKind == TransitionKind.ContentReload)
             {
                 _bootstrap.ApplyContentReload(_contentPreparationTask.Result);
                 _reconstructContent = true;
@@ -438,7 +448,7 @@ internal sealed class LoadingScreenController : MonoBehaviour
             yield break;
         }
 
-        _bootstrap.SuspendForSaveLoad();
+        _bootstrap.SuspendForLoad();
 
         if (_reconstructContent)
         {
@@ -464,7 +474,8 @@ internal sealed class LoadingScreenController : MonoBehaviour
             }
         }
 
-        string destinationScene = _saveFileName == null ? "MainMenu" : "StrategyView";
+        string destinationScene =
+            _transitionKind == TransitionKind.ContentReload ? "MainMenu" : "StrategyView";
         if (!_bootstrap.LoadScene(destinationScene, HandleSceneLoadFailure))
         {
             HandleSceneLoadFailure(

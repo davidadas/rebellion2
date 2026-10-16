@@ -41,7 +41,7 @@ public sealed class MainMenuController : MonoBehaviour
         }
 
         _appBootstrap = AppBootstrap.EnsureExists();
-        _appBootstrap.SaveLoadStarting += HandleSaveLoadStarting;
+        _appBootstrap.LoadStarting += HandleLoadStarting;
         ContentPack contentPack = _appBootstrap.GetContentPack();
         GameLaunchContext.Reset(contentPack);
         currentVictoryCondition = GameLaunchContext.Summary.VictoryCondition;
@@ -151,7 +151,7 @@ public sealed class MainMenuController : MonoBehaviour
     {
         if (_appBootstrap != null)
         {
-            _appBootstrap.SaveLoadStarting -= HandleSaveLoadStarting;
+            _appBootstrap.LoadStarting -= HandleLoadStarting;
             _appBootstrap = null;
         }
 
@@ -163,9 +163,9 @@ public sealed class MainMenuController : MonoBehaviour
     }
 
     /// <summary>
-    /// Conceals the outgoing menu before saved-game loading begins.
+    /// Conceals the outgoing menu before a loading transition begins.
     /// </summary>
-    private void HandleSaveLoadStarting()
+    private void HandleLoadStarting()
     {
         if (mainMenuCanvas != null)
             mainMenuCanvas.enabled = false;

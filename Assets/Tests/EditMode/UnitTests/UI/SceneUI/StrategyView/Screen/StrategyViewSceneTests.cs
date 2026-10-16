@@ -73,7 +73,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         }
 
         [Test]
-        public void SaveLoadStarting_AuthoredPrefab_ConcealsCompleteStrategyPresentation()
+        public void LoadStarting_AuthoredPrefab_ConcealsCompleteStrategyPresentation()
         {
             GameObject prefabRoot = PrefabUtility.LoadPrefabContents(_prefabPath);
 
@@ -83,7 +83,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
                     prefabRoot.GetComponentInChildren<StrategyController>(true);
                 CanvasGroup contentGroup = controller.GetComponent<CanvasGroup>();
                 MethodInfo handler = typeof(StrategyController).GetMethod(
-                    "HandleSaveLoadStarting",
+                    "HandleLoadStarting",
                     BindingFlags.Instance | BindingFlags.NonPublic
                 );
 

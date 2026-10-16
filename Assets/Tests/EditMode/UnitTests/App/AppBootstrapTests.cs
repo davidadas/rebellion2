@@ -109,7 +109,7 @@ namespace Rebellion.Tests.App
         {
             UIComponentTestHelper.InvokeLifecycle(_bootstrap, "InitializeRuntimeCore");
             int transitions = 0;
-            _bootstrap.SaveLoadStarting += () => transitions++;
+            _bootstrap.LoadStarting += () => transitions++;
 
             bool started = _bootstrap.ReloadContent(
                 _bootstrap.GetContentPack().Definition.ID,
@@ -179,7 +179,7 @@ namespace Rebellion.Tests.App
             string fileName = $"bootstrap-hot-load-{System.Guid.NewGuid():N}";
             SaveGameManager saveGameManager = SaveGameManager.Instance;
             int transitionCount = 0;
-            _bootstrap.SaveLoadStarting += () => transitionCount++;
+            _bootstrap.LoadStarting += () => transitionCount++;
             AudioManager audioManager = AudioManager.EnsureExists();
             AudioClip music = AudioClip.Create("Outgoing Music", 1, 1, 44100, false);
             audioManager.PlayTrack(music, true);

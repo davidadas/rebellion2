@@ -53,10 +53,10 @@ public sealed class AppBootstrap : MonoBehaviour
     private UserSettingsManager _userSettingsManager;
 
     /// <summary>
-    /// Raised immediately before a saved-game transition begins.
-    /// Scene presentations use this boundary to stop rendering the outgoing game.
+    /// Raised before loading replaces the current scene or application content.
+    /// Scene presentations use this boundary to stop rendering the outgoing scene.
     /// </summary>
-    internal event Action SaveLoadStarting;
+    internal event Action LoadStarting;
 
     /// <summary>
     /// Gets whether the application scene loader is still completing a transition.
@@ -366,9 +366,9 @@ public sealed class AppBootstrap : MonoBehaviour
     /// <summary>
     /// Stops the outgoing scene and runtime after the persistent loading presentation is visible.
     /// </summary>
-    internal void SuspendForSaveLoad()
+    internal void SuspendForLoad()
     {
-        SaveLoadStarting?.Invoke();
+        LoadStarting?.Invoke();
         _runtime.EndGame();
     }
 
