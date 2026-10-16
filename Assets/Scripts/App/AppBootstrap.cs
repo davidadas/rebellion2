@@ -186,6 +186,7 @@ public sealed class AppBootstrap : MonoBehaviour
             inputController = CreateInputController();
 
         inputController?.Initialize(inputManager, _cancelStack, _runtime, LoadSave);
+        LoadingScreenController.Prepare(this);
     }
 
     /// <summary>

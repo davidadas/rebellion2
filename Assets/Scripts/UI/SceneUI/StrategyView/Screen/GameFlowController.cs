@@ -69,16 +69,18 @@ public sealed class GameFlowController : MonoBehaviour
             {
                 GameSession session = runtime.GetActiveGameSession();
                 InitializeStrategy(session);
-                ActivateGameplay(session, false);
+                await strategyController.PrepareInitialContentAsync();
+                await ActivateGameplayAsync(session, false);
                 return;
             }
 
             if (GameLaunchContext.IsLoadGame)
             {
-                await LoadGameAsync();
+                await LoadGameAsync(runtime);
                 GameSession session = StartGameSession(loadedGame: true);
                 InitializeStrategy(session);
-                ActivateGameplay(session, false);
+                await strategyController.PrepareInitialContentAsync();
+                await ActivateGameplayAsync(session, false);
             }
             else
                 await StartNewGameAsync();
@@ -179,23 +181,30 @@ public sealed class GameFlowController : MonoBehaviour
         Task briefingReady = playBriefing
             ? strategyController.PrepareBriefingAsync()
             : Task.CompletedTask;
-        await Task.WhenAll(intro, briefingReady);
-        ActivateGameplay(session, playBriefing);
+        Task initialContentReady = strategyController.PrepareInitialContentAsync();
+        await Task.WhenAll(intro, briefingReady, initialContentReady);
+        await ActivateGameplayAsync(session, playBriefing);
     }
 
     /// <summary>
     /// Loads and validates the requested save file.
     /// </summary>
+    /// <param name="runtime">The runtime that owns the incoming game session.</param>
     /// <returns>A task representing asynchronous save deserialization.</returns>
-    private async Task LoadGameAsync()
+    private async Task LoadGameAsync(GameRuntime runtime)
     {
+        if (runtime == null)
+            throw new InvalidOperationException(
+                "The application runtime is unavailable before save deserialization."
+            );
+
         string fileName = GameLaunchContext.SaveFileName;
 
         if (string.IsNullOrEmpty(fileName))
             throw new InvalidOperationException("LoadGame called but SaveFileName is null.");
 
         game = await SaveGameManager.Instance.LoadGameDataAsync(fileName);
-        AppBootstrap.Instance.GetRuntime().ValidateGameContent(game);
+        runtime.ValidateGameContent(game);
     }
 
     /// <summary>
@@ -326,10 +335,11 @@ public sealed class GameFlowController : MonoBehaviour
     /// </summary>
     /// <param name="session">The active game session.</param>
     /// <param name="requestBriefing">Whether launch state requested the opening briefing.</param>
-    private void ActivateGameplay(GameSession session, bool requestBriefing)
+    /// <returns>A task that completes after gameplay is active.</returns>
+    private async Task ActivateGameplayAsync(GameSession session, bool requestBriefing)
     {
         bool loadingTransitionActive = LoadingScreenController.IsLoadInProgress;
-        strategyController.ActivatePresentation(startMusic: !loadingTransitionActive);
+        await strategyController.ActivatePresentationAsync(startMusic: !loadingTransitionActive);
         GameManager clock = AppBootstrap.Instance.GetRuntime().GetActiveGameManager();
         GameRoot activeGame = session.Game;
         GameMetadata metadata = activeGame.Metadata ??= new GameMetadata();
@@ -345,12 +355,15 @@ public sealed class GameFlowController : MonoBehaviour
 
         if (loadingTransitionActive)
         {
-            LoadingScreenController.CompletePendingLoad(() =>
-            {
-                strategyController.ResumeMusic();
-                FinishGameplayActivation(session, clock, metadata, playBriefing);
-                StrategyController.PlayStrategyReadySound();
-            });
+            LoadingScreenController.CompletePendingLoad(
+                () =>
+                {
+                    strategyController.ResumeMusic();
+                    FinishGameplayActivation(session, clock, metadata, playBriefing);
+                },
+                StrategyController.PlayStrategyReadySound,
+                () => AudioManager.EnsureExists().PlaySfx(StrategyUISoundPaths.ControlPress)
+            );
             return;
         }
 

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Messages;
@@ -100,7 +101,8 @@ public sealed class StrategyHudController : IContextMenuReceiver
 
         StrategyHudView targetView = GetRequiredView();
         FactionTheme theme = getPlayerTheme();
-        targetView.Render(CreateViewData(data, theme));
+        StrategyHudViewData viewData = CreateViewData(data, theme);
+        targetView.Render(viewData);
         advisorController.Render(theme?.StrategyAdvisor);
     }
 
@@ -277,6 +279,39 @@ public sealed class StrategyHudController : IContextMenuReceiver
             buttons: CreateButtons(hudTheme?.Buttons),
             messageNotifications: CreateMessageNotifications(hudTheme?.MessageNotifications, data)
         );
+    }
+
+    /// <summary>
+    /// Enumerates all HUD artwork that can appear for one faction theme.
+    /// </summary>
+    /// <param name="theme">The faction theme to inspect.</param>
+    /// <returns>The configured texture paths.</returns>
+    internal static IEnumerable<string> GetTexturePaths(FactionTheme theme)
+    {
+        TacticalHUDLayout hud = theme?.TacticalHUDLayout;
+        if (hud == null)
+            return Array.Empty<string>();
+
+        IEnumerable<string> paths = new[]
+        {
+            hud.ImagePath,
+            hud.SpeedIndicators?.PausedImagePath,
+            hud.SpeedIndicators?.VerySlowImagePath,
+            hud.SpeedIndicators?.SlowImagePath,
+            hud.SpeedIndicators?.MediumImagePath,
+            hud.SpeedIndicators?.FastImagePath,
+        };
+        paths = paths.Concat(
+            hud.Buttons.SelectMany(button =>
+                new[] { button?.UpImagePath, button?.PressedImagePath }
+            )
+        );
+        paths = paths.Concat(
+            hud.MessageNotifications.SelectMany(notification =>
+                new[] { notification?.DefaultImagePath, notification?.HighlightedImagePath }
+            )
+        );
+        return paths.Where(path => !string.IsNullOrEmpty(path));
     }
 
     /// <summary>

@@ -171,6 +171,7 @@ public static class LoadingScreenPrefabBuilder
         fadeOverlay.raycastTarget = true;
         CanvasGroup fadeOverlayGroup = fadeOverlayObject.AddComponent<CanvasGroup>();
         fadeOverlayGroup.alpha = 0f;
+        fadeOverlayGroup.blocksRaycasts = false;
         FillParent(fadeOverlay.rectTransform);
 
         LoadingScreenView view = root.GetComponent<LoadingScreenView>();
