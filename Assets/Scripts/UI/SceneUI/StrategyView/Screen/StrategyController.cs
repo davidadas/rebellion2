@@ -2608,7 +2608,8 @@ public sealed class StrategyController
             case StrategyWindowButtonActions.CloseWindow:
             case StrategyDialogButtonActions.Close:
                 PlaySectorWindowCloseSound(window);
-                CloseWindow(window);
+                if (!battleAlertWindowController.TryCloseWindow(window))
+                    CloseWindow(window);
                 break;
             case StrategyWindowButtonActions.OpenSector:
                 GalaxyMapPlanet planet = GetWindowPlanet(window);

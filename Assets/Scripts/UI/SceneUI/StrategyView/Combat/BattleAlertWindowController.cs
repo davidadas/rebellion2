@@ -273,6 +273,23 @@ public sealed class BattleAlertWindowController
     }
 
     /// <summary>
+    /// Routes a window-shell close request through the owning battle-alert session.
+    /// </summary>
+    /// <param name="window">The window requested for closure.</param>
+    /// <returns>True when the window belongs to this controller.</returns>
+    internal bool TryCloseWindow(UIWindow window)
+    {
+        if (
+            window == null
+            || !windowManager.TryGetWindowView(window, out BattleAlertWindowView view)
+        )
+            return false;
+
+        HandleCloseRequested(view);
+        return true;
+    }
+
+    /// <summary>
     /// Creates immutable presentation for one bound battle-alert view.
     /// </summary>
     /// <param name="view">The view whose controller-owned session is projected.</param>
@@ -512,6 +529,7 @@ public sealed class BattleAlertWindowController
     /// </summary>
     /// <param name="view">The result view.</param>
     /// <param name="result">The completed combat result.</param>
+    /// <param name="closeContinuation">The action to invoke after an explicit close.</param>
     private void SetCombatResult(
         BattleAlertWindowView view,
         BattleResultPresentation result,
