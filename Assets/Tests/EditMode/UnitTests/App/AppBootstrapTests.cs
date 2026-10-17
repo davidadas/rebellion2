@@ -14,6 +14,7 @@ namespace Rebellion.Tests.App
     {
         private AppBootstrap _bootstrap;
         private GameObject _gameObject;
+        private string _modDirectory;
         private string _packDirectory;
 
         /// <summary>
@@ -48,6 +49,9 @@ namespace Rebellion.Tests.App
             DestroyAudioManagers();
             if (_packDirectory != null && Directory.Exists(_packDirectory))
                 Directory.Delete(_packDirectory, true);
+            if (_modDirectory != null && Directory.Exists(_modDirectory))
+                Directory.Delete(_modDirectory, true);
+            _modDirectory = null;
             _packDirectory = null;
             GameLaunchContext.Reset(TestContent.Pack);
         }
@@ -59,15 +63,42 @@ namespace Rebellion.Tests.App
             ContentPack active = _bootstrap.GetContentPack();
             string packID = CreateDerivedPack(active);
 
-            ContentPack selected = _bootstrap
+            ContentReloadPreparation preparation = _bootstrap
                 .PrepareContentReloadAsync(packID, System.Array.Empty<string>())
                 .GetAwaiter()
                 .GetResult();
 
-            Assert.AreEqual(packID, selected.Definition.ID);
-            Assert.AreEqual(active.Scenario.ID, selected.Scenario.ID);
+            Assert.AreEqual(packID, preparation.Pack.Definition.ID);
+            Assert.AreEqual(active.Scenario.ID, preparation.Pack.Scenario.ID);
             Assert.AreSame(active, _bootstrap.GetContentPack());
             Assert.IsFalse(LoadingScreenController.IsLoadInProgress);
+        }
+
+        [TestCase("main-menu")]
+        [TestCase("strategy")]
+        public void PrepareContentReloadAsync_MalformedApplicationPreload_RejectsSelection(
+            string preloadID
+        )
+        {
+            UIComponentTestHelper.InvokeLifecycle(_bootstrap, "InitializeRuntimeCore");
+            ContentPack active = _bootstrap.GetContentPack();
+            string modContentRoot = CreateContentMod(active);
+            string preloadDirectory = Path.Combine(modContentRoot, "Application", "Preload");
+            Directory.CreateDirectory(preloadDirectory);
+            File.WriteAllText(
+                Path.Combine(preloadDirectory, preloadID + ".xml"),
+                "<ContentPreload><TexturesPerFrame>0</TexturesPerFrame>"
+                    + "<Textures/><TextureDirectories/><Audio/><Models/></ContentPreload>"
+            );
+
+            Assert.Throws<InvalidDataException>(() =>
+                _bootstrap
+                    .PrepareContentReloadAsync(active.Definition.ID, System.Array.Empty<string>())
+                    .GetAwaiter()
+                    .GetResult()
+            );
+
+            Assert.AreSame(active, _bootstrap.GetContentPack());
         }
 
         [Test]
@@ -84,6 +115,24 @@ namespace Rebellion.Tests.App
             );
 
             Assert.AreSame(active, _bootstrap.GetContentPack());
+        }
+
+        [Test]
+        public void ReloadContent_MultiplePackDisabledSnapshot_PersistsCompleteSelection()
+        {
+            UIComponentTestHelper.InvokeLifecycle(_bootstrap, "InitializeRuntimeCore");
+            string[] disabledModIDs = { "other-pack-mod", "selected-pack-mod" };
+
+            bool started = _bootstrap.ReloadContent(
+                _bootstrap.GetContentPack().Definition.ID,
+                disabledModIDs
+            );
+
+            Assert.IsTrue(started);
+            CollectionAssert.AreEqual(
+                disabledModIDs,
+                _bootstrap.GetUserSettingsManager().Settings.Content.DisabledModIDs
+            );
         }
 
         [Test]
@@ -303,6 +352,33 @@ namespace Rebellion.Tests.App
             definition.Root.SetElementValue("BasePackID", active.Definition.ID);
             definition.Save(Path.Combine(_packDirectory, "pack.xml"));
             return packID;
+        }
+
+        /// <summary>
+        /// Creates an enabled content mod compatible with the supplied pack.
+        /// </summary>
+        /// <param name="active">The pack the test mod extends.</param>
+        /// <returns>The test mod's content root.</returns>
+        private string CreateContentMod(ContentPack active)
+        {
+            string modID = $"reload-test-mod-{System.Guid.NewGuid():N}";
+            _modDirectory = Path.Combine(
+                Directory.GetParent(active.ContentRootPath).FullName,
+                "Mods",
+                modID
+            );
+            Directory.CreateDirectory(_modDirectory);
+            File.WriteAllText(
+                Path.Combine(_modDirectory, "mod.xml"),
+                $"<ContentModDefinition><ID>{modID}</ID>"
+                    + "<Version>1.0.0</Version><DisplayName>Reload test mod</DisplayName>"
+                    + $"<BasePackID>{active.Definition.ID}</BasePackID>"
+                    + $"<BasePackVersion>{active.Definition.Version}</BasePackVersion>"
+                    + "</ContentModDefinition>"
+            );
+            string contentRoot = Path.Combine(_modDirectory, "Content");
+            Directory.CreateDirectory(contentRoot);
+            return contentRoot;
         }
 
         /// <summary>

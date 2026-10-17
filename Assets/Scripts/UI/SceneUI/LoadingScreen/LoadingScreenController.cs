@@ -31,7 +31,7 @@ internal sealed class LoadingScreenController : MonoBehaviour
     private Coroutine _recoveryRoutine;
     private TransitionKind _transitionKind;
     private string _saveFileName;
-    private Task<ContentPack> _contentPreparationTask;
+    private Task<ContentReloadPreparation> _contentPreparationTask;
     private bool _reconstructContent;
     private bool _loadInProgress;
     private bool _recoveringFromFailure;
@@ -80,7 +80,10 @@ internal sealed class LoadingScreenController : MonoBehaviour
     /// </summary>
     /// <param name="bootstrap">The bootstrap that owns the outgoing content.</param>
     /// <param name="preparation">The pending content validation task.</param>
-    internal static void ReloadContent(AppBootstrap bootstrap, Task<ContentPack> preparation)
+    internal static void ReloadContent(
+        AppBootstrap bootstrap,
+        Task<ContentReloadPreparation> preparation
+    )
     {
         if (bootstrap == null)
             throw new ArgumentNullException(nameof(bootstrap));
@@ -101,7 +104,7 @@ internal sealed class LoadingScreenController : MonoBehaviour
         AppBootstrap bootstrap,
         TransitionKind transitionKind,
         string fileName,
-        Task<ContentPack> contentPreparation
+        Task<ContentReloadPreparation> contentPreparation
     )
     {
         LoadingScreenController controller = GetOrCreateController();

@@ -279,8 +279,11 @@ public sealed class AppBootstrap : MonoBehaviour
     /// </summary>
     /// <param name="packID">The installed pack to validate.</param>
     /// <param name="disabledModIDs">The mods excluded from the selected content.</param>
-    /// <returns>The verified replacement content pack.</returns>
-    internal Task<ContentPack> PrepareContentReloadAsync(string packID, string[] disabledModIDs)
+    /// <returns>The verified replacement content and complete pending mod selection.</returns>
+    internal Task<ContentReloadPreparation> PrepareContentReloadAsync(
+        string packID,
+        string[] disabledModIDs
+    )
     {
         string contentRoot = _contentPack.ContentRootPath;
         string[] disabled = disabledModIDs?.ToArray() ?? Array.Empty<string>();
@@ -292,30 +295,43 @@ public sealed class AppBootstrap : MonoBehaviour
             if (definition == null)
                 throw new InvalidOperationException($"Content pack '{packID}' is not installed.");
 
-            return ContentPackLoader.OpenExact(
+            ContentPack contentPack = ContentPackLoader.OpenExact(
                 contentRoot,
                 packID,
                 definition.DefaultScenarioID,
                 disabled
             );
+            ContentPackLoader.LoadApplicationPreloadManifest(
+                contentPack.FileResolver,
+                _mainMenuPreloadID
+            );
+            ContentPackLoader.LoadApplicationPreloadManifest(
+                contentPack.FileResolver,
+                _strategyPreloadID
+            );
+            return new ContentReloadPreparation(contentPack, disabled);
         });
     }
 
     /// <summary>
     /// Persists verified content and transfers it to the replacement application bootstrap.
     /// </summary>
-    /// <param name="contentPack">The verified pack selected from the main menu.</param>
-    internal void ApplyContentReload(ContentPack contentPack)
+    /// <param name="preparation">The verified content and complete pending mod selection.</param>
+    internal void ApplyContentReload(ContentReloadPreparation preparation)
     {
-        if (contentPack == null)
-            throw new ArgumentNullException(nameof(contentPack));
+        if (preparation == null)
+            throw new ArgumentNullException(nameof(preparation));
 
-        string[] enabledModIDs = contentPack.FileResolver.Mods.Select(mod => mod.ID).ToArray();
-        string[] disabledModIDs = contentPack
-            .FileResolver.AvailableMods.Where(mod => !enabledModIDs.Contains(mod.ID))
-            .Select(mod => mod.ID)
+        ContentPack contentPack = preparation.Pack;
+        UserContentSettings content = _userSettingsManager.Settings.Content;
+        content.ActivePackID = contentPack.Definition.ID;
+        content.ActiveScenarioID = contentPack.Scenario.ID;
+        content.DisabledModIDs = preparation
+            .DisabledModIDs.Where(id => !string.IsNullOrWhiteSpace(id))
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(id => id, StringComparer.Ordinal)
             .ToArray();
-        PersistContentSelection(contentPack, disabledModIDs);
+        _userSettingsManager.Save();
         GameLaunchContext.PrepareContentRestart(contentPack);
     }
 
