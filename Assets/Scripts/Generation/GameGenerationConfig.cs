@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Rebellion.Game;
+using Rebellion.Game.Factions;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Generation
@@ -25,6 +26,18 @@ namespace Rebellion.Generation
         public UnitDeploymentSection UnitDeployment;
 
         public BalanceSection Balance;
+
+        public List<FactionModifierConfig> FactionModifiers = new List<FactionModifierConfig>();
+    }
+
+    /// <summary>
+    /// Defines launch-specific settings for one faction.
+    /// </summary>
+    [PersistableObject]
+    public class FactionModifierConfig
+    {
+        public string FactionID;
+        public FactionSettings Settings = new FactionSettings();
     }
 
     #region OFFICERS
@@ -35,8 +48,6 @@ namespace Rebellion.Generation
     [PersistableObject]
     public class OfficerSection
     {
-        public PlanetSizeProfile NumStartingOfficers;
-
         public List<StartingOfficerRule> StartingOfficers = new List<StartingOfficerRule>();
     }
 
@@ -77,6 +88,11 @@ namespace Rebellion.Generation
     public class FactionSetup
     {
         public string FactionID;
+
+        public int StartingResearchLevel;
+
+        public PlanetSizeProfile NumStartingOfficers;
+
         public List<StartingPlanet> StartingPlanets;
     }
 

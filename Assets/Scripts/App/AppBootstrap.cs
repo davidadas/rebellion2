@@ -156,6 +156,7 @@ public sealed class AppBootstrap : MonoBehaviour
         _contentModelCache = new ContentModelCache(_contentAssets);
         GameLaunchContext.Reset(_contentPack);
         GameLaunchContext.RestoreSaveLoadAfterContentRestart();
+        GameLaunchContext.RestoreCustomGameAfterContentRestart();
         audioManager = AudioManager.EnsureExists(transform);
         audioManager.InitializeContent(_contentAssets);
 
@@ -293,6 +294,31 @@ public sealed class AppBootstrap : MonoBehaviour
         PersistContentSelection(selection.Pack, selection.DisabledModIDs);
         GameLaunchContext.PrepareSaveLoadAfterContentRestart(preparation.FileName, selection.Pack);
         return true;
+    }
+
+    /// <summary>
+    /// Persists and queues a custom game that requires replacement content services.
+    /// </summary>
+    /// <param name="contentPack">The selected and validated content pack.</param>
+    /// <param name="summary">The complete custom-game configuration.</param>
+    internal void PrepareCustomGameContentRestart(ContentPack contentPack, GameSummary summary)
+    {
+        if (contentPack == null)
+            throw new ArgumentNullException(nameof(contentPack));
+        if (summary == null)
+            throw new ArgumentNullException(nameof(summary));
+        if (!contentPack.MatchesContentIdentity(summary))
+            throw new InvalidOperationException(
+                "The custom-game configuration does not match its selected content pack."
+            );
+
+        string[] enabledModIDs = contentPack.FileResolver.Mods.Select(mod => mod.ID).ToArray();
+        string[] disabledModIDs = contentPack
+            .FileResolver.AvailableMods.Select(mod => mod.ID)
+            .Except(enabledModIDs, StringComparer.Ordinal)
+            .ToArray();
+        PersistContentSelection(contentPack, disabledModIDs);
+        GameLaunchContext.PrepareCustomGameAfterContentRestart(summary, contentPack);
     }
 
     /// <summary>

@@ -3,10 +3,10 @@ using System.Globalization;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Generation;
 using TMPro;
 using UnityEditor;
 using UnityEngine;
-using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace Rebellion.Tests.UI.SceneUI.MainMenu
@@ -17,6 +17,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         private GameObject instance;
         private NewGameSettingsView view;
         private GameSummary summary;
+        private OptionsMenuView optionsPrefab;
 
         /// <summary>
         /// Instantiates the generated settings editor independently of application startup.
@@ -32,6 +33,9 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             instance.SetActive(true);
             view = instance.GetComponent<NewGameSettingsView>();
             summary = new GameSummary { Difficulty = GameDifficulty.Easy };
+            optionsPrefab = AssetDatabase.LoadAssetAtPath<OptionsMenuView>(
+                "Assets/Prefabs/UI/OptionsMenu/OptionsMenu.prefab"
+            );
         }
 
         /// <summary>
@@ -52,7 +56,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                     .MineOutputPercent.ToString(CultureInfo.InvariantCulture),
                 Input("mine-output", "AI").text
             );
-            Assert.IsFalse(ApplyButton().interactable);
+            Assert.IsTrue(ApplyButton().interactable);
         }
 
         [Test]
@@ -121,8 +125,44 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
 
             Assert.AreEqual("125", Input("mine-output", "Player").text);
             Assert.AreEqual(aiValue, Input("mine-output", "AI").text);
-            Assert.AreEqual("1 CHANGE", ChangeCount().text);
             Assert.IsTrue(ApplyButton().interactable);
+        }
+
+        [Test]
+        public void EditValue_ValidNumber_PreservesInputPresentation()
+        {
+            view.Initialize(TestContent.Pack, summary);
+            TMP_InputField input = Input("mine-output", "Player");
+            Color color = input.textComponent.color;
+            RectInt viewportRect = UILayout.GetSourceRect(input.textViewport);
+            RectInt textRect = UILayout.GetSourceRect(input.textComponent.rectTransform);
+
+            input.onEndEdit.Invoke("125");
+
+            input = Input("mine-output", "Player");
+            Assert.AreEqual(color, input.textComponent.color);
+            Assert.AreEqual(viewportRect, UILayout.GetSourceRect(input.textViewport));
+            Assert.AreEqual(textRect, UILayout.GetSourceRect(input.textComponent.rectTransform));
+        }
+
+        [Test]
+        public void Initialize_DifficultyInput_RetainsSharedTextInputBehaviorAndGeometry()
+        {
+            TMP_InputField sharedInput = AssetDatabase
+                .LoadAssetAtPath<GameObject>("Assets/Prefabs/UI/Common/TextInput.prefab")
+                .GetComponent<TMP_InputField>();
+
+            view.Initialize(TestContent.Pack, summary);
+
+            TMP_InputField input = Input("mine-output", "Player");
+            Assert.AreEqual(sharedInput.caretWidth, input.caretWidth);
+            Assert.AreEqual(sharedInput.customCaretColor, input.customCaretColor);
+            Assert.AreEqual(sharedInput.selectionColor, input.selectionColor);
+            Assert.AreEqual(sharedInput.onFocusSelectAll, input.onFocusSelectAll);
+            Assert.AreEqual(Vector2.zero, input.textViewport.anchorMin);
+            Assert.AreEqual(Vector2.one, input.textViewport.anchorMax);
+            Assert.AreEqual(Vector2.zero, input.textComponent.rectTransform.anchorMin);
+            Assert.AreEqual(Vector2.one, input.textComponent.rectTransform.anchorMax);
         }
 
         [TestCase("NaN")]
@@ -138,7 +178,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Input("mine-output", "Player").onEndEdit.Invoke(invalid);
 
             Assert.AreEqual(original, Input("mine-output", "Player").text);
-            Assert.IsFalse(ApplyButton().interactable);
+            Assert.IsTrue(ApplyButton().interactable);
         }
 
         [Test]
@@ -195,39 +235,623 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         [Test]
+        public void RestoreDefaults_WorldGeneration_PreservesDifficultyModifierEdits()
+        {
+            view.Initialize(TestContent.Pack, summary);
+            Input("mine-output", "Player").onEndEdit.Invoke("125");
+            view.SelectCategory(NewGameSettingsCategory.WorldGeneration);
+
+            view.RestoreDefaults();
+            view.SelectCategory(NewGameSettingsCategory.DifficultyModifiers);
+
+            Assert.AreEqual("125", Input("mine-output", "Player").text);
+        }
+
+        [Test]
+        public void RestoreDefaults_DifficultyModifiers_PreservesWorldGenerationEdits()
+        {
+            view.Initialize(TestContent.Pack, summary);
+            view.SelectCategory(NewGameSettingsCategory.WorldGeneration);
+            TableInput("mine-chance-per-resource", "Player").onEndEdit.Invoke("7");
+            view.SelectCategory(NewGameSettingsCategory.DifficultyModifiers);
+
+            view.RestoreDefaults();
+            view.SelectCategory(NewGameSettingsCategory.WorldGeneration);
+
+            Assert.AreEqual("7", TableInput("mine-chance-per-resource", "Player").text);
+        }
+
+        [Test]
         public void Apply_EditedColumns_PublishesPlayerAndAIModifiers()
         {
-            DifficultyModifiers appliedPlayer = null;
-            DifficultyModifiers appliedAI = null;
-            view.ApplyRequested += (player, ai) =>
-            {
-                appliedPlayer = player;
-                appliedAI = ai;
-            };
+            GameSummary applied = null;
+            view.StartRequested += (_, launchSummary) => applied = launchSummary;
             view.Initialize(TestContent.Pack, summary);
             Input("manufacturing-speed", "Player").onEndEdit.Invoke("125");
             Input("mission-foil", "AI").onEndEdit.Invoke("20");
 
             ApplyButton().onClick.Invoke();
 
-            Assert.AreEqual(125, appliedPlayer.ManufacturingSpeedPercent);
-            Assert.AreEqual(20, appliedAI.MissionFoilChancePoints);
-            Assert.IsFalse(ApplyButton().interactable);
-            Assert.AreEqual("0 CHANGES", ChangeCount().text);
+            Assert.AreEqual(125, applied.PlayerDifficultyModifiers.ManufacturingSpeedPercent);
+            Assert.AreEqual(20, applied.AIDifficultyModifiers.MissionFoilChancePoints);
+            Assert.IsTrue(ApplyButton().interactable);
         }
 
         [Test]
-        public void Initialize_DifficultyRow_UsesInfoTooltip()
+        public void Initialize_WorldGenerationNavigation_ShowsSingleNumericSection()
+        {
+            view.Initialize(TestContent.Pack, summary);
+
+            string[] labels = instance
+                .transform.Find("ContentRoot")
+                .GetComponentsInChildren<Button>()
+                .Where(button => button.name.StartsWith("Tab", StringComparison.Ordinal))
+                .Select(button => button.GetComponentInChildren<TMP_Text>().text)
+                .ToArray();
+
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    "GAME SETUP",
+                    "DIFFICULTY MODIFIERS",
+                    "WORLD GENERATION",
+                    "FACTION MODIFIERS",
+                    "SAVE / LOAD",
+                },
+                labels
+            );
+        }
+
+        [Test]
+        public void SelectCategory_GameSetup_ShowsEveryLaunchSelection()
+        {
+            view.Initialize(TestContent.Pack, summary, optionsPrefab, null);
+
+            view.SelectCategory(NewGameSettingsCategory.GameSetup);
+
+            CollectionAssert.AreEquivalent(
+                new[]
+                {
+                    "Choice-content-pack",
+                    "Choice-faction",
+                    "Choice-difficulty",
+                    "Choice-galaxy-size",
+                    "Choice-victory-condition",
+                    "Choice-resource-availability",
+                },
+                instance
+                    .GetComponentsInChildren<OptionsChoiceFieldView>()
+                    .Select(choice => choice.name)
+                    .ToArray()
+            );
+            Assert.AreEqual(summary.Seed.ToString(CultureInfo.InvariantCulture), SeedInput().text);
+        }
+
+        [Test]
+        public void EditSeed_ValidInteger_PublishesEnteredSeed()
+        {
+            GameSummary launched = null;
+            view.StartRequested += (_, configured) => launched = configured;
+            view.Initialize(TestContent.Pack, summary, optionsPrefab, null);
+            view.SelectCategory(NewGameSettingsCategory.GameSetup);
+
+            SeedInput().onEndEdit.Invoke("-1729");
+            ApplyButton().onClick.Invoke();
+
+            Assert.AreEqual(-1729, launched.Seed);
+        }
+
+        [Test]
+        public void RandomizeSeed_ClickedResetButton_SelectsNewSeed()
+        {
+            summary.Seed = 0;
+            view.Initialize(TestContent.Pack, summary, optionsPrefab, null);
+            view.SelectCategory(NewGameSettingsCategory.GameSetup);
+
+            SeedResetButton().onClick.Invoke();
+
+            Assert.AreNotEqual("0", SeedInput().text);
+            Assert.IsTrue(
+                int.TryParse(
+                    SeedInput().text,
+                    NumberStyles.Integer,
+                    CultureInfo.InvariantCulture,
+                    out _
+                )
+            );
+        }
+
+        [Test]
+        public void SelectCategory_GameSetup_UsesSharedTopContentInset()
+        {
+            view.Initialize(TestContent.Pack, summary, optionsPrefab, null);
+
+            view.SelectCategory(NewGameSettingsCategory.GameSetup);
+
+            RectTransform scrollRoot = (RectTransform)
+                instance.transform.Find("ContentRoot/DifficultyPage/SettingsScrollArea");
+            Assert.AreEqual(16f, -scrollRoot.anchoredPosition.y);
+            Assert.AreEqual(310f, scrollRoot.sizeDelta.y);
+        }
+
+        [Test]
+        public void SelectCategory_SaveLoad_AlignsClonedPageWithContentPanel()
+        {
+            view.Initialize(TestContent.Pack, summary, optionsPrefab, null);
+
+            view.SelectCategory(NewGameSettingsCategory.SaveLoad);
+
+            RectTransform contentRoot = (RectTransform)instance.transform.Find("ContentRoot");
+            RectTransform settingsPage = (RectTransform)contentRoot.Find("DifficultyPage");
+            RectTransform presetPage = (RectTransform)contentRoot.Find("CustomGamePresetPage");
+            Assert.IsNotNull(presetPage);
+            Assert.AreEqual(settingsPage.anchoredPosition, presetPage.anchoredPosition);
+            Assert.AreEqual(settingsPage.sizeDelta, presetPage.sizeDelta);
+        }
+
+        [Test]
+        public void Apply_CycledGameSetup_PublishesCompleteLaunchSummary()
+        {
+            GameSummary launched = null;
+            view.StartRequested += (_, configured) => launched = configured;
+            view.Initialize(TestContent.Pack, summary, optionsPrefab, null);
+            view.SelectCategory(NewGameSettingsCategory.GameSetup);
+            StepSetupChoice("faction", 1);
+            StepSetupChoice("difficulty", 1);
+            StepSetupChoice("galaxy-size", 1);
+            StepSetupChoice("victory-condition", 1);
+            StepSetupChoice("resource-availability", 1);
+
+            ApplyButton().onClick.Invoke();
+
+            Assert.IsNotNull(launched);
+            Assert.AreEqual("FNEMP1", launched.PlayerFactionID);
+            Assert.AreEqual(GameDifficulty.Medium, launched.Difficulty);
+            Assert.AreEqual(GameSize.Small, launched.GalaxySize);
+            Assert.AreEqual(GameVictoryCondition.Headquarters, launched.VictoryCondition);
+            Assert.AreEqual(GameResourceAvailability.Abundant, launched.ResourceAvailability);
+            Assert.IsNotNull(launched.PlayerDifficultyModifiers);
+            Assert.IsNull(launched.AIDifficultyModifiers);
+            Assert.IsNotEmpty(launched.GenerationConfigOverrideXml);
+        }
+
+        [Test]
+        public void CycleDifficulty_ProfileLinkedAIValues_UsesSelectedProfile()
+        {
+            DifficultyModifiers expected = TestContent.Pack.GameData.GameConfig.DifficultyModifiers[
+                GameDifficulty.Medium
+            ];
+            view.Initialize(TestContent.Pack, summary, optionsPrefab, null);
+            view.SelectCategory(NewGameSettingsCategory.GameSetup);
+
+            StepSetupChoice("difficulty", 1);
+            view.SelectCategory(NewGameSettingsCategory.DifficultyModifiers);
+
+            Assert.AreEqual(
+                expected.MineOutputPercent.ToString(CultureInfo.InvariantCulture),
+                Input("mine-output", "AI").text
+            );
+            Assert.AreEqual(
+                expected.ManufacturingSpeedPercent.ToString(CultureInfo.InvariantCulture),
+                Input("manufacturing-speed", "AI").text
+            );
+        }
+
+        [Test]
+        public void CycleDifficulty_ManuallyOverriddenAIValue_PreservesOnlyOverride()
+        {
+            DifficultyModifiers expected = TestContent.Pack.GameData.GameConfig.DifficultyModifiers[
+                GameDifficulty.Medium
+            ];
+            view.Initialize(TestContent.Pack, summary, optionsPrefab, null);
+            view.SelectCategory(NewGameSettingsCategory.DifficultyModifiers);
+            Input("mine-output", "AI").onEndEdit.Invoke("777");
+            view.SelectCategory(NewGameSettingsCategory.GameSetup);
+
+            StepSetupChoice("difficulty", 1);
+            view.SelectCategory(NewGameSettingsCategory.DifficultyModifiers);
+
+            Assert.AreEqual("777", Input("mine-output", "AI").text);
+            Assert.AreEqual(
+                expected.ManufacturingSpeedPercent.ToString(CultureInfo.InvariantCulture),
+                Input("manufacturing-speed", "AI").text
+            );
+        }
+
+        [Test]
+        public void CycleDifficulty_LoadedAIModifiers_PreservesOnlyValuesOutsideProfile()
+        {
+            DifficultyModifiers easy = TestContent.Pack.GameData.GameConfig.DifficultyModifiers[
+                GameDifficulty.Easy
+            ];
+            DifficultyModifiers medium = TestContent.Pack.GameData.GameConfig.DifficultyModifiers[
+                GameDifficulty.Medium
+            ];
+            summary.AIDifficultyModifiers = easy.CreateCopy();
+            summary.AIDifficultyModifiers.MineOutputPercent = 777;
+            view.Initialize(TestContent.Pack, summary, optionsPrefab, null);
+            view.SelectCategory(NewGameSettingsCategory.GameSetup);
+
+            StepSetupChoice("difficulty", 1);
+            view.SelectCategory(NewGameSettingsCategory.DifficultyModifiers);
+
+            Assert.AreEqual("777", Input("mine-output", "AI").text);
+            Assert.AreEqual(
+                medium.ManufacturingSpeedPercent.ToString(CultureInfo.InvariantCulture),
+                Input("manufacturing-speed", "AI").text
+            );
+        }
+
+        [Test]
+        public void SelectCategory_ContentPackChoice_RequestsNextInstalledPack()
+        {
+            string requested = null;
+            ContentPackDefinition[] installed =
+            {
+                TestContent.Pack.Definition,
+                new ContentPackDefinition { ID = "alternate", DisplayName = "Alternate" },
+            };
+            view.ContentPackRequested += packID => requested = packID;
+            view.Initialize(TestContent.Pack, summary, optionsPrefab, null, installed);
+            view.SelectCategory(NewGameSettingsCategory.GameSetup);
+
+            StepSetupChoice("content-pack", 1);
+
+            Assert.AreEqual("alternate", requested);
+        }
+
+        [Test]
+        public void Initialize_FactionModifiers_RendersConfiguredFactionColumnsAndConsumedValues()
+        {
+            view.Initialize(TestContent.Pack, summary);
+            view.SelectCategory(NewGameSettingsCategory.FactionModifiers);
+            string[] headings = instance
+                .GetComponentsInChildren<TMP_Text>()
+                .Where(text => text.name.StartsWith("Column", StringComparison.Ordinal))
+                .Select(text => text.text)
+                .ToArray();
+
+            CollectionAssert.AreEqual(
+                TestContent
+                    .Pack.GameData.Factions.Select(faction =>
+                        faction.GetDisplayName().ToUpperInvariant()
+                    )
+                    .ToArray(),
+                headings.Take(TestContent.Pack.GameData.Factions.Length).ToArray()
+            );
+            Assert.AreEqual(
+                TestContent
+                    .Pack.GameData.Factions[0]
+                    .Settings.GarrisonEfficiency.ToString(CultureInfo.InvariantCulture),
+                TableInput("garrison-efficiency", "Player").text
+            );
+            Assert.IsFalse(
+                instance
+                    .GetComponentsInChildren<Transform>()
+                    .Any(candidate => candidate.name == "Setting-troop-effectiveness")
+            );
+        }
+
+        [Test]
+        public void Apply_EditedFactionModifier_PublishesOverrideWithoutMutatingContent()
+        {
+            GameSummary applied = null;
+            int authored = TestContent.Pack.GameData.Factions[0].Settings.GarrisonEfficiency;
+            view.StartRequested += (_, launchSummary) => applied = launchSummary;
+            view.Initialize(TestContent.Pack, summary);
+            view.SelectCategory(NewGameSettingsCategory.FactionModifiers);
+
+            TableInput("garrison-efficiency", "Player").onEndEdit.Invoke("3");
+            ApplyButton().onClick.Invoke();
+
+            GameGenerationConfig config = GameGenerationConfigCodec.Deserialize(
+                applied.GenerationConfigOverrideXml
+            );
+            Assert.AreEqual(3, config.FactionModifiers[0].Settings.GarrisonEfficiency);
+            Assert.AreEqual(
+                authored,
+                TestContent.Pack.GameData.Factions[0].Settings.GarrisonEfficiency
+            );
+        }
+
+        [Test]
+        public void Initialize_SelectedGalaxySize_ShowsFactionOfficerLimits()
+        {
+            summary.GalaxySize = GameSize.Small;
+            view.Initialize(TestContent.Pack, summary);
+            view.SelectCategory(NewGameSettingsCategory.WorldGeneration);
+
+            Assert.AreEqual(
+                TestContent
+                    .Pack.GameData.GenerationConfig.GalaxyClassification.FactionSetups[0]
+                    .NumStartingOfficers.Small.ToString(CultureInfo.InvariantCulture),
+                TableInput("starting-officers", "Player").text
+            );
+            Assert.AreEqual(
+                2,
+                TableRow("starting-officers").GetComponentsInChildren<TMP_InputField>().Length
+            );
+        }
+
+        [Test]
+        public void Apply_PerFactionResearchLevels_PublishesIndependentValues()
+        {
+            GameSummary applied = null;
+            view.StartRequested += (_, launchSummary) => applied = launchSummary;
+            view.Initialize(TestContent.Pack, summary);
+            view.SelectCategory(NewGameSettingsCategory.WorldGeneration);
+
+            TableInput("starting-research", "Player").onEndEdit.Invoke("3");
+            TableInput("starting-research", "AI").onEndEdit.Invoke("7");
+            ApplyButton().onClick.Invoke();
+
+            GameGenerationConfig config = GameGenerationConfigCodec.Deserialize(
+                applied.GenerationConfigOverrideXml
+            );
+            Assert.AreEqual(3, config.GalaxyClassification.FactionSetups[0].StartingResearchLevel);
+            Assert.AreEqual(7, config.GalaxyClassification.FactionSetups[1].StartingResearchLevel);
+        }
+
+        [Test]
+        public void Initialize_SelectedResourceAvailability_HidesUnusedProfiles()
+        {
+            summary.ResourceAvailability = GameResourceAvailability.Normal;
+            view.Initialize(TestContent.Pack, summary);
+            view.SelectCategory(NewGameSettingsCategory.WorldGeneration);
+
+            string[] settingNames = instance
+                .GetComponentsInChildren<Transform>()
+                .Where(transform => transform.name.StartsWith("Setting-"))
+                .Select(transform => transform.name)
+                .ToArray();
+            Assert.IsTrue(settingNames.Any(name => name.StartsWith("Setting-normal-")));
+            Assert.IsFalse(settingNames.Any(name => name.StartsWith("Setting-limited-")));
+            Assert.IsFalse(settingNames.Any(name => name.StartsWith("Setting-abundant-")));
+        }
+
+        [Test]
+        public void Initialize_WorldGenerationSettings_ShowsSectionHeadings()
+        {
+            view.Initialize(TestContent.Pack, summary);
+            view.SelectCategory(NewGameSettingsCategory.WorldGeneration);
+
+            string[] labels = instance
+                .GetComponentsInChildren<TMP_Text>()
+                .Select(text => text.text)
+                .ToArray();
+            CollectionAssert.IsSubsetOf(
+                new[]
+                {
+                    "STARTING RESEARCH",
+                    "STARTING OFFICERS",
+                    "CORE WORLD CONTROL",
+                    "PLANET ENERGY (NORMAL)",
+                    "RAW MATERIALS (NORMAL)",
+                    "PLANET RESOURCE LIMITS (NORMAL)",
+                    "RIM COLONIZATION",
+                    "STARTING PLANET SUPPORT",
+                    "MINE GENERATION",
+                    "GARRISONS AND SUPPORT",
+                },
+                labels
+            );
+        }
+
+        [Test]
+        public void Initialize_WorldGenerationSectionHeading_MatchesOptionsSectionHeading()
+        {
+            view.Initialize(TestContent.Pack, summary);
+            view.SelectCategory(NewGameSettingsCategory.WorldGeneration);
+            TMP_Text actual = instance
+                .GetComponentsInChildren<TMP_Text>()
+                .Single(text => text.name == "Section-STARTING-OFFICERS");
+            TMP_Text expected = AssetDatabase
+                .LoadAssetAtPath<GameObject>("Assets/Prefabs/UI/OptionsMenu/OptionsMenu.prefab")
+                .GetComponentsInChildren<TMP_Text>(true)
+                .Single(text => text.name == "SavingHeader");
+
+            Assert.AreEqual(expected.fontSize, actual.fontSize);
+            Assert.AreEqual(expected.fontStyle, actual.fontStyle);
+            Assert.AreEqual(expected.enableAutoSizing, actual.enableAutoSizing);
+            Assert.AreEqual(expected.alignment, actual.alignment);
+            Assert.AreEqual(expected.color, actual.color);
+            Assert.AreEqual(expected.rectTransform.sizeDelta, actual.rectTransform.sizeDelta);
+        }
+
+        [Test]
+        public void Initialize_CoreWorldControl_RendersFactionColumnsAndSharedRows()
+        {
+            view.Initialize(TestContent.Pack, summary);
+            view.SelectCategory(NewGameSettingsCategory.WorldGeneration);
+
+            Transform row = instance
+                .GetComponentsInChildren<Transform>()
+                .Single(candidate => candidate.name == "Setting-strong-core-worlds");
+            string[] headings = instance
+                .GetComponentsInChildren<TMP_Text>()
+                .Where(text => text.name.StartsWith("Column", StringComparison.Ordinal))
+                .Select(text => text.text)
+                .ToArray();
+
+            Assert.AreEqual(
+                "Strong Core Worlds %",
+                row.Find("Label").GetComponent<TMP_Text>().text
+            );
+            Assert.AreEqual(2, row.GetComponentsInChildren<TMP_InputField>().Length);
+            CollectionAssert.IsSubsetOf(new[] { "ALLIANCE", "EMPIRE" }, headings);
+        }
+
+        [Test]
+        public void Initialize_StartingSupport_RendersThreeColumnTable()
+        {
+            view.Initialize(TestContent.Pack, summary);
+            view.SelectCategory(NewGameSettingsCategory.WorldGeneration);
+
+            Transform row = instance
+                .GetComponentsInChildren<Transform>()
+                .Single(candidate => candidate.name == "Setting-support-base");
+
+            Assert.AreEqual("Base Support", row.Find("Label").GetComponent<TMP_Text>().text);
+            Assert.AreEqual(3, row.GetComponentsInChildren<TMP_InputField>().Length);
+        }
+
+        [Test]
+        public void Initialize_WorldGenerationTables_CenterEveryHeadingOverItsInput()
+        {
+            view.Initialize(TestContent.Pack, summary);
+            view.SelectCategory(NewGameSettingsCategory.WorldGeneration);
+            Transform[] transforms = instance.GetComponentsInChildren<Transform>();
+            Transform[] tableHeaders = transforms
+                .Where(candidate => candidate.name == "GenerationTableHeader")
+                .ToArray();
+            string[] inputPrefixes = { "Player", "AI", "World" };
+
+            Assert.IsNotEmpty(tableHeaders);
+            foreach (Transform header in tableHeaders)
+            {
+                float headerY = ((RectTransform)header).anchoredPosition.y;
+                Transform firstRow = transforms
+                    .Where(candidate => candidate.name.StartsWith("Setting-"))
+                    .Where(candidate => ((RectTransform)candidate).anchoredPosition.y < headerY)
+                    .OrderByDescending(candidate => ((RectTransform)candidate).anchoredPosition.y)
+                    .First();
+                TMP_Text[] headings = header
+                    .GetComponentsInChildren<TMP_Text>()
+                    .Where(text => text.name.StartsWith("Column", StringComparison.Ordinal))
+                    .OrderBy(text => text.name)
+                    .ToArray();
+
+                for (int index = 0; index < headings.Length; index++)
+                {
+                    RectTransform headingRect = headings[index].rectTransform;
+                    RectTransform inputRect = (RectTransform)
+                        firstRow.Find(inputPrefixes[index] + "Value");
+                    float headingCenter =
+                        headingRect.anchoredPosition.x + headingRect.sizeDelta.x / 2f;
+                    float inputCenter = inputRect.anchoredPosition.x + inputRect.sizeDelta.x / 2f;
+                    Assert.AreEqual(inputCenter, headingCenter);
+                    Assert.AreEqual(inputRect.sizeDelta.x, headingRect.sizeDelta.x);
+                }
+            }
+        }
+
+        [Test]
+        public void Apply_EditedGenerationValue_PublishesDetachedScenarioOverride()
+        {
+            GameSummary applied = null;
+            int authored = TestContent
+                .Pack
+                .GameData
+                .GenerationConfig
+                .FacilityGeneration
+                .CoreMineMultiplier;
+            view.StartRequested += (_, launchSummary) => applied = launchSummary;
+            view.Initialize(TestContent.Pack, summary);
+            view.SelectCategory(NewGameSettingsCategory.WorldGeneration);
+
+            TableInput("mine-chance-per-resource", "Player").onEndEdit.Invoke("7");
+            ApplyButton().onClick.Invoke();
+
+            GameGenerationConfig config = GameGenerationConfigCodec.Deserialize(
+                applied.GenerationConfigOverrideXml
+            );
+            Assert.AreEqual(7, config.FacilityGeneration.CoreMineMultiplier);
+            Assert.AreEqual(
+                authored,
+                TestContent.Pack.GameData.GenerationConfig.FacilityGeneration.CoreMineMultiplier
+            );
+        }
+
+        [Test]
+        public void EditGenerationValue_InvalidResourceRange_RetainsPreviousValue()
+        {
+            view.Initialize(TestContent.Pack, summary);
+            view.SelectCategory(NewGameSettingsCategory.WorldGeneration);
+            TMP_InputField minimum = TableInput("normal-resource-minimum", "Player");
+            string original = minimum.text;
+
+            minimum.onEndEdit.Invoke(
+                (
+                    TestContent
+                        .Pack.GameData.GenerationConfig.PlanetResources.Profiles.Single(profile =>
+                            profile.Availability == GameResourceAvailability.Normal
+                        )
+                        .EnergyMax + 1
+                ).ToString(CultureInfo.InvariantCulture)
+            );
+
+            Assert.AreEqual(original, TableInput("normal-resource-minimum", "Player").text);
+        }
+
+        [Test]
+        public void Initialize_DifficultyRow_ShowsDescriptionBelowName()
         {
             view.Initialize(TestContent.Pack, summary);
             Transform row = Input("mine-output", "Player").transform.parent;
 
-            Assert.IsNotNull(row.Find("Info").GetComponent<Button>());
-            Assert.IsNotNull(row.Find("Info").GetComponent<EventTrigger>());
-            Assert.IsNull(row.Find("Description"));
-            Assert.IsFalse(
-                instance.transform.Find("ContentRoot/SettingTooltip").gameObject.activeSelf
+            RectTransform label = (RectTransform)row.Find("Label");
+            TMP_Text description = row.Find("Description").GetComponent<TMP_Text>();
+            Assert.AreEqual(
+                "Scales how quickly each mine produces raw material.",
+                description.text
             );
+            Assert.Greater(
+                -description.rectTransform.anchoredPosition.y,
+                -label.anchoredPosition.y
+            );
+            Assert.IsNull(row.Find("Info"));
+        }
+
+        [Test]
+        public void Initialize_DifficultyColumns_UsesTopLeftAlignedSharedLayoutAndDoubleSpacing()
+        {
+            view.Initialize(TestContent.Pack, summary);
+            RectTransform playerField = (RectTransform)Input("mine-output", "Player").transform;
+            RectTransform playerReset = (RectTransform)playerField.parent.Find("PlayerReset");
+            RectTransform aiField = (RectTransform)Input("mine-output", "AI").transform;
+            RectTransform page = (RectTransform)
+                instance.transform.Find("ContentRoot/DifficultyPage");
+            RectTransform scroll = (RectTransform)page.Find("SettingsScrollArea");
+            RectTransform playerHeading = (RectTransform)page.Find("PlayerHeading");
+            RectTransform aiHeading = (RectTransform)page.Find("AIHeading");
+
+            Assert.AreEqual(
+                8f,
+                aiField.anchoredPosition.x
+                    - playerReset.anchoredPosition.x
+                    - playerReset.sizeDelta.x
+            );
+            Assert.AreEqual(69f, -page.anchoredPosition.y);
+            Assert.AreEqual(36f, -scroll.anchoredPosition.y);
+            Assert.AreEqual(
+                scroll.anchoredPosition.x + playerField.anchoredPosition.x,
+                playerHeading.anchoredPosition.x
+            );
+            Assert.AreEqual(
+                scroll.anchoredPosition.x + aiField.anchoredPosition.x,
+                aiHeading.anchoredPosition.x
+            );
+            Assert.AreEqual(playerField.sizeDelta.x, playerHeading.sizeDelta.x);
+            Assert.AreEqual(aiField.sizeDelta.x, aiHeading.sizeDelta.x);
+            Assert.AreEqual(
+                TextAlignmentOptions.MidlineLeft,
+                playerHeading.GetComponent<TMP_Text>().alignment
+            );
+            Assert.AreEqual(
+                TextAlignmentOptions.MidlineLeft,
+                aiHeading.GetComponent<TMP_Text>().alignment
+            );
+        }
+
+        [Test]
+        public void Initialize_Window_OmitsRedundantContextAndCancelControls()
+        {
+            view.Initialize(TestContent.Pack, summary);
+
+            Assert.IsNull(instance.transform.Find("ContentRoot/Subtitle"));
+            Assert.IsNull(instance.transform.Find("ContentRoot/Scope"));
+            Assert.IsNull(instance.transform.Find("ContentRoot/Cancel"));
+            Assert.IsNull(instance.transform.Find("ContentRoot/ChangeCount"));
         }
 
         [TestCase("Player")]
@@ -239,7 +863,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             RectTransform reset = (RectTransform)field.parent.Find(column + "Reset");
 
             Assert.AreEqual(
-                field.anchoredPosition.x + field.sizeDelta.x + 4f,
+                field.anchoredPosition.x + field.sizeDelta.x + 2f,
                 reset.anchoredPosition.x
             );
             Assert.AreEqual(new Vector2(30f, 16f), reset.sizeDelta);
@@ -250,13 +874,34 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         {
             view.Initialize(TestContent.Pack, summary);
 
-            Assert.AreEqual(
-                TextAlignmentOptions.Midline,
-                instance
-                    .transform.Find("ContentRoot/HeaderTextField")
-                    .GetComponent<TMP_Text>()
-                    .alignment
-            );
+            TMP_Text header = instance
+                .transform.Find("ContentRoot/HeaderTextField")
+                .GetComponent<TMP_Text>();
+
+            Assert.AreEqual(TextAlignmentOptions.Midline, header.alignment);
+            Assert.IsTrue(header.enableAutoSizing);
+            Assert.AreEqual(16f, header.fontSizeMin);
+            Assert.AreEqual(22f, header.fontSizeMax);
+        }
+
+        [Test]
+        public void Initialize_BackNavigation_MatchesOptionsFooterTypography()
+        {
+            view.Initialize(TestContent.Pack, summary, optionsPrefab, null);
+            TMP_Text expected = optionsPrefab
+                .GetComponentsInChildren<TMP_Text>(true)
+                .Single(text => text.name == "MainMenuLabel");
+            TMP_Text actual = instance
+                .transform.Find("ContentRoot/Close")
+                .GetComponentInChildren<TMP_Text>();
+            TMP_Text saveLoad = instance
+                .transform.Find("ContentRoot/Tab4")
+                .GetComponentInChildren<TMP_Text>();
+
+            Assert.AreEqual(expected.color, actual.color);
+            Assert.AreEqual(expected.alignment, actual.alignment);
+            Assert.AreEqual(expected.fontStyle, actual.fontStyle);
+            Assert.AreEqual(FontStyles.Normal, saveLoad.fontStyle);
         }
 
         /// <summary>
@@ -283,6 +928,58 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Input(key, column).transform.parent.Find(column + "Reset").GetComponent<Button>();
 
         /// <summary>
+        /// Finds an active world-generation input by its row identity.
+        /// </summary>
+        /// <param name="key">The row identity.</param>
+        /// <returns>The active integer input.</returns>
+        private TMP_InputField WorldInput(string key) =>
+            instance
+                .GetComponentsInChildren<TMP_InputField>()
+                .Single(input =>
+                    input.transform.parent.name == "Setting-" + key && input.name == "WorldValue"
+                );
+
+        /// <summary>
+        /// Finds an active table input by its shared row identity and authored control prefix.
+        /// </summary>
+        /// <param name="rowKey">The shared table-row identity.</param>
+        /// <param name="prefix">The authored control prefix.</param>
+        /// <returns>The active integer input.</returns>
+        private TMP_InputField TableInput(string rowKey, string prefix) =>
+            instance
+                .GetComponentsInChildren<TMP_InputField>()
+                .Single(input =>
+                    input.transform.parent.name == "Setting-" + rowKey
+                    && input.name == prefix + "Value"
+                );
+
+        /// <summary>
+        /// Finds an active generation-table row by its shared identity.
+        /// </summary>
+        /// <param name="rowKey">The shared table-row identity.</param>
+        /// <returns>The active row transform.</returns>
+        private Transform TableRow(string rowKey) =>
+            instance
+                .GetComponentsInChildren<Transform>()
+                .Single(transform => transform.name == "Setting-" + rowKey);
+
+        /// <summary>
+        /// Finds the editable seed field on the setup page.
+        /// </summary>
+        /// <returns>The active seed input.</returns>
+        private TMP_InputField SeedInput() =>
+            instance
+                .GetComponentsInChildren<TMP_InputField>()
+                .Single(input => input.transform.parent.name == "Setup-seed");
+
+        /// <summary>
+        /// Finds the button that generates a new seed.
+        /// </summary>
+        /// <returns>The active new-seed button.</returns>
+        private Button SeedResetButton() =>
+            SeedInput().transform.parent.Find("WorldReset").GetComponent<Button>();
+
+        /// <summary>
         /// Finds the Apply button.
         /// </summary>
         /// <returns>The Apply button.</returns>
@@ -290,10 +987,19 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             instance.transform.Find("ContentRoot/Apply").GetComponent<Button>();
 
         /// <summary>
-        /// Finds the draft change counter.
+        /// Steps one active game-setup choice through its shared Options selector.
         /// </summary>
-        /// <returns>The change-counter label.</returns>
-        private TMP_Text ChangeCount() =>
-            instance.transform.Find("ContentRoot/ChangeCount").GetComponent<TMP_Text>();
+        /// <param name="key">The stable setup-choice identity.</param>
+        /// <param name="delta">The requested step direction.</param>
+        private void StepSetupChoice(string key, int delta)
+        {
+            OptionsChoiceFieldView choice = instance
+                .GetComponentsInChildren<OptionsChoiceFieldView>()
+                .Single(candidate => candidate.name == "Choice-" + key);
+            choice
+                .GetComponentsInChildren<Button>()
+                .Single(button => button.name == (delta < 0 ? "Previous" : "Next"))
+                .onClick.Invoke();
+        }
     }
 }

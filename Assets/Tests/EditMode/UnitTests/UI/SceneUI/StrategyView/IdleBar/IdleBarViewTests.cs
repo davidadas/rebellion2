@@ -334,7 +334,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         }
 
         [Test]
-        public void Scroll_OverflowingEntries_MovesSharedScrollAreaByOneRow()
+        public void Scroll_OverflowingEntries_EasesSharedScrollAreaByHalfRow()
         {
             _view.Render(
                 new IdleBarRenderData(true, CreateEntries(29), new RectInt(50, 30, 400, 350))
@@ -349,8 +349,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             };
             ScrollAreaView scrollArea = GetField<ScrollAreaView>("entriesScrollArea");
             scrollArea.RelayScroll(scroll);
+            Assert.AreEqual(0f, scrollArea.ContentRoot.anchoredPosition.y, 0.001f);
+            for (int frame = 0; frame < 30; frame++)
+                scrollArea.AdvanceScroll(0.04f);
 
-            Assert.AreEqual(29f, scrollArea.ContentRoot.anchoredPosition.y, 0.001f);
+            Assert.AreEqual(14.5f, scrollArea.ContentRoot.anchoredPosition.y, 0.001f);
             Scrollbar scrollbar = scrollArea.GetComponentInChildren<Scrollbar>(true);
             Assert.IsTrue(scrollbar.gameObject.activeSelf);
             Assert.Greater(

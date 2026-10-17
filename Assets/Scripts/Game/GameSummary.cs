@@ -55,11 +55,11 @@ namespace Rebellion.Game
         [PersistableMember(Name = nameof(AIDifficultyModifiers))]
         private DifficultyModifiers _aiDifficultyModifiers;
 
+        [PersistableMember(Name = nameof(GenerationConfigOverrideXml))]
+        private string _generationConfigOverrideXml;
+
         [PersistableMember(Name = nameof(StartingFactionIDs))]
         private string[] _startingFactionIds = Array.Empty<string>();
-
-        [PersistableMember(Name = nameof(StartingResearchLevel))]
-        private int _startingResearchLevel;
 
         [PersistableMember(Name = nameof(PlayerFactionID))]
         private string _playerFactionId;
@@ -125,17 +125,17 @@ namespace Rebellion.Game
         }
 
         [PersistableIgnore]
+        public string GenerationConfigOverrideXml
+        {
+            get => _generationConfigOverrideXml;
+            set => _generationConfigOverrideXml = value;
+        }
+
+        [PersistableIgnore]
         public string[] StartingFactionIDs
         {
             get => _startingFactionIds;
             set => _startingFactionIds = value;
-        }
-
-        [PersistableIgnore]
-        public int StartingResearchLevel
-        {
-            get => _startingResearchLevel;
-            set => _startingResearchLevel = value;
         }
 
         [PersistableIgnore]

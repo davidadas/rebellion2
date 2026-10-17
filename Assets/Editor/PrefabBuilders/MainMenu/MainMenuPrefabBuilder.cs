@@ -164,7 +164,7 @@ public static class MainMenuPrefabBuilder
             "NewGameSettingsButton",
             0.5f,
             Vector3.up,
-            0.94f,
+            0.90f,
             Vector3.zero,
             new Vector3(-18f, 0f, 0f),
             256,

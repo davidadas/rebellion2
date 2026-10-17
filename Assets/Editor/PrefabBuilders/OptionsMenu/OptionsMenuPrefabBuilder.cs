@@ -1132,10 +1132,7 @@ public static class OptionsMenuPrefabBuilder
     )
     {
         TextMeshProUGUI headerField = CreateTextLabel(name, parent);
-        headerField.text = caption;
-        headerField.color = accent;
-        headerField.fontSize = 13;
-        headerField.alignment = TextAlignmentOptions.MidlineLeft;
+        UILayout.ConfigureMenuSectionHeading(headerField, caption, accent);
         SetSourceRect(headerField.rectTransform, 20, y, 200, 16);
         return headerField;
     }
@@ -1281,25 +1278,10 @@ public static class OptionsMenuPrefabBuilder
             fieldWidth - inputInset * 2,
             18
         );
-        SetSourceRect(input.textViewport, 0, 1, fieldWidth - inputInset * 2, 16);
         input.contentType = TMP_InputField.ContentType.IntegerNumber;
         input.characterValidation = TMP_InputField.CharacterValidation.Integer;
         input.characterLimit = 10;
-        if (input.textComponent is TextMeshProUGUI text)
-        {
-            // TMP's geometry-based Midline alignment cannot place an empty-field caret
-            // reliably because there is no glyph geometry to center against. Middle uses
-            // stable font metrics, keeping the caret and entered text vertically aligned.
-            text.alignment = TextAlignmentOptions.Center;
-            text.fontSize = 10;
-            SetSourceRect(text.rectTransform, 0, 0, fieldWidth - inputInset * 2, 16);
-        }
-        if (input.placeholder is TextMeshProUGUI placeholder)
-        {
-            placeholder.alignment = TextAlignmentOptions.Center;
-            placeholder.fontSize = 10;
-            SetSourceRect(placeholder.rectTransform, 0, 0, fieldWidth - inputInset * 2, 16);
-        }
+        UILayout.ConfigureCenteredNumericInput(input, new Color(0.875f, 0.910f, 0.941f), 10f, 0, 1);
         return input;
     }
 

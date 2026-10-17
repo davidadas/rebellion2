@@ -1,9 +1,11 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Generation;
 using Rebellion.Simulation;
 using Rebellion.Util.Logging;
 using Rebellion.Util.Reflection;
@@ -279,11 +281,12 @@ public sealed class GameRuntime
     }
 
     /// <summary>
-    /// Restores immutable faction configuration from the active content pack.
+    /// Restores faction configuration from saved launch rules or the active content pack.
     /// </summary>
     /// <param name="game">The game whose faction settings will be restored.</param>
     private void ReconcileFactionSettings(GameRoot game)
     {
+        Dictionary<string, FactionSettings> overrides = GetFactionSettingOverrides(game);
         foreach (Faction faction in game.GetFactions())
         {
             if (faction == null || string.IsNullOrWhiteSpace(faction.InstanceID))
@@ -299,8 +302,61 @@ public sealed class GameRuntime
                     $"Loaded faction '{faction.InstanceID}' is missing from the active content pack."
                 );
 
-            faction.Settings = template.Settings.GetDeepCopy();
+            FactionSettings settings = overrides.TryGetValue(
+                faction.InstanceID,
+                out FactionSettings factionOverride
+            )
+                ? factionOverride
+                : template.Settings;
+            faction.Settings = settings.GetDeepCopy();
         }
+    }
+
+    /// <summary>
+    /// Reads and validates launch-specific faction settings stored with the game.
+    /// </summary>
+    /// <param name="game">The game whose launch configuration will be read.</param>
+    /// <returns>Faction settings indexed by faction instance ID.</returns>
+    private Dictionary<string, FactionSettings> GetFactionSettingOverrides(GameRoot game)
+    {
+        Dictionary<string, FactionSettings> overrides = new Dictionary<string, FactionSettings>(
+            StringComparer.Ordinal
+        );
+        string xml = game.Summary.GenerationConfigOverrideXml;
+        if (string.IsNullOrWhiteSpace(xml))
+            return overrides;
+
+        GameGenerationConfig config = GameGenerationConfigCodec.Deserialize(xml);
+        foreach (
+            FactionModifierConfig modifier in config.FactionModifiers
+                ?? Enumerable.Empty<FactionModifierConfig>()
+        )
+        {
+            if (modifier == null || string.IsNullOrWhiteSpace(modifier.FactionID))
+                throw new InvalidOperationException(
+                    "Game generation config contains an unidentified faction modifier."
+                );
+            if (modifier.Settings == null)
+                throw new InvalidOperationException(
+                    $"Faction modifier '{modifier.FactionID}' has no settings."
+                );
+            if (
+                !_contentPack.GameData.Factions.Any(faction =>
+                    faction?.InstanceID == modifier.FactionID
+                )
+            )
+                throw new InvalidOperationException(
+                    $"Faction modifier '{modifier.FactionID}' is missing from the active content pack."
+                );
+            if (overrides.ContainsKey(modifier.FactionID))
+                throw new InvalidOperationException(
+                    $"Game generation config contains duplicate faction modifier '{modifier.FactionID}'."
+                );
+
+            overrides.Add(modifier.FactionID, modifier.Settings);
+        }
+
+        return overrides;
     }
 
     /// <summary>

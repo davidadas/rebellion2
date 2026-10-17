@@ -104,16 +104,23 @@ namespace Rebellion.Generation
                 )
                 .Where(s => (int)s.Visibility <= galaxySize)
                 .ToArray();
+            GameGenerationConfig generationConfig = string.IsNullOrWhiteSpace(
+                _summary.GenerationConfigOverrideXml
+            )
+                ? _gameData.GenerationConfig.GetDeepCopy()
+                : GameGenerationConfigCodec.Deserialize(_summary.GenerationConfigOverrideXml);
+            Faction[] factions = _gameData.Factions.GetDeepCopy();
+            ApplyFactionModifiers(factions, generationConfig.FactionModifiers);
 
             return new GenerationContext
             {
                 Summary = _summary,
-                Config = _gameData.GenerationConfig.GetDeepCopy(),
+                Config = generationConfig,
                 GameConfig = _gameData.GameConfig.GetDeepCopy(),
                 Rng = _randomProvider,
 
                 Sectors = sectors,
-                Factions = _gameData.Factions.GetDeepCopy(),
+                Factions = factions,
                 Buildings = CopyTemplates(_gameData.Buildings),
                 CapitalShips = CopyTemplates(_gameData.CapitalShips),
                 Starfighters = CopyTemplates(_gameData.Starfighters),
@@ -122,6 +129,37 @@ namespace Rebellion.Generation
                 Officers = CopyTemplates(_gameData.Officers),
                 Events = _gameData.GameEvents.GetDeepCopy(),
             };
+        }
+
+        /// <summary>
+        /// Applies launch-specific settings to the detached faction templates.
+        /// </summary>
+        /// <param name="factions">The detached factions used by generation.</param>
+        /// <param name="modifiers">The configured faction overrides.</param>
+        private static void ApplyFactionModifiers(
+            IReadOnlyList<Faction> factions,
+            IReadOnlyList<FactionModifierConfig> modifiers
+        )
+        {
+            if (modifiers == null)
+                return;
+
+            foreach (FactionModifierConfig modifier in modifiers)
+            {
+                Faction faction = factions.SingleOrDefault(candidate =>
+                    candidate.InstanceID == modifier.FactionID
+                );
+                if (faction == null)
+                    throw new InvalidOperationException(
+                        $"Faction modifier references unknown faction '{modifier.FactionID}'."
+                    );
+                if (modifier.Settings == null)
+                    throw new InvalidOperationException(
+                        $"Faction modifier '{modifier.FactionID}' requires settings."
+                    );
+
+                faction.Settings = modifier.Settings.GetDeepCopy();
+            }
         }
 
         /// <summary>

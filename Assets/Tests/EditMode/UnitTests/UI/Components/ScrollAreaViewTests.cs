@@ -169,7 +169,7 @@ namespace Rebellion.Tests.UI.Components
         }
 
         [Test]
-        public void RelayScroll_ContentOverflows_MovesByConfiguredStep()
+        public void RelayScroll_ContentOverflows_EasesTowardHalfConfiguredStep()
         {
             _scrollArea.SetContentHeight(200, 10, true);
             PointerEventData eventData = new PointerEventData(null)
@@ -179,8 +179,32 @@ namespace Rebellion.Tests.UI.Components
 
             _scrollArea.RelayScroll(eventData);
 
+            Assert.AreEqual(0f, _contentRoot.anchoredPosition.y, 0.01f);
+            _scrollArea.AdvanceScroll(0.04f);
+            Assert.Greater(_contentRoot.anchoredPosition.y, 0f);
+            Assert.Less(_contentRoot.anchoredPosition.y, 5f);
+            for (int frame = 0; frame < 30; frame++)
+                _scrollArea.AdvanceScroll(0.04f);
+
+            Assert.AreEqual(5f, _contentRoot.anchoredPosition.y, 0.01f);
+            Assert.AreEqual(1f - 5f / 150f, _scrollbar.value, 0.01f);
+        }
+
+        [Test]
+        public void RelayScroll_RapidWheelInput_AccumulatesConfiguredSteps()
+        {
+            _scrollArea.SetContentHeight(200, 10, true);
+            PointerEventData eventData = new PointerEventData(null)
+            {
+                scrollDelta = new Vector2(0, -1),
+            };
+
+            _scrollArea.RelayScroll(eventData);
+            _scrollArea.RelayScroll(eventData);
+            for (int frame = 0; frame < 30; frame++)
+                _scrollArea.AdvanceScroll(0.04f);
+
             Assert.AreEqual(10f, _contentRoot.anchoredPosition.y, 0.01f);
-            Assert.AreEqual(1f - 10f / 150f, _scrollbar.value, 0.01f);
         }
 
         [Test]
@@ -266,11 +290,13 @@ namespace Rebellion.Tests.UI.Components
             _dragRelay.OnEndDrag(eventData);
             _dragRelay.OnDrop(eventData);
             _dragRelay.OnScroll(eventData);
+            for (int frame = 0; frame < 30; frame++)
+                _scrollArea.AdvanceScroll(0.04f);
 
             Assert.AreEqual(2, dragCount);
             Assert.AreEqual(1, endCount);
             Assert.AreEqual(1, dropCount);
-            Assert.AreEqual(10f, _contentRoot.anchoredPosition.y, 0.01f);
+            Assert.AreEqual(5f, _contentRoot.anchoredPosition.y, 0.01f);
         }
 
         [Test]

@@ -11,6 +11,7 @@ using Rebellion.Game.Units;
 using Rebellion.Generation;
 using Rebellion.SceneGraph;
 using Rebellion.Simulation;
+using Rebellion.Util.Reflection;
 
 namespace Rebellion.Tests.Generation
 {
@@ -121,6 +122,68 @@ namespace Rebellion.Tests.Generation
                 string.IsNullOrEmpty(_game.Summary.PlayerFactionID),
                 "PlayerFactionID should not be null or empty."
             );
+        }
+
+        [Test]
+        public void Build_GenerationConfigOverride_UsesOverrideForPlanetResources()
+        {
+            GameGenerationConfig generation = TestContent.Data.GenerationConfig.GetDeepCopy();
+            PlanetResourceProfile resources = generation.PlanetResources.Profiles.Single(profile =>
+                profile.Availability == GameResourceAvailability.Normal
+            );
+            resources.EnergyMin = 6;
+            resources.EnergyMax = 6;
+            GameSummary summary = new GameSummary
+            {
+                GalaxySize = _size,
+                Difficulty = GameDifficulty.Medium,
+                ResourceAvailability = GameResourceAvailability.Normal,
+                PlayerFactionID = "FNALL1",
+                Seed = 12345,
+                GenerationConfigOverrideXml = GameGenerationConfigCodec.Serialize(generation),
+            };
+
+            GameRoot game = new GameBuilder(summary, TestContent.Data).Build();
+
+            foreach (
+                Planet planet in game
+                    .Galaxy.GetChildren<PlanetSector>()
+                    .SelectMany(sector => sector.GetChildren<Planet>())
+            )
+                Assert.AreEqual(6, planet.EnergyCapacity);
+        }
+
+        [Test]
+        public void Build_FactionModifierOverride_AppliesToGeneratedFactionOnly()
+        {
+            Faction template = TestContent.Data.Factions[0];
+            int authored = template.Settings.GarrisonEfficiency;
+            FactionSettings settings = template.Settings.GetDeepCopy();
+            settings.GarrisonEfficiency = authored + 2;
+            GameGenerationConfig generation = TestContent.Data.GenerationConfig.GetDeepCopy();
+            generation.FactionModifiers = new List<FactionModifierConfig>
+            {
+                new FactionModifierConfig { FactionID = template.InstanceID, Settings = settings },
+            };
+            GameSummary summary = new GameSummary
+            {
+                GalaxySize = _size,
+                Difficulty = GameDifficulty.Medium,
+                ResourceAvailability = GameResourceAvailability.Normal,
+                PlayerFactionID = "FNALL1",
+                Seed = 12345,
+                GenerationConfigOverrideXml = GameGenerationConfigCodec.Serialize(generation),
+            };
+
+            GameRoot game = new GameBuilder(summary, TestContent.Data).Build();
+
+            Assert.AreEqual(
+                authored + 2,
+                game.GetFactions()
+                    .Single(faction => faction.InstanceID == template.InstanceID)
+                    .Settings.GarrisonEfficiency
+            );
+            Assert.AreEqual(authored, template.Settings.GarrisonEfficiency);
         }
 
         [Test]

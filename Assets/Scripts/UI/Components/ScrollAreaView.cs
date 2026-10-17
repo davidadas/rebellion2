@@ -32,7 +32,17 @@ public sealed class ScrollAreaView : MonoBehaviour
     [SerializeField]
     private ScrollAreaDragRelay dragRelay;
 
+    [SerializeField]
+    [Min(0f)]
+    private float scrollSmoothingTime = 0.14f;
+
+    [SerializeField]
+    [Range(0.1f, 1f)]
+    private float wheelStepScale = 0.5f;
+
     private float scrollStep;
+    private float targetScrollOffset;
+    private float scrollVelocity;
     private bool hasContentLayout;
     private bool updatingScrollbar;
 
@@ -93,6 +103,20 @@ public sealed class ScrollAreaView : MonoBehaviour
         {
             VerifyRequiredReferences();
             return GetViewportHeight();
+        }
+    }
+
+    public float VerticalNormalizedPosition
+    {
+        get
+        {
+            VerifyRequiredReferences();
+            return scrollRect.verticalNormalizedPosition;
+        }
+        set
+        {
+            VerifyRequiredReferences();
+            SetImmediateNormalizedScrollPosition(value);
         }
     }
 
@@ -173,12 +197,13 @@ public sealed class ScrollAreaView : MonoBehaviour
         {
             if (scrollbar != null)
                 scrollbar.size = Mathf.Clamp01(viewportHeight / appliedContentHeight);
-            SetNormalizedScrollPosition(normalizedPosition);
+            SetImmediateNormalizedScrollPosition(normalizedPosition);
         }
         else if (!scrollbarVisible)
         {
             contentRoot.anchoredPosition = Vector2.zero;
             SetScrollbarValue(1f);
+            SynchronizeScrollTarget();
         }
     }
 
@@ -210,7 +235,7 @@ public sealed class ScrollAreaView : MonoBehaviour
         if (Mathf.Approximately(nextOffset, currentOffset))
             return;
 
-        SetNormalizedScrollPosition(1f - nextOffset / maxOffset);
+        SetImmediateNormalizedScrollPosition(1f - nextOffset / maxOffset);
     }
 
     /// <summary>
@@ -256,6 +281,15 @@ public sealed class ScrollAreaView : MonoBehaviour
             scrollbar.onValueChanged.RemoveListener(HandleScrollbarValueChanged);
         if (dragRelay)
             dragRelay.Clear(this);
+        SynchronizeScrollTarget();
+    }
+
+    /// <summary>
+    /// Advances queued wheel and arrow scrolling using unscaled UI time.
+    /// </summary>
+    private void Update()
+    {
+        AdvanceScroll(Time.unscaledDeltaTime);
     }
 
     /// <summary>
@@ -294,7 +328,47 @@ public sealed class ScrollAreaView : MonoBehaviour
         if (eventData == null)
             return;
 
-        ScrollBy(-eventData.scrollDelta.y * scrollStep);
+        QueueScrollBy(-eventData.scrollDelta.y * scrollStep * wheelStepScale);
+    }
+
+    /// <summary>
+    /// Advances smooth scrolling by a caller-supplied time slice.
+    /// </summary>
+    /// <param name="deltaTime">The unscaled elapsed seconds.</param>
+    internal void AdvanceScroll(float deltaTime)
+    {
+        float currentOffset = Mathf.Clamp(contentRoot.anchoredPosition.y, 0f, GetMaxScrollOffset());
+        if (Mathf.Approximately(currentOffset, targetScrollOffset))
+        {
+            scrollVelocity = 0f;
+            return;
+        }
+
+        if (scrollSmoothingTime <= 0f)
+        {
+            ApplyScrollOffset(targetScrollOffset);
+            scrollVelocity = 0f;
+            return;
+        }
+
+        if (deltaTime <= 0f)
+            return;
+
+        float nextOffset = Mathf.SmoothDamp(
+            currentOffset,
+            targetScrollOffset,
+            ref scrollVelocity,
+            scrollSmoothingTime,
+            Mathf.Infinity,
+            deltaTime
+        );
+        if (Mathf.Abs(nextOffset - targetScrollOffset) < 0.01f && Mathf.Abs(scrollVelocity) < 0.01f)
+        {
+            nextOffset = targetScrollOffset;
+            scrollVelocity = 0f;
+        }
+
+        ApplyScrollOffset(nextOffset);
     }
 
     /// <summary>
@@ -316,7 +390,7 @@ public sealed class ScrollAreaView : MonoBehaviour
     /// </summary>
     private void ScrollUp()
     {
-        ScrollBy(-scrollStep);
+        QueueScrollBy(-scrollStep);
     }
 
     /// <summary>
@@ -324,21 +398,20 @@ public sealed class ScrollAreaView : MonoBehaviour
     /// </summary>
     private void ScrollDown()
     {
-        ScrollBy(scrollStep);
+        QueueScrollBy(scrollStep);
     }
 
     /// <summary>
     /// Moves the content by a signed source-unit distance.
     /// </summary>
     /// <param name="delta">The signed content offset.</param>
-    private void ScrollBy(float delta)
+    private void QueueScrollBy(float delta)
     {
         float maxOffset = GetMaxScrollOffset();
         if (maxOffset <= 0f || delta == 0f)
             return;
 
-        float offset = Mathf.Clamp(contentRoot.anchoredPosition.y + delta, 0f, maxOffset);
-        SetNormalizedScrollPosition(1f - offset / maxOffset);
+        targetScrollOffset = Mathf.Clamp(targetScrollOffset + delta, 0f, maxOffset);
     }
 
     /// <summary>
@@ -351,17 +424,19 @@ public sealed class ScrollAreaView : MonoBehaviour
             return;
 
         ApplyNormalizedScrollPosition(value);
+        SynchronizeScrollTarget();
     }
 
     /// <summary>
     /// Synchronizes the content and scrollbar to a normalized position.
     /// </summary>
     /// <param name="value">The normalized scroll position.</param>
-    private void SetNormalizedScrollPosition(float value)
+    private void SetImmediateNormalizedScrollPosition(float value)
     {
         value = Mathf.Clamp01(value);
         ApplyNormalizedScrollPosition(value);
         SetScrollbarValue(value);
+        SynchronizeScrollTarget();
     }
 
     /// <summary>
@@ -371,6 +446,32 @@ public sealed class ScrollAreaView : MonoBehaviour
     private void ApplyNormalizedScrollPosition(float value)
     {
         scrollRect.verticalNormalizedPosition = Mathf.Clamp01(value);
+    }
+
+    /// <summary>
+    /// Applies one content offset and keeps the authored scrollbar synchronized.
+    /// </summary>
+    /// <param name="offset">The top-relative content offset.</param>
+    private void ApplyScrollOffset(float offset)
+    {
+        float maxOffset = GetMaxScrollOffset();
+        float clampedOffset = Mathf.Clamp(offset, 0f, maxOffset);
+        float normalizedPosition = maxOffset <= 0f ? 1f : 1f - clampedOffset / maxOffset;
+        ApplyNormalizedScrollPosition(normalizedPosition);
+        SetScrollbarValue(normalizedPosition);
+    }
+
+    /// <summary>
+    /// Cancels queued movement at the content's current offset.
+    /// </summary>
+    private void SynchronizeScrollTarget()
+    {
+        targetScrollOffset = Mathf.Clamp(
+            contentRoot == null ? 0f : contentRoot.anchoredPosition.y,
+            0f,
+            GetMaxScrollOffset()
+        );
+        scrollVelocity = 0f;
     }
 
     /// <summary>

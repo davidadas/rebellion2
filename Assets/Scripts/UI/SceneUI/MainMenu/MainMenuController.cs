@@ -1,3 +1,5 @@
+using System.Collections;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -23,6 +25,8 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
 
     private UIWindow _newGameSettingsWindow;
     private NewGameSettingsView _newGameSettingsView;
+    private IReadOnlyList<ContentPackDefinition> _customGamePacks;
+    private CustomGamePresetManager _customGamePresetManager;
 
     [SerializeField]
     [Min(0f)]
@@ -40,6 +44,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     /// </summary>
     private void Awake()
     {
+        _customGamePresetManager = new CustomGamePresetManager();
         if (Application.isPlaying)
         {
             if (view == null)
@@ -366,7 +371,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     }
 
     /// <summary>
-    /// Opens the campaign-settings editor through the existing main-menu modal surface.
+    /// Opens the custom-game editor through the existing main-menu modal surface.
     /// </summary>
     private void OpenNewGameSettings()
     {
@@ -394,8 +399,17 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
                 out _newGameSettingsView
             );
             _newGameSettingsView.CloseRequested += CloseNewGameSettings;
-            _newGameSettingsView.ApplyRequested += ApplyNewGameDifficultyModifiers;
-            _newGameSettingsView.Initialize(bootstrap.GetContentPack(), GameLaunchContext.Summary);
+            _newGameSettingsView.StartRequested += StartCustomGame;
+            _newGameSettingsView.ContentPackRequested += SelectCustomGameContentPack;
+            ContentPack contentPack = bootstrap.GetContentPack();
+            _customGamePacks = ContentPackLoader.DiscoverPacks(contentPack.ContentRootPath);
+            _newGameSettingsView.Initialize(
+                contentPack,
+                GameLaunchContext.Summary,
+                _optionsMenuPrefab,
+                _customGamePresetManager,
+                _customGamePacks
+            );
             bootstrap.GetCancelStack()?.Register(this);
         }
         catch
@@ -406,21 +420,95 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     }
 
     /// <summary>
-    /// Stores applied difficulty modifiers in the pending new-game summary.
+    /// Loads a selected content pack and resets content-dependent custom-game choices.
     /// </summary>
-    /// <param name="playerModifiers">The modifiers for the player-controlled faction.</param>
-    /// <param name="aiModifiers">The modifiers for AI-controlled factions.</param>
-    private static void ApplyNewGameDifficultyModifiers(
-        DifficultyModifiers playerModifiers,
-        DifficultyModifiers aiModifiers
-    )
+    /// <param name="packID">The selected installed content-pack identity.</param>
+    private void SelectCustomGameContentPack(string packID)
     {
-        GameLaunchContext.Summary.PlayerDifficultyModifiers = playerModifiers.CreateCopy();
-        GameLaunchContext.Summary.AIDifficultyModifiers = aiModifiers.CreateCopy();
+        if (_newGameSettingsView == null || string.IsNullOrWhiteSpace(packID))
+            return;
+
+        ContentPackDefinition definition = _customGamePacks?.FirstOrDefault(candidate =>
+            string.Equals(candidate.ID, packID, System.StringComparison.Ordinal)
+        );
+        if (definition == null)
+            throw new InvalidDataException($"Content pack '{packID}' is not installed.");
+
+        ContentPack current = _appBootstrap.GetContentPack();
+        string[] disabledModIDs = _appBootstrap
+            .GetUserSettingsManager()
+            .Settings.Content.DisabledModIDs;
+        ContentPack selected = ContentPackLoader.OpenExact(
+            current.ContentRootPath,
+            definition.ID,
+            definition.DefaultScenarioID,
+            disabledModIDs
+        );
+        _newGameSettingsView.Initialize(
+            selected,
+            GameLaunchContext.CreateDefaultSummary(selected),
+            _optionsMenuPrefab,
+            _customGamePresetManager,
+            _customGamePacks
+        );
     }
 
     /// <summary>
-    /// Closes the campaign-settings editor.
+    /// Applies the complete custom-game configuration and starts its strategy scene.
+    /// </summary>
+    /// <param name="contentPack">The selected content pack.</param>
+    /// <param name="summary">The configured launch summary.</param>
+    private void StartCustomGame(ContentPack contentPack, GameSummary summary)
+    {
+        currentVictoryCondition = summary.VictoryCondition;
+        if (_appBootstrap.GetContentPack().MatchesContentIdentity(summary))
+        {
+            GameLaunchContext.ApplyCustomGameSummary(summary);
+            StartGame();
+            return;
+        }
+
+        StartCoroutine(RestartContentAndStartCustomGame(contentPack, summary));
+    }
+
+    /// <summary>
+    /// Reconstructs application content before launching a custom game under another pack.
+    /// </summary>
+    /// <param name="contentPack">The selected content pack.</param>
+    /// <param name="summary">The configured launch summary.</param>
+    /// <returns>The content-reconstruction coroutine.</returns>
+    private IEnumerator RestartContentAndStartCustomGame(
+        ContentPack contentPack,
+        GameSummary summary
+    )
+    {
+        _appBootstrap.PrepareCustomGameContentRestart(contentPack, summary);
+        CloseNewGameSettings();
+        if (mainMenuCanvas != null)
+            mainMenuCanvas.enabled = false;
+        _appBootstrap.GetRuntime()?.EndGame();
+        if (AudioManager.Instance != null)
+            Destroy(AudioManager.Instance.gameObject);
+        Destroy(_appBootstrap.gameObject);
+        yield return null;
+
+        try
+        {
+            _appBootstrap = AppBootstrap.EnsureExists();
+        }
+        catch (System.Exception exception)
+        {
+            if (mainMenuCanvas != null)
+                mainMenuCanvas.enabled = true;
+            Debug.LogException(exception);
+            yield break;
+        }
+        _appBootstrap.SaveLoadStarting += HandleSaveLoadStarting;
+        StartGame();
+    }
+
+    /// <summary>
+    /// Closes the custom-game editor.
     /// </summary>
     private void CloseNewGameSettings()
     {
@@ -429,7 +517,8 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
         if (_newGameSettingsView != null)
         {
             _newGameSettingsView.CloseRequested -= CloseNewGameSettings;
-            _newGameSettingsView.ApplyRequested -= ApplyNewGameDifficultyModifiers;
+            _newGameSettingsView.StartRequested -= StartCustomGame;
+            _newGameSettingsView.ContentPackRequested -= SelectCustomGameContentPack;
         }
         AppBootstrap.Instance?.GetCancelStack()?.Unregister(this);
         if (view?.OptionsWindowManager != null)
@@ -442,7 +531,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
     }
 
     /// <summary>
-    /// Handles cancellation only while this scene owns the new-campaign preview.
+    /// Handles cancellation only while this scene owns the custom-game editor.
     /// </summary>
     /// <returns>Whether the preview consumed cancellation.</returns>
     public bool TryCancel()

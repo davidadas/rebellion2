@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Research;
@@ -19,7 +21,7 @@ namespace Rebellion.Generation
         /// <param name="ctx">The generation context.</param>
         public void Seed(GenerationContext ctx)
         {
-            SetStartingResearch(ctx.Factions, ctx.Summary.StartingResearchLevel);
+            SetStartingResearch(ctx.Factions, ctx.Config.GalaxyClassification.FactionSetups);
             RebuildResearchCatalogs(
                 ctx.Factions,
                 ctx.Buildings,
@@ -31,15 +33,19 @@ namespace Rebellion.Generation
         }
 
         /// <summary>
-        /// Sets each faction's highest unlocked research order to the same starting
-        /// level across all three disciplines.
+        /// Sets each faction's highest unlocked research order from its generation setup
+        /// across all three disciplines.
         /// </summary>
         /// <param name="factions">The factions to initialize.</param>
-        /// <param name="startingOrder">The starting research order to assign.</param>
-        private void SetStartingResearch(Faction[] factions, int startingOrder)
+        /// <param name="setups">The faction-specific generation settings.</param>
+        private void SetStartingResearch(Faction[] factions, IReadOnlyList<FactionSetup> setups)
         {
             foreach (Faction faction in factions)
             {
+                FactionSetup setup = setups.Single(candidate =>
+                    string.Equals(candidate.FactionID, faction.InstanceID, StringComparison.Ordinal)
+                );
+                int startingOrder = setup.StartingResearchLevel;
                 faction.SetHighestUnlockedOrder(ResearchDiscipline.FacilityDesign, startingOrder);
                 faction.SetHighestUnlockedOrder(ResearchDiscipline.ShipDesign, startingOrder);
                 faction.SetHighestUnlockedOrder(ResearchDiscipline.TroopTraining, startingOrder);

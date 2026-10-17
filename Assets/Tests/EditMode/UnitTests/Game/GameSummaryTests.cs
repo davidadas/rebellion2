@@ -35,7 +35,6 @@ namespace Rebellion.Tests.Game
                 summary.StartingFactionIDs,
                 "StartingFactionIDs should be empty by default"
             );
-            Assert.AreEqual(0, summary.StartingResearchLevel, "StartingResearchLevel should be 0");
         }
 
         [Test]
@@ -59,7 +58,6 @@ namespace Rebellion.Tests.Game
                 VictoryCondition = GameVictoryCondition.Headquarters,
                 ResourceAvailability = GameResourceAvailability.Abundant,
                 StartingFactionIDs = new string[] { "FACTION1", "FACTION2" },
-                StartingResearchLevel = 3,
                 PlayerFactionID = "FACTION1",
                 PlayerDifficultyModifiers = new DifficultyModifiers
                 {
@@ -73,6 +71,7 @@ namespace Rebellion.Tests.Game
                     MissionFoilChancePoints = 20,
                     DetectionRatingMultiplier = 1.25,
                 },
+                GenerationConfigOverrideXml = "<GameGenerationConfig />",
             };
 
             string serialized = SerializationHelper.Serialize(summary);
@@ -102,11 +101,6 @@ namespace Rebellion.Tests.Game
                 summary.StartingFactionIDs.Length,
                 deserialized.StartingFactionIDs.Length,
                 "StartingFactionIDs length should be correctly deserialized."
-            );
-            Assert.AreEqual(
-                summary.StartingResearchLevel,
-                deserialized.StartingResearchLevel,
-                "StartingResearchLevel should be correctly deserialized."
             );
             Assert.AreEqual(
                 summary.PlayerFactionID,
@@ -142,6 +136,11 @@ namespace Rebellion.Tests.Game
                 1.25,
                 deserialized.AIDifficultyModifiers.DetectionRatingMultiplier,
                 "AI detection modifiers should be correctly deserialized."
+            );
+            Assert.AreEqual(
+                "<GameGenerationConfig />",
+                deserialized.GenerationConfigOverrideXml,
+                "Generation overrides should be correctly deserialized."
             );
         }
     }
