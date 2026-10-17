@@ -65,8 +65,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             _pending = new PendingCombatResult
             {
                 PlanetInstanceID = planet.InstanceID,
-                AttackerFleetInstanceID = playerFleet.InstanceID,
-                DefenderFleetInstanceID = opponentFleet.InstanceID,
                 AttackerOwnerInstanceID = _playerFactionId,
                 DefenderOwnerInstanceID = _opponentFactionId,
                 AttackerCanRetreat = true,

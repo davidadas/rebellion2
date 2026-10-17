@@ -117,7 +117,12 @@ public sealed class UIContext
     private void SetGame(GameRoot newGame)
     {
         game = newGame ?? throw new ArgumentNullException(nameof(newGame));
-        playerFactionInstanceId = game.Summary?.PlayerFactionID ?? string.Empty;
+        playerFactionInstanceId =
+            game.GetPlayers()
+                .FirstOrDefault(player => player.ControllerType == PlayerControllerType.Human)
+                ?.FactionID
+            ?? game.Summary?.PlayerFactionID
+            ?? string.Empty;
         factionPresentations = game.GetFactions()
             .Where(faction => faction != null)
             .Select(faction => new Faction

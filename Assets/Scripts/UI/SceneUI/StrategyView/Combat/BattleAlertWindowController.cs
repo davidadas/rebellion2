@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
@@ -676,10 +675,7 @@ public sealed class BattleAlertWindowController
     /// <returns>The current player faction identifier.</returns>
     private string GetPlayerFactionID()
     {
-        return getUIContext()
-            ?.Game?.GetPlayers()
-            ?.FirstOrDefault(player => player.ControllerType == PlayerControllerType.Human)
-            ?.FactionID;
+        return getUIContext()?.GetPlayerFactionInstanceID();
     }
 
     /// <summary>

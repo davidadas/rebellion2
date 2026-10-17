@@ -34,6 +34,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 _playerFactionId,
                 42,
                 73,
+                null,
                 null
             );
 
@@ -58,8 +59,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             PendingCombatResult pending = new PendingCombatResult
             {
                 PlanetInstanceID = scene.Planet.InstanceID,
-                AttackerFleetInstanceID = scene.PlayerFleet.InstanceID,
-                DefenderFleetInstanceID = scene.OpponentFleet.InstanceID,
                 AttackerOwnerInstanceID = _playerFactionId,
                 DefenderOwnerInstanceID = _opponentFactionId,
                 AttackerCanRetreat = true,
@@ -109,8 +108,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             PendingCombatResult pending = new PendingCombatResult
             {
                 PlanetInstanceID = scene.Planet.InstanceID,
-                AttackerFleetInstanceID = scene.PlayerFleet.InstanceID,
-                DefenderFleetInstanceID = scene.OpponentFleet.InstanceID,
                 AttackerOwnerInstanceID = _playerFactionId,
                 DefenderOwnerInstanceID = _opponentFactionId,
             };
@@ -152,8 +149,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             PendingCombatResult pending = new PendingCombatResult
             {
                 PlanetInstanceID = scene.Planet.InstanceID,
-                AttackerFleetInstanceID = scene.OpponentFleet.InstanceID,
-                DefenderFleetInstanceID = scene.PlayerFleet.InstanceID,
                 AttackerOwnerInstanceID = _opponentFactionId,
                 DefenderOwnerInstanceID = _playerFactionId,
             };
@@ -199,6 +194,76 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         }
 
         [Test]
+        public void Project_PendingForces_LiveFactionOrderChanges_UsesCapturedFactionOrder()
+        {
+            (
+                GameRoot Game,
+                UIContext Context,
+                Planet Planet,
+                GameFleet PlayerFleet,
+                GameFleet OpponentFleet
+            ) scene = CreateScene();
+            scene.Game.GetFactions().Reverse();
+            PendingCombatResult pending = new PendingCombatResult
+            {
+                PlanetInstanceID = scene.Planet.InstanceID,
+                AttackerOwnerInstanceID = _opponentFactionId,
+                DefenderOwnerInstanceID = _playerFactionId,
+            };
+
+            BattleAlertWindowRenderData data = new BattleAlertWindowProjector().Project(
+                BattleAlertWindowMode.Pending,
+                BattleAlertPanel.FirstForces,
+                BattleResultPanel.Summary,
+                BattleResultCategory.CapitalShips,
+                pending,
+                null,
+                _playerFactionId,
+                0,
+                0,
+                scene.Context,
+                scene.Planet
+            );
+
+            Assert.AreEqual("Alliance Forces", data.Pending.Header);
+        }
+
+        [Test]
+        public void Project_PendingForces_LiveFactionNameChanges_UsesCapturedFactionName()
+        {
+            (
+                GameRoot Game,
+                UIContext Context,
+                Planet Planet,
+                GameFleet PlayerFleet,
+                GameFleet OpponentFleet
+            ) scene = CreateScene();
+            scene.Game.GetFactionByOwnerInstanceID(_playerFactionId).DisplayName = "Hidden name";
+            PendingCombatResult pending = new PendingCombatResult
+            {
+                PlanetInstanceID = scene.Planet.InstanceID,
+                AttackerOwnerInstanceID = _playerFactionId,
+                DefenderOwnerInstanceID = _opponentFactionId,
+            };
+
+            BattleAlertWindowRenderData data = new BattleAlertWindowProjector().Project(
+                BattleAlertWindowMode.Pending,
+                BattleAlertPanel.FirstForces,
+                BattleResultPanel.Summary,
+                BattleResultCategory.CapitalShips,
+                pending,
+                null,
+                _playerFactionId,
+                0,
+                0,
+                scene.Context,
+                scene.Planet
+            );
+
+            Assert.AreEqual("Alliance Forces", data.Pending.Header);
+        }
+
+        [Test]
         public void Project_PendingSecondForces_ExcludesUnfinishedAndInTransitUnits()
         {
             (
@@ -225,8 +290,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             PendingCombatResult pending = new PendingCombatResult
             {
                 PlanetInstanceID = scene.Planet.InstanceID,
-                AttackerFleetInstanceID = scene.PlayerFleet.InstanceID,
-                DefenderFleetInstanceID = scene.OpponentFleet.InstanceID,
                 AttackerOwnerInstanceID = _playerFactionId,
                 DefenderOwnerInstanceID = _opponentFactionId,
             };
@@ -272,8 +335,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             PendingCombatResult pending = new PendingCombatResult
             {
                 PlanetInstanceID = scene.Planet.InstanceID,
-                AttackerFleetInstanceID = scene.PlayerFleet.InstanceID,
-                DefenderFleetInstanceID = scene.OpponentFleet.InstanceID,
                 AttackerOwnerInstanceID = _playerFactionId,
                 DefenderOwnerInstanceID = _opponentFactionId,
             };
@@ -328,8 +389,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             PendingCombatResult pending = new PendingCombatResult
             {
                 PlanetInstanceID = scene.Planet.InstanceID,
-                AttackerFleetInstanceID = scene.PlayerFleet.InstanceID,
-                DefenderFleetInstanceID = scene.OpponentFleet.InstanceID,
                 AttackerOwnerInstanceID = _playerFactionId,
                 DefenderOwnerInstanceID = _opponentFactionId,
             };
@@ -436,7 +495,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 _playerFactionId,
                 0,
                 0,
-                scene.Context
+                scene.Context,
+                null
             );
 
             Assert.AreEqual(BattleAlertWindowMode.Result, data.Mode);
@@ -487,7 +547,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 _playerFactionId,
                 0,
                 0,
-                scene.Context
+                scene.Context,
+                null
             );
 
             StringAssert.Contains("fleet has withdrawn", data.Result.Summary);
@@ -524,7 +585,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 _playerFactionId,
                 0,
                 0,
-                scene.Context
+                scene.Context,
+                null
             );
 
             StringAssert.Contains("indecisive", data.Result.Summary);
@@ -561,7 +623,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 _playerFactionId,
                 0,
                 0,
-                scene.Context
+                scene.Context,
+                null
             );
             BattleAlertWindowRenderData details = projector.Project(
                 BattleAlertWindowMode.Result,
@@ -573,7 +636,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 _playerFactionId,
                 0,
                 0,
-                scene.Context
+                scene.Context,
+                null
             );
 
             Assert.AreEqual("Orbital bombardment of Test World", summary.Result.Title);
@@ -632,7 +696,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 _playerFactionId,
                 0,
                 0,
-                scene.Context
+                scene.Context,
+                null
             );
 
             Assert.AreEqual("Assault on Test World", data.Result.Title);
@@ -675,7 +740,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 _playerFactionId,
                 0,
                 0,
-                scene.Context
+                scene.Context,
+                null
             );
 
             Assert.AreEqual("Alliance Forces", data.Result.ResultForceHeader);
@@ -731,7 +797,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 _playerFactionId,
                 0,
                 0,
-                scene.Context
+                scene.Context,
+                null
             );
             BattleAlertWindowRenderData empire = projector.Project(
                 BattleAlertWindowMode.Result,
@@ -743,7 +810,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 _playerFactionId,
                 0,
                 0,
-                scene.Context
+                scene.Context,
+                null
             );
 
             Assert.AreEqual("Alliance Forces", alliance.Result.ResultForceHeader);
@@ -782,7 +850,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 _playerFactionId,
                 0,
                 0,
-                scene.Context
+                scene.Context,
+                null
             );
 
             StringAssert.Contains("go directly to", data.Result.Summary);

@@ -42,7 +42,7 @@ internal sealed class BattleAlertWindowProjector
         int x,
         int y,
         UIContext uiContext,
-        Planet pendingPlanet = null
+        Planet pendingPlanet
     )
     {
         BattleAlertWindowTheme theme = uiContext
@@ -716,7 +716,7 @@ internal sealed class BattleAlertWindowProjector
     {
         string[] participants = { attackerOwnerInstanceId, defenderOwnerInstanceId };
         IEnumerable<string> configuredFactionOrder =
-            uiContext?.Game?.GetFactions()?.Select(faction => faction?.InstanceID)
+            uiContext?.GetFactionPresentations()?.Select(faction => faction?.InstanceID)
             ?? Enumerable.Empty<string>();
         List<string> orderedParticipants = configuredFactionOrder
             .Concat(participants)
@@ -1091,7 +1091,7 @@ internal sealed class BattleAlertWindowProjector
     )
     {
         Faction faction = uiContext
-            ?.Game?.GetFactions()
+            ?.GetFactionPresentations()
             ?.FirstOrDefault(item => item?.InstanceID == ownerInstanceId);
         string factionName = faction?.GetDisplayName();
         return string.IsNullOrEmpty(factionName) ? fallback : factionName;
