@@ -702,7 +702,7 @@ namespace Rebellion.Simulation
         {
             GameRoot game = context.Game;
             ISceneNode node = game.GetSceneNodeByInstanceID<ISceneNode>(
-                definition.NodeInstanceID,
+                definition.UnitInstanceID,
                 includeDisabled: true
             );
             ISceneNode parent = game.GetSceneNodeByInstanceID<ISceneNode>(

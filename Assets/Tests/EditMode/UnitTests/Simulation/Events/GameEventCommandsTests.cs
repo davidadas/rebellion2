@@ -3883,7 +3883,7 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(officer, planet);
             HasParentConditional condition = new HasParentConditional
             {
-                NodeInstanceID = officer.InstanceID,
+                UnitInstanceID = officer.InstanceID,
                 ParentInstanceID = planet.InstanceID,
             };
 
@@ -3900,7 +3900,7 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(officer, ship);
             HasParentConditional condition = new HasParentConditional
             {
-                NodeInstanceID = officer.InstanceID,
+                UnitInstanceID = officer.InstanceID,
                 ParentInstanceID = planet.InstanceID,
             };
 
@@ -3914,7 +3914,7 @@ namespace Rebellion.Tests.Simulation
         {
             HasParentConditional condition = new HasParentConditional
             {
-                NodeInstanceID = "missing-node",
+                UnitInstanceID = "missing-unit",
                 ParentInstanceID = "missing-parent",
             };
 

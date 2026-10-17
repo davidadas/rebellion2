@@ -256,11 +256,11 @@ a fleet, ship, or mission should not count as a match.
 
 **Required options**
 
-- `NodeInstanceID` **[Required]:** The `InstanceID` of the child node to evaluate.
+- `UnitInstanceID` **[Required]:** The `InstanceID` of the child unit to evaluate.
 - `ParentInstanceID` **[Required]:** The `InstanceID` required as its immediate parent.
 
 ```xml
-<HasParent NodeInstanceID="EMPEROR_PALPATINE" ParentInstanceID="CORUSCANT"/>
+<HasParent UnitInstanceID="EMPEROR_PALPATINE" ParentInstanceID="CORUSCANT"/>
 ```
 
 ### ShareParent

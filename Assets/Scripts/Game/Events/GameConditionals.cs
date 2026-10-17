@@ -385,7 +385,7 @@ namespace Rebellion.Game.Events
     public sealed class HasParentConditional : GameConditional
     {
         [PersistableAttribute]
-        public string NodeInstanceID { get; set; }
+        public string UnitInstanceID { get; set; }
 
         [PersistableAttribute]
         public string ParentInstanceID { get; set; }
