@@ -191,6 +191,24 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.AreEqual("-15", Input("mission-success", "Player").text);
         }
 
+        [TestCase("mission-success", "-101")]
+        [TestCase("mission-success", "101")]
+        [TestCase("mission-foil", "-101")]
+        [TestCase("mission-foil", "101")]
+        public void EditValue_ChanceModifierOutsideEffectiveRange_RetainsPreviousValue(
+            string key,
+            string invalid
+        )
+        {
+            view.Initialize(TestContent.Pack, summary);
+            TMP_InputField input = Input(key, "Player");
+            string original = input.text;
+
+            input.onEndEdit.Invoke(invalid);
+
+            Assert.AreEqual(original, input.text);
+        }
+
         [Test]
         public void EditValue_DetectionMultiplier_AcceptsPositiveDecimalOnly()
         {
@@ -325,6 +343,24 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                     .ToArray()
             );
             Assert.AreEqual(summary.Seed.ToString(CultureInfo.InvariantCulture), SeedInput().text);
+            foreach (
+                OptionsChoiceFieldView choice in instance.GetComponentsInChildren<OptionsChoiceFieldView>()
+            )
+            {
+                RectTransform rowLabel = (RectTransform)choice.transform.parent.Find("Label");
+                Assert.AreEqual(
+                    rowLabel.anchoredPosition.y,
+                    ((RectTransform)choice.transform).anchoredPosition.y
+                );
+            }
+
+            Transform seedRow = SeedInput().transform.parent;
+            float seedLabelY = ((RectTransform)seedRow.Find("Label")).anchoredPosition.y;
+            Assert.AreEqual(seedLabelY, ((RectTransform)SeedInput().transform).anchoredPosition.y);
+            Assert.AreEqual(
+                seedLabelY,
+                ((RectTransform)SeedResetButton().transform).anchoredPosition.y
+            );
         }
 
         [Test]
@@ -387,6 +423,11 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.IsNotNull(presetPage);
             Assert.AreEqual(settingsPage.anchoredPosition, presetPage.anchoredPosition);
             Assert.AreEqual(settingsPage.sizeDelta, presetPage.sizeDelta);
+            Assert.AreEqual(settingsPage.anchorMin, presetPage.anchorMin);
+            Assert.AreEqual(settingsPage.anchorMax, presetPage.anchorMax);
+            Assert.AreEqual(settingsPage.pivot, presetPage.pivot);
+            Assert.AreEqual(Vector3.one, presetPage.localScale);
+            Assert.IsTrue(ApplyButton().gameObject.activeSelf);
         }
 
         [Test]
@@ -525,6 +566,14 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                     .Settings.GarrisonEfficiency.ToString(CultureInfo.InvariantCulture),
                 TableInput("garrison-efficiency", "Player").text
             );
+            Assert.AreEqual(
+                "Usable supply gained from raw and refined materials. Higher provides more supply. Range: 1 or higher.",
+                TableRow("refinement-multiplier").Find("Description").GetComponent<TMP_Text>().text
+            );
+            Assert.AreEqual(
+                "Maintenance from each working mine and refinery pair. Higher supports more units. Range: 1 or higher.",
+                TableRow("resource-processing").Find("Description").GetComponent<TMP_Text>().text
+            );
             Assert.IsFalse(
                 instance
                     .GetComponentsInChildren<Transform>()
@@ -659,6 +708,57 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         [Test]
+        public void Initialize_WorldGenerationSectionHeading_HasNoBottomMargin()
+        {
+            view.Initialize(TestContent.Pack, summary);
+            view.SelectCategory(NewGameSettingsCategory.WorldGeneration);
+            Transform[] transforms = instance.GetComponentsInChildren<Transform>();
+            RectTransform section = (RectTransform)
+                transforms.Single(candidate => candidate.name == "Section-STARTING-RESEARCH");
+            RectTransform header = transforms
+                .Where(candidate => candidate.name == "GenerationTableHeader")
+                .Select(candidate => (RectTransform)candidate)
+                .OrderByDescending(candidate => candidate.anchoredPosition.y)
+                .First();
+
+            Assert.AreEqual(16f, section.anchoredPosition.y - header.anchoredPosition.y);
+        }
+
+        [Test]
+        public void Initialize_WorldGenerationSectionHeading_UsesEightPixelTopGap()
+        {
+            view.Initialize(TestContent.Pack, summary);
+            view.SelectCategory(NewGameSettingsCategory.WorldGeneration);
+            Transform[] transforms = instance.GetComponentsInChildren<Transform>();
+            RectTransform previousRow = (RectTransform)
+                transforms.Single(candidate => candidate.name == "Setting-starting-research");
+            RectTransform section = (RectTransform)
+                transforms.Single(candidate => candidate.name == "Section-STARTING-OFFICERS");
+
+            Assert.AreEqual(
+                -previousRow.anchoredPosition.y + previousRow.sizeDelta.y + 8f,
+                -section.anchoredPosition.y
+            );
+        }
+
+        [Test]
+        public void Initialize_WorldGenerationLineItems_UseFourPixelGap()
+        {
+            view.Initialize(TestContent.Pack, summary);
+            view.SelectCategory(NewGameSettingsCategory.WorldGeneration);
+            Transform[] transforms = instance.GetComponentsInChildren<Transform>();
+            RectTransform firstRow = (RectTransform)
+                transforms.Single(candidate => candidate.name == "Setting-strong-core-worlds");
+            RectTransform secondRow = (RectTransform)
+                transforms.Single(candidate => candidate.name == "Setting-weak-core-worlds");
+
+            Assert.AreEqual(
+                -firstRow.anchoredPosition.y + firstRow.sizeDelta.y + 4f,
+                -secondRow.anchoredPosition.y
+            );
+        }
+
+        [Test]
         public void Initialize_CoreWorldControl_RendersFactionColumnsAndSharedRows()
         {
             view.Initialize(TestContent.Pack, summary);
@@ -676,6 +776,10 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.AreEqual(
                 "Strong Core Worlds %",
                 row.Find("Label").GetComponent<TMP_Text>().text
+            );
+            Assert.AreEqual(
+                "Core worlds this faction starts owning with strong popular support. Range: 0% to 100%.",
+                row.Find("Description").GetComponent<TMP_Text>().text
             );
             Assert.AreEqual(2, row.GetComponentsInChildren<TMP_InputField>().Length);
             CollectionAssert.IsSubsetOf(new[] { "ALLIANCE", "EMPIRE" }, headings);
@@ -731,6 +835,18 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                     float inputCenter = inputRect.anchoredPosition.x + inputRect.sizeDelta.x / 2f;
                     Assert.AreEqual(inputCenter, headingCenter);
                     Assert.AreEqual(inputRect.sizeDelta.x, headingRect.sizeDelta.x);
+                    Assert.AreEqual(9f, headings[index].fontSize);
+                    Assert.IsFalse(headings[index].enableAutoSizing);
+                    Assert.AreEqual(
+                        ((RectTransform)firstRow.Find("Label")).anchoredPosition.y,
+                        inputRect.anchoredPosition.y
+                    );
+                    Assert.AreEqual(
+                        inputRect.anchoredPosition.y,
+                        ((RectTransform)firstRow.Find(inputPrefixes[index] + "Reset"))
+                            .anchoredPosition
+                            .y
+                    );
                 }
             }
         }
@@ -792,14 +908,30 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             RectTransform label = (RectTransform)row.Find("Label");
             TMP_Text description = row.Find("Description").GetComponent<TMP_Text>();
             Assert.AreEqual(
-                "Scales how quickly each mine produces raw material.",
+                "How fast mines produce raw materials. Higher is faster. Range: 0% or higher.",
                 description.text
             );
+            Assert.AreEqual(9f, description.fontSize);
             Assert.Greater(
                 -description.rectTransform.anchoredPosition.y,
                 -label.anchoredPosition.y
             );
             Assert.IsNull(row.Find("Info"));
+        }
+
+        [Test]
+        public void Initialize_DifficultyLineItems_SizeToContentWithFourPixelGap()
+        {
+            view.Initialize(TestContent.Pack, summary);
+            RectTransform mineRow = (RectTransform)Input("mine-output", "Player").transform.parent;
+            RectTransform refineryRow = (RectTransform)
+                Input("refinery-output", "Player").transform.parent;
+
+            Assert.Less(mineRow.sizeDelta.y, 44f);
+            Assert.AreEqual(
+                -mineRow.anchoredPosition.y + mineRow.sizeDelta.y + 4f,
+                -refineryRow.anchoredPosition.y
+            );
         }
 
         [Test]
@@ -814,6 +946,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             RectTransform scroll = (RectTransform)page.Find("SettingsScrollArea");
             RectTransform playerHeading = (RectTransform)page.Find("PlayerHeading");
             RectTransform aiHeading = (RectTransform)page.Find("AIHeading");
+            RectTransform rowLabel = (RectTransform)playerField.parent.Find("Label");
 
             Assert.AreEqual(
                 8f,
@@ -833,6 +966,14 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             );
             Assert.AreEqual(playerField.sizeDelta.x, playerHeading.sizeDelta.x);
             Assert.AreEqual(aiField.sizeDelta.x, aiHeading.sizeDelta.x);
+            Assert.AreEqual(rowLabel.anchoredPosition.y, playerField.anchoredPosition.y);
+            Assert.AreEqual(rowLabel.sizeDelta.y, playerField.sizeDelta.y);
+            Assert.AreEqual(rowLabel.anchoredPosition.y, playerReset.anchoredPosition.y);
+            Assert.AreEqual(rowLabel.anchoredPosition.y, aiField.anchoredPosition.y);
+            Assert.AreEqual(9f, rowLabel.GetComponent<TMP_Text>().fontSize);
+            Assert.IsFalse(rowLabel.GetComponent<TMP_Text>().enableAutoSizing);
+            Assert.AreEqual(9f, playerHeading.GetComponent<TMP_Text>().fontSize);
+            Assert.AreEqual(9f, aiHeading.GetComponent<TMP_Text>().fontSize);
             Assert.AreEqual(
                 TextAlignmentOptions.MidlineLeft,
                 playerHeading.GetComponent<TMP_Text>().alignment
@@ -902,6 +1043,17 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.AreEqual(expected.alignment, actual.alignment);
             Assert.AreEqual(expected.fontStyle, actual.fontStyle);
             Assert.AreEqual(FontStyles.Normal, saveLoad.fontStyle);
+        }
+
+        [Test]
+        public void Initialize_StartAction_UsesAccentBoldTypography()
+        {
+            view.Initialize(TestContent.Pack, summary);
+            TMP_Text label = ApplyButton().GetComponentInChildren<TMP_Text>();
+
+            Assert.AreEqual(new Color(0.373f, 0.659f, 0.925f), label.color);
+            Assert.AreEqual(FontStyles.Bold, label.fontStyle);
+            Assert.AreEqual(114f, ((RectTransform)ApplyButton().transform).sizeDelta.x);
         }
 
         /// <summary>

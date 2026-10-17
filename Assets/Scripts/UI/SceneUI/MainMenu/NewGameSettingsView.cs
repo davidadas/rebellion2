@@ -37,9 +37,16 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
         "Application/OptionsMenu/UI/ui_settingsmenu_row_background";
     private const string _rowActiveAddress =
         "Application/OptionsMenu/UI/ui_settingsmenu_row_selected_background";
-    private const float _rowStride = 48f;
+    private const int _controlTop = 1;
+    private const float _descriptionFontSize = 9f;
+    private const float _minimumRowHeight = 30f;
+    private const float _rowSpacing = 4f;
+    private const float _descriptionTop = 17f;
+    private const float _defaultLabelWidth = 150f;
     private const float _settingsScrollHeight = 310f;
     private const float _settingsScrollTop = 16f;
+    private const float _sectionStride = 16f;
+    private const float _sectionSpacing = 8f;
     private const float _tableHeaderHeight = 20f;
     private const float _tableSettingsScrollHeight = 290f;
     private const float _tableSettingsScrollTop = 36f;
@@ -147,6 +154,9 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
             if (inputTransform == null)
                 continue;
 
+            AlignControlTop(rowTemplate.transform.Find(prefix + "ValueBadge"));
+            AlignControlTop(inputTransform);
+            AlignControlTop(rowTemplate.transform.Find(prefix + "Reset"));
             UILayout.ConfigureCenteredNumericInput(
                 inputTransform.GetComponent<TMP_InputField>(),
                 _textColor,
@@ -221,10 +231,19 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
     /// </summary>
     private void ConfigurePersistentNavigation()
     {
+        playerHeading.enableAutoSizing = false;
+        playerHeading.fontSize = 9f;
+        aiHeading.enableAutoSizing = false;
+        aiHeading.fontSize = 9f;
+
         TMP_Text closeLabel = closeButton.GetComponentInChildren<TMP_Text>();
         closeLabel.color = new Color(0.573f, 0.635f, 0.706f);
         closeLabel.alignment = TextAlignmentOptions.MidlineLeft;
         closeLabel.fontStyle = FontStyles.Normal;
+
+        TMP_Text applyLabel = applyButton.GetComponentInChildren<TMP_Text>();
+        applyLabel.color = new Color(0.373f, 0.659f, 0.925f);
+        applyLabel.fontStyle = FontStyles.Bold;
     }
 
     /// <summary>
@@ -327,7 +346,7 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
         settingsPage.SetActive(!saveLoadSelected);
         presetPage?.SetActive(saveLoadSelected);
         defaultsButton.gameObject.SetActive(!saveLoadSelected);
-        applyButton.gameObject.SetActive(!saveLoadSelected);
+        applyButton.gameObject.SetActive(true);
         for (int i = 0; i < tabs.Length; i++)
         {
             bool active = i == (int)selected;
@@ -362,15 +381,20 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
             HideGenerationSectionRowsAfter(0);
             HideGenerationTableHeaderRowsAfter(0);
             HideGenerationTableRowsAfter(0);
+            float contentOffset = 0f;
             for (int index = 0; index < settingsSession.DifficultyEntries.Count; index++)
             {
                 var entry = settingsSession.DifficultyEntries[index];
                 GameObject row = GetRow(index);
                 row.name = "Setting-" + entry.Key;
                 row.SetActive(true);
-                ConfigureRowPosition(row, index);
-                row.transform.Find("Label").GetComponent<TMP_Text>().text = entry.Label;
-                row.transform.Find("Description").GetComponent<TMP_Text>().text = entry.Description;
+                contentOffset += ConfigureTextRow(
+                    row,
+                    contentOffset,
+                    entry.Label,
+                    entry.Description,
+                    _defaultLabelWidth
+                );
                 SetDifficultyControlsVisible(row.transform, true);
                 ConfigureValueControl(row.transform, entry, ModifierRecipient.Player);
                 ConfigureValueControl(row.transform, entry, ModifierRecipient.AI);
@@ -378,8 +402,8 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
 
             HideRowsAfter(settingsSession.DifficultyEntries.Count);
             scrollArea.SetContentHeight(
-                settingsSession.DifficultyEntries.Count * _rowStride,
-                _rowStride,
+                Mathf.Max(0f, contentOffset - _rowSpacing),
+                _minimumRowHeight,
                 true
             );
         }
@@ -400,9 +424,11 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
             )
             {
                 GenerationEntry[] sectionEntries = sectionGroup.ToArray();
+                if (sectionIndex > 0)
+                    contentOffset += _sectionSpacing - _rowSpacing;
                 GameObject sectionRow = GetGenerationSectionRow(sectionIndex++);
                 ConfigureGenerationSectionRow(sectionRow, sectionGroup.Key, contentOffset);
-                contentOffset += 28f;
+                contentOffset += _sectionStride;
 
                 if (sectionEntries.Any(entry => entry.Column != null))
                 {
@@ -421,13 +447,12 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
                     )
                     {
                         GameObject tableRow = GetGenerationTableRow(tableRowIndex++);
-                        ConfigureGenerationTableRow(
+                        contentOffset += ConfigureGenerationTableRow(
                             tableRow,
                             rowGroup.ToArray(),
                             columns,
                             contentOffset
                         );
-                        contentOffset += _rowStride;
                     }
 
                     continue;
@@ -438,16 +463,15 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
                     GameObject row = GetRow(scalarRowIndex++);
                     row.name = "Setting-" + entry.Key;
                     row.SetActive(true);
-                    ((RectTransform)row.transform).anchoredPosition = new Vector2(
-                        0f,
-                        -contentOffset
+                    contentOffset += ConfigureTextRow(
+                        row,
+                        contentOffset,
+                        entry.Label,
+                        entry.Description,
+                        _defaultLabelWidth
                     );
-                    row.transform.Find("Label").GetComponent<TMP_Text>().text = entry.Label;
-                    row.transform.Find("Description").GetComponent<TMP_Text>().text =
-                        entry.Description;
                     SetDifficultyControlsVisible(row.transform, false);
                     ConfigureGenerationValueControl(row.transform, entry);
-                    contentOffset += _rowStride;
                 }
             }
 
@@ -455,7 +479,11 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
             HideGenerationSectionRowsAfter(sectionIndex);
             HideGenerationTableHeaderRowsAfter(tableHeaderIndex);
             HideGenerationTableRowsAfter(tableRowIndex);
-            scrollArea.SetContentHeight(contentOffset, _rowStride, true);
+            scrollArea.SetContentHeight(
+                Mathf.Max(0f, contentOffset - _rowSpacing),
+                _minimumRowHeight,
+                true
+            );
         }
 
         scrollArea.VerticalNormalizedPosition = 1f;
@@ -519,8 +547,10 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
         HideGenerationSectionRowsAfter(0);
         HideGenerationTableHeaderRowsAfter(0);
         HideGenerationTableRowsAfter(0);
-        ConfigureSetupRow(
+        float contentOffset = 0f;
+        contentOffset += ConfigureSetupRow(
             0,
+            contentOffset,
             "content-pack",
             "Content Pack",
             "Selects the content used to configure and start the game.",
@@ -529,49 +559,58 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
                 : settingsSession.Pack.Definition.DisplayName,
             CycleContentPack
         );
-        ConfigureSetupRow(
+        contentOffset += ConfigureSetupRow(
             1,
+            contentOffset,
             "faction",
             "Player Faction",
             "Selects the faction controlled by the player.",
             GetFactionDisplayName(settingsSession.Draft.PlayerFactionID),
             CycleFaction
         );
-        ConfigureSetupRow(
+        contentOffset += ConfigureSetupRow(
             2,
+            contentOffset,
             "difficulty",
             "Difficulty",
             "Selects the authored AI difficulty profile.",
             settingsSession.Draft.Difficulty.ToString(),
             CycleDifficulty
         );
-        ConfigureSetupRow(
+        contentOffset += ConfigureSetupRow(
             3,
+            contentOffset,
             "galaxy-size",
             "Galaxy Size",
             "Selects the generated galaxy extent.",
             settingsSession.Draft.GalaxySize.ToString(),
             CycleGalaxySize
         );
-        ConfigureSetupRow(
+        contentOffset += ConfigureSetupRow(
             4,
+            contentOffset,
             "victory-condition",
             "Victory Condition",
             "Selects the condition required to win the campaign.",
             settingsSession.Draft.VictoryCondition.ToString(),
             CycleVictoryCondition
         );
-        ConfigureSetupRow(
+        contentOffset += ConfigureSetupRow(
             5,
+            contentOffset,
             "resource-availability",
             "Resource Availability",
             "Selects the planet-resource generation profile.",
             settingsSession.Draft.ResourceAvailability.ToString(),
             CycleResourceAvailability
         );
-        ConfigureSeedRow(6);
+        contentOffset += ConfigureSeedRow(6, contentOffset);
         HideRowsAfter(7);
-        scrollArea.SetContentHeight(7 * _rowStride, _rowStride, true);
+        scrollArea.SetContentHeight(
+            Mathf.Max(0f, contentOffset - _rowSpacing),
+            _minimumRowHeight,
+            true
+        );
         scrollArea.VerticalNormalizedPosition = 1f;
     }
 
@@ -579,25 +618,42 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
     /// Configures the editable deterministic seed and its new-seed button.
     /// </summary>
     /// <param name="index">The row index.</param>
-    private void ConfigureSeedRow(int index)
+    /// <param name="contentOffset">The vertical position within the scroll content.</param>
+    /// <returns>The vertical advance through the row and following gap.</returns>
+    private float ConfigureSeedRow(int index, float contentOffset)
     {
         GameObject row = GetRow(index);
         row.name = "Setup-seed";
         row.SetActive(true);
-        ConfigureRowPosition(row, index);
-        row.transform.Find("Label").GetComponent<TMP_Text>().text = "Seed";
-        row.transform.Find("Description").GetComponent<TMP_Text>().text =
-            "Controls deterministic world generation. Enter an integer or generate a new one.";
+        float rowAdvance = ConfigureTextRow(
+            row,
+            contentOffset,
+            "Seed",
+            "Controls deterministic world generation. Enter an integer or generate a new one.",
+            _defaultLabelWidth
+        );
         SetDifficultyControlsVisible(row.transform, false);
         UILayout.SetSourceRect(
             (RectTransform)row.transform.Find("WorldValueBadge"),
             202,
-            13,
+            _controlTop,
             86,
             16
         );
-        UILayout.SetSourceRect((RectTransform)row.transform.Find("WorldValue"), 202, 13, 86, 16);
-        UILayout.SetSourceRect((RectTransform)row.transform.Find("WorldReset"), 290, 13, 30, 16);
+        UILayout.SetSourceRect(
+            (RectTransform)row.transform.Find("WorldValue"),
+            202,
+            _controlTop,
+            86,
+            16
+        );
+        UILayout.SetSourceRect(
+            (RectTransform)row.transform.Find("WorldReset"),
+            290,
+            _controlTop,
+            30,
+            16
+        );
 
         TMP_InputField input = row.transform.Find("WorldValue").GetComponent<TMP_InputField>();
         input.contentType = TMP_InputField.ContentType.IntegerNumber;
@@ -610,19 +666,23 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
         Button randomize = row.transform.Find("WorldReset").GetComponent<Button>();
         randomize.onClick.RemoveAllListeners();
         randomize.onClick.AddListener(RandomizeSeed);
+        return rowAdvance;
     }
 
     /// <summary>
     /// Configures one setup row and its themed cycling control.
     /// </summary>
     /// <param name="index">The row index.</param>
+    /// <param name="contentOffset">The vertical position within the scroll content.</param>
     /// <param name="key">The stable choice identity.</param>
     /// <param name="label">The visible choice label.</param>
     /// <param name="description">The visible choice description.</param>
     /// <param name="value">The selected value.</param>
     /// <param name="step">Moves to the previous or next available value.</param>
-    private void ConfigureSetupRow(
+    /// <returns>The vertical advance through the row and following gap.</returns>
+    private float ConfigureSetupRow(
         int index,
+        float contentOffset,
         string key,
         string label,
         string description,
@@ -633,9 +693,13 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
         GameObject row = GetRow(index);
         row.name = "Setup-" + key;
         row.SetActive(true);
-        ConfigureRowPosition(row, index);
-        row.transform.Find("Label").GetComponent<TMP_Text>().text = label;
-        row.transform.Find("Description").GetComponent<TMP_Text>().text = description;
+        float rowAdvance = ConfigureTextRow(
+            row,
+            contentOffset,
+            label,
+            description,
+            _defaultLabelWidth
+        );
         SetAllValueControlsVisible(row.transform, false);
 
         if (!setupChoiceFields.TryGetValue(key, out OptionsChoiceFieldView choice))
@@ -649,7 +713,7 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
                 row.transform,
                 "Choice-" + key,
                 171,
-                13
+                _controlTop
             );
             choice.StepRequested += delta => step(delta);
             setupChoiceFields.Add(key, choice);
@@ -657,6 +721,7 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
 
         choice.gameObject.SetActive(true);
         choice.Render(value.ToUpperInvariant());
+        return rowAdvance;
     }
 
     /// <summary>
@@ -798,6 +863,15 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
         Transform settingsPage = scrollArea.transform.parent;
         presetPage = Instantiate(template.gameObject, settingsPage.parent, false);
         presetPage.name = "CustomGamePresetPage";
+        RectTransform settingsRect = (RectTransform)settingsPage;
+        RectTransform presetRect = (RectTransform)presetPage.transform;
+        presetRect.anchorMin = settingsRect.anchorMin;
+        presetRect.anchorMax = settingsRect.anchorMax;
+        presetRect.pivot = settingsRect.pivot;
+        presetRect.anchoredPosition = settingsRect.anchoredPosition;
+        presetRect.sizeDelta = settingsRect.sizeDelta;
+        presetRect.localRotation = Quaternion.identity;
+        presetRect.localScale = Vector3.one;
         presetSaveList = presetPage.GetComponent<OptionsSaveListView>();
         TMP_Text heading = presetPage
             .GetComponentsInChildren<TMP_Text>(true)
@@ -1102,6 +1176,8 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
             heading.text = columns[index].ToUpperInvariant();
             heading.color = new Color(0.373f, 0.659f, 0.925f);
             heading.fontStyle = FontStyles.Bold;
+            heading.enableAutoSizing = false;
+            heading.fontSize = 9f;
             heading.alignment = TextAlignmentOptions.Midline;
             GetTableColumnGeometry(columns.Count, index, out float x, out float valueWidth, out _);
             UILayout.SetSourceRect(
@@ -1121,7 +1197,8 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
     /// <param name="entries">The row's generation settings.</param>
     /// <param name="columns">The ordered table columns.</param>
     /// <param name="contentOffset">The vertical position within the scroll content.</param>
-    private void ConfigureGenerationTableRow(
+    /// <returns>The vertical advance through the row and following gap.</returns>
+    private float ConfigureGenerationTableRow(
         GameObject row,
         IReadOnlyList<GenerationEntry> entries,
         IReadOnlyList<string> columns,
@@ -1131,19 +1208,18 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
         GenerationEntry first = entries[0];
         row.name = "Setting-" + first.RowKey;
         row.SetActive(true);
-        RectTransform rowRect = (RectTransform)row.transform;
-        rowRect.anchoredPosition = new Vector2(0f, -contentOffset);
-        rowRect.sizeDelta = new Vector2(rowRect.sizeDelta.x, 44f);
-
         TMP_Text label = row.transform.Find("Label").GetComponent<TMP_Text>();
         TMP_Text description = row.transform.Find("Description").GetComponent<TMP_Text>();
         label.gameObject.SetActive(true);
         description.gameObject.SetActive(true);
-        label.text = first.Label;
-        description.text = first.Description;
         float labelWidth = columns.Count == 3 ? 116f : 150f;
-        label.rectTransform.sizeDelta = new Vector2(labelWidth, 14f);
-        description.rectTransform.sizeDelta = new Vector2(labelWidth, 28f);
+        float rowAdvance = ConfigureTextRow(
+            row,
+            contentOffset,
+            first.Label,
+            first.Description,
+            labelWidth
+        );
         SetAllValueControlsVisible(row.transform, false);
 
         for (int columnIndex = 0; columnIndex < columns.Count; columnIndex++)
@@ -1158,6 +1234,8 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
             row.transform.Find(prefix + "Reset").gameObject.SetActive(true);
             ConfigureGenerationValueControl(row.transform, entry, prefix);
         }
+
+        return rowAdvance;
     }
 
     /// <summary>
@@ -1202,21 +1280,21 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
         UILayout.SetSourceRect(
             (RectTransform)row.Find(prefix + "ValueBadge"),
             Mathf.RoundToInt(x),
-            14,
+            _controlTop,
             Mathf.RoundToInt(valueWidth),
             16
         );
         UILayout.SetSourceRect(
             (RectTransform)row.Find(prefix + "Value"),
             Mathf.RoundToInt(x),
-            14,
+            _controlTop,
             Mathf.RoundToInt(valueWidth),
             16
         );
         UILayout.SetSourceRect(
             (RectTransform)row.Find(prefix + "Reset"),
             Mathf.RoundToInt(x + valueWidth + 2f),
-            14,
+            _controlTop,
             Mathf.RoundToInt(resetWidth),
             16
         );
@@ -1252,13 +1330,69 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
     }
 
     /// <summary>
-    /// Places one row at its scroll-content position.
+    /// Sizes and positions one text-bearing settings row around its rendered description.
     /// </summary>
     /// <param name="row">The row to position.</param>
-    /// <param name="index">The row index.</param>
-    private static void ConfigureRowPosition(GameObject row, int index)
+    /// <param name="contentOffset">The vertical position within the scroll content.</param>
+    /// <param name="labelText">The row label.</param>
+    /// <param name="descriptionText">The wrapped description.</param>
+    /// <param name="labelWidth">The width available to label and description text.</param>
+    /// <returns>The vertical advance through the row and following gap.</returns>
+    private static float ConfigureTextRow(
+        GameObject row,
+        float contentOffset,
+        string labelText,
+        string descriptionText,
+        float labelWidth
+    )
     {
-        ((RectTransform)row.transform).anchoredPosition = new Vector2(0f, -index * _rowStride);
+        RectTransform rowRect = (RectTransform)row.transform;
+        TMP_Text label = row.transform.Find("Label").GetComponent<TMP_Text>();
+        TMP_Text description = row.transform.Find("Description").GetComponent<TMP_Text>();
+        label.text = labelText;
+        label.enableAutoSizing = false;
+        label.fontSize = 9f;
+        description.text = descriptionText;
+        description.fontSize = _descriptionFontSize;
+        description.gameObject.SetActive(true);
+        UILayout.SetSourceRect(
+            label.rectTransform,
+            0,
+            _controlTop,
+            Mathf.RoundToInt(labelWidth),
+            16
+        );
+        float descriptionHeight = Mathf.Ceil(
+            description.GetPreferredValues(descriptionText, labelWidth, 0f).y
+        );
+        UILayout.SetSourceRect(
+            description.rectTransform,
+            0,
+            Mathf.RoundToInt(_descriptionTop),
+            Mathf.RoundToInt(labelWidth),
+            Mathf.RoundToInt(descriptionHeight)
+        );
+        float rowHeight = Mathf.Max(_minimumRowHeight, _descriptionTop + descriptionHeight);
+        rowRect.anchoredPosition = new Vector2(0f, -contentOffset);
+        rowRect.sizeDelta = new Vector2(rowRect.sizeDelta.x, rowHeight);
+        return rowHeight + _rowSpacing;
+    }
+
+    /// <summary>
+    /// Aligns one authored row control with the top setting label.
+    /// </summary>
+    /// <param name="control">The control to align.</param>
+    private static void AlignControlTop(Transform control)
+    {
+        RectTransform rect = (RectTransform)control;
+        RectInt sourceRect = UILayout.GetSourceRect(rect);
+        UILayout.SetSourceRect(
+            rect,
+            sourceRect.x,
+            _controlTop,
+            sourceRect.width,
+            sourceRect.height
+        );
     }
 
     /// <summary>
@@ -1347,8 +1481,9 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
             string Label,
             string Description,
             bool AllowsFraction,
-            bool AllowsNegative,
-            bool RequiresPositive,
+            double Minimum,
+            bool MinimumExclusive,
+            double? Maximum,
             double PlayerDefault,
             double AIDefault
         ) entry,

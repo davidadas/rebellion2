@@ -12,6 +12,7 @@ public static class NewGameSettingsPrefabBuilder
 {
     public const string PrefabPath = "Assets/Prefabs/UI/MainMenu/NewGameSettings.prefab";
     private const string _artRoot = "Application/OptionsMenu/UI/ui_settingsmenu_";
+    private const int _controlTop = 1;
     private static readonly Color _textColor = new Color(0.875f, 0.910f, 0.941f);
     private static readonly Color _mutedColor = new Color(0.573f, 0.635f, 0.706f);
     private static readonly Color _accentColor = new Color(0.373f, 0.659f, 0.925f);
@@ -68,13 +69,13 @@ public static class NewGameSettingsPrefabBuilder
             );
         TextMeshProUGUI playerHeading = CreateTextLabel("PlayerHeading", difficultyPage);
         playerHeading.text = "PLAYER";
-        playerHeading.fontSize = 10;
+        playerHeading.fontSize = 9;
         playerHeading.color = _accentColor;
         playerHeading.alignment = TextAlignmentOptions.MidlineLeft;
         SetSourceRect(playerHeading.rectTransform, 174, 16, 47, 16);
         TextMeshProUGUI aiHeading = CreateTextLabel("AIHeading", difficultyPage);
         aiHeading.text = "AI";
-        aiHeading.fontSize = 10;
+        aiHeading.fontSize = 9;
         aiHeading.color = _accentColor;
         aiHeading.alignment = TextAlignmentOptions.MidlineLeft;
         SetSourceRect(aiHeading.rectTransform, 261, 16, 47, 16);
@@ -105,7 +106,17 @@ public static class NewGameSettingsPrefabBuilder
             _textColor,
             114
         );
-        Button apply = CreateMenuActionButton(contentRoot, "Apply", "START GAME", 424, _textColor);
+        Button apply = CreateMenuActionButton(
+            contentRoot,
+            "Apply",
+            "START GAME",
+            424,
+            _textColor,
+            114
+        );
+        TextMeshProUGUI applyLabel = apply.GetComponentInChildren<TextMeshProUGUI>();
+        applyLabel.color = _accentColor;
+        applyLabel.fontStyle = FontStyles.Bold;
         Button close = CreateMenuNavigationRow(
             "Close",
             contentRoot,
@@ -150,19 +161,17 @@ public static class NewGameSettingsPrefabBuilder
         RectTransform row = CreateLayer("RowTemplate", parent).GetComponent<RectTransform>();
         SetSourceRect(row, 0, 0, 326, 44);
         TextMeshProUGUI label = CreateTextLabel("Label", row);
-        label.fontSize = 10;
+        label.fontSize = 9;
         label.color = _textColor;
         label.alignment = TextAlignmentOptions.MidlineLeft;
-        SetSourceRect(label.rectTransform, 0, 1, 150, 14);
-        label.enableAutoSizing = true;
-        label.fontSizeMin = 7;
-        label.fontSizeMax = 10;
+        SetSourceRect(label.rectTransform, 0, _controlTop, 150, 16);
+        label.enableAutoSizing = false;
         TextMeshProUGUI description = CreateTextLabel("Description", row);
-        description.fontSize = 7;
+        description.fontSize = 9;
         description.color = _mutedColor;
         description.textWrappingMode = TextWrappingModes.Normal;
         description.alignment = TextAlignmentOptions.TopLeft;
-        SetSourceRect(description.rectTransform, 0, 15, 150, 28);
+        SetSourceRect(description.rectTransform, 0, 17, 150, 28);
         BuildValueControl(row, "Player", 154, 203);
         BuildValueControl(row, "AI", 241, 290);
         BuildValueControl(row, "World", 241, 290);
@@ -187,7 +196,7 @@ public static class NewGameSettingsPrefabBuilder
             _artRoot + "badge_background",
             new Vector4(6, 6, 6, 6),
             valueX,
-            14,
+            _controlTop,
             47,
             16,
             Color.white
@@ -197,12 +206,12 @@ public static class NewGameSettingsPrefabBuilder
             row,
             string.Empty,
             valueX,
-            14,
+            _controlTop,
             47,
             16
         );
         input.contentType = TMP_InputField.ContentType.DecimalNumber;
         UILayout.ConfigureCenteredNumericInput(input, _textColor, 10f, 4, 1);
-        CreateMenuRestoreButton(prefix + "Reset", row, resetX, 14);
+        CreateMenuRestoreButton(prefix + "Reset", row, resetX, _controlTop);
     }
 }

@@ -33,8 +33,9 @@ internal sealed class CustomGameSettingsSession
         string Label,
         string Description,
         bool AllowsFraction,
-        bool AllowsNegative,
-        bool RequiresPositive,
+        double Minimum,
+        bool MinimumExclusive,
+        double? Maximum,
         double PlayerDefault,
         double AIDefault
     )> difficultyEntries = new();
@@ -54,8 +55,9 @@ internal sealed class CustomGameSettingsSession
         string Label,
         string Description,
         bool AllowsFraction,
-        bool AllowsNegative,
-        bool RequiresPositive,
+        double Minimum,
+        bool MinimumExclusive,
+        double? Maximum,
         double PlayerDefault,
         double AIDefault
     )> DifficultyEntries => difficultyEntries;
@@ -130,8 +132,8 @@ internal sealed class CustomGameSettingsSession
             )
             || !double.IsFinite(value)
             || (!entry.AllowsFraction && value != Math.Truncate(value))
-            || (!entry.AllowsNegative && value < 0)
-            || (entry.RequiresPositive && value <= 0)
+            || (entry.MinimumExclusive ? value <= entry.Minimum : value < entry.Minimum)
+            || (entry.Maximum.HasValue && value > entry.Maximum.Value)
             || (!entry.AllowsFraction && value is < int.MinValue or > int.MaxValue)
         )
             return false;
@@ -335,10 +337,11 @@ internal sealed class CustomGameSettingsSession
         Add(
             "mine-output",
             "Mine Output Modifier",
-            "Scales how quickly each mine produces raw material.",
+            "How fast mines produce raw materials. Higher is faster. Range: 0% or higher.",
             false,
+            0,
             false,
-            false,
+            null,
             playerDefaults.MineOutputPercent,
             aiDefaults.MineOutputPercent,
             playerValues.MineOutputPercent,
@@ -347,10 +350,11 @@ internal sealed class CustomGameSettingsSession
         Add(
             "refinery-output",
             "Refinery Output Modifier",
-            "Scales how quickly each refinery converts raw material into refined material.",
+            "How fast refineries produce refined materials. Higher is faster. Range: 0% or higher.",
             false,
+            0,
             false,
-            false,
+            null,
             playerDefaults.RefineryOutputPercent,
             aiDefaults.RefineryOutputPercent,
             playerValues.RefineryOutputPercent,
@@ -359,10 +363,11 @@ internal sealed class CustomGameSettingsSession
         Add(
             "maintenance",
             "Maintenance Modifier",
-            "Scales the maintenance points supplied by each working mine and refinery pair.",
+            "Maintenance from each working mine and refinery pair. Higher supports more units. Range: 0% or higher.",
             false,
+            0,
             false,
-            false,
+            null,
             playerDefaults.MaintenanceCapacityPercent,
             aiDefaults.MaintenanceCapacityPercent,
             playerValues.MaintenanceCapacityPercent,
@@ -371,10 +376,11 @@ internal sealed class CustomGameSettingsSession
         Add(
             "manufacturing-speed",
             "Manufacturing Speed Modifier",
-            "Scales progress made by shipyards, training facilities, and construction facilities.",
+            "How fast ships, fighters, troops, and facilities are built. Higher is faster. Range: 0% or higher.",
             false,
+            0,
             false,
-            false,
+            null,
             playerDefaults.ManufacturingSpeedPercent,
             aiDefaults.ManufacturingSpeedPercent,
             playerValues.ManufacturingSpeedPercent,
@@ -383,10 +389,11 @@ internal sealed class CustomGameSettingsSession
         Add(
             "mission-success",
             "Mission Success Bonus",
-            "Adds percentage points to mission success chances.",
+            "Changes this faction's chance to complete missions successfully. Range: -100 to 100.",
             false,
-            true,
+            -100,
             false,
+            100,
             playerDefaults.MissionSuccessChancePoints,
             aiDefaults.MissionSuccessChancePoints,
             playerValues.MissionSuccessChancePoints,
@@ -395,10 +402,11 @@ internal sealed class CustomGameSettingsSession
         Add(
             "mission-foil",
             "Mission Foil Bonus",
-            "Adds percentage points to mission foil chances.",
+            "Changes the chance that this faction's missions are detected and stopped. Range: -100 to 100.",
             false,
-            true,
+            -100,
             false,
+            100,
             playerDefaults.MissionFoilChancePoints,
             aiDefaults.MissionFoilChancePoints,
             playerValues.MissionFoilChancePoints,
@@ -407,10 +415,11 @@ internal sealed class CustomGameSettingsSession
         Add(
             "mission-speed",
             "Mission Speed Bonus",
-            "Increases mission execution speed by the entered percentage.",
+            "How long this faction's missions take. Higher finishes them sooner. Range: 0% or higher.",
             false,
+            0,
             false,
-            false,
+            null,
             playerDefaults.MissionExecutionSpeedIncreasePercent,
             aiDefaults.MissionExecutionSpeedIncreasePercent,
             playerValues.MissionExecutionSpeedIncreasePercent,
@@ -419,10 +428,11 @@ internal sealed class CustomGameSettingsSession
         Add(
             "detection-rating",
             "Detection Rating Bonus",
-            "Multiplies detection ratings. A value of 1 is unchanged; 1.25 is twenty-five percent higher.",
+            "How easily this faction detects enemy missions. Higher improves detection. Range: greater than 0.",
             true,
-            false,
+            0,
             true,
+            null,
             playerDefaults.DetectionRatingMultiplier,
             aiDefaults.DetectionRatingMultiplier,
             playerValues.DetectionRatingMultiplier,
@@ -471,8 +481,9 @@ internal sealed class CustomGameSettingsSession
                 entry.Label,
                 entry.Description,
                 entry.AllowsFraction,
-                entry.AllowsNegative,
-                entry.RequiresPositive,
+                entry.Minimum,
+                entry.MinimumExclusive,
+                entry.Maximum,
                 entry.PlayerDefault,
                 currentDefault
             );
@@ -563,7 +574,7 @@ internal sealed class CustomGameSettingsSession
             factions,
             "refinement-multiplier",
             "Refinement Multiplier",
-            "Multiplies available mined resources when calculating material supply.",
+            "Usable supply gained from raw and refined materials. Higher provides more supply. Range: 1 or higher.",
             1,
             settings => settings.RefinementMultiplier,
             (settings, value) => settings.RefinementMultiplier = value
@@ -572,7 +583,7 @@ internal sealed class CustomGameSettingsSession
             factions,
             "resource-processing",
             "Processing per Facility",
-            "Sets the material-processing capacity contributed by each matched mine and refinery.",
+            "Maintenance from each working mine and refinery pair. Higher supports more units. Range: 1 or higher.",
             1,
             settings => settings.ResourceProcessingPointsPerFacility,
             (settings, value) => settings.ResourceProcessingPointsPerFacility = value
@@ -583,7 +594,7 @@ internal sealed class CustomGameSettingsSession
             factions,
             "garrison-efficiency",
             "Garrison Efficiency",
-            "Divides the required core-world garrison size.",
+            "Troops needed to garrison core worlds. Higher requires fewer troops. Range: 1 or higher.",
             1,
             settings => settings.GarrisonEfficiency,
             (settings, value) => settings.GarrisonEfficiency = value
@@ -592,7 +603,7 @@ internal sealed class CustomGameSettingsSession
             factions,
             "uprising-resistance",
             "Uprising Resistance",
-            "Divides uprising escalation when the configured value is greater than one.",
+            "Garrison strength during core-world uprisings. Higher makes each troop stronger. Range: 1 or higher.",
             1,
             settings => settings.UprisingResistance,
             (settings, value) => settings.UprisingResistance = value
@@ -621,7 +632,7 @@ internal sealed class CustomGameSettingsSession
             factions,
             "battle-loss-loyalty-divisor",
             "Battle-Loss Loyalty Divisor",
-            "Divides battle losses when calculating the global officer-loyalty shift.",
+            "How strongly battle losses affect officer loyalty. Higher reduces the effect. Range: 1 or higher.",
             1,
             settings => settings.BattleLossLoyaltyDivisor,
             (settings, value) => settings.BattleLossLoyaltyDivisor = value
@@ -680,7 +691,7 @@ internal sealed class CustomGameSettingsSession
                 "starting-research",
                 factionID.ToLowerInvariant() + "-starting-research",
                 "Starting Research Level",
-                "Highest research order unlocked for this faction in every discipline.",
+                "Research level available in every field when the game begins. Range: 0 or higher.",
                 faction.GetDisplayName(),
                 0,
                 int.MaxValue,
@@ -704,7 +715,7 @@ internal sealed class CustomGameSettingsSession
                 "starting-officers",
                 factionID.ToLowerInvariant() + "-starting-officers",
                 "Starting Officers",
-                $"Maximum officers selected for this faction in the {galaxySize.ToString().ToLowerInvariant()} galaxy.",
+                "Most officers this faction can start with. Range: 0 or higher.",
                 faction.GetDisplayName(),
                 0,
                 int.MaxValue,
@@ -838,7 +849,7 @@ internal sealed class CustomGameSettingsSession
                 "strong-core-worlds",
                 factionKey + "-strong",
                 "Strong Core Worlds %",
-                $"Share strongly aligned with each faction for the selected {summary.Difficulty.ToString().ToLowerInvariant()} setup.",
+                "Core worlds this faction starts owning with strong popular support. Range: 0% to 100%.",
                 factionLabel,
                 0,
                 100,
@@ -849,7 +860,7 @@ internal sealed class CustomGameSettingsSession
                 "weak-core-worlds",
                 factionKey + "-weak",
                 "Weak Core Worlds %",
-                $"Share weakly aligned with each faction for the selected {summary.Difficulty.ToString().ToLowerInvariant()} setup.",
+                "Core worlds this faction starts owning with weak popular support. Range: 0% to 100%.",
                 factionLabel,
                 0,
                 100,
@@ -905,7 +916,7 @@ internal sealed class CustomGameSettingsSession
             key,
             "materials",
             "core-materials",
-            "raw-material",
+            "raw materials",
             "Core",
             candidate => candidate.CoreRawMaterials
         );
@@ -914,7 +925,7 @@ internal sealed class CustomGameSettingsSession
             key,
             "materials",
             "rim-materials",
-            "raw-material",
+            "raw materials",
             "Rim",
             candidate => candidate.RimRawMaterials
         );
@@ -923,7 +934,7 @@ internal sealed class CustomGameSettingsSession
             key + "-resource-minimum",
             key + "-energy-min",
             "Minimum",
-            "Lowest result allowed after each resource roll.",
+            "Fewest resource points a planet can start with. Range: 0 or higher.",
             "Energy",
             0,
             int.MaxValue,
@@ -935,7 +946,7 @@ internal sealed class CustomGameSettingsSession
             key + "-resource-minimum",
             key + "-materials-min",
             "Minimum",
-            "Lowest result allowed after each resource roll.",
+            "Fewest resource points a planet can start with. Range: 0 or higher.",
             "Raw Materials",
             0,
             int.MaxValue,
@@ -947,7 +958,7 @@ internal sealed class CustomGameSettingsSession
             key + "-resource-maximum",
             key + "-energy-max",
             "Maximum",
-            "Highest result allowed after each resource roll.",
+            "Most resource points a planet can start with. Range: 0 or higher.",
             "Energy",
             0,
             int.MaxValue,
@@ -959,7 +970,7 @@ internal sealed class CustomGameSettingsSession
             key + "-resource-maximum",
             key + "-materials-max",
             "Maximum",
-            "Highest result allowed after each resource roll.",
+            "Most resource points a planet can start with. Range: 0 or higher.",
             "Raw Materials",
             0,
             int.MaxValue,
@@ -972,7 +983,7 @@ internal sealed class CustomGameSettingsSession
             NewGameSettingsCategory.WorldGeneration,
             key + "-rim-colonization",
             "Rim Colonization Chance %",
-            "Chance that an otherwise unassigned rim planet starts colonized.",
+            "Chance that an unclaimed rim world starts colonized. Range: 0% to 100%.",
             0,
             100,
             config => config.PlanetResources.Profiles[index].RimColonizationPct,
@@ -1005,7 +1016,7 @@ internal sealed class CustomGameSettingsSession
             profileKey + "-" + resourceKey + "-base",
             prefix + "-base",
             "Starting Amount",
-            $"Fixed amount included in every {resourceLabel} roll.",
+            $"Amount of {resourceLabel} each planet starts with before random bonuses. Range: 0 or higher.",
             column,
             0,
             int.MaxValue,
@@ -1016,7 +1027,7 @@ internal sealed class CustomGameSettingsSession
             profileKey + "-" + resourceKey + "-random-1",
             prefix + "-random-1",
             "Random Bonus",
-            $"Adds a random amount from 0 through this value to each {resourceLabel} roll.",
+            $"Largest first random {resourceLabel} bonus a planet can receive. Range: 0 or higher.",
             column,
             0,
             int.MaxValue,
@@ -1027,7 +1038,7 @@ internal sealed class CustomGameSettingsSession
             profileKey + "-" + resourceKey + "-random-2",
             prefix + "-random-2",
             "Secondary Bonus",
-            "Adds a second independent random amount from 0 through this value; zero disables it.",
+            $"Largest second random {resourceLabel} bonus a planet can receive. Range: 0 or higher.",
             column,
             0,
             int.MaxValue,
@@ -1062,7 +1073,7 @@ internal sealed class CustomGameSettingsSession
             "support-base",
             key + "-support-base",
             "Base Support",
-            "Starting support before the random bonus is added.",
+            "Popular support before the random bonus. Range: 0% to 100%.",
             label,
             0,
             100,
@@ -1073,7 +1084,7 @@ internal sealed class CustomGameSettingsSession
             "support-random",
             key + "-support-random",
             "Random Bonus",
-            "Adds a random support amount from 0 through this value before clamping the result to 100.",
+            "Largest random popular-support bonus at game start. Range: 0% to 100%.",
             label,
             0,
             100,
@@ -1091,7 +1102,7 @@ internal sealed class CustomGameSettingsSession
             "mine-chance-per-resource",
             "core-mine-multiplier",
             "Mine Chance per Unused Resource %",
-            "Adds this many percentage points of mine chance per raw-resource node not already served by a mine.",
+            "Extra chance to place a mine for each raw material without one. Range: 0% or higher.",
             "Core",
             0,
             int.MaxValue,
@@ -1102,7 +1113,7 @@ internal sealed class CustomGameSettingsSession
             "mine-chance-per-resource",
             "rim-mine-multiplier",
             "Mine Chance per Unused Resource %",
-            "Adds this many percentage points of mine chance per raw-resource node not already served by a mine.",
+            "Extra chance to place a mine for each raw material without one. Range: 0% or higher.",
             "Rim",
             0,
             int.MaxValue,
@@ -1120,7 +1131,7 @@ internal sealed class CustomGameSettingsSession
             NewGameSettingsCategory.WorldGeneration,
             "uprising-prevention-threshold",
             "Garrison Support Threshold %",
-            "Owner support below this percentage receives starting garrison troops.",
+            "Planets below this owner support start with garrison troops. Range: 0% to 100%.",
             0,
             100,
             config => config.UnitDeployment.UprisingPreventionThreshold,
@@ -1130,7 +1141,7 @@ internal sealed class CustomGameSettingsSession
             NewGameSettingsCategory.WorldGeneration,
             "support-deficit-per-garrison",
             "Support Deficit per Garrison Unit",
-            "Support deficit covered by each generated starting garrison troop.",
+            "One starting garrison troop is added for each amount of missing owner support. Range: 1 or higher.",
             1,
             int.MaxValue,
             config => config.UnitDeployment.SupportDeficitPerGarrisonTroop,
@@ -1140,7 +1151,7 @@ internal sealed class CustomGameSettingsSession
             NewGameSettingsCategory.WorldGeneration,
             "support-boost-per-unit",
             "Support Boost per Unit",
-            "Post-generation owner-support points added per military presence.",
+            "Owner support added for each starting troop, fighter squadron, or fleet. Range: 0 or higher.",
             0,
             int.MaxValue,
             config => config.Balance.SupportBoostPerUnit,
@@ -1150,7 +1161,7 @@ internal sealed class CustomGameSettingsSession
             NewGameSettingsCategory.WorldGeneration,
             "maximum-military-support",
             "Maximum Military Support Boost",
-            "Maximum post-generation owner-support boost from military presence.",
+            "Largest owner-support bonus a planet can receive from its starting forces. Range: 0 or higher.",
             0,
             int.MaxValue,
             config => config.Balance.MaxMilitaryPresenceBoost,
@@ -1294,8 +1305,9 @@ internal sealed class CustomGameSettingsSession
     /// <param name="label">The visible modifier name.</param>
     /// <param name="description">The help text.</param>
     /// <param name="allowsFraction">Whether fractional input is accepted.</param>
-    /// <param name="allowsNegative">Whether negative input is accepted.</param>
-    /// <param name="requiresPositive">Whether zero is rejected.</param>
+    /// <param name="minimum">The minimum accepted value.</param>
+    /// <param name="minimumExclusive">Whether the minimum itself is rejected.</param>
+    /// <param name="maximum">The optional maximum accepted value.</param>
     /// <param name="playerDefault">The authored player default.</param>
     /// <param name="aiDefault">The authored AI default.</param>
     /// <param name="playerValue">The initial player value.</param>
@@ -1305,8 +1317,9 @@ internal sealed class CustomGameSettingsSession
         string label,
         string description,
         bool allowsFraction,
-        bool allowsNegative,
-        bool requiresPositive,
+        double minimum,
+        bool minimumExclusive,
+        double? maximum,
         double playerDefault,
         double aiDefault,
         double playerValue,
@@ -1319,8 +1332,9 @@ internal sealed class CustomGameSettingsSession
                 label,
                 description,
                 allowsFraction,
-                allowsNegative,
-                requiresPositive,
+                minimum,
+                minimumExclusive,
+                maximum,
                 playerDefault,
                 aiDefault
             )
