@@ -568,7 +568,7 @@ public sealed class MessagesWindowController
     }
 
     /// <summary>
-    /// Focuses and closes the window associated with a view request.
+    /// Returns message detail to its index or closes an already indexed window.
     /// </summary>
     /// <param name="view">The requesting Messages view.</param>
     private void HandleCloseRequested(MessagesWindowView view)
@@ -577,6 +577,13 @@ public sealed class MessagesWindowController
         if (TryGetSession(view, out MessagesWindowSession session))
         {
             StopMessageDetailAudio();
+            if (session.DetailVisible)
+            {
+                session.HideDetail();
+                RequestRender();
+                return;
+            }
+
             AcknowledgeWindow(session.Window);
             closeWindow(session.Window);
         }
