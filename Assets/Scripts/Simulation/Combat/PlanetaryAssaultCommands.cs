@@ -57,15 +57,19 @@ namespace Rebellion.Simulation
             Planet targetPlanet
         )
         {
-            if (targetPlanet == null)
-                return null;
-
-            List<Fleet> fleets =
+            List<Fleet> requestedFleets =
                 attackingFleets?.Where(fleet => fleet != null).ToList() ?? new List<Fleet>();
-            if (!_queries.CanExecute(fleets, targetPlanet))
+            if (
+                !_queries.TryResolveCommand(
+                    requestedFleets,
+                    targetPlanet,
+                    out List<Fleet> fleets,
+                    out Planet liveTarget
+                ) || !_queries.CanExecute(fleets, liveTarget)
+            )
                 return null;
 
-            PlanetaryAssaultResult result = Execute(fleets, targetPlanet);
+            PlanetaryAssaultResult result = Execute(fleets, liveTarget);
             List<GameResult> results = new List<GameResult> { result };
             results.AddRange(result.Events);
             if (result.OwnershipChange != null)

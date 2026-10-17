@@ -51,7 +51,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         [Test]
         public void Constructor_NullServices_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new StrategyFleetCommandController(null));
+            Assert.Throws<ArgumentNullException>(() =>
+                new StrategyFleetCommandController(null, () => _playerFactionId)
+            );
         }
 
         [Test]
@@ -263,31 +265,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             Assert.IsTrue(canAssault);
         }
 
-        [Test]
-        public void ResolvePlanet_SnapshotIdentity_ReturnsLiveGraphPlanet()
-        {
-            StrategyFleetCommandController controller = CreateController();
-
-            Planet resolved = controller.ResolvePlanet(
-                new Planet { InstanceID = _planet.InstanceID }
-            );
-            Planet missing = controller.ResolvePlanet(new Planet { InstanceID = "missing" });
-            Planet empty = controller.ResolvePlanet(new Planet());
-            Planet nullPlanet = controller.ResolvePlanet(null);
-
-            Assert.AreSame(_planet, resolved);
-            Assert.IsNull(missing);
-            Assert.IsNull(empty);
-            Assert.IsNull(nullPlanet);
-        }
-
         /// <summary>
         /// Creates controller.
         /// </summary>
         /// <returns>The created controller.</returns>
         private StrategyFleetCommandController CreateController()
         {
-            return new StrategyFleetCommandController(_session);
+            return new StrategyFleetCommandController(_session, () => _playerFactionId);
         }
 
         /// <summary>

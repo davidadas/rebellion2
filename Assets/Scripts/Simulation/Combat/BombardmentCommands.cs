@@ -60,14 +60,19 @@ namespace Rebellion.Simulation
             BombardmentType type
         )
         {
-            if (targetPlanet == null)
-                return null;
-
-            List<Fleet> fleets =
+            List<Fleet> requestedFleets =
                 attackingFleets?.Where(fleet => fleet != null).ToList() ?? new List<Fleet>();
-            if (!_queries.CanExecute(fleets, targetPlanet, type))
+            if (
+                !_queries.TryResolveCommand(
+                    requestedFleets,
+                    targetPlanet,
+                    out List<Fleet> fleets,
+                    out Planet liveTarget
+                ) || !_queries.CanExecute(fleets, liveTarget, type)
+            )
                 return null;
 
+            targetPlanet = liveTarget;
             bool wasBlockaded = targetPlanet.IsBlockaded();
             BombardmentResult result = new BombardmentResult
             {

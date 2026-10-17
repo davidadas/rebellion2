@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
+using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -16,6 +18,8 @@ public sealed class UIContext
     private readonly FactionThemeLibrary themeLibrary;
     private readonly Func<string, Texture2D> loadTexture;
     private readonly Func<Texture2D, RectInt> getTextureContentBounds;
+    private IReadOnlyList<Faction> factionPresentations;
+    private string playerFactionInstanceId;
 
     public GameRoot Game => game;
 
@@ -48,7 +52,7 @@ public sealed class UIContext
         if (loadTexture == null)
             throw new ArgumentNullException(nameof(loadTexture));
 
-        this.game = game;
+        SetGame(game);
         this.themeLibrary = themeLibrary;
         this.loadTexture = loadTexture;
         this.getTextureContentBounds =
@@ -66,7 +70,7 @@ public sealed class UIContext
     /// <param name="newGame">The replacement active game.</param>
     public void ReplaceGame(GameRoot newGame)
     {
-        game = newGame ?? throw new ArgumentNullException(nameof(newGame));
+        SetGame(newGame);
     }
 
     /// <summary>
@@ -85,7 +89,7 @@ public sealed class UIContext
     /// <returns>The current player faction theme.</returns>
     public FactionTheme GetPlayerFactionTheme()
     {
-        return GetTheme(game.GetPlayerFaction().InstanceID);
+        return GetTheme(playerFactionInstanceId);
     }
 
     /// <summary>
@@ -94,7 +98,35 @@ public sealed class UIContext
     /// <returns>The current player faction identifier.</returns>
     public string GetPlayerFactionInstanceID()
     {
-        return game.GetPlayerFaction().InstanceID;
+        return playerFactionInstanceId;
+    }
+
+    /// <summary>
+    /// Gets detached faction identities used by presentation-only faction selectors.
+    /// </summary>
+    /// <returns>The known faction identities.</returns>
+    public IReadOnlyList<Faction> GetFactionPresentations()
+    {
+        return factionPresentations;
+    }
+
+    /// <summary>
+    /// Replaces the active game and captures presentation-safe faction identity metadata.
+    /// </summary>
+    /// <param name="newGame">The replacement active game.</param>
+    private void SetGame(GameRoot newGame)
+    {
+        game = newGame ?? throw new ArgumentNullException(nameof(newGame));
+        playerFactionInstanceId = game.Summary?.PlayerFactionID ?? string.Empty;
+        factionPresentations = game.GetFactions()
+            .Where(faction => faction != null)
+            .Select(faction => new Faction
+            {
+                InstanceID = faction.InstanceID,
+                DisplayName = faction.DisplayName,
+            })
+            .ToList()
+            .AsReadOnly();
     }
 
     /// <summary>

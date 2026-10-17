@@ -34,6 +34,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         private GameObject _rootObject;
         private int _stopMusicCount;
         private UIContext _uiContext;
+        private Planet _visiblePlanet;
         private StrategyWindowLayerView _windowLayer;
         private UIWindowManager _windowManager;
         private readonly List<string> _playedSfx = new List<string>();
@@ -68,6 +69,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 DefenderFleet = opponentFleet,
                 AttackerCanRetreat = true,
             };
+            _visiblePlanet = planet;
             _resolveResult = new SpaceCombatResult
             {
                 Planet = planet,
@@ -105,6 +107,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                     () => _resolveResult,
                     () => _resolveResult,
                     () => _uiContext,
+                    _ => _visiblePlanet,
                     _ => { },
                     _ => { },
                     () => { },
@@ -338,6 +341,31 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         }
 
         [Test]
+        public void OpenFleet_ResultPlanetVisible_OpensVisiblePlanet()
+        {
+            _pending = null;
+            _controller.OpenResult(_resolveResult);
+            BattleAlertWindowView view = _controller.FindWindow();
+
+            view.RequestOpenFleet();
+
+            Assert.AreSame(_visiblePlanet, _actions.OpenedFleet);
+        }
+
+        [Test]
+        public void OpenFleet_ResultPlanetHidden_DoesNotOpenPlanet()
+        {
+            _pending = null;
+            _visiblePlanet = null;
+            _controller.OpenResult(_resolveResult);
+            BattleAlertWindowView view = _controller.FindWindow();
+
+            view.RequestOpenFleet();
+
+            Assert.IsNull(_actions.OpenedFleet);
+        }
+
+        [Test]
         public void CloseRequested_ReportWithContinuation_ClosesWindowAndInvokesContinuation()
         {
             _pending = null;
@@ -425,6 +453,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 () => _resolveResult,
                 () => _resolveResult,
                 () => _uiContext,
+                instanceId => _visiblePlanet?.InstanceID == instanceId ? _visiblePlanet : null,
                 path => _playedSfx.Add(path),
                 path => _playedTracks.Add(path),
                 () => _stopMusicCount++,
@@ -520,6 +549,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
 
         private sealed class TestActions : IBattleAlertWindowActions
         {
+            public Planet OpenedFleet { get; private set; }
+
             public int RebuildCount { get; private set; }
 
             /// <summary>
@@ -528,7 +559,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             /// <param name="planet">The planet.</param>
             /// <param name="sourceX">The source x.</param>
             /// <param name="sourceY">The source y.</param>
-            public void OpenBattleResultFleet(Planet planet, int sourceX, int sourceY) { }
+            public void OpenBattleResultFleet(Planet planet, int sourceX, int sourceY)
+            {
+                OpenedFleet = planet;
+            }
 
             /// <summary>
             /// Opens battle result sector.

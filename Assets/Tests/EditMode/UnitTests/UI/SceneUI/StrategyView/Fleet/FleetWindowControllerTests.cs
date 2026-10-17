@@ -932,7 +932,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         /// <returns>The created fleet command controller.</returns>
         private StrategyFleetCommandController CreateFleetCommandController()
         {
-            return new StrategyFleetCommandController(_session);
+            return new StrategyFleetCommandController(
+                _session,
+                () => _game.GetPlayerFaction().InstanceID
+            );
         }
 
         /// <summary>

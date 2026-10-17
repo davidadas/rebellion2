@@ -80,7 +80,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
                     (_, _) => Vector2Int.zero,
                     () => Vector2Int.zero,
                     _ => { },
-                    () => { }
+                    () => { },
+                    _ => null
                 )
             );
         }
@@ -502,7 +503,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
                 (x, y) => new Vector2Int(x + 17, y + 19),
                 () => new Vector2Int(141, 73),
                 _ => { },
-                () => _dirtyCount++
+                () => _dirtyCount++,
+                instanceId => _session.Game.GetSceneNodeByInstanceID<ISceneNode>(instanceId)
             );
         }
 

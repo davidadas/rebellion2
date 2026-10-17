@@ -31,12 +31,55 @@ namespace Rebellion.Simulation
         /// <returns>True when the fleets contain ready troops and shields do not block them.</returns>
         public bool CanExecute(IReadOnlyList<Fleet> fleets, Planet planet)
         {
-            return CanAssault(fleets, planet)
-                && !PlanetaryAssaultResolver.IsBlockedByShields(
+            return TryResolveCommand(
+                    fleets,
                     planet,
+                    out List<Fleet> liveFleets,
+                    out Planet livePlanet
+                )
+                && !PlanetaryAssaultResolver.IsBlockedByShields(
+                    livePlanet,
                     _game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit
                 )
-                && PlanetaryAssaultResolver.HasReadyAttackers(fleets);
+                && PlanetaryAssaultResolver.HasReadyAttackers(liveFleets);
+        }
+
+        /// <summary>
+        /// Resolves visible fleet and planet snapshots to the authoritative game graph.
+        /// </summary>
+        /// <param name="fleets">The requested attacking fleets.</param>
+        /// <param name="planet">The requested target planet.</param>
+        /// <param name="liveFleets">Receives the registered attacking fleets.</param>
+        /// <param name="livePlanet">Receives the registered target planet.</param>
+        /// <returns>True when every input resolves and the resulting command can begin.</returns>
+        internal bool TryResolveCommand(
+            IReadOnlyList<Fleet> fleets,
+            Planet planet,
+            out List<Fleet> liveFleets,
+            out Planet livePlanet
+        )
+        {
+            liveFleets = new List<Fleet>();
+            livePlanet = string.IsNullOrEmpty(planet?.InstanceID)
+                ? null
+                : _game.GetSceneNodeByInstanceID<Planet>(planet.InstanceID);
+            if (livePlanet == null || fleets?.Count < 1)
+                return false;
+
+            HashSet<string> fleetIds = new HashSet<string>(StringComparer.Ordinal);
+            foreach (Fleet fleet in fleets)
+            {
+                if (string.IsNullOrEmpty(fleet?.InstanceID) || !fleetIds.Add(fleet.InstanceID))
+                    return false;
+
+                Fleet liveFleet = _game.GetSceneNodeByInstanceID<Fleet>(fleet.InstanceID);
+                if (liveFleet == null)
+                    return false;
+
+                liveFleets.Add(liveFleet);
+            }
+
+            return CanAssault(liveFleets, livePlanet);
         }
 
         /// <summary>

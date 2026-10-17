@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
@@ -427,7 +428,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             };
 
             StrategyBriefingMapPresentation presentation =
-                StrategyBriefingController.CreateMapPresentation(game, segment);
+                StrategyBriefingController.CreateMapPresentation(
+                    CreateFactionView(game),
+                    _playerFactionID,
+                    _opponentFactionID,
+                    segment
+                );
 
             Assert.AreEqual(StrategyBriefingMapMode.Spotlight, presentation.Mode);
             Assert.AreEqual(planetSector.InstanceID, presentation.TargetSectorInstanceID);
@@ -446,40 +452,79 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             };
 
             Assert.Throws<InvalidOperationException>(() =>
-                StrategyBriefingController.CreateMapPresentation(game, segment)
+                StrategyBriefingController.CreateMapPresentation(
+                    CreateFactionView(game),
+                    _playerFactionID,
+                    _opponentFactionID,
+                    segment
+                )
             );
         }
 
         [Test]
-        public void CreateMapPresentation_NullGame_ThrowsArgumentNullException()
+        public void CreateMapPresentation_NullFactionViewWithoutTarget_ReturnsDefaultPresentation()
         {
-            Assert.Throws<ArgumentNullException>(() =>
-                StrategyBriefingController.CreateMapPresentation(null, CreateSegment("First"))
-            );
+            StrategyBriefingMapPresentation presentation =
+                StrategyBriefingController.CreateMapPresentation(
+                    null,
+                    _playerFactionID,
+                    _opponentFactionID,
+                    CreateSegment("First")
+                );
+
+            Assert.AreEqual(StrategyBriefingMapMode.Default, presentation.Mode);
+            Assert.IsFalse(presentation.DimBackground);
         }
 
         [Test]
         public void CreateMapPresentation_NullSegment_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() =>
-                StrategyBriefingController.CreateMapPresentation(CreateGame(), null)
+                StrategyBriefingController.CreateMapPresentation(
+                    CreateFactionView(CreateGame()),
+                    _playerFactionID,
+                    _opponentFactionID,
+                    null
+                )
             );
         }
 
-        [TestCase(StrategyBriefingFocus.PlayerHeadquarters)]
-        [TestCase(StrategyBriefingFocus.OpponentHeadquarters)]
-        public void CreateMapPresentation_HeadquartersWithoutTarget_ThrowsInvalidOperationException(
-            StrategyBriefingFocus focus
-        )
+        [Test]
+        public void CreateMapPresentation_PlayerHeadquartersWithoutTarget_ThrowsInvalidOperationException()
         {
             StrategyBriefingSegmentTheme segment = new StrategyBriefingSegmentTheme
             {
-                Focus = focus,
+                Focus = StrategyBriefingFocus.PlayerHeadquarters,
             };
 
             Assert.Throws<InvalidOperationException>(() =>
-                StrategyBriefingController.CreateMapPresentation(CreateGame(), segment)
+                StrategyBriefingController.CreateMapPresentation(
+                    CreateFactionView(CreateGame()),
+                    _playerFactionID,
+                    _opponentFactionID,
+                    segment
+                )
             );
+        }
+
+        [Test]
+        public void CreateMapPresentation_OpponentHeadquartersWithoutTarget_DoesNotRevealLocation()
+        {
+            StrategyBriefingSegmentTheme segment = new StrategyBriefingSegmentTheme
+            {
+                Focus = StrategyBriefingFocus.OpponentHeadquarters,
+            };
+
+            StrategyBriefingMapPresentation presentation =
+                StrategyBriefingController.CreateMapPresentation(
+                    CreateFactionView(CreateGame()),
+                    _playerFactionID,
+                    _opponentFactionID,
+                    segment
+                );
+
+            Assert.IsNull(presentation.TargetSectorInstanceID);
+            Assert.IsNull(presentation.TargetPlanetInstanceID);
         }
 
         [Test]
@@ -515,7 +560,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             };
 
             StrategyBriefingMapPresentation presentation =
-                StrategyBriefingController.CreateMapPresentation(game, segment, factionView);
+                StrategyBriefingController.CreateMapPresentation(
+                    factionView,
+                    _playerFactionID,
+                    _opponentFactionID,
+                    segment
+                );
 
             Assert.IsNull(presentation.TargetSectorInstanceID);
             Assert.IsNull(presentation.TargetPlanetInstanceID);
@@ -533,6 +583,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             {
                 InstanceID = opponent.HQInstanceID,
                 IsHeadquarters = true,
+                OwnerInstanceID = _opponentFactionID,
             };
             game.AttachNode(sector, game.Galaxy);
             game.AttachNode(headquarters, sector);
@@ -550,7 +601,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             };
 
             StrategyBriefingMapPresentation presentation =
-                StrategyBriefingController.CreateMapPresentation(game, segment, factionView);
+                StrategyBriefingController.CreateMapPresentation(
+                    factionView,
+                    _playerFactionID,
+                    _opponentFactionID,
+                    segment
+                );
 
             Assert.AreEqual(sector.InstanceID, presentation.TargetSectorInstanceID);
             Assert.AreEqual(headquarters.InstanceID, presentation.TargetPlanetInstanceID);
@@ -569,7 +625,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             };
 
             Assert.Throws<InvalidOperationException>(() =>
-                StrategyBriefingController.CreateMapPresentation(game, segment)
+                StrategyBriefingController.CreateMapPresentation(
+                    CreateFactionView(game),
+                    _playerFactionID,
+                    _opponentFactionID,
+                    segment
+                )
             );
         }
 
@@ -606,7 +667,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             GalaxyMapController mapController = new GalaxyMapController(() => null);
             mapController.Initialize(new TestGalaxyMapActions());
             return new StrategyBriefingController(
-                game,
+                () =>
+                    TestContent.CreateUIContext(
+                        game,
+                        TestContent.CreateThemeLibrary(),
+                        new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
+                    ),
                 path => textures.TryGetValue(path, out Texture2D texture) ? texture : null,
                 _ => 0f,
                 preloadContent ?? (_ => Task.CompletedTask),
@@ -629,6 +695,16 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             game.Summary.PlayerFactionID = _playerFactionID;
             game.SetFactionController(_playerFactionID, "PLAYER1", PlayerControllerType.Human);
             return game;
+        }
+
+        /// <summary>
+        /// Returns the test galaxy as the explicitly supplied visible view.
+        /// </summary>
+        /// <param name="game">The game supplying the test galaxy.</param>
+        /// <returns>The visible galaxy used by the projection.</returns>
+        private static GalaxyMapModel CreateFactionView(GameRoot game)
+        {
+            return game?.Galaxy;
         }
 
         /// <summary>
