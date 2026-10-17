@@ -793,11 +793,11 @@ namespace Rebellion.Game.Results
     /// </summary>
     public class PendingCombatResult : GameResult
     {
-        public Fleet AttackerFleet { get; set; }
-        public Fleet DefenderFleet { get; set; }
+        public string AttackerFleetInstanceID { get; set; }
+        public string DefenderFleetInstanceID { get; set; }
         public string AttackerOwnerInstanceID { get; set; }
         public string DefenderOwnerInstanceID { get; set; }
-        public Planet Planet { get; set; }
+        public string PlanetInstanceID { get; set; }
         public bool AttackerCanRetreat { get; set; }
         public bool DefenderCanRetreat { get; set; }
     }

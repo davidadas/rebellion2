@@ -64,9 +64,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             );
             _pending = new PendingCombatResult
             {
-                Planet = planet,
-                AttackerFleet = playerFleet,
-                DefenderFleet = opponentFleet,
+                PlanetInstanceID = planet.InstanceID,
+                AttackerFleetInstanceID = playerFleet.InstanceID,
+                DefenderFleetInstanceID = opponentFleet.InstanceID,
+                AttackerOwnerInstanceID = _playerFactionId,
+                DefenderOwnerInstanceID = _opponentFactionId,
                 AttackerCanRetreat = true,
             };
             _visiblePlanet = planet;
@@ -202,6 +204,51 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsFalse(changed);
             Assert.AreSame(view, _controller.FindWindow());
             Assert.IsTrue(_controller.HasCombatResult(view));
+        }
+
+        [Test]
+        public void CreateRenderData_PendingCombat_UsesVisiblePlanetProjection()
+        {
+            _resolveResult.Planet.EnergyCapacity = 10;
+            Building hiddenBuilding = new Building
+            {
+                InstanceID = "hidden-building",
+                DisplayName = "Hidden shipyard",
+                OwnerInstanceID = _opponentFactionId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(hiddenBuilding, _resolveResult.Planet);
+            _visiblePlanet = new Planet
+            {
+                InstanceID = _resolveResult.Planet.InstanceID,
+                DisplayName = _resolveResult.Planet.DisplayName,
+                OwnerInstanceID = _opponentFactionId,
+                IsColonized = true,
+                EnergyCapacity = 10,
+            };
+            Building visibleBuilding = new Building
+            {
+                InstanceID = "visible-building",
+                DisplayName = "Visible mine",
+                OwnerInstanceID = _opponentFactionId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _visiblePlanet.AddChild(visibleBuilding);
+            visibleBuilding.SetParent(_visiblePlanet);
+            BattleAlertWindowView view = OpenWindow(out UIWindow _);
+            view.RequestPrimaryPanel(BattleAlertPanel.SystemAssets);
+
+            BattleAlertWindowRenderData data = _controller.CreateRenderData(
+                view,
+                _playerFactionId,
+                141,
+                73
+            );
+
+            CollectionAssert.AreEqual(
+                new[] { "Visible mine" },
+                data.Pending.Rows.Select(row => row.Text)
+            );
         }
 
         [Test]

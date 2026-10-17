@@ -57,9 +57,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             ) scene = CreateScene();
             PendingCombatResult pending = new PendingCombatResult
             {
-                Planet = scene.Planet,
-                AttackerFleet = scene.PlayerFleet,
-                DefenderFleet = scene.OpponentFleet,
+                PlanetInstanceID = scene.Planet.InstanceID,
+                AttackerFleetInstanceID = scene.PlayerFleet.InstanceID,
+                DefenderFleetInstanceID = scene.OpponentFleet.InstanceID,
+                AttackerOwnerInstanceID = _playerFactionId,
+                DefenderOwnerInstanceID = _opponentFactionId,
                 AttackerCanRetreat = true,
                 DefenderCanRetreat = false,
             };
@@ -75,7 +77,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 _playerFactionId,
                 10,
                 20,
-                scene.Context
+                scene.Context,
+                scene.Planet
             );
 
             Assert.AreEqual(BattleAlertWindowMode.Pending, data.Mode);
@@ -105,9 +108,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             ) scene = CreateScene();
             PendingCombatResult pending = new PendingCombatResult
             {
-                Planet = scene.Planet,
-                AttackerFleet = scene.PlayerFleet,
-                DefenderFleet = scene.OpponentFleet,
+                PlanetInstanceID = scene.Planet.InstanceID,
+                AttackerFleetInstanceID = scene.PlayerFleet.InstanceID,
+                DefenderFleetInstanceID = scene.OpponentFleet.InstanceID,
+                AttackerOwnerInstanceID = _playerFactionId,
+                DefenderOwnerInstanceID = _opponentFactionId,
             };
             BattleAlertWindowProjector projector = new BattleAlertWindowProjector();
 
@@ -121,7 +126,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 _playerFactionId,
                 0,
                 0,
-                scene.Context
+                scene.Context,
+                scene.Planet
             );
 
             Assert.AreEqual("Imperial Forces", data.Pending.Header);
@@ -145,9 +151,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             ) scene = CreateScene();
             PendingCombatResult pending = new PendingCombatResult
             {
-                Planet = scene.Planet,
-                AttackerFleet = scene.OpponentFleet,
-                DefenderFleet = scene.PlayerFleet,
+                PlanetInstanceID = scene.Planet.InstanceID,
+                AttackerFleetInstanceID = scene.OpponentFleet.InstanceID,
+                DefenderFleetInstanceID = scene.PlayerFleet.InstanceID,
                 AttackerOwnerInstanceID = _opponentFactionId,
                 DefenderOwnerInstanceID = _playerFactionId,
             };
@@ -163,7 +169,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 _playerFactionId,
                 0,
                 0,
-                scene.Context
+                scene.Context,
+                scene.Planet
             );
             BattleAlertWindowRenderData empire = projector.Project(
                 BattleAlertWindowMode.Pending,
@@ -175,7 +182,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 _playerFactionId,
                 0,
                 0,
-                scene.Context
+                scene.Context,
+                scene.Planet
             );
 
             Assert.AreEqual("Alliance Forces", alliance.Pending.Header);
@@ -216,9 +224,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             scene.Game.AttachNode(reinforcement, scene.OpponentFleet);
             PendingCombatResult pending = new PendingCombatResult
             {
-                Planet = scene.Planet,
-                AttackerFleet = scene.PlayerFleet,
-                DefenderFleet = scene.OpponentFleet,
+                PlanetInstanceID = scene.Planet.InstanceID,
+                AttackerFleetInstanceID = scene.PlayerFleet.InstanceID,
+                DefenderFleetInstanceID = scene.OpponentFleet.InstanceID,
+                AttackerOwnerInstanceID = _playerFactionId,
+                DefenderOwnerInstanceID = _opponentFactionId,
             };
             BattleAlertWindowProjector projector = new BattleAlertWindowProjector();
 
@@ -232,7 +242,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 _playerFactionId,
                 0,
                 0,
-                scene.Context
+                scene.Context,
+                scene.Planet
             );
 
             CollectionAssert.AreEqual(
@@ -260,9 +271,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             scene.Game.AttachNode(fighter, scene.Planet);
             PendingCombatResult pending = new PendingCombatResult
             {
-                Planet = scene.Planet,
-                AttackerFleet = scene.PlayerFleet,
-                DefenderFleet = scene.OpponentFleet,
+                PlanetInstanceID = scene.Planet.InstanceID,
+                AttackerFleetInstanceID = scene.PlayerFleet.InstanceID,
+                DefenderFleetInstanceID = scene.OpponentFleet.InstanceID,
+                AttackerOwnerInstanceID = _playerFactionId,
+                DefenderOwnerInstanceID = _opponentFactionId,
             };
             BattleAlertWindowProjector projector = new BattleAlertWindowProjector();
 
@@ -276,7 +289,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 _playerFactionId,
                 0,
                 0,
-                scene.Context
+                scene.Context,
+                scene.Planet
             );
             BattleAlertWindowRenderData assets = projector.Project(
                 BattleAlertWindowMode.Pending,
@@ -288,7 +302,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 _playerFactionId,
                 0,
                 0,
-                scene.Context
+                scene.Context,
+                scene.Planet
             );
 
             CollectionAssert.AreEqual(
@@ -312,9 +327,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             scene.Game.AttachNode(building, scene.Planet);
             PendingCombatResult pending = new PendingCombatResult
             {
-                Planet = scene.Planet,
-                AttackerFleet = scene.PlayerFleet,
-                DefenderFleet = scene.OpponentFleet,
+                PlanetInstanceID = scene.Planet.InstanceID,
+                AttackerFleetInstanceID = scene.PlayerFleet.InstanceID,
+                DefenderFleetInstanceID = scene.OpponentFleet.InstanceID,
+                AttackerOwnerInstanceID = _playerFactionId,
+                DefenderOwnerInstanceID = _opponentFactionId,
             };
             BattleAlertWindowProjector projector = new BattleAlertWindowProjector();
 
@@ -328,7 +345,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 _playerFactionId,
                 0,
                 0,
-                scene.Context
+                scene.Context,
+                scene.Planet
             );
 
             Assert.AreEqual("System Assets", data.Pending.Header);
@@ -349,7 +367,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 GameFleet PlayerFleet,
                 GameFleet OpponentFleet
             ) scene = CreateScene(includeFleets: false);
-            PendingCombatResult pending = new PendingCombatResult { Planet = scene.Planet };
+            PendingCombatResult pending = new PendingCombatResult
+            {
+                PlanetInstanceID = scene.Planet.InstanceID,
+                AttackerOwnerInstanceID = _playerFactionId,
+                DefenderOwnerInstanceID = _opponentFactionId,
+            };
             BattleAlertWindowProjector projector = new BattleAlertWindowProjector();
 
             BattleAlertWindowRenderData forces = projector.Project(
@@ -362,7 +385,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 _playerFactionId,
                 0,
                 0,
-                scene.Context
+                scene.Context,
+                scene.Planet
             );
             BattleAlertWindowRenderData assets = projector.Project(
                 BattleAlertWindowMode.Pending,
@@ -374,7 +398,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 _playerFactionId,
                 0,
                 0,
-                scene.Context
+                scene.Context,
+                scene.Planet
             );
 
             Assert.AreEqual("No units found.", forces.Pending.Rows[0].Text);

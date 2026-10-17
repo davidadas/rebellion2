@@ -29,6 +29,7 @@ internal sealed class BattleAlertWindowProjector
     /// <param name="x">The source-space horizontal window position.</param>
     /// <param name="y">The source-space vertical window position.</param>
     /// <param name="uiContext">The current strategy UI context.</param>
+    /// <param name="pendingPlanet">The pending encounter's faction-visible planet projection.</param>
     /// <returns>The complete immutable window presentation.</returns>
     internal BattleAlertWindowRenderData Project(
         BattleAlertWindowMode mode,
@@ -40,7 +41,8 @@ internal sealed class BattleAlertWindowProjector
         string playerFactionId,
         int x,
         int y,
-        UIContext uiContext
+        UIContext uiContext,
+        Planet pendingPlanet = null
     )
     {
         BattleAlertWindowTheme theme = uiContext
@@ -69,6 +71,7 @@ internal sealed class BattleAlertWindowProjector
         return ProjectPending(
             pendingPanel,
             pending,
+            pendingPlanet,
             playerFactionId,
             x,
             y,
@@ -83,6 +86,7 @@ internal sealed class BattleAlertWindowProjector
     /// </summary>
     /// <param name="panel">The controller-owned pending-combat panel.</param>
     /// <param name="pending">The pending encounter.</param>
+    /// <param name="pendingPlanet">The encounter's faction-visible planet projection.</param>
     /// <param name="playerFactionId">The current player faction identifier.</param>
     /// <param name="x">The source-space horizontal window position.</param>
     /// <param name="y">The source-space vertical window position.</param>
@@ -93,6 +97,7 @@ internal sealed class BattleAlertWindowProjector
     private static BattleAlertWindowRenderData ProjectPending(
         BattleAlertPanel panel,
         PendingCombatResult pending,
+        Planet pendingPlanet,
         string playerFactionId,
         int x,
         int y,
@@ -104,13 +109,13 @@ internal sealed class BattleAlertWindowProjector
         IReadOnlyList<BattleAlertRowRenderData> rows =
             panel == BattleAlertPanel.Summary
                 ? Array.Empty<BattleAlertRowRenderData>()
-                : GetPendingRows(uiContext, pending, panel);
+                : GetPendingRows(uiContext, pending, pendingPlanet, panel);
         BattleAlertPendingRenderData pendingData = new BattleAlertPendingRenderData(
             panel,
-            $"Battle at {GetPlanetName(pending.Planet)}",
+            $"Battle at {GetPlanetName(pendingPlanet)}",
             GetPendingHeader(uiContext, pending, panel),
             panel == BattleAlertPanel.Summary
-                ? GetPendingSummary(uiContext, pending)
+                ? GetPendingSummary(uiContext, pending, pendingPlanet)
                 : string.Empty,
             rows,
             CreatePendingCommandButtons(uiContext, theme, pending, playerFactionId)
@@ -427,11 +432,13 @@ internal sealed class BattleAlertWindowProjector
     /// </summary>
     /// <param name="uiContext">The current strategy UI context.</param>
     /// <param name="pending">The pending encounter.</param>
+    /// <param name="pendingPlanet">The encounter's faction-visible planet projection.</param>
     /// <param name="panel">The selected pending panel.</param>
     /// <returns>The displayed rows, including an empty-state row when needed.</returns>
     private static IReadOnlyList<BattleAlertRowRenderData> GetPendingRows(
         UIContext uiContext,
         PendingCombatResult pending,
+        Planet pendingPlanet,
         BattleAlertPanel panel
     )
     {
@@ -442,13 +449,13 @@ internal sealed class BattleAlertWindowProjector
             case BattleAlertPanel.SecondForces:
                 AddFleetRows(
                     rows,
-                    pending,
+                    pendingPlanet,
                     GetPendingOwnerInstanceID(uiContext, pending, panel),
                     uiContext
                 );
                 break;
             case BattleAlertPanel.SystemAssets:
-                AddSystemRows(rows, pending?.Planet, uiContext);
+                AddSystemRows(rows, pendingPlanet, uiContext);
                 break;
         }
 
@@ -464,27 +471,24 @@ internal sealed class BattleAlertWindowProjector
     /// Adds fleets owned by one side of a pending encounter without duplicates.
     /// </summary>
     /// <param name="rows">The destination row collection.</param>
-    /// <param name="pending">The pending encounter.</param>
+    /// <param name="planet">The encounter's faction-visible planet projection.</param>
     /// <param name="ownerInstanceId">The represented owner identifier.</param>
     /// <param name="uiContext">The current strategy UI context.</param>
     private static void AddFleetRows(
         List<BattleAlertRowRenderData> rows,
-        PendingCombatResult pending,
+        Planet planet,
         string ownerInstanceId,
         UIContext uiContext
     )
     {
         HashSet<string> addedFleetIds = new HashSet<string>();
-        AddFleet(rows, pending?.AttackerFleet, ownerInstanceId, addedFleetIds, uiContext);
-        AddFleet(rows, pending?.DefenderFleet, ownerInstanceId, addedFleetIds, uiContext);
-
-        if (pending?.Planet == null)
+        if (planet == null)
             return;
 
-        foreach (Fleet fleet in pending.Planet.GetChildren<Fleet>())
+        foreach (Fleet fleet in planet.GetChildren<Fleet>())
             AddFleet(rows, fleet, ownerInstanceId, addedFleetIds, uiContext);
 
-        AddPlanetStarfighterRows(rows, pending.Planet, ownerInstanceId, uiContext);
+        AddPlanetStarfighterRows(rows, planet, ownerInstanceId, uiContext);
     }
 
     /// <summary>
@@ -534,7 +538,11 @@ internal sealed class BattleAlertWindowProjector
         UIContext uiContext
     )
     {
-        if (fleet == null || fleet.GetOwnerInstanceID() != ownerInstanceId)
+        if (
+            fleet == null
+            || fleet.GetOwnerInstanceID() != ownerInstanceId
+            || !ShouldIncludePendingUnit(fleet)
+        )
             return;
         if (!addedFleetIds.Add(fleet.GetInstanceID()))
             return;
@@ -681,14 +689,8 @@ internal sealed class BattleAlertWindowProjector
         BattleAlertPanel panel
     )
     {
-        string attackerOwnerInstanceId = BattleResultPresentation.FirstNonBlank(
-            pending?.AttackerOwnerInstanceID,
-            pending?.AttackerFleet?.GetOwnerInstanceID()
-        );
-        string defenderOwnerInstanceId = BattleResultPresentation.FirstNonBlank(
-            pending?.DefenderOwnerInstanceID,
-            pending?.DefenderFleet?.GetOwnerInstanceID()
-        );
+        string attackerOwnerInstanceId = pending?.AttackerOwnerInstanceID;
+        string defenderOwnerInstanceId = pending?.DefenderOwnerInstanceID;
         return GetForcesOwnerInstanceID(
             uiContext,
             attackerOwnerInstanceId,
@@ -731,26 +733,25 @@ internal sealed class BattleAlertWindowProjector
     /// </summary>
     /// <param name="uiContext">The current strategy UI context.</param>
     /// <param name="pending">The pending encounter.</param>
+    /// <param name="pendingPlanet">The encounter's faction-visible planet projection.</param>
     /// <returns>The displayed pending-combat summary.</returns>
-    private static string GetPendingSummary(UIContext uiContext, PendingCombatResult pending)
+    private static string GetPendingSummary(
+        UIContext uiContext,
+        PendingCombatResult pending,
+        Planet pendingPlanet
+    )
     {
         string attackerSide = GetOwnerLabel(
             uiContext,
-            BattleResultPresentation.FirstNonBlank(
-                pending.AttackerOwnerInstanceID,
-                pending.AttackerFleet?.GetOwnerInstanceID()
-            ),
+            pending.AttackerOwnerInstanceID,
             "Attacking"
         );
         string defenderSide = GetOwnerLabel(
             uiContext,
-            BattleResultPresentation.FirstNonBlank(
-                pending.DefenderOwnerInstanceID,
-                pending.DefenderFleet?.GetOwnerInstanceID()
-            ),
+            pending.DefenderOwnerInstanceID,
             "Defending"
         );
-        return $"The {attackerSide} fleet has entered the {GetPlanetName(pending.Planet)} system. {defenderSide} forces have been detected on an intercept course.";
+        return $"The {attackerSide} fleet has entered the {GetPlanetName(pendingPlanet)} system. {defenderSide} forces have been detected on an intercept course.";
     }
 
     /// <summary>
@@ -1067,14 +1068,8 @@ internal sealed class BattleAlertWindowProjector
     {
         if (pending == null || string.IsNullOrEmpty(playerFactionId))
             return false;
-        string attackerOwnerInstanceId = BattleResultPresentation.FirstNonBlank(
-            pending.AttackerOwnerInstanceID,
-            pending.AttackerFleet?.GetOwnerInstanceID()
-        );
-        string defenderOwnerInstanceId = BattleResultPresentation.FirstNonBlank(
-            pending.DefenderOwnerInstanceID,
-            pending.DefenderFleet?.GetOwnerInstanceID()
-        );
+        string attackerOwnerInstanceId = pending.AttackerOwnerInstanceID;
+        string defenderOwnerInstanceId = pending.DefenderOwnerInstanceID;
         if (attackerOwnerInstanceId == playerFactionId)
             return pending.AttackerCanRetreat;
         if (defenderOwnerInstanceId == playerFactionId)

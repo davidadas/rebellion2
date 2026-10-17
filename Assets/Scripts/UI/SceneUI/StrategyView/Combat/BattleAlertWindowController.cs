@@ -317,6 +317,7 @@ public sealed class BattleAlertWindowController
             playerFactionId = GetPlayerFactionID();
 
         PendingCombatResult pending = getPendingCombat();
+        Planet pendingPlanet = pending == null ? null : findVisiblePlanet(pending.PlanetInstanceID);
 
         return projector.Project(
             session.Mode,
@@ -328,7 +329,8 @@ public sealed class BattleAlertWindowController
             playerFactionId,
             x,
             y,
-            getUIContext()
+            getUIContext(),
+            pendingPlanet
         );
     }
 

@@ -58,11 +58,11 @@ namespace Rebellion.Simulation
 
             return new PendingCombatResult
             {
-                AttackerFleet = attacker,
-                DefenderFleet = defender,
+                AttackerFleetInstanceID = attacker?.InstanceID,
+                DefenderFleetInstanceID = defender?.InstanceID,
                 AttackerOwnerInstanceID = decision.AttackerOwnerInstanceID,
                 DefenderOwnerInstanceID = decision.DefenderOwnerInstanceID,
-                Planet = planet,
+                PlanetInstanceID = planet?.InstanceID,
                 AttackerCanRetreat = CanRetreatForces(
                     attackerFleets,
                     defenderFleets,
