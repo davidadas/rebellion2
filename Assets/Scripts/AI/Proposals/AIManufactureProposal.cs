@@ -203,7 +203,7 @@ namespace Rebellion.AI.Proposals
 
             if (IsCountedManufacturingDemand())
             {
-                bool started = context.Manufacturing.StartManufacturing(
+                bool started = context.Manufacturing.StartManufacturingWithReservedMaintenance(
                     ProducerPlanet,
                     Product.GetReference(),
                     Destination,
@@ -249,7 +249,13 @@ namespace Rebellion.AI.Proposals
 
             if (Destination is Fleet fleet)
             {
-                if (!context.Manufacturing.Enqueue(ProducerPlanet, manufacturable, fleet))
+                if (
+                    !context.Manufacturing.EnqueueWithReservedMaintenance(
+                        ProducerPlanet,
+                        manufacturable,
+                        fleet
+                    )
+                )
                     LogEnqueueFailure();
                 else
                     CommitMaintenance(context);
@@ -453,7 +459,13 @@ namespace Rebellion.AI.Proposals
             Fleet fleet = context.Faction.CreateFleet(roleType: roleType);
             context.Game.AttachNode(fleet, destinationPlanet);
 
-            if (context.Manufacturing.Enqueue(ProducerPlanet, capitalShip, fleet))
+            if (
+                context.Manufacturing.EnqueueWithReservedMaintenance(
+                    ProducerPlanet,
+                    capitalShip,
+                    fleet
+                )
+            )
                 return true;
 
             context.Game.DetachNode(fleet);
@@ -583,7 +595,7 @@ namespace Rebellion.AI.Proposals
             bool started = false;
             try
             {
-                started = context.Manufacturing.StartManufacturing(
+                started = context.Manufacturing.StartManufacturingWithReservedMaintenance(
                     ProducerPlanet,
                     Product.GetReference(),
                     destinationPlanet,
@@ -615,7 +627,11 @@ namespace Rebellion.AI.Proposals
             IManufacturable manufacturable
         )
         {
-            return context.Manufacturing.Enqueue(ProducerPlanet, manufacturable, destinationPlanet);
+            return context.Manufacturing.EnqueueWithReservedMaintenance(
+                ProducerPlanet,
+                manufacturable,
+                destinationPlanet
+            );
         }
 
         /// <summary>
