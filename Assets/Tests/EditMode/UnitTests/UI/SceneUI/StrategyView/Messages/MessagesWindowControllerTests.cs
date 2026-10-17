@@ -516,9 +516,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             }
         }
 
-        /// <summary>
-        /// Verifies that closing conflict detail returns to the conflict index.
-        /// </summary>
         [Test]
         public void CloseRequested_ConflictDetail_ReturnsToConflictIndex()
         {
@@ -569,9 +566,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             }
         }
 
-        /// <summary>
-        /// Verifies that closing the message index still closes its window.
-        /// </summary>
         [Test]
         public void CloseRequested_MessageIndex_ClosesWindow()
         {
