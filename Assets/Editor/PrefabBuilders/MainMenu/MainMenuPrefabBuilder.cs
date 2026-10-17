@@ -9,6 +9,7 @@ using UnityEditor.Events;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.EventSystems;
+using UnityEngine.Rendering.HighDefinition;
 using UnityEngine.UI;
 using Object = UnityEngine.Object;
 
@@ -68,6 +69,8 @@ public static class MainMenuPrefabBuilder
     // other's model (camera far clip is 20, so 1000 units of separation is comfortably isolated).
     private const float _rigSpacing = 1000f;
     private const string _lightsName = "SharedLights";
+    private static readonly Color _iconAmbientColor = new Color(0.212f, 0.227f, 0.259f).linear;
+    private const float _builtInDirectionalLightIntensityToHdrp = Mathf.PI;
 
     // The five icon slots -- two faction coins and three difficulty ships/sphere -- each carrying
     // its model + RenderTexture paths and the orientation its rig applies. (Face is defined below.)
@@ -164,6 +167,8 @@ public static class MainMenuPrefabBuilder
         try
         {
             HdrpRenderTargetBuilder.AddIsolatedVolume(root.transform);
+            HdrpRenderTargetBuilder.AddFlatAmbientVolume(root.transform, _iconAmbientColor);
+            HdrpRenderTargetBuilder.AddPlanetPostProcessingVolume(root.transform);
             BuildBaseHierarchy(root);
             RebuildViewBindings(root);
             InstallPlanet(root);
@@ -2038,8 +2043,8 @@ public static class MainMenuPrefabBuilder
         rect.anchorMin = new Vector2(0.5f, 0.63f);
         rect.anchorMax = new Vector2(0.5f, 0.63f);
         rect.pivot = new Vector2(0.5f, 0.5f);
-        rect.sizeDelta = new Vector2(2400f, 2280f);
-        rect.anchoredPosition = new Vector2(60f, -135f);
+        rect.sizeDelta = new Vector2(3770.957f, 3526.246f);
+        rect.anchoredPosition = new Vector2(74f, -734f);
         rect.localRotation = Quaternion.identity;
     }
 
@@ -2063,20 +2068,10 @@ public static class MainMenuPrefabBuilder
             PrefabUtility.InstantiatePrefab(planetPrefab, pivot.transform);
         planet.name = "Planet";
         planet.transform.localPosition = Vector3.zero;
-        planet.transform.localRotation = Quaternion.identity;
+        planet.transform.localRotation = Quaternion.Euler(0f, 95f, 0f);
         planet.transform.localScale = Vector3.one * 2f;
         foreach (Transform child in planet.GetComponentsInChildren<Transform>(true))
             child.gameObject.layer = planetLayer;
-
-        GameObject sunObject = new GameObject("PlanetSun", typeof(Light));
-        sunObject.transform.SetParent(rig.transform, false);
-        sunObject.transform.localRotation = Quaternion.Euler(23.84f, -35f, 0f);
-        Light sun = sunObject.GetComponent<Light>();
-        sun.type = LightType.Directional;
-        HdrpRenderTargetBuilder.ConfigureLight(sun, 1f);
-        sun.color = new Color(1f, 0.98389596f, 0.8726415f, 1f);
-        sun.cullingMask = 1 << planetLayer;
-        sun.shadows = LightShadows.Soft;
 
         GameObject cameraObject = new GameObject("Camera", typeof(Camera));
         cameraObject.transform.SetParent(rig.transform, false);
@@ -2092,7 +2087,12 @@ public static class MainMenuPrefabBuilder
         camera.allowHDR = true;
         camera.allowMSAA = false;
         camera.targetTexture = renderTexture;
-        HdrpRenderTargetBuilder.ConfigureCamera(camera);
+        HdrpRenderTargetBuilder.ConfigureCamera(
+            camera,
+            includePlanetPostProcessing: true,
+            antialiasing: HDAdditionalCameraData.AntialiasingMode
+                .SubpixelMorphologicalAntiAliasing
+        );
     }
 
     /// <summary>
@@ -2609,7 +2609,7 @@ public static class MainMenuPrefabBuilder
         camera.farClipPlane = 20f;
         camera.allowMSAA = false;
         camera.targetTexture = renderTexture;
-        HdrpRenderTargetBuilder.ConfigureCamera(camera);
+        HdrpRenderTargetBuilder.ConfigureCamera(camera, includeFlatAmbientLighting: true);
 
         if (face.UnderLightIntensity > 0f)
         {
@@ -2618,7 +2618,10 @@ public static class MainMenuPrefabBuilder
             underLightObject.transform.localPosition = new Vector3(0f, -2.5f, -1.5f);
             Light underLight = underLightObject.GetComponent<Light>();
             underLight.type = LightType.Point;
-            HdrpRenderTargetBuilder.ConfigureLight(underLight, face.UnderLightIntensity);
+            HdrpRenderTargetBuilder.ConfigureLight(
+                underLight,
+                face.UnderLightIntensity
+            );
             underLight.range = 8f;
             underLight.color = Color.white;
         }
@@ -2683,7 +2686,10 @@ public static class MainMenuPrefabBuilder
         lightObject.transform.localRotation = rotation;
         Light light = lightObject.GetComponent<Light>();
         light.type = LightType.Directional;
-        HdrpRenderTargetBuilder.ConfigureLight(light, intensity);
+        HdrpRenderTargetBuilder.ConfigureLight(
+            light,
+            intensity * _builtInDirectionalLightIntensityToHdrp
+        );
         light.color = color;
         light.shadows = shadows;
         light.cullingMask = ~(1 << 31);
