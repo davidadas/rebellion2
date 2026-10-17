@@ -10,7 +10,13 @@ Shader "Custom/PlanetDayNightShade"
 
     SubShader
     {
-        Tags { "Queue" = "Overlay" "RenderType" = "Transparent" "IgnoreProjector" = "True" }
+        Tags
+        {
+            "RenderPipeline" = "UniversalPipeline"
+            "Queue" = "Overlay"
+            "RenderType" = "Transparent"
+            "IgnoreProjector" = "True"
+        }
         Blend DstColor Zero
         ZWrite Off
         ZTest LEqual
@@ -18,47 +24,54 @@ Shader "Custom/PlanetDayNightShade"
 
         Pass
         {
-            CGPROGRAM
-            #pragma vertex vert
-            #pragma fragment frag
-            #include "UnityCG.cginc"
+            Name "UniversalForward"
+            Tags { "LightMode" = "UniversalForward" }
 
-            struct appdata
+            HLSLPROGRAM
+            #pragma target 2.0
+            #pragma vertex Vert
+            #pragma fragment Frag
+
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+
+            struct Attributes
             {
-                float4 vertex : POSITION;
-                float3 normal : NORMAL;
+                float4 positionOS : POSITION;
+                float3 normalOS : NORMAL;
             };
 
-            struct v2f
+            struct Varyings
             {
-                float4 position : SV_POSITION;
-                float3 worldNormal : TEXCOORD0;
+                float4 positionHCS : SV_POSITION;
+                float3 normalWS : TEXCOORD0;
             };
 
-            float4 _SunDirection;
-            float _NightBrightness;
-            float _TerminatorStart;
-            float _TerminatorEnd;
+            CBUFFER_START(UnityPerMaterial)
+                float4 _SunDirection;
+                float _NightBrightness;
+                float _TerminatorStart;
+                float _TerminatorEnd;
+            CBUFFER_END
 
-            v2f vert(appdata input)
+            Varyings Vert(Attributes input)
             {
-                v2f output;
-                output.position = UnityObjectToClipPos(input.vertex);
-                output.worldNormal = UnityObjectToWorldNormal(input.normal);
+                Varyings output;
+                output.positionHCS = TransformObjectToHClip(input.positionOS.xyz);
+                output.normalWS = TransformObjectToWorldNormal(input.normalOS);
                 return output;
             }
 
-            fixed4 frag(v2f input) : SV_Target
+            half4 Frag(Varyings input) : SV_Target
             {
                 float sunlight = dot(
-                    normalize(input.worldNormal),
+                    normalize(input.normalWS),
                     normalize(_SunDirection.xyz)
                 );
                 float daylight = smoothstep(_TerminatorStart, _TerminatorEnd, sunlight);
                 float brightness = lerp(_NightBrightness, 1.0, daylight);
-                return fixed4(brightness, brightness, brightness, 1.0);
+                return half4(brightness, brightness, brightness, 1.0);
             }
-            ENDCG
+            ENDHLSL
         }
     }
 }

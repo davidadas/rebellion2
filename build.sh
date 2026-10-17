@@ -138,6 +138,14 @@ do_lint() {
     # Full compilation check — only runs locally where Unity has generated the project files.
     # In CI the Unity test runner already proves compilation, so this is skipped.
     if [ -f GameAssembly.csproj ]; then
+        # Unity-generated projects reference package assemblies through Temp/bin. Populate that
+        # directory from Unity's successful compilation before asking dotnet to compile only the
+        # repository-owned assemblies; some Unity packages require Unity's compiler toolchain.
+        if [ -d Library/ScriptAssemblies ]; then
+            mkdir -p Temp/bin/Debug
+            cp Library/ScriptAssemblies/*.dll Temp/bin/Debug/
+        fi
+
         echo "=== GameAssembly ==="
         # Unity-generated projects share output/intermediate directories, so parallel MSBuild can
         # race dependencies and report missing metadata from another project still being compiled.
@@ -158,6 +166,7 @@ do_lint() {
 
             echo "=== ${test_project%.csproj} ==="
             dotnet build "$test_project" \
+                --no-dependencies \
                 -maxcpucount:1 \
                 -verbosity:normal \
                 -p:CustomAfterMicrosoftCommonTargets="$UNITY_TEST_REFERENCES" \

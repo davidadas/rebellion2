@@ -27,6 +27,7 @@ public sealed class LoadingScreenView : MonoBehaviour
     private const string _shuttleRelativePath =
         "Application/Loading/Models/lambda-imperial-shuttle.glb";
     private const string _flightAudioRelativePath = "Application/Loading/Audio/shuttle-reactor.wav";
+    private const string _exhaustShaderName = "Custom/LoadingShuttleExhaust";
     private const float _flightAudioVolume = 0.22f;
     private const int _presentationLayer = 31;
     private const int _renderTextureWidth = 1280;
@@ -728,13 +729,11 @@ public sealed class LoadingScreenView : MonoBehaviour
     /// <param name="engineBounds">The ion-engine bounds in engine-root space.</param>
     private void CreateEngineExhaust(Transform engineRoot, Bounds engineBounds)
     {
-        Shader exhaustShader = Shader.Find("Legacy Shaders/Particles/Additive");
-        if (exhaustShader == null)
-            exhaustShader = Shader.Find("Sprites/Default");
+        Shader exhaustShader = Shader.Find(_exhaustShaderName);
         if (exhaustShader == null)
         {
             Debug.LogWarning(
-                "Loading shuttle exhaust skipped because no particle shader is available."
+                $"Loading shuttle exhaust skipped because shader '{_exhaustShaderName}' is unavailable."
             );
             return;
         }
