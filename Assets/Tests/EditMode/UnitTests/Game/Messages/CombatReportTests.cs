@@ -69,6 +69,26 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
+        public void CaptureBombardment_HiddenEnemyConstruction_OmitsUnitFromReport()
+        {
+            Building hiddenBuilding = new Building
+            {
+                InstanceID = "HIDDEN1",
+                OwnerInstanceID = "enemy",
+                BuildingType = BuildingType.Shipyard,
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            BombardmentResult result = new BombardmentResult
+            {
+                DefendingUnits = { new CombatUnitSnapshot(hiddenBuilding) },
+            };
+
+            CombatReport report = CombatReport.Capture(result, "player", "Title", "Body");
+
+            Assert.IsEmpty(report.DefendingUnits);
+        }
+
+        [Test]
         public void SerializeAndDeserialize_CombatReport_MaintainsState()
         {
             CombatReport report = new CombatReport

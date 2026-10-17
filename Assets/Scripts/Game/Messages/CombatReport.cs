@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -138,9 +139,15 @@ namespace Rebellion.Game.Messages
         {
             CombatReport report = result switch
             {
-                SpaceCombatResult space => CaptureSpaceBattle(space),
-                BombardmentResult bombardment => CaptureBombardment(bombardment),
-                PlanetaryAssaultResult assault => CapturePlanetaryAssault(assault),
+                SpaceCombatResult space => CaptureSpaceBattle(space, perspectiveOwnerInstanceID),
+                BombardmentResult bombardment => CaptureBombardment(
+                    bombardment,
+                    perspectiveOwnerInstanceID
+                ),
+                PlanetaryAssaultResult assault => CapturePlanetaryAssault(
+                    assault,
+                    perspectiveOwnerInstanceID
+                ),
                 _ => null,
             };
             if (report == null)
@@ -157,10 +164,14 @@ namespace Rebellion.Game.Messages
         /// Captures a completed fleet engagement.
         /// </summary>
         /// <param name="result">The result.</param>
+        /// <param name="perspectiveOwnerInstanceId">The viewing faction identifier.</param>
         /// <returns>The result of capture space battle.</returns>
-        private static CombatReport CaptureSpaceBattle(SpaceCombatResult result)
+        private static CombatReport CaptureSpaceBattle(
+            SpaceCombatResult result,
+            string perspectiveOwnerInstanceId
+        )
         {
-            return new CombatReport
+            CombatReport report = new CombatReport
             {
                 CombatType = CombatReportType.SpaceBattle,
                 PlanetInstanceID = result.Planet?.InstanceID,
@@ -179,8 +190,8 @@ namespace Rebellion.Game.Messages
                 DefenderOutcome = result.DefenderOutcome,
                 AttackerRetreatPlanetInstanceID = result.AttackerRetreatPlanetInstanceID,
                 DefenderRetreatPlanetInstanceID = result.DefenderRetreatPlanetInstanceID,
-                AttackingUnits = CaptureUnits(result.AttackingUnits),
-                DefendingUnits = CaptureUnits(result.DefendingUnits),
+                AttackingUnits = CaptureUnits(result.AttackingUnits, perspectiveOwnerInstanceId),
+                DefendingUnits = CaptureUnits(result.DefendingUnits, perspectiveOwnerInstanceId),
                 ShipDamage = (result.ShipDamage ?? new List<ShipDamageResult>())
                     .Where(damage => damage != null)
                     .Select(damage => new CombatReportShipDamage
@@ -202,16 +213,22 @@ namespace Rebellion.Game.Messages
                     })
                     .ToList(),
             };
+            FilterLossesToVisibleUnits(report);
+            return report;
         }
 
         /// <summary>
         /// Captures a completed orbital bombardment.
         /// </summary>
         /// <param name="result">The result.</param>
+        /// <param name="perspectiveOwnerInstanceId">The viewing faction identifier.</param>
         /// <returns>The result of capture bombardment.</returns>
-        private static CombatReport CaptureBombardment(BombardmentResult result)
+        private static CombatReport CaptureBombardment(
+            BombardmentResult result,
+            string perspectiveOwnerInstanceId
+        )
         {
-            return new CombatReport
+            CombatReport report = new CombatReport
             {
                 CombatType = CombatReportType.Bombardment,
                 PlanetInstanceID = result.Planet?.InstanceID,
@@ -231,8 +248,8 @@ namespace Rebellion.Game.Messages
                 AllocatedEnergyDamage = result.AllocatedEnergyDamage,
                 HeadquartersDestroyed = result.HeadquartersDestroyed,
                 PlanetDestroyed = result.PlanetDestroyed,
-                AttackingUnits = CaptureUnits(result.AttackingUnits),
-                DefendingUnits = CaptureUnits(result.DefendingUnits),
+                AttackingUnits = CaptureUnits(result.AttackingUnits, perspectiveOwnerInstanceId),
+                DefendingUnits = CaptureUnits(result.DefendingUnits, perspectiveOwnerInstanceId),
                 ShipDamage = (result.AttackerShipDamage ?? new List<ShipDamageResult>())
                     .Where(damage => damage != null)
                     .Select(damage => new CombatReportShipDamage
@@ -244,14 +261,20 @@ namespace Rebellion.Game.Messages
                     })
                     .ToList(),
             };
+            FilterLossesToVisibleUnits(report);
+            return report;
         }
 
         /// <summary>
         /// Captures a completed planetary assault.
         /// </summary>
         /// <param name="result">The result.</param>
+        /// <param name="perspectiveOwnerInstanceId">The viewing faction identifier.</param>
         /// <returns>The result of capture planetary assault.</returns>
-        private static CombatReport CapturePlanetaryAssault(PlanetaryAssaultResult result)
+        private static CombatReport CapturePlanetaryAssault(
+            PlanetaryAssaultResult result,
+            string perspectiveOwnerInstanceId
+        )
         {
             return new CombatReport
             {
@@ -274,8 +297,8 @@ namespace Rebellion.Game.Messages
                 RemainingDefenderRegimentCount = result.RemainingDefenderRegimentCount,
                 EnergyCapacityDamage = result.EnergyCapacityDamage,
                 AllocatedEnergyDamage = result.AllocatedEnergyDamage,
-                AttackingUnits = CaptureUnits(result.AttackingUnits),
-                DefendingUnits = CaptureUnits(result.DefendingUnits),
+                AttackingUnits = CaptureUnits(result.AttackingUnits, perspectiveOwnerInstanceId),
+                DefendingUnits = CaptureUnits(result.DefendingUnits, perspectiveOwnerInstanceId),
             };
         }
 
@@ -283,16 +306,60 @@ namespace Rebellion.Game.Messages
         /// Converts detached combat snapshots into persistable report rows.
         /// </summary>
         /// <param name="snapshots">The snapshots.</param>
+        /// <param name="perspectiveOwnerInstanceId">The viewing faction identifier.</param>
         /// <returns>The result of capture units.</returns>
         private static List<CombatReportUnit> CaptureUnits(
-            IEnumerable<CombatUnitSnapshot> snapshots
+            IEnumerable<CombatUnitSnapshot> snapshots,
+            string perspectiveOwnerInstanceId
         )
         {
             return (snapshots ?? Enumerable.Empty<CombatUnitSnapshot>())
-                .Where(snapshot => snapshot?.Unit != null)
+                .Where(snapshot => IsVisibleToPerspective(snapshot, perspectiveOwnerInstanceId))
                 .Select(CaptureUnit)
                 .Where(unit => unit != null)
                 .ToList();
+        }
+
+        /// <summary>
+        /// Returns whether one captured unit belongs in a faction-visible report.
+        /// </summary>
+        /// <param name="snapshot">The captured unit.</param>
+        /// <param name="perspectiveOwnerInstanceId">The viewing faction identifier.</param>
+        /// <returns>True when the faction may observe the unit.</returns>
+        private static bool IsVisibleToPerspective(
+            CombatUnitSnapshot snapshot,
+            string perspectiveOwnerInstanceId
+        )
+        {
+            ISceneNode unit = snapshot?.Unit;
+            if (unit == null)
+                return false;
+            if (unit.GetOwnerInstanceID() == perspectiveOwnerInstanceId)
+                return true;
+            return FogOfWarRecorder.IsObservableAtPlanet(unit, perspectiveOwnerInstanceId)
+                && (
+                    unit is not IManufacturable manufacturable
+                    || manufacturable.GetManufacturingStatus() != ManufacturingStatus.Building
+                );
+        }
+
+        /// <summary>
+        /// Removes detailed damage rows for units absent from the visible report rosters.
+        /// </summary>
+        /// <param name="report">The detached report to filter.</param>
+        private static void FilterLossesToVisibleUnits(CombatReport report)
+        {
+            HashSet<string> visibleUnitIds = report
+                .AttackingUnits.Concat(report.DefendingUnits)
+                .Where(unit => !string.IsNullOrEmpty(unit?.InstanceID))
+                .Select(unit => unit.InstanceID)
+                .ToHashSet();
+            report.ShipDamage.RemoveAll(damage =>
+                damage == null || !visibleUnitIds.Contains(damage.UnitInstanceID)
+            );
+            report.FighterLosses.RemoveAll(loss =>
+                loss == null || !visibleUnitIds.Contains(loss.UnitInstanceID)
+            );
         }
 
         /// <summary>

@@ -4,6 +4,7 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -94,7 +95,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         }
 
         [Test]
-        public void ExecutePlanetaryCombat_BombardmentSnapshot_UsesLiveGraphObjects()
+        public void ExecutePlanetaryCombat_BombardmentSnapshot_ReturnsDetachedReport()
         {
             _planet.OwnerInstanceID = _opposingFactionId;
             GameFleet fleet = AddCombatFleet("fleet", bombardment: 1);
@@ -105,20 +106,19 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             Planet requestedTarget = new Planet { InstanceID = _planet.InstanceID };
             StrategyFleetCommandController controller = CreateController();
 
-            GameResult result = controller.ExecutePlanetaryCombat(
+            CombatReport report = controller.ExecutePlanetaryCombat(
                 new ISceneNode[] { requestedFleet },
                 requestedTarget,
                 StrategyMenuAction.BombardCivilianFacilities
             );
 
-            Assert.IsInstanceOf<BombardmentResult>(result);
-            BombardmentResult bombardment = (BombardmentResult)result;
-            Assert.AreSame(_planet, bombardment.Planet);
-            Assert.AreEqual(BombardmentType.Civilian, bombardment.Type);
-            Assert.AreEqual(1, bombardment.AttackingUnits.Count);
+            Assert.AreEqual(CombatReportType.Bombardment, report.CombatType);
+            Assert.AreEqual(_planet.InstanceID, report.PlanetInstanceID);
+            Assert.AreEqual(BombardmentType.Civilian, report.BombardmentType);
+            Assert.AreEqual(1, report.AttackingUnits.Count);
             Assert.AreEqual(
                 fleet.GetChildren<CapitalShip>()[0].InstanceID,
-                bombardment.AttackingUnits[0].Unit.InstanceID
+                report.AttackingUnits[0].InstanceID
             );
         }
 
@@ -128,17 +128,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             GameFleet fleet = new GameFleet(_playerFactionId, "fleet");
             StrategyFleetCommandController controller = CreateController();
 
-            GameResult noFleetResult = controller.ExecutePlanetaryCombat(
+            CombatReport noFleetResult = controller.ExecutePlanetaryCombat(
                 Array.Empty<ISceneNode>(),
                 _planet,
                 StrategyMenuAction.BombardMilitaryFacilities
             );
-            GameResult missingTargetResult = controller.ExecutePlanetaryCombat(
+            CombatReport missingTargetResult = controller.ExecutePlanetaryCombat(
                 new ISceneNode[] { fleet },
                 new Planet { InstanceID = "missing" },
                 StrategyMenuAction.BombardMilitaryFacilities
             );
-            GameResult nullCommandResult = controller.ExecutePlanetaryCombat(
+            CombatReport nullCommandResult = controller.ExecutePlanetaryCombat(
                 new ISceneNode[] { fleet },
                 _planet,
                 StrategyMenuAction.BombardMilitaryFacilities
@@ -150,7 +150,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         }
 
         [Test]
-        public void ExecutePlanetaryCombat_AssaultSnapshot_UsesLiveGraphObjects()
+        public void ExecutePlanetaryCombat_AssaultSnapshot_ReturnsDetachedReport()
         {
             _planet.OwnerInstanceID = _opposingFactionId;
             GameFleet fleet = AddCombatFleet("fleet", includeRegiment: true);
@@ -161,16 +161,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             Planet requestedTarget = new Planet { InstanceID = _planet.InstanceID };
             StrategyFleetCommandController controller = CreateController();
 
-            GameResult result = controller.ExecutePlanetaryCombat(
+            CombatReport report = controller.ExecutePlanetaryCombat(
                 new ISceneNode[] { requestedFleet },
                 requestedTarget,
                 StrategyMenuAction.PlanetaryAssault
             );
 
-            Assert.IsInstanceOf<PlanetaryAssaultResult>(result);
-            PlanetaryAssaultResult assault = (PlanetaryAssaultResult)result;
-            Assert.AreSame(_planet, assault.Planet);
-            Assert.AreEqual(1, assault.InitialAttackerRegimentCount);
+            Assert.AreEqual(CombatReportType.PlanetaryAssault, report.CombatType);
+            Assert.AreEqual(_planet.InstanceID, report.PlanetInstanceID);
+            Assert.AreEqual(1, report.InitialAttackerRegimentCount);
         }
 
         [Test]
@@ -198,15 +197,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
                 requestedTarget,
                 StrategyMenuAction.PlanetaryAssault
             );
-            GameResult result = controller.ExecutePlanetaryCombat(
+            CombatReport report = controller.ExecutePlanetaryCombat(
                 new ISceneNode[] { requestedEligibleFleet, requestedIneligibleFleet },
                 requestedTarget,
                 StrategyMenuAction.PlanetaryAssault
             );
 
             Assert.IsTrue(canExecute);
-            Assert.IsInstanceOf<PlanetaryAssaultResult>(result);
-            Assert.AreEqual(2, ((PlanetaryAssaultResult)result).InitialAttackerRegimentCount);
+            Assert.AreEqual(CombatReportType.PlanetaryAssault, report.CombatType);
+            Assert.AreEqual(2, report.InitialAttackerRegimentCount);
         }
 
         [Test]
@@ -215,17 +214,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             GameFleet fleet = new GameFleet(_playerFactionId, "fleet");
             StrategyFleetCommandController controller = CreateController();
 
-            GameResult noFleetResult = controller.ExecutePlanetaryCombat(
+            CombatReport noFleetResult = controller.ExecutePlanetaryCombat(
                 Array.Empty<ISceneNode>(),
                 _planet,
                 StrategyMenuAction.PlanetaryAssault
             );
-            GameResult missingTargetResult = controller.ExecutePlanetaryCombat(
+            CombatReport missingTargetResult = controller.ExecutePlanetaryCombat(
                 new ISceneNode[] { fleet },
                 new Planet { InstanceID = "missing" },
                 StrategyMenuAction.PlanetaryAssault
             );
-            GameResult nullCommandResult = controller.ExecutePlanetaryCombat(
+            CombatReport nullCommandResult = controller.ExecutePlanetaryCombat(
                 new ISceneNode[] { fleet },
                 _planet,
                 StrategyMenuAction.PlanetaryAssault

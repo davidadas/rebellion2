@@ -94,6 +94,58 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void PlayerBombardedByEnemy_EnemyBombardsPlayer_RaisesNotification()
+        {
+            _game.SetFactionController(_faction.InstanceID, "player", PlayerControllerType.Human);
+            Faction enemy = new Faction { InstanceID = "enemy" };
+            _game.GetFactions().Add(enemy);
+            int notifications = 0;
+            _session.PlayerBombardedByEnemy += () => notifications++;
+
+            _session.Pipeline.ProcessImmediate(
+                new GameResult[]
+                {
+                    new BombardmentResult
+                    {
+                        Planet = _planet,
+                        AttackingFaction = enemy,
+                        AttackerOwnerInstanceID = enemy.InstanceID,
+                        DefenderOwnerInstanceID = _faction.InstanceID,
+                    },
+                }
+            );
+
+            Assert.AreEqual(1, notifications);
+        }
+
+        [Test]
+        public void PlayerInvadedByEnemy_EnemyInvadesPlayer_RaisesNotification()
+        {
+            _game.SetFactionController(_faction.InstanceID, "player", PlayerControllerType.Human);
+            Faction enemy = new Faction { InstanceID = "enemy" };
+            _game.GetFactions().Add(enemy);
+            int notifications = 0;
+            _session.PlayerInvadedByEnemy += () => notifications++;
+
+            _session.Pipeline.ProcessResults(
+                new GameResult[]
+                {
+                    new PlanetaryAssaultResult
+                    {
+                        Planet = _planet,
+                        AttackingFaction = enemy,
+                        AttackerOwnerInstanceID = enemy.InstanceID,
+                        DefenderOwnerInstanceID = _faction.InstanceID,
+                        InitialAttackerRegimentCount = 1,
+                    },
+                },
+                processMessages: false
+            );
+
+            Assert.AreEqual(1, notifications);
+        }
+
+        [Test]
         public void Constructor_MobileHeadquarters_EnablesRelocation()
         {
             _faction.Settings = new FactionSettings

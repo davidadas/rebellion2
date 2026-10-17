@@ -1,11 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
-using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Simulation;
 using UnityEngine;
 
 /// <summary>
@@ -35,7 +34,7 @@ internal sealed class BattleAlertWindowProjector
         BattleAlertPanel pendingPanel,
         BattleResultPanel resultPanel,
         BattleResultCategory resultCategory,
-        PendingCombatResult pending,
+        PendingCombatSnapshot pending,
         BattleResultPresentation result,
         string playerFactionId,
         int x,
@@ -92,7 +91,7 @@ internal sealed class BattleAlertWindowProjector
     /// <returns>The pending-combat window presentation.</returns>
     private static BattleAlertWindowRenderData ProjectPending(
         BattleAlertPanel panel,
-        PendingCombatResult pending,
+        PendingCombatSnapshot pending,
         string playerFactionId,
         int x,
         int y,
@@ -277,7 +276,7 @@ internal sealed class BattleAlertWindowProjector
     private static IReadOnlyList<BattleAlertButtonRenderData> CreatePendingCommandButtons(
         UIContext uiContext,
         BattleAlertWindowTheme theme,
-        PendingCombatResult pending,
+        PendingCombatSnapshot pending,
         string playerFactionId
     )
     {
@@ -431,7 +430,7 @@ internal sealed class BattleAlertWindowProjector
     /// <returns>The displayed rows, including an empty-state row when needed.</returns>
     private static IReadOnlyList<BattleAlertRowRenderData> GetPendingRows(
         UIContext uiContext,
-        PendingCombatResult pending,
+        PendingCombatSnapshot pending,
         BattleAlertPanel panel
     )
     {
@@ -469,7 +468,7 @@ internal sealed class BattleAlertWindowProjector
     /// <param name="uiContext">The current strategy UI context.</param>
     private static void AddFleetRows(
         List<BattleAlertRowRenderData> rows,
-        PendingCombatResult pending,
+        PendingCombatSnapshot pending,
         string ownerInstanceId,
         UIContext uiContext
     )
@@ -653,7 +652,7 @@ internal sealed class BattleAlertWindowProjector
     /// <returns>The displayed panel header.</returns>
     private static string GetPendingHeader(
         UIContext uiContext,
-        PendingCombatResult pending,
+        PendingCombatSnapshot pending,
         BattleAlertPanel panel
     )
     {
@@ -677,7 +676,7 @@ internal sealed class BattleAlertWindowProjector
     /// <returns>The represented owner identifier.</returns>
     private static string GetPendingOwnerInstanceID(
         UIContext uiContext,
-        PendingCombatResult pending,
+        PendingCombatSnapshot pending,
         BattleAlertPanel panel
     )
     {
@@ -714,8 +713,7 @@ internal sealed class BattleAlertWindowProjector
     {
         string[] participants = { attackerOwnerInstanceId, defenderOwnerInstanceId };
         IEnumerable<string> configuredFactionOrder =
-            uiContext?.Game?.GetFactions()?.Select(faction => faction?.InstanceID)
-            ?? Enumerable.Empty<string>();
+            uiContext?.GetFactionInstanceIDs() ?? Enumerable.Empty<string>();
         List<string> orderedParticipants = configuredFactionOrder
             .Concat(participants)
             .Where(ownerInstanceId =>
@@ -732,7 +730,7 @@ internal sealed class BattleAlertWindowProjector
     /// <param name="uiContext">The current strategy UI context.</param>
     /// <param name="pending">The pending encounter.</param>
     /// <returns>The displayed pending-combat summary.</returns>
-    private static string GetPendingSummary(UIContext uiContext, PendingCombatResult pending)
+    private static string GetPendingSummary(UIContext uiContext, PendingCombatSnapshot pending)
     {
         string attackerSide = GetOwnerLabel(
             uiContext,
@@ -751,94 +749,6 @@ internal sealed class BattleAlertWindowProjector
             "Defending"
         );
         return $"The {attackerSide} fleet has entered the {GetPlanetName(pending.Planet)} system. {defenderSide} forces have been detected on an intercept course.";
-    }
-
-    /// <summary>
-    /// Builds the completed space-combat summary text.
-    /// </summary>
-    /// <param name="uiContext">The current strategy UI context.</param>
-    /// <param name="result">The completed space-combat result.</param>
-    /// <param name="playerFactionId">The current player faction identifier.</param>
-    /// <returns>The displayed completed-result summary.</returns>
-    internal static string GetSpaceResultSummary(
-        UIContext uiContext,
-        SpaceCombatResult result,
-        string playerFactionId
-    )
-    {
-        if (result == null || result.Winner == CombatSide.Draw)
-            return $"The battle at {GetPlanetName(result?.Planet)} is indecisive.\n\nThere has been no victor.";
-
-        string planetName = GetPlanetName(result.Planet);
-        CombatSide? playerSide = BattleResultPresentation.GetSideForOwner(result, playerFactionId);
-        CombatSide? losingSide = BattleResultPresentation.GetOpposingSide(result.Winner);
-        string winnerName = GetSideLabel(uiContext, result, result.Winner, "Victorious");
-
-        if (playerSide.HasValue && result.Winner != playerSide.Value)
-        {
-            string playerName = GetSideLabel(uiContext, result, playerSide.Value, "Your");
-            return
-                BattleResultPresentation.GetOutcome(result, playerSide.Value)
-                == SpaceCombatSideOutcome.Destroyed
-                ? $"The {playerName} fleet was defeated at {planetName}. Your fleet has been destroyed."
-                : $"The {playerName} fleet was defeated at {planetName}. Your fleet has withdrawn.";
-        }
-
-        string losingFleetText = string.Empty;
-        if (losingSide.HasValue)
-        {
-            string loserName = GetSideLabel(uiContext, result, losingSide.Value, "opposing");
-            losingFleetText =
-                BattleResultPresentation.GetOutcome(result, losingSide.Value)
-                == SpaceCombatSideOutcome.Destroyed
-                    ? $" The {loserName} fleet has been completely destroyed."
-                    : $" The {loserName} fleet has withdrawn.";
-        }
-
-        return $"The {winnerName} fleet is victorious.\n\n{planetName} is now under blockade by {winnerName} forces.{losingFleetText}";
-    }
-
-    /// <summary>
-    /// Builds the completed orbital-bombardment summary text.
-    /// </summary>
-    /// <param name="uiContext">The current strategy UI context.</param>
-    /// <param name="result">The completed bombardment result.</param>
-    /// <returns>The displayed bombardment summary.</returns>
-    internal static string GetBombardmentSummary(UIContext uiContext, BombardmentResult result)
-    {
-        string attacker = GetOwnerLabel(uiContext, result?.AttackerOwnerInstanceID, "Attacking");
-        string planet = GetPlanetName(result?.Planet);
-        if (string.IsNullOrEmpty(result?.DefenderOwnerInstanceID))
-            return $"{attacker} ships have conducted an orbital strike on the non-aligned system {planet}.";
-
-        string defender = GetOwnerLabel(uiContext, result.DefenderOwnerInstanceID, "defending");
-        return $"{attacker} ships have conducted an orbital strike on the {defender} system of {planet}.";
-    }
-
-    /// <summary>
-    /// Builds the completed planetary-assault summary text.
-    /// </summary>
-    /// <param name="uiContext">The current strategy UI context.</param>
-    /// <param name="result">The completed planetary-assault result.</param>
-    /// <returns>The displayed planetary-assault summary.</returns>
-    internal static string GetPlanetaryAssaultSummary(
-        UIContext uiContext,
-        PlanetaryAssaultResult result
-    )
-    {
-        string attacker = GetOwnerLabel(uiContext, result?.AttackerOwnerInstanceID, "Attacking");
-        string planet = GetPlanetName(result?.Planet);
-        if (string.IsNullOrEmpty(result?.DefenderOwnerInstanceID))
-        {
-            return result?.Success == true
-                ? $"{attacker} troops have seized control of the neutral system {planet}."
-                : $"The neutral system {planet} has repulsed an attack by {attacker} troops.";
-        }
-
-        string defender = GetOwnerLabel(uiContext, result.DefenderOwnerInstanceID, "defending");
-        return result.Success
-            ? $"{attacker} troops have taken control of the {defender} system {planet}."
-            : $"{defender} Troops have defended {planet} from an {attacker} assault.";
     }
 
     /// <summary>
@@ -868,52 +778,6 @@ internal sealed class BattleAlertWindowProjector
             ),
             _ => result.GetSummaryImagePath(uiContext, theme),
         };
-    }
-
-    /// <summary>
-    /// Returns bombardment summary artwork according to the sides that sustained losses.
-    /// </summary>
-    /// <param name="theme">The active battle-alert theme.</param>
-    /// <param name="result">The completed bombardment result.</param>
-    /// <returns>The selected bombardment artwork path.</returns>
-    internal static string GetBombardmentSummaryImagePath(
-        BattleAlertWindowTheme theme,
-        BombardmentResult result
-    )
-    {
-        if (HasBombardmentAttackerLosses(result))
-            return theme?.BombardmentAttackerLossesImagePath;
-        if (HasBombardmentTargetLosses(result))
-            return theme?.BombardmentTargetLossesImagePath;
-        return theme?.BombardmentNoLossesImagePath;
-    }
-
-    /// <summary>
-    /// Returns whether the attacking fleet sustained bombardment-defense losses.
-    /// </summary>
-    /// <param name="result">The completed bombardment result.</param>
-    /// <returns>True when an attacking capital ship was damaged or destroyed.</returns>
-    private static bool HasBombardmentAttackerLosses(BombardmentResult result)
-    {
-        return result?.AttackingUnits?.Any(unit => unit?.Damaged == true || unit?.Destroyed == true)
-            == true;
-    }
-
-    /// <summary>
-    /// Returns whether the bombardment damaged the target system.
-    /// </summary>
-    /// <param name="result">The completed bombardment result.</param>
-    /// <returns>True when any target asset or system value was destroyed.</returns>
-    private static bool HasBombardmentTargetLosses(BombardmentResult result)
-    {
-        return result != null
-            && (
-                result.PlanetDestroyed
-                || result.HeadquartersDestroyed
-                || result.EnergyCapacityDamage > 0
-                || result.AllocatedEnergyDamage > 0
-                || result.DefendingUnits?.Any(unit => unit?.Destroyed == true) == true
-            );
     }
 
     /// <summary>
@@ -1063,7 +927,7 @@ internal sealed class BattleAlertWindowProjector
     /// <param name="pending">The pending encounter.</param>
     /// <param name="playerFactionId">The current player faction identifier.</param>
     /// <returns>True when the player's side may retreat.</returns>
-    private static bool CanPlayerRetreat(PendingCombatResult pending, string playerFactionId)
+    private static bool CanPlayerRetreat(PendingCombatSnapshot pending, string playerFactionId)
     {
         if (pending == null || string.IsNullOrEmpty(playerFactionId))
             return false;
@@ -1095,35 +959,8 @@ internal sealed class BattleAlertWindowProjector
         string fallback
     )
     {
-        Faction faction = uiContext
-            ?.Game?.GetFactions()
-            ?.FirstOrDefault(item => item?.InstanceID == ownerInstanceId);
-        string factionName = faction?.GetDisplayName();
+        string factionName = uiContext?.GetFactionDisplayName(ownerInstanceId);
         return string.IsNullOrEmpty(factionName) ? fallback : factionName;
-    }
-
-    /// <summary>
-    /// Returns a completed-result side label from its fleet.
-    /// </summary>
-    /// <param name="uiContext">The current strategy UI context.</param>
-    /// <param name="result">The completed combat result.</param>
-    /// <param name="side">The represented combat side.</param>
-    /// <param name="fallback">The fallback label.</param>
-    /// <returns>The displayed side label.</returns>
-    private static string GetSideLabel(
-        UIContext uiContext,
-        SpaceCombatResult result,
-        CombatSide side,
-        string fallback
-    )
-    {
-        string ownerInstanceId = side switch
-        {
-            CombatSide.Attacker => result?.AttackerOwnerInstanceID,
-            CombatSide.Defender => result?.DefenderOwnerInstanceID,
-            _ => null,
-        };
-        return GetOwnerLabel(uiContext, ownerInstanceId, fallback);
     }
 
     /// <summary>

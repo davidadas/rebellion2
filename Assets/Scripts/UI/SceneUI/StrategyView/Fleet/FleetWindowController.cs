@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Galaxy;
-using Rebellion.Game.Results;
+using Rebellion.Game.Messages;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using UnityEngine;
@@ -29,8 +29,8 @@ public interface IFleetWindowActions : IOfficerCommandActions
     /// <summary>
     /// Opens the completed planetary combat result.
     /// </summary>
-    /// <param name="result">The completed combat result.</param>
-    void OpenFleetBattleResult(GameResult result);
+    /// <param name="report">The completed combat report.</param>
+    void OpenFleetBattleResult(CombatReport report);
 
     /// <summary>
     /// Rebuilds shared strategy state after a fleet command changes the game.
@@ -658,16 +658,16 @@ public sealed class FleetWindowController
         if (targetPlanet == null)
             return false;
 
-        GameResult result = fleetCommandController.ExecutePlanetaryCombat(
+        CombatReport report = fleetCommandController.ExecutePlanetaryCombat(
             items,
             targetPlanet,
             action
         );
-        if (result == null)
+        if (report == null)
             return false;
 
         actions.RefreshFleetState();
-        actions.OpenFleetBattleResult(result);
+        actions.OpenFleetBattleResult(report);
         return true;
     }
 

@@ -199,8 +199,8 @@ public sealed class StrategyController
         session.Tick.TickCompleted += RefreshStrategyState;
         session.Tick.TickProgressed += RefreshStrategyState;
         session.Pipeline.MessageDelivered += HandleMessageDelivered;
-        session.Pipeline.BombardmentCompleted += HandleBombardmentCompleted;
-        session.Pipeline.PlanetaryAssaultsResolved += HandlePlanetaryAssaultsResolved;
+        session.PlayerBombardedByEnemy += HandlePlayerBombardedByEnemy;
+        session.PlayerInvadedByEnemy += HandlePlayerInvadedByEnemy;
 
         InitializeScreenControllers();
         IContentAssetSource contentAssets = AppBootstrap.Instance.GetContentAssets();
@@ -682,14 +682,9 @@ public sealed class StrategyController
             _appInputController.OptionsMenuRequested += HandleToggleOptions;
         WireStrategyInputActions();
         battleAlertWindowController = new BattleAlertWindowController(
-            () =>
-                session
-                    .GetService<SpaceCombatCommands>()
-                    .TryGetPendingCombat(out PendingCombatResult pending)
-                    ? pending
-                    : null,
-            () => session.Tick.ResolveCombatRetreat(PlayerFactionId),
-            () => session.Tick.ResolveCombat(true),
+            session.GetPendingCombatForPlayer,
+            session.ResolveCombatRetreatForPlayer,
+            () => session.ResolveCombatForPlayer(true),
             () => uiContext,
             PlaySfx,
             PlayTrack,
@@ -1034,8 +1029,8 @@ public sealed class StrategyController
             session.Tick.TickCompleted -= RefreshStrategyState;
             session.Tick.TickProgressed -= RefreshStrategyState;
             session.Pipeline.MessageDelivered -= HandleMessageDelivered;
-            session.Pipeline.BombardmentCompleted -= HandleBombardmentCompleted;
-            session.Pipeline.PlanetaryAssaultsResolved -= HandlePlanetaryAssaultsResolved;
+            session.PlayerBombardedByEnemy -= HandlePlayerBombardedByEnemy;
+            session.PlayerInvadedByEnemy -= HandlePlayerInvadedByEnemy;
         }
     }
 
@@ -1075,13 +1070,7 @@ public sealed class StrategyController
         if (battleAlertWindowController.SyncPendingCombatWindow())
         {
             dirty = true;
-            if (
-                session
-                    .GetService<SpaceCombatCommands>()
-                    .TryGetPendingCombat(out PendingCombatResult pendingCombat)
-                && pendingCombat != null
-            )
-                PauseForGameplayOption(UserGameplayOption.PauseWhenSpaceBattleBegins);
+            PauseForGameplayOption(UserGameplayOption.PauseWhenSpaceBattleBegins);
         }
 
         Faction playerFaction = session.Game.GetPlayerFaction();
@@ -1900,18 +1889,8 @@ public sealed class StrategyController
     /// <summary>
     /// Pauses after an enemy bombardment against the player's faction when configured.
     /// </summary>
-    /// <param name="result">The result.</param>
-    private void HandleBombardmentCompleted(BombardmentResult result)
+    private void HandlePlayerBombardedByEnemy()
     {
-        string playerFactionId = session?.Game.GetPlayerFaction()?.InstanceID;
-        if (
-            result == null
-            || string.IsNullOrEmpty(playerFactionId)
-            || result.AttackerOwnerInstanceID == playerFactionId
-            || result.DefenderOwnerInstanceID != playerFactionId
-        )
-            return;
-
         PlaySfx(StrategyUISoundPaths.OrbitalBombardment);
         PauseForGameplayOption(UserGameplayOption.PauseAfterEnemyBombardment);
     }
@@ -1919,21 +1898,8 @@ public sealed class StrategyController
     /// <summary>
     /// Plays the planetary-assault alert when an opposing faction invades a player-owned planet.
     /// </summary>
-    /// <param name="results">The planetary assaults resolved in the current result batch.</param>
-    private void HandlePlanetaryAssaultsResolved(IReadOnlyList<PlanetaryAssaultResult> results)
+    private void HandlePlayerInvadedByEnemy()
     {
-        string playerFactionId = session?.Game.GetPlayerFaction()?.InstanceID;
-        if (
-            string.IsNullOrEmpty(playerFactionId)
-            || results?.Any(result =>
-                result != null
-                && result.AttackerOwnerInstanceID != playerFactionId
-                && result.DefenderOwnerInstanceID == playerFactionId
-                && result.InitialAttackerRegimentCount > 0
-            ) != true
-        )
-            return;
-
         PlaySfx(StrategyUISoundPaths.PlanetaryAssault);
     }
 
@@ -2297,10 +2263,10 @@ public sealed class StrategyController
     /// <summary>
     /// Opens the completed planetary combat result.
     /// </summary>
-    /// <param name="result">The completed combat result.</param>
-    void IFleetWindowActions.OpenFleetBattleResult(GameResult result)
+    /// <param name="report">The completed combat report.</param>
+    void IFleetWindowActions.OpenFleetBattleResult(CombatReport report)
     {
-        battleAlertWindowController.OpenResult(result);
+        battleAlertWindowController.OpenReport(report);
     }
 
     /// <summary>
@@ -2368,10 +2334,10 @@ public sealed class StrategyController
     /// <summary>
     /// Opens the completed planetary combat result.
     /// </summary>
-    /// <param name="result">The completed combat result.</param>
-    void IPlanetSectorWindowActions.OpenPlanetSectorBattleResult(GameResult result)
+    /// <param name="report">The completed combat report.</param>
+    void IPlanetSectorWindowActions.OpenPlanetSectorBattleResult(CombatReport report)
     {
-        battleAlertWindowController.OpenResult(result);
+        battleAlertWindowController.OpenReport(report);
     }
 
     /// <summary>
@@ -2524,12 +2490,16 @@ public sealed class StrategyController
     /// <summary>
     /// Opens the fleet pane for a completed battle's planet.
     /// </summary>
-    /// <param name="planet">The battle planet.</param>
+    /// <param name="planetInstanceId">The visible battle planet identifier.</param>
     /// <param name="sourceX">The source window's horizontal coordinate.</param>
     /// <param name="sourceY">The source window's vertical coordinate.</param>
-    void IBattleAlertWindowActions.OpenBattleResultFleet(Planet planet, int sourceX, int sourceY)
+    void IBattleAlertWindowActions.OpenBattleResultFleet(
+        string planetInstanceId,
+        int sourceX,
+        int sourceY
+    )
     {
-        GalaxyMapPlanet strategyPlanet = galaxyMapController.FindPlanet(planet?.InstanceID);
+        GalaxyMapPlanet strategyPlanet = galaxyMapController.FindPlanet(planetInstanceId);
         if (strategyPlanet == null)
             return;
 
@@ -2540,16 +2510,18 @@ public sealed class StrategyController
     /// <summary>
     /// Opens the sector window for a completed battle.
     /// </summary>
-    /// <param name="sector">The battle's planetary sector.</param>
+    /// <param name="planetInstanceId">The visible battle planet identifier.</param>
     /// <param name="sourceX">The source window's horizontal coordinate.</param>
     /// <param name="sourceY">The source window's vertical coordinate.</param>
     void IBattleAlertWindowActions.OpenBattleResultSector(
-        PlanetSector sector,
+        string planetInstanceId,
         int sourceX,
         int sourceY
     )
     {
-        OpenPlanetSectorWindow(sector);
+        GalaxyMapPlanet strategyPlanet = galaxyMapController.FindPlanet(planetInstanceId);
+        if (strategyPlanet?.Planet?.GetParent() is PlanetSector sector)
+            OpenPlanetSectorWindow(sector);
     }
 
     /// <summary>

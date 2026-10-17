@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -27,6 +28,9 @@ namespace Rebellion.Simulation
         public GameResultPipeline Pipeline { get; }
         public GameTickProcessor Tick { get; }
 
+        public event Action PlayerBombardedByEnemy;
+        public event Action PlayerInvadedByEnemy;
+
         internal MessageObserver MessageObserver { get; private set; }
 
         internal GameEventCommands GameEventCommands { get; private set; }
@@ -42,6 +46,8 @@ namespace Rebellion.Simulation
         {
             _gameData = gameData ?? throw new ArgumentNullException(nameof(gameData));
             Pipeline = new GameResultPipeline(() => Results, () => MessageObserver);
+            Pipeline.BombardmentCompleted += HandleBombardmentCompleted;
+            Pipeline.PlanetaryAssaultsResolved += HandlePlanetaryAssaultsResolved;
             Tick = new GameTickProcessor(
                 (results, processMessages) => Pipeline.ProcessResults(results, processMessages),
                 results => Pipeline.ProcessMessageReactions(results)
@@ -62,6 +68,90 @@ namespace Rebellion.Simulation
         /// <param name="serviceType">The requested runtime service type.</param>
         /// <returns>The current game's service instance.</returns>
         public object GetService(Type serviceType) => _serviceScope.GetService(serviceType);
+
+        /// <summary>
+        /// Returns the pending encounter through the player's fog-of-war view.
+        /// </summary>
+        /// <returns>The detached pending encounter, or null when none is visible.</returns>
+        public PendingCombatSnapshot GetPendingCombatForPlayer()
+        {
+            return GetService<CombatPresentationQueries>()
+                .GetPendingCombat(Game.GetPlayerFaction()?.InstanceID);
+        }
+
+        /// <summary>
+        /// Resolves pending combat and returns only the player's detached report.
+        /// </summary>
+        /// <param name="autoResolve">Whether to resolve without tactical combat.</param>
+        /// <returns>The player's detached report, or null when no result was produced.</returns>
+        public CombatReport ResolveCombatForPlayer(bool autoResolve)
+        {
+            SpaceCombatResult result = Tick.ResolveCombat(autoResolve);
+            return GetService<CombatPresentationQueries>()
+                .CreateReport(result, Game.GetPlayerFaction()?.InstanceID);
+        }
+
+        /// <summary>
+        /// Resolves a player retreat and returns only the player's detached report.
+        /// </summary>
+        /// <returns>The player's detached report, or null when retreat was unavailable.</returns>
+        public CombatReport ResolveCombatRetreatForPlayer()
+        {
+            string playerFactionId = Game.GetPlayerFaction()?.InstanceID;
+            SpaceCombatResult result = Tick.ResolveCombatRetreat(playerFactionId);
+            return GetService<CombatPresentationQueries>().CreateReport(result, playerFactionId);
+        }
+
+        /// <summary>
+        /// Raises the player-facing bombardment notification without exposing its authoritative result.
+        /// </summary>
+        /// <param name="result">The completed bombardment.</param>
+        private void HandleBombardmentCompleted(BombardmentResult result)
+        {
+            string playerFactionId = GetPlayerFactionId();
+            if (
+                result != null
+                && !string.IsNullOrEmpty(playerFactionId)
+                && result.AttackerOwnerInstanceID != playerFactionId
+                && result.DefenderOwnerInstanceID == playerFactionId
+            )
+            {
+                PlayerBombardedByEnemy?.Invoke();
+            }
+        }
+
+        /// <summary>
+        /// Raises the player-facing invasion notification without exposing authoritative results.
+        /// </summary>
+        /// <param name="results">The planetary assaults resolved in one batch.</param>
+        private void HandlePlanetaryAssaultsResolved(IReadOnlyList<PlanetaryAssaultResult> results)
+        {
+            string playerFactionId = GetPlayerFactionId();
+            if (
+                !string.IsNullOrEmpty(playerFactionId)
+                && results?.Any(result =>
+                    result != null
+                    && result.AttackerOwnerInstanceID != playerFactionId
+                    && result.DefenderOwnerInstanceID == playerFactionId
+                    && result.InitialAttackerRegimentCount > 0
+                ) == true
+            )
+            {
+                PlayerInvadedByEnemy?.Invoke();
+            }
+        }
+
+        /// <summary>
+        /// Returns the configured human player's faction identifier without requiring one to exist.
+        /// </summary>
+        /// <returns>The human-controlled faction identifier, or null when none is configured.</returns>
+        private string GetPlayerFactionId()
+        {
+            return Game
+                ?.GetPlayers()
+                .FirstOrDefault(player => player.ControllerType == PlayerControllerType.Human)
+                ?.FactionID;
+        }
 
         /// <summary>
         /// Rebuilds components in place, preserving partial initialization on failure.
