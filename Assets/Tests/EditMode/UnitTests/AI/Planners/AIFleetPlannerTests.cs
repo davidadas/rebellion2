@@ -20,6 +20,67 @@ namespace Rebellion.Tests.AI.Fleets
     [TestFixture]
     public class AIFleetPlannerTests
     {
+        [TestCase(true, 1000, true)]
+        [TestCase(false, 1000, true)]
+        [TestCase(true, 999, false)]
+        public void Plan_HeadquartersDonor_TransfersOnlySpareStrength(
+            bool defending,
+            int retainedStrength,
+            bool expected
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction enemy);
+            game.Config.AI.FleetDeployment.MinimumDefenseStrength = 1000;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet headquarters = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "hq",
+                faction.InstanceID
+            );
+            headquarters.IsHeadquarters = true;
+            faction.HQInstanceID = headquarters.InstanceID;
+            Planet target = AITestSceneBuilder.AddPlanet(game, sector, "enemy", enemy.InstanceID);
+            AITestSceneBuilder.RevealPlanet(game, faction, target);
+            Fleet donor = AddBattleFleet(
+                game,
+                headquarters,
+                faction.InstanceID,
+                "donor",
+                retainedStrength
+            );
+            if (defending)
+                donor.Order = new FleetOrder
+                {
+                    OrderType = FleetOrderType.Defend,
+                    Status = FleetOrderStatus.Ready,
+                    TargetPlanetId = headquarters.InstanceID,
+                };
+            FleetOrder order = donor.Order;
+            CapitalShip spare = AITestSceneBuilder.CreateCapitalShip(
+                "spare",
+                faction.InstanceID,
+                500
+            );
+            game.AttachNode(spare, donor);
+            Fleet receiver = AddBattleFleet(game, headquarters, faction.InstanceID, "receiver");
+            receiver.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                Status = FleetOrderStatus.Building,
+                TargetPlanetId = target.InstanceID,
+            };
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
+            context.SetAttackDemands(
+                new[] { new AIAttackDemand(target, 2000, 2000, 0, 0, 0, 0, 0, 0, 0, false) }
+            );
+
+            var proposals = new AIFleetPlanner().Plan(context).OfType<AITransferUnitProposal>();
+
+            Assert.AreEqual(expected, proposals.Any(proposal => proposal.Unit == spare));
+            Assert.AreSame(order, donor.Order);
+        }
+
         [Test]
         public void Plan_WithUntypedMixedFleet_ExtractsOnlyDedicatedTransport()
         {
@@ -1528,6 +1589,19 @@ namespace Rebellion.Tests.AI.Fleets
                 "hostile-fleet"
             );
             incomingHostile.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 1 };
+            Fleet localDefense = AddBattleFleet(
+                game,
+                staging,
+                empire.InstanceID,
+                "local-defense",
+                combatStrength: 200
+            );
+            localDefense.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Defend,
+                Status = FleetOrderStatus.Ready,
+                TargetPlanetId = staging.InstanceID,
+            };
             game.AttachNode(carrier, sourceFleet);
             game.AttachNode(pendingFighter, carrier);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
@@ -3075,7 +3149,7 @@ namespace Rebellion.Tests.AI.Fleets
                 AITestSceneBuilder.CreateCapitalShip(
                     $"{fleetId}-anchor",
                     ownerInstanceId,
-                    combatStrength: 0,
+                    combatStrength: 1,
                     regimentCapacity: 0,
                     starfighterCapacity: 0
                 ),

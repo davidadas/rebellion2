@@ -129,8 +129,15 @@ namespace Rebellion.AI.Proposals
             if (Unit.Movement != null || Unit.ManufacturingStatus != ManufacturingStatus.Complete)
                 return false;
 
-            if (SourceContainer is Fleet sourceFleet && !CanMoveFromSourceFleet(sourceFleet))
-                return false;
+            if (SourceContainer is Fleet sourceFleet)
+            {
+                if (
+                    Unit is CapitalShip capitalShip
+                        ? !context.StrategicPlan.CanReleaseCapitalShip(sourceFleet, capitalShip)
+                        : !CanMoveFromSourceFleet(sourceFleet)
+                )
+                    return false;
+            }
 
             if (!CanMoveToTargetFleet(context))
                 return false;

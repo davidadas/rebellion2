@@ -82,6 +82,8 @@ namespace Rebellion.AI.Planners
             string,
             bool
         >(StringComparer.Ordinal);
+        private readonly Dictionary<(string PlanetId, string TypeId), bool> _hullBuildEligibility =
+            new();
         private readonly Dictionary<
             (
                 string ProducerPlanetId,
@@ -437,6 +439,7 @@ namespace Rebellion.AI.Planners
             _fleetUnitCounts.Clear();
             _fleetHasIonStarfighters.Clear();
             _fleetHasTorpedoStarfighters.Clear();
+            _hullBuildEligibility.Clear();
             _reinforcementArrivalTicks.Clear();
         }
 
@@ -475,6 +478,17 @@ namespace Rebellion.AI.Planners
             List<AIProposal> proposals
         )
         {
+            if (
+                demand.Kind
+                is AIProductionDemandKind.FleetCapitalShip
+                    or AIProductionDemandKind.FleetSeedCapitalShip
+                    or AIProductionDemandKind.ColonizationFleetSeedCapitalShip
+            )
+            {
+                AddFleetCapitalShipProposal(context, demand, proposals);
+                return;
+            }
+
             Technology product = GetUnlockedTechnology(context, demand);
             if (product == null)
                 return;
@@ -504,19 +518,6 @@ namespace Rebellion.AI.Planners
                 .ToList();
             if (producerPlanets.Count == 0)
                 return;
-            if (demand.Kind == AIProductionDemandKind.FleetCapitalShip)
-            {
-                AddProducerSpecificProposal(
-                    context,
-                    demand,
-                    product,
-                    remainingQuantity,
-                    producerPlanets,
-                    proposals,
-                    distributesDemand: true
-                );
-                return;
-            }
             if (!distributesDemand)
             {
                 if (IsFacilityExpansionDemand(demand))
@@ -568,6 +569,98 @@ namespace Rebellion.AI.Planners
                         return;
                 }
             }
+        }
+
+        /// <summary>
+        /// Adds one capital-ship decision with useful hull alternatives suited to each idle producer.
+        /// </summary>
+        /// <param name="context">The faction turn containing fleet needs and current yards.</param>
+        /// <param name="demand">The fleet capability shortage.</param>
+        /// <param name="proposals">The proposal collection to extend.</param>
+        private void AddFleetCapitalShipProposal(
+            AITurnContext context,
+            AIProductionDemand demand,
+            List<AIProposal> proposals
+        )
+        {
+            Technology preferred = GetUnlockedCapitalShipTechnology(context, demand);
+            if (preferred == null || demand.QuantityNeeded <= 0)
+                return;
+
+            List<AIManufactureProposal> candidates = new();
+            foreach (
+                Planet producer in FindProducerPlanets(context, demand, preferred.GetReference(), 1)
+            )
+            {
+                if (
+                    producer
+                        .GetManufacturingQueue()
+                        .TryGetValue(ManufacturingType.Ship, out List<IManufacturable> queue)
+                    && queue.Any(item => item?.IsManufacturingComplete() == false)
+                )
+                    continue;
+
+                Technology product = CanBuildCapitalShip(
+                    context,
+                    producer,
+                    preferred.GetReference()
+                )
+                    ? preferred
+                    : GetUnlockedCapitalShipTechnology(context, demand, producer);
+                if (product == null)
+                    continue;
+                candidates.Add(
+                    new AIManufactureProposal(
+                        demand.WithQuantity(1),
+                        producer,
+                        product,
+                        distributesDemand: demand.Kind == AIProductionDemandKind.FleetCapitalShip
+                    )
+                );
+            }
+            if (candidates.Count == 0)
+                return;
+
+            Planet destination = GetDestinationPlanet(context, demand);
+            List<AIManufactureProposal> ranked = candidates
+                .OrderBy(candidate => candidate.Product != preferred)
+                .ThenBy(candidate =>
+                    GetProducerFulfillmentTicks(
+                        context,
+                        demand,
+                        candidate.Product.GetReference(),
+                        1,
+                        candidate.ProducerPlanet,
+                        destination
+                    )
+                )
+                .ThenBy(candidate => candidate.ProducerPlanet.InstanceID, StringComparer.Ordinal)
+                .ToList();
+            proposals.Add(new AIManufactureProposal(ranked));
+        }
+
+        /// <summary>Checks a hull's construction duration against the assigned producer's configured limit.</summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="producer">The planet supplying its current manufacturing facilities.</param>
+        /// <param name="product">The candidate capital ship.</param>
+        /// <returns>True when this producer can finish one hull within the configured build duration.</returns>
+        private bool CanBuildCapitalShip(
+            AITurnContext context,
+            Planet producer,
+            IManufacturable product
+        )
+        {
+            int limit = context.Game.Config.AI.Infrastructure.CapitalShipMaximumBuildTicks;
+            if (limit <= 0)
+                return true;
+            var key = (producer.InstanceID, product.GetTypeID());
+            if (!_hullBuildEligibility.TryGetValue(key, out bool eligible))
+            {
+                int? ticks = ManufacturingQueries.EstimateManufacturingTicks(producer, product, 1);
+                eligible = ticks.HasValue && ticks.Value <= limit;
+                _hullBuildEligibility[key] = eligible;
+            }
+            return eligible;
         }
 
         /// <summary>
@@ -1330,10 +1423,12 @@ namespace Rebellion.AI.Planners
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demand">The production demand.</param>
+        /// <param name="producer">The optional producer whose construction-duration limit filters eligible hulls.</param>
         /// <returns>The selected technology, or null when no eligible ship is affordable.</returns>
         private Technology GetUnlockedCapitalShipTechnology(
             AITurnContext context,
-            AIProductionDemand demand
+            AIProductionDemand demand,
+            Planet producer = null
         )
         {
             if (context?.Faction == null || demand == null)
@@ -1347,13 +1442,17 @@ namespace Rebellion.AI.Planners
                     technology.GetReference() is CapitalShip capitalShip
                     && IManufacturable.CanBeManufacturedBy(capitalShip, context.Faction.InstanceID)
                     && (!capitalShip.CanDestroyPlanets || demand.PlanetDestroyerDeficit > 0)
+                    && (producer == null || CanBuildCapitalShip(context, producer, capitalShip))
                 )
                 .OrderBy(
                     technology => technology.GetReference().GetTypeID(),
                     StringComparer.Ordinal
                 )
                 .ToList();
-            if (demand.Kind == AIProductionDemandKind.FleetCapitalShip)
+            if (
+                demand.Kind == AIProductionDemandKind.FleetCapitalShip
+                && demand.CapitalShipRole == AICapitalShipProductionRole.None
+            )
                 return GetBestFleetCapitalShipTechnology(context, demand, unlockedTechnologies);
 
             List<Technology> eligibleTechnologies = unlockedTechnologies
@@ -1477,7 +1576,7 @@ namespace Rebellion.AI.Planners
                     && GetMaximumPrimaryWeaponStrength(capitalShip) > 0,
                 AICapitalShipProductionRole.TroopTransport => capitalShip.RegimentCapacity > 0
                     && !capitalShip.HasGravityWell
-                    && GetMaximumPrimaryWeaponStrength(capitalShip) == 0,
+                    && capitalShip.HasRole(CapitalShipRole.Transport),
                 AICapitalShipProductionRole.Bombardment => capitalShip.Bombardment > 0,
                 AICapitalShipProductionRole.Interdiction => capitalShip.HasGravityWell,
                 _ => false,

@@ -9,6 +9,7 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.Simulation;
 using Rebellion.Util.Random;
@@ -17,6 +18,66 @@ namespace Rebellion.Tests.AI.Helpers
 {
     public static class AITestSceneBuilder
     {
+        /// <summary>
+        /// Creates a known empty destination and a separately observed defended reference world.
+        /// </summary>
+        /// <param name="age">The age of the recorded intelligence.</param>
+        /// <returns>The faction turn used to evaluate mission risk.</returns>
+        public static AITurnContext CreateMissionDefenseContext(int age)
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.MissionPlanning.MissionDefenseIntelFullWeightTicks = 100;
+            game.Config.AI.MissionPlanning.MissionDefenseFallbackGroundDetectorCount = 0;
+            game.Config.AI.MissionPlanning.MissionDefenseFallbackOrbitalDetectorCount = 0;
+            game.Config.AI.MissionPlanning.MissionDefenseFallbackDetectionRating = 50;
+            game.Config.AI.MissionPlanning.MissionDefenseFallbackCommanderEspionage = 50;
+            game.Config.AI.MissionPlanning.MissionDefenseFallbackCommanderCombat = 50;
+            game.Config.ProbabilityTables.Mission.Foil = new Dictionary<int, int> { { -1000, 50 } };
+            game.Config.ProbabilityTables.Mission.PlanetaryDecoy = new Dictionary<int, int>
+            {
+                { -1000, 50 },
+            };
+            game.Config.ProbabilityTables.Mission.FleetDecoy = new Dictionary<int, int>
+            {
+                { -1000, 50 },
+            };
+            game.Config.ProbabilityTables.Mission.Evasion = new Dictionary<int, int>
+            {
+                { -1000, 50 },
+            };
+            game.Config.DuelResolution.CaptureEvasionInjuryBaseChance = 0;
+            game.Config.DuelResolution.MinimumInjuryChance = 0;
+            game.Config.Assassination.KillProbability = 0;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, sector, "origin", empire.InstanceID);
+            Planet target = AITestSceneBuilder.AddPlanet(game, sector, "target", rebels.InstanceID);
+            Planet reference = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "reference",
+                rebels.InstanceID
+            );
+            Officer spy = EntityFactory.CreateOfficer("spy", empire.InstanceID);
+            spy.SetBaseRating(SkillRating.Espionage, 50);
+            spy.SetBaseRating(SkillRating.Combat, 50);
+            game.AttachNode(spy, origin);
+            for (int index = 0; index < 2; index++)
+                game.AttachNode(
+                    new Regiment
+                    {
+                        InstanceID = "reference-" + index,
+                        OwnerInstanceID = rebels.InstanceID,
+                        DetectionRating = 100,
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                    },
+                    reference
+                );
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+            AITestSceneBuilder.RevealPlanet(game, empire, reference);
+            game.CurrentTick = age;
+            return AITestSceneBuilder.CreateContext(game, empire);
+        }
+
         /// <summary>
         /// Creates game.
         /// </summary>

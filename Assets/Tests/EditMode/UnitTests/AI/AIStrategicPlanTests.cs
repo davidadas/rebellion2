@@ -12,6 +12,177 @@ namespace Rebellion.Tests.AI
     [TestFixture]
     public class AIStrategicPlanTests
     {
+        [TestCase(1000, true)]
+        [TestCase(999, false)]
+        public void CanReleaseCapitalShip_HeadquartersDefender_PreservesRequiredStrength(
+            int remainingStrength,
+            bool expected
+        )
+        {
+            AITurnContext context = CreateDefender(out Fleet fleet, out CapitalShip spare);
+            CapitalShip anchor = fleet.GetChildren<CapitalShip>()[0];
+            anchor.PrimaryWeapons[PrimaryWeaponType.Turbolaser][0] = remainingStrength;
+
+            Assert.AreEqual(expected, context.StrategicPlan.CanReleaseCapitalShip(fleet, spare));
+        }
+
+        [TestCase(FleetOrderType.Attack)]
+        [TestCase(FleetOrderType.Colonize)]
+        public void CanReleaseCapitalShip_ActiveOperation_ReturnsFalse(FleetOrderType orderType)
+        {
+            AITurnContext context = CreateDefender(out Fleet fleet, out CapitalShip spare);
+            fleet.Order.OrderType = orderType;
+
+            Assert.IsFalse(context.StrategicPlan.CanReleaseCapitalShip(fleet, spare));
+        }
+
+        [Test]
+        public void CanReleaseCapitalShip_DefenderAssignedElsewhere_ReturnsFalse()
+        {
+            AITurnContext context = CreateDefender(out Fleet fleet, out CapitalShip spare);
+            fleet.Order.TargetPlanetId = "elsewhere";
+
+            Assert.IsFalse(context.StrategicPlan.CanReleaseCapitalShip(fleet, spare));
+        }
+
+        [TestCase(ManufacturingStatus.Building)]
+        [TestCase(ManufacturingStatus.Delivering)]
+        public void CanReleaseCapitalShip_UnfinishedRemainingShip_ReturnsFalse(
+            ManufacturingStatus status
+        )
+        {
+            AITurnContext context = CreateDefender(out Fleet fleet, out CapitalShip spare);
+            fleet.GetChildren<CapitalShip>()[0].ManufacturingStatus = status;
+
+            Assert.IsFalse(context.StrategicPlan.CanReleaseCapitalShip(fleet, spare));
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void CanReleaseCapitalShip_LastInterdictor_ReturnsFalse(bool defending)
+        {
+            AITurnContext context = CreateDefender(out Fleet fleet, out CapitalShip spare);
+            if (!defending)
+                fleet.Order = null;
+            spare.HasGravityWell = true;
+
+            Assert.IsFalse(context.StrategicPlan.CanReleaseCapitalShip(fleet, spare));
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void CanReleaseCapitalShip_LastArmedEscort_ReturnsFalse(bool defending)
+        {
+            AITurnContext context = CreateDefender(out Fleet fleet, out CapitalShip spare);
+            if (!defending)
+                fleet.Order = null;
+            CapitalShip anchor = fleet.GetChildren<CapitalShip>()[0];
+            anchor.PrimaryWeapons[PrimaryWeaponType.Turbolaser][0] = 0;
+            context.Game.AttachNode(
+                AITestSceneBuilder.CreateStarfighter(
+                    "defense-fighters",
+                    context.Faction.InstanceID,
+                    laserCannon: 2000
+                ),
+                anchor
+            );
+
+            Assert.IsFalse(context.StrategicPlan.CanReleaseCapitalShip(fleet, spare));
+        }
+
+        [Test]
+        public void CanReleaseCapitalShip_MovingDonor_ReturnsFalse()
+        {
+            AITurnContext context = CreateDefender(out Fleet fleet, out CapitalShip spare);
+            fleet.Movement = new MovementState { TransitTicks = 10 };
+
+            Assert.IsFalse(context.StrategicPlan.CanReleaseCapitalShip(fleet, spare));
+        }
+
+        [Test]
+        public void CanReleaseCapitalShip_ColonizationFleet_ReturnsFalse()
+        {
+            AITurnContext context = CreateDefender(out Fleet fleet, out CapitalShip spare);
+            fleet.RoleType = FleetRoleType.Colonization;
+
+            Assert.IsFalse(context.StrategicPlan.CanReleaseCapitalShip(fleet, spare));
+        }
+
+        [Test]
+        public void CanReleaseCapitalShip_OtherLocalDonorAlreadyCommitted_PreservesLocalDefense()
+        {
+            AITurnContext context = CreateDefender(out Fleet first, out CapitalShip firstSpare);
+            first.GetChildren<CapitalShip>()[0].PrimaryWeapons[PrimaryWeaponType.Turbolaser][0] =
+                600;
+            Fleet second = EntityFactory.CreateFleet("second", context.Faction.InstanceID);
+            second.RoleType = FleetRoleType.Battle;
+            context.Game.AttachNode(second, first.GetParent());
+            context.Game.AttachNode(
+                AITestSceneBuilder.CreateCapitalShip(
+                    "second-anchor",
+                    context.Faction.InstanceID,
+                    600
+                ),
+                second
+            );
+            CapitalShip secondSpare = AITestSceneBuilder.CreateCapitalShip(
+                "second-spare",
+                context.Faction.InstanceID,
+                500
+            );
+            context.Game.AttachNode(secondSpare, second);
+            context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+            Assert.IsTrue(context.StrategicPlan.CanReleaseCapitalShip(second, secondSpare));
+
+            bool canRelease = context.StrategicPlan.CanReleaseCapitalShip(
+                second,
+                secondSpare,
+                new[] { firstSpare }
+            );
+
+            Assert.IsFalse(canRelease);
+        }
+
+        [TestCase(FleetOrderType.Defend, true, true)]
+        [TestCase(FleetOrderType.Defend, false, false)]
+        [TestCase(FleetOrderType.Attack, true, false)]
+        [TestCase(FleetOrderType.Colonize, true, false)]
+        [TestCase(null, true, false)]
+        public void CanReleaseCapitalShip_OtherLocalFleet_CountsOnlyCommittedDefense(
+            FleetOrderType? orderType,
+            bool localTarget,
+            bool expected
+        )
+        {
+            AITurnContext context = CreateDefender(out Fleet donor, out CapitalShip spare);
+            donor.Order = null;
+            donor.GetChildren<CapitalShip>()[0].PrimaryWeapons[PrimaryWeaponType.Turbolaser][0] =
+                600;
+            Fleet cover = EntityFactory.CreateFleet("cover", context.Faction.InstanceID);
+            cover.RoleType = FleetRoleType.Battle;
+            if (orderType.HasValue)
+                cover.Order = new FleetOrder
+                {
+                    OrderType = orderType.Value,
+                    Status = FleetOrderStatus.Ready,
+                    TargetPlanetId = localTarget
+                        ? donor.GetParentOfType<Planet>().InstanceID
+                        : "elsewhere",
+                };
+            context.Game.AttachNode(cover, donor.GetParent());
+            context.Game.AttachNode(
+                AITestSceneBuilder.CreateCapitalShip(
+                    "cover-ship",
+                    context.Faction.InstanceID,
+                    1000
+                ),
+                cover
+            );
+            context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+
+            Assert.AreEqual(expected, context.StrategicPlan.CanReleaseCapitalShip(donor, spare));
+        }
+
         [Test]
         public void TryAllocateInfrastructureHub_ExactIndustrialAndShieldSpace_PreservesFinishedLayout()
         {
@@ -384,6 +555,38 @@ namespace Rebellion.Tests.AI
             AIStrategicPlan plan = AITestSceneBuilder.CreateContext(game, empire).StrategicPlan;
 
             Assert.IsFalse(plan.CanReinforce(receivingFleet));
+        }
+
+        /// <summary>
+        /// Creates a stationary headquarters defender with a required core and one spare hull.
+        /// </summary>
+        /// <param name="fleet">The defending fleet.</param>
+        /// <param name="spare">The hull eligible for release.</param>
+        /// <returns>The faction turn context.</returns>
+        private static AITurnContext CreateDefender(out Fleet fleet, out CapitalShip spare)
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
+            game.Config.AI.FleetDeployment.MinimumDefenseStrength = 1000;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet planet = AITestSceneBuilder.AddPlanet(game, sector, "hq", faction.InstanceID);
+            planet.IsHeadquarters = true;
+            faction.HQInstanceID = planet.InstanceID;
+            fleet = EntityFactory.CreateFleet("defender", faction.InstanceID);
+            fleet.RoleType = FleetRoleType.Battle;
+            fleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Defend,
+                Status = FleetOrderStatus.Ready,
+                TargetPlanetId = planet.InstanceID,
+            };
+            game.AttachNode(fleet, planet);
+            game.AttachNode(
+                AITestSceneBuilder.CreateCapitalShip("anchor", faction.InstanceID, 1000),
+                fleet
+            );
+            spare = AITestSceneBuilder.CreateCapitalShip("spare", faction.InstanceID, 500);
+            game.AttachNode(spare, fleet);
+            return AITestSceneBuilder.CreateContext(game, faction);
         }
     }
 }

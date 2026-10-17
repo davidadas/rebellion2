@@ -1470,90 +1470,13 @@ namespace Rebellion.AI.Planners
                 || sourceFleet.GetOwnerInstanceID() != targetFleet.GetOwnerInstanceID()
                 || sourceFleet.Movement != null
                 || sourceFleet.IsInCombat
-                || sourceFleet.Order != null
+                || sourceFleet.Order != null && sourceFleet.Order.OrderType != FleetOrderType.Defend
             )
                 return false;
 
             Planet sourcePlanet = context.Assessment.GetFleetPlanet(sourceFleet);
             return sourcePlanet != null
-                && sourcePlanet.GetOwnerInstanceID() == context.Faction.InstanceID
-                && !context.Assessment.IsFactionHeadquarters(sourcePlanet);
-        }
-
-        /// <summary>
-        /// Returns whether a source fleet can spare a specific capital ship.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="sourceFleet">The potential source fleet.</param>
-        /// <param name="capitalShip">The capital ship to inspect.</param>
-        /// <returns>True if the ship can be spared.</returns>
-        private bool CanSourceFleetSpareCapitalShip(
-            AITurnContext context,
-            Fleet sourceFleet,
-            CapitalShip capitalShip
-        )
-        {
-            if (
-                sourceFleet == null
-                || capitalShip == null
-                || capitalShip.ManufacturingStatus != ManufacturingStatus.Complete
-                || capitalShip.Movement != null
-            )
-                return false;
-
-            if (
-                sourceFleet
-                    .GetChildren<CapitalShip>()
-                    .Where(ship => ship != capitalShip)
-                    .Count(ship =>
-                        ship.ManufacturingStatus == ManufacturingStatus.Complete
-                        && ship.Movement == null
-                    ) <= 0
-            )
-                return false;
-
-            Planet sourcePlanet = context.Assessment.GetFleetPlanet(sourceFleet);
-            if (
-                sourcePlanet == null
-                || sourcePlanet.GetOwnerInstanceID() != context.Faction.InstanceID
-            )
-                return false;
-
-            int requiredDefense = context.Assessment.IsPriorityDefensePlanet(sourcePlanet)
-                ? context.StrategicPlan.GetHeadquartersDefenseStrength(sourcePlanet)
-                : context.StrategicPlan.GetPlanetDefenseStrength(sourcePlanet);
-            if (requiredDefense <= 0)
-                return true;
-
-            return GetLocalDefenseAfterTransfer(context, sourceFleet, sourcePlanet, capitalShip)
-                >= requiredDefense;
-        }
-
-        /// <summary>
-        /// Returns local defense strength after a capital ship transfer.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="sourceFleet">The source fleet.</param>
-        /// <param name="sourcePlanet">The source fleet planet.</param>
-        /// <param name="capitalShip">The capital ship being transferred.</param>
-        /// <returns>The remaining local defense strength.</returns>
-        private int GetLocalDefenseAfterTransfer(
-            AITurnContext context,
-            Fleet sourceFleet,
-            Planet sourcePlanet,
-            CapitalShip capitalShip
-        )
-        {
-            int sourceCombatAfterTransfer =
-                sourceFleet.GetCombatValue()
-                - context.Assessment.GetReadyCapitalShipCombatValue(capitalShip);
-            int otherLocalFleetCombat = context
-                .Assessment.GetFriendlyFleets(sourcePlanet)
-                .Where(fleet => fleet != sourceFleet && fleet.Movement == null)
-                .Select(context.Assessment.GetFleetCombatValue)
-                .DefaultIfEmpty()
-                .Max();
-            return Math.Max(Math.Max(0, sourceCombatAfterTransfer), otherLocalFleetCombat);
+                && sourcePlanet.GetOwnerInstanceID() == context.Faction.InstanceID;
         }
 
         /// <summary>
@@ -1580,7 +1503,7 @@ namespace Rebellion.AI.Planners
             )
                 return false;
 
-            if (!CanSourceFleetSpareCapitalShip(context, sourceFleet, capitalShip))
+            if (!context.StrategicPlan.CanReleaseCapitalShip(sourceFleet, capitalShip))
                 return false;
 
             if (targetFleet.Order?.OrderType == FleetOrderType.Defend)

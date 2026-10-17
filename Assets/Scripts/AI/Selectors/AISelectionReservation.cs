@@ -68,6 +68,7 @@ namespace Rebellion.AI.Selectors
     internal enum AISelectionReservationKind
     {
         FleetOrder,
+        FleetOrderContinuation,
         FleetMovement,
         FleetAttack,
         FleetAttackTarget,

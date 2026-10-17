@@ -47,12 +47,12 @@ namespace Rebellion.AI.Selectors
 
             if (
                 proposal is AIMissionProposal { IsTeamFinal: true } mission
-                && mission.MainParticipants.OfType<Officer>().Any()
+                && mission.Participants.OfType<Officer>().Any()
             )
             {
-                MissionOdds odds = context.MissionQueries.GetMissionOdds(
-                    mission.CreateContext(),
-                    context.Assessment.GetMissionDetectors
+                MissionOdds odds = context.Assessment.GetMissionOdds(
+                    context.MissionQueries,
+                    mission.CreateContext()
                 );
                 if (
                     odds == null
@@ -359,13 +359,13 @@ namespace Rebellion.AI.Selectors
                 if (
                     selected[index] is not AIMissionProposal mission
                     || mission.IsTeamFinal
-                    || !mission.MainParticipants.OfType<Officer>().Any()
+                    || !mission.Participants.OfType<Officer>().Any()
                 )
                     continue;
 
-                MissionOdds odds = context.MissionQueries.GetMissionOdds(
-                    mission.CreateContext(),
-                    context.Assessment.GetMissionDetectors
+                MissionOdds odds = context.Assessment.GetMissionOdds(
+                    context.MissionQueries,
+                    mission.CreateContext()
                 );
                 double? personnelLossProbability = odds?.PersonnelLossProbability;
                 if (
@@ -434,7 +434,7 @@ namespace Rebellion.AI.Selectors
         }
 
         /// <summary>
-        /// Returns the known foil probability plus the uncertainty from aging intelligence.
+        /// Returns assessed foil risk, applying the legacy age penalty only without defense estimates.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="proposal">The unprotected mission proposal.</param>
@@ -445,6 +445,8 @@ namespace Rebellion.AI.Selectors
         )
         {
             GameConfig.AIMissionPlanningConfig config = context.Game.Config.AI.MissionPlanning;
+            if (config.MissionDefenseIntelFullWeightTicks > 0)
+                return proposal.FoilProbability;
             int refreshInterval = config.EspionageRefreshIntervalTicks;
             int intelAge = context.Assessment.GetPlanetIntelAge(proposal.TargetPlanet);
             if (refreshInterval <= 0 || intelAge == int.MaxValue)

@@ -152,11 +152,27 @@ namespace Rebellion.Game
 
             public int MaximumSabotageTeamSize { get; set; }
 
+            public int MaximumSabotageMainParticipants { get; set; }
+
+            public int MaximumSabotageDecoyParticipants { get; set; }
+
             public int SabotageTeamCandidateCount { get; set; }
 
             public int SabotageTeamAlternativesPerTarget { get; set; }
 
             public int MaximumOfficerMissionLossProbability { get; set; }
+
+            public int MissionDefenseIntelFullWeightTicks { get; set; }
+
+            public int MissionDefenseFallbackGroundDetectorCount { get; set; }
+
+            public int MissionDefenseFallbackOrbitalDetectorCount { get; set; }
+
+            public int MissionDefenseFallbackDetectionRating { get; set; }
+
+            public int MissionDefenseFallbackCommanderEspionage { get; set; }
+
+            public int MissionDefenseFallbackCommanderCombat { get; set; }
 
             public int HostileMissionIntelAgeFoilPenaltyPerRefreshInterval { get; set; }
 
@@ -587,6 +603,9 @@ namespace Rebellion.Game
             public int ConstructionFacilityTargetClearTicks { get; set; }
             public int ShipyardTargetClearTicks { get; set; }
             public int FleetProductionMinimumShipyardCount { get; set; }
+
+            /// <summary>Limits a new capital ship's production duration at its assigned yard; zero disables the limit.</summary>
+            public int CapitalShipMaximumBuildTicks { get; set; }
             public int TrainingFacilityTargetClearTicks { get; set; }
             public int ConstructionFacilityPortfolioPercent { get; set; }
             public int ShipyardPortfolioPercent { get; set; }
@@ -621,6 +640,10 @@ namespace Rebellion.Game
             public int MobileHeadquartersEspionageDemandPercent { get; set; }
 
             public int SpecialForcesMissionCoveragePercent { get; set; }
+
+            public int SaboteursPerEnemyDefense { get; set; }
+
+            public int SpiesPerEnemyPlanet { get; set; }
 
             public int StarfighterParentFillPercent { get; set; }
             public int StarfighterLocalReservePercent { get; set; }

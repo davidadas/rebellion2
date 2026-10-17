@@ -47,9 +47,9 @@ namespace Rebellion.AI.Scorers
 
             MissionOdds odds =
                 missionProposal.OperationalOdds
-                ?? context.MissionQueries.GetOperationalMissionOdds(
-                    missionProposal.CreateContext(),
-                    context.Assessment.GetMissionDetectors
+                ?? context.Assessment.GetOperationalMissionOdds(
+                    context.MissionQueries,
+                    missionProposal.CreateContext()
                 );
             if (odds == null)
                 return 0;

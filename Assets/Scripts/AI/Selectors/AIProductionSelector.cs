@@ -162,6 +162,14 @@ namespace Rebellion.AI.Selectors
                 proposal.GetMaintenanceCost() - proposal.ReplacedMaintenanceCost;
             if (proposal.Demand?.Kind == AIProductionDemandKind.PlanetaryStarfighterReserve)
                 _selectedPlanetaryStarfighterCount += proposal.GetManufacturingCount();
+            if (
+                proposal.Demand?.Kind == AIProductionDemandKind.FleetCapitalShip
+                && proposal.Demand.DestinationFleet is Fleet fleet
+                && proposal.Product.GetReference() is CapitalShip hull
+            )
+            {
+                _selectionState.ReserveFleetHull(fleet, hull);
+            }
         }
 
         /// <summary>
@@ -176,6 +184,67 @@ namespace Rebellion.AI.Selectors
                 && !WouldExceedMaintenanceHeadroom(context, proposal)
                 && CanReserveIdleShipyardCapacity(context, proposal)
                 && CanReserveFacilityRole(proposal);
+        }
+
+        /// <summary>
+        /// Orders competing attack-fleet production within its existing global priority slots.
+        /// </summary>
+        /// <param name="context">The faction turn containing ranked fleet needs.</param>
+        /// <param name="proposals">Globally ranked proposals to order without moving other domains.</param>
+        internal static void OrderFleetProduction(
+            AITurnContext context,
+            IList<AIProposal> proposals
+        )
+        {
+            if (context?.FleetProductionPriorities.Count is null or 0)
+                return;
+
+            Dictionary<string, int> ranks = context
+                .FleetProductionPriorities.Select((fleet, index) => (fleet, index))
+                .ToDictionary(item => item.fleet.InstanceID, item => item.index);
+            foreach (
+                IGrouping<AIProposalPriority, int> group in Enumerable
+                    .Range(0, proposals.Count)
+                    .Where(index => IsAttackFleetProduction(proposals[index]))
+                    .GroupBy(index => proposals[index].Priority)
+            )
+            {
+                int[] slots = group.ToArray();
+                AIProposal[] ordered = slots
+                    .Select(index => proposals[index])
+                    .OrderBy(proposal =>
+                        ((AIManufactureProposal)proposal).Demand.DestinationFleet is Fleet fleet
+                        && ranks.TryGetValue(fleet.InstanceID, out int rank)
+                            ? rank
+                            : int.MaxValue
+                    )
+                    .ThenBy(proposal =>
+                        ((AIManufactureProposal)proposal).Demand.Kind
+                        == AIProductionDemandKind.FleetCapitalShip
+                            ? 0
+                            : 1
+                    )
+                    .ToArray();
+                for (int index = 0; index < slots.Length; index++)
+                    proposals[slots[index]] = ordered[index];
+            }
+        }
+
+        /// <summary>Identifies manufacturing actions competing to assemble an attack fleet.</summary>
+        /// <param name="proposal">The globally ranked action.</param>
+        /// <returns>True for battle fleet reinforcement and new battle fleet seeds.</returns>
+        private static bool IsAttackFleetProduction(AIProposal proposal)
+        {
+            if (proposal is not AIManufactureProposal manufacture)
+                return false;
+            AIProductionDemand demand = manufacture.Demand;
+            return demand?.Kind == AIProductionDemandKind.FleetSeedCapitalShip
+                || demand?.Kind
+                    is AIProductionDemandKind.FleetCapitalShip
+                        or AIProductionDemandKind.FleetStarfighter
+                        or AIProductionDemandKind.FleetRegiment
+                    && demand.DestinationFleet?.RoleType == FleetRoleType.Battle
+                    && demand.DestinationFleet.Order?.OrderType != FleetOrderType.Defend;
         }
 
         /// <summary>
@@ -240,12 +309,33 @@ namespace Rebellion.AI.Selectors
         private bool CanSelect(AITurnContext context, AIManufactureProposal proposal)
         {
             return proposal?.CanSelect(context) == true
+                && FillsUncommittedFleetNeed(context, proposal)
                 && _selectionState.CanReserve(GetReservations(proposal))
                 && HasProducerCapacity(proposal)
                 && GetAvailableDestinationEnergy(context, proposal)
                     >= proposal.GetManufacturingCount()
                 && CanReserveFacilityRole(proposal)
                 && ContinuesProductionStream(proposal);
+        }
+
+        /// <summary>Rejects hulls whose useful contribution is already covered by this turn's accepted orders.</summary>
+        /// <param name="context">The faction turn supplying consistent combat valuations.</param>
+        /// <param name="proposal">The exact hull and producer under consideration.</param>
+        /// <returns>True when the hull satisfies at least one outstanding capability.</returns>
+        private bool FillsUncommittedFleetNeed(
+            AITurnContext context,
+            AIManufactureProposal proposal
+        )
+        {
+            AIProductionDemand demand = proposal.Demand;
+            if (
+                demand?.Kind != AIProductionDemandKind.FleetCapitalShip
+                || demand.DestinationFleet == null
+                || proposal.Product.GetReference() is not CapitalShip hull
+            )
+                return true;
+
+            return _selectionState.FillsFleetNeed(context, demand, hull);
         }
 
         /// <summary>

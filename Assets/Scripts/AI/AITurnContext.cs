@@ -54,6 +54,8 @@ namespace Rebellion.AI
         public bool HasGeneratedProductionDemands { get; private set; }
         public IReadOnlyCollection<AIAttackDemand> AttackDemands => _attackDemands.Values;
         public IReadOnlyList<AIProductionDemand> ProductionDemands => _productionDemands;
+        public IReadOnlyList<Fleet> FleetProductionPriorities { get; private set; } =
+            Array.Empty<Fleet>();
         public IReadOnlyList<AIProposal> Proposals => _proposals;
         public IReadOnlyList<AIProposal> SelectedProposals => _selectedProposals;
         public IReadOnlyList<GameResult> Results => _results;
@@ -107,7 +109,10 @@ namespace Rebellion.AI
             Game = game;
             Faction = faction;
             Missions = missions;
-            MissionQueries = game == null ? null : new MissionQueries(game);
+            MissionQueries =
+                game == null ? null
+                : assessment == null ? new MissionQueries(game)
+                : new MissionQueries(game, assessment.GetMissionDetectorCommander);
             Movement = movement;
             MovementQueries = game == null ? null : new MovementQueries(game);
             Headquarters = headquarters;
@@ -194,6 +199,16 @@ namespace Rebellion.AI
                 if (demand != null)
                     _productionDemands.Add(demand);
             }
+        }
+
+        /// <summary>
+        /// Sets attack fleets in the order they receive suitable production capacity this turn.
+        /// </summary>
+        /// <param name="fleets">The ranked fleets, or null when no attack fleet needs production.</param>
+        public void SetFleetProductionPriorities(IEnumerable<Fleet> fleets)
+        {
+            FleetProductionPriorities =
+                fleets?.Where(fleet => fleet != null).Distinct().ToArray() ?? Array.Empty<Fleet>();
         }
 
         /// <summary>

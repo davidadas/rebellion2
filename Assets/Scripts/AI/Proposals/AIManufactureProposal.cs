@@ -84,6 +84,7 @@ namespace Rebellion.AI.Proposals
 
         internal bool UsesSharedProducerCapacity =>
             !IsFacilityExpansionDemand()
+            && Product?.GetReference() is not CapitalShip
             && !DistributesDemand
             && Demand?.IsProductionFiller != true;
 

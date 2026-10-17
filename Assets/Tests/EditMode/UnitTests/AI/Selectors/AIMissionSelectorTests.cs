@@ -23,6 +23,54 @@ namespace Rebellion.Tests.AI.Selectors
     public class AIMissionSelectorTests
     {
         [Test]
+        public void FinalizeSelection_StaleIntelOfficerRiskAboveLimit_RejectsMission()
+        {
+            AITurnContext context = AITestSceneBuilder.CreateMissionDefenseContext(100);
+            context.Game.Config.AI.MissionPlanning.MaximumUnprotectedOfficerMissionFoilProbability =
+                100;
+            context.Game.Config.AI.MissionPlanning.MaximumOfficerMissionLossProbability = 1;
+            AIMissionProposal proposal = new(
+                new[] { context.Game.GetSceneNodeByInstanceID<Officer>("spy") },
+                MissionTypeIDs.Espionage,
+                context.Assessment.GetKnownPlanet("target")
+            );
+            new AIMissionProposalScorer().Score(context, proposal);
+            context.SetSelectedProposals(new[] { proposal });
+
+            new AIMissionSelector(new AISelectionState()).FinalizeSelection(context);
+
+            Assert.IsEmpty(context.SelectedProposals);
+        }
+
+        [Test]
+        public void FinalizeSelection_DefenseEstimateWithinLimits_DoesNotAddLegacyAgePenalty()
+        {
+            AITurnContext context = AITestSceneBuilder.CreateMissionDefenseContext(100);
+            context.Game.Config.AI.MissionPlanning.MaximumUnprotectedOfficerMissionFoilProbability =
+                100;
+            context.Game.Config.AI.MissionPlanning.MaximumOfficerMissionLossProbability = 100;
+            context
+                .Game
+                .Config
+                .AI
+                .MissionPlanning
+                .HostileMissionIntelAgeFoilPenaltyPerRefreshInterval = 100;
+            AIMissionProposal proposal = new(
+                new[] { context.Game.GetSceneNodeByInstanceID<Officer>("spy") },
+                MissionTypeIDs.Espionage,
+                context.Assessment.GetKnownPlanet("target")
+            );
+            new AIMissionProposalScorer().Score(context, proposal);
+            context.Game.Config.AI.MissionPlanning.MaximumUnprotectedOfficerMissionFoilProbability =
+                (int)System.Math.Ceiling(proposal.FoilProbability);
+            context.SetSelectedProposals(new[] { proposal });
+
+            new AIMissionSelector(new AISelectionState()).FinalizeSelection(context);
+
+            CollectionAssert.AreEqual(new[] { proposal }, context.SelectedProposals);
+        }
+
+        [Test]
         public void FinalizeSelection_WithCompleteSabotageTeam_PreservesChosenRoles()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
@@ -99,6 +147,98 @@ namespace Rebellion.Tests.AI.Selectors
 
             Assert.IsFalse(selector.TrySelect(context, unprotected));
             Assert.IsTrue(selector.TrySelect(context, protectedTeam));
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void TrySelect_OfficerDecoyExceedsLossLimit_RejectsOnlyUnsafeTeam(bool safeDecoy)
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, sector, "origin", empire.InstanceID);
+            Planet target = AITestSceneBuilder.AddPlanet(game, sector, "target", rebels.InstanceID);
+            SpecialForces main = CreateSpecialForces("main", empire.InstanceID);
+            Officer decoy = EntityFactory.CreateOfficer("decoy", empire.InstanceID);
+            game.AttachNode(main, origin);
+            game.AttachNode(decoy, origin);
+            game.AttachNode(
+                new Regiment
+                {
+                    InstanceID = "detector",
+                    OwnerInstanceID = rebels.InstanceID,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                target
+            );
+            game.Config.ProbabilityTables.Mission.PlanetaryDecoy = new Dictionary<int, int>
+            {
+                { -1000, safeDecoy ? 100 : 0 },
+            };
+            game.Config.ProbabilityTables.Mission.Evasion = new Dictionary<int, int>
+            {
+                { -1000, 0 },
+            };
+            game.Config.AI.MissionPlanning.MaximumOfficerMissionLossProbability = 20;
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIMissionProposal mission = new(
+                new[] { main },
+                MissionTypeIDs.Espionage,
+                target,
+                decoyParticipants: new[] { decoy },
+                teamIsFinal: true
+            );
+
+            bool selected = new AIMissionSelector(new AISelectionState()).TrySelect(
+                context,
+                mission
+            );
+
+            Assert.AreEqual(safeDecoy, selected);
+        }
+
+        [Test]
+        public void FinalizeSelection_SpecialForcesLedTeamHasUnsafeOfficerDecoy_RemovesMission()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, sector, "origin", empire.InstanceID);
+            Planet target = AITestSceneBuilder.AddPlanet(game, sector, "target", rebels.InstanceID);
+            SpecialForces main = CreateSpecialForces("main", empire.InstanceID);
+            Officer decoy = EntityFactory.CreateOfficer("decoy", empire.InstanceID);
+            game.AttachNode(main, origin);
+            game.AttachNode(decoy, origin);
+            game.AttachNode(
+                new Regiment
+                {
+                    InstanceID = "detector",
+                    OwnerInstanceID = rebels.InstanceID,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                target
+            );
+            game.Config.ProbabilityTables.Mission.PlanetaryDecoy = new Dictionary<int, int>
+            {
+                { -1000, 0 },
+            };
+            game.Config.ProbabilityTables.Mission.Evasion = new Dictionary<int, int>
+            {
+                { -1000, 0 },
+            };
+            game.Config.AI.MissionPlanning.MaximumOfficerMissionLossProbability = 20;
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIMissionProposal mission = new(
+                new[] { main },
+                MissionTypeIDs.Espionage,
+                target,
+                decoyParticipants: new[] { decoy }
+            );
+            context.SetSelectedProposals(new[] { mission });
+
+            new AIMissionSelector(new AISelectionState()).FinalizeSelection(context);
+
+            Assert.IsEmpty(context.SelectedProposals.OfType<AIMissionProposal>());
         }
 
         [TestCase(ResearchDiscipline.ShipDesign, true)]
@@ -590,6 +730,7 @@ namespace Rebellion.Tests.AI.Selectors
         public void Execute_WithStaleIntelAndNoDecoy_RemovesOfficerMission()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.MissionPlanning.MissionDefenseIntelFullWeightTicks = 0;
             game.Config.AI.MissionPlanning.EspionageRefreshIntervalTicks = 20;
             game.Config.AI.MissionPlanning.HostileMissionIntelAgeFoilPenaltyPerRefreshInterval = 5;
             game.Config.AI.MissionPlanning.MaximumUnprotectedOfficerMissionFoilProbability = 20;
@@ -618,6 +759,7 @@ namespace Rebellion.Tests.AI.Selectors
         public void Execute_WithTwoRiskyOfficerMissions_CombinesThemIntoProtectedMission()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.MissionPlanning.MissionDefenseIntelFullWeightTicks = 0;
             game.Config.AI.MissionPlanning.EspionageRefreshIntervalTicks = 20;
             game.Config.AI.MissionPlanning.HostileMissionIntelAgeFoilPenaltyPerRefreshInterval = 5;
             game.Config.AI.MissionPlanning.MaximumUnprotectedOfficerMissionFoilProbability = 20;

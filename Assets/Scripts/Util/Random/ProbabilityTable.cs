@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 
 namespace Rebellion.Util.Random
 {
@@ -28,19 +27,27 @@ namespace Rebellion.Util.Random
             if (_table.Count == 0)
                 return 0;
 
-            List<int> sortedKeys = _table.Keys.OrderBy(k => k).ToList();
-
-            if (value < sortedKeys[0])
-                return _table[sortedKeys[0]];
-
-            for (int i = sortedKeys.Count - 1; i >= 0; i--)
+            int lowestThreshold = int.MaxValue;
+            int lowestResult = 0;
+            int matchingThreshold = int.MinValue;
+            int matchingResult = 0;
+            bool foundMatch = false;
+            foreach (KeyValuePair<int, int> entry in _table)
             {
-                int threshold = sortedKeys[i];
-                if (value >= threshold)
-                    return _table[threshold];
+                if (entry.Key <= lowestThreshold)
+                {
+                    lowestThreshold = entry.Key;
+                    lowestResult = entry.Value;
+                }
+                if (entry.Key <= value && entry.Key >= matchingThreshold)
+                {
+                    matchingThreshold = entry.Key;
+                    matchingResult = entry.Value;
+                    foundMatch = true;
+                }
             }
 
-            return 0;
+            return foundMatch ? matchingResult : lowestResult;
         }
     }
 }

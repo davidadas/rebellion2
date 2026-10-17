@@ -24,6 +24,348 @@ namespace Rebellion.Tests.AI.Phases
     public class AISelectionPhaseTests
     {
         [Test]
+        public void Select_LoadedShipWithoutHullShortage_ReinforcesMissingRegiments()
+        {
+            AITransferUnitProposal transfer = CreateDefenseTransfer(out AITurnContext context);
+            context.Game.AttachNode(
+                AITestSceneBuilder.CreateRegiment("reinforcement", context.Faction.InstanceID, 100),
+                (CapitalShip)transfer.Unit
+            );
+            context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+            context.SetAttackDemands(
+                new[]
+                {
+                    new AIAttackDemand(transfer.TargetPlanet, 0, 0, 0, 0, 0, 100, 1, 1, 0, false),
+                }
+            );
+            context.SetProductionDemands(Array.Empty<AIProductionDemand>());
+            transfer.SetScore(1);
+            context.AddProposal(transfer);
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+
+            CollectionAssert.AreEqual(new AIProposal[] { transfer }, selected);
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void Select_DefenseContinuationAndDonation_SelectsBoth(bool defenseFirst)
+        {
+            AITransferUnitProposal transfer = CreateDefenseTransfer(out AITurnContext context);
+            Fleet donor = (Fleet)transfer.SourceContainer;
+            AIFleetDefenseProposal defense = new(donor, donor.GetParentOfType<Planet>());
+            transfer.SetScore(defenseFirst ? 1 : 2);
+            defense.SetScore(defenseFirst ? 2 : 1);
+            context.AddProposal(transfer);
+            context.AddProposal(defense);
+
+            var selected = new Rebellion.AI.Phases.AISelectionPhase().Select(context);
+
+            CollectionAssert.AreEquivalent(new AIProposal[] { transfer, defense }, selected);
+        }
+
+        [Test]
+        public void Select_OrderCleanupAndDonation_SelectsOnlyCleanup()
+        {
+            AITransferUnitProposal transfer = CreateDefenseTransfer(out AITurnContext context);
+            Fleet donor = (Fleet)transfer.SourceContainer;
+            AIClearFleetOrderProposal clear = new(donor, donor.Order);
+            transfer.SetScore(2);
+            clear.SetScore(1);
+            context.AddProposal(transfer);
+            context.AddProposal(clear);
+
+            var selected = new Rebellion.AI.Phases.AISelectionPhase().Select(context);
+
+            CollectionAssert.AreEqual(new AIProposal[] { clear }, selected);
+        }
+
+        [TestCase(true, 500)]
+        [TestCase(false, 500)]
+        [TestCase(true, 1000)]
+        [TestCase(false, 1000)]
+        public void Select_TransferAndProduction_CountsBothAgainstSharedShortage(
+            bool transferFirst,
+            int deficit
+        )
+        {
+            AITransferUnitProposal transfer = CreateDefenseTransfer(out AITurnContext context);
+            Planet producer = transfer.SourceContainer.GetParentOfType<Planet>();
+            AITestSceneBuilder.AddProductionFacility(
+                context.Game,
+                producer,
+                "shipyard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+            context.Game.Config.AI.Selection.MaintenanceHeadroomReserve = 0;
+            AIProductionDemand demand = new(
+                "reinforcement",
+                AIProductionDemandKind.FleetCapitalShip,
+                ManufacturingType.Ship,
+                BuildingType.None,
+                transfer.TargetFleet,
+                1,
+                combatStrengthDeficit: deficit
+            );
+            context.SetProductionDemands(new[] { demand });
+            CapitalShip hull = AITestSceneBuilder.CreateCapitalShip(
+                "hull",
+                context.Faction.InstanceID,
+                500
+            );
+            hull.ConstructionCost = 0;
+            AIManufactureProposal production = new(demand, producer, new Technology(hull), true);
+            transfer.SetScore(transferFirst ? 2 : 1);
+            production.SetScore(transferFirst ? 1 : 2);
+            context.AddProposal(transfer);
+            context.AddProposal(production);
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+
+            if (deficit == 1000)
+                CollectionAssert.AreEquivalent(new AIProposal[] { transfer, production }, selected);
+            else
+                CollectionAssert.AreEqual(
+                    new AIProposal[] { transferFirst ? transfer : production },
+                    selected
+                );
+        }
+
+        [TestCase(AIProductionDemandKind.FleetCapitalShip)]
+        [TestCase(AIProductionDemandKind.FleetStarfighter)]
+        [TestCase(AIProductionDemandKind.FleetRegiment)]
+        public void Select_PriorityFleetsWithIndependentCapacity_SelectsBothInFleetOrder(
+            AIProductionDemandKind kind
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
+            AIManufactureProposal primary = CreateFleetProductionProposal(
+                context,
+                "primary",
+                kind,
+                1
+            );
+            AIManufactureProposal secondary = CreateFleetProductionProposal(
+                context,
+                "secondary",
+                kind,
+                2
+            );
+            context.SetFleetProductionPriorities(
+                new[] { primary.Demand.DestinationFleet, secondary.Demand.DestinationFleet }
+            );
+            context.AddProposal(primary);
+            context.AddProposal(secondary);
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+
+            CollectionAssert.AreEqual(new[] { primary, secondary }, selected);
+        }
+
+        [Test]
+        public void Select_PriorityFleetWithSpareCapacity_AllowsNewBattleFleetSeed()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
+            AIManufactureProposal primary = CreateFleetProductionProposal(
+                context,
+                "primary",
+                AIProductionDemandKind.FleetCapitalShip,
+                1
+            );
+            AIManufactureProposal seed = CreateFleetProductionProposal(
+                context,
+                "seed",
+                AIProductionDemandKind.FleetSeedCapitalShip,
+                2
+            );
+            context.SetFleetProductionPriorities(new[] { primary.Demand.DestinationFleet });
+            context.AddProposal(primary);
+            context.AddProposal(seed);
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+
+            CollectionAssert.AreEqual(new[] { primary, seed }, selected);
+        }
+
+        [Test]
+        public void Select_PriorityFleet_PreservesUnguardedHeadquartersSeed()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
+            AIManufactureProposal primary = CreateFleetProductionProposal(
+                context,
+                "primary",
+                AIProductionDemandKind.FleetCapitalShip,
+                1
+            );
+            AIManufactureProposal seed = CreateFleetProductionProposal(
+                context,
+                "headquarters",
+                AIProductionDemandKind.FleetSeedCapitalShip,
+                2
+            );
+            faction.HQInstanceID = seed.Demand.DestinationPlanet.InstanceID;
+            context.SetFleetProductionPriorities(new[] { primary.Demand.DestinationFleet });
+            context.AddProposal(primary);
+            context.AddProposal(seed);
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+
+            CollectionAssert.AreEquivalent(new[] { primary, seed }, selected);
+        }
+
+        [Test]
+        public void Select_NoFleetPriorities_AllowsOtherFleet()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
+            AIManufactureProposal primary = CreateFleetProductionProposal(
+                context,
+                "primary",
+                AIProductionDemandKind.FleetCapitalShip,
+                1
+            );
+            AIManufactureProposal other = CreateFleetProductionProposal(
+                context,
+                "other",
+                AIProductionDemandKind.FleetCapitalShip,
+                2
+            );
+            context.SetFleetProductionPriorities(null);
+            context.AddProposal(other);
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+
+            CollectionAssert.AreEqual(new[] { other }, selected);
+        }
+
+        [TestCase(FleetRoleType.Battle, FleetOrderType.Defend)]
+        [TestCase(FleetRoleType.Colonization, FleetOrderType.Colonize)]
+        public void Select_PriorityFleet_PreservesDefenseAndColonization(
+            FleetRoleType role,
+            FleetOrderType order
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
+            AIManufactureProposal primary = CreateFleetProductionProposal(
+                context,
+                "primary",
+                AIProductionDemandKind.FleetCapitalShip,
+                1
+            );
+            AIManufactureProposal other = CreateFleetProductionProposal(
+                context,
+                "other",
+                AIProductionDemandKind.FleetCapitalShip,
+                2
+            );
+            other.Demand.DestinationFleet.RoleType = role;
+            other.Demand.DestinationFleet.Order.OrderType = order;
+            context.SetFleetProductionPriorities(new[] { primary.Demand.DestinationFleet });
+            context.AddProposal(primary);
+            context.AddProposal(other);
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+
+            CollectionAssert.AreEquivalent(new[] { primary, other }, selected);
+        }
+
+        [Test]
+        public void Select_PriorityFleetWithSpareCapacity_AllowsIdleBattleFleetAssembly()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
+            AIManufactureProposal primary = CreateFleetProductionProposal(
+                context,
+                "primary",
+                AIProductionDemandKind.FleetCapitalShip,
+                1
+            );
+            AIManufactureProposal assembly = CreateFleetProductionProposal(
+                context,
+                "assembly",
+                AIProductionDemandKind.FleetCapitalShip,
+                2
+            );
+            assembly.Demand.DestinationFleet.Order = null;
+            context.SetFleetProductionPriorities(new[] { primary.Demand.DestinationFleet });
+            context.AddProposal(primary);
+            context.AddProposal(assembly);
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+
+            CollectionAssert.AreEqual(new[] { primary, assembly }, selected);
+        }
+
+        [Test]
+        public void Select_PriorityFleetNeedsTroops_AllowsOtherFleetShipProduction()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
+            AIManufactureProposal troops = CreateFleetProductionProposal(
+                context,
+                "primary",
+                AIProductionDemandKind.FleetRegiment,
+                1
+            );
+            AIManufactureProposal ship = CreateFleetProductionProposal(
+                context,
+                "secondary",
+                AIProductionDemandKind.FleetCapitalShip,
+                2
+            );
+            context.SetFleetProductionPriorities(
+                new[] { troops.Demand.DestinationFleet, ship.Demand.DestinationFleet }
+            );
+            context.AddProposal(ship);
+            context.AddProposal(troops);
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+
+            CollectionAssert.AreEqual(new[] { troops, ship }, selected);
+        }
+
+        [Test]
+        public void Select_PriorityFleetsCompeteForOneYard_SelectsHigherPriorityFleet()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
+            AIManufactureProposal primary = CreateFleetProductionProposal(
+                context,
+                "primary",
+                AIProductionDemandKind.FleetCapitalShip,
+                1
+            );
+            AIManufactureProposal secondary = CreateFleetProductionProposal(
+                context,
+                "secondary",
+                AIProductionDemandKind.FleetCapitalShip,
+                2
+            );
+            secondary = new AIManufactureProposal(
+                secondary.Demand,
+                primary.ProducerPlanet,
+                primary.Product,
+                true
+            );
+            secondary.SetScore(2);
+            context.SetFleetProductionPriorities(
+                new[] { primary.Demand.DestinationFleet, secondary.Demand.DestinationFleet }
+            );
+            context.AddProposal(secondary);
+            context.AddProposal(primary);
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+
+            CollectionAssert.AreEqual(new[] { primary }, selected);
+        }
+
+        [Test]
         public void Select_IndustryUsesAllocatedSpace_PreservesShieldAndRejectsExtraEconomy()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
@@ -259,11 +601,10 @@ namespace Rebellion.Tests.AI.Phases
         }
 
         [Test]
-        public void Select_WithMultipleIdleTrainingLanes_StartsOneFillerOnEachPlanet()
+        public void Select_WithIdleTrainingLanesWithoutKnownWork_DoesNotStartAgentProduction()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
-            List<Planet> planets = new();
             for (int index = 0; index < 2; index++)
             {
                 Planet planet = AITestSceneBuilder.AddPlanet(
@@ -279,7 +620,6 @@ namespace Rebellion.Tests.AI.Phases
                     BuildingType.TrainingFacility,
                     ManufacturingType.Troop
                 );
-                planets.Add(planet);
             }
             SpecialForces template = AITestSceneBuilder.CreateSpecialForces(
                 "saboteur",
@@ -292,7 +632,7 @@ namespace Rebellion.Tests.AI.Phases
             context.SetProductionDemands(
                 new Rebellion.AI.Demands.AIProductionDemandGenerator()
                     .BuildDemands(context)
-                    .Where(demand => demand.Kind == AIProductionDemandKind.IdleSpecialForces)
+                    .Where(demand => demand.Kind == AIProductionDemandKind.SpecialForces)
             );
             List<AIProposal> proposals = new AIProductionPlanner().Plan(context);
             foreach (AIProposal proposal in proposals)
@@ -303,26 +643,7 @@ namespace Rebellion.Tests.AI.Phases
                 .Select(context)
                 .OfType<AIManufactureProposal>()
                 .ToList();
-            foreach (AIManufactureProposal proposal in selected)
-                proposal.Execute(context);
-
-            CollectionAssert.AreEquivalent(
-                planets,
-                selected.Select(proposal => proposal.ProducerPlanet)
-            );
-            foreach (Planet planet in planets)
-            {
-                SpecialForces order = planet
-                    .GetManufacturingQueue()[ManufacturingType.Troop]
-                    .OfType<SpecialForces>()
-                    .Single();
-                Assert.IsTrue(order.IsAIProductionFiller);
-                Assert.AreEqual(planet.InstanceID, order.ProducerPlanetID);
-                Assert.AreSame(
-                    planet,
-                    selected.Single(proposal => proposal.ProducerPlanet == planet).Destination
-                );
-            }
+            Assert.IsEmpty(selected);
         }
 
         [Test]
@@ -1894,6 +2215,127 @@ namespace Rebellion.Tests.AI.Phases
                 null,
                 null
             );
+        }
+
+        /// <summary>
+        /// Creates a valid transfer from a stationary headquarters defender to an attack fleet.
+        /// </summary>
+        /// <param name="context">The faction turn context.</param>
+        /// <returns>The transfer of the defender's spare hull.</returns>
+        private static AITransferUnitProposal CreateDefenseTransfer(out AITurnContext context)
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction enemy);
+            game.Config.AI.FleetDeployment.MinimumDefenseStrength = 1000;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet planet = AITestSceneBuilder.AddPlanet(game, sector, "hq", faction.InstanceID);
+            planet.IsHeadquarters = true;
+            faction.HQInstanceID = planet.InstanceID;
+            Planet target = AITestSceneBuilder.AddPlanet(game, sector, "enemy", enemy.InstanceID);
+            Fleet donor = EntityFactory.CreateFleet("donor", faction.InstanceID);
+            donor.RoleType = FleetRoleType.Battle;
+            donor.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Defend,
+                Status = FleetOrderStatus.Ready,
+                TargetPlanetId = planet.InstanceID,
+            };
+            Fleet receiver = EntityFactory.CreateFleet("receiver", faction.InstanceID);
+            receiver.RoleType = FleetRoleType.Battle;
+            receiver.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                Status = FleetOrderStatus.Building,
+                TargetPlanetId = target.InstanceID,
+            };
+            game.AttachNode(donor, planet);
+            game.AttachNode(receiver, planet);
+            game.AttachNode(
+                AITestSceneBuilder.CreateCapitalShip("anchor", faction.InstanceID, 1000),
+                donor
+            );
+            CapitalShip spare = AITestSceneBuilder.CreateCapitalShip(
+                "spare",
+                faction.InstanceID,
+                500
+            );
+            game.AttachNode(spare, donor);
+            context = AITestSceneBuilder.CreateContext(game, faction);
+            return new AITransferUnitProposal(donor, receiver, spare, receiver, target);
+        }
+
+        /// <summary>
+        /// Creates an independently producible fleet reinforcement or fleet seed.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="id">The unique producer and fleet prefix.</param>
+        /// <param name="kind">The military production demand.</param>
+        /// <param name="score">The proposal score.</param>
+        /// <returns>The scored manufacturing proposal.</returns>
+        private static AIManufactureProposal CreateFleetProductionProposal(
+            AITurnContext context,
+            string id,
+            AIProductionDemandKind kind,
+            double score
+        )
+        {
+            GameRoot game = context.Game;
+            string owner = context.Faction.InstanceID;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, id + "-sector");
+            Planet producer = AITestSceneBuilder.AddPlanet(game, sector, id + "-producer", owner);
+            bool isTroop = kind == AIProductionDemandKind.FleetRegiment;
+            ManufacturingType manufacturingType = isTroop
+                ? ManufacturingType.Troop
+                : ManufacturingType.Ship;
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                producer,
+                id + "-facility",
+                isTroop ? BuildingType.TrainingFacility : BuildingType.Shipyard,
+                manufacturingType
+            );
+            IManufacturable product = kind switch
+            {
+                AIProductionDemandKind.FleetRegiment => AITestSceneBuilder.CreateRegiment(
+                    id + "-troop",
+                    owner
+                ),
+                AIProductionDemandKind.FleetStarfighter => AITestSceneBuilder.CreateStarfighter(
+                    id + "-fighter",
+                    owner
+                ),
+                _ => AITestSceneBuilder.CreateCapitalShip(id + "-hull", owner),
+            };
+            product.ConstructionCost = 0;
+            Rebellion.SceneGraph.ContainerNode destination = producer;
+            if (kind != AIProductionDemandKind.FleetSeedCapitalShip)
+            {
+                Fleet fleet = EntityFactory.CreateFleet(id + "-fleet", owner);
+                fleet.RoleType = FleetRoleType.Battle;
+                fleet.Order = new FleetOrder { OrderType = FleetOrderType.Attack };
+                game.AttachNode(fleet, producer);
+                game.AttachNode(
+                    AITestSceneBuilder.CreateCapitalShip(
+                        id + "-carrier",
+                        owner,
+                        regimentCapacity: 4,
+                        starfighterCapacity: 4
+                    ),
+                    fleet
+                );
+                destination = fleet;
+            }
+            AIProductionDemand demand = new(
+                id,
+                kind,
+                manufacturingType,
+                BuildingType.None,
+                destination,
+                1,
+                baseDemandPercent: 100
+            );
+            AIManufactureProposal proposal = new(demand, producer, new Technology(product), false);
+            proposal.SetScore(score);
+            return proposal;
         }
     }
 }

@@ -533,6 +533,89 @@ namespace Rebellion.AI
         }
 
         /// <summary>
+        /// Returns whether a completed hull can leave an idle or locally defending fleet
+        /// without violating its defense commitment.
+        /// </summary>
+        /// <param name="fleet">The potential donor fleet.</param>
+        /// <param name="capitalShip">The hull to release, including its carried units.</param>
+        /// <param name="committedTransfers">Other hulls already selected to leave this turn.</param>
+        /// <returns>True when the remaining ready force can retain its assignment.</returns>
+        public bool CanReleaseCapitalShip(
+            Fleet fleet,
+            CapitalShip capitalShip,
+            IReadOnlyCollection<CapitalShip> committedTransfers = null
+        )
+        {
+            if (
+                fleet == null
+                || capitalShip == null
+                || fleet.RoleType == FleetRoleType.Colonization
+                || fleet.Movement != null
+                || fleet.IsInCombat
+                || capitalShip.GetParent() != fleet
+                || capitalShip.GetOwnerInstanceID() != fleet.GetOwnerInstanceID()
+                || capitalShip.ManufacturingStatus != ManufacturingStatus.Complete
+                || capitalShip.Movement != null
+                || committedTransfers?.Contains(capitalShip) == true
+            )
+                return false;
+
+            Planet planet = fleet.GetParentOfType<Planet>();
+            if (
+                !_assessment.IsOwnedPlanet(planet)
+                || fleet.GetOwnerInstanceID() != planet.GetOwnerInstanceID()
+                || fleet.Order != null
+                    && (
+                        fleet.Order.OrderType != FleetOrderType.Defend
+                        || fleet.Order.TargetPlanetId != planet.InstanceID
+                    )
+                || GetDefenseCommitment(planet).HoldAllLocalFleets
+            )
+                return false;
+
+            List<CapitalShip> remaining = fleet
+                .GetChildren<CapitalShip>()
+                .Where(ship =>
+                    ship != capitalShip
+                    && ship.ManufacturingStatus == ManufacturingStatus.Complete
+                    && ship.Movement == null
+                    && committedTransfers?.Contains(ship) != true
+                )
+                .ToList();
+            if (
+                remaining.Count == 0
+                || !remaining.Any(SpaceCombatStrengthCalculator.IsArmedEscort)
+                || capitalShip.HasGravityWell && !remaining.Any(ship => ship.HasGravityWell)
+            )
+                return false;
+
+            int remainingCombat = remaining.Sum(_assessment.GetReadyCapitalShipCombatValue);
+            int requiredDefense = GetDefenseStrength(planet);
+            if (fleet.Order?.OrderType == FleetOrderType.Defend)
+                return remainingCombat >= requiredDefense;
+
+            int otherLocalDefense = _assessment
+                .GetFriendlyFleets(planet)
+                .Where(candidate =>
+                    candidate != fleet
+                    && candidate.Movement == null
+                    && !candidate.IsInCombat
+                    && candidate.RoleType != FleetRoleType.Colonization
+                    && candidate.Order?.OrderType == FleetOrderType.Defend
+                    && candidate.Order.TargetPlanetId == planet.InstanceID
+                )
+                .Select(candidate =>
+                    candidate
+                        .GetChildren<CapitalShip>()
+                        .Where(ship => committedTransfers?.Contains(ship) != true)
+                        .Sum(_assessment.GetReadyCapitalShipCombatValue)
+                )
+                .DefaultIfEmpty()
+                .Max();
+            return Math.Max(remainingCombat, otherLocalDefense) >= requiredDefense;
+        }
+
+        /// <summary>
         /// Builds the allocations shared by one faction AI turn.
         /// </summary>
         /// <param name="game">The game whose strategy is being planned.</param>

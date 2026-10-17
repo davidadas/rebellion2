@@ -31,10 +31,17 @@ namespace Rebellion.AI.Selectors
         internal bool TrySelect(AITurnContext context, AIProposal proposal)
         {
             List<AISelectionReservation> reservations = GetReservations(proposal);
-            if (!_state.CanReserve(reservations) || proposal?.CanSelect(context) != true)
+            if (
+                !_state.CanReserve(reservations)
+                || proposal?.CanSelect(context) != true
+                || proposal is AITransferUnitProposal transfer
+                    && !_state.CanReserveTransfer(context, transfer)
+            )
                 return false;
 
             _state.Reserve(reservations);
+            if (proposal is AITransferUnitProposal selectedTransfer)
+                _state.ReserveTransfer(selectedTransfer);
             return true;
         }
 
@@ -59,16 +66,25 @@ namespace Rebellion.AI.Selectors
                     AddAttackReservations(reservations, attack);
                     break;
                 case AIFleetDefenseProposal defense:
+                    bool continuingDefense =
+                        defense.Fleet?.Order?.OrderType == FleetOrderType.Defend
+                        && defense.Fleet.Order.TargetPlanetId == defense.TargetPlanet?.InstanceID
+                        && defense.Fleet.GetParentOfType<Planet>() == defense.TargetPlanet
+                        && defense.Fleet.Movement == null
+                        && !defense.Fleet.IsInCombat;
                     Add(
                         reservations,
-                        AISelectionReservationKind.FleetOrder,
+                        continuingDefense
+                            ? AISelectionReservationKind.FleetOrderContinuation
+                            : AISelectionReservationKind.FleetOrder,
                         defense.Fleet?.InstanceID
                     );
-                    Add(
-                        reservations,
-                        AISelectionReservationKind.FleetMovement,
-                        defense.Fleet?.InstanceID
-                    );
+                    if (!continuingDefense)
+                        Add(
+                            reservations,
+                            AISelectionReservationKind.FleetMovement,
+                            defense.Fleet?.InstanceID
+                        );
                     Add(
                         reservations,
                         AISelectionReservationKind.PlanetDefense,
@@ -276,7 +292,17 @@ namespace Rebellion.AI.Selectors
                 proposal.Destination?.InstanceID
             );
             if (proposal.SourceContainer is Fleet sourceFleet)
-                Add(reservations, AISelectionReservationKind.FleetOrder, sourceFleet.InstanceID);
+            {
+                Add(
+                    reservations,
+                    proposal.Unit is CapitalShip
+                    && sourceFleet.Order?.OrderType == FleetOrderType.Defend
+                        ? AISelectionReservationKind.FleetOrderContinuation
+                        : AISelectionReservationKind.FleetOrder,
+                    sourceFleet.InstanceID
+                );
+                Add(reservations, AISelectionReservationKind.FleetMovement, sourceFleet.InstanceID);
+            }
             if (proposal.Destination is not Fleet targetFleet)
                 return;
             Add(

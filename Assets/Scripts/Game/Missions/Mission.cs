@@ -676,6 +676,30 @@ namespace Rebellion.Game.Missions
             officer?.IsMain == false ? Math.Clamp(deathProbability, 0, 100) : 0;
 
         /// <summary>
+        /// Returns the injury roll threshold for an officer confronted during evasion.
+        /// </summary>
+        /// <param name="officer">The officer exposed to injury.</param>
+        /// <param name="config">The active encounter rules.</param>
+        /// <returns>The injury threshold before percentage clamping.</returns>
+        private static int GetEvasionInjuryChance(Officer officer, GameConfig config) =>
+            Math.Max(
+                config.DuelResolution.MinimumInjuryChance,
+                config.DuelResolution.CaptureEvasionInjuryBaseChance
+                    - officer.GetEffectiveRating(SkillRating.Combat)
+            );
+
+        /// <summary>
+        /// Returns the chance that an evasion confrontation kills an officer, independently of escape.
+        /// </summary>
+        /// <param name="officer">The officer exposed to injury.</param>
+        /// <param name="config">The active encounter rules.</param>
+        /// <returns>The combined injury and death probability from zero to one.</returns>
+        internal static double GetEvasionDeathProbability(Officer officer, GameConfig config) =>
+            Math.Clamp(GetEvasionInjuryChance(officer, config) / 100d, 0, 1)
+            * GetPostInjuryDeathProbability(officer, config.Assassination.KillProbability)
+            / 100d;
+
+        /// <summary>
         /// Applies the injury and minor-character death checks used after an evasion attempt.
         /// </summary>
         /// <param name="officer">The officer resolving the evasion encounter.</param>
@@ -694,11 +718,7 @@ namespace Rebellion.Game.Missions
             List<GameResult> results
         )
         {
-            int injuryChance = Math.Max(
-                game.Config.DuelResolution.MinimumInjuryChance,
-                game.Config.DuelResolution.CaptureEvasionInjuryBaseChance
-                    - officer.GetEffectiveRating(SkillRating.Combat)
-            );
+            int injuryChance = GetEvasionInjuryChance(officer, game.Config);
             if (provider.NextInt(0, 100) >= Math.Min(100, injuryChance))
                 return false;
 
@@ -806,6 +826,17 @@ namespace Rebellion.Game.Missions
         internal Officer FindDetectorCommander(ISceneNode detector, Planet planet = null)
         {
             planet ??= GetParent() as Planet ?? detector?.GetParentOfType<Planet>();
+            return GetDetectorCommander(detector, planet);
+        }
+
+        /// <summary>
+        /// Returns the eligible ranked commander paired with a detector in its observed container.
+        /// </summary>
+        /// <param name="detector">The detector whose commander is required.</param>
+        /// <param name="planet">The observed planet containing the detector.</param>
+        /// <returns>The assigned commander, or null when no eligible commander is present.</returns>
+        internal static Officer GetDetectorCommander(ISceneNode detector, Planet planet)
+        {
             if (planet == null)
                 return null;
 

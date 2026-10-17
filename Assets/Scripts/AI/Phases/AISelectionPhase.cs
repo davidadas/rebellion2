@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.AI.Demands;
 using Rebellion.AI.Proposals;
 using Rebellion.AI.Selectors;
 using Rebellion.Game;
@@ -40,8 +41,11 @@ namespace Rebellion.AI.Phases
             AIMissionSelector missionSelector = new AIMissionSelector(selectionState);
             AIProductionSelector productionSelector = new AIProductionSelector(selectionState);
             float minimumSelectableScore = GetMinimumSelectableScore(context);
-            foreach (AIProposal proposal in GetSortedProposals(context))
+            LinkedList<AIProposal> pending = new(GetSortedProposals(context));
+            while (pending.First != null)
             {
+                AIProposal proposal = pending.First.Value;
+                pending.RemoveFirst();
                 if (
                     !proposal.HasScore
                     || proposal.Priority < AIProposalPriority.Mandatory
@@ -91,6 +95,14 @@ namespace Rebellion.AI.Phases
                     continue;
 
                 selectedProposals.Add(selectedProposal);
+                if (
+                    selectedProposal is AIManufactureProposal
+                    {
+                        DistributesDemand: true,
+                        Demand: { Kind: AIProductionDemandKind.FleetCapitalShip }
+                    }
+                )
+                    pending.AddFirst(proposal);
             }
 
             return selectedProposals;
@@ -155,6 +167,7 @@ namespace Rebellion.AI.Phases
                 groupStart = groupEnd;
             }
 
+            AIProductionSelector.OrderFleetProduction(context, proposals);
             return proposals;
         }
 

@@ -21,6 +21,26 @@ namespace Rebellion.Tests.AI.Scorers
     public class AIMissionProposalScorerTests
     {
         [Test]
+        public void Score_StaleDefenderIntel_RecordsAssessmentFoilProbability()
+        {
+            AITurnContext context = AITestSceneBuilder.CreateMissionDefenseContext(100);
+            AIMissionProposal proposal = new(
+                new[] { context.Game.GetSceneNodeByInstanceID<Officer>("spy") },
+                MissionTypeIDs.Espionage,
+                context.Assessment.GetKnownPlanet("target")
+            );
+            MissionOdds expected = context.Assessment.GetOperationalMissionOdds(
+                context.MissionQueries,
+                proposal.CreateContext()
+            );
+
+            new AIMissionProposalScorer().Score(context, proposal);
+
+            Assert.Greater(expected.FoilProbability, 0);
+            Assert.AreEqual(expected.FoilProbability, proposal.FoilProbability, 0.001);
+        }
+
+        [Test]
         public void Score_AbortMissionProposal_ReturnsZero()
         {
             AIMissionProposalScorer scorer = new AIMissionProposalScorer();
@@ -742,6 +762,7 @@ namespace Rebellion.Tests.AI.Scorers
             saboteur.Ratings[SkillRating.Espionage] = 100;
             game.AttachNode(saboteur, origin);
             game.Config.AI.MissionPlanning.Utility.Sabotage.Infrastructure.Weight = 1;
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
             AIMissionProposalScorer scorer = new AIMissionProposalScorer();
 
@@ -906,6 +927,7 @@ namespace Rebellion.Tests.AI.Scorers
             game.AttachNode(officer, origin);
             game.AttachNode(specialForces, origin);
             empire.RebuildResearchCatalog(new IManufacturable[] { specialForces });
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
             AIMissionProposalScorer scorer = new AIMissionProposalScorer();
 

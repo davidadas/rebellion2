@@ -3,6 +3,7 @@ using System.Linq;
 using NUnit.Framework;
 using Rebellion.AI;
 using Rebellion.AI.Demands;
+using Rebellion.AI.Phases;
 using Rebellion.AI.Planners;
 using Rebellion.AI.Proposals;
 using Rebellion.AI.Scorers;
@@ -20,6 +21,319 @@ namespace Rebellion.Tests.AI.Planners
     [TestFixture]
     public sealed partial class AIProductionPlannerTests
     {
+        [Test]
+        public void Plan_PriorityFleetsWithSevenAndOneYard_AssignsLargeAndSmallHullsRespectively()
+        {
+            AITurnContext context = CreateYardAllocationContext(out Planet large, out Planet small);
+
+            List<AIManufactureProposal> proposals = new AIProductionPlanner()
+                .Plan(context)
+                .OfType<AIManufactureProposal>()
+                .ToList();
+            foreach (AIManufactureProposal proposal in proposals)
+            {
+                proposal.SetScore(proposal.Demand.Id == "primary" ? 1 : 2);
+                context.AddProposal(proposal);
+            }
+            List<AIManufactureProposal> selected = new AISelectionPhase()
+                .Select(context)
+                .OfType<AIManufactureProposal>()
+                .ToList();
+
+            Assert.AreEqual(2, selected.Count);
+            Assert.AreEqual("primary", selected[0].Demand.Id);
+            Assert.AreSame(large, selected[0].ProducerPlanet);
+            Assert.AreEqual("a-large-hull", selected[0].Product.GetReference().GetTypeID());
+            Assert.AreSame(small, selected[1].ProducerPlanet);
+            Assert.AreEqual("z-small-hull", selected[1].Product.GetReference().GetTypeID());
+            Assert.IsTrue(selected.All(proposal => proposal.ManufacturingCount == 1));
+        }
+
+        [TestCase(139, false)]
+        [TestCase(140, true)]
+        [TestCase(180, true)]
+        public void Plan_HullBuildTimeLimit_ExcludesOnlyHullsAboveLimit(int limit, bool allowsSmall)
+        {
+            AITurnContext context = CreateYardAllocationContext(out Planet _, out Planet small);
+            context.Game.Config.AI.Infrastructure.CapitalShipMaximumBuildTicks = limit;
+
+            AIManufactureProposal proposal = new AIProductionPlanner()
+                .Plan(context)
+                .OfType<AIManufactureProposal>()
+                .First();
+
+            Assert.AreEqual(
+                allowsSmall,
+                proposal.ProducerAlternatives.Any(alternative =>
+                    alternative.ProducerPlanet == small
+                )
+            );
+        }
+
+        [Test]
+        public void Plan_NoUsefulHullWithinYardLimit_DoesNotSubstituteAnUnneededHull()
+        {
+            AITurnContext context = CreateYardAllocationContext(out Planet _, out Planet small);
+            CapitalShip smallHull = (CapitalShip)
+                context.Faction.ResearchQueue[ManufacturingType.Ship][1].GetReference();
+            smallHull.PrimaryWeapons[PrimaryWeaponType.Turbolaser][0] = 0;
+
+            AIManufactureProposal proposal = new AIProductionPlanner()
+                .Plan(context)
+                .OfType<AIManufactureProposal>()
+                .First();
+
+            Assert.IsFalse(
+                proposal.ProducerAlternatives.Any(alternative =>
+                    alternative.ProducerPlanet == small
+                )
+            );
+        }
+
+        [TestCase(AIProductionDemandKind.FleetSeedCapitalShip)]
+        [TestCase(AIProductionDemandKind.ColonizationFleetSeedCapitalShip)]
+        public void Plan_NewFleetHullDemand_RespectsProducerBuildTimeLimit(
+            AIProductionDemandKind kind
+        )
+        {
+            AITurnContext context = CreateYardAllocationContext(out Planet large, out Planet small);
+            foreach (Technology technology in context.Faction.ResearchQueue[ManufacturingType.Ship])
+                ((CapitalShip)technology.GetReference()).Roles.Add(CapitalShipRole.Transport);
+            context.SetProductionDemands(
+                new[]
+                {
+                    new AIProductionDemand(
+                        "seed",
+                        kind,
+                        ManufacturingType.Ship,
+                        BuildingType.None,
+                        large,
+                        1,
+                        capitalShipRole: AICapitalShipProductionRole.TroopTransport
+                    ),
+                }
+            );
+
+            AIManufactureProposal proposal = new AIProductionPlanner()
+                .Plan(context)
+                .OfType<AIManufactureProposal>()
+                .Single();
+
+            Assert.AreSame(large, proposal.ProducerPlanet);
+            Assert.AreEqual("a-large-hull", proposal.Product.GetReference().GetTypeID());
+            AIManufactureProposal alternative = proposal.ProducerAlternatives.Single(item =>
+                item.ProducerPlanet == small
+            );
+            Assert.AreEqual("z-small-hull", alternative.Product.GetReference().GetTypeID());
+        }
+
+        [Test]
+        public void Plan_BusyLargeYard_PreservesItsExistingOrder()
+        {
+            AITurnContext context = CreateYardAllocationContext(out Planet large, out Planet _);
+            CapitalShip existing = AITestSceneBuilder.CreateCapitalShip(
+                "existing-order",
+                context.Faction.InstanceID
+            );
+            existing.ManufacturingStatus = ManufacturingStatus.Building;
+            existing.ConstructionCost = 1000;
+            context.Game.AttachNode(existing, context.FleetProductionPriorities[0]);
+            large.AddToManufacturingQueue(existing);
+
+            new AIProductionPlanner().Plan(context);
+
+            CollectionAssert.AreEqual(
+                new[] { existing },
+                large.GetManufacturingQueue()[ManufacturingType.Ship]
+            );
+        }
+
+        [Test]
+        public void Plan_PriorityFleetNeedsTwoHulls_UsesTwoYardsWithoutOverproducing()
+        {
+            AITurnContext context = CreateYardAllocationContext(out Planet large, out Planet _);
+            Planet secondLarge = AITestSceneBuilder.AddPlanet(
+                context.Game,
+                large.GetParentOfType<PlanetSector>(),
+                "second-large",
+                context.Faction.InstanceID
+            );
+            for (int index = 0; index < 7; index++)
+                AITestSceneBuilder.AddProductionFacility(
+                    context.Game,
+                    secondLarge,
+                    "second-yard-" + index,
+                    BuildingType.Shipyard,
+                    ManufacturingType.Ship,
+                    processRate: 10
+                );
+            AIProductionDemand original = context.ProductionDemands[0];
+            Fleet[] priorities = context.FleetProductionPriorities.ToArray();
+            context = AITestSceneBuilder.CreateContext(
+                context.Game,
+                context.Faction,
+                random: new SequenceRNG(intValues: new[] { 0 })
+            );
+            context.SetFleetProductionPriorities(priorities);
+            context.SetProductionDemands(
+                new[]
+                {
+                    new AIProductionDemand(
+                        original.Id,
+                        original.Kind,
+                        original.ManufacturingType,
+                        original.BuildingType,
+                        original.Destination,
+                        1,
+                        capitalFirepowerDeficit: original.CapitalFirepowerDeficit * 2
+                    ),
+                }
+            );
+            foreach (AIProposal proposal in new AIProductionPlanner().Plan(context))
+            {
+                proposal.SetScore(1);
+                context.AddProposal(proposal);
+            }
+
+            List<AIManufactureProposal> selected = new AISelectionPhase()
+                .Select(context)
+                .OfType<AIManufactureProposal>()
+                .ToList();
+
+            Assert.AreEqual(2, selected.Count);
+            CollectionAssert.AreEquivalent(
+                new[] { large, secondLarge },
+                selected.Select(proposal => proposal.ProducerPlanet)
+            );
+            Assert.IsTrue(selected.All(proposal => proposal.ManufacturingCount == 1));
+        }
+
+        [TestCase(AIProductionDemandKind.ColonizationFleetSeedCapitalShip, true, 0)]
+        [TestCase(AIProductionDemandKind.ColonizationFleetSeedCapitalShip, true, 30)]
+        [TestCase(AIProductionDemandKind.ColonizationFleetSeedCapitalShip, false, 0)]
+        [TestCase(AIProductionDemandKind.FleetCapitalShip, true, 0)]
+        [TestCase(AIProductionDemandKind.FleetCapitalShip, true, 30)]
+        [TestCase(AIProductionDemandKind.FleetCapitalShip, false, 0)]
+        public void Plan_ColonizationHullDemand_OnlyProposesTransportRoleHulls(
+            AIProductionDemandKind kind,
+            bool hasTransport,
+            int transportWeaponStrength
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "producer",
+                faction.InstanceID
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "yard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            Fleet fleet = EntityFactory.CreateFleet("colonizer", faction.InstanceID);
+            fleet.RoleType = FleetRoleType.Colonization;
+            game.AttachNode(fleet, planet);
+            CapitalShip warship = AITestSceneBuilder.CreateCapitalShip(
+                "a-warship",
+                faction.InstanceID,
+                combatStrength: 1000,
+                regimentCapacity: 4,
+                starfighterCapacity: 6
+            );
+            warship.Roles.Add(CapitalShipRole.PrimaryLine);
+            CapitalShip interdictor = AITestSceneBuilder.CreateCapitalShip(
+                "b-interdictor",
+                faction.InstanceID,
+                combatStrength: 0,
+                regimentCapacity: 4,
+                starfighterCapacity: 0
+            );
+            interdictor.HasGravityWell = true;
+            interdictor.Roles.Add(CapitalShipRole.Transport);
+            CapitalShip planetDestroyer = AITestSceneBuilder.CreateCapitalShip(
+                "c-planet-destroyer",
+                faction.InstanceID,
+                combatStrength: 0,
+                regimentCapacity: 4,
+                starfighterCapacity: 0
+            );
+            planetDestroyer.CanDestroyPlanets = true;
+            planetDestroyer.Roles.Add(CapitalShipRole.Transport);
+            CapitalShip carrier = AITestSceneBuilder.CreateCapitalShip(
+                "d-carrier",
+                faction.InstanceID,
+                combatStrength: 0,
+                regimentCapacity: 0,
+                starfighterCapacity: 6
+            );
+            carrier.Roles.Add(CapitalShipRole.Carrier);
+            CapitalShip unclassifiedHull = AITestSceneBuilder.CreateCapitalShip(
+                "e-unclassified",
+                faction.InstanceID,
+                combatStrength: 0,
+                regimentCapacity: 4,
+                starfighterCapacity: 0
+            );
+            CapitalShip transport = AITestSceneBuilder.CreateCapitalShip(
+                "z-transport",
+                faction.InstanceID,
+                combatStrength: transportWeaponStrength,
+                regimentCapacity: 2,
+                starfighterCapacity: 0
+            );
+            transport.Roles.Add(CapitalShipRole.Transport);
+            faction.ResearchQueue[ManufacturingType.Ship] = new List<Technology>
+            {
+                new Technology(warship),
+                new Technology(interdictor),
+                new Technology(planetDestroyer),
+                new Technology(carrier),
+                new Technology(unclassifiedHull),
+            };
+            if (hasTransport)
+                faction.ResearchQueue[ManufacturingType.Ship].Add(new Technology(transport));
+            AITurnContext context = AITestSceneBuilder.CreateContext(
+                game,
+                faction,
+                random: new SequenceRNG(intValues: new[] { 0 })
+            );
+            context.SetProductionDemands(
+                new[]
+                {
+                    new AIProductionDemand(
+                        "colonization",
+                        kind,
+                        ManufacturingType.Ship,
+                        BuildingType.None,
+                        kind == AIProductionDemandKind.FleetCapitalShip ? fleet : planet,
+                        1,
+                        capitalShipRole: AICapitalShipProductionRole.TroopTransport,
+                        regimentCapacityDeficit: 2
+                    ),
+                }
+            );
+
+            List<AIManufactureProposal> proposals = new AIProductionPlanner()
+                .Plan(context)
+                .OfType<AIManufactureProposal>()
+                .ToList();
+
+            if (hasTransport)
+            {
+                Assert.AreEqual(1, proposals.Count);
+                Assert.AreSame(transport, proposals.Single().Product.GetReference());
+            }
+            else
+            {
+                Assert.IsEmpty(proposals);
+            }
+        }
+
         [Test]
         public void Plan_IndustrialHubNeedsDefenseSpace_ChoosesPlanetFittingFinishedLayout()
         {
@@ -915,6 +1229,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Plan_WithSpecialForcesMissionDemand_SelectsRequestedUnlockedType()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.Infrastructure.SpiesPerEnemyPlanet = 1;
             game.Config.AI.Infrastructure.ProductionQueueTargetPlanningIntervals = 30;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet planet = AITestSceneBuilder.AddPlanet(
@@ -924,6 +1239,7 @@ namespace Rebellion.Tests.AI.Planners
                 empire.InstanceID
             );
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
             AITestSceneBuilder.AddProductionFacility(
                 game,
                 planet,
@@ -1453,6 +1769,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Plan_GeneralRoleSelection_SelectsEligibleWarship(bool hasCommittedCombatShip)
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Infrastructure.CapitalShipMaximumBuildTicks = 0;
             game.Config.AI.Infrastructure.FleetProductionMinimumShipyardCount = 1;
             game.Config.AI.FleetDeployment.MinimumBattleFleetCount = 1;
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 1500;
@@ -1677,6 +1994,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Plan_LargeCapitalShipWithVariedShipyards_PrefersLargestShipyard()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Infrastructure.CapitalShipMaximumBuildTicks = 180;
             game.Config.AI.Infrastructure.ShipyardTargetClearTicks = 80;
             game.Config.AI.FleetDeployment.MinimumBattleFleetCount = 1;
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 500;
@@ -1767,9 +2085,7 @@ namespace Rebellion.Tests.AI.Planners
                 .First(item => item.Demand.Kind == AIProductionDemandKind.FleetCapitalShip);
 
             Assert.AreSame(largeProducer, proposal.ProducerPlanet);
-            Assert.AreEqual(2, proposal.ProducerAlternatives.Count);
-            Assert.AreSame(smallProducer, proposal.ProducerAlternatives[0].ProducerPlanet);
-            Assert.AreSame(undersizedProducer, proposal.ProducerAlternatives[1].ProducerPlanet);
+            Assert.IsEmpty(proposal.ProducerAlternatives);
         }
 
         [Test]
@@ -3084,6 +3400,74 @@ namespace Rebellion.Tests.AI.Planners
                 new Technology(advancedShipyard),
             };
             return (game, empire, planet, replacement, advancedShipyard, maintenanceBudget);
+        }
+
+        /// <summary>
+        /// Creates two priority fleets and seven-yard and one-yard producers with different useful hulls.
+        /// </summary>
+        /// <param name="large">Receives the seven-yard producer.</param>
+        /// <param name="small">Receives the one-yard producer.</param>
+        /// <returns>The faction turn containing the two unfilled fleet demands.</returns>
+        private static AITurnContext CreateYardAllocationContext(out Planet large, out Planet small)
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
+            game.Config.AI.Infrastructure.CapitalShipMaximumBuildTicks = 180;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            large = AITestSceneBuilder.AddPlanet(game, sector, "large", faction.InstanceID);
+            small = AITestSceneBuilder.AddPlanet(game, sector, "small", faction.InstanceID);
+            for (int index = 0; index < 8; index++)
+                AITestSceneBuilder.AddProductionFacility(
+                    game,
+                    index == 7 ? small : large,
+                    "yard-" + index,
+                    BuildingType.Shipyard,
+                    ManufacturingType.Ship,
+                    processRate: 10
+                );
+            CapitalShip largeHull = AITestSceneBuilder.CreateCapitalShip(
+                "a-large-hull",
+                faction.InstanceID
+            );
+            largeHull.ConstructionCost = 112;
+            CapitalShip smallHull = AITestSceneBuilder.CreateCapitalShip(
+                "z-small-hull",
+                faction.InstanceID
+            );
+            smallHull.ConstructionCost = 14;
+            faction.ResearchQueue[ManufacturingType.Ship] = new List<Technology>
+            {
+                new(largeHull),
+                new(smallHull),
+            };
+            Fleet primary = EntityFactory.CreateFleet("primary", faction.InstanceID);
+            Fleet secondary = EntityFactory.CreateFleet("secondary", faction.InstanceID);
+            foreach (Fleet fleet in new[] { primary, secondary })
+            {
+                fleet.RoleType = FleetRoleType.Battle;
+                fleet.Order = new FleetOrder { OrderType = FleetOrderType.Attack };
+                game.AttachNode(fleet, large);
+            }
+            AITurnContext context = AITestSceneBuilder.CreateContext(
+                game,
+                faction,
+                random: new SequenceRNG(intValues: new[] { 0 })
+            );
+            context.SetFleetProductionPriorities(new[] { primary, secondary });
+            context.SetProductionDemands(
+                new[] { primary, secondary }.Select(fleet => new AIProductionDemand(
+                    fleet.InstanceID,
+                    AIProductionDemandKind.FleetCapitalShip,
+                    ManufacturingType.Ship,
+                    BuildingType.None,
+                    fleet,
+                    1,
+                    capitalFirepowerDeficit: Rebellion.Simulation.SpaceCombatStrengthCalculator.GetCapitalShipFirepowerAgainstCapitalShips(
+                        largeHull
+                    ),
+                    baseDemandPercent: 100
+                ))
+            );
+            return context;
         }
 
         /// <summary>

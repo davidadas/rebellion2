@@ -569,9 +569,7 @@ namespace Rebellion.AI.Scorers
                     context,
                     fleet,
                     targetPlanet,
-                    demand.Kind == AIProductionDemandKind.FleetCapitalShip
-                        ? demand.QuantityNeeded
-                        : demand.DeficitCount
+                    demand.QuantityNeeded
                 );
                 if (
                     demand.Kind

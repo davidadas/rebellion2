@@ -22,6 +22,215 @@ namespace Rebellion.Tests.Simulation
     public sealed class MissionQueriesTests
     {
         [Test]
+        public void TryGetOperationalMissionOdds_ExactSuccessFloor_AcceptsEveryQualifyingTeam(
+            [Values(1, 2, 4, 8, 16)] int defenderCount,
+            [Values(0, 1, 2, 4)] int decoyCount
+        )
+        {
+            (MissionQueries queries, MissionContext context) = CreateMixedFleetMission(
+                defenderCount,
+                decoyCount,
+                false,
+                1
+            );
+            context.Game.Config.ProbabilityTables.Mission.Espionage = new Dictionary<int, int>
+            {
+                { -1000, 67 },
+            };
+            MissionOdds exact = queries.GetOperationalMissionOdds(context);
+
+            bool accepted = queries.TryGetOperationalMissionOdds(
+                context,
+                null,
+                exact.OverallSuccessProbability,
+                out MissionOdds bounded
+            );
+
+            Assert.IsTrue(accepted);
+            Assert.AreEqual(exact.OverallSuccessProbability, bounded.OverallSuccessProbability);
+        }
+
+        [Test]
+        public void GetMissionOdds_ValidRequest_DoesNotConsumeGameplayIdentifiers()
+        {
+            (MissionQueries queries, MissionContext context) = CreateMixedFleetMission(
+                4,
+                2,
+                false,
+                1
+            );
+            try
+            {
+                BaseGameEntity.SetInstanceIdSeed(1234);
+                string expected = new BaseGameEntity().InstanceID;
+                BaseGameEntity.SetInstanceIdSeed(1234);
+
+                queries.GetMissionOdds(context);
+                queries.GetMissionSuccessUpperBound(context, null, 0);
+                string actual = new BaseGameEntity().InstanceID;
+
+                Assert.AreEqual(expected, actual);
+            }
+            finally
+            {
+                BaseGameEntity.SetInstanceIdSeed(null);
+            }
+        }
+
+        [TestCase(0)]
+        [TestCase(1)]
+        [TestCase(2)]
+        [TestCase(4)]
+        public void GetMissionSuccessUpperBound_DecoySubsets_NeverUnderstatesSuccess(int decoyCount)
+        {
+            (MissionQueries queries, MissionContext context) = CreateMixedFleetMission(
+                16,
+                4,
+                true,
+                1
+            );
+            context.Game.Config.ProbabilityTables.Mission.DefaultSuccessProbability = 100;
+            context.Game.Config.ProbabilityTables.Mission.Espionage = new Dictionary<int, int>
+            {
+                { -1000, 100 },
+            };
+            double? bound = queries.GetMissionSuccessUpperBound(context, null, 0);
+            context.DecoyParticipants = context.DecoyParticipants.Take(decoyCount).ToList();
+
+            MissionOdds exact = queries.GetOperationalMissionOdds(context);
+
+            Assert.IsTrue(bound.HasValue);
+            Assert.GreaterOrEqual(bound.Value + 0.000000001, exact.OverallSuccessProbability);
+        }
+
+        [TestCase(0d)]
+        [TestCase(10d)]
+        [TestCase(35d)]
+        [TestCase(100d)]
+        [TestCase(null)]
+        public void TryGetOperationalMissionOdds_SuccessFloor_ReturnsOnlyCompleteQualifyingOdds(
+            double? configuredFloor
+        )
+        {
+            (MissionQueries queries, MissionContext context) = CreateMixedFleetMission(
+                16,
+                4,
+                false,
+                1
+            );
+            context.Game.Config.ProbabilityTables.Mission.DefaultSuccessProbability = 100;
+            context.Game.Config.ProbabilityTables.Mission.Espionage = new Dictionary<int, int>
+            {
+                { -1000, 100 },
+            };
+            MissionOdds complete = queries.GetOperationalMissionOdds(context);
+            double floor = configuredFloor ?? complete.OverallSuccessProbability;
+
+            bool accepted = queries.TryGetOperationalMissionOdds(
+                context,
+                null,
+                floor,
+                out MissionOdds bounded
+            );
+
+            Assert.AreEqual(complete.OverallSuccessProbability >= floor, accepted);
+            if (accepted)
+                Assert.AreEqual(complete.FoilProbability, bounded.FoilProbability, 0.000000001);
+            else
+                Assert.IsNull(bounded);
+        }
+
+        [TestCase(2, 0, false, 1, 57.749999999999993, 11.549999999999995)]
+        [TestCase(2, 0, false, 2, 57.749999999999993, 20.789999999999988)]
+        [TestCase(2, 0, true, 1, 57.749999999999993, 11.549999999999995)]
+        [TestCase(2, 0, true, 2, 57.749999999999993, 20.789999999999988)]
+        [TestCase(2, 1, false, 1, 51.800000000000004, 10.359999999999998)]
+        [TestCase(2, 1, false, 2, 51.800000000000004, 18.647999999999996)]
+        [TestCase(2, 1, true, 1, 51.800000000000004, 53.180000000000007)]
+        [TestCase(2, 1, true, 2, 51.800000000000004, 57.324)]
+        [TestCase(2, 2, false, 1, 44.379999999999995, 8.8759999999999977)]
+        [TestCase(2, 2, false, 2, 44.379999999999995, 15.976799999999994)]
+        [TestCase(2, 2, true, 1, 44.379999999999995, 58.388000000000019)]
+        [TestCase(2, 2, true, 2, 44.379999999999995, 61.0984)]
+        [TestCase(2, 4, false, 1, 31.6225, 6.3244999999999978)]
+        [TestCase(2, 4, false, 2, 31.6225, 11.384099999999993)]
+        [TestCase(2, 4, true, 1, 31.6225, 40.335552500000013)]
+        [TestCase(2, 4, true, 2, 31.6225, 42.7729945)]
+        [TestCase(4, 0, false, 1, 82.149374999999992, 28.752281249999996)]
+        [TestCase(4, 0, false, 2, 82.149374999999992, 43.436482031249987)]
+        [TestCase(4, 0, true, 1, 82.149374999999992, 28.752281249999996)]
+        [TestCase(4, 0, true, 2, 82.149374999999992, 43.436482031249987)]
+        [TestCase(4, 1, false, 1, 79.3975, 28.680224999999997)]
+        [TestCase(4, 1, false, 2, 79.3975, 42.896065625)]
+        [TestCase(4, 1, true, 1, 79.3975, 64.418512499999991)]
+        [TestCase(4, 1, true, 2, 79.3975, 71.5096328125)]
+        [TestCase(4, 2, false, 1, 73.678675, 27.287741250000003)]
+        [TestCase(4, 2, false, 2, 73.678675, 40.57642990625)]
+        [TestCase(4, 2, true, 1, 73.678675, 78.757555500000038)]
+        [TestCase(4, 2, true, 2, 73.678675, 82.504423450000019)]
+        [TestCase(4, 4, false, 1, 53.815338226562496, 18.901254935937498)]
+        [TestCase(4, 4, false, 2, 53.815338226562481, 27.63065287718749)]
+        [TestCase(4, 4, true, 1, 53.815338226562496, 73.279927553212474)]
+        [TestCase(4, 4, true, 2, 53.815338226562481, 75.205216266123941)]
+        [TestCase(8, 0, false, 1, 96.81355187109375, 41.145759545214851)]
+        [TestCase(8, 0, false, 2, 96.81355187109375, 60.629486859272461)]
+        [TestCase(8, 0, true, 1, 96.81355187109375, 41.145759545214851)]
+        [TestCase(8, 0, true, 2, 96.81355187109375, 60.629486859272461)]
+        [TestCase(8, 1, false, 1, 96.317921984375, 41.695197351171878)]
+        [TestCase(8, 1, false, 2, 96.317921984375, 61.093676560917977)]
+        [TestCase(8, 1, true, 1, 96.317921984375, 70.98541425758593)]
+        [TestCase(8, 1, true, 2, 96.317921984375, 80.638606024258991)]
+        [TestCase(8, 2, false, 1, 95.154456758593753, 41.965368158180475)]
+        [TestCase(8, 2, false, 2, 95.154456758593753, 61.246867211650681)]
+        [TestCase(8, 2, true, 1, 95.154456758593753, 84.6965395707463)]
+        [TestCase(8, 2, true, 2, 95.154456758593753, 89.786228211865634)]
+        [TestCase(8, 4, false, 1, 79.542675935162833, 34.270340451469956)]
+        [TestCase(8, 4, false, 2, 79.542675935162819, 49.597118569753533)]
+        [TestCase(8, 4, true, 1, 79.542675935162833, 94.668398062823229)]
+        [TestCase(8, 4, true, 2, 79.542675935162819, 95.45826043451379)]
+        public void GetMissionOdds_MixedFleetCommanders_PreservesEncounterProbabilities(
+            int detectorCount,
+            int decoyCount,
+            bool officerDecoys,
+            int mainCount,
+            double expectedFoil,
+            double expectedLoss
+        )
+        {
+            (MissionQueries queries, MissionContext context) = CreateMixedFleetMission(
+                detectorCount,
+                decoyCount,
+                officerDecoys,
+                mainCount
+            );
+
+            MissionOdds odds = queries.GetMissionOdds(context);
+
+            Assert.IsNotNull(odds);
+            Assert.AreEqual(expectedFoil, odds.FoilProbability, 0.000000001);
+            Assert.AreEqual(expectedLoss, odds.PersonnelLossProbability, 0.000000001);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void GetOperationalMissionOdds_LargerMixedFleet_MatchesCompleteOdds(
+            bool officerDecoys
+        )
+        {
+            (MissionQueries queries, MissionContext context) = CreateMixedFleetMission(
+                16,
+                4,
+                officerDecoys,
+                2
+            );
+
+            MissionOdds complete = queries.GetMissionOdds(context);
+            MissionOdds operational = queries.GetOperationalMissionOdds(context);
+
+            Assert.AreEqual(complete.FoilProbability, operational.FoilProbability, 0.000000001);
+        }
+
+        [Test]
         public void TryCreateMission_NullContext_ReturnsFalseAndNoMission()
         {
             MissionQueries queries = new MissionQueries(TestGame.Create(TestConfig.Create()));
@@ -417,6 +626,115 @@ namespace Rebellion.Tests.Simulation
 
             Assert.IsNotNull(odds);
             Assert.AreEqual(100, odds.FoilProbability, 0.001);
+            Assert.AreEqual(75, odds.PersonnelLossProbability, 0.001);
+        }
+
+        [TestCase(false, 100, 25)]
+        [TestCase(false, 200, 25)]
+        [TestCase(false, 50, 12.5)]
+        [TestCase(false, 0, 0)]
+        [TestCase(true, 100, 0)]
+        public void GetMissionOdds_OfficerEscapes_IncludesApplicableInjuryDeathRisk(
+            bool mainCharacter,
+            int injuryChance,
+            double expectedLoss
+        )
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer _) = BuildDetectionScene();
+            spy.IsMain = mainCharacter;
+            spy.SetBaseRating(SkillRating.Combat, 0);
+            game.Config.DuelResolution.MinimumInjuryChance = 0;
+            game.Config.DuelResolution.CaptureEvasionInjuryBaseChance = injuryChance;
+            game.Config.Assassination.KillProbability = 25;
+            planet.AddVisitor("empire");
+            SetFoilTable(game, new Dictionary<int, int> { { -1000, 100 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -1000, 100 } });
+
+            MissionOdds odds = new MissionQueries(game).GetMissionOdds(
+                CreateContext(EspionageMission.MissionTypeID, spy, planet)
+            );
+
+            Assert.AreEqual(expectedLoss, odds.PersonnelLossProbability, 0.001);
+        }
+
+        [TestCase(0, 0, 0, 100)]
+        [TestCase(50, 100, 25, 12.5)]
+        [TestCase(100, 0, 100, 0)]
+        public void GetMissionOdds_OfficerDecoyWithoutFoil_IncludesConfrontationLossRisk(
+            int diversionChance,
+            int evasionChance,
+            int deathChance,
+            double expectedLoss
+        )
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer _) = BuildDetectionScene();
+            Officer decoy = EntityFactory.CreateOfficer("decoy", "empire");
+            decoy.SetBaseRating(SkillRating.Combat, 0);
+            game.AttachNode(decoy, spy.GetParent());
+            game.Config.DuelResolution.CaptureEvasionInjuryBaseChance = 100;
+            game.Config.Assassination.KillProbability = deathChance;
+            planet.AddVisitor("empire");
+            SetFoilTable(game, new Dictionary<int, int> { { -1000, 0 } });
+            SetDecoyTable(game, new Dictionary<int, int> { { -1000, diversionChance } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -1000, evasionChance } });
+
+            MissionOdds odds = new MissionQueries(game).GetMissionOdds(
+                CreateContext(
+                    EspionageMission.MissionTypeID,
+                    new List<IMissionParticipant> { spy },
+                    new List<IMissionParticipant> { decoy },
+                    planet
+                )
+            );
+
+            Assert.AreEqual(0, odds.FoilProbability);
+            Assert.AreEqual(expectedLoss, odds.PersonnelLossProbability, 0.001);
+        }
+
+        [Test]
+        public void GetMissionOdds_DecoyAndMainOfficerAtRisk_DoesNotDoubleCountSharedOutcomes()
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer _) = BuildDetectionScene();
+            Officer decoy = EntityFactory.CreateOfficer("decoy", "empire");
+            game.AttachNode(decoy, spy.GetParent());
+            planet.AddVisitor("empire");
+            SetFoilTable(game, new Dictionary<int, int> { { -1000, 100 } });
+            SetDecoyTable(game, new Dictionary<int, int> { { -1000, 0 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -1000, 50 } });
+
+            MissionOdds odds = new MissionQueries(game).GetMissionOdds(
+                CreateContext(
+                    EspionageMission.MissionTypeID,
+                    new List<IMissionParticipant> { spy },
+                    new List<IMissionParticipant> { decoy },
+                    planet
+                )
+            );
+
+            Assert.AreEqual(75, odds.PersonnelLossProbability, 0.001);
+        }
+
+        [Test]
+        public void GetMissionOdds_DecoyFacesMultipleDetectors_CombinesDistinctLossOutcomes()
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer _) = BuildDetectionScene();
+            game.AttachNode(CreateCompletedRegiment("second", "rebels"), planet);
+            Officer decoy = EntityFactory.CreateOfficer("decoy", "empire");
+            game.AttachNode(decoy, spy.GetParent());
+            planet.AddVisitor("empire");
+            SetFoilTable(game, new Dictionary<int, int> { { -1000, 0 } });
+            SetDecoyTable(game, new Dictionary<int, int> { { -1000, 50 } });
+            SetEvasionTable(game, new Dictionary<int, int> { { -1000, 0 } });
+
+            MissionOdds odds = new MissionQueries(game).GetMissionOdds(
+                CreateContext(
+                    EspionageMission.MissionTypeID,
+                    new List<IMissionParticipant> { spy },
+                    new List<IMissionParticipant> { decoy },
+                    planet
+                )
+            );
+
             Assert.AreEqual(75, odds.PersonnelLossProbability, 0.001);
         }
 
@@ -1075,6 +1393,161 @@ namespace Rebellion.Tests.Simulation
 
             return (game, planet, officer);
         }
+
+        /// <summary>
+        /// Creates heterogeneous naval defenders and a valid unstarted espionage team.
+        /// </summary>
+        /// <param name="detectorCount">The number of separately commanded defending ships.</param>
+        /// <param name="decoyCount">The number of supporting decoys.</param>
+        /// <param name="officerDecoys">Whether decoys are officers rather than special forces.</param>
+        /// <param name="mainCount">The primary-officer count.</param>
+        /// <returns>The public query and mission context for the fixed scenario.</returns>
+        private static (MissionQueries Queries, MissionContext Context) CreateMixedFleetMission(
+            int detectorCount,
+            int decoyCount,
+            bool officerDecoys,
+            int mainCount
+        )
+        {
+            GameRoot game = new GameRoot();
+            GameConfig config = new GameConfig();
+            game.SetConfig(config);
+            config.ProbabilityTables.Mission.Foil = new Dictionary<int, int> { { -1000, 35 } };
+            config.ProbabilityTables.Mission.FleetDecoy = new Dictionary<int, int>
+            {
+                { -1000, 20 },
+                { 0, 50 },
+                { 40, 80 },
+            };
+            config.ProbabilityTables.Mission.PlanetaryDecoy = config
+                .ProbabilityTables
+                .Mission
+                .FleetDecoy;
+            config.ProbabilityTables.Mission.Evasion = new Dictionary<int, int>
+            {
+                { -200, 5 },
+                { -40, 20 },
+                { 0, 50 },
+                { 40, 80 },
+                { 200, 95 },
+            };
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            game.AttachNode(sector, game.Galaxy);
+            Planet origin = new Planet
+            {
+                InstanceID = "origin",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+            };
+            Planet target = new Planet
+            {
+                InstanceID = "target",
+                OwnerInstanceID = "rebels",
+                IsColonized = true,
+            };
+            game.AttachNode(origin, sector);
+            game.AttachNode(target, sector);
+            target.AddVisitor("empire");
+            List<IMissionParticipant> mainParticipants = new List<IMissionParticipant>();
+            List<IMissionParticipant> decoys = new List<IMissionParticipant>();
+            for (int i = 0; i < mainCount; i++)
+            {
+                Officer officer = CreateMissionOfficer(
+                    "main-" + i,
+                    "empire",
+                    55 + i * 10,
+                    60 + i * 15
+                );
+                game.AttachNode(officer, origin);
+                mainParticipants.Add(officer);
+            }
+            for (int i = 0; i < decoyCount; i++)
+            {
+                IMissionParticipant unit = officerDecoys
+                    ? (IMissionParticipant)CreateMissionOfficer(
+                        "decoy-" + i,
+                        "empire",
+                        15 + i * 30,
+                        35 + i * 10
+                    )
+                    : new SpecialForces
+                    {
+                        InstanceID = "decoy-" + i,
+                        OwnerInstanceID = "empire",
+                        AllowedMissionTypeIDs = new List<string> { EspionageMission.MissionTypeID },
+                        Ratings = new Dictionary<SkillRating, int>
+                        {
+                            { SkillRating.Espionage, 15 + i * 30 },
+                            { SkillRating.Combat, 35 + i * 10 },
+                        },
+                    };
+                game.AttachNode(unit, origin);
+                decoys.Add(unit);
+            }
+            for (int i = 0; i < detectorCount; i++)
+            {
+                Fleet fleet = new Fleet { InstanceID = "fleet-" + i, OwnerInstanceID = "rebels" };
+                game.AttachNode(fleet, target);
+                CapitalShip ship = new CapitalShip
+                {
+                    InstanceID = "ship-" + i,
+                    OwnerInstanceID = "rebels",
+                    DetectionRating = 25 + i % 3 * 25,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                };
+                game.AttachNode(ship, fleet);
+                Officer commander = CreateMissionOfficer(
+                    "admiral-" + i,
+                    "rebels",
+                    50,
+                    i * 17 % 101
+                );
+                commander.CurrentRank = OfficerRank.Admiral;
+                game.AttachNode(commander, ship);
+            }
+            return (
+                new MissionQueries(game),
+                new MissionContext
+                {
+                    Game = game,
+                    OwnerInstanceId = "empire",
+                    MissionTypeID = EspionageMission.MissionTypeID,
+                    Location = target,
+                    MainParticipants = mainParticipants,
+                    DecoyParticipants = decoys,
+                }
+            );
+        }
+
+        /// <summary>
+        /// Creates an officer with deterministic mission ratings.
+        /// </summary>
+        /// <param name="id">The instance identifier.</param>
+        /// <param name="owner">The faction identifier.</param>
+        /// <param name="espionage">The Espionage rating.</param>
+        /// <param name="combat">The Combat rating.</param>
+        /// <returns>The detached officer.</returns>
+        private static Officer CreateMissionOfficer(
+            string id,
+            string owner,
+            int espionage,
+            int combat
+        ) =>
+            new Officer
+            {
+                InstanceID = id,
+                DisplayName = id,
+                OwnerInstanceID = owner,
+                Ratings = new Dictionary<SkillRating, int>
+                {
+                    { SkillRating.Diplomacy, 50 },
+                    { SkillRating.Espionage, espionage },
+                    { SkillRating.Combat, combat },
+                    { SkillRating.Leadership, 50 },
+                },
+            };
 
         /// <summary>
         /// Sets foil table.

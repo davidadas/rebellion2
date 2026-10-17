@@ -54,12 +54,33 @@ namespace Rebellion.AI
             new Dictionary<string, List<ISceneNode>>(StringComparer.Ordinal);
         private readonly Dictionary<string, List<ISceneNode>> _planetMissionFleetDetectors =
             new Dictionary<string, List<ISceneNode>>(StringComparer.Ordinal);
+        private readonly Dictionary<
+            (string FactionId, bool Orbital),
+            IReadOnlyList<ISceneNode>
+        > _missionDefenseBaselines = new();
+        private readonly Dictionary<
+            (ISceneNode Container, string Owner, Type DetectorType),
+            Officer
+        > _missionCommanders = new();
         private readonly HashSet<string> _missionHostileFleetPlanetIds = new HashSet<string>(
             StringComparer.Ordinal
         );
         private readonly HashSet<string> _missionDetectionBlockerPlanetIds = new HashSet<string>(
             StringComparer.Ordinal
         );
+        private readonly Dictionary<
+            (
+                string MissionType,
+                string Owner,
+                ISceneNode Location,
+                ISceneNode Target,
+                Rebellion.Game.Research.ResearchDiscipline? Discipline,
+                string MainParticipants,
+                string Decoys,
+                bool OperationalOnly
+            ),
+            MissionOdds
+        > _missionOdds = new();
         private readonly Dictionary<
             (string PlanetId, ManufacturingType ManufacturingType),
             int
@@ -366,6 +387,7 @@ namespace Rebellion.AI
                     _knownGarrisonedPlanetIds.Add(planet.InstanceID);
             }
             BuildMissionDetectorIndex();
+            BuildMissionDefenseBaselines();
             OwnedPlanets = BuildOwnedPlanets();
             FactionHeadquarters = OwnedPlanets.FirstOrDefault(IsFactionHeadquarters);
             OwnedSpecialForces = BuildOwnedSpecialForces();
@@ -1106,6 +1128,456 @@ namespace Rebellion.AI
                 planet.InstanceID,
                 () => planet.GetAllStarfighters().ToList()
             );
+        }
+
+        /// <summary>
+        /// Evaluates an officer team's encounter risk using observed defenses and intelligence uncertainty.
+        /// </summary>
+        /// <param name="queries">The shared mission probability calculations.</param>
+        /// <param name="context">The mission and participant roles to evaluate.</param>
+        /// <returns>The uncertainty-adjusted mission odds, or null for an invalid mission.</returns>
+        internal MissionOdds GetMissionOdds(MissionQueries queries, MissionContext context) =>
+            GetCachedMissionOdds(queries, context, false);
+
+        /// <summary>
+        /// Reuses commander lookups against the unchanged observed graph for this faction turn.
+        /// </summary>
+        /// <param name="detector">The observed defending unit.</param>
+        /// <param name="planet">The observed encounter planet.</param>
+        /// <returns>The eligible commander, or null when none is present.</returns>
+        internal Officer GetMissionDetectorCommander(ISceneNode detector, Planet planet)
+        {
+            if (detector == null || planet == null)
+                return null;
+            ISceneNode container = (ISceneNode)detector.GetParentOfType<Fleet>() ?? planet;
+            var key = (container, detector.GetOwnerInstanceID(), detector.GetType());
+            if (!_missionCommanders.TryGetValue(key, out Officer commander))
+            {
+                commander = Mission.GetDetectorCommander(detector, planet);
+                _missionCommanders.Add(key, commander);
+            }
+            return commander;
+        }
+
+        /// <summary>
+        /// Evaluates operational mission odds using the same defense uncertainty as officer-risk checks.
+        /// </summary>
+        /// <param name="queries">The shared mission probability calculations.</param>
+        /// <param name="context">The mission and participant roles to evaluate.</param>
+        /// <returns>The adjusted objective and foil odds without the detailed personnel-loss calculation.</returns>
+        internal MissionOdds GetOperationalMissionOdds(
+            MissionQueries queries,
+            MissionContext context
+        ) => GetCachedMissionOdds(queries, context, true);
+
+        /// <summary>
+        /// Evaluates exact operational odds only while the required success floor is reachable.
+        /// </summary>
+        /// <param name="queries">The shared mission calculations.</param>
+        /// <param name="context">The candidate team and objective.</param>
+        /// <param name="minimumOverallProbability">The required overall success percentage.</param>
+        /// <param name="odds">The complete adjusted odds when the floor is met.</param>
+        /// <returns>True when the adjusted success probability meets the floor.</returns>
+        internal bool TryGetOperationalMissionOdds(
+            MissionQueries queries,
+            MissionContext context,
+            double minimumOverallProbability,
+            out MissionOdds odds
+        )
+        {
+            odds = GetCachedMissionOdds(queries, context, true, minimumOverallProbability);
+            return odds != null;
+        }
+
+        /// <summary>
+        /// Tests whether any subset of candidate decoys could meet the mission's success floor.
+        /// </summary>
+        /// <param name="queries">The shared mission probability calculations.</param>
+        /// <param name="context">The fixed primary team and complete candidate-decoy pool.</param>
+        /// <param name="minimumOverallProbability">The required adjusted success percentage.</param>
+        /// <returns>False only when the optimistic success bound misses the required floor.</returns>
+        internal bool CanMeetOperationalMissionSuccess(
+            MissionQueries queries,
+            MissionContext context,
+            double minimumOverallProbability
+        )
+        {
+            double? observed = queries.GetMissionSuccessUpperBound(
+                context,
+                GetMissionDetectors,
+                minimumOverallProbability
+            );
+            if (!observed.HasValue)
+                return false;
+            Planet target = context.Location as Planet;
+            double weight = GetMissionDefenseWeight(target);
+            if (weight <= 0)
+                return observed.Value >= minimumOverallProbability;
+            double baselineFloor = Math.Max(
+                0,
+                (minimumOverallProbability - (1d - weight) * observed.Value) / weight
+            );
+            double? baseline = queries.GetMissionSuccessUpperBound(
+                context,
+                GetMissionDefenseBaselineSource(context, target),
+                baselineFloor
+            );
+            return baseline.HasValue
+                && Math.Min(
+                    observed.Value,
+                    (1d - weight) * observed.Value + weight * baseline.Value
+                ) >= minimumOverallProbability;
+        }
+
+        /// <summary>
+        /// Reuses evaluations of an unchanged mission team within this faction-turn assessment.
+        /// </summary>
+        /// <param name="queries">The shared mission probability calculations.</param>
+        /// <param name="context">The mission and exact participant roles being evaluated.</param>
+        /// <param name="operationalOnly">Whether personnel-loss calculations may be omitted.</param>
+        /// <param name="minimumOverallProbability">The required success floor, or zero for an unbounded evaluation.</param>
+        /// <returns>The cached or newly calculated uncertainty-adjusted mission odds.</returns>
+        private MissionOdds GetCachedMissionOdds(
+            MissionQueries queries,
+            MissionContext context,
+            bool operationalOnly,
+            double minimumOverallProbability = 0
+        )
+        {
+            if (context == null)
+                return null;
+            var key = (
+                context.MissionTypeID,
+                context.OwnerInstanceId,
+                context.Location,
+                context.SelectedTarget,
+                context.Discipline,
+                string.Join(
+                    ",",
+                    context.MainParticipants?.Select(participant => participant?.InstanceID)
+                        ?? Enumerable.Empty<string>()
+                ),
+                string.Join(
+                    ",",
+                    context.DecoyParticipants?.Select(participant => participant?.InstanceID)
+                        ?? Enumerable.Empty<string>()
+                ),
+                operationalOnly
+            );
+            if (!_missionOdds.TryGetValue(key, out MissionOdds odds))
+            {
+                odds = GetMissionOddsCore(
+                    queries,
+                    context,
+                    operationalOnly,
+                    minimumOverallProbability
+                );
+                if (odds != null || minimumOverallProbability <= 0)
+                    _missionOdds.Add(key, odds);
+            }
+            return odds?.OverallSuccessProbability >= minimumOverallProbability ? odds : null;
+        }
+
+        /// <summary>
+        /// Blends observed encounter odds toward an enemy's observed defense baseline as confidence declines.
+        /// </summary>
+        /// <param name="queries">The shared mission probability calculations.</param>
+        /// <param name="context">The mission configuration to evaluate.</param>
+        /// <param name="operationalOnly">Whether personnel-loss calculations may be omitted.</param>
+        /// <param name="minimumOverallProbability">The required success floor, or zero for an unbounded evaluation.</param>
+        /// <returns>The adjusted mission odds, or null when the mission cannot be created.</returns>
+        private MissionOdds GetMissionOddsCore(
+            MissionQueries queries,
+            MissionContext context,
+            bool operationalOnly,
+            double minimumOverallProbability = 0
+        )
+        {
+            MissionOdds observed;
+            if (operationalOnly)
+                queries.TryGetOperationalMissionOdds(
+                    context,
+                    GetMissionDetectors,
+                    minimumOverallProbability,
+                    out observed
+                );
+            else
+                observed = queries.GetMissionOdds(context, GetMissionDetectors);
+            if (
+                observed == null
+                || context?.Location is not Planet target
+                || !IsEnemyPlanet(target)
+            )
+                return observed;
+
+            double weight = GetMissionDefenseWeight(target);
+            if (weight <= 0)
+                return observed;
+            var baselineSource = GetMissionDefenseBaselineSource(context, target);
+            MissionOdds baseline;
+            if (operationalOnly)
+            {
+                double baselineFloor = Math.Max(
+                    0,
+                    (minimumOverallProbability - (1d - weight) * observed.OverallSuccessProbability)
+                        / weight
+                );
+                if (
+                    !queries.TryGetOperationalMissionOdds(
+                        context,
+                        baselineSource,
+                        baselineFloor,
+                        out baseline
+                    )
+                )
+                    return null;
+            }
+            else
+                baseline = queries.GetMissionOdds(context, baselineSource);
+            if (baseline == null)
+                return observed;
+
+            return new MissionOdds(
+                observed.ObjectiveSuccessProbability,
+                observed.FoilProbability
+                    + weight * Math.Max(0, baseline.FoilProbability - observed.FoilProbability),
+                observed.PersonnelLossProbability
+                    + weight
+                        * Math.Max(
+                            0,
+                            baseline.PersonnelLossProbability - observed.PersonnelLossProbability
+                        )
+            );
+        }
+
+        /// <summary>
+        /// Returns the defense-uncertainty weight used by complete and bounded mission evaluations.
+        /// </summary>
+        /// <param name="target">The observed mission target.</param>
+        /// <returns>The baseline weight from zero through one.</returns>
+        private double GetMissionDefenseWeight(Planet target)
+        {
+            if (target == null || !IsEnemyPlanet(target))
+                return 0;
+            int fullWeightTicks = _game
+                .Config
+                .AI
+                .MissionPlanning
+                .MissionDefenseIntelFullWeightTicks;
+            if (fullWeightTicks <= 0)
+                return 0;
+            PlanetIntelligenceCategory defenseCategories =
+                PlanetIntelligenceCategory.GroundForces
+                | PlanetIntelligenceCategory.CapitalShips
+                | PlanetIntelligenceCategory.Starfighters
+                | PlanetIntelligenceCategory.Officers;
+            return HasPlanetIntelligence(target, defenseCategories)
+                ? Math.Clamp((double)GetPlanetIntelAge(target) / fullWeightTicks, 0, 1)
+                : 1d;
+        }
+
+        /// <summary>
+        /// Supplies the same observed reference defenses for complete and bounded evaluations.
+        /// </summary>
+        /// <param name="context">The mission whose target owner supplies the reference.</param>
+        /// <param name="target">The observed mission destination.</param>
+        /// <returns>The reference-defender provider.</returns>
+        private Func<
+            Mission,
+            Planet,
+            MissionEncounterPhase,
+            ISceneNode,
+            IReadOnlyList<ISceneNode>
+        > GetMissionDefenseBaselineSource(MissionContext context, Planet target)
+        {
+            string enemyId =
+                context.SelectedTarget?.GetOwnerInstanceID() ?? target.GetOwnerInstanceID();
+            Func<
+                Mission,
+                Planet,
+                MissionEncounterPhase,
+                ISceneNode,
+                IReadOnlyList<ISceneNode>
+            > baselineSource = (mission, planet, phase, objective) =>
+            {
+                if (planet?.InstanceID != target.InstanceID)
+                    return GetMissionDetectors(mission, planet, phase, objective);
+                bool orbital = !MissionQueries.UsesPlanetaryDetectors(phase, objective);
+                if (
+                    orbital
+                    && phase != MissionEncounterPhase.PreObjective
+                    && _missionDetectionBlockerPlanetIds.Contains(planet.InstanceID)
+                )
+                    return Array.Empty<ISceneNode>();
+                return GetMissionDefenseBaseline(enemyId, orbital);
+            };
+            return baselineSource;
+        }
+
+        /// <summary>
+        /// Retains the strongest observed ground and orbital detection groups for each opposing faction.
+        /// </summary>
+        private void BuildMissionDefenseBaselines()
+        {
+            if (_game == null)
+                return;
+            MissionQueries queries = new(_game, GetMissionDetectorCommander);
+            foreach (bool orbital in new[] { false, true })
+            {
+                Dictionary<string, List<ISceneNode>> index = orbital
+                    ? _planetMissionFleetDetectors
+                    : _planetMissionDetectors;
+                foreach (
+                    List<ISceneNode> detectors in index
+                        .OrderBy(pair => pair.Key, StringComparer.Ordinal)
+                        .Select(pair => pair.Value)
+                )
+                foreach (
+                    IGrouping<string, ISceneNode> group in detectors.GroupBy(detector =>
+                        detector.GetOwnerInstanceID()
+                    )
+                )
+                {
+                    if (string.IsNullOrEmpty(group.Key) || group.Key == _faction.InstanceID)
+                        continue;
+                    IReadOnlyList<ISceneNode> candidate = group.ToList();
+                    long candidateStrength = GetMissionDefenseStrength(queries, candidate);
+                    if (candidateStrength <= 0)
+                        continue;
+                    (string, bool) key = (group.Key, orbital);
+                    if (
+                        !_missionDefenseBaselines.TryGetValue(
+                            key,
+                            out IReadOnlyList<ISceneNode> existing
+                        )
+                        || candidateStrength > GetMissionDefenseStrength(queries, existing)
+                        || candidateStrength == GetMissionDefenseStrength(queries, existing)
+                            && (
+                                candidate.Count > existing.Count
+                                || candidate.Count == existing.Count
+                                    && GetMissionDefenseCommanderCombat(candidate)
+                                        > GetMissionDefenseCommanderCombat(existing)
+                            )
+                    )
+                        _missionDefenseBaselines[key] = candidate;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Totals the same defender contributions used by mission detection rolls.
+        /// </summary>
+        /// <param name="queries">The mission probability calculations.</param>
+        /// <param name="detectors">The observed group to rank.</param>
+        /// <returns>The group's combined detection pressure.</returns>
+        private static long GetMissionDefenseStrength(
+            MissionQueries queries,
+            IReadOnlyList<ISceneNode> detectors
+        ) => detectors.Sum(detector => (long)queries.GetMissionDetectorStrength(detector));
+
+        /// <summary>
+        /// Breaks equal detection-pressure ties using the observed commanders' confrontation ratings.
+        /// </summary>
+        /// <param name="detectors">The reference group to inspect.</param>
+        /// <returns>The total Combat rating of distinct eligible commanders.</returns>
+        private static int GetMissionDefenseCommanderCombat(IReadOnlyList<ISceneNode> detectors) =>
+            detectors
+                .Select(detector =>
+                    Mission.GetDetectorCommander(detector, detector.GetParentOfType<Planet>())
+                )
+                .Where(commander => commander != null)
+                .Distinct()
+                .Sum(commander => commander.GetEffectiveRating(SkillRating.Combat));
+
+        /// <summary>
+        /// Returns an observed enemy reference group or a configured detached fallback.
+        /// </summary>
+        /// <param name="enemyId">The opposing faction being estimated.</param>
+        /// <param name="orbital">Whether orbital rather than planetary detectors are required.</param>
+        /// <returns>The assessment-local reference detectors, never attached to the active game.</returns>
+        private IReadOnlyList<ISceneNode> GetMissionDefenseBaseline(string enemyId, bool orbital)
+        {
+            (string, bool) key = (enemyId, orbital);
+            if (_missionDefenseBaselines.TryGetValue(key, out IReadOnlyList<ISceneNode> detectors))
+                return detectors;
+            detectors = CreateMissionDefenseFallback(enemyId, orbital);
+            _missionDefenseBaselines[key] = detectors;
+            return detectors;
+        }
+
+        /// <summary>
+        /// Builds a detached defense case only when no observed group can supply that estimate.
+        /// </summary>
+        /// <param name="enemyId">The opposing faction represented by the case.</param>
+        /// <param name="orbital">Whether the case needs capital ships instead of regiments.</param>
+        /// <returns>The configured detectors with a local ranked commander.</returns>
+        private IReadOnlyList<ISceneNode> CreateMissionDefenseFallback(string enemyId, bool orbital)
+        {
+            GameConfig.AIMissionPlanningConfig config = _game.Config.AI.MissionPlanning;
+            int count = orbital
+                ? config.MissionDefenseFallbackOrbitalDetectorCount
+                : config.MissionDefenseFallbackGroundDetectorCount;
+            if (count <= 0)
+                return Array.Empty<ISceneNode>();
+            Planet planet = new()
+            {
+                InstanceID = "mission-defense-" + enemyId,
+                OwnerInstanceID = enemyId,
+                IsColonized = true,
+            };
+            Fleet fleet = null;
+            if (orbital)
+            {
+                fleet = new Fleet
+                {
+                    InstanceID = planet.InstanceID + "-fleet",
+                    OwnerInstanceID = enemyId,
+                };
+                fleet.SetParent(planet);
+                planet.AddChild(fleet);
+            }
+            List<ISceneNode> detectors = new();
+            for (int index = 0; index < count; index++)
+            {
+                string id = planet.InstanceID + "-detector-" + index;
+                ISceneNode detector = orbital
+                    ? new CapitalShip
+                    {
+                        InstanceID = id,
+                        OwnerInstanceID = enemyId,
+                        DetectionRating = config.MissionDefenseFallbackDetectionRating,
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                    }
+                    : new Regiment
+                    {
+                        InstanceID = id,
+                        OwnerInstanceID = enemyId,
+                        DetectionRating = config.MissionDefenseFallbackDetectionRating,
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                    };
+                ISceneNode parent = (ISceneNode)fleet ?? planet;
+                detector.SetParent(parent);
+                parent.AddChild(detector);
+                detectors.Add(detector);
+            }
+            Officer commander = new()
+            {
+                InstanceID = planet.InstanceID + "-commander",
+                OwnerInstanceID = enemyId,
+                CurrentRank = orbital ? OfficerRank.Admiral : OfficerRank.General,
+            };
+            commander.SetBaseRating(
+                SkillRating.Espionage,
+                config.MissionDefenseFallbackCommanderEspionage
+            );
+            commander.SetBaseRating(
+                SkillRating.Combat,
+                config.MissionDefenseFallbackCommanderCombat
+            );
+            ISceneNode commandParent = orbital ? detectors[0] : planet;
+            commander.SetParent(commandParent);
+            commandParent.AddChild(commander);
+            return detectors;
         }
 
         /// <summary>
