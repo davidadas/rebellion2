@@ -314,7 +314,7 @@ public sealed class AppBootstrap : MonoBehaviour
     }
 
     /// <summary>
-    /// Persists verified content and transfers it to the replacement application bootstrap.
+    /// Transfers verified content without persisting a selection that has not finished loading.
     /// </summary>
     /// <param name="preparation">The verified content and complete pending mod selection.</param>
     internal void ApplyContentReload(ContentReloadPreparation preparation)
@@ -322,17 +322,7 @@ public sealed class AppBootstrap : MonoBehaviour
         if (preparation == null)
             throw new ArgumentNullException(nameof(preparation));
 
-        ContentPack contentPack = preparation.Pack;
-        UserContentSettings content = _userSettingsManager.Settings.Content;
-        content.ActivePackID = contentPack.Definition.ID;
-        content.ActiveScenarioID = contentPack.Scenario.ID;
-        content.DisabledModIDs = preparation
-            .DisabledModIDs.Where(id => !string.IsNullOrWhiteSpace(id))
-            .Distinct(StringComparer.Ordinal)
-            .OrderBy(id => id, StringComparer.Ordinal)
-            .ToArray();
-        _userSettingsManager.Save();
-        GameLaunchContext.PrepareContentRestart(contentPack);
+        GameLaunchContext.PrepareContentRestart(preparation.Pack);
     }
 
     /// <summary>
@@ -374,7 +364,6 @@ public sealed class AppBootstrap : MonoBehaviour
         }
 
         SaveContentSelection selection = preparation.ContentSelection;
-        PersistContentSelection(selection.Pack, selection.DisabledModIDs);
         GameLaunchContext.PrepareSaveLoadAfterContentRestart(preparation.FileName, selection.Pack);
         return true;
     }
@@ -386,23 +375,6 @@ public sealed class AppBootstrap : MonoBehaviour
     {
         LoadStarting?.Invoke();
         _runtime.EndGame();
-    }
-
-    /// <summary>
-    /// Persists a verified save-content selection for the replacement bootstrap.
-    /// </summary>
-    /// <param name="contentPack">The verified pack and scenario.</param>
-    /// <param name="disabledModIDs">Compatible mods excluded by the save.</param>
-    private void PersistContentSelection(ContentPack contentPack, string[] disabledModIDs)
-    {
-        UserContentSettings content = _userSettingsManager.Settings.Content;
-        content.ActivePackID = contentPack.Definition.ID;
-        content.ActiveScenarioID = contentPack.Scenario.ID;
-        content.SetDisabledModsForPack(
-            contentPack.FileResolver.AvailableMods.Select(mod => mod.ID),
-            disabledModIDs
-        );
-        _userSettingsManager.Save();
     }
 
     /// <summary>
@@ -438,9 +410,9 @@ public sealed class AppBootstrap : MonoBehaviour
     /// <returns>A task that completes when main-menu content is resident.</returns>
     private async Task PreloadMainMenuContentAsync()
     {
-        await Task.WhenAll(
-            _contentAssets.PreloadAsync(_mainMenuApplicationPreload),
-            _contentAssets.PreloadAsync(_contentPack.GetPreloadManifest(_mainMenuPreloadID))
+        await PreloadContentAsync(
+            _mainMenuApplicationPreload,
+            _contentPack.GetPreloadManifest(_mainMenuPreloadID)
         );
 
         if (this == null || Instance != this)
@@ -454,10 +426,34 @@ public sealed class AppBootstrap : MonoBehaviour
     /// </summary>
     private void StartStrategyContentPreload()
     {
-        _strategyContentTask ??= Task.WhenAll(
-            _contentAssets.PreloadAsync(_strategyApplicationPreload),
-            _contentAssets.PreloadAsync(_contentPack.GetPreloadManifest(_strategyPreloadID))
+        _strategyContentTask ??= PreloadContentAsync(
+            _strategyApplicationPreload,
+            _contentPack.GetPreloadManifest(_strategyPreloadID)
         );
+    }
+
+    /// <summary>
+    /// Loads required content while allowing shutdown to release an abandoned asset store.
+    /// </summary>
+    /// <param name="applicationManifest">The application-owned assets.</param>
+    /// <param name="packManifest">The selected pack's assets.</param>
+    /// <returns>A task that completes after loading or after the owning bootstrap shuts down.</returns>
+    private async Task PreloadContentAsync(
+        ContentPreloadManifest applicationManifest,
+        ContentPreloadManifest packManifest
+    )
+    {
+        try
+        {
+            await Task.WhenAll(
+                _contentAssets.PreloadAsync(applicationManifest),
+                _contentAssets.PreloadAsync(packManifest)
+            );
+        }
+        catch (ObjectDisposedException) when (this == null || Instance != this)
+        {
+            // Shutdown owns disposal; a superseded preload must not restart application recovery.
+        }
     }
 
     /// <summary>

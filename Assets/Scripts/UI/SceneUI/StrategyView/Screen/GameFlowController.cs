@@ -355,6 +355,7 @@ public sealed class GameFlowController : MonoBehaviour
         if (loadingTransitionActive)
         {
             LoadingScreenController.CompletePendingLoad(
+                AppBootstrap.Instance,
                 () =>
                 {
                     strategyController.ResumeMusic();

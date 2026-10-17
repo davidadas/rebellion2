@@ -174,6 +174,27 @@ namespace Rebellion.Tests.Content
             );
         }
 
+        [Test]
+        public async Task LoadAudioAsync_DisposedDuringLoad_RejectsPendingLoadAsync()
+        {
+            ContentAssets assets = CreateAssets();
+            Task<AudioClip> pending = assets.LoadAudioAsync("Application/Audio/pending");
+
+            assets.Dispose();
+
+            try
+            {
+                await pending;
+                Assert.Fail("Disposed assets must not finish loading audio.");
+            }
+            catch (ObjectDisposedException)
+            {
+                Assert.Throws<ObjectDisposedException>(() =>
+                    assets.GetPreloadedAudio("Application/Audio/pending")
+                );
+            }
+        }
+
         /// <summary>
         /// Creates assets.
         /// </summary>

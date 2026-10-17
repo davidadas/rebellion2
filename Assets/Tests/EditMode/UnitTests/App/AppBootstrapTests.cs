@@ -16,6 +16,8 @@ namespace Rebellion.Tests.App
         private GameObject _gameObject;
         private string _modDirectory;
         private string _packDirectory;
+        private string _settingsPath;
+        private byte[] _settingsBytes;
 
         /// <summary>
         /// Sets up.
@@ -23,6 +25,8 @@ namespace Rebellion.Tests.App
         [SetUp]
         public void SetUp()
         {
+            _settingsPath = Path.Combine(Application.persistentDataPath, "user-settings.json");
+            _settingsBytes = File.Exists(_settingsPath) ? File.ReadAllBytes(_settingsPath) : null;
             DestroyAudioManagers();
             GameLaunchContext.Reset(TestContent.Pack);
             GameLaunchContext.Summary.PlayerFactionID = null;
@@ -41,19 +45,33 @@ namespace Rebellion.Tests.App
         [TearDown]
         public void TearDown()
         {
-            LoadingScreenController loadingController =
-                Object.FindAnyObjectByType<LoadingScreenController>(FindObjectsInactive.Include);
-            if (loadingController != null)
-                Object.DestroyImmediate(loadingController.gameObject);
-            Object.DestroyImmediate(_gameObject);
-            DestroyAudioManagers();
-            if (_packDirectory != null && Directory.Exists(_packDirectory))
-                Directory.Delete(_packDirectory, true);
-            if (_modDirectory != null && Directory.Exists(_modDirectory))
-                Directory.Delete(_modDirectory, true);
-            _modDirectory = null;
-            _packDirectory = null;
-            GameLaunchContext.Reset(TestContent.Pack);
+            try
+            {
+                LoadingScreenController loadingController =
+                    Object.FindAnyObjectByType<LoadingScreenController>(
+                        FindObjectsInactive.Include
+                    );
+                if (loadingController != null)
+                    Object.DestroyImmediate(loadingController.gameObject);
+                Object.DestroyImmediate(_gameObject);
+                DestroyAudioManagers();
+                if (_packDirectory != null && Directory.Exists(_packDirectory))
+                    Directory.Delete(_packDirectory, true);
+                if (_modDirectory != null && Directory.Exists(_modDirectory))
+                    Directory.Delete(_modDirectory, true);
+                _modDirectory = null;
+                _packDirectory = null;
+                GameLaunchContext.PrepareContentRestart(TestContent.Pack);
+                GameLaunchContext.ConsumeContentPackAfterRestart();
+                GameLaunchContext.Reset(TestContent.Pack);
+            }
+            finally
+            {
+                if (_settingsBytes == null)
+                    File.Delete(_settingsPath);
+                else
+                    File.WriteAllBytes(_settingsPath, _settingsBytes);
+            }
         }
 
         [Test]
@@ -118,9 +136,10 @@ namespace Rebellion.Tests.App
         }
 
         [Test]
-        public void ReloadContent_MultiplePackDisabledSnapshot_PersistsCompleteSelection()
+        public void ReloadContent_PendingSelection_LeavesContentPreferencesUnchanged()
         {
             UIComponentTestHelper.InvokeLifecycle(_bootstrap, "InitializeRuntimeCore");
+            string[] original = _bootstrap.GetUserSettingsManager().Settings.Content.DisabledModIDs;
             string[] disabledModIDs = { "other-pack-mod", "selected-pack-mod" };
 
             bool started = _bootstrap.ReloadContent(
@@ -130,9 +149,12 @@ namespace Rebellion.Tests.App
 
             Assert.IsTrue(started);
             CollectionAssert.AreEqual(
-                disabledModIDs,
+                original,
                 _bootstrap.GetUserSettingsManager().Settings.Content.DisabledModIDs
             );
+            Assert.AreEqual(_settingsBytes != null, File.Exists(_settingsPath));
+            if (_settingsBytes != null)
+                CollectionAssert.AreEqual(_settingsBytes, File.ReadAllBytes(_settingsPath));
         }
 
         [Test]
@@ -171,7 +193,6 @@ namespace Rebellion.Tests.App
             Assert.IsFalse(GameLaunchContext.IsLoadGame);
             Assert.IsNull(GameLaunchContext.SaveFileName);
             Assert.IsNotNull(GameLaunchContext.ConsumeContentPackAfterRestart());
-            LoadingScreenController.CompletePendingLoad();
         }
 
         [Test]
@@ -182,9 +203,30 @@ namespace Rebellion.Tests.App
             Assert.IsTrue(_bootstrap.ReloadContent(packID, System.Array.Empty<string>()));
 
             Assert.IsFalse(_bootstrap.ReloadContent(packID, System.Array.Empty<string>()));
+        }
 
-            GameLaunchContext.ConsumeContentPackAfterRestart();
-            LoadingScreenController.CompletePendingLoad();
+        [Test]
+        public void CompletePendingLoad_DifferentBootstrap_LeavesTransitionPending()
+        {
+            UIComponentTestHelper.InvokeLifecycle(_bootstrap, "InitializeRuntimeCore");
+            _bootstrap.ReloadContent(
+                _bootstrap.GetContentPack().Definition.ID,
+                System.Array.Empty<string>()
+            );
+            GameObject otherObject = new GameObject("UnrelatedBootstrap");
+            otherObject.SetActive(false);
+            try
+            {
+                AppBootstrap other = otherObject.AddComponent<AppBootstrap>();
+
+                Assert.IsFalse(LoadingScreenController.CompletePendingLoad(other));
+
+                Assert.IsTrue(LoadingScreenController.IsLoadInProgress);
+            }
+            finally
+            {
+                Object.DestroyImmediate(otherObject);
+            }
         }
 
         [Test]
@@ -311,7 +353,7 @@ namespace Rebellion.Tests.App
                 Assert.IsTrue(_bootstrap.LoadSave(fileName));
                 Assert.IsTrue(LoadingScreenController.IsLoadInProgress);
 
-                Assert.IsTrue(LoadingScreenController.CompleteFailedRecovery(null));
+                Assert.IsTrue(LoadingScreenController.CompleteFailedRecovery(_bootstrap, null));
 
                 Assert.IsFalse(LoadingScreenController.IsLoadInProgress);
             }

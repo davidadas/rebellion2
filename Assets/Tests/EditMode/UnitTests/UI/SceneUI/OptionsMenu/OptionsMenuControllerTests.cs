@@ -227,9 +227,12 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.IsFalse(_controller.IsOpen);
             Assert.IsTrue(LoadingScreenController.IsLoadInProgress);
             CollectionAssert.AreEqual(
-                new[] { compatibleModID, otherPackModID },
+                new[] { otherPackModID },
                 _bootstrap.GetUserSettingsManager().Settings.Content.DisabledModIDs
             );
+            ContentPack staged = GameLaunchContext.ConsumeContentPackAfterRestart();
+            Assert.IsFalse(staged.FileResolver.Mods.Any(mod => mod.ID == compatibleModID));
+            Assert.IsTrue(staged.FileResolver.AvailableMods.Any(mod => mod.ID == compatibleModID));
         }
 
         [Test]
