@@ -640,6 +640,31 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void Constructor_UnrecruitedOfficer_BindsTraitDefinitionsBeforeRecruitment()
+        {
+            OfficerTraitDefinition trait = new OfficerTraitDefinition
+            {
+                ID = "leadership",
+                LeadershipBonusPercent = 50,
+            };
+            Officer officer = EntityFactory.CreateOfficer("unrecruited", _faction.InstanceID);
+            officer.SetBaseRating(SkillRating.Leadership, 40);
+            _game.GetUnrecruitedOfficers().Add(officer);
+            _session.Dispose();
+            _session = new GameSession(
+                _game,
+                TestGameData.Create(_game.Config, officerTraits: new[] { trait })
+            );
+
+            _game.RemoveUnrecruitedOfficer(officer);
+            _game.AttachNode(officer, _planet);
+            bool granted = officer.GrantTrait(trait.ID, "event");
+
+            Assert.IsTrue(granted);
+            Assert.AreEqual(60, officer.GetEffectiveRating(SkillRating.Leadership));
+        }
+
+        [Test]
         public void ReplaceGame_InvalidEvent_LeavesReplacementGameAssigned()
         {
             GameConfig config = TestConfig.Create();

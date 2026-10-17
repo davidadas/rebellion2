@@ -915,6 +915,9 @@ namespace Rebellion.Simulation
             IReadOnlyList<ContainerNode> destinations
         )
         {
+            int personnelTravelTimePercent = MovementQueries.GetPersonnelGroupTravelTimePercent(
+                units
+            );
             int groupTransitTicks = 0;
             for (int index = 0; index < units.Count; index++)
             {
@@ -938,7 +941,8 @@ namespace Rebellion.Simulation
                         unit,
                         originPosition,
                         originPlanet,
-                        destinationPlanet
+                        destinationPlanet,
+                        personnelTravelTimePercent
                     )
                 );
             }
@@ -2180,40 +2184,58 @@ namespace Rebellion.Simulation
         /// <param name="destinationPlanet">The fleet's new destination planet.</param>
         private void RetargetInTransitFleetJoiners(Fleet fleet, Planet destinationPlanet)
         {
+            List<IMovable> joiners = fleet
+                .GetChildren<IMovable>(recursive: true)
+                .Where(movable => movable.Movement != null)
+                .ToList();
             foreach (
-                IMovable joiner in fleet
-                    .GetChildren<IMovable>(recursive: true)
-                    .Where(movable => movable.Movement != null)
+                IGrouping<string, IMovable> group in joiners
+                    .Where(joiner => !string.IsNullOrEmpty(joiner.Movement.MovementGroupID))
+                    .GroupBy(joiner => joiner.Movement.MovementGroupID, StringComparer.Ordinal)
             )
-                RetargetMovement(joiner, destinationPlanet);
+            {
+                RetargetMovementGroup(group.ToList(), destinationPlanet);
+            }
+
+            foreach (
+                IMovable ungrouped in joiners.Where(joiner =>
+                    string.IsNullOrEmpty(joiner.Movement.MovementGroupID)
+                )
+            )
+            {
+                RetargetMovementGroup(new List<IMovable> { ungrouped }, destinationPlanet);
+            }
         }
 
         /// <summary>
-        /// Replaces a unit's active movement state with a route from its current position to a new destination.
+        /// Replaces a movement group's active routes while preserving one common arrival time.
         /// </summary>
-        /// <param name="movable">The moving unit to retarget.</param>
+        /// <param name="movables">The moving units to retarget together.</param>
         /// <param name="destinationPlanet">The new destination planet.</param>
-        private void RetargetMovement(IMovable movable, Planet destinationPlanet)
+        private void RetargetMovementGroup(
+            IReadOnlyList<IMovable> movables,
+            Planet destinationPlanet
+        )
         {
-            Point currentPosition = movable.Movement.CurrentPosition;
-            string movementGroupID = movable.Movement.MovementGroupID;
-            string sourceEventInstanceID = movable.Movement.SourceEventInstanceID;
-            bool resolveEncounterOnArrival = movable.Movement.ResolveEncounterOnArrival;
-            movable.Movement = new MovementState
+            int transitTicks = _queries.CalculateRetargetedGroupTransitTicks(
+                movables,
+                destinationPlanet
+            );
+            foreach (IMovable movable in movables)
             {
-                TransitTicks = _queries.CalculateTransitTicks(
-                    movable,
-                    currentPosition,
-                    destinationPlanet,
-                    sameSector: false
-                ),
-                TicksElapsed = 0,
-                MovementGroupID = movementGroupID,
-                SourceEventInstanceID = sourceEventInstanceID,
-                ResolveEncounterOnArrival = resolveEncounterOnArrival,
-                OriginPosition = currentPosition,
-                CurrentPosition = currentPosition,
-            };
+                MovementState movement = movable.Movement;
+                Point currentPosition = movement.CurrentPosition;
+                movable.Movement = new MovementState
+                {
+                    TransitTicks = transitTicks,
+                    TicksElapsed = 0,
+                    MovementGroupID = movement.MovementGroupID,
+                    SourceEventInstanceID = movement.SourceEventInstanceID,
+                    ResolveEncounterOnArrival = movement.ResolveEncounterOnArrival,
+                    OriginPosition = currentPosition,
+                    CurrentPosition = currentPosition,
+                };
+            }
         }
 
         /// <summary>

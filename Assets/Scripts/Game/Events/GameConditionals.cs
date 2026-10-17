@@ -376,6 +376,7 @@ namespace Rebellion.Game.Events
     {
         public string UnitInstanceID { get; set; }
         public string LocationInstanceID { get; set; }
+        public bool RequireDirectParent { get; set; }
     }
     #endregion
 }

@@ -93,6 +93,24 @@ namespace Rebellion.Tests.Content
             Assert.IsTrue(turbolasers.All(building => !building.IsDetectionBlocker));
         }
 
+        [Test]
+        public void OpenActive_OfficerTraits_LoadDefinitionsAndAuthoredAssignments()
+        {
+            OfficerTraitDefinition smuggler = TestContent.Pack.GameData.OfficerTraits.Single(
+                trait => trait.ID == "smuggler"
+            );
+            OfficerTraitDefinition leadershipBonus = TestContent.Pack.GameData.OfficerTraits.Single(
+                trait => trait.ID == "leadership-bonus"
+            );
+            Officer han = TestContent.Pack.GameData.Officers.Single(officer =>
+                officer.InstanceID == "HAN_SOLO"
+            );
+
+            Assert.AreEqual(50, smuggler.PersonnelTravelTimePercent);
+            Assert.AreEqual(50, leadershipBonus.LeadershipBonusPercent);
+            CollectionAssert.Contains(han.Traits, smuggler.ID);
+        }
+
         [TestCase(RuntimePlatform.OSXPlayer, "Game.app/Contents/Resources/Data")]
         [TestCase(RuntimePlatform.OSXPlayer, "Game.app/Contents")]
         [TestCase(RuntimePlatform.LinuxPlayer, "Game_Data")]

@@ -207,6 +207,11 @@ namespace Rebellion.Simulation
         /// </summary>
         private void RebuildDerivedState()
         {
+            _gameData.BindOfficerTraits(
+                Game.GetRegisteredSceneNodesByType<Officer>(includeDisabled: true)
+                    .Concat(Game.GetUnrecruitedOfficers())
+            );
+
             IManufacturable[] templates = CopyTemplates(_gameData.Buildings)
                 .Cast<IManufacturable>()
                 .Concat(CopyTemplates(_gameData.CapitalShips))

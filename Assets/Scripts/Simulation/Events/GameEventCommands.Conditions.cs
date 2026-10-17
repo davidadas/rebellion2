@@ -682,6 +682,9 @@ namespace Rebellion.Simulation
                 definition.LocationInstanceID,
                 includeDisabled: true
             );
+            if (definition.RequireDirectParent)
+                return unit?.GetParent() == location;
+
             for (ISceneNode current = unit; current != null; current = current.GetParent())
             {
                 if (current == location)

@@ -2972,6 +2972,53 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void ExecuteAction_OfficerTraitActions_UseEventOwnedAssignment()
+        {
+            _game.GetFactions().Add(new Faction { InstanceID = "faction" });
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            Planet planet = new Planet { InstanceID = "planet", OwnerInstanceID = "faction" };
+            Officer officer = EntityFactory.CreateOfficer("officer", "faction");
+            OfficerTraitDefinition trait = new OfficerTraitDefinition
+            {
+                ID = "leadership",
+                LeadershipBonusPercent = 50,
+            };
+            officer.BindTraitDefinitions(
+                new Dictionary<string, OfficerTraitDefinition> { [trait.ID] = trait }
+            );
+            officer.SetBaseRating(SkillRating.Leadership, 40);
+            _game.AttachNode(sector, _game.GetGalaxyMap());
+            _game.AttachNode(planet, sector);
+            _game.AttachNode(officer, planet);
+            GameEvent gameEvent = new GameEvent { InstanceID = "trait-event" };
+            GameActionContext context = new GameActionContext(
+                _game,
+                _game.Random,
+                new GameEventEvaluationContext(gameEvent, new GameEventState())
+            );
+
+            GameEventCommands.ExecuteAction(
+                new ApplyOfficerTraitAction
+                {
+                    TraitID = trait.ID,
+                    OfficerInstanceID = officer.InstanceID,
+                },
+                context
+            );
+            Assert.AreEqual(60, officer.GetEffectiveRating(SkillRating.Leadership));
+
+            GameEventCommands.ExecuteAction(
+                new RemoveOfficerTraitAction
+                {
+                    TraitID = trait.ID,
+                    OfficerInstanceID = officer.InstanceID,
+                },
+                context
+            );
+            Assert.AreEqual(40, officer.GetEffectiveRating(SkillRating.Leadership));
+        }
+
+        [Test]
         public void ProcessScheduledEvents_FutureActivation_EvaluatesBindingRoll()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -3829,6 +3876,42 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void IsMet_IsAtLocationDirectParent_DirectRequiredMatches()
+        {
+            GameRoot game = BuildHierarchy(out Planet planet, out _, out _);
+            Officer officer = EntityFactory.CreateOfficer("officer", "faction");
+            game.AttachNode(officer, planet);
+            IsAtLocationConditional condition = new IsAtLocationConditional
+            {
+                UnitInstanceID = officer.InstanceID,
+                LocationInstanceID = planet.InstanceID,
+                RequireDirectParent = true,
+            };
+
+            bool isMet = GameEventCommands.IsMet(condition, game);
+
+            Assert.IsTrue(isMet);
+        }
+
+        [Test]
+        public void IsMet_IsAtLocationNestedUnderFleet_DirectRequiredDoesNotMatch()
+        {
+            GameRoot game = BuildHierarchy(out Planet planet, out _, out CapitalShip ship);
+            Officer officer = EntityFactory.CreateOfficer("officer", "faction");
+            game.AttachNode(officer, ship);
+            IsAtLocationConditional condition = new IsAtLocationConditional
+            {
+                UnitInstanceID = officer.InstanceID,
+                LocationInstanceID = planet.InstanceID,
+                RequireDirectParent = true,
+            };
+
+            bool isMet = GameEventCommands.IsMet(condition, game);
+
+            Assert.IsFalse(isMet);
+        }
+
+        [Test]
         public void IsMet_IsCapturedWithCaptor_UncapturedOfficerWithStaleCaptorDoesNotMatch()
         {
             GameRoot game = BuildHierarchy(out Planet planet, out _, out _);
@@ -4246,6 +4329,32 @@ namespace Rebellion.Tests.Simulation
                 .ToList();
 
             CollectionAssert.AreEqual(new ISceneNode[] { officer }, selected);
+        }
+
+        [Test]
+        public void Select_MissionsMatchingOwner_ReturnsOwnedMission()
+        {
+            GameRoot game = BuildSelectionGame(out Planet planet);
+            game.GetFactions().Add(new Faction { InstanceID = "other-faction" });
+            DiplomacyMission ownedMission = new DiplomacyMission
+            {
+                InstanceID = "owned-mission",
+                OwnerInstanceID = "faction",
+            };
+            DiplomacyMission otherMission = new DiplomacyMission
+            {
+                InstanceID = "other-mission",
+                OwnerInstanceID = "other-faction",
+            };
+            game.AttachNode(ownedMission, planet);
+            game.AttachNode(otherMission, planet);
+            SelectMissions selector = new SelectMissions { OwnerFactionInstanceID = "faction" };
+
+            List<ISceneNode> selected = GameEventCommands
+                .Select(selector, game, new FixedRNG(0), null)
+                .ToList();
+
+            CollectionAssert.AreEqual(new ISceneNode[] { ownedMission }, selected);
         }
 
         [Test]
