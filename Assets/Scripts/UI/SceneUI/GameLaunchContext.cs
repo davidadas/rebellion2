@@ -64,6 +64,17 @@ public static class GameLaunchContext
     }
 
     /// <summary>
+    /// Transfers a verified menu selection without carrying an earlier saved-game request.
+    /// </summary>
+    /// <param name="contentPack">The verified content for the replacement bootstrap.</param>
+    internal static void PrepareContentRestart(ContentPack contentPack)
+    {
+        _contentPackAfterRestart =
+            contentPack ?? throw new ArgumentNullException(nameof(contentPack));
+        _saveFileNameAfterContentRestart = null;
+    }
+
+    /// <summary>
     /// Restores and consumes a save request preserved across content reconstruction.
     /// </summary>
     internal static void RestoreSaveLoadAfterContentRestart()

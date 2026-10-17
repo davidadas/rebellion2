@@ -293,11 +293,15 @@ public static class OptionsMenuPrefabBuilder
         TextMeshProUGUI packValue = CreateOptionsFieldRow(
             modsPage,
             "ContentPack",
-            "Active Pack",
+            string.Empty,
             41,
             out Button packPrev,
-            out Button packNext
+            out Button packNext,
+            fieldX: 20,
+            fieldWidth: 329,
+            textInset: 28
         );
+        packValue.overflowMode = TextOverflowModes.Ellipsis;
         CreateOptionsSectionHeader(modsPage, "LoadedModsHeader", "MODS", 74, accent);
 
         TextMeshProUGUI status = CreateTextLabel("ModsStatusTextField", modsPage);
@@ -306,15 +310,6 @@ public static class OptionsMenuPrefabBuilder
         status.fontSize = 11;
         status.alignment = TextAlignmentOptions.TopLeft;
         SetSourceRect(status.rectTransform, 20, 101, 348, 18);
-
-        TextMeshProUGUI restart = CreateTextLabel("ModsRestartTextField", modsPage);
-        restart.text = "A RESTART MAY BE REQUIRED";
-        restart.color = new Color(0.95f, 0.25f, 0.25f);
-        restart.fontSize = 11;
-        restart.fontStyle = FontStyles.Bold;
-        restart.alignment = TextAlignmentOptions.Center;
-        SetSourceRect(restart.rectTransform, 20, 313, 348, 18);
-        restart.gameObject.SetActive(false);
 
         ScrollAreaView modsScrollArea = CreateScrollAreaView(
             modsPage,
@@ -344,7 +339,6 @@ public static class OptionsMenuPrefabBuilder
         rowTemplate.gameObject.SetActive(false);
 
         AssignReference(view, "_modsStatusTextField", status);
-        AssignReference(view, "_modsRestartTextField", restart);
         AssignReference(view, "_contentPackValueField", packValue);
         AssignReference(view, "_contentPackPrevButton", packPrev);
         AssignReference(view, "_contentPackNextButton", packNext);
@@ -1492,6 +1486,9 @@ public static class OptionsMenuPrefabBuilder
     /// <param name="y">The source-space row top.</param>
     /// <param name="prevButton">Receives the previous-step button.</param>
     /// <param name="nextButton">Receives the next-step button.</param>
+    /// <param name="fieldX">The selector's source-space left edge.</param>
+    /// <param name="fieldWidth">The selector's source-space width, including arrow buttons.</param>
+    /// <param name="textInset">The text's inset from each selector edge.</param>
     /// <returns>The value text field.</returns>
     private static TextMeshProUGUI CreateOptionsFieldRow(
         RectTransform parent,
@@ -1499,7 +1496,10 @@ public static class OptionsMenuPrefabBuilder
         string caption,
         int y,
         out Button prevButton,
-        out Button nextButton
+        out Button nextButton,
+        int fieldX = 194,
+        int fieldWidth = 155,
+        int textInset = 24
     )
     {
         TextMeshProUGUI labelField = CreateTextLabel($"{name}Label", parent);
@@ -1514,20 +1514,44 @@ public static class OptionsMenuPrefabBuilder
             parent,
             _optionsBadgeAddress,
             _badgeBorder,
-            194,
+            fieldX,
             y,
-            155,
+            fieldWidth,
             18,
             Color.white
         );
-        prevButton = CreateOptionsStepperButton(parent, $"{name}Prev", "<", 194, y, 78, 0);
+        int previousWidth = (fieldWidth + 1) / 2;
+        int nextWidth = fieldWidth - previousWidth;
+        prevButton = CreateOptionsStepperButton(
+            parent,
+            $"{name}Prev",
+            "<",
+            fieldX,
+            y,
+            previousWidth,
+            0
+        );
         TextMeshProUGUI valueField = CreateTextLabel($"{name}Value", parent);
         valueField.text = "-";
         valueField.color = new Color(0.875f, 0.910f, 0.941f);
         valueField.fontSize = 10;
         valueField.alignment = TextAlignmentOptions.Midline;
-        SetSourceRect(valueField.rectTransform, 218, y, 107, 18);
-        nextButton = CreateOptionsStepperButton(parent, $"{name}Next", ">", 272, y, 77, 51);
+        SetSourceRect(
+            valueField.rectTransform,
+            fieldX + textInset,
+            y,
+            fieldWidth - textInset * 2,
+            18
+        );
+        nextButton = CreateOptionsStepperButton(
+            parent,
+            $"{name}Next",
+            ">",
+            fieldX + previousWidth,
+            y,
+            nextWidth,
+            nextWidth - 26
+        );
         return valueField;
     }
 

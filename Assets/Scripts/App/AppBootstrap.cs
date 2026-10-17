@@ -53,10 +53,10 @@ public sealed class AppBootstrap : MonoBehaviour
     private UserSettingsManager _userSettingsManager;
 
     /// <summary>
-    /// Raised immediately before a saved-game transition begins.
-    /// Scene presentations use this boundary to stop rendering the outgoing game.
+    /// Raised before loading replaces the current scene or application content.
+    /// Scene presentations use this boundary to stop rendering the outgoing scene.
     /// </summary>
-    internal event Action SaveLoadStarting;
+    internal event Action LoadStarting;
 
     /// <summary>
     /// Gets whether the application scene loader is still completing a transition.
@@ -252,6 +252,80 @@ public sealed class AppBootstrap : MonoBehaviour
     }
 
     /// <summary>
+    /// Reloads selected content and returns to the main menu without exiting the application.
+    /// </summary>
+    /// <param name="packID">The installed pack to select.</param>
+    /// <param name="disabledModIDs">The mods excluded from the new selection.</param>
+    /// <returns>True when a main-menu content transition was started.</returns>
+    internal bool ReloadContent(string packID, string[] disabledModIDs)
+    {
+        if (
+            string.IsNullOrWhiteSpace(packID)
+            || _runtime.HasActiveGame
+            || LoadingScreenController.IsLoadInProgress
+            || IsSceneTransitionInProgress
+        )
+            return false;
+
+        LoadingScreenController.ReloadContent(
+            this,
+            PrepareContentReloadAsync(packID, disabledModIDs)
+        );
+        return true;
+    }
+
+    /// <summary>
+    /// Validates an installed pack and its default scenario before active content is replaced.
+    /// </summary>
+    /// <param name="packID">The installed pack to validate.</param>
+    /// <param name="disabledModIDs">The mods excluded from the selected content.</param>
+    /// <returns>The verified replacement content and complete pending mod selection.</returns>
+    internal Task<ContentReloadPreparation> PrepareContentReloadAsync(
+        string packID,
+        string[] disabledModIDs
+    )
+    {
+        string contentRoot = _contentPack.ContentRootPath;
+        string[] disabled = disabledModIDs?.ToArray() ?? Array.Empty<string>();
+        return Task.Run(() =>
+        {
+            ContentPackDefinition definition = ContentPackLoader
+                .DiscoverPacks(contentRoot)
+                .FirstOrDefault(pack => string.Equals(pack.ID, packID, StringComparison.Ordinal));
+            if (definition == null)
+                throw new InvalidOperationException($"Content pack '{packID}' is not installed.");
+
+            ContentPack contentPack = ContentPackLoader.OpenExact(
+                contentRoot,
+                packID,
+                definition.DefaultScenarioID,
+                disabled
+            );
+            ContentPackLoader.LoadApplicationPreloadManifest(
+                contentPack.FileResolver,
+                _mainMenuPreloadID
+            );
+            ContentPackLoader.LoadApplicationPreloadManifest(
+                contentPack.FileResolver,
+                _strategyPreloadID
+            );
+            return new ContentReloadPreparation(contentPack, disabled);
+        });
+    }
+
+    /// <summary>
+    /// Transfers verified content without persisting a selection that has not finished loading.
+    /// </summary>
+    /// <param name="preparation">The verified content and complete pending mod selection.</param>
+    internal void ApplyContentReload(ContentReloadPreparation preparation)
+    {
+        if (preparation == null)
+            throw new ArgumentNullException(nameof(preparation));
+
+        GameLaunchContext.PrepareContentRestart(preparation.Pack);
+    }
+
+    /// <summary>
     /// Reads save metadata and verifies any required replacement content away from the main thread.
     /// </summary>
     /// <param name="fileName">The save identifier to prepare.</param>
@@ -290,7 +364,6 @@ public sealed class AppBootstrap : MonoBehaviour
         }
 
         SaveContentSelection selection = preparation.ContentSelection;
-        PersistContentSelection(selection.Pack, selection.DisabledModIDs);
         GameLaunchContext.PrepareSaveLoadAfterContentRestart(preparation.FileName, selection.Pack);
         return true;
     }
@@ -298,27 +371,10 @@ public sealed class AppBootstrap : MonoBehaviour
     /// <summary>
     /// Stops the outgoing scene and runtime after the persistent loading presentation is visible.
     /// </summary>
-    internal void SuspendForSaveLoad()
+    internal void SuspendForLoad()
     {
-        SaveLoadStarting?.Invoke();
+        LoadStarting?.Invoke();
         _runtime.EndGame();
-    }
-
-    /// <summary>
-    /// Persists a verified save-content selection for the replacement bootstrap.
-    /// </summary>
-    /// <param name="contentPack">The verified pack and scenario.</param>
-    /// <param name="disabledModIDs">Compatible mods excluded by the save.</param>
-    private void PersistContentSelection(ContentPack contentPack, string[] disabledModIDs)
-    {
-        UserContentSettings content = _userSettingsManager.Settings.Content;
-        content.ActivePackID = contentPack.Definition.ID;
-        content.ActiveScenarioID = contentPack.Scenario.ID;
-        content.SetDisabledModsForPack(
-            contentPack.FileResolver.AvailableMods.Select(mod => mod.ID),
-            disabledModIDs
-        );
-        _userSettingsManager.Save();
     }
 
     /// <summary>
@@ -354,9 +410,9 @@ public sealed class AppBootstrap : MonoBehaviour
     /// <returns>A task that completes when main-menu content is resident.</returns>
     private async Task PreloadMainMenuContentAsync()
     {
-        await Task.WhenAll(
-            _contentAssets.PreloadAsync(_mainMenuApplicationPreload),
-            _contentAssets.PreloadAsync(_contentPack.GetPreloadManifest(_mainMenuPreloadID))
+        await PreloadContentAsync(
+            _mainMenuApplicationPreload,
+            _contentPack.GetPreloadManifest(_mainMenuPreloadID)
         );
 
         if (this == null || Instance != this)
@@ -370,10 +426,34 @@ public sealed class AppBootstrap : MonoBehaviour
     /// </summary>
     private void StartStrategyContentPreload()
     {
-        _strategyContentTask ??= Task.WhenAll(
-            _contentAssets.PreloadAsync(_strategyApplicationPreload),
-            _contentAssets.PreloadAsync(_contentPack.GetPreloadManifest(_strategyPreloadID))
+        _strategyContentTask ??= PreloadContentAsync(
+            _strategyApplicationPreload,
+            _contentPack.GetPreloadManifest(_strategyPreloadID)
         );
+    }
+
+    /// <summary>
+    /// Loads required content while allowing shutdown to release an abandoned asset store.
+    /// </summary>
+    /// <param name="applicationManifest">The application-owned assets.</param>
+    /// <param name="packManifest">The selected pack's assets.</param>
+    /// <returns>A task that completes after loading or after the owning bootstrap shuts down.</returns>
+    private async Task PreloadContentAsync(
+        ContentPreloadManifest applicationManifest,
+        ContentPreloadManifest packManifest
+    )
+    {
+        try
+        {
+            await Task.WhenAll(
+                _contentAssets.PreloadAsync(applicationManifest),
+                _contentAssets.PreloadAsync(packManifest)
+            );
+        }
+        catch (ObjectDisposedException) when (this == null || Instance != this)
+        {
+            // Shutdown owns disposal; a superseded preload must not restart application recovery.
+        }
     }
 
     /// <summary>

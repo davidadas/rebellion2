@@ -41,7 +41,7 @@ public sealed class MainMenuController : MonoBehaviour
         }
 
         _appBootstrap = AppBootstrap.EnsureExists();
-        _appBootstrap.SaveLoadStarting += HandleSaveLoadStarting;
+        _appBootstrap.LoadStarting += HandleLoadStarting;
         ContentPack contentPack = _appBootstrap.GetContentPack();
         GameLaunchContext.Reset(contentPack);
         currentVictoryCondition = GameLaunchContext.Summary.VictoryCondition;
@@ -85,9 +85,10 @@ public sealed class MainMenuController : MonoBehaviour
     /// </summary>
     private async void Start()
     {
+        AppBootstrap bootstrap = null;
         try
         {
-            AppBootstrap bootstrap = AppBootstrap.EnsureExists();
+            bootstrap = AppBootstrap.EnsureExists();
             Task contentTask = bootstrap.InitializeMainMenuSceneAsync();
             Task modelTask = Task.WhenAll(
                 view.transform.root.GetComponentsInChildren<ContentModelBinding>(true)
@@ -100,23 +101,28 @@ public sealed class MainMenuController : MonoBehaviour
             view?.RenderFactions(contentPack.Scenario.PlayableFactionIDs);
             AudioManager audioManager = bootstrap.GetAudioManager();
             audioManager.PreloadSfx(view?.GetAudioCuePaths());
-            mainMenuCanvas.enabled = true;
             if (LoadingScreenController.IsLoadInProgress)
             {
-                LoadingScreenController.CompletePendingLoad(() =>
-                    audioManager.PlayTrack(GetMenuMusicPath(contentPack.Definition), true)
-                );
+                if (
+                    !LoadingScreenController.CompletePendingLoad(
+                        bootstrap,
+                        () => audioManager.PlayTrack(GetMenuMusicPath(contentPack.Definition), true)
+                    )
+                )
+                    return;
             }
             else
                 audioManager.PlayTrack(GetMenuMusicPath(contentPack.Definition), true);
+            mainMenuCanvas.enabled = true;
         }
         catch (System.Exception exception)
         {
-            if (mainMenuCanvas != null)
-                mainMenuCanvas.enabled = true;
-
-            if (!LoadingScreenController.CompleteFailedRecovery(exception))
+            if (!LoadingScreenController.CompleteFailedRecovery(bootstrap, exception))
+            {
+                if (mainMenuCanvas != null)
+                    mainMenuCanvas.enabled = true;
                 Debug.LogException(exception);
+            }
         }
     }
 
@@ -151,7 +157,7 @@ public sealed class MainMenuController : MonoBehaviour
     {
         if (_appBootstrap != null)
         {
-            _appBootstrap.SaveLoadStarting -= HandleSaveLoadStarting;
+            _appBootstrap.LoadStarting -= HandleLoadStarting;
             _appBootstrap = null;
         }
 
@@ -163,9 +169,9 @@ public sealed class MainMenuController : MonoBehaviour
     }
 
     /// <summary>
-    /// Conceals the outgoing menu before saved-game loading begins.
+    /// Conceals the outgoing menu before a loading transition begins.
     /// </summary>
-    private void HandleSaveLoadStarting()
+    private void HandleLoadStarting()
     {
         if (mainMenuCanvas != null)
             mainMenuCanvas.enabled = false;

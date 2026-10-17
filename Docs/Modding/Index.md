@@ -88,9 +88,9 @@ Launch Rebellion 2 and open **Options > Mods**. A compatible definition appears 
 
 ![The Mods options page showing Mod Example enabled.](Images/mods-menu.png)
 
-Use the switch to enable or disable the mod. Restart Rebellion 2 when prompted so the selected
-content is reloaded. If the mod does not appear, confirm that `mod.xml` is directly inside the mod
-folder and that its `BasePackID` matches the active content pack.
+Use the switch to enable or disable the mod, then select **Apply**. The game reloads the selected
+content and returns to the main menu without closing. If the mod does not appear, confirm that
+`mod.xml` is directly inside the mod folder and that its `BasePackID` matches the active content pack.
 
 Mods load by folder name in ordinal order. If two enabled mods replace the same file, the later
 folder wins. Custom load-order controls are not yet supported. Files not supplied by a mod fall back
@@ -135,4 +135,4 @@ through the ownership-verifying installer.
 Saves require the active pack ID, version, scenario, and ordered mod IDs and versions to match.
 Increment a mod's version when publishing compatibility-breaking changes, then test both new games
 and existing saves. Use the Options menu's Mods page to select a content pack and enable or disable
-its compatible mods. Restart the game to apply those changes.
+its compatible mods. Select **Apply** to reload those changes and return to the main menu.

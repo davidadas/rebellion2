@@ -189,7 +189,7 @@ public sealed class StrategyController
         uiContext = context;
         _appBootstrap = AppBootstrap.Instance;
         if (_appBootstrap != null)
-            _appBootstrap.SaveLoadStarting += HandleSaveLoadStarting;
+            _appBootstrap.LoadStarting += HandleLoadStarting;
         PreloadStrategySfx();
         cancelStack = AppBootstrap.Instance?.GetCancelStack();
         strategyContextMenu.Initialize(uiContext);
@@ -1009,7 +1009,7 @@ public sealed class StrategyController
     {
         if (_appBootstrap != null)
         {
-            _appBootstrap.SaveLoadStarting -= HandleSaveLoadStarting;
+            _appBootstrap.LoadStarting -= HandleLoadStarting;
             _appBootstrap = null;
         }
 
@@ -1522,9 +1522,9 @@ public sealed class StrategyController
     }
 
     /// <summary>
-    /// Conceals the complete outgoing strategy presentation before saved-game loading begins.
+    /// Conceals the complete outgoing strategy presentation before a loading transition begins.
     /// </summary>
-    private void HandleSaveLoadStarting()
+    private void HandleLoadStarting()
     {
         SetContentReady(false);
     }
