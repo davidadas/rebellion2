@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
@@ -15,14 +14,18 @@ using Rebellion.Util.DependencyInjection;
 public sealed class StrategyFleetCommandController
 {
     private readonly IServiceLocator services;
+    private readonly Func<string> getPlayerFactionId;
 
     /// <summary>
     /// Creates a fleet command controller for the active game.
     /// </summary>
     /// <param name="services">Resolves services for the active game.</param>
-    public StrategyFleetCommandController(IServiceLocator services)
+    /// <param name="getPlayerFactionId">Returns the player faction identifier.</param>
+    public StrategyFleetCommandController(IServiceLocator services, Func<string> getPlayerFactionId)
     {
         this.services = services ?? throw new ArgumentNullException(nameof(services));
+        this.getPlayerFactionId =
+            getPlayerFactionId ?? throw new ArgumentNullException(nameof(getPlayerFactionId));
     }
 
     /// <summary>
@@ -35,11 +38,10 @@ public sealed class StrategyFleetCommandController
         List<ISceneNode> sourceItems =
             items?.Where(item => item != null).ToList() ?? new List<ISceneNode>();
         List<CapitalShip> ships = sourceItems.OfType<CapitalShip>().ToList();
-        GameRoot game = services.GetService<GameRoot>();
         FleetCommands fleetSystem = services.GetService<FleetCommands>();
-        string playerFactionId = game?.GetPlayerFaction()?.InstanceID;
-        return game != null
-            && fleetSystem != null
+        string playerFactionId = getPlayerFactionId();
+        return fleetSystem != null
+            && !string.IsNullOrEmpty(playerFactionId)
             && ships.Count > 0
             && ships.Count == sourceItems.Count
             && fleetSystem.CreateFromCapitalShips(ships, playerFactionId) != null;
@@ -58,16 +60,16 @@ public sealed class StrategyFleetCommandController
         StrategyMenuAction action
     )
     {
-        if (!TryResolveCommand(items, targetPlanet, out List<Fleet> fleets, out Planet liveTarget))
+        if (!TryCreateCommand(items, targetPlanet, out List<Fleet> fleets))
             return false;
 
         if (action.TryGetBombardmentType(out BombardmentType type))
             return services.GetService<BombardmentCommands>() != null
-                && services.GetService<BombardmentQueries>()?.CanExecute(fleets, liveTarget, type)
+                && services.GetService<BombardmentQueries>()?.CanExecute(fleets, targetPlanet, type)
                     == true;
 
         return action == StrategyMenuAction.PlanetaryAssault
-            && services.GetService<PlanetaryAssaultQueries>()?.CanExecute(fleets, liveTarget)
+            && services.GetService<PlanetaryAssaultQueries>()?.CanExecute(fleets, targetPlanet)
                 == true;
     }
 
@@ -84,52 +86,34 @@ public sealed class StrategyFleetCommandController
         StrategyMenuAction action
     )
     {
-        if (!TryResolveCommand(items, targetPlanet, out List<Fleet> fleets, out Planet liveTarget))
+        if (!TryCreateCommand(items, targetPlanet, out List<Fleet> fleets))
             return null;
 
         if (action.TryGetBombardmentType(out BombardmentType type))
-            return services.GetService<BombardmentCommands>()?.TryExecute(fleets, liveTarget, type);
+            return services
+                .GetService<BombardmentCommands>()
+                ?.TryExecute(fleets, targetPlanet, type);
 
         return action == StrategyMenuAction.PlanetaryAssault
-            ? services.GetService<PlanetaryAssaultCommands>()?.TryExecute(fleets, liveTarget)
+            ? services.GetService<PlanetaryAssaultCommands>()?.TryExecute(fleets, targetPlanet)
             : null;
     }
 
     /// <summary>
-    /// Resolves a visible planet snapshot against the active game graph.
-    /// </summary>
-    /// <param name="planet">The visible planet snapshot.</param>
-    /// <returns>The live planet, or null.</returns>
-    public Planet ResolvePlanet(Planet planet)
-    {
-        return string.IsNullOrEmpty(planet?.InstanceID)
-            ? null
-            : services.GetService<GameRoot>()?.GetSceneNodeByInstanceID<Planet>(planet.InstanceID);
-    }
-
-    /// <summary>
-    /// Resolves a complete fleet selection and live target planet for a combat command.
+    /// Creates a complete fleet selection for a combat command.
     /// </summary>
     /// <param name="items">The selected scene nodes.</param>
     /// <param name="targetPlanet">The requested target planet snapshot.</param>
-    /// <param name="fleets">Receives the live selected fleets.</param>
-    /// <param name="liveTarget">Receives the live target planet.</param>
-    /// <returns>True when every selected item is a fleet and the target is live.</returns>
-    private bool TryResolveCommand(
+    /// <param name="fleets">Receives the selected fleet snapshots.</param>
+    /// <returns>True when every selected item is a uniquely identified fleet.</returns>
+    private static bool TryCreateCommand(
         IReadOnlyList<ISceneNode> items,
         Planet targetPlanet,
-        out List<Fleet> fleets,
-        out Planet liveTarget
+        out List<Fleet> fleets
     )
     {
         fleets = new List<Fleet>();
-        liveTarget = null;
-        GameRoot game = services.GetService<GameRoot>();
-        if (game == null || items?.Count < 1 || string.IsNullOrEmpty(targetPlanet?.InstanceID))
-            return false;
-
-        liveTarget = game.GetSceneNodeByInstanceID<Planet>(targetPlanet.InstanceID);
-        if (liveTarget == null)
+        if (items?.Count < 1 || string.IsNullOrEmpty(targetPlanet?.InstanceID))
             return false;
 
         HashSet<string> fleetIds = new HashSet<string>();
@@ -142,11 +126,7 @@ public sealed class StrategyFleetCommandController
             )
                 return false;
 
-            Fleet liveFleet = game.GetSceneNodeByInstanceID<Fleet>(fleet.InstanceID);
-            if (liveFleet == null)
-                return false;
-
-            fleets.Add(liveFleet);
+            fleets.Add(fleet);
         }
 
         return true;

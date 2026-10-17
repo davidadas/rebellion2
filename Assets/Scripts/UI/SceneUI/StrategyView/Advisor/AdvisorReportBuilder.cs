@@ -1,11 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.Game;
-using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Simulation;
 
 /// <summary>
 /// Identifies the report displayed by the advisor utility window.
@@ -59,25 +58,27 @@ public static class AdvisorReportBuilder
     /// <summary>
     /// Builds the rows for one advisor report mode.
     /// </summary>
-    /// <param name="game">The active game.</param>
-    /// <param name="faction">The player faction.</param>
+    /// <param name="factionView">The faction-filtered galaxy view.</param>
+    /// <param name="playerFactionId">The player faction identifier.</param>
+    /// <param name="victoryQueries">The authorized objective-status queries.</param>
     /// <param name="theme">The configured advisor-report theme.</param>
     /// <param name="mode">The requested report mode.</param>
     /// <returns>The ordered report rows.</returns>
     public static IReadOnlyList<AdvisorReportRow> Build(
-        GameRoot game,
-        Faction faction,
+        GalaxyMap factionView,
+        string playerFactionId,
+        VictoryQueries victoryQueries,
         AdvisorReportWindowTheme theme,
         AdvisorReportMode mode
     )
     {
-        if (game == null || faction == null)
+        if (factionView == null || string.IsNullOrEmpty(playerFactionId))
             return Array.Empty<AdvisorReportRow>();
 
         return mode switch
         {
-            AdvisorReportMode.GalaxyOverview => BuildGalaxyOverview(faction),
-            AdvisorReportMode.Objectives => BuildObjectives(game, theme),
+            AdvisorReportMode.GalaxyOverview => BuildGalaxyOverview(factionView, playerFactionId),
+            AdvisorReportMode.Objectives => BuildObjectives(victoryQueries, theme),
             _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, null),
         };
     }
@@ -85,15 +86,21 @@ public static class AdvisorReportBuilder
     /// <summary>
     /// Groups completed stationary faction assets by type for the galaxy overview.
     /// </summary>
-    /// <param name="faction">The faction whose assets should be summarized.</param>
+    /// <param name="factionView">The faction-filtered galaxy view.</param>
+    /// <param name="playerFactionId">The faction whose assets should be summarized.</param>
     /// <returns>Overview rows ordered by unit category and type identifier.</returns>
-    internal static IReadOnlyList<AdvisorReportRow> BuildGalaxyOverview(Faction faction)
+    internal static IReadOnlyList<AdvisorReportRow> BuildGalaxyOverview(
+        GalaxyMap factionView,
+        string playerFactionId
+    )
     {
-        if (faction == null)
+        if (factionView == null || string.IsNullOrEmpty(playerFactionId))
             return Array.Empty<AdvisorReportRow>();
 
-        return faction
-            .GetAllOwnedManufacturables()
+        return factionView
+            .GetChildren<ISceneNode>(recursive: true, includeDisabled: true)
+            .Where(item => item.OwnerInstanceID == playerFactionId)
+            .OfType<IManufacturable>()
             .Where(IsIncludedInGalaxyOverview)
             .OfType<ISceneNode>()
             .GroupBy(item => item.GetTypeID(), StringComparer.Ordinal)
@@ -107,25 +114,25 @@ public static class AdvisorReportBuilder
     /// <summary>
     /// Evaluates configured objectives in display order and applies victory-mode gates.
     /// </summary>
-    /// <param name="game">The active game.</param>
+    /// <param name="victoryQueries">The authorized objective-status queries.</param>
     /// <param name="theme">The configured advisor-report theme.</param>
     /// <returns>The visible objective rows.</returns>
     internal static IReadOnlyList<AdvisorReportRow> BuildObjectives(
-        GameRoot game,
+        VictoryQueries victoryQueries,
         AdvisorReportWindowTheme theme
     )
     {
         List<AdvisorReportRow> rows = new List<AdvisorReportRow>();
-        if (game == null || theme?.Objectives == null)
+        if (victoryQueries == null || theme?.Objectives == null)
             return Array.Empty<AdvisorReportRow>();
 
-        bool conquest = game.Summary?.VictoryCondition == GameVictoryCondition.Conquest;
+        bool conquest = victoryQueries.IsConquestGame();
         foreach (AdvisorObjectiveTheme objective in theme.Objectives)
         {
             if (objective == null || objective.ConquestOnly && !conquest)
                 continue;
 
-            bool condition = EvaluateObjective(game, objective);
+            bool condition = EvaluateObjective(victoryQueries, objective);
             rows.Add(
                 new AdvisorReportRow(
                     null,
@@ -147,6 +154,8 @@ public static class AdvisorReportBuilder
     private static bool IsIncludedInGalaxyOverview(IManufacturable item)
     {
         return item != null
+            && item is ISceneNode node
+            && node.IsActive()
             && item.GetManufacturingStatus() == ManufacturingStatus.Complete
             && item.GetTransitMovement() == null;
     }
@@ -189,73 +198,26 @@ public static class AdvisorReportBuilder
     /// <summary>
     /// Evaluates one configured objective condition against the active game.
     /// </summary>
-    /// <param name="game">The active game.</param>
+    /// <param name="victoryQueries">The authorized objective-status queries.</param>
     /// <param name="objective">The configured objective.</param>
     /// <returns>True when the objective condition is satisfied.</returns>
-    private static bool EvaluateObjective(GameRoot game, AdvisorObjectiveTheme objective)
+    private static bool EvaluateObjective(
+        VictoryQueries victoryQueries,
+        AdvisorObjectiveTheme objective
+    )
     {
         return objective.Condition switch
         {
-            AdvisorObjectiveCondition.PlanetOwnedByFaction => IsPlanetOwnedByFaction(
-                game,
+            AdvisorObjectiveCondition.PlanetOwnedByFaction => victoryQueries.IsPlanetOwnedByFaction(
                 objective.TargetInstanceID,
                 objective.TargetFactionInstanceID
             ),
-            AdvisorObjectiveCondition.HeadquartersOwnedByFaction => IsHeadquartersOwnedByFaction(
-                game,
-                objective.TargetFactionInstanceID
-            ),
-            AdvisorObjectiveCondition.OfficerCaptured => game.GetSceneNodeByInstanceID<Officer>(
+            AdvisorObjectiveCondition.HeadquartersOwnedByFaction =>
+                victoryQueries.IsHeadquartersOwnedByFaction(objective.TargetFactionInstanceID),
+            AdvisorObjectiveCondition.OfficerCaptured => victoryQueries.IsOfficerCaptured(
                 objective.TargetInstanceID
-            )?.IsCaptured == true,
+            ),
             _ => false,
         };
-    }
-
-    /// <summary>
-    /// Determines whether a configured faction owns a configured planet.
-    /// </summary>
-    /// <param name="game">The active game.</param>
-    /// <param name="planetInstanceId">The target planet identifier.</param>
-    /// <param name="factionInstanceId">The expected owner identifier.</param>
-    /// <returns>True when the planet exists and has the expected owner.</returns>
-    private static bool IsPlanetOwnedByFaction(
-        GameRoot game,
-        string planetInstanceId,
-        string factionInstanceId
-    )
-    {
-        Planet planet = game.GetSceneNodeByInstanceID<Planet>(planetInstanceId);
-        return planet != null
-            && string.Equals(
-                planet.GetOwnerInstanceID(),
-                factionInstanceId,
-                StringComparison.Ordinal
-            );
-    }
-
-    /// <summary>
-    /// Determines whether a faction still owns its configured headquarters planet.
-    /// </summary>
-    /// <param name="game">The active game.</param>
-    /// <param name="factionInstanceId">The faction identifier.</param>
-    /// <returns>True when the faction and its owned headquarters planet exist.</returns>
-    private static bool IsHeadquartersOwnedByFaction(GameRoot game, string factionInstanceId)
-    {
-        Faction faction = game.GetFactions()
-            .FirstOrDefault(item =>
-                string.Equals(item.InstanceID, factionInstanceId, StringComparison.Ordinal)
-            );
-        if (faction?.Settings?.Headquarters?.IsMobile == true)
-        {
-            return game.GetSceneNodesByType<Building>()
-                .Any(building =>
-                    building.TypeID == faction.Settings.Headquarters.FacilityTypeID
-                    && building.OwnerInstanceID == faction.InstanceID
-                );
-        }
-
-        return faction != null
-            && IsPlanetOwnedByFaction(game, faction.HQInstanceID, faction.InstanceID);
     }
 }

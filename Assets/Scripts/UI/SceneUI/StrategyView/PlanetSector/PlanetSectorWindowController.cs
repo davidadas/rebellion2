@@ -441,7 +441,8 @@ public sealed class PlanetSectorWindowController
                 GetActiveWaypointPlan(),
                 getSelectedFleetInstanceIds(),
                 filterMode == GalacticInformationFilterMode.FleetWaypoints,
-                filterMode
+                filterMode,
+                getSectors()
             )
         );
     }
@@ -467,7 +468,8 @@ public sealed class PlanetSectorWindowController
                 out List<PlanetSectorWaypointSegmentRenderData> segments,
                 out List<PlanetSectorWaypointRenderData> waypoints,
                 selectedFleetInstanceIds,
-                showAllRoutes
+                showAllRoutes,
+                getSectors()
             );
             view.RenderWaypointRoutes(segments, waypoints);
         }
@@ -665,14 +667,7 @@ public sealed class PlanetSectorWindowController
         if (hit?.PlanetImage != true || hit.Planet?.IsHeadquarters != true)
             return null;
 
-        UIContext context = GetUIContext();
-        string playerFactionId = context.GetPlayerFactionInstanceID();
-        if (
-            context
-                .Game.GetFactionByOwnerInstanceID(playerFactionId)
-                ?.Settings?.Headquarters?.IsMobile != true
-        )
-            return null;
+        string playerFactionId = GetUIContext().GetPlayerFactionInstanceID();
 
         return hit
             .Planet.GetChildren<Building>()

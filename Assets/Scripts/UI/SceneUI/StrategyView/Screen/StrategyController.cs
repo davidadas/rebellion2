@@ -234,6 +234,9 @@ public sealed class StrategyController
             throw new InvalidOperationException("StrategyController has not been initialized.");
 
         Faction playerFaction = session.Game.GetPlayerFaction();
+        GalaxyMap factionView = session
+            .GetService<FogOfWarQueries>()
+            .BuildFactionView(playerFaction);
         ContentPreloadManifest strategyPreload = _appBootstrap
             .GetContentPack()
             .GetPreloadManifest("strategy");
@@ -242,7 +245,7 @@ public sealed class StrategyController
             TexturesPerFrame = strategyPreload.TexturesPerFrame,
             Textures = StrategyHudController
                 .GetTexturePaths(uiContext.GetPlayerFactionTheme())
-                .Concat(IdleBarProjector.GetTexturePaths(playerFaction))
+                .Concat(IdleBarProjector.GetTexturePaths(factionView, playerFaction.InstanceID))
                 .Distinct(StringComparer.Ordinal)
                 .ToList(),
         };
@@ -322,7 +325,8 @@ public sealed class StrategyController
         galaxyMapController.BindView(galaxyMap);
         contextMenuController = new ContextMenuController();
         idleBarController = new IdleBarController(
-            () => session?.Game.GetPlayerFaction(),
+            () => galaxyMapController?.VisibleGalaxyMap,
+            () => uiContext?.GetPlayerFactionInstanceID(),
             uiState.IgnoredItems,
             contextMenuController,
             () => uiContext,
@@ -331,7 +335,7 @@ public sealed class StrategyController
                     .Instance?.GetUserSettingsManager()
                     ?.Settings?.UserInterface?.ShowIdleBar
                 ?? false,
-            instanceId => session?.Game?.GetSceneNodeByInstanceID<ISceneNode>(instanceId),
+            galaxyMapController.FindVisibleNode,
             () =>
                 AppBootstrap
                     .Instance?.GetUserSettingsManager()
@@ -346,7 +350,7 @@ public sealed class StrategyController
         idleBarController.Initialize(this);
         idleBarController.BindView(idleBar);
         briefingController = new StrategyBriefingController(
-            session.Game,
+            () => uiContext,
             path => uiContext?.GetTexture(path),
             path => contentAssets.GetPreloadedAudio(path).length,
             contentAssets.PreloadAsync,
@@ -410,7 +414,8 @@ public sealed class StrategyController
     {
         InitializeWindowInfrastructure();
         StrategyFleetCommandController fleetCommandController = new StrategyFleetCommandController(
-            session
+            session,
+            () => uiContext.GetPlayerFactionInstanceID()
         );
         InitializeFeatureWindowControllers(fleetCommandController);
         InitializeSharedCommandControllers();
@@ -564,7 +569,8 @@ public sealed class StrategyController
             windowPlacementController.GetConstructionWindowPosition,
             windowPlacementController.GetUtilityWindowPosition,
             CloseWindow,
-            MarkDirty
+            MarkDirty,
+            galaxyMapController.FindVisibleNode
         );
         facilityWindowController = new FacilityWindowController(
             session,
@@ -576,6 +582,7 @@ public sealed class StrategyController
             (x, y) =>
                 windowPlacementController.ClampPlanetWindowPosition(PlanetIcon.Facility, x, y),
             MarkDirty,
+            galaxyMapController.FindVisibleNode,
             getSelectionModifiers
         );
         defenseWindowController = new DefenseWindowController(
@@ -639,10 +646,16 @@ public sealed class StrategyController
             windowPlacementController.GetFinderWindowPosition,
             OpenFinderTarget,
             CloseWindow,
-            MarkDirty
+            MarkDirty,
+            () =>
+                session
+                    .GetService<FogOfWarQueries>()
+                    .BuildKnownOfficerRoster(uiContext.GetPlayerFactionInstanceID())
         );
         advisorReportWindowController = new AdvisorReportWindowController(
             () => uiContext,
+            () => galaxyMapController.VisibleGalaxyMap,
+            session.GetService<VictoryQueries>(),
             strategyWindowLayerView,
             strategyWindowManager,
             windowPlacementController.GetAdvisorReportWindowPosition,
@@ -740,6 +753,7 @@ public sealed class StrategyController
             missionCreateWindowController,
             confirmDialogWindowController,
             session,
+            () => uiContext.GetPlayerFactionInstanceID(),
             PlaySfx,
             ClearWindowSelection,
             RebuildSnapshot,

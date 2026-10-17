@@ -70,6 +70,8 @@ namespace Rebellion.Simulation
             string ownerInstanceId
         )
         {
+            producer = _queries.ResolveRegisteredPlanet(producer);
+            destination = _queries.ResolveRegisteredNode(destination);
             if (
                 !_queries.CanStartManufacturing(
                     producer,
@@ -102,6 +104,8 @@ namespace Rebellion.Simulation
             string ownerInstanceId
         )
         {
+            producer = _queries.ResolveRegisteredPlanet(producer);
+            destination = _queries.ResolveRegisteredNode(destination);
             if (
                 !_queries.CanSetManufacturingOrder(
                     producer,
@@ -288,6 +292,8 @@ namespace Rebellion.Simulation
             string ownerInstanceId
         )
         {
+            producer = _queries.ResolveRegisteredPlanet(producer);
+            destination = _queries.ResolveRegisteredNode(destination) as ContainerNode;
             if (
                 producer == null
                 || type == ManufacturingType.None
@@ -317,6 +323,38 @@ namespace Rebellion.Simulation
             List<ISceneNode> items = queue.OfType<ISceneNode>().ToList();
             return items.Count == queue.Count
                 && _movementSystem.TryRequestMove(items, destination, ownerInstanceId);
+        }
+
+        /// <summary>
+        /// Toggles whether one manufacturing lane is reserved for manual production.
+        /// </summary>
+        /// <param name="producer">The producing planet or visible snapshot.</param>
+        /// <param name="type">The manufacturing lane.</param>
+        /// <param name="ownerInstanceId">The faction requesting the change.</param>
+        /// <returns>True when the reservation was changed.</returns>
+        public bool ToggleManufacturingReservation(
+            Planet producer,
+            ManufacturingType type,
+            string ownerInstanceId
+        )
+        {
+            producer = _queries.ResolveRegisteredPlanet(producer);
+            if (
+                producer == null
+                || type == ManufacturingType.None
+                || string.IsNullOrEmpty(ownerInstanceId)
+                || !string.Equals(
+                    producer.GetOwnerInstanceID(),
+                    ownerInstanceId,
+                    StringComparison.Ordinal
+                )
+            )
+            {
+                return false;
+            }
+
+            producer.SetManufacturingReserved(type, !producer.IsManufacturingReserved(type));
+            return true;
         }
 
         /// <summary>

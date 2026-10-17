@@ -4699,6 +4699,65 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void StartManufacturing_VisiblePlanetSnapshots_UpdatesRegisteredPlanets()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet producer = CreateOrderTestShipyardPlanet(game, "producer", "empire");
+            Planet destination = CreateOrderTestPlanet(game, "destination", "empire");
+            ManufacturingCommands manager = new ManufacturingCommands(
+                game,
+                new FleetCommands(game),
+                new ManufacturingQueries(game)
+            );
+            CapitalShip template = CreateOrderTestCapitalShipTemplate(
+                "dreadnaught",
+                "Dreadnaught",
+                0
+            );
+            Planet producerView = new Planet { InstanceID = producer.InstanceID };
+            Planet destinationView = new Planet { InstanceID = destination.InstanceID };
+
+            bool started = manager.StartManufacturing(
+                producerView,
+                template,
+                destinationView,
+                1,
+                "empire"
+            );
+
+            Assert.IsTrue(started);
+            Assert.AreEqual(1, producer.GetManufacturingQueue()[ManufacturingType.Ship].Count);
+            Assert.AreEqual(1, destination.GetChildren<Fleet>().Count);
+            Assert.IsFalse(
+                producerView.GetManufacturingQueue().ContainsKey(ManufacturingType.Ship)
+            );
+            Assert.IsEmpty(destinationView.GetChildren<Fleet>());
+        }
+
+        [Test]
+        public void ToggleManufacturingReservation_VisiblePlanetSnapshot_UpdatesRegisteredPlanet()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet producer = CreateOrderTestShipyardPlanet(game, "producer", "empire");
+            ManufacturingCommands manager = new ManufacturingCommands(
+                game,
+                new FleetCommands(game),
+                new ManufacturingQueries(game)
+            );
+            Planet producerView = new Planet { InstanceID = producer.InstanceID };
+
+            bool toggled = manager.ToggleManufacturingReservation(
+                producerView,
+                ManufacturingType.Ship,
+                "empire"
+            );
+
+            Assert.IsTrue(toggled);
+            Assert.IsTrue(producer.IsManufacturingReserved(ManufacturingType.Ship));
+            Assert.IsFalse(producerView.IsManufacturingReserved(ManufacturingType.Ship));
+        }
+
+        [Test]
         public void StartManufacturing_CapitalShipWithExistingFleets_AddsToFirstFleet()
         {
             GameRoot game = CreateOrderTestGame();

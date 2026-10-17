@@ -253,7 +253,10 @@ namespace Rebellion.Simulation
             if (unit == null || origin == null || destination == null)
                 return false;
 
+            origin = ResolveLiveContainer(origin) as Planet;
             destination = ResolveLiveContainer(destination);
+            if (origin == null || destination == null)
+                return false;
 
             Planet destinationPlanet;
             try

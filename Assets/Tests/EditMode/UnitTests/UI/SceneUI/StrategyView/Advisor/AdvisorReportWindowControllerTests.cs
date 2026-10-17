@@ -4,7 +4,10 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
+using Rebellion.Simulation;
 using UnityEngine;
+using GalaxyMapModel = Rebellion.Game.Galaxy.GalaxyMap;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
 {
@@ -43,6 +46,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
             _windowManager.WindowCloseRequested += _windowManager.DestroyWindow;
             _controller = new AdvisorReportWindowController(
                 () => uiContext,
+                () => new GalaxyMapModel(),
+                new VictoryQueries(game),
                 _windowLayer,
                 _windowManager,
                 () => new Vector2Int(102, 58),
@@ -66,6 +71,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
             Assert.Throws<ArgumentNullException>(() =>
                 new AdvisorReportWindowController(
                     null,
+                    () => new GalaxyMapModel(),
+                    new VictoryQueries(TestGame.Create(TestConfig.Create())),
                     _windowLayer,
                     _windowManager,
                     () => Vector2Int.zero,
