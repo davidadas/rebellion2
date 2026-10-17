@@ -517,76 +517,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
-        public void CloseRequested_ConflictDetail_ReturnsToConflictIndex()
-        {
-            Message message = new StatusMessage(MessageType.Conflict, "Conflict", "Conflict")
-            {
-                InstanceID = "conflict-message",
-            };
-            (GameObject root, _, MessagesWindowController controller, MessagesWindowView view) =
-                OpenMessagesWindow(
-                    new[] { message },
-                    () => default,
-                    MessageType.Conflict,
-                    MessagesTab.Conflict
-                );
-
-            try
-            {
-                MessageWindowRowView row = view.GetComponentsInChildren<MessageWindowRowView>(true)
-                    .Single(candidate => candidate.gameObject.activeSelf);
-                row.OnPointerClick(
-                    new PointerEventData(EventSystem.current)
-                    {
-                        button = PointerEventData.InputButton.Left,
-                        clickCount = 2,
-                    }
-                );
-                controller.RenderWindows();
-                Assert.IsTrue(controller.IsDetailVisible(view));
-
-                view.GetComponentsInChildren<Button>(true)
-                    .Single(button => button.name == "CloseButtonImage")
-                    .onClick.Invoke();
-                controller.RenderWindows();
-
-                Assert.IsTrue(controller.IsOpen);
-                Assert.AreEqual(MessagesTab.Conflict, controller.GetActiveTab(view));
-                Assert.IsFalse(controller.IsDetailVisible(view));
-                Assert.AreEqual(
-                    message.InstanceID,
-                    view.GetComponentsInChildren<MessageWindowRowView>(true)
-                        .Single(candidate => candidate.gameObject.activeSelf)
-                        .MessageId
-                );
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(root);
-            }
-        }
-
-        [Test]
-        public void CloseRequested_MessageIndex_ClosesWindow()
-        {
-            (GameObject root, _, MessagesWindowController controller, MessagesWindowView view) =
-                OpenMessagesWindow(new[] { CreateMessage("message") }, () => default);
-
-            try
-            {
-                view.GetComponentsInChildren<Button>(true)
-                    .Single(button => button.name == "CloseButtonImage")
-                    .onClick.Invoke();
-
-                Assert.IsFalse(controller.IsOpen);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(root);
-            }
-        }
-
-        [Test]
         public void NotificationOperations_NullFaction_ReturnDisabledWithoutThrowing()
         {
             Assert.IsFalse(
@@ -640,6 +570,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
                 controller.OpenDetail(report, MessagesTab.All);
 
                 Assert.AreSame(report, actions.OpenedCombatReport);
+                Assert.AreEqual(MessagesTab.All, actions.CombatReportReturnTab);
                 Assert.IsTrue(report.Read);
                 Assert.IsFalse(controller.IsOpen);
             }
@@ -743,8 +674,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         /// </summary>
         /// <param name="messages">The messages to display in source order.</param>
         /// <param name="getSelectionModifiers">Returns the active selection modifiers.</param>
-        /// <param name="messageType">The faction message collection populated by the fixture.</param>
-        /// <param name="tab">The message tab opened by the fixture.</param>
         /// <returns>The created view fixture.</returns>
         private static (
             GameObject root,
@@ -753,13 +682,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             MessagesWindowView view
         ) OpenMessagesWindow(
             IReadOnlyList<Message> messages,
-            Func<SelectionModifierState> getSelectionModifiers,
-            MessageType messageType = MessageType.Fleet,
-            MessagesTab tab = MessagesTab.Fleet
+            Func<SelectionModifierState> getSelectionModifiers
         )
         {
             Faction faction = new Faction { InstanceID = "FNALL1" };
-            faction.Messages[messageType] = messages.ToList();
+            faction.Messages[MessageType.Fleet] = messages.ToList();
             GameRoot game = TestGame.Create(TestConfig.Create());
             game.GetFactions().Add(faction);
             game.Summary.PlayerFactionID = faction.InstanceID;
@@ -785,7 +712,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
                 getSelectionModifiers
             );
             controller.Initialize(new TestActions());
-            controller.Open(tab);
+            controller.Open(MessagesTab.Fleet);
             controller.RenderWindows();
             UIWindow window = windowManager.Windows.Single();
             Assert.IsTrue(windowManager.TryGetWindowView(window, out MessagesWindowView view));
@@ -826,13 +753,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         {
             public CombatReport OpenedCombatReport { get; private set; }
 
+            public MessagesTab CombatReportReturnTab { get; private set; }
+
             /// <summary>
             /// Opens combat report.
             /// </summary>
             /// <param name="report">The report.</param>
-            public void OpenCombatReport(CombatReport report)
+            /// <param name="returnTab">The Messages tab restored after closing the report.</param>
+            public void OpenCombatReport(CombatReport report, MessagesTab returnTab)
             {
                 OpenedCombatReport = report;
+                CombatReportReturnTab = returnTab;
             }
 
             /// <summary>

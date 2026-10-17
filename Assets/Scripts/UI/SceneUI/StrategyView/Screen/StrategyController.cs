@@ -2507,9 +2507,13 @@ public sealed class StrategyController
     /// Opens a durable combat report.
     /// </summary>
     /// <param name="report">The durable combat report.</param>
-    void IMessagesWindowActions.OpenCombatReport(CombatReport report)
+    /// <param name="returnTab">The Messages tab to restore when the report is closed.</param>
+    void IMessagesWindowActions.OpenCombatReport(CombatReport report, MessagesTab returnTab)
     {
-        battleAlertWindowController.OpenReport(report);
+        battleAlertWindowController.OpenReport(
+            report,
+            () => messagesWindowController.Open(returnTab)
+        );
     }
 
     /// <summary>

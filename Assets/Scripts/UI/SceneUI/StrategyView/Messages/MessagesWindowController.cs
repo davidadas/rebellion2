@@ -15,7 +15,8 @@ public interface IMessagesWindowActions
     /// Opens a combat report in the battle-result view.
     /// </summary>
     /// <param name="report">The durable combat report.</param>
-    void OpenCombatReport(CombatReport report);
+    /// <param name="returnTab">The Messages tab to restore when the report is closed.</param>
+    void OpenCombatReport(CombatReport report, MessagesTab returnTab);
 
     /// <summary>
     /// Opens the strategy location represented by a message target.
@@ -568,7 +569,7 @@ public sealed class MessagesWindowController
     }
 
     /// <summary>
-    /// Returns message detail to its index or closes an already indexed window.
+    /// Focuses and closes the window associated with a view request.
     /// </summary>
     /// <param name="view">The requesting Messages view.</param>
     private void HandleCloseRequested(MessagesWindowView view)
@@ -577,13 +578,6 @@ public sealed class MessagesWindowController
         if (TryGetSession(view, out MessagesWindowSession session))
         {
             StopMessageDetailAudio();
-            if (session.DetailVisible)
-            {
-                session.HideDetail();
-                RequestRender();
-                return;
-            }
-
             AcknowledgeWindow(session.Window);
             closeWindow(session.Window);
         }
@@ -749,7 +743,7 @@ public sealed class MessagesWindowController
 
         StopMessageDetailAudio();
         closeWindow(session.Window);
-        actions.OpenCombatReport(report);
+        actions.OpenCombatReport(report, session.ActiveTab);
         markDirty();
         return true;
     }
