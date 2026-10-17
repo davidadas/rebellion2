@@ -73,6 +73,7 @@ public sealed class ContentFileResolver
     /// <param name="contentRootPath">The absolute application content root.</param>
     /// <param name="packRootPath">The absolute selected pack root.</param>
     /// <param name="basePackID">The selected base pack identifier.</param>
+    /// <param name="basePackVersion">The selected base pack version.</param>
     /// <param name="disabledModIDs">Mod IDs to discover without loading.</param>
     /// <param name="fallbackPackRootPaths">Inherited pack roots in nearest-to-farthest order.</param>
     /// <returns>A resolver containing the compatible discovered mods.</returns>
@@ -80,6 +81,7 @@ public sealed class ContentFileResolver
         string contentRootPath,
         string packRootPath,
         string basePackID,
+        string basePackVersion,
         IEnumerable<string> disabledModIDs = null,
         IEnumerable<string> fallbackPackRootPaths = null
     )
@@ -115,9 +117,18 @@ public sealed class ContentFileResolver
                 continue;
 
             ContentModDefinition definition = DeserializeDefinition(definitionPath);
+            if (string.IsNullOrWhiteSpace(definition.BasePackID))
+                ValidateDefinition(definition, definitionPath);
+            if (!string.Equals(definition.BasePackID, basePackID, StringComparison.Ordinal))
+                continue;
+            if (string.IsNullOrWhiteSpace(definition.BasePackVersion))
+                ValidateDefinition(definition, definitionPath);
             if (
-                !string.IsNullOrWhiteSpace(definition.BasePackID)
-                && !string.Equals(definition.BasePackID, basePackID, StringComparison.Ordinal)
+                !string.Equals(
+                    definition.BasePackVersion,
+                    basePackVersion,
+                    StringComparison.Ordinal
+                )
             )
                 continue;
             ValidateDefinition(definition, definitionPath);
@@ -406,6 +417,8 @@ public sealed class ContentFileResolver
             string.IsNullOrWhiteSpace(definition.ID)
             || string.IsNullOrWhiteSpace(definition.Version)
             || string.IsNullOrWhiteSpace(definition.DisplayName)
+            || string.IsNullOrWhiteSpace(definition.BasePackID)
+            || string.IsNullOrWhiteSpace(definition.BasePackVersion)
         )
             throw new InvalidDataException(
                 $"Content mod definition is incomplete: {definitionPath}"

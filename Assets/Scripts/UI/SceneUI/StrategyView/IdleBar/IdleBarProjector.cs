@@ -65,6 +65,33 @@ internal sealed class IdleBarProjector
     }
 
     /// <summary>
+    /// Enumerates artwork needed by the current idle-bar entries without loading it.
+    /// </summary>
+    /// <param name="playerFaction">The faction whose available entities are displayed.</param>
+    /// <returns>The configured texture paths.</returns>
+    internal static IEnumerable<string> GetTexturePaths(Faction playerFaction)
+    {
+        IEnumerable<ISceneNode> entities = FindAvailableParticipants<Officer>(playerFaction)
+            .Cast<ISceneNode>()
+            .Concat(FindAvailableParticipants<SpecialForces>(playerFaction))
+            .Concat(
+                playerFaction
+                    ?.GetOwnedUnitsByType<Planet>()
+                    .Where(HasIdleManufacturing)
+                    .Cast<ISceneNode>()
+                    ?? Enumerable.Empty<ISceneNode>()
+            );
+
+        return entities
+            .Select(entity =>
+                entity is Planet planet ? planet.GetPlanetIconPath()
+                : string.IsNullOrEmpty(entity.SmallDisplayImagePath) ? entity.GetDisplayImagePath()
+                : entity.SmallDisplayImagePath
+            )
+            .Where(path => !string.IsNullOrEmpty(path));
+    }
+
+    /// <summary>
     /// Selects all available mission participants of one type by display name.
     /// </summary>
     /// <typeparam name="T">The mission-participant type to select.</typeparam>

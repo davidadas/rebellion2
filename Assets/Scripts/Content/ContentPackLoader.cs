@@ -99,10 +99,14 @@ public static class ContentPackLoader
             Path.Combine(Path.GetFullPath(contentRootPath), _packsDirectoryName),
             packID
         );
+        ContentPackDefinition pack = DeserializeXml<ContentPackDefinition>(
+            Path.Combine(packRoots[0], _packFileName)
+        );
         return ContentFileResolver.Discover(
             contentRootPath,
             packRoots[0],
-            packID,
+            pack.ID,
+            pack.Version,
             disabledModIDs,
             packRoots.Skip(1)
         );
@@ -263,6 +267,7 @@ public static class ContentPackLoader
             absoluteContentRoot,
             packRoot,
             pack.ID,
+            pack.Version,
             disabledModIDs,
             packRoots.Skip(1)
         );
@@ -418,6 +423,13 @@ public static class ContentPackLoader
             pack.BuildingsPath,
             "Buildings"
         );
+        OfficerTraitDefinition[] officerTraits = string.IsNullOrWhiteSpace(pack.OfficerTraitsPath)
+            ? Array.Empty<OfficerTraitDefinition>()
+            : DeserializeGameData<OfficerTraitDefinition[]>(
+                fileResolver,
+                pack.OfficerTraitsPath,
+                "OfficerTraits"
+            );
         GameEvent[] gameEvents = DeserializeGameData<GameEvent[]>(
             fileResolver,
             pack.GameEventsPath,
@@ -511,7 +523,8 @@ public static class ContentPackLoader
             gameEvents,
             messageDefinitions,
             encyclopediaEntries,
-            themes
+            themes,
+            officerTraits
         );
     }
 
@@ -776,6 +789,8 @@ public static class ContentPackLoader
             throw new InvalidDataException("ContentPack.ID is required.");
         if (string.IsNullOrWhiteSpace(pack.Version))
             throw new InvalidDataException("ContentPack.Version is required.");
+        if (string.IsNullOrWhiteSpace(pack.MainMenuMusicPath))
+            throw new InvalidDataException("ContentPack.MainMenuMusicPath is required.");
         EnsureUniqueIDs(factions.Select(faction => faction.ID), "faction");
         EnsureUniqueIDs(scenarios.Select(scenario => scenario.ID), "scenario");
 
@@ -908,6 +923,12 @@ public static class ContentPackLoader
             }
 
             var currentPack = matches[0];
+            if (string.IsNullOrWhiteSpace(currentPack.Definition.Version))
+            {
+                throw new InvalidDataException(
+                    $"Content pack '{currentPackID}' must declare Version."
+                );
+            }
             roots.Add(currentPack.Root);
             currentPackID = currentPack.Definition.BasePackID;
         }

@@ -484,6 +484,23 @@ public sealed class UIWindowManager : MonoBehaviour, ICancelable
     }
 
     /// <summary>
+    /// Requests semantic closure of every registered window from front to back.
+    /// </summary>
+    /// <returns>True when every registered window closed.</returns>
+    public bool TryRequestCloseAll()
+    {
+        while (windows.Count > 0)
+        {
+            UIWindow window = GetTopModalWindow() ?? windows[^1];
+            int windowId = window.Id;
+            if (!TryRequestClose(window) || ReferenceEquals(GetWindowByID(windowId), window))
+                return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
     /// Resolves the topmost interactable registered window under a pointer event.
     /// </summary>
     /// <param name="eventData">The pointer event to inspect.</param>

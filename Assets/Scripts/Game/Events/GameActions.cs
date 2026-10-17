@@ -222,6 +222,38 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
+    /// Grants one content-authored trait to explicitly named or selected officers.
+    /// </summary>
+    [PersistableObject(Name = "ApplyOfficerTrait")]
+    public sealed class ApplyOfficerTraitAction : GameAction
+    {
+        [PersistableAttribute]
+        public string TraitID { get; set; }
+
+        [PersistableAttribute]
+        public string OfficerInstanceID { get; set; }
+
+        [PersistableMember(Name = "Officers")]
+        public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
+    }
+
+    /// <summary>
+    /// Removes one event-owned trait from explicitly named or selected officers.
+    /// </summary>
+    [PersistableObject(Name = "RemoveOfficerTrait")]
+    public sealed class RemoveOfficerTraitAction : GameAction
+    {
+        [PersistableAttribute]
+        public string TraitID { get; set; }
+
+        [PersistableAttribute]
+        public string OfficerInstanceID { get; set; }
+
+        [PersistableMember(Name = "Officers")]
+        public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
+    }
+
+    /// <summary>
     /// Increases selected officers' stored Force progression using one authored calculation.
     /// </summary>
     [PersistableObject(Name = "IncreaseForceRank")]

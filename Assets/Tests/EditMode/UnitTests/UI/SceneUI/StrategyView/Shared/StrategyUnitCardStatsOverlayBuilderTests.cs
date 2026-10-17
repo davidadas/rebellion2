@@ -1,7 +1,5 @@
 using System.Collections.Generic;
 using NUnit.Framework;
-using Rebellion.Game;
-using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using UnityEngine;
@@ -52,71 +50,42 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         }
 
         [Test]
-        public void Build_Officer_SeatOfPowerAppendsFiftyPercentDarkGreenBonus()
+        public void Build_Officer_LeadershipTraitUsesEffectiveRatingInSolidBar()
         {
-            GameRoot game = new GameRoot();
-            Planet coruscant = new Planet { InstanceID = "CORUSCANT", OwnerInstanceID = "FNEMP1" };
-            Officer emperor = new Officer
-            {
-                InstanceID = "EMPEROR_PALPATINE",
-                OwnerInstanceID = "FNEMP1",
-            };
-            coruscant.AddChild(emperor);
-            emperor.SetParent(coruscant);
-            game.NodesByInstanceID[coruscant.InstanceID] = coruscant;
-            game.NodesByInstanceID[emperor.InstanceID] = emperor;
-
             Officer officer = new Officer
             {
-                OwnerInstanceID = "FNEMP1",
                 Ratings = new Dictionary<SkillRating, int> { [SkillRating.Leadership] = 100 },
             };
+            OfficerTraitDefinition trait = new OfficerTraitDefinition
+            {
+                ID = "leadership",
+                LeadershipBonusPercent = 50,
+            };
+            officer.Traits.Add(trait.ID);
+            officer.BindTraitDefinitions(
+                new Dictionary<string, OfficerTraitDefinition> { [trait.ID] = trait }
+            );
 
             StrategyUnitCardStatsOverlayData overlay = StrategyUnitCardStatsOverlayBuilder.Build(
-                officer,
-                game
+                officer
             );
 
             AssertPixel(overlay, 9, 7, StrategyUnitCardStatsOverlayBuilder.LightGreen);
-            AssertPixel(overlay, 10, 7, StrategyUnitCardStatsOverlayBuilder.DarkGreen);
-            AssertPixel(overlay, 14, 7, StrategyUnitCardStatsOverlayBuilder.DarkGreen);
+            AssertPixel(overlay, 10, 7, StrategyUnitCardStatsOverlayBuilder.LightGreen);
+            AssertPixel(overlay, 14, 7, StrategyUnitCardStatsOverlayBuilder.LightGreen);
             AssertPixel(overlay, 15, 7, StrategyUnitCardStatsOverlayBuilder.Black);
         }
 
         [Test]
-        public void Build_Officer_EmperorInCoruscantFleetDoesNotApplySeatOfPowerBonus()
+        public void Build_Officer_WithoutLeadershipTraitDoesNotAppendBonus()
         {
-            GameRoot game = new GameRoot();
-            Planet coruscant = new Planet { InstanceID = "CORUSCANT", OwnerInstanceID = "FNEMP1" };
-            Rebellion.Game.Units.Fleet fleet = new Rebellion.Game.Units.Fleet
-            {
-                InstanceID = "FLEET",
-                OwnerInstanceID = "FNEMP1",
-            };
-            CapitalShip ship = new CapitalShip { InstanceID = "SHIP", OwnerInstanceID = "FNEMP1" };
-            Officer emperor = new Officer
-            {
-                InstanceID = "EMPEROR_PALPATINE",
-                OwnerInstanceID = "FNEMP1",
-            };
-            coruscant.AddChild(fleet);
-            fleet.SetParent(coruscant);
-            fleet.AddChild(ship);
-            ship.SetParent(fleet);
-            ship.AddChild(emperor);
-            emperor.SetParent(ship);
-            game.NodesByInstanceID[coruscant.InstanceID] = coruscant;
-            game.NodesByInstanceID[emperor.InstanceID] = emperor;
-
             Officer officer = new Officer
             {
-                OwnerInstanceID = "FNEMP1",
                 Ratings = new Dictionary<SkillRating, int> { [SkillRating.Leadership] = 100 },
             };
 
             StrategyUnitCardStatsOverlayData overlay = StrategyUnitCardStatsOverlayBuilder.Build(
-                officer,
-                game
+                officer
             );
 
             AssertPixel(overlay, 9, 7, StrategyUnitCardStatsOverlayBuilder.LightGreen);

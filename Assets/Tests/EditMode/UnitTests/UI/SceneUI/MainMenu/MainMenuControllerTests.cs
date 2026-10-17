@@ -1,3 +1,4 @@
+using System.IO;
 using NUnit.Framework;
 using Rebellion.Game;
 using UnityEngine;
@@ -81,10 +82,9 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         [Test]
-        public void GetMenuMusicPath_MissingAddress_ReturnsApplicationDefault()
+        public void GetMenuMusicPath_MissingAddress_ThrowsInvalidDataException()
         {
-            Assert.AreEqual(
-                "Application/MainMenu/Audio/battle-of-endor-1-medley",
+            Assert.Throws<InvalidDataException>(() =>
                 MainMenuController.GetMenuMusicPath(new ContentPackDefinition())
             );
         }

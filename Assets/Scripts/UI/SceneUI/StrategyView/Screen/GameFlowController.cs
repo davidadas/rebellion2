@@ -69,16 +69,18 @@ public sealed class GameFlowController : MonoBehaviour
             {
                 GameSession session = runtime.GetActiveGameSession();
                 InitializeStrategy(session);
-                ActivateGameplay(session, false);
+                await strategyController.PrepareInitialContentAsync();
+                await ActivateGameplayAsync(session, false);
                 return;
             }
 
             if (GameLaunchContext.IsLoadGame)
             {
-                await LoadGameAsync();
+                await LoadGameAsync(runtime);
                 GameSession session = StartGameSession(loadedGame: true);
                 InitializeStrategy(session);
-                ActivateGameplay(session, false);
+                await strategyController.PrepareInitialContentAsync();
+                await ActivateGameplayAsync(session, false);
             }
             else
                 await StartNewGameAsync();
@@ -179,23 +181,29 @@ public sealed class GameFlowController : MonoBehaviour
         Task briefingReady = playBriefing
             ? strategyController.PrepareBriefingAsync()
             : Task.CompletedTask;
-        await Task.WhenAll(intro, briefingReady);
-        ActivateGameplay(session, playBriefing);
+        Task initialContentReady = strategyController.PrepareInitialContentAsync();
+        await Task.WhenAll(intro, briefingReady, initialContentReady);
+        await ActivateGameplayAsync(session, playBriefing);
     }
 
     /// <summary>
     /// Loads and validates the requested save file.
     /// </summary>
+    /// <param name="runtime">The runtime that owns the incoming game session.</param>
     /// <returns>A task representing asynchronous save deserialization.</returns>
-    private async Task LoadGameAsync()
+    private async Task LoadGameAsync(GameRuntime runtime)
     {
         string fileName = GameLaunchContext.SaveFileName;
 
         if (string.IsNullOrEmpty(fileName))
             throw new InvalidOperationException("LoadGame called but SaveFileName is null.");
+        if (runtime == null)
+            throw new InvalidOperationException(
+                "The application runtime is unavailable before save deserialization."
+            );
 
         game = await SaveGameManager.Instance.LoadGameDataAsync(fileName);
-        AppBootstrap.Instance.GetRuntime().ValidateGameContent(game);
+        runtime.ValidateGameContent(game);
     }
 
     /// <summary>
@@ -232,7 +240,35 @@ public sealed class GameFlowController : MonoBehaviour
     {
         AppBootstrap bootstrap = AppBootstrap.EnsureExists();
         GameRuntime runtime = bootstrap.GetRuntime();
-        return loadedGame ? runtime.StartLoadedGame(game) : runtime.StartGame(game);
+        GameSession session = loadedGame ? runtime.StartLoadedGame(game) : runtime.StartGame(game);
+        ApplyGameLaunchSpeed(
+            runtime.GetActiveGameManager(),
+            bootstrap.GetUserSettingsManager().Settings.UserInterface.GameLaunchSpeed
+        );
+        return session;
+    }
+
+    /// <summary>
+    /// Applies a configured galaxy-view launch speed without replacing preserved game state when no
+    /// override is selected.
+    /// </summary>
+    /// <param name="gameManager">The active game clock.</param>
+    /// <param name="speed">The configured launch-speed behavior.</param>
+    internal static void ApplyGameLaunchSpeed(GameManager gameManager, GameLaunchSpeed speed)
+    {
+        if (gameManager == null || speed == GameLaunchSpeed.Unchanged)
+            return;
+
+        TickSpeed tickSpeed = speed switch
+        {
+            GameLaunchSpeed.Paused => TickSpeed.Paused,
+            GameLaunchSpeed.VerySlow => TickSpeed.VerySlow,
+            GameLaunchSpeed.Slow => TickSpeed.Slow,
+            GameLaunchSpeed.Medium => TickSpeed.Medium,
+            GameLaunchSpeed.Fast => TickSpeed.Fast,
+            _ => throw new ArgumentOutOfRangeException(nameof(speed), speed, null),
+        };
+        gameManager.SetGameSpeed(tickSpeed);
     }
 
     /// <summary>
@@ -298,10 +334,11 @@ public sealed class GameFlowController : MonoBehaviour
     /// </summary>
     /// <param name="session">The active game session.</param>
     /// <param name="requestBriefing">Whether launch state requested the opening briefing.</param>
-    private void ActivateGameplay(GameSession session, bool requestBriefing)
+    /// <returns>A task that completes after gameplay is active.</returns>
+    private async Task ActivateGameplayAsync(GameSession session, bool requestBriefing)
     {
         bool loadingTransitionActive = LoadingScreenController.IsLoadInProgress;
-        strategyController.ActivatePresentation(startMusic: !loadingTransitionActive);
+        await strategyController.ActivatePresentationAsync(startMusic: !loadingTransitionActive);
         GameManager clock = AppBootstrap.Instance.GetRuntime().GetActiveGameManager();
         GameRoot activeGame = session.Game;
         GameMetadata metadata = activeGame.Metadata ??= new GameMetadata();
@@ -323,7 +360,8 @@ public sealed class GameFlowController : MonoBehaviour
                     strategyController.ResumeMusic();
                     FinishGameplayActivation(session, clock, metadata, playBriefing);
                 },
-                StrategyController.PlayStrategyReadySound
+                StrategyController.PlayStrategyReadySound,
+                () => AudioManager.EnsureExists().PlaySfx(StrategyUISoundPaths.ControlPress)
             );
             return;
         }

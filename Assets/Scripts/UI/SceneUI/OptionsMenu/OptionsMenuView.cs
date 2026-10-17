@@ -137,6 +137,9 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     private TMP_Dropdown _idleBarLocationDropdown;
 
     [SerializeField]
+    private TMP_Dropdown _gameLaunchSpeedDropdown;
+
+    [SerializeField]
     private OptionsToggleRowView[] _userInterfaceRows = Array.Empty<OptionsToggleRowView>();
 
     [SerializeField]
@@ -231,6 +234,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     public event Action<UserGameplayOption> GameplayToggleRequested;
     public event Action<UserInterfaceOption> UserInterfaceToggleRequested;
     public event Action<IdleBarLocation> IdleBarLocationRequested;
+    public event Action<GameLaunchSpeed> GameLaunchSpeedRequested;
     public event Action<int> ModToggleRequested;
     public event Action<int> ContentPackStepRequested;
     public event Action<string> AutosaveIntervalChanged;
@@ -443,6 +447,8 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     {
         _idleBarLocationDropdown.SetValueWithoutNotify((int)data.IdleBarLocation);
         _idleBarLocationDropdown.RefreshShownValue();
+        _gameLaunchSpeedDropdown.SetValueWithoutNotify((int)data.GameLaunchSpeed);
+        _gameLaunchSpeedDropdown.RefreshShownValue();
         foreach (OptionsToggleRowView row in _userInterfaceRows)
         {
             if (row == null)
@@ -963,6 +969,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
                 row.ToggleRequested += HandleUserInterfaceToggle;
         }
         _idleBarLocationDropdown.onValueChanged.AddListener(HandleIdleBarLocationChanged);
+        _gameLaunchSpeedDropdown.onValueChanged.AddListener(HandleGameLaunchSpeedChanged);
         foreach (OptionsToggleRowView row in _modRows)
         {
             if (row != null)
@@ -1044,6 +1051,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
                 row.ToggleRequested -= HandleUserInterfaceToggle;
         }
         _idleBarLocationDropdown.onValueChanged.RemoveListener(HandleIdleBarLocationChanged);
+        _gameLaunchSpeedDropdown.onValueChanged.RemoveListener(HandleGameLaunchSpeedChanged);
         foreach (OptionsToggleRowView row in _modRows)
         {
             if (row != null)
@@ -1144,6 +1152,17 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     }
 
     /// <summary>
+    /// Forwards a valid galaxy-view launch speed selection to subscribers.
+    /// </summary>
+    /// <param name="option">The selected dropdown index.</param>
+    private void HandleGameLaunchSpeedChanged(int option)
+    {
+        GameLaunchSpeed speed = (GameLaunchSpeed)option;
+        if (Enum.IsDefined(typeof(GameLaunchSpeed), speed))
+            GameLaunchSpeedRequested?.Invoke(speed);
+    }
+
+    /// <summary>
     /// Forwards a mod-toggle request to subscribers.
     /// </summary>
     /// <param name="option">The displayed mod index.</param>
@@ -1229,6 +1248,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             _userInterfaceRows.Length != userInterfaceOptionCount
             || Array.Exists(_userInterfaceRows, row => row == null)
             || _idleBarLocationDropdown == null
+            || _gameLaunchSpeedDropdown == null
         )
             throw new MissingReferenceException(
                 $"{name} expects {userInterfaceOptionCount} user-interface rows."

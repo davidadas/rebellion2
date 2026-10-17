@@ -563,6 +563,47 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         }
 
         [Test]
+        public void Project_AllDefensesBriefing_ExcludesUnitsNotInFactionView()
+        {
+            GalaxyPlanetSector planetSector = CreateSector("sector", "Corellia", 0, 0);
+            Planet livePlanet = CreatePlanet("planet", _opposingFactionId, 1, 2);
+            Regiment hiddenRegiment = new Regiment
+            {
+                InstanceID = "hidden-regiment",
+                OwnerInstanceID = _opposingFactionId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(planetSector, _game.GetGalaxyMap());
+            _game.AttachNode(livePlanet, planetSector);
+            _game.AttachNode(hiddenRegiment, livePlanet);
+
+            Planet factionViewPlanet = CreatePlanet("planet", _opposingFactionId, 1, 2);
+            GalaxyMapSector sector = CreateSector(planetSector, factionViewPlanet);
+            FactionTheme opposingTheme = _uiContext.GetTheme(_opposingFactionId);
+            StrategyBriefingMapPresentation briefing = new StrategyBriefingMapPresentation(
+                StrategyBriefingMapMode.AllDefenses,
+                "Defenses",
+                null,
+                null,
+                _playerFactionId,
+                _opposingFactionId
+            );
+
+            GalaxyMapRenderData data = _projector.Project(
+                new[] { sector },
+                _playerFactionId,
+                GalacticInformationFilterMode.DisplayOff,
+                null,
+                briefing
+            );
+
+            Assert.AreSame(
+                _uiContext.GetTexture(opposingTheme.GalaxyBackground.PlanetIcons.Small),
+                data.Clusters[0].Stars[0].StarTexture
+            );
+        }
+
+        [Test]
         public void Project_DimmedBriefing_DimsOnlyGalaxyBackground()
         {
             GalaxyPlanetSector planetSector = CreateSector("sector", "Corellia", 0, 0);

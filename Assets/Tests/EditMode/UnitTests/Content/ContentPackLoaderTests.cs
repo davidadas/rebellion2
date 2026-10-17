@@ -93,6 +93,24 @@ namespace Rebellion.Tests.Content
             Assert.IsTrue(turbolasers.All(building => !building.IsDetectionBlocker));
         }
 
+        [Test]
+        public void OpenActive_OfficerTraits_LoadDefinitionsAndAuthoredAssignments()
+        {
+            OfficerTraitDefinition smuggler = TestContent.Pack.GameData.OfficerTraits.Single(
+                trait => trait.ID == "smuggler"
+            );
+            OfficerTraitDefinition leadershipBonus = TestContent.Pack.GameData.OfficerTraits.Single(
+                trait => trait.ID == "leadership-bonus"
+            );
+            Officer han = TestContent.Pack.GameData.Officers.Single(officer =>
+                officer.InstanceID == "HAN_SOLO"
+            );
+
+            Assert.AreEqual(50, smuggler.PersonnelTravelTimePercent);
+            Assert.AreEqual(50, leadershipBonus.LeadershipBonusPercent);
+            CollectionAssert.Contains(han.Traits, smuggler.ID);
+        }
+
         [TestCase(RuntimePlatform.OSXPlayer, "Game.app/Contents/Resources/Data")]
         [TestCase(RuntimePlatform.OSXPlayer, "Game.app/Contents")]
         [TestCase(RuntimePlatform.LinuxPlayer, "Game_Data")]
@@ -194,6 +212,30 @@ namespace Rebellion.Tests.Content
                     ContentPackLoader.DiscoverModResolver(
                         contentRoot,
                         "first-pack",
+                        Array.Empty<string>()
+                    )
+                );
+            }
+            finally
+            {
+                Directory.Delete(contentRoot, true);
+            }
+        }
+
+        [Test]
+        public void DiscoverModResolver_PackWithoutVersion_ThrowsInvalidDataException()
+        {
+            string contentRoot = Path.Combine(
+                Path.GetTempPath(),
+                "content-pack-version-" + Guid.NewGuid().ToString("N")
+            );
+            WritePackDefinition(contentRoot, "Pack", "pack", null, version: null);
+            try
+            {
+                Assert.Throws<InvalidDataException>(() =>
+                    ContentPackLoader.DiscoverModResolver(
+                        contentRoot,
+                        "pack",
                         Array.Empty<string>()
                     )
                 );
@@ -374,12 +416,14 @@ namespace Rebellion.Tests.Content
         /// <param name="directoryName">The pack directory name.</param>
         /// <param name="packID">The declared pack identifier.</param>
         /// <param name="basePackID">The optional inherited pack identifier.</param>
+        /// <param name="version">The declared pack version.</param>
         /// <returns>The created pack root.</returns>
         private static string WritePackDefinition(
             string contentRoot,
             string directoryName,
             string packID,
-            string basePackID
+            string basePackID,
+            string version = "1.0.0"
         )
         {
             string packRoot = Path.Combine(contentRoot, "Packs", directoryName);
@@ -389,7 +433,7 @@ namespace Rebellion.Tests.Content
                 : $"<BasePackID>{basePackID}</BasePackID>";
             File.WriteAllText(
                 Path.Combine(packRoot, "pack.xml"),
-                $"<ContentPack><ID>{packID}</ID>{baseElement}</ContentPack>"
+                $"<ContentPack><ID>{packID}</ID>{baseElement}<Version>{version}</Version></ContentPack>"
             );
             return packRoot;
         }

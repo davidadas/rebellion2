@@ -43,7 +43,9 @@ namespace Rebellion.Tests.UI.SceneUI.LoadingScreen
             Assert.IsNotNull(fadeOverlay.GetComponent<Image>());
             Assert.IsNotNull(fadeOverlay.GetComponent<CanvasGroup>());
             Transform shuttleViewport = prefab.transform.Find("Background/ShuttleViewport");
-            Assert.IsNotNull(shuttleViewport.GetComponent<RawImage>());
+            RawImage shuttleViewportImage = shuttleViewport.GetComponent<RawImage>();
+            Assert.IsNotNull(shuttleViewportImage);
+            Assert.IsFalse(shuttleViewportImage.raycastTarget);
             Transform commandShade = prefab.transform.Find("Background/BottomCommandShade");
             Assert.Less(commandShade.GetSiblingIndex(), shuttleViewport.GetSiblingIndex());
             Assert.IsNull(prefab.transform.Find("Background/LoadingHud"));
@@ -86,10 +88,15 @@ namespace Rebellion.Tests.UI.SceneUI.LoadingScreen
             Assert.AreEqual(0f, fade.alpha);
 
             _instance.SetBlackOpacity(1f);
+            Assert.IsTrue(fade.blocksRaycasts);
             _instance.SetPresentationVisible(true);
 
             Assert.AreEqual(1f, presentation.alpha);
             Assert.AreEqual(1f, fade.alpha);
+
+            _instance.SetBlackOpacity(0f);
+
+            Assert.IsFalse(fade.blocksRaycasts);
         }
 
         [Test]
@@ -128,6 +135,7 @@ namespace Rebellion.Tests.UI.SceneUI.LoadingScreen
             Button continueButton = _instance
                 .transform.Find("Background/ContinueButton")
                 .GetComponent<Button>();
+            Assert.IsTrue(continueButton.targetGraphic.raycastTarget);
             TextMeshProUGUI status = _instance
                 .transform.Find("Background/StatusTextField")
                 .GetComponent<TextMeshProUGUI>();
@@ -257,12 +265,19 @@ namespace Rebellion.Tests.UI.SceneUI.LoadingScreen
             }
 
             Assert.IsNotEmpty(modelRoot.GetComponentsInChildren<Renderer>());
+            Transform engineRoot = null;
             int exhaustPlumeCount = 0;
             foreach (Transform child in modelRoot.GetComponentsInChildren<Transform>())
             {
+                if (child.name == "ion-engine_39")
+                    engineRoot = child;
                 if (child.name.StartsWith("EnginePlume", System.StringComparison.Ordinal))
+                {
                     exhaustPlumeCount++;
+                    Assert.AreEqual(engineRoot, child.parent);
+                }
             }
+            Assert.IsNotNull(engineRoot);
             Assert.AreEqual(4, exhaustPlumeCount);
             Assert.IsEmpty(modelRoot.GetComponentsInChildren<ParticleSystem>());
             Assert.IsEmpty(modelRoot.GetComponentsInChildren<Light>());

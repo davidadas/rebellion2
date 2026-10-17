@@ -416,6 +416,64 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
+        public void UserInterfacePage_GameLaunchSpeedDropdown_RendersAndRaisesSelection()
+        {
+            GameLaunchSpeed? requested = null;
+            _view.GameLaunchSpeedRequested += speed => requested = speed;
+            _view.Render(
+                CreateRenderDataForTab(
+                    OptionsMenuTab.UserInterface,
+                    gameLaunchSpeed: GameLaunchSpeed.VerySlow
+                )
+            );
+            TMP_Dropdown dropdown = GetField<TMP_Dropdown>("_gameLaunchSpeedDropdown");
+
+            Assert.AreEqual(6, dropdown.options.Count);
+            Assert.AreEqual("None", dropdown.options[0].text);
+            Assert.AreEqual("Very slow", dropdown.captionText.text);
+
+            dropdown.value = (int)GameLaunchSpeed.Fast;
+
+            Assert.AreEqual(GameLaunchSpeed.Fast, requested);
+        }
+
+        [Test]
+        public void UserInterfacePage_DropdownItem_SelectedStateUsesActiveRowArtwork()
+        {
+            TMP_Dropdown dropdown = GetField<TMP_Dropdown>("_gameLaunchSpeedDropdown");
+            Toggle item = dropdown.template.GetComponentInChildren<Toggle>(true);
+
+            Assert.AreEqual(Selectable.Transition.SpriteSwap, item.transition);
+            Assert.AreEqual(
+                "ui_settingsmenu_row_selected_background",
+                item.spriteState.selectedSprite.name
+            );
+        }
+
+        [Test]
+        public void UserInterfacePage_DropdownControl_HighlightIsBrighterThanNormal()
+        {
+            TMP_Dropdown dropdown = GetField<TMP_Dropdown>("_gameLaunchSpeedDropdown");
+
+            Assert.AreEqual(Selectable.Transition.ColorTint, dropdown.transition);
+            Assert.Greater(
+                dropdown.colors.highlightedColor.grayscale,
+                dropdown.colors.normalColor.grayscale
+            );
+        }
+
+        [Test]
+        public void UserInterfacePage_DropdownPopup_DisablesDraggingWhenAllOptionsFit()
+        {
+            TMP_Dropdown dropdown = GetField<TMP_Dropdown>("_gameLaunchSpeedDropdown");
+            ScrollRect scrollRect = dropdown.template.GetComponent<ScrollRect>();
+
+            Assert.IsFalse(scrollRect.horizontal);
+            Assert.IsFalse(scrollRect.vertical);
+            Assert.IsFalse(scrollRect.inertia);
+        }
+
+        [Test]
         public void UserInterfacePage_IdleBarLocationDropdown_UsesCompactThemedPresentation()
         {
             TMP_Dropdown dropdown = GetField<TMP_Dropdown>("_idleBarLocationDropdown");
@@ -648,6 +706,18 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.AreEqual(
                 "Classic Galactic Civil War",
                 GetField<TextMeshProUGUI>("_contentPackValueField").text
+            );
+            TextMeshProUGUI contentPackValue = GetField<TextMeshProUGUI>("_contentPackValueField");
+            Assert.AreEqual(TextOverflowModes.Ellipsis, contentPackValue.overflowMode);
+            Assert.IsFalse(contentPackValue.raycastTarget);
+            Assert.IsNotNull(contentPackValue.GetComponent<OverflowTextTooltip>());
+            Assert.IsNotNull(
+                GetField<Button>("_contentPackPrevButton")
+                    .GetComponent<OverflowTextTooltipTrigger>()
+            );
+            Assert.IsNotNull(
+                GetField<Button>("_contentPackNextButton")
+                    .GetComponent<OverflowTextTooltipTrigger>()
             );
             int packDelta = 0;
             _view.ContentPackStepRequested += delta => packDelta = delta;
@@ -1068,6 +1138,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         /// <param name="contentPackLabel">The content pack label.</param>
         /// <param name="showModsTab">Whether the Mods tab is visible.</param>
         /// <param name="idleBarLocation">The selected idle-bar corner.</param>
+        /// <param name="gameLaunchSpeed">The selected galaxy-view launch speed.</param>
         /// <returns>The created render data for tab.</returns>
         private static OptionsMenuRenderData CreateRenderDataForTab(
             OptionsMenuTab activeTab,
@@ -1076,7 +1147,8 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             OptionsModRow[] mods = null,
             string contentPackLabel = "",
             bool showModsTab = true,
-            IdleBarLocation idleBarLocation = IdleBarLocation.TopRight
+            IdleBarLocation idleBarLocation = IdleBarLocation.TopRight,
+            GameLaunchSpeed gameLaunchSpeed = GameLaunchSpeed.Unchanged
         )
         {
             return new OptionsMenuRenderData(
@@ -1095,6 +1167,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 -1,
                 false,
                 idleBarLocation: idleBarLocation,
+                gameLaunchSpeed: gameLaunchSpeed,
                 mods: mods,
                 contentPackLabel: contentPackLabel,
                 showModsTab: showModsTab

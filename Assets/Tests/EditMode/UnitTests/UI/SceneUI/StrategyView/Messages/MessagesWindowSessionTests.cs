@@ -152,10 +152,19 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         {
             Assert.AreEqual(MessagesTab.All, _session.ActiveTab);
             Assert.IsFalse(_session.DetailVisible);
+            Assert.IsFalse(_session.HasPresentedTab);
             Assert.IsEmpty(_session.Messages);
             Assert.IsNull(_session.SelectedMessageId);
             Assert.IsNull(_session.GetSelectedMessage());
             Assert.IsEmpty(_session.GetSelectedMessageIDs());
+        }
+
+        [Test]
+        public void MarkTabPresented_InitialSession_RecordsPresentation()
+        {
+            _session.MarkTabPresented();
+
+            Assert.IsTrue(_session.HasPresentedTab);
         }
 
         [Test]

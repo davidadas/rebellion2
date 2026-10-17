@@ -102,6 +102,7 @@ public sealed class ConfirmationDialogView : MonoBehaviour, IContentInitializabl
         cancelButtonPressVisual.SetTextures(cancelButtonUpTexture, cancelButtonDownTexture);
         UILayout.SetTextContent(messageTextField, message ?? string.Empty, messageTextColor);
         gameObject.SetActive(true);
+        confirmButton.Select();
     }
 
     /// <summary>

@@ -426,12 +426,11 @@ public class SaveGameManager
     public GameRoot LoadGameData(string fileName)
     {
         string saveFilePath = GetSaveFilePath(fileName);
-        return DeserializeGame(saveFilePath, WarnUnknownSaveElement);
+        return DeserializeGame(saveFilePath);
     }
 
     /// <summary>
     /// Reads and deserializes a saved game without blocking the caller's synchronization context.
-    /// Unknown-field warnings are reported after deserialization returns to that context.
     /// </summary>
     /// <param name="fileName">The name of the save file.</param>
     /// <returns>A task containing the loaded game data.</returns>
@@ -445,10 +444,15 @@ public class SaveGameManager
                 (objectType, elementName) => skippedElements.Add((objectType, elementName))
             )
         );
-
-        foreach ((Type objectType, string elementName) in skippedElements)
-            WarnUnknownSaveElement(objectType, elementName);
-
+        foreach (
+            IGrouping<
+                (Type ObjectType, string ElementName),
+                (Type ObjectType, string ElementName)
+            > group in skippedElements.GroupBy(item => item)
+        )
+        {
+            LogUnknownSaveElement(group.Key.ObjectType, group.Key.ElementName, group.Count());
+        }
         return loadedGame;
     }
 
@@ -460,7 +464,7 @@ public class SaveGameManager
     /// <returns>The deserialized game data.</returns>
     private static GameRoot DeserializeGame(
         string saveFilePath,
-        Action<Type, string> unknownElementSkipped
+        Action<Type, string> unknownElementSkipped = null
     )
     {
         GameSerializer serializer = CreateSaveDeserializer(
@@ -632,20 +636,36 @@ public class SaveGameManager
             {
                 RootName = rootName,
                 IgnoreUnknownElements = true,
-                UnknownElementSkipped = unknownElementSkipped ?? WarnUnknownSaveElement,
+                UnknownElementSkipped = unknownElementSkipped ?? LogUnknownSaveElement,
             }
         );
     }
 
     /// <summary>
-    /// Warns that a save contained an element unknown to the current game version.
+    /// Logs that a save contained an element unknown to the current game version.
     /// </summary>
     /// <param name="objectType">The object type that did not recognize the element.</param>
     /// <param name="elementName">The skipped XML element name.</param>
-    private static void WarnUnknownSaveElement(Type objectType, string elementName)
+    private static void LogUnknownSaveElement(Type objectType, string elementName)
     {
-        GameLogger.Warning(
-            $"Ignored unknown element '{elementName}' while loading {objectType.Name}."
+        LogUnknownSaveElement(objectType, elementName, 1);
+    }
+
+    /// <summary>
+    /// Logs a counted group of matching unknown save elements at verbose level.
+    /// </summary>
+    /// <param name="objectType">The object type that did not recognize the element.</param>
+    /// <param name="elementName">The skipped XML element name.</param>
+    /// <param name="occurrenceCount">The number of matching skipped elements.</param>
+    private static void LogUnknownSaveElement(
+        Type objectType,
+        string elementName,
+        int occurrenceCount
+    )
+    {
+        string occurrenceSuffix = occurrenceCount > 1 ? $" ({occurrenceCount} occurrences)" : "";
+        GameLogger.Debug(
+            $"Ignored unknown element '{elementName}' while loading {objectType.Name}{occurrenceSuffix}."
         );
     }
 }

@@ -199,13 +199,19 @@ namespace Rebellion.Simulation
                 return false;
 
             destination = ResolveLiveContainer(destination);
-            int maxTransitTicks = 0;
+            List<IMovable> liveUnits = new List<IMovable>(units.Count);
             foreach (IMovable unit in units)
             {
                 IMovable liveUnit = ResolveLiveNode(unit) as IMovable;
                 if (liveUnit == null)
                     return false;
+                liveUnits.Add(liveUnit);
+            }
 
+            int personnelTravelTimePercent = GetPersonnelGroupTravelTimePercent(liveUnits);
+            int maxTransitTicks = 0;
+            foreach (IMovable liveUnit in liveUnits)
+            {
                 if (!CanReceiveMoveOrder(liveUnit))
                     return false;
 
@@ -226,7 +232,12 @@ namespace Rebellion.Simulation
                     IsManufacturingDestinationChange(liveUnit)
                     || ReferenceEquals(destinationPlanet, origin)
                         ? 0
-                        : CalculateTransitTicks(liveUnit, origin, destinationPlanet);
+                        : CalculateTransitTicks(
+                            liveUnit,
+                            origin,
+                            destinationPlanet,
+                            personnelTravelTimePercent
+                        );
                 maxTransitTicks = Math.Max(maxTransitTicks, unitTransitTicks);
             }
 
@@ -311,19 +322,68 @@ namespace Rebellion.Simulation
             out int transitTicks
         )
         {
+            return TryEstimateRetargetedTransitTicks(new[] { unit }, destination, out transitTicks);
+        }
+
+        /// <summary>
+        /// Estimates how long an in-transit movement group would take if retargeted from each
+        /// member's current position.
+        /// </summary>
+        /// <param name="units">The complete in-transit movement group.</param>
+        /// <param name="destination">The proposed retarget destination.</param>
+        /// <param name="transitTicks">The shared estimated duration after retargeting.</param>
+        /// <returns>True when every live route can be estimated.</returns>
+        public bool TryEstimateRetargetedTransitTicks(
+            IReadOnlyList<IMovable> units,
+            Planet destination,
+            out int transitTicks
+        )
+        {
             transitTicks = 0;
-            IMovable liveUnit = ResolveLiveNode(unit) as IMovable;
             Planet liveDestination = ResolveLiveNode(destination) as Planet;
-            if (liveUnit?.Movement == null || liveDestination == null)
+            if (units == null || units.Count == 0 || liveDestination == null)
                 return false;
 
-            transitTicks = CalculateTransitTicks(
-                liveUnit,
-                liveUnit.Movement.CurrentPosition,
-                liveDestination,
-                sameSector: false
-            );
+            List<IMovable> liveUnits = new List<IMovable>(units.Count);
+            foreach (IMovable unit in units)
+            {
+                IMovable liveUnit = ResolveLiveNode(unit) as IMovable;
+                if (liveUnit?.Movement == null)
+                    return false;
+                liveUnits.Add(liveUnit);
+            }
+
+            transitTicks = CalculateRetargetedGroupTransitTicks(liveUnits, liveDestination);
             return true;
+        }
+
+        /// <summary>
+        /// Returns the in-transit units assigned to a fleet, grouped exactly as retarget execution
+        /// will move them.
+        /// </summary>
+        /// <param name="fleet">The fleet receiving a new destination.</param>
+        /// <returns>Movement groups with each ungrouped unit represented independently.</returns>
+        internal IReadOnlyList<IReadOnlyList<IMovable>> GetInTransitFleetJoinerGroups(Fleet fleet)
+        {
+            Fleet liveFleet = ResolveLiveNode(fleet) as Fleet;
+            if (liveFleet == null)
+                return Array.Empty<IReadOnlyList<IMovable>>();
+
+            List<IMovable> joiners = liveFleet
+                .GetChildren<IMovable>(recursive: true)
+                .Where(movable => movable.Movement != null)
+                .ToList();
+            List<IReadOnlyList<IMovable>> groups = joiners
+                .Where(joiner => !string.IsNullOrEmpty(joiner.Movement.MovementGroupID))
+                .GroupBy(joiner => joiner.Movement.MovementGroupID, StringComparer.Ordinal)
+                .Select(group => (IReadOnlyList<IMovable>)group.ToList())
+                .ToList();
+            groups.AddRange(
+                joiners
+                    .Where(joiner => string.IsNullOrEmpty(joiner.Movement.MovementGroupID))
+                    .Select(joiner => (IReadOnlyList<IMovable>)new[] { joiner })
+            );
+            return groups;
         }
 
         /// <summary>
@@ -1346,7 +1406,32 @@ namespace Rebellion.Simulation
                 unit,
                 origin.GetPosition(),
                 destination,
-                IsSameSector(origin, destination)
+                IsSameSector(origin, destination),
+                GetPersonnelTravelTimePercent(unit)
+            );
+        }
+
+        /// <summary>
+        /// Calculates movement duration with a group-level personnel travel modifier.
+        /// </summary>
+        /// <param name="unit">The moving unit.</param>
+        /// <param name="origin">The origin planet.</param>
+        /// <param name="destination">The destination planet.</param>
+        /// <param name="personnelTravelTimePercent">The group's personnel travel-time percentage.</param>
+        /// <returns>The movement duration in ticks.</returns>
+        internal int CalculateTransitTicks(
+            IMovable unit,
+            Planet origin,
+            Planet destination,
+            int personnelTravelTimePercent
+        )
+        {
+            return CalculateTransitTicks(
+                unit,
+                origin.GetPosition(),
+                destination,
+                IsSameSector(origin, destination),
+                personnelTravelTimePercent
             );
         }
 
@@ -1369,7 +1454,34 @@ namespace Rebellion.Simulation
                 unit,
                 originPos,
                 destination,
-                IsSameSector(origin, destination)
+                IsSameSector(origin, destination),
+                GetPersonnelTravelTimePercent(unit)
+            );
+        }
+
+        /// <summary>
+        /// Calculates movement duration from a current position using a group-level personnel modifier.
+        /// </summary>
+        /// <param name="unit">The moving unit.</param>
+        /// <param name="originPos">The current movement origin position.</param>
+        /// <param name="origin">The origin planet used for local movement rules.</param>
+        /// <param name="destination">The destination planet.</param>
+        /// <param name="personnelTravelTimePercent">The group's personnel travel-time percentage.</param>
+        /// <returns>The movement duration in ticks.</returns>
+        internal int CalculateTransitTicks(
+            IMovable unit,
+            Point originPos,
+            Planet origin,
+            Planet destination,
+            int personnelTravelTimePercent
+        )
+        {
+            return CalculateTransitTicks(
+                unit,
+                originPos,
+                destination,
+                IsSameSector(origin, destination),
+                personnelTravelTimePercent
             );
         }
 
@@ -1388,6 +1500,73 @@ namespace Rebellion.Simulation
             bool sameSector
         )
         {
+            return CalculateTransitTicks(
+                unit,
+                originPos,
+                destination,
+                sameSector,
+                GetPersonnelTravelTimePercent(unit)
+            );
+        }
+
+        /// <summary>
+        /// Calculates the common duration for an existing movement group retargeted from its
+        /// members' current positions.
+        /// </summary>
+        /// <param name="units">The in-transit members of one movement group.</param>
+        /// <param name="destination">The new destination planet.</param>
+        /// <returns>The longest member duration after applying the group's travel modifier.</returns>
+        internal int CalculateRetargetedGroupTransitTicks(
+            IReadOnlyList<IMovable> units,
+            Planet destination
+        )
+        {
+            if (units == null || units.Count == 0)
+                return 0;
+
+            int personnelTravelTimePercent = GetPersonnelGroupTravelTimePercent(units);
+            int groupTransitTicks = 0;
+            foreach (IMovable unit in units)
+            {
+                if (unit?.Movement == null)
+                {
+                    throw new InvalidOperationException(
+                        "Only in-transit units can be included in a retargeted movement group."
+                    );
+                }
+
+                groupTransitTicks = Math.Max(
+                    groupTransitTicks,
+                    CalculateTransitTicks(
+                        unit,
+                        unit.Movement.CurrentPosition,
+                        destination,
+                        sameSector: false,
+                        personnelTravelTimePercent: personnelTravelTimePercent
+                    )
+                );
+            }
+
+            return groupTransitTicks;
+        }
+
+        /// <summary>
+        /// Calculates movement duration using caller-supplied local and personnel movement rules.
+        /// </summary>
+        /// <param name="unit">The moving unit.</param>
+        /// <param name="originPos">The current movement origin position.</param>
+        /// <param name="destination">The destination planet.</param>
+        /// <param name="sameSector">Whether the movement remains within one planet sector.</param>
+        /// <param name="personnelTravelTimePercent">The group's personnel travel-time percentage.</param>
+        /// <returns>The movement duration in ticks.</returns>
+        private int CalculateTransitTicks(
+            IMovable unit,
+            Point originPos,
+            Planet destination,
+            bool sameSector,
+            int personnelTravelTimePercent
+        )
+        {
             int distance = (int)destination.GetRawDistanceTo(originPos);
             double distanceDivisor = _game.GetConfig().Movement.DistanceDivisor;
             if (distanceDivisor <= 0)
@@ -1402,6 +1581,8 @@ namespace Rebellion.Simulation
                 (int)(distance / distanceDivisor),
                 slowestHyperdriveRating
             );
+            if (unit is Officer)
+                baseTicks = IntegerMath.ScaleByPercent(baseTicks, personnelTravelTimePercent);
             if (distance > 0)
                 baseTicks = Math.Max(baseTicks, 1);
 
@@ -1410,6 +1591,42 @@ namespace Rebellion.Simulation
                 : _game.GetConfig().Movement.MinTransitTicks;
 
             return Math.Max(baseTicks, minimumTransitTicks);
+        }
+
+        /// <summary>
+        /// Returns the personnel travel modifier for one standalone movement calculation.
+        /// </summary>
+        /// <param name="unit">The unit being evaluated.</param>
+        /// <returns>The applicable travel-time percentage.</returns>
+        private static int GetPersonnelTravelTimePercent(IMovable unit) =>
+            unit is Officer officer ? officer.GetPersonnelTravelTimePercent() : 100;
+
+        /// <summary>
+        /// Returns the shared personnel travel modifier for one movement group.
+        /// </summary>
+        /// <param name="units">The complete group receiving one movement order.</param>
+        /// <returns>The applicable travel-time percentage.</returns>
+        internal static int GetPersonnelGroupTravelTimePercent(IReadOnlyList<IMovable> units)
+        {
+            if (units == null || units.Count == 0)
+                return 100;
+
+            if (units.Count == 1)
+                return GetPersonnelTravelTimePercent(units[0]);
+
+            int travelTimePercent = 100;
+            foreach (IMovable unit in units)
+            {
+                if (unit is not Officer officer)
+                    return 100;
+
+                travelTimePercent = Math.Min(
+                    travelTimePercent,
+                    officer.GetSharedPersonnelTravelTimePercent()
+                );
+            }
+
+            return travelTimePercent;
         }
 
         /// <summary>

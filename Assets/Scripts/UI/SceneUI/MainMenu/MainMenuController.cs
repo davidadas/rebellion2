@@ -1,3 +1,4 @@
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Rebellion.Game;
@@ -9,8 +10,6 @@ using UnityEngine;
 public sealed class MainMenuController : MonoBehaviour
 {
     private const string _creditsVideoPath = "Application/Credits/Videos/credits";
-    private const string _defaultMenuMusicPath =
-        "Application/MainMenu/Audio/battle-of-endor-1-medley";
     private const string _selectSfxPath = "Application/MainMenu/Audio/select";
 
     [SerializeField]
@@ -378,12 +377,13 @@ public sealed class MainMenuController : MonoBehaviour
     /// Resolves the active pack's main-menu music address.
     /// </summary>
     /// <param name="definition">The active content-pack definition.</param>
-    /// <returns>The configured address, or the application default when none is configured.</returns>
+    /// <returns>The configured audio address.</returns>
     internal static string GetMenuMusicPath(ContentPackDefinition definition)
     {
-        return string.IsNullOrWhiteSpace(definition?.MainMenuMusicPath)
-            ? _defaultMenuMusicPath
-            : definition.MainMenuMusicPath.Trim();
+        if (string.IsNullOrWhiteSpace(definition?.MainMenuMusicPath))
+            throw new InvalidDataException("ContentPack.MainMenuMusicPath is required.");
+
+        return definition.MainMenuMusicPath.Trim();
     }
 
     /// <summary>

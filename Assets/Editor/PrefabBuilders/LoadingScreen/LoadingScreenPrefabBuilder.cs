@@ -3,7 +3,6 @@ using System.IO;
 using TMPro;
 using UnityEditor;
 using UnityEngine;
-using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 /// <summary>
@@ -12,8 +11,6 @@ using UnityEngine.UI;
 public static class LoadingScreenPrefabBuilder
 {
     private const string _prefabPath = "Assets/Resources/UI/LoadingScreen.prefab";
-    private const string _scenePath = "Assets/Scenes/LoadingScreen.unity";
-    private const string _sceneRootName = "LoadingScreen";
     private const int _presentationLayer = 31;
 
     /// <summary>
@@ -174,6 +171,7 @@ public static class LoadingScreenPrefabBuilder
         fadeOverlay.raycastTarget = true;
         CanvasGroup fadeOverlayGroup = fadeOverlayObject.AddComponent<CanvasGroup>();
         fadeOverlayGroup.alpha = 0f;
+        fadeOverlayGroup.blocksRaycasts = false;
         FillParent(fadeOverlay.rectTransform);
 
         LoadingScreenView view = root.GetComponent<LoadingScreenView>();
@@ -203,15 +201,6 @@ public static class LoadingScreenPrefabBuilder
         AssignReference(view, "shuttleModelRoot", modelRoot.transform);
         AssignReference(view, "shuttleFlightAudio", shuttleFlightAudio);
         SavePrefab(root, _prefabPath);
-        SceneBuilder.Build(_scenePath, _prefabPath, _sceneRootName, BuildPreviewEventSystem);
-    }
-
-    /// <summary>
-    /// Adds pointer-event processing to the generated standalone preview scene.
-    /// </summary>
-    private static void BuildPreviewEventSystem()
-    {
-        new GameObject("EventSystem", typeof(EventSystem), typeof(StandaloneInputModule));
     }
 
     /// <summary>

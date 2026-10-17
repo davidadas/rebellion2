@@ -148,6 +148,7 @@ public sealed class OptionsMenuRenderData
     public IReadOnlyDictionary<UserGameplayOption, bool> GameplayStates { get; }
     public IReadOnlyDictionary<UserInterfaceOption, bool> UserInterfaceStates { get; }
     public IdleBarLocation IdleBarLocation { get; }
+    public GameLaunchSpeed GameLaunchSpeed { get; }
     public int AutosaveIntervalTicks { get; }
     public int AutosavesToKeep { get; }
 
@@ -185,6 +186,7 @@ public sealed class OptionsMenuRenderData
     /// <param name="autosavesToKeep">The maximum number of autosaves to retain.</param>
     /// <param name="userInterfaceStates">The current user-interface toggle states.</param>
     /// <param name="idleBarLocation">The selected idle-bar corner.</param>
+    /// <param name="gameLaunchSpeed">The speed applied when entering the galaxy view.</param>
     /// <param name="mods">The loaded mods in load order.</param>
     /// <param name="contentPackLabel">The selected content pack's display name.</param>
     /// <param name="contentRestartRequired">Whether content changes require a restart.</param>
@@ -209,6 +211,7 @@ public sealed class OptionsMenuRenderData
         int autosavesToKeep = UserGameplaySettings.DefaultAutosavesToKeep,
         IReadOnlyDictionary<UserInterfaceOption, bool> userInterfaceStates = null,
         IdleBarLocation idleBarLocation = IdleBarLocation.TopRight,
+        GameLaunchSpeed gameLaunchSpeed = GameLaunchSpeed.Unchanged,
         IReadOnlyList<OptionsModRow> mods = null,
         string contentPackLabel = "",
         bool contentRestartRequired = false,
@@ -224,6 +227,7 @@ public sealed class OptionsMenuRenderData
         GameplayStates = gameplayStates ?? new Dictionary<UserGameplayOption, bool>();
         UserInterfaceStates = userInterfaceStates ?? new Dictionary<UserInterfaceOption, bool>();
         IdleBarLocation = idleBarLocation;
+        GameLaunchSpeed = gameLaunchSpeed;
         AutosaveIntervalTicks = autosaveIntervalTicks;
         AutosavesToKeep = autosavesToKeep;
         Volumes = volumes ?? Array.Empty<float>();

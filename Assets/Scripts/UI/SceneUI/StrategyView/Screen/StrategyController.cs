@@ -225,10 +225,36 @@ public sealed class StrategyController
     }
 
     /// <summary>
+    /// Loads dynamic HUD and idle-bar artwork incrementally before the first strategy render.
+    /// </summary>
+    /// <returns>A task that completes when the initial dynamic artwork is resident.</returns>
+    public Task PrepareInitialContentAsync()
+    {
+        if (!initialized)
+            throw new InvalidOperationException("StrategyController has not been initialized.");
+
+        Faction playerFaction = session.Game.GetPlayerFaction();
+        ContentPreloadManifest strategyPreload = _appBootstrap
+            .GetContentPack()
+            .GetPreloadManifest("strategy");
+        ContentPreloadManifest initialContent = new ContentPreloadManifest
+        {
+            TexturesPerFrame = strategyPreload.TexturesPerFrame,
+            Textures = StrategyHudController
+                .GetTexturePaths(uiContext.GetPlayerFactionTheme())
+                .Concat(IdleBarProjector.GetTexturePaths(playerFaction))
+                .Distinct(StringComparer.Ordinal)
+                .ToList(),
+        };
+        return _appBootstrap.GetContentAssets().PreloadAsync(initialContent);
+    }
+
+    /// <summary>
     /// Reveals the initialized strategy presentation and starts its ambient behavior.
     /// </summary>
     /// <param name="startMusic">Whether strategy music should begin immediately.</param>
-    public void ActivatePresentation(bool startMusic)
+    /// <returns>A task that completes after the strategy presentation is active.</returns>
+    public async Task ActivatePresentationAsync(bool startMusic)
     {
         if (!initialized)
             throw new InvalidOperationException("StrategyController has not been initialized.");
@@ -243,9 +269,16 @@ public sealed class StrategyController
         presentationActive = true;
         AppBootstrap.Instance?.GetInputController()?.SetContext(InputContext.Strategy);
         RegisterCancelHandlers();
-        OnGameReady(startMusic);
+        await Task.Yield();
+
+        if (startMusic)
+            ResumeMusic();
+        RebuildSnapshot();
+        await Task.Yield();
+
         RestoreWindows();
-        LoadInitialContent();
+        await Task.Yield();
+        await LoadInitialContentAsync();
     }
 
     /// <summary>
@@ -895,17 +928,6 @@ public sealed class StrategyController
     }
 
     /// <summary>
-    /// Starts strategy music and builds the initial strategy snapshot.
-    /// </summary>
-    /// <param name="startMusic">Whether strategy music should begin immediately.</param>
-    private void OnGameReady(bool startMusic)
-    {
-        if (startMusic)
-            ResumeMusic();
-        RebuildSnapshot();
-    }
-
-    /// <summary>
     /// Starts strategy music after a deferred presentation transition finishes.
     /// </summary>
     internal void ResumeMusic()
@@ -916,8 +938,10 @@ public sealed class StrategyController
     /// <summary>
     /// Renders the initial strategy working set behind the concealed root and then reveals it.
     /// </summary>
-    private void LoadInitialContent()
+    /// <returns>A task that completes after the initial content is ready.</returns>
+    private async Task LoadInitialContentAsync()
     {
+        await RenderInitialContentAsync();
         RequestInitialTextures();
         SetContentReady(true);
         if (!LoadingScreenController.IsLoadInProgress)
@@ -930,11 +954,30 @@ public sealed class StrategyController
     /// </summary>
     private void RequestInitialTextures()
     {
-        Render();
         galaxyMapController.RequestMarkerTextures();
         bookmarkController.RequestIconTextures();
         galacticInformationDisplayController.RequestTextures();
         strategyContextMenu.RequestIconTextures();
+    }
+
+    /// <summary>
+    /// Builds the concealed initial strategy presentation over several frames.
+    /// </summary>
+    /// <returns>A task that completes when the initial presentation is rendered.</returns>
+    private async Task RenderInitialContentAsync()
+    {
+        idleBarController.Render();
+        await Task.Yield();
+        RenderGalaxyMap();
+        await Task.Yield();
+        RenderBookmarks();
+        RenderWindows();
+        await Task.Yield();
+        RenderHud();
+        await Task.Yield();
+        RenderContextMenu();
+        RenderOverlay();
+        dirty = false;
     }
 
     /// <summary>
@@ -1506,7 +1549,7 @@ public sealed class StrategyController
                 faction?.RawMaterials.ToString() ?? "0",
                 faction?.RefinedMaterials.ToString() ?? "0",
                 gameManager.GetGameSpeed(),
-                StrategyHudController.GetUnreadMessageTypes(faction),
+                StrategyHudController.GetUnacknowledgedMessageTypes(faction),
                 resourceBreakdown
             )
         );
@@ -2464,9 +2507,13 @@ public sealed class StrategyController
     /// Opens a durable combat report.
     /// </summary>
     /// <param name="report">The durable combat report.</param>
-    void IMessagesWindowActions.OpenCombatReport(CombatReport report)
+    /// <param name="returnTab">The Messages tab to restore when the report is closed.</param>
+    void IMessagesWindowActions.OpenCombatReport(CombatReport report, MessagesTab returnTab)
     {
-        battleAlertWindowController.OpenReport(report);
+        battleAlertWindowController.OpenReport(
+            report,
+            () => messagesWindowController.Open(returnTab)
+        );
     }
 
     /// <summary>
@@ -2561,7 +2608,8 @@ public sealed class StrategyController
             case StrategyWindowButtonActions.CloseWindow:
             case StrategyDialogButtonActions.Close:
                 PlaySectorWindowCloseSound(window);
-                CloseWindow(window);
+                if (!battleAlertWindowController.TryCloseWindow(window))
+                    CloseWindow(window);
                 break;
             case StrategyWindowButtonActions.OpenSector:
                 GalaxyMapPlanet planet = GetWindowPlanet(window);
@@ -3581,6 +3629,7 @@ public sealed class StrategyController
         );
         BindInputAction(asset, "Strategy/DecreaseGameSpeed", () => StepGameSpeed(false));
         BindInputAction(asset, "Strategy/IncreaseGameSpeed", () => StepGameSpeed(true));
+        BindInputAction(asset, "Strategy/CloseAllWindows", CloseAllWindows);
 
         BindGalacticInformationAction(
             asset,
@@ -3746,6 +3795,14 @@ public sealed class StrategyController
                 ? AppInputController.GetFasterGameSpeed(current)
                 : AppInputController.GetSlowerGameSpeed(current)
         );
+    }
+
+    /// <summary>
+    /// Closes every registered strategy window through its semantic close path.
+    /// </summary>
+    private void CloseAllWindows()
+    {
+        strategyWindowManager?.TryRequestCloseAll();
     }
 
     /// <summary>

@@ -196,6 +196,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 $"<ContentModDefinition><ID>{compatibleModID}</ID><Version>1.0.0</Version>"
                     + "<DisplayName>Compatible Mod</DisplayName>"
                     + $"<BasePackID>{contentPack.Definition.ID}</BasePackID>"
+                    + $"<BasePackVersion>{contentPack.Definition.Version}</BasePackVersion>"
                     + "</ContentModDefinition>"
             );
             _bootstrap.GetUserSettingsManager().Settings.Content.DisabledModIDs = new[]
@@ -349,6 +350,20 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.AreEqual(
                 IdleBarLocation.BottomLeft,
                 _bootstrap.GetUserSettingsManager().Settings.UserInterface.IdleBarLocation
+            );
+        }
+
+        [Test]
+        public void HandleGameLaunchSpeedChanged_DropdownSelection_StagesSpeed()
+        {
+            OptionsMenuView view = OpenAndRender(OptionsMenuTab.UserInterface);
+            TMP_Dropdown dropdown = GetField<TMP_Dropdown>(view, "_gameLaunchSpeedDropdown");
+
+            dropdown.value = (int)GameLaunchSpeed.Fast;
+
+            Assert.AreEqual(
+                GameLaunchSpeed.Fast,
+                _bootstrap.GetUserSettingsManager().Settings.UserInterface.GameLaunchSpeed
             );
         }
 

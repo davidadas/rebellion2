@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEngine;
 
@@ -85,6 +86,30 @@ namespace Rebellion.Tests.UI.Components
             Assert.IsTrue(cancelled);
             Assert.AreEqual(1, content.CancelCount);
             Assert.AreEqual(0, closeRequestCount);
+        }
+
+        [Test]
+        public void TryRequestCloseAll_ModelessAndModalWindows_ClosesEntireStackTopDown()
+        {
+            UIWindowManager windowManager = CreateWindowManager();
+            UIWindow firstWindow = CreateWindow(windowManager, 1, modal: false, canFocus: true);
+            UIWindow secondWindow = CreateWindow(windowManager, 2, modal: false, canFocus: true);
+            UIWindow modalWindow = CreateWindow(windowManager, 3, modal: true, canFocus: true);
+            List<UIWindow> closedWindows = new List<UIWindow>();
+            windowManager.WindowCloseRequested += window =>
+            {
+                closedWindows.Add(window);
+                windowManager.DestroyWindow(window);
+            };
+
+            bool closed = windowManager.TryRequestCloseAll();
+
+            Assert.IsTrue(closed);
+            Assert.AreEqual(0, windowManager.Windows.Count);
+            CollectionAssert.AreEqual(
+                new[] { modalWindow, secondWindow, firstWindow },
+                closedWindows
+            );
         }
 
         [Test]
