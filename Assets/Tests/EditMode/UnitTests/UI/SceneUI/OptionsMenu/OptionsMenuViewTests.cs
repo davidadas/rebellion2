@@ -689,20 +689,13 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 "2 MODS LOADED",
                 GetField<TextMeshProUGUI>("_modsStatusTextField").text
             );
-            TextMeshProUGUI restart = GetField<TextMeshProUGUI>("_modsRestartTextField");
-            Assert.IsTrue(restart.gameObject.activeSelf);
-            Assert.AreEqual("Apply to reload content.", restart.text);
-            Assert.AreEqual(FontStyles.Bold, restart.fontStyle);
-            Assert.AreEqual(TextAlignmentOptions.Center, restart.alignment);
             RectInt statusRect = UILayout.GetSourceRect(
                 GetField<TextMeshProUGUI>("_modsStatusTextField").rectTransform
             );
-            RectInt restartRect = UILayout.GetSourceRect(restart.rectTransform);
             RectInt scrollRect = UILayout.GetSourceRect(
                 GetField<ScrollAreaView>("_modsScrollArea").transform as RectTransform
             );
             Assert.GreaterOrEqual(scrollRect.y, statusRect.yMax);
-            Assert.GreaterOrEqual(restartRect.y, scrollRect.yMax);
             Assert.AreEqual(
                 "Classic Galactic Civil War",
                 GetField<TextMeshProUGUI>("_contentPackValueField").text
@@ -729,12 +722,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.IsTrue(GetField<GameObject>("_settingsActions").activeSelf);
             Assert.IsTrue(GetField<Button>("_applyButton").gameObject.activeSelf);
             Assert.IsTrue(GetField<Button>("_defaultsButton").gameObject.activeSelf);
-            Assert.AreEqual(
-                313,
-                UILayout
-                    .GetSourceRect(GetField<TextMeshProUGUI>("_modsRestartTextField").rectTransform)
-                    .y
-            );
         }
 
         [Test]

@@ -311,15 +311,6 @@ public static class OptionsMenuPrefabBuilder
         status.alignment = TextAlignmentOptions.TopLeft;
         SetSourceRect(status.rectTransform, 20, 101, 348, 18);
 
-        TextMeshProUGUI restart = CreateTextLabel("ModsRestartTextField", modsPage);
-        restart.text = "Apply to reload content.";
-        restart.color = new Color(0.95f, 0.25f, 0.25f);
-        restart.fontSize = 11;
-        restart.fontStyle = FontStyles.Bold;
-        restart.alignment = TextAlignmentOptions.Center;
-        SetSourceRect(restart.rectTransform, 20, 313, 348, 18);
-        restart.gameObject.SetActive(false);
-
         ScrollAreaView modsScrollArea = CreateScrollAreaView(
             modsPage,
             "ModsScrollArea",
@@ -348,7 +339,6 @@ public static class OptionsMenuPrefabBuilder
         rowTemplate.gameObject.SetActive(false);
 
         AssignReference(view, "_modsStatusTextField", status);
-        AssignReference(view, "_modsRestartTextField", restart);
         AssignReference(view, "_contentPackValueField", packValue);
         AssignReference(view, "_contentPackPrevButton", packPrev);
         AssignReference(view, "_contentPackNextButton", packNext);

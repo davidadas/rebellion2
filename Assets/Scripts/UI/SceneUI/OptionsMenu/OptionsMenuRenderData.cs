@@ -158,7 +158,6 @@ public sealed class OptionsMenuRenderData
     public IReadOnlyList<OptionsSaveSlot> SaveSlots { get; }
     public IReadOnlyList<OptionsModRow> Mods { get; }
     public string ContentPackLabel { get; }
-    public bool ContentRestartRequired { get; }
     public bool ShowModsTab { get; }
 
     public bool HasActiveGame { get; }
@@ -189,7 +188,6 @@ public sealed class OptionsMenuRenderData
     /// <param name="gameLaunchSpeed">The speed applied when entering the galaxy view.</param>
     /// <param name="mods">The loaded mods in load order.</param>
     /// <param name="contentPackLabel">The selected content pack's display name.</param>
-    /// <param name="contentRestartRequired">Whether content changes require a restart.</param>
     /// <param name="showModsTab">Whether the host exposes content management.</param>
     public OptionsMenuRenderData(
         int x,
@@ -214,7 +212,6 @@ public sealed class OptionsMenuRenderData
         GameLaunchSpeed gameLaunchSpeed = GameLaunchSpeed.Unchanged,
         IReadOnlyList<OptionsModRow> mods = null,
         string contentPackLabel = "",
-        bool contentRestartRequired = false,
         bool showModsTab = true
     )
     {
@@ -235,7 +232,6 @@ public sealed class OptionsMenuRenderData
         SaveSlots = saveSlots ?? Array.Empty<OptionsSaveSlot>();
         Mods = mods ?? Array.Empty<OptionsModRow>();
         ContentPackLabel = contentPackLabel ?? string.Empty;
-        ContentRestartRequired = contentRestartRequired;
         ShowModsTab = showModsTab;
         SelectedSlot = selectedSlot;
         HasActiveGame = hasActiveGame;

@@ -238,11 +238,6 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
                 _settingsSession.UserInterface.GameLaunchSpeed,
                 BuildModRows().ToArray(),
                 GetSelectedPack()?.DisplayName ?? _selectedPackID,
-                !string.Equals(
-                    _selectedPackID,
-                    _bootstrap.GetContentPack().Definition.ID,
-                    StringComparison.Ordinal
-                ),
                 _showModsTab
             )
         );
