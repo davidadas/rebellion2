@@ -9,7 +9,6 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Simulation;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -30,8 +29,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         private BattleAlertWindowController _controller;
         private int _dirtyCount;
         private GameRoot _game;
-        private PendingCombatSnapshot _pending;
-        private CombatReport _resolveReport;
+        private PendingCombatResult _pending;
+        private SpaceCombatResult _resolveResult;
         private GameObject _rootObject;
         private int _stopMusicCount;
         private UIContext _uiContext;
@@ -48,7 +47,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         {
             _dirtyCount = 0;
             _pending = null;
-            _resolveReport = null;
+            _resolveResult = null;
             _stopMusicCount = 0;
             _playedSfx.Clear();
             _playedTracks.Clear();
@@ -62,24 +61,23 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 TestContent.CreateThemeLibrary(),
                 new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
             );
-            _pending = new PendingCombatSnapshot
+            _pending = new PendingCombatResult
             {
                 Planet = planet,
                 AttackerFleet = playerFleet,
                 DefenderFleet = opponentFleet,
                 AttackerCanRetreat = true,
             };
-            _resolveReport = new CombatReport
+            _resolveResult = new SpaceCombatResult
             {
-                CombatType = CombatReportType.SpaceBattle,
-                PlanetInstanceID = planet.InstanceID,
+                Planet = planet,
+                AttackerFleet = playerFleet,
+                DefenderFleet = opponentFleet,
                 AttackerOwnerInstanceID = _playerFactionId,
                 DefenderOwnerInstanceID = _opponentFactionId,
                 Winner = CombatSide.Defender,
                 AttackerOutcome = SpaceCombatSideOutcome.Withdrawn,
                 DefenderOutcome = SpaceCombatSideOutcome.Active,
-                Title = "Battle at Corellia",
-                Body = "The defending fleet was victorious.",
             };
             _rootObject = UIComponentTestHelper.InstantiatePrefab(_strategyViewPrefabPath);
             _windowLayer = _rootObject.GetComponentInChildren<StrategyWindowLayerView>(true);
@@ -104,8 +102,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.Throws<ArgumentNullException>(() =>
                 new BattleAlertWindowController(
                     null,
-                    () => _resolveReport,
-                    () => _resolveReport,
+                    () => _resolveResult,
+                    () => _resolveResult,
                     () => _uiContext,
                     _ => { },
                     _ => { },
@@ -229,19 +227,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         }
 
         [Test]
-        public void OpenReport_Bombardment_OpensSharedResultWindowWithoutBattleMusic()
+        public void OpenResult_Bombardment_OpensSharedResultWindowWithoutBattleMusic()
         {
             _pending = null;
-            CombatReport report = new CombatReport
+            BombardmentResult result = new BombardmentResult
             {
-                CombatType = CombatReportType.Bombardment,
-                PlanetInstanceID = _pending?.Planet?.InstanceID ?? "planet",
+                Planet = _resolveResult.Planet,
+                AttackingFaction = _game.GetFactionByOwnerInstanceID(_playerFactionId),
                 AttackerOwnerInstanceID = _playerFactionId,
                 DefenderOwnerInstanceID = _opponentFactionId,
-                Title = "Orbital bombardment of Corellia",
             };
 
-            _controller.OpenReport(report);
+            _controller.OpenResult(result);
 
             BattleAlertWindowView view = _controller.FindWindow();
             BattleAlertWindowRenderData data = _controller.CreateRenderData(
@@ -259,19 +256,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         }
 
         [Test]
-        public void OpenReport_PlanetaryAssault_DefaultsToTroopsWithoutBattleMusic()
+        public void OpenResult_PlanetaryAssault_DefaultsToTroopsWithoutBattleMusic()
         {
             _pending = null;
-            CombatReport report = new CombatReport
+            PlanetaryAssaultResult result = new PlanetaryAssaultResult
             {
-                CombatType = CombatReportType.PlanetaryAssault,
-                PlanetInstanceID = "planet",
+                Planet = _resolveResult.Planet,
+                AttackingFaction = _game.GetFactionByOwnerInstanceID(_playerFactionId),
                 AttackerOwnerInstanceID = _playerFactionId,
                 DefenderOwnerInstanceID = _opponentFactionId,
-                Title = "Assault on Corellia",
             };
 
-            _controller.OpenReport(report);
+            _controller.OpenResult(result);
 
             BattleAlertWindowView view = _controller.FindWindow();
             BattleAlertWindowRenderData data = _controller.CreateRenderData(
@@ -290,14 +286,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         }
 
         [Test]
-        public void ResolveAutomatically_SpaceCombatReport_PlaysCompletedBattleMusic()
+        public void OpenResult_SpaceCombat_PlaysCompletedBattleMusic()
         {
-            BattleAlertWindowView view = OpenWindow(out UIWindow _);
-            FindButton(view, "AutoResolveButtonImage").onClick.Invoke();
+            _pending = null;
+
+            _controller.OpenResult(_resolveResult);
 
             Assert.AreEqual(1, _stopMusicCount);
-            Assert.AreEqual(2, _playedTracks.Count);
-            Assert.IsNotEmpty(_playedTracks[1]);
+            Assert.AreEqual(1, _playedTracks.Count);
+            Assert.IsNotEmpty(_playedTracks[0]);
         }
 
         [Test]
@@ -377,8 +374,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         {
             return new BattleAlertWindowController(
                 () => _pending,
-                () => _resolveReport,
-                () => _resolveReport,
+                () => _resolveResult,
+                () => _resolveResult,
                 () => _uiContext,
                 path => _playedSfx.Add(path),
                 path => _playedTracks.Add(path),
@@ -480,19 +477,19 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             /// <summary>
             /// Opens battle result fleet.
             /// </summary>
-            /// <param name="planetInstanceId">The planet instance id.</param>
+            /// <param name="planet">The planet.</param>
             /// <param name="sourceX">The source x.</param>
             /// <param name="sourceY">The source y.</param>
-            public void OpenBattleResultFleet(string planetInstanceId, int sourceX, int sourceY) { }
+            public void OpenBattleResultFleet(Planet planet, int sourceX, int sourceY) { }
 
             /// <summary>
             /// Opens battle result sector.
             /// </summary>
-            /// <param name="planetInstanceId">The planet instance id.</param>
+            /// <param name="planetSector">The planet sector.</param>
             /// <param name="sourceX">The source x.</param>
             /// <param name="sourceY">The source y.</param>
             public void OpenBattleResultSector(
-                string planetInstanceId,
+                GalaxyPlanetSector planetSector,
                 int sourceX,
                 int sourceY
             ) { }

@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
-using Rebellion.Simulation;
+using Rebellion.Game.Results;
 using UnityEngine;
 
 /// <summary>
@@ -13,18 +15,18 @@ public interface IBattleAlertWindowActions
     /// <summary>
     /// Opens the fleet pane for a completed battle's planet.
     /// </summary>
-    /// <param name="planetInstanceId">The visible battle planet identifier.</param>
+    /// <param name="planet">The battle planet.</param>
     /// <param name="sourceX">The source window's horizontal coordinate.</param>
     /// <param name="sourceY">The source window's vertical coordinate.</param>
-    void OpenBattleResultFleet(string planetInstanceId, int sourceX, int sourceY);
+    void OpenBattleResultFleet(Planet planet, int sourceX, int sourceY);
 
     /// <summary>
     /// Opens the sector window for a completed battle.
     /// </summary>
-    /// <param name="planetInstanceId">The visible battle planet identifier.</param>
+    /// <param name="sector">The battle's planetary sector.</param>
     /// <param name="sourceX">The source window's horizontal coordinate.</param>
     /// <param name="sourceY">The source window's vertical coordinate.</param>
-    void OpenBattleResultSector(string planetInstanceId, int sourceX, int sourceY);
+    void OpenBattleResultSector(PlanetSector sector, int sourceX, int sourceY);
 
     /// <summary>
     /// Rebuilds the visible strategy snapshot after combat changes game state.
@@ -38,9 +40,9 @@ public interface IBattleAlertWindowActions
 public sealed class BattleAlertWindowController
 {
     private readonly Action<UIWindow> closeWindow;
-    private readonly Func<PendingCombatSnapshot> getPendingCombat;
-    private readonly Func<CombatReport> resolveRetreat;
-    private readonly Func<CombatReport> autoResolve;
+    private readonly Func<PendingCombatResult> getPendingCombat;
+    private readonly Func<SpaceCombatResult> resolveRetreat;
+    private readonly Func<SpaceCombatResult> autoResolve;
     private readonly Func<UIContext> getUIContext;
     private readonly Func<Vector2Int> getWindowPosition;
     private readonly Action markDirty;
@@ -70,9 +72,9 @@ public sealed class BattleAlertWindowController
     /// <param name="closeWindow">Closes a registered strategy window.</param>
     /// <param name="markDirty">Invalidates strategy presentation after window changes.</param>
     internal BattleAlertWindowController(
-        Func<PendingCombatSnapshot> getPendingCombat,
-        Func<CombatReport> resolveRetreat,
-        Func<CombatReport> autoResolve,
+        Func<PendingCombatResult> getPendingCombat,
+        Func<SpaceCombatResult> resolveRetreat,
+        Func<SpaceCombatResult> autoResolve,
         Func<UIContext> getUIContext,
         Action<string> playSfx,
         Action<string> playTrack,
@@ -175,7 +177,7 @@ public sealed class BattleAlertWindowController
     public bool SyncPendingCombatWindow()
     {
         EnsureInitialized();
-        PendingCombatSnapshot pending = getPendingCombat();
+        PendingCombatResult pending = getPendingCombat();
         BattleAlertWindowView existing = FindWindow();
 
         if (pending == null)
@@ -207,6 +209,24 @@ public sealed class BattleAlertWindowController
     }
 
     /// <summary>
+    /// Opens a completed combat result in the shared battle-result window.
+    /// </summary>
+    /// <param name="result">The completed combat result.</param>
+    internal void OpenResult(GameResult result)
+    {
+        BattleResultPresentation presentation = BattleResultPresentation.Create(result);
+
+        EnsureInitialized();
+        BattleAlertWindowView view = FindWindow() ?? OpenWindow();
+        if (view == null)
+            return;
+
+        SetCombatResult(view, presentation);
+        PlayResultAudio(presentation);
+        markDirty();
+    }
+
+    /// <summary>
     /// Opens a durable combat report.
     /// </summary>
     /// <param name="report">The durable report to display.</param>
@@ -220,7 +240,7 @@ public sealed class BattleAlertWindowController
             return;
 
         SetCombatResult(view, presentation);
-        PlayResultAudio(presentation, false);
+        PlayResultAudio(presentation);
         markDirty();
     }
 
@@ -273,7 +293,7 @@ public sealed class BattleAlertWindowController
         if (string.IsNullOrEmpty(playerFactionId))
             playerFactionId = GetPlayerFactionID();
 
-        PendingCombatSnapshot pending = getPendingCombat();
+        PendingCombatResult pending = getPendingCombat();
 
         return projector.Project(
             session.Mode,
@@ -319,11 +339,11 @@ public sealed class BattleAlertWindowController
     /// <param name="view">The requesting battle-alert view.</param>
     private void ResolveRetreat(BattleAlertWindowView view)
     {
-        CombatReport report = resolveRetreat();
-        if (report == null)
+        SpaceCombatResult result = resolveRetreat();
+        if (result == null)
             return;
 
-        SetCombatResult(view, BattleResultPresentation.Create(report));
+        SetCombatResult(view, BattleResultPresentation.Create(result));
         stopMusic();
         actions.RebuildBattleSnapshot();
         markDirty();
@@ -335,12 +355,12 @@ public sealed class BattleAlertWindowController
     /// <param name="view">The requesting battle-alert view.</param>
     private void ResolveAutomatically(BattleAlertWindowView view)
     {
-        CombatReport report = autoResolve();
-        if (report != null)
+        SpaceCombatResult result = autoResolve();
+        if (result != null)
         {
-            BattleResultPresentation presentation = BattleResultPresentation.Create(report);
+            BattleResultPresentation presentation = BattleResultPresentation.Create(result);
             SetCombatResult(view, presentation);
-            PlayResultAudio(presentation, true);
+            PlayResultAudio(presentation);
             actions.RebuildBattleSnapshot();
             markDirty();
             return;
@@ -386,14 +406,14 @@ public sealed class BattleAlertWindowController
     {
         if (TryGetResultSession(view, out BattleAlertWindowSession session))
         {
-            string planetInstanceId = session.Result.PlanetInstanceID;
-            if (string.IsNullOrEmpty(planetInstanceId))
+            Planet planet = session.Result.GetPlanet(getUIContext());
+            if (planet == null)
             {
                 CloseWindow(view);
                 return;
             }
 
-            actions.OpenBattleResultFleet(planetInstanceId, session.Window.X, session.Window.Y);
+            actions.OpenBattleResultFleet(planet, session.Window.X, session.Window.Y);
         }
 
         CloseWindow(view);
@@ -407,14 +427,14 @@ public sealed class BattleAlertWindowController
     {
         if (TryGetResultSession(view, out BattleAlertWindowSession session))
         {
-            string planetInstanceId = session.Result.PlanetInstanceID;
-            if (string.IsNullOrEmpty(planetInstanceId))
+            Planet planet = session.Result.GetPlanet(getUIContext());
+            if (planet?.GetParent() is not PlanetSector sector)
             {
                 CloseWindow(view);
                 return;
             }
 
-            actions.OpenBattleResultSector(planetInstanceId, session.Window.X, session.Window.Y);
+            actions.OpenBattleResultSector(sector, session.Window.X, session.Window.Y);
         }
 
         CloseWindow(view);
@@ -562,7 +582,7 @@ public sealed class BattleAlertWindowController
     /// <param name="result">The completed result owned by the window.</param>
     /// <returns>The mode that should be presented.</returns>
     private static BattleAlertWindowMode GetWindowMode(
-        PendingCombatSnapshot pending,
+        PendingCombatResult pending,
         BattleResultPresentation result
     )
     {
@@ -584,12 +604,10 @@ public sealed class BattleAlertWindowController
     /// Plays configured completed-result audio.
     /// </summary>
     /// <param name="result">The completed combat result.</param>
-    /// <param name="playMusic">Whether this result replaces a pending battle's music.</param>
-    private void PlayResultAudio(BattleResultPresentation result, bool playMusic)
+    private void PlayResultAudio(BattleResultPresentation result)
     {
         BattleAlertWindowTheme theme = GetBattleTheme();
-        if (playMusic)
-            PlayMusicTrack(result.GetMusicPath(theme, GetPlayerFactionID()), true);
+        PlayMusicTrack(result.GetMusicPath(theme, GetPlayerFactionID()), true);
         if (!string.IsNullOrWhiteSpace(result.SoundEffectPath))
             playSfx(result.SoundEffectPath);
     }
@@ -615,7 +633,7 @@ public sealed class BattleAlertWindowController
     /// <returns>The current battle-alert theme, or null when no UI context is active.</returns>
     private BattleAlertWindowTheme GetBattleTheme()
     {
-        return getUIContext()?.GetTheme(GetPlayerFactionID())?.StrategyWindows?.BattleAlert;
+        return getUIContext()?.GetPlayerFactionTheme()?.StrategyWindows?.BattleAlert;
     }
 
     /// <summary>
@@ -624,7 +642,10 @@ public sealed class BattleAlertWindowController
     /// <returns>The current player faction identifier.</returns>
     private string GetPlayerFactionID()
     {
-        return getUIContext()?.GetPlayerFactionInstanceID();
+        return getUIContext()
+            ?.Game?.GetPlayers()
+            ?.FirstOrDefault(player => player.ControllerType == PlayerControllerType.Human)
+            ?.FactionID;
     }
 
     /// <summary>

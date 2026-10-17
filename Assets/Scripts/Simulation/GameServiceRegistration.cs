@@ -120,12 +120,10 @@ namespace Rebellion.Simulation
             ));
             services.AddSingleton<SpaceCombatQueries>();
             services.AddSingleton<SpaceCombatCommands>();
-            services.AddSingleton<CombatPresentationQueries>();
             services.AddSingleton<BombardmentQueries>();
             services.AddSingleton<BombardmentCommands>();
             services.AddSingleton<PlanetaryAssaultQueries>();
             services.AddSingleton<PlanetaryAssaultCommands>();
-            services.AddSingleton<PlayerPlanetaryCombatCommands>();
             services.AddSingleton<VictoryQueries>();
             services.AddSingleton<VictoryCommands>();
             services.AddSingleton<AIDirector>();

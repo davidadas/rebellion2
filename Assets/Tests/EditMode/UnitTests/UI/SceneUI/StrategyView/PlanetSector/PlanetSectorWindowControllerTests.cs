@@ -7,7 +7,6 @@ using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
-using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -485,10 +484,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             bool selected = contextMenuController.TrySelectCommand(command);
 
             Assert.IsTrue(selected);
-            Assert.AreEqual(
-                CombatReportType.PlanetaryAssault,
-                _actions.LastBattleResult.CombatType
-            );
+            Assert.IsInstanceOf<PlanetaryAssaultResult>(_actions.LastBattleResult);
             Assert.AreEqual(1, _actions.RefreshCount);
         }
 
@@ -1132,7 +1128,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         {
             public int RefreshCount { get; private set; }
             public int TargetedCommandCount { get; private set; }
-            public CombatReport LastBattleResult { get; private set; }
+            public GameResult LastBattleResult { get; private set; }
             public IReadOnlyList<ISceneNode> LastItems { get; private set; }
             public ISceneNode LastTrackedEntity { get; private set; }
             public StrategyMissionTarget LastTarget { get; private set; }
@@ -1193,10 +1189,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             /// <summary>
             /// Opens planet sector battle result.
             /// </summary>
-            /// <param name="report">The report.</param>
-            public void OpenPlanetSectorBattleResult(CombatReport report)
+            /// <param name="result">The result.</param>
+            public void OpenPlanetSectorBattleResult(GameResult result)
             {
-                LastBattleResult = report;
+                LastBattleResult = result;
             }
 
             /// <summary>

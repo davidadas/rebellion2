@@ -5,10 +5,8 @@ using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
-using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Simulation;
 using UnityEngine;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 using GameFleet = Rebellion.Game.Units.Fleet;
@@ -57,7 +55,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 GameFleet PlayerFleet,
                 GameFleet OpponentFleet
             ) scene = CreateScene();
-            PendingCombatSnapshot pending = new PendingCombatSnapshot
+            PendingCombatResult pending = new PendingCombatResult
             {
                 Planet = scene.Planet,
                 AttackerFleet = scene.PlayerFleet,
@@ -105,7 +103,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 GameFleet PlayerFleet,
                 GameFleet OpponentFleet
             ) scene = CreateScene();
-            PendingCombatSnapshot pending = new PendingCombatSnapshot
+            PendingCombatResult pending = new PendingCombatResult
             {
                 Planet = scene.Planet,
                 AttackerFleet = scene.PlayerFleet,
@@ -145,7 +143,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 GameFleet PlayerFleet,
                 GameFleet OpponentFleet
             ) scene = CreateScene();
-            PendingCombatSnapshot pending = new PendingCombatSnapshot
+            PendingCombatResult pending = new PendingCombatResult
             {
                 Planet = scene.Planet,
                 AttackerFleet = scene.OpponentFleet,
@@ -216,7 +214,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             );
             reinforcement.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 };
             scene.Game.AttachNode(reinforcement, scene.OpponentFleet);
-            PendingCombatSnapshot pending = new PendingCombatSnapshot
+            PendingCombatResult pending = new PendingCombatResult
             {
                 Planet = scene.Planet,
                 AttackerFleet = scene.PlayerFleet,
@@ -260,7 +258,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 "Planetary Fighter"
             );
             scene.Game.AttachNode(fighter, scene.Planet);
-            PendingCombatSnapshot pending = new PendingCombatSnapshot
+            PendingCombatResult pending = new PendingCombatResult
             {
                 Planet = scene.Planet,
                 AttackerFleet = scene.PlayerFleet,
@@ -312,7 +310,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             ) scene = CreateScene();
             Building building = CreateBuilding("building", _playerFactionId, "Shipyard");
             scene.Game.AttachNode(building, scene.Planet);
-            PendingCombatSnapshot pending = new PendingCombatSnapshot
+            PendingCombatResult pending = new PendingCombatResult
             {
                 Planet = scene.Planet,
                 AttackerFleet = scene.PlayerFleet,
@@ -351,7 +349,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 GameFleet PlayerFleet,
                 GameFleet OpponentFleet
             ) scene = CreateScene(includeFleets: false);
-            PendingCombatSnapshot pending = new PendingCombatSnapshot { Planet = scene.Planet };
+            PendingCombatResult pending = new PendingCombatResult { Planet = scene.Planet };
             BattleAlertWindowProjector projector = new BattleAlertWindowProjector();
 
             BattleAlertWindowRenderData forces = projector.Project(
@@ -409,7 +407,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 BattleResultPanel.Summary,
                 BattleResultCategory.CapitalShips,
                 null,
-                CreatePresentation(result),
+                BattleResultPresentation.Create(result),
                 _playerFactionId,
                 0,
                 0,
@@ -460,7 +458,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 BattleResultPanel.Summary,
                 BattleResultCategory.CapitalShips,
                 null,
-                CreatePresentation(result),
+                BattleResultPresentation.Create(result),
                 _playerFactionId,
                 0,
                 0,
@@ -497,7 +495,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 BattleResultPanel.Summary,
                 BattleResultCategory.CapitalShips,
                 null,
-                CreatePresentation(result),
+                BattleResultPresentation.Create(result),
                 _playerFactionId,
                 0,
                 0,
@@ -534,7 +532,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 BattleResultPanel.Summary,
                 BattleResultCategory.CapitalShips,
                 null,
-                CreatePresentation(result),
+                BattleResultPresentation.Create(result),
                 _playerFactionId,
                 0,
                 0,
@@ -546,7 +544,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 BattleResultPanel.FirstForces,
                 BattleResultCategory.Manufacturing,
                 null,
-                CreatePresentation(result),
+                BattleResultPresentation.Create(result),
                 _playerFactionId,
                 0,
                 0,
@@ -605,7 +603,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 BattleResultPanel.Summary,
                 BattleResultCategory.Troops,
                 null,
-                CreatePresentation(result),
+                BattleResultPresentation.Create(result),
                 _playerFactionId,
                 0,
                 0,
@@ -648,7 +646,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 BattleResultPanel.FirstForces,
                 BattleResultCategory.Personnel,
                 null,
-                CreatePresentation(result),
+                BattleResultPresentation.Create(result),
                 _playerFactionId,
                 0,
                 0,
@@ -696,7 +694,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 CombatUnitSnapshot.CaptureFleetUnits(new[] { scene.PlayerFleet })
             );
             BattleAlertWindowProjector projector = new BattleAlertWindowProjector();
-            BattleResultPresentation presentation = CreatePresentation(result);
+            BattleResultPresentation presentation = BattleResultPresentation.Create(result);
 
             BattleAlertWindowRenderData alliance = projector.Project(
                 BattleAlertWindowMode.Result,
@@ -755,7 +753,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 BattleResultPanel.Direct,
                 BattleResultCategory.CapitalShips,
                 null,
-                CreatePresentation(result),
+                BattleResultPresentation.Create(result),
                 _playerFactionId,
                 0,
                 0,
@@ -770,7 +768,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         }
 
         [Test]
-        public void GetSummaryImagePath_BombardmentReports_SelectLossArtwork()
+        public void GetBombardmentSummaryImagePath_CombatSnapshots_SelectLossArtwork()
         {
             BattleAlertWindowTheme theme = new BattleAlertWindowTheme
             {
@@ -778,30 +776,30 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 BombardmentTargetLossesImagePath = "target-loss",
                 BombardmentNoLossesImagePath = "no-loss",
             };
-            CombatReport attackerLoss = new CombatReport
-            {
-                CombatType = CombatReportType.Bombardment,
-            };
+            BombardmentResult attackerLoss = new BombardmentResult();
             attackerLoss.AttackingUnits.Add(
-                new CombatReportUnit { InstanceID = "ship", Damaged = true }
+                new CombatUnitSnapshot(new CapitalShip { InstanceID = "ship" }) { Damaged = true }
             );
-            CombatReport targetLoss = new CombatReport
-            {
-                CombatType = CombatReportType.Bombardment,
-            };
+            BombardmentResult targetLoss = new BombardmentResult();
             targetLoss.DefendingUnits.Add(
-                new CombatReportUnit { InstanceID = "building", Destroyed = true }
+                new CombatUnitSnapshot(new Building { InstanceID = "building" })
+                {
+                    Destroyed = true,
+                }
             );
 
-            string attackerPath = BattleResultPresentation
-                .Create(attackerLoss)
-                .GetSummaryImagePath(null, theme);
-            string targetPath = BattleResultPresentation
-                .Create(targetLoss)
-                .GetSummaryImagePath(null, theme);
-            string noLossPath = BattleResultPresentation
-                .Create(new CombatReport { CombatType = CombatReportType.Bombardment })
-                .GetSummaryImagePath(null, theme);
+            string attackerPath = BattleAlertWindowProjector.GetBombardmentSummaryImagePath(
+                theme,
+                attackerLoss
+            );
+            string targetPath = BattleAlertWindowProjector.GetBombardmentSummaryImagePath(
+                theme,
+                targetLoss
+            );
+            string noLossPath = BattleAlertWindowProjector.GetBombardmentSummaryImagePath(
+                theme,
+                new BombardmentResult()
+            );
 
             Assert.AreEqual("attacker-loss", attackerPath);
             Assert.AreEqual("target-loss", targetPath);
@@ -1035,56 +1033,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 CombatUnitSnapshot.CaptureFleetUnits(new[] { opponentFleet })
             );
             return result;
-        }
-
-        /// <summary>
-        /// Captures an authoritative result into the detached presentation used by the UI.
-        /// </summary>
-        /// <param name="result">The authoritative combat result.</param>
-        /// <returns>The detached combat presentation.</returns>
-        private static BattleResultPresentation CreatePresentation(GameResult result)
-        {
-            string title;
-            string summary;
-            switch (result)
-            {
-                case SpaceCombatResult space:
-                    title = $"Battle at {space.Planet?.GetDisplayName()}";
-                    if (space.Winner == CombatSide.Draw)
-                    {
-                        summary =
-                            $"The battle at {space.Planet?.GetDisplayName()} is indecisive.\n\nThere has been no victor.";
-                    }
-                    else if (space.Winner == CombatSide.Defender)
-                    {
-                        summary =
-                            space.AttackerOutcome == SpaceCombatSideOutcome.Destroyed
-                                ? "The Alliance fleet was defeated. Your fleet has been destroyed."
-                                : "The Alliance fleet was defeated. Your fleet has withdrawn.";
-                    }
-                    else
-                    {
-                        summary = "The Alliance fleet is victorious.";
-                    }
-                    break;
-                case BombardmentResult bombardment:
-                    title = $"Orbital bombardment of {bombardment.Planet?.GetDisplayName()}";
-                    summary =
-                        $"Alliance ships have conducted an orbital strike on the Imperial system of {bombardment.Planet?.GetDisplayName()}.";
-                    break;
-                case PlanetaryAssaultResult assault:
-                    title = $"Assault on {assault.Planet?.GetDisplayName()}";
-                    summary = assault.Success
-                        ? $"Alliance troops have taken control of the Imperial system {assault.Planet?.GetDisplayName()}."
-                        : $"Imperial Troops have defended {assault.Planet?.GetDisplayName()} from an Alliance assault.";
-                    break;
-                default:
-                    throw new ArgumentException("Unsupported combat result.", nameof(result));
-            }
-
-            return BattleResultPresentation.Create(
-                CombatReport.Capture(result, _playerFactionId, title, summary)
-            );
         }
     }
 }

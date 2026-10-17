@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Galaxy;
@@ -96,30 +95,6 @@ public sealed class UIContext
     public string GetPlayerFactionInstanceID()
     {
         return game.GetPlayerFaction().InstanceID;
-    }
-
-    /// <summary>
-    /// Returns faction identifiers in their configured presentation order.
-    /// </summary>
-    /// <returns>The ordered faction identifiers.</returns>
-    public IReadOnlyList<string> GetFactionInstanceIDs()
-    {
-        return game.GetFactions()
-            .Where(faction => faction != null && !string.IsNullOrEmpty(faction.InstanceID))
-            .Select(faction => faction.InstanceID)
-            .ToList();
-    }
-
-    /// <summary>
-    /// Returns public display metadata for one faction identifier.
-    /// </summary>
-    /// <param name="factionInstanceId">The faction identifier.</param>
-    /// <returns>The faction display name, or null when no faction matches.</returns>
-    public string GetFactionDisplayName(string factionInstanceId)
-    {
-        return game.GetFactions()
-            .FirstOrDefault(faction => faction?.InstanceID == factionInstanceId)
-            ?.GetDisplayName();
     }
 
     /// <summary>

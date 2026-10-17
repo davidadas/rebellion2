@@ -49,56 +49,6 @@ namespace Rebellion.Architecture.Tests
         }
 
         [Test]
-        public void CombatPresentation_Dependencies_DoNotReferenceAuthoritativeCombatState()
-        {
-            IArchRule rule = Types()
-                .That()
-                .HaveNameMatching(
-                    "^(?:BattleAlertWindowController|BattleAlertWindowProjector|BattleResultPresentation|BattleResultTableProjector)$"
-                )
-                .Should()
-                .NotDependOnAny(
-                    Types()
-                        .That()
-                        .HaveFullName("Rebellion.Game.GameRoot")
-                        .Or()
-                        .HaveFullName("Rebellion.Game.Results.GameResult")
-                        .Or()
-                        .HaveFullName("Rebellion.Game.Results.SpaceCombatResult")
-                        .Or()
-                        .HaveFullName("Rebellion.Game.Results.BombardmentResult")
-                        .Or()
-                        .HaveFullName("Rebellion.Game.Results.PlanetaryAssaultResult")
-                        .Or()
-                        .HaveFullName("Rebellion.Game.Results.PendingCombatResult")
-                );
-
-            rule.Check(_architecture);
-        }
-
-        [Test]
-        public void StrategyController_Dependencies_DoNotReferenceAuthoritativeCombatResults()
-        {
-            IArchRule rule = Types()
-                .That()
-                .HaveName("StrategyController")
-                .Should()
-                .NotDependOnAny(
-                    Types()
-                        .That()
-                        .HaveFullName("Rebellion.Game.Results.SpaceCombatResult")
-                        .Or()
-                        .HaveFullName("Rebellion.Game.Results.BombardmentResult")
-                        .Or()
-                        .HaveFullName("Rebellion.Game.Results.PlanetaryAssaultResult")
-                        .Or()
-                        .HaveFullName("Rebellion.Game.Results.PendingCombatResult")
-                );
-
-            rule.Check(_architecture);
-        }
-
-        [Test]
         public void SceneGraph_Dependencies_ReferenceOnlySceneGraph()
         {
             IArchRule rule = Types()

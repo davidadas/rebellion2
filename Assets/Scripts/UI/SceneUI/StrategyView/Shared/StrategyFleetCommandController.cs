@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
-using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -59,16 +58,17 @@ public sealed class StrategyFleetCommandController
         StrategyMenuAction action
     )
     {
-        if (!TryGetCommandIds(items, targetPlanet, out List<string> fleetIds, out string planetId))
+        if (!TryResolveCommand(items, targetPlanet, out List<Fleet> fleets, out Planet liveTarget))
             return false;
 
-        PlayerPlanetaryCombatCommands commands =
-            services.GetService<PlayerPlanetaryCombatCommands>();
         if (action.TryGetBombardmentType(out BombardmentType type))
-            return commands?.CanBombard(fleetIds, planetId, type) == true;
+            return services.GetService<BombardmentCommands>() != null
+                && services.GetService<BombardmentQueries>()?.CanExecute(fleets, liveTarget, type)
+                    == true;
 
         return action == StrategyMenuAction.PlanetaryAssault
-            && commands?.CanAssault(fleetIds, planetId) == true;
+            && services.GetService<PlanetaryAssaultQueries>()?.CanExecute(fleets, liveTarget)
+                == true;
     }
 
     /// <summary>
@@ -78,22 +78,20 @@ public sealed class StrategyFleetCommandController
     /// <param name="targetPlanet">The requested target planet snapshot.</param>
     /// <param name="action">The requested planetary combat action.</param>
     /// <returns>The completed combat result, or null when the command cannot execute.</returns>
-    public CombatReport ExecutePlanetaryCombat(
+    public GameResult ExecutePlanetaryCombat(
         IReadOnlyList<ISceneNode> items,
         Planet targetPlanet,
         StrategyMenuAction action
     )
     {
-        if (!TryGetCommandIds(items, targetPlanet, out List<string> fleetIds, out string planetId))
+        if (!TryResolveCommand(items, targetPlanet, out List<Fleet> fleets, out Planet liveTarget))
             return null;
 
-        PlayerPlanetaryCombatCommands commands =
-            services.GetService<PlayerPlanetaryCombatCommands>();
         if (action.TryGetBombardmentType(out BombardmentType type))
-            return commands?.TryBombard(fleetIds, planetId, type);
+            return services.GetService<BombardmentCommands>()?.TryExecute(fleets, liveTarget, type);
 
         return action == StrategyMenuAction.PlanetaryAssault
-            ? commands?.TryAssault(fleetIds, planetId)
+            ? services.GetService<PlanetaryAssaultCommands>()?.TryExecute(fleets, liveTarget)
             : null;
     }
 
@@ -110,36 +108,45 @@ public sealed class StrategyFleetCommandController
     }
 
     /// <summary>
-    /// Copies a complete visible fleet selection and target into stable command identifiers.
+    /// Resolves a complete fleet selection and live target planet for a combat command.
     /// </summary>
     /// <param name="items">The selected scene nodes.</param>
     /// <param name="targetPlanet">The requested target planet snapshot.</param>
-    /// <param name="fleetIds">Receives the selected fleet identifiers.</param>
-    /// <param name="planetId">Receives the target planet identifier.</param>
-    /// <returns>True when every selected item has a unique fleet identifier.</returns>
-    private static bool TryGetCommandIds(
+    /// <param name="fleets">Receives the live selected fleets.</param>
+    /// <param name="liveTarget">Receives the live target planet.</param>
+    /// <returns>True when every selected item is a fleet and the target is live.</returns>
+    private bool TryResolveCommand(
         IReadOnlyList<ISceneNode> items,
         Planet targetPlanet,
-        out List<string> fleetIds,
-        out string planetId
+        out List<Fleet> fleets,
+        out Planet liveTarget
     )
     {
-        fleetIds = new List<string>();
-        planetId = targetPlanet?.InstanceID;
-        if (items?.Count < 1 || string.IsNullOrEmpty(planetId))
+        fleets = new List<Fleet>();
+        liveTarget = null;
+        GameRoot game = services.GetService<GameRoot>();
+        if (game == null || items?.Count < 1 || string.IsNullOrEmpty(targetPlanet?.InstanceID))
             return false;
 
-        HashSet<string> uniqueFleetIds = new HashSet<string>();
+        liveTarget = game.GetSceneNodeByInstanceID<Planet>(targetPlanet.InstanceID);
+        if (liveTarget == null)
+            return false;
+
+        HashSet<string> fleetIds = new HashSet<string>();
         foreach (ISceneNode item in items)
         {
             if (
                 item is not Fleet fleet
                 || string.IsNullOrEmpty(fleet.InstanceID)
-                || !uniqueFleetIds.Add(fleet.InstanceID)
+                || !fleetIds.Add(fleet.InstanceID)
             )
                 return false;
 
-            fleetIds.Add(fleet.InstanceID);
+            Fleet liveFleet = game.GetSceneNodeByInstanceID<Fleet>(fleet.InstanceID);
+            if (liveFleet == null)
+                return false;
+
+            fleets.Add(liveFleet);
         }
 
         return true;
