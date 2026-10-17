@@ -376,7 +376,19 @@ namespace Rebellion.Game.Events
     {
         public string UnitInstanceID { get; set; }
         public string LocationInstanceID { get; set; }
-        public bool RequireDirectParent { get; set; }
+    }
+
+    /// <summary>
+    /// Tests whether a scene node has a specific immediate parent.
+    /// </summary>
+    [PersistableObject(Name = "HasParent")]
+    public sealed class HasParentConditional : GameConditional
+    {
+        [PersistableAttribute]
+        public string NodeInstanceID { get; set; }
+
+        [PersistableAttribute]
+        public string ParentInstanceID { get; set; }
     }
     #endregion
 }

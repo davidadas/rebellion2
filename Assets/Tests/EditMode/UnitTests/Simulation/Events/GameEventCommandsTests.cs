@@ -3876,16 +3876,15 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void IsMet_IsAtLocationDirectParent_DirectRequiredMatches()
+        public void IsMet_HasParent_MatchingImmediateParent_ReturnsTrue()
         {
             GameRoot game = BuildHierarchy(out Planet planet, out _, out _);
             Officer officer = EntityFactory.CreateOfficer("officer", "faction");
             game.AttachNode(officer, planet);
-            IsAtLocationConditional condition = new IsAtLocationConditional
+            HasParentConditional condition = new HasParentConditional
             {
-                UnitInstanceID = officer.InstanceID,
-                LocationInstanceID = planet.InstanceID,
-                RequireDirectParent = true,
+                NodeInstanceID = officer.InstanceID,
+                ParentInstanceID = planet.InstanceID,
             };
 
             bool isMet = GameEventCommands.IsMet(condition, game);
@@ -3894,19 +3893,32 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void IsMet_IsAtLocationNestedUnderFleet_DirectRequiredDoesNotMatch()
+        public void IsMet_HasParent_NestedUnderCapitalShip_ReturnsFalse()
         {
             GameRoot game = BuildHierarchy(out Planet planet, out _, out CapitalShip ship);
             Officer officer = EntityFactory.CreateOfficer("officer", "faction");
             game.AttachNode(officer, ship);
-            IsAtLocationConditional condition = new IsAtLocationConditional
+            HasParentConditional condition = new HasParentConditional
             {
-                UnitInstanceID = officer.InstanceID,
-                LocationInstanceID = planet.InstanceID,
-                RequireDirectParent = true,
+                NodeInstanceID = officer.InstanceID,
+                ParentInstanceID = planet.InstanceID,
             };
 
             bool isMet = GameEventCommands.IsMet(condition, game);
+
+            Assert.IsFalse(isMet);
+        }
+
+        [Test]
+        public void IsMet_HasParent_MissingReferences_ReturnsFalse()
+        {
+            HasParentConditional condition = new HasParentConditional
+            {
+                NodeInstanceID = "missing-node",
+                ParentInstanceID = "missing-parent",
+            };
+
+            bool isMet = GameEventCommands.IsMet(condition, _game);
 
             Assert.IsFalse(isMet);
         }
