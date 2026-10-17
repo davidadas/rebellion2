@@ -33,11 +33,9 @@ internal abstract class BattleResultPresentation
     internal abstract bool UsesPlanetaryLayout { get; }
 
     /// <summary>
-    /// Resolves the live planet represented by this result when it remains available.
+    /// Gets the identifier of the planet represented by this result.
     /// </summary>
-    /// <param name="uiContext">The current strategy UI context.</param>
-    /// <returns>The live planet, or null when it no longer exists.</returns>
-    internal abstract Planet GetPlanet(UIContext uiContext);
+    internal abstract string PlanetInstanceID { get; }
 
     /// <summary>
     /// Creates a presentation adapter for a supported combat result.
@@ -293,12 +291,7 @@ internal abstract class BattleResultPresentation
             this.result = result ?? throw new ArgumentNullException(nameof(result));
         }
 
-        /// <summary>
-        /// Gets planet.
-        /// </summary>
-        /// <param name="uiContext">The ui context.</param>
-        /// <returns>The requested planet.</returns>
-        internal override Planet GetPlanet(UIContext uiContext) => result.Planet;
+        internal override string PlanetInstanceID => result.Planet?.InstanceID;
 
         /// <summary>
         /// Returns completed space-combat music from the player's perspective.
@@ -395,12 +388,7 @@ internal abstract class BattleResultPresentation
             this.result = result ?? throw new ArgumentNullException(nameof(result));
         }
 
-        /// <summary>
-        /// Gets planet.
-        /// </summary>
-        /// <param name="uiContext">The ui context.</param>
-        /// <returns>The requested planet.</returns>
-        internal override Planet GetPlanet(UIContext uiContext) => result.Planet;
+        internal override string PlanetInstanceID => result.Planet?.InstanceID;
 
         /// <summary>
         /// Builds the completed orbital-bombardment summary.
@@ -475,12 +463,7 @@ internal abstract class BattleResultPresentation
             this.result = result ?? throw new ArgumentNullException(nameof(result));
         }
 
-        /// <summary>
-        /// Gets planet.
-        /// </summary>
-        /// <param name="uiContext">The ui context.</param>
-        /// <returns>The requested planet.</returns>
-        internal override Planet GetPlanet(UIContext uiContext) => result.Planet;
+        internal override string PlanetInstanceID => result.Planet?.InstanceID;
 
         /// <summary>
         /// Builds the completed planetary-assault summary.
@@ -567,17 +550,7 @@ internal abstract class BattleResultPresentation
             this.report = report ?? throw new ArgumentNullException(nameof(report));
         }
 
-        /// <summary>
-        /// Resolves the report location against current game state without making the report depend on it.
-        /// </summary>
-        /// <param name="uiContext">The ui context.</param>
-        /// <returns>The requested planet.</returns>
-        internal override Planet GetPlanet(UIContext uiContext)
-        {
-            return string.IsNullOrEmpty(report.PlanetInstanceID)
-                ? null
-                : uiContext?.Game?.GetSceneNodeByInstanceID<Planet>(report.PlanetInstanceID);
-        }
+        internal override string PlanetInstanceID => report.PlanetInstanceID;
 
         /// <summary>
         /// Returns the outcome summary frozen into the delivered message.

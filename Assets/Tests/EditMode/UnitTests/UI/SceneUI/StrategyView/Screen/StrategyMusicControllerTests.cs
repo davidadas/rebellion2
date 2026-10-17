@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
 using NUnit.Framework;
-using Rebellion.Game;
-using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
@@ -12,14 +10,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
     {
         private const string _advantageTrack = "advantage";
         private const string _disadvantageTrack = "disadvantage";
+        private const string _opponentFactionId = "opponent";
+        private const string _playerFactionId = "player";
         private const string _strongAdvantageTrack = "strong-advantage";
-        private Faction _opponentFaction;
-        private Faction _playerFaction;
         private Func<string> _selectNextTrack;
         private StrategyMusicController _controller;
         private StrategyMusicTheme _theme;
         private int _stopMusicCalls;
         private readonly Queue<int> _randomIndices = new Queue<int>();
+        private readonly List<Planet> _visiblePlanets = new List<Planet>();
 
         /// <summary>
         /// Sets up.
@@ -27,18 +26,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         [SetUp]
         public void SetUp()
         {
-            GameRoot game = TestGame.Create(TestConfig.Create());
-            _playerFaction = new Faction { InstanceID = "player" };
-            _opponentFaction = new Faction { InstanceID = "opponent" };
-            game.GetFactions().Add(_playerFaction);
-            game.GetFactions().Add(_opponentFaction);
-            game.Summary.PlayerFactionID = _playerFaction.InstanceID;
-            game.SetFactionController(
-                _playerFaction.InstanceID,
-                "PLAYER1",
-                PlayerControllerType.Human
-            );
-
             _theme = new StrategyMusicTheme
             {
                 NeutralTrackPaths = new List<string> { "neutral-1", "neutral-2", "neutral-3" },
@@ -53,10 +40,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
                 DisadvantageMaximumRatio = 50,
             };
             _randomIndices.Clear();
+            _visiblePlanets.Clear();
             _selectNextTrack = null;
             _stopMusicCalls = 0;
             _controller = new StrategyMusicController(
-                () => game,
+                () => _visiblePlanets,
+                () => _playerFactionId,
                 () => _theme,
                 GetRandomIndex,
                 selector => _selectNextTrack = selector,
@@ -67,8 +56,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         [Test]
         public void Resume_FirstTrack_UsesStrategicState()
         {
-            AddColonizedPlanets(_playerFaction, 3);
-            AddColonizedPlanets(_opponentFaction, 1);
+            AddColonizedPlanets(_playerFactionId, 3);
+            AddColonizedPlanets(_opponentFactionId, 1);
 
             _controller.Resume();
 
@@ -78,8 +67,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         [Test]
         public void Selection_AfterStrategicTrack_PlaysThreeNeutralTracks()
         {
-            AddColonizedPlanets(_playerFaction, 3);
-            AddColonizedPlanets(_opponentFaction, 1);
+            AddColonizedPlanets(_playerFactionId, 3);
+            AddColonizedPlanets(_opponentFactionId, 1);
             _randomIndices.Enqueue(0);
             _randomIndices.Enqueue(1);
             _randomIndices.Enqueue(2);
@@ -110,8 +99,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         [Test]
         public void Selection_TwoToOnePlanetRatio_UsesAdvantageTrack()
         {
-            AddColonizedPlanets(_playerFaction, 2);
-            AddColonizedPlanets(_opponentFaction, 1);
+            AddColonizedPlanets(_playerFactionId, 2);
+            AddColonizedPlanets(_opponentFactionId, 1);
             _controller.Resume();
 
             Assert.AreEqual(_advantageTrack, _selectNextTrack());
@@ -120,8 +109,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         [Test]
         public void Selection_OneToTwoPlanetRatio_UsesDisadvantageTrack()
         {
-            AddColonizedPlanets(_playerFaction, 1);
-            AddColonizedPlanets(_opponentFaction, 2);
+            AddColonizedPlanets(_playerFactionId, 1);
+            AddColonizedPlanets(_opponentFactionId, 2);
             _controller.Resume();
 
             Assert.AreEqual(_disadvantageTrack, _selectNextTrack());
@@ -130,8 +119,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         [Test]
         public void Selection_OneToThreePlanetRatio_UsesDisadvantageTrack()
         {
-            AddColonizedPlanets(_playerFaction, 1);
-            AddColonizedPlanets(_opponentFaction, 3);
+            AddColonizedPlanets(_playerFactionId, 1);
+            AddColonizedPlanets(_opponentFactionId, 3);
             _controller.Resume();
 
             Assert.AreEqual(_disadvantageTrack, _selectNextTrack());
@@ -140,8 +129,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         [Test]
         public void Selection_MiddlePlanetRatio_UsesRandomNeutralTrack()
         {
-            AddColonizedPlanets(_playerFaction, 1);
-            AddColonizedPlanets(_opponentFaction, 1);
+            AddColonizedPlanets(_playerFactionId, 1);
+            AddColonizedPlanets(_opponentFactionId, 1);
             _randomIndices.Enqueue(2);
             _controller.Resume();
 
@@ -151,7 +140,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         [Test]
         public void Selection_NoOpponentPlanets_UsesConfiguredMultiplier()
         {
-            AddColonizedPlanets(_playerFaction, 20);
+            AddColonizedPlanets(_playerFactionId, 20);
             _controller.Resume();
 
             Assert.AreEqual(_advantageTrack, _selectNextTrack());
@@ -160,9 +149,22 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         [Test]
         public void Selection_UncolonizedPlanets_DoNotAffectRatio()
         {
-            AddColonizedPlanets(_playerFaction, 2);
-            AddColonizedPlanets(_opponentFaction, 1);
-            _playerFaction.AddOwnedUnit(new Planet { InstanceID = "uncolonized" });
+            AddColonizedPlanets(_playerFactionId, 2);
+            AddColonizedPlanets(_opponentFactionId, 1);
+            _visiblePlanets.Add(
+                new Planet { InstanceID = "uncolonized", OwnerInstanceID = _playerFactionId }
+            );
+            _controller.Resume();
+
+            Assert.AreEqual(_advantageTrack, _selectNextTrack());
+        }
+
+        [Test]
+        public void Selection_UnknownOwnerPlanets_DoNotAffectRatio()
+        {
+            AddColonizedPlanets(_playerFactionId, 2);
+            AddColonizedPlanets(_opponentFactionId, 1);
+            _visiblePlanets.Add(new Planet { InstanceID = "unknown", IsColonized = true });
             _controller.Resume();
 
             Assert.AreEqual(_advantageTrack, _selectNextTrack());
@@ -171,8 +173,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         [Test]
         public void Reset_Default_StopsMusicAndRestartsCadenceWithStrategicTrack()
         {
-            AddColonizedPlanets(_playerFaction, 3);
-            AddColonizedPlanets(_opponentFaction, 1);
+            AddColonizedPlanets(_playerFactionId, 3);
+            AddColonizedPlanets(_opponentFactionId, 1);
             _controller.Resume();
             Assert.AreEqual(_strongAdvantageTrack, _selectNextTrack());
             Assert.AreEqual("neutral-1", _selectNextTrack());
@@ -200,17 +202,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         /// <summary>
         /// Adds colonized planets.
         /// </summary>
-        /// <param name="faction">The faction.</param>
+        /// <param name="factionId">The owning faction identifier.</param>
         /// <param name="count">The count.</param>
-        private static void AddColonizedPlanets(Faction faction, int count)
+        private void AddColonizedPlanets(string factionId, int count)
         {
             for (int index = 0; index < count; index++)
             {
-                faction.AddOwnedUnit(
+                _visiblePlanets.Add(
                     new Planet
                     {
-                        InstanceID = $"{faction.InstanceID}-planet-{index}",
-                        OwnerInstanceID = faction.InstanceID,
+                        InstanceID = $"{factionId}-planet-{index}",
+                        OwnerInstanceID = factionId,
                         IsColonized = true,
                     }
                 );

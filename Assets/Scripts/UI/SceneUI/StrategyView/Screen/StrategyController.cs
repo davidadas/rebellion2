@@ -274,9 +274,9 @@ public sealed class StrategyController
         RegisterCancelHandlers();
         await Task.Yield();
 
+        RebuildSnapshot();
         if (startMusic)
             ResumeMusic();
-        RebuildSnapshot();
         await Task.Yield();
 
         RestoreWindows();
@@ -303,7 +303,10 @@ public sealed class StrategyController
         ContentAssets contentAssets = AppBootstrap.Instance.GetContentAssets();
         System.Random musicRandom = new System.Random();
         strategyMusicController = new StrategyMusicController(
-            () => session.Game,
+            () =>
+                galaxyMapController?.VisibleGalaxyMap?.GetChildren<Planet>(recursive: true)
+                ?? Array.Empty<Planet>(),
+            () => uiContext?.GetPlayerFactionInstanceID(),
             () => uiContext?.GetPlayerFactionTheme()?.StrategyMusic,
             musicRandom.Next,
             audioManager.PlayDynamicPlaylist,
@@ -704,6 +707,7 @@ public sealed class StrategyController
             () => session.Tick.ResolveCombatRetreat(PlayerFactionId),
             () => session.Tick.ResolveCombat(true),
             () => uiContext,
+            planetInstanceId => galaxyMapController.FindPlanet(planetInstanceId)?.Planet,
             PlaySfx,
             PlayTrack,
             StopMusic,
@@ -2004,8 +2008,8 @@ public sealed class StrategyController
         uiContext.ReplaceGame(game);
         windowPlacementController.RefreshMovementBounds();
         PreloadStrategySfx();
-        strategyMusicController.Resume();
         RefreshStrategyState();
+        strategyMusicController.Resume();
         RestoreWindows();
         if (!LoadingScreenController.IsLoadInProgress)
             PlayStrategyReadySound();
@@ -2757,7 +2761,10 @@ public sealed class StrategyController
         string locationInstanceId
     )
     {
-        ISceneNode target = ResolveMessageTarget(targetInstanceId, secondaryTargetInstanceId);
+        ISceneNode target = ResolveVisibleMessageTarget(
+            targetInstanceId,
+            secondaryTargetInstanceId
+        );
         GalaxyMapPlanet planet = FindMessageTargetPlanet(target, locationInstanceId);
         GalaxyMapSector sector =
             planet?.Sector
@@ -2784,18 +2791,18 @@ public sealed class StrategyController
     }
 
     /// <summary>
-    /// Resolves a message's preferred target from the live scene graph.
+    /// Resolves a message's preferred target from the current faction-visible snapshot.
     /// </summary>
     /// <param name="targetInstanceId">The preferred target identifier.</param>
     /// <param name="secondaryTargetInstanceId">The fallback target identifier.</param>
     /// <returns>The resolved target, or null when neither identifier resolves.</returns>
-    private ISceneNode ResolveMessageTarget(
+    private ISceneNode ResolveVisibleMessageTarget(
         string targetInstanceId,
         string secondaryTargetInstanceId
     )
     {
-        return session.Game?.GetSceneNodeByInstanceID<ISceneNode>(targetInstanceId)
-            ?? session.Game?.GetSceneNodeByInstanceID<ISceneNode>(secondaryTargetInstanceId);
+        return galaxyMapController.FindVisibleNode(targetInstanceId)
+            ?? galaxyMapController.FindVisibleNode(secondaryTargetInstanceId);
     }
 
     /// <summary>
