@@ -1,7 +1,5 @@
 using System.Collections.Generic;
 using NUnit.Framework;
-using Rebellion.Game;
-using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using UnityEngine;
@@ -52,20 +50,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         }
 
         [Test]
-        public void Build_Officer_SeatOfPowerAppendsFiftyPercentDarkGreenBonus()
+        public void Build_OfficerLeadership_UsesEffectiveRatingOnly()
         {
-            GameRoot game = new GameRoot();
-            Planet coruscant = new Planet { InstanceID = "CORUSCANT", OwnerInstanceID = "FNEMP1" };
-            Officer emperor = new Officer
-            {
-                InstanceID = "EMPEROR_PALPATINE",
-                OwnerInstanceID = "FNEMP1",
-            };
-            coruscant.AddChild(emperor);
-            emperor.SetParent(coruscant);
-            game.NodesByInstanceID[coruscant.InstanceID] = coruscant;
-            game.NodesByInstanceID[emperor.InstanceID] = emperor;
-
             Officer officer = new Officer
             {
                 OwnerInstanceID = "FNEMP1",
@@ -73,50 +59,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             };
 
             StrategyUnitCardStatsOverlayData overlay = StrategyUnitCardStatsOverlayBuilder.Build(
-                officer,
-                game
-            );
-
-            AssertPixel(overlay, 9, 7, StrategyUnitCardStatsOverlayBuilder.LightGreen);
-            AssertPixel(overlay, 10, 7, StrategyUnitCardStatsOverlayBuilder.DarkGreen);
-            AssertPixel(overlay, 14, 7, StrategyUnitCardStatsOverlayBuilder.DarkGreen);
-            AssertPixel(overlay, 15, 7, StrategyUnitCardStatsOverlayBuilder.Black);
-        }
-
-        [Test]
-        public void Build_Officer_EmperorInCoruscantFleetDoesNotApplySeatOfPowerBonus()
-        {
-            GameRoot game = new GameRoot();
-            Planet coruscant = new Planet { InstanceID = "CORUSCANT", OwnerInstanceID = "FNEMP1" };
-            Rebellion.Game.Units.Fleet fleet = new Rebellion.Game.Units.Fleet
-            {
-                InstanceID = "FLEET",
-                OwnerInstanceID = "FNEMP1",
-            };
-            CapitalShip ship = new CapitalShip { InstanceID = "SHIP", OwnerInstanceID = "FNEMP1" };
-            Officer emperor = new Officer
-            {
-                InstanceID = "EMPEROR_PALPATINE",
-                OwnerInstanceID = "FNEMP1",
-            };
-            coruscant.AddChild(fleet);
-            fleet.SetParent(coruscant);
-            fleet.AddChild(ship);
-            ship.SetParent(fleet);
-            ship.AddChild(emperor);
-            emperor.SetParent(ship);
-            game.NodesByInstanceID[coruscant.InstanceID] = coruscant;
-            game.NodesByInstanceID[emperor.InstanceID] = emperor;
-
-            Officer officer = new Officer
-            {
-                OwnerInstanceID = "FNEMP1",
-                Ratings = new Dictionary<SkillRating, int> { [SkillRating.Leadership] = 100 },
-            };
-
-            StrategyUnitCardStatsOverlayData overlay = StrategyUnitCardStatsOverlayBuilder.Build(
-                officer,
-                game
+                officer
             );
 
             AssertPixel(overlay, 9, 7, StrategyUnitCardStatsOverlayBuilder.LightGreen);

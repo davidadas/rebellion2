@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.Game;
-using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -107,10 +105,6 @@ internal static class StrategyUnitCardStatsOverlayBuilder
     private const int _compactWidth = 61;
     private const int _wideWidth = 66;
     private const int _height = 25;
-    private const int _seatOfPowerLeadershipBonusPercent = 50;
-    private const string _emperorInstanceId = "EMPEROR_PALPATINE";
-    private const string _coruscantInstanceId = "CORUSCANT";
-
     private static readonly string[] _recruiterPattern =
     {
         "XXXXXX",
@@ -253,13 +247,12 @@ internal static class StrategyUnitCardStatsOverlayBuilder
     /// Builds the supported graph or capability overlay for one unit.
     /// </summary>
     /// <param name="node">The unit represented by the card.</param>
-    /// <param name="game">The active game state used to resolve contextual officer bonuses.</param>
     /// <returns>The source-resolution overlay, or null for an unsupported node type.</returns>
-    public static StrategyUnitCardStatsOverlayData Build(ISceneNode node, GameRoot game = null)
+    public static StrategyUnitCardStatsOverlayData Build(ISceneNode node)
     {
         return node switch
         {
-            Officer officer => BuildOfficer(officer, game),
+            Officer officer => BuildOfficer(officer),
             SpecialForces specialForces => BuildSpecialForces(specialForces),
             Regiment regiment => BuildRegiment(regiment),
             Starfighter starfighter => BuildStarfighter(starfighter),
@@ -272,19 +265,11 @@ internal static class StrategyUnitCardStatsOverlayBuilder
     /// Builds the four personnel ratings, capabilities, research ratings, and rank markers.
     /// </summary>
     /// <param name="officer">The represented officer.</param>
-    /// <param name="game">The active game state used to resolve contextual officer bonuses.</param>
     /// <returns>The completed personnel overlay.</returns>
-    private static StrategyUnitCardStatsOverlayData BuildOfficer(Officer officer, GameRoot game)
+    private static StrategyUnitCardStatsOverlayData BuildOfficer(Officer officer)
     {
         OverlayRaster raster = new OverlayRaster(_compactWidth, _height);
         int leadership = officer.GetEffectiveRating(SkillRating.Leadership);
-        int leadershipBonus = HasSeatOfPowerBonus(officer, game)
-            ? ScalePercentToPixels(leadership, _seatOfPowerLeadershipBonusPercent)
-            : 0;
-        Color32[] leadershipBar = Join(
-            SolidBar(ScaleRounded(leadership, 10), LightGreen),
-            SolidBar(leadershipBonus, DarkGreen)
-        );
         DrawBarStack(
             raster,
             new[] { 1, 3, 5, 7 },
@@ -296,7 +281,7 @@ internal static class StrategyUnitCardStatsOverlayBuilder
                     Purple
                 ),
                 SolidBar(ScaleRounded(officer.GetEffectiveRating(SkillRating.Combat), 10), Red),
-                leadershipBar,
+                SolidBar(ScaleRounded(leadership, 10), LightGreen),
             }
         );
 
@@ -494,28 +479,6 @@ internal static class StrategyUnitCardStatsOverlayBuilder
         DrawNumber(raster, capitalShip.StarfighterCapacity, 12, Blue);
         DrawNumber(raster, capitalShip.RegimentCapacity, 18, Orange);
         return raster.Build();
-    }
-
-    /// <summary>
-    /// Reports whether the represented officer receives the Empire's Seat of Power bonus.
-    /// </summary>
-    /// <param name="officer">The officer to inspect.</param>
-    /// <param name="game">The active game containing the Emperor and Coruscant.</param>
-    /// <returns>True when the full Seat of Power condition is currently satisfied.</returns>
-    private static bool HasSeatOfPowerBonus(Officer officer, GameRoot game)
-    {
-        if (officer == null || game == null)
-            return false;
-
-        Officer emperor = game.GetSceneNodeByInstanceID<Officer>(_emperorInstanceId);
-        Planet coruscant = game.GetSceneNodeByInstanceID<Planet>(_coruscantInstanceId);
-        return emperor != null
-            && coruscant != null
-            && !emperor.IsCaptured
-            && !emperor.IsKilled
-            && emperor.GetParent() == coruscant
-            && coruscant.GetOwnerInstanceID() == emperor.GetOwnerInstanceID()
-            && officer.GetOwnerInstanceID() == emperor.GetOwnerInstanceID();
     }
 
     /// <summary>
@@ -765,34 +728,6 @@ internal static class StrategyUnitCardStatsOverlayBuilder
         for (int index = tens + 1; index < encoded.Length; index++)
             encoded[index] = color;
         return encoded;
-    }
-
-    /// <summary>
-    /// Converts a percentage of a ten-point rating into source pixels.
-    /// </summary>
-    /// <param name="value">The unscaled rating.</param>
-    /// <param name="percent">The percentage to convert.</param>
-    /// <returns>The rounded nonnegative source-pixel length.</returns>
-    private static int ScalePercentToPixels(int value, int percent)
-    {
-        if (value <= 0 || percent <= 0)
-            return 0;
-
-        return (int)Math.Round(value * percent / 1000d, MidpointRounding.AwayFromZero);
-    }
-
-    /// <summary>
-    /// Concatenates two encoded bar segments without adding another divider.
-    /// </summary>
-    /// <param name="first">The leading segment.</param>
-    /// <param name="second">The trailing segment.</param>
-    /// <returns>The combined pixels.</returns>
-    private static Color32[] Join(Color32[] first, Color32[] second)
-    {
-        Color32[] joined = new Color32[first.Length + second.Length];
-        Array.Copy(first, 0, joined, 0, first.Length);
-        Array.Copy(second, 0, joined, first.Length, second.Length);
-        return joined;
     }
 
     /// <summary>

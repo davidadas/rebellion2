@@ -400,7 +400,7 @@ internal sealed class FleetWindowProjector
                     ),
                     canDrag: true,
                     statsOverlay: showStatsOverlay
-                        ? StrategyUnitCardStatsOverlayBuilder.Build(item, uiContext.Game)
+                        ? StrategyUnitCardStatsOverlayBuilder.Build(item)
                         : null
                 )
             );
