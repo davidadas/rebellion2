@@ -88,6 +88,33 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void TryExecute_InTransitDefendingFleet_OmitsFleetUnitsFromResult()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "empire", energy: 10);
+            Regiment defender = AddRegiment(game, planet, "defender", "empire");
+            Fleet defendingFleet = AddBombardmentFleet(game, planet, "empire", bombardment: 0);
+            defendingFleet.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 1 };
+            CapitalShip inTransitShip = defendingFleet.GetChildren<CapitalShip>()[0];
+            Fleet attackingFleet = AddBombardmentFleet(game, planet, "alliance", bombardment: 1);
+
+            BombardmentResult result = MakeBombardment(
+                    game,
+                    new SequenceRNG(intValues: new[] { 1, 0, 10 })
+                )
+                .TryExecute(new List<Fleet> { attackingFleet }, planet, BombardmentType.Military);
+
+            CollectionAssert.Contains(
+                result.DefendingUnits.Select(unit => unit.Unit.GetInstanceID()),
+                defender.GetInstanceID()
+            );
+            CollectionAssert.DoesNotContain(
+                result.DefendingUnits.Select(unit => unit.Unit.GetInstanceID()),
+                inTransitShip.GetInstanceID()
+            );
+        }
+
+        [Test]
         public void TryExecute_AttackingFleetWithWaypoints_ClearsRoute()
         {
             GameRoot game = CreateGame();

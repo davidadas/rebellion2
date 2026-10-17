@@ -31,6 +31,35 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void TryExecute_InTransitDefendingFleet_OmitsFleetUnitsFromResult()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "alliance");
+            Regiment defender = AddDefender(game, planet, "defender");
+            Fleet defendingFleet = AddAssaultFleet(game, planet, "alliance", regimentCount: 1);
+            defendingFleet.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 1 };
+            CapitalShip inTransitShip = defendingFleet.GetChildren<CapitalShip>()[0];
+            Regiment inTransitRegiment = inTransitShip.GetChildren<Regiment>()[0];
+            Fleet attackingFleet = AddAssaultFleet(game, planet, "empire", regimentCount: 1);
+
+            PlanetaryAssaultResult result = MakePlanetaryAssault(game, new SequenceRNG())
+                .TryExecute(new List<Fleet> { attackingFleet }, planet);
+
+            CollectionAssert.Contains(
+                result.DefendingUnits.Select(unit => unit.Unit.GetInstanceID()),
+                defender.GetInstanceID()
+            );
+            CollectionAssert.DoesNotContain(
+                result.DefendingUnits.Select(unit => unit.Unit.GetInstanceID()),
+                inTransitShip.GetInstanceID()
+            );
+            CollectionAssert.DoesNotContain(
+                result.DefendingUnits.Select(unit => unit.Unit.GetInstanceID()),
+                inTransitRegiment.GetInstanceID()
+            );
+        }
+
+        [Test]
         public void TryExecute_ShieldedPlanet_ReturnsNullWithoutPublishing()
         {
             GameRoot game = CreateGame();

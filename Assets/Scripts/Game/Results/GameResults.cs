@@ -697,7 +697,7 @@ namespace Rebellion.Game.Results
         }
 
         /// <summary>
-        /// Captures one owner's units stationed on a planet.
+        /// Captures one owner's planetary units, excluding units assigned to fleets.
         /// </summary>
         /// <param name="planet">The planet whose units will be captured.</param>
         /// <param name="ownerInstanceId">The owner whose units will be captured.</param>
@@ -709,7 +709,11 @@ namespace Rebellion.Game.Results
         {
             return planet
                     ?.GetChildren<ISceneNode>(recursive: true)
-                    .Where(unit => unit.GetOwnerInstanceID() == ownerInstanceId)
+                    .Where(unit =>
+                        unit.GetOwnerInstanceID() == ownerInstanceId
+                        && unit is not Fleet
+                        && unit.GetParentOfType<Fleet>() == null
+                    )
                     .Distinct()
                     .Select(unit => new CombatUnitSnapshot(unit))
                     .ToList()
