@@ -110,6 +110,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
             view?.InitializeContent(bootstrap.GetContentAssets());
             view?.RenderVictoryCondition(currentVictoryCondition);
             view?.RenderFactions(contentPack.Scenario.PlayableFactionIDs);
+            view?.ResetNewGameSettingsPresentation();
             AudioManager audioManager = bootstrap.GetAudioManager();
             audioManager.PreloadSfx(view?.GetAudioCuePaths());
             mainMenuCanvas.enabled = true;

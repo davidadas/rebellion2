@@ -84,6 +84,14 @@ internal sealed class CustomGameSettingsSession
 
         summaryDefaults = GameLaunchContext.CreateDefaultSummary(pack);
         summaryDraft = summary.GetDeepCopy();
+        summaryDraft.StartingFactionIDs = summaryDefaults.StartingFactionIDs.ToArray();
+        summaryDraft.PackID = summaryDefaults.PackID;
+        summaryDraft.PackVersion = summaryDefaults.PackVersion;
+        summaryDraft.ScenarioID = summaryDefaults.ScenarioID;
+        summaryDraft.ModIDs = summaryDefaults.ModIDs.ToArray();
+        summaryDraft.ModVersions = summaryDefaults.ModVersions.ToArray();
+        if (!summaryDraft.StartingFactionIDs.Contains(summaryDraft.PlayerFactionID))
+            summaryDraft.PlayerFactionID = summaryDefaults.PlayerFactionID;
         generationDefaults = pack.GameData.GenerationConfig.GetDeepCopy();
         generationDraft = string.IsNullOrWhiteSpace(summaryDraft.GenerationConfigOverrideXml)
             ? pack.GameData.GenerationConfig.GetDeepCopy()

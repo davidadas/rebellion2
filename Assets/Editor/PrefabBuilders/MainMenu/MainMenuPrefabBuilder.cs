@@ -2421,6 +2421,15 @@ public static class MainMenuPrefabBuilder
             leftIconRect.offsetMin = new Vector2(9f, leftIconRect.offsetMin.y);
             leftIconRect.offsetMax = new Vector2(9f, leftIconRect.offsetMax.y);
         }
+
+        MainMenuView view = FindRequiredComponent<MainMenuView>(root);
+        SerializedObject serializedView = new SerializedObject(view);
+        serializedView.FindProperty("newGameSettingsSpinner").objectReferenceValue = FindDeep(
+                root.transform,
+                "IconRig_GameSetup"
+            )
+            .GetComponentInChildren<AutoRotate>(true);
+        serializedView.ApplyModifiedPropertiesWithoutUndo();
     }
 
     /// <summary>

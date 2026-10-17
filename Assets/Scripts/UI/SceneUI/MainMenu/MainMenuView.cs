@@ -145,6 +145,9 @@ public sealed class MainMenuView : MonoBehaviour
     [SerializeField]
     private Button newGameSettingsButton;
 
+    [SerializeField]
+    private AutoRotate newGameSettingsSpinner;
+
     [Header("Launch Options")]
     [SerializeField]
     private GalaxySizeBinding[] galaxySizeBindings = Array.Empty<GalaxySizeBinding>();
@@ -348,6 +351,14 @@ public sealed class MainMenuView : MonoBehaviour
     }
 
     /// <summary>
+    /// Starts the custom-game icon from its authored presentation angle.
+    /// </summary>
+    internal void ResetNewGameSettingsPresentation()
+    {
+        newGameSettingsSpinner.ResetToInitialRotation();
+    }
+
+    /// <summary>
     /// Shows or hides the authored Options overlay and its full-screen dimmer.
     /// </summary>
     /// <param name="visible">Whether the overlay should receive input and render.</param>
@@ -454,6 +465,7 @@ public sealed class MainMenuView : MonoBehaviour
             || creditsButton == null
             || victoryConditionButton == null
             || newGameSettingsButton == null
+            || newGameSettingsSpinner == null
             || victoryConditionIcon == null
             || victoryConditionText == null
             || victoryConditionSpinner == null

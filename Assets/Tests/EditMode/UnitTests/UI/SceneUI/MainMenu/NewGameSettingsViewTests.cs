@@ -1016,8 +1016,12 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             RectTransform mineRow = (RectTransform)Input("mine-output", "Player").transform.parent;
             RectTransform refineryRow = (RectTransform)
                 Input("refinery-output", "Player").transform.parent;
+            RectTransform description = (RectTransform)mineRow.Find("Description");
 
-            Assert.Less(mineRow.sizeDelta.y, 44f);
+            Assert.AreEqual(
+                -description.anchoredPosition.y + description.sizeDelta.y,
+                mineRow.sizeDelta.y
+            );
             Assert.AreEqual(
                 -mineRow.anchoredPosition.y + mineRow.sizeDelta.y + 4f,
                 -refineryRow.anchoredPosition.y

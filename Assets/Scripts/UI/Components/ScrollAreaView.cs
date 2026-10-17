@@ -8,6 +8,8 @@ using UnityEngine.UI;
 /// </summary>
 public sealed class ScrollAreaView : MonoBehaviour
 {
+    private const float _scrollSnapDistance = 0.05f;
+
     [SerializeField]
     private ScrollRect scrollRect;
 
@@ -362,7 +364,7 @@ public sealed class ScrollAreaView : MonoBehaviour
             Mathf.Infinity,
             deltaTime
         );
-        if (Mathf.Abs(nextOffset - targetScrollOffset) < 0.01f && Mathf.Abs(scrollVelocity) < 0.01f)
+        if (Mathf.Abs(nextOffset - targetScrollOffset) < _scrollSnapDistance)
         {
             nextOffset = targetScrollOffset;
             scrollVelocity = 0f;

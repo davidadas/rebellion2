@@ -153,6 +153,19 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         [Test]
+        public void ResetNewGameSettingsPresentation_RotatedHolocron_RestoresAuthoredAngle()
+        {
+            AutoRotate spinner = GetField<AutoRotate>("newGameSettingsSpinner");
+            UIComponentTestHelper.InvokeLifecycle(spinner, "Awake");
+            Quaternion authoredRotation = spinner.transform.localRotation;
+            spinner.transform.Rotate(Vector3.up, 90f, Space.Self);
+
+            _view.ResetNewGameSettingsPresentation();
+
+            Assert.AreEqual(authoredRotation, spinner.transform.localRotation);
+        }
+
+        [Test]
         public void AuthoredPrefab_PlanetRig_UsesDayNightShade()
         {
             Transform shade = _prefabRoot.transform.Find("PlanetRig/DayNightShade");
