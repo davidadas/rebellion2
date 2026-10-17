@@ -216,6 +216,96 @@ namespace Rebellion.Tests.AI.Fleets
         }
 
         [Test]
+        public void Execute_WithSharedTravelOfficerGroup_UsesGroupRetargetDuration()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            ConfigureMinimalAttackRequirements(game);
+            game.Config.Movement.DistanceDivisor = 5;
+            game.Config.Movement.MinTransitTicks = 1;
+            game.Config.Movement.SameSectorMinTransitTicks = 1;
+            game.Config.Movement.DefaultPersonnelHyperdrive = 100;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet staging = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "staging",
+                empire.InstanceID
+            );
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
+            staging.PositionX = 0;
+            target.PositionX = 10000;
+            Fleet fleet = AddBattleFleet(game, staging, empire.InstanceID, regimentCount: 6);
+            CapitalShip carrier = fleet.GetChildren<CapitalShip>().Single();
+            carrier.Hyperdrive = 100;
+            OfficerTraitDefinition trait = new OfficerTraitDefinition
+            {
+                ID = "shared-travel",
+                PersonnelTravelTimePercent = 50,
+                SharesPersonnelTravelTimeModifier = true,
+            };
+            IReadOnlyDictionary<string, OfficerTraitDefinition> definitions = new Dictionary<
+                string,
+                OfficerTraitDefinition
+            >
+            {
+                { trait.ID, trait },
+            };
+            Officer smuggler = EntityFactory.CreateOfficer("smuggler", empire.InstanceID);
+            smuggler.Traits.Add(trait.ID);
+            smuggler.BindTraitDefinitions(definitions);
+            Officer companion = EntityFactory.CreateOfficer("companion", empire.InstanceID);
+            companion.BindTraitDefinitions(definitions);
+            foreach (Officer officer in new[] { smuggler, companion })
+            {
+                officer.Movement = new MovementState
+                {
+                    TransitTicks = 100,
+                    MovementGroupID = "personnel-group",
+                    CurrentPosition = new Point(-5000, 0),
+                };
+                game.AttachNode(officer, carrier);
+            }
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            Assert.IsTrue(
+                context.MovementQueries.TryGetTransitTicks(
+                    new List<IMovable> { fleet },
+                    target,
+                    out int fleetTransitTicks
+                )
+            );
+            Assert.IsTrue(
+                context.MovementQueries.TryEstimateRetargetedTransitTicks(
+                    companion,
+                    target,
+                    out int companionTransitTicks
+                )
+            );
+            Assert.IsTrue(
+                context.MovementQueries.TryEstimateRetargetedTransitTicks(
+                    new List<IMovable> { smuggler, companion },
+                    target,
+                    out int groupTransitTicks
+                )
+            );
+            Assert.Greater(companionTransitTicks, fleetTransitTicks);
+            Assert.LessOrEqual(groupTransitTicks, fleetTransitTicks);
+            AIFleetAttackProposal proposal = new AIFleetAttackProposal(
+                fleet,
+                FleetOrderType.Attack,
+                FleetOrderStatus.Staging,
+                target
+            );
+
+            proposal.Execute(context);
+
+            Assert.IsNotNull(fleet.Movement);
+            Assert.AreEqual(FleetOrderStatus.Readying, fleet.Order.Status);
+            Assert.AreEqual(fleet.Movement.TransitTicks, smuggler.Movement.TransitTicks);
+            Assert.AreEqual(fleet.Movement.TransitTicks, companion.Movement.TransitTicks);
+        }
+
+        [Test]
         public void Execute_WithCompletedAttackOrder_ClearsOrder()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);

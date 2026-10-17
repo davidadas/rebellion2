@@ -2525,9 +2525,13 @@ public sealed class StrategyController
     /// Opens a durable combat report.
     /// </summary>
     /// <param name="report">The durable combat report.</param>
-    void IMessagesWindowActions.OpenCombatReport(CombatReport report)
+    /// <param name="returnTab">The Messages tab to restore when the report is closed.</param>
+    void IMessagesWindowActions.OpenCombatReport(CombatReport report, MessagesTab returnTab)
     {
-        battleAlertWindowController.OpenReport(report);
+        battleAlertWindowController.OpenReport(
+            report,
+            () => messagesWindowController.Open(returnTab)
+        );
     }
 
     /// <summary>
@@ -2622,7 +2626,8 @@ public sealed class StrategyController
             case StrategyWindowButtonActions.CloseWindow:
             case StrategyDialogButtonActions.Close:
                 PlaySectorWindowCloseSound(window);
-                CloseWindow(window);
+                if (!battleAlertWindowController.TryCloseWindow(window))
+                    CloseWindow(window);
                 break;
             case StrategyWindowButtonActions.OpenSector:
                 GalaxyMapPlanet planet = GetWindowPlanet(window);

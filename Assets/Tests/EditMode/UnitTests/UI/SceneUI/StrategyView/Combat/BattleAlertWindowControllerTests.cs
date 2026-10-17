@@ -366,6 +366,54 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         }
 
         [Test]
+        public void CloseRequested_ReportWithContinuation_ClosesWindowAndInvokesContinuation()
+        {
+            _pending = null;
+            int continuationCount = 0;
+            CombatReport report = new CombatReport
+            {
+                CombatType = CombatReportType.SpaceBattle,
+                PerspectiveOwnerInstanceID = _playerFactionId,
+                AttackerOwnerInstanceID = _playerFactionId,
+                DefenderOwnerInstanceID = _opponentFactionId,
+                Title = "Battle at Corellia",
+                Body = "The defending fleet was victorious.",
+            };
+            _controller.OpenReport(report, () => continuationCount++);
+            BattleAlertWindowView view = _controller.FindWindow();
+
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            view.RequestClose();
+
+            Assert.IsNull(_controller.FindWindow());
+            Assert.AreEqual(1, continuationCount);
+        }
+
+        [Test]
+        public void TryCloseWindow_ReportWithContinuation_ClosesWindowAndInvokesContinuation()
+        {
+            _pending = null;
+            int continuationCount = 0;
+            CombatReport report = new CombatReport
+            {
+                CombatType = CombatReportType.SpaceBattle,
+                PerspectiveOwnerInstanceID = _playerFactionId,
+                AttackerOwnerInstanceID = _playerFactionId,
+                DefenderOwnerInstanceID = _opponentFactionId,
+                Title = "Battle at Corellia",
+                Body = "The defending fleet was victorious.",
+            };
+            _controller.OpenReport(report, () => continuationCount++);
+            UIWindow window = _windowManager.Windows.Single();
+
+            bool handled = _controller.TryCloseWindow(window);
+
+            Assert.IsTrue(handled);
+            Assert.IsNull(_controller.FindWindow());
+            Assert.AreEqual(1, continuationCount);
+        }
+
+        [Test]
         public void ControlButton_PointerDown_PlaysSharedControlSoundBeforeClick()
         {
             BattleAlertWindowView view = OpenWindow(out UIWindow window);

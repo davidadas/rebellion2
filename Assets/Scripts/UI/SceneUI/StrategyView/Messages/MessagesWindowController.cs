@@ -15,7 +15,8 @@ public interface IMessagesWindowActions
     /// Opens a combat report in the battle-result view.
     /// </summary>
     /// <param name="report">The durable combat report.</param>
-    void OpenCombatReport(CombatReport report);
+    /// <param name="returnTab">The Messages tab to restore when the report is closed.</param>
+    void OpenCombatReport(CombatReport report, MessagesTab returnTab);
 
     /// <summary>
     /// Opens the strategy location represented by a message target.
@@ -742,7 +743,7 @@ public sealed class MessagesWindowController
 
         StopMessageDetailAudio();
         closeWindow(session.Window);
-        actions.OpenCombatReport(report);
+        actions.OpenCombatReport(report, session.ActiveTab);
         markDirty();
         return true;
     }

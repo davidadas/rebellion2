@@ -269,7 +269,6 @@ internal static class StrategyUnitCardStatsOverlayBuilder
     private static StrategyUnitCardStatsOverlayData BuildOfficer(Officer officer)
     {
         OverlayRaster raster = new OverlayRaster(_compactWidth, _height);
-        int leadership = officer.GetEffectiveRating(SkillRating.Leadership);
         DrawBarStack(
             raster,
             new[] { 1, 3, 5, 7 },
@@ -281,7 +280,10 @@ internal static class StrategyUnitCardStatsOverlayBuilder
                     Purple
                 ),
                 SolidBar(ScaleRounded(officer.GetEffectiveRating(SkillRating.Combat), 10), Red),
-                SolidBar(ScaleRounded(leadership, 10), LightGreen),
+                SolidBar(
+                    ScaleRounded(officer.GetEffectiveRating(SkillRating.Leadership), 10),
+                    LightGreen
+                ),
             }
         );
 

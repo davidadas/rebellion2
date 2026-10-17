@@ -50,11 +50,37 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         }
 
         [Test]
-        public void Build_OfficerLeadership_UsesEffectiveRatingOnly()
+        public void Build_Officer_LeadershipTraitUsesEffectiveRatingInSolidBar()
         {
             Officer officer = new Officer
             {
-                OwnerInstanceID = "FNEMP1",
+                Ratings = new Dictionary<SkillRating, int> { [SkillRating.Leadership] = 100 },
+            };
+            OfficerTraitDefinition trait = new OfficerTraitDefinition
+            {
+                ID = "leadership",
+                LeadershipBonusPercent = 50,
+            };
+            officer.Traits.Add(trait.ID);
+            officer.BindTraitDefinitions(
+                new Dictionary<string, OfficerTraitDefinition> { [trait.ID] = trait }
+            );
+
+            StrategyUnitCardStatsOverlayData overlay = StrategyUnitCardStatsOverlayBuilder.Build(
+                officer
+            );
+
+            AssertPixel(overlay, 9, 7, StrategyUnitCardStatsOverlayBuilder.LightGreen);
+            AssertPixel(overlay, 10, 7, StrategyUnitCardStatsOverlayBuilder.LightGreen);
+            AssertPixel(overlay, 14, 7, StrategyUnitCardStatsOverlayBuilder.LightGreen);
+            AssertPixel(overlay, 15, 7, StrategyUnitCardStatsOverlayBuilder.Black);
+        }
+
+        [Test]
+        public void Build_Officer_WithoutLeadershipTraitDoesNotAppendBonus()
+        {
+            Officer officer = new Officer
+            {
                 Ratings = new Dictionary<SkillRating, int> { [SkillRating.Leadership] = 100 },
             };
 

@@ -235,7 +235,8 @@ public sealed class BattleAlertWindowController
     /// Opens a durable combat report.
     /// </summary>
     /// <param name="report">The durable report to display.</param>
-    internal void OpenReport(CombatReport report)
+    /// <param name="closeContinuation">The action to invoke after the report is explicitly closed.</param>
+    internal void OpenReport(CombatReport report, Action closeContinuation = null)
     {
         BattleResultPresentation presentation = BattleResultPresentation.Create(report);
 
@@ -244,7 +245,7 @@ public sealed class BattleAlertWindowController
         if (view == null)
             return;
 
-        SetCombatResult(view, presentation);
+        SetCombatResult(view, presentation, closeContinuation);
         PlayResultAudio(presentation);
         markDirty();
     }
@@ -274,6 +275,23 @@ public sealed class BattleAlertWindowController
         return !ReferenceEquals(view, null)
             && sessions.TryGetValue(view, out BattleAlertWindowSession session)
             && session.Result != null;
+    }
+
+    /// <summary>
+    /// Routes a window-shell close request through the owning battle-alert session.
+    /// </summary>
+    /// <param name="window">The window requested for closure.</param>
+    /// <returns>True when the window belongs to this controller.</returns>
+    internal bool TryCloseWindow(UIWindow window)
+    {
+        if (
+            window == null
+            || !windowManager.TryGetWindowView(window, out BattleAlertWindowView view)
+        )
+            return false;
+
+        HandleCloseRequested(view);
+        return true;
     }
 
     /// <summary>
@@ -382,7 +400,11 @@ public sealed class BattleAlertWindowController
     /// <param name="view">The requesting battle-alert view.</param>
     private void HandleCloseRequested(BattleAlertWindowView view)
     {
+        Action closeContinuation = sessions.TryGetValue(view, out BattleAlertWindowSession session)
+            ? session.TakeCloseContinuation()
+            : null;
         CloseWindow(view);
+        closeContinuation?.Invoke();
     }
 
     /// <summary>
@@ -512,9 +534,14 @@ public sealed class BattleAlertWindowController
     /// </summary>
     /// <param name="view">The result view.</param>
     /// <param name="result">The completed combat result.</param>
-    private void SetCombatResult(BattleAlertWindowView view, BattleResultPresentation result)
+    /// <param name="closeContinuation">The action to invoke after an explicit close.</param>
+    private void SetCombatResult(
+        BattleAlertWindowView view,
+        BattleResultPresentation result,
+        Action closeContinuation = null
+    )
     {
-        sessions[view].Complete(result);
+        sessions[view].Complete(result, closeContinuation);
     }
 
     /// <summary>
@@ -669,6 +696,8 @@ public sealed class BattleAlertWindowController
     /// </summary>
     private sealed class BattleAlertWindowSession
     {
+        private Action closeContinuation;
+
         internal BattleAlertWindowMode Mode { get; private set; } = BattleAlertWindowMode.Hidden;
 
         internal BattleAlertPanel PendingPanel { get; private set; } = BattleAlertPanel.Summary;
@@ -695,11 +724,24 @@ public sealed class BattleAlertWindowController
         /// Stores a completed combat result and restores default result selections.
         /// </summary>
         /// <param name="result">The completed combat result.</param>
-        internal void Complete(BattleResultPresentation result)
+        /// <param name="closeContinuation">The action to invoke after an explicit close.</param>
+        internal void Complete(BattleResultPresentation result, Action closeContinuation = null)
         {
             Result = result ?? throw new ArgumentNullException(nameof(result));
+            this.closeContinuation = closeContinuation;
             ReconcileMode(BattleAlertWindowMode.Result);
             ResultCategory = result.DefaultCategory;
+        }
+
+        /// <summary>
+        /// Takes the explicit-close continuation so it can run at most once.
+        /// </summary>
+        /// <returns>The stored continuation, or null when none was assigned.</returns>
+        internal Action TakeCloseContinuation()
+        {
+            Action continuation = closeContinuation;
+            closeContinuation = null;
+            return continuation;
         }
 
         /// <summary>

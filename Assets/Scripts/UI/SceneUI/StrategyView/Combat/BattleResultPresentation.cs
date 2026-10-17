@@ -1,5 +1,4 @@
 using System;
-using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
 
@@ -282,6 +281,8 @@ internal abstract class BattleResultPresentation
 
         internal override bool UsesPlanetaryLayout => false;
 
+        internal override string PlanetInstanceID => result.Planet?.InstanceID;
+
         /// <summary>
         /// Creates a space-combat presentation adapter.
         /// </summary>
@@ -290,8 +291,6 @@ internal abstract class BattleResultPresentation
         {
             this.result = result ?? throw new ArgumentNullException(nameof(result));
         }
-
-        internal override string PlanetInstanceID => result.Planet?.InstanceID;
 
         /// <summary>
         /// Returns completed space-combat music from the player's perspective.
@@ -379,6 +378,8 @@ internal abstract class BattleResultPresentation
 
         internal override bool UsesPlanetaryLayout => true;
 
+        internal override string PlanetInstanceID => result.Planet?.InstanceID;
+
         /// <summary>
         /// Creates an orbital-bombardment presentation adapter.
         /// </summary>
@@ -387,8 +388,6 @@ internal abstract class BattleResultPresentation
         {
             this.result = result ?? throw new ArgumentNullException(nameof(result));
         }
-
-        internal override string PlanetInstanceID => result.Planet?.InstanceID;
 
         /// <summary>
         /// Builds the completed orbital-bombardment summary.
@@ -454,6 +453,8 @@ internal abstract class BattleResultPresentation
 
         internal override bool UsesPlanetaryLayout => true;
 
+        internal override string PlanetInstanceID => result.Planet?.InstanceID;
+
         /// <summary>
         /// Creates a planetary-assault presentation adapter.
         /// </summary>
@@ -462,8 +463,6 @@ internal abstract class BattleResultPresentation
         {
             this.result = result ?? throw new ArgumentNullException(nameof(result));
         }
-
-        internal override string PlanetInstanceID => result.Planet?.InstanceID;
 
         /// <summary>
         /// Builds the completed planetary-assault summary.
@@ -541,6 +540,8 @@ internal abstract class BattleResultPresentation
         internal override bool UsesPlanetaryLayout =>
             report.CombatType != CombatReportType.SpaceBattle;
 
+        internal override string PlanetInstanceID => report.PlanetInstanceID;
+
         /// <summary>
         /// Creates presentation for one durable combat report.
         /// </summary>
@@ -549,8 +550,6 @@ internal abstract class BattleResultPresentation
         {
             this.report = report ?? throw new ArgumentNullException(nameof(report));
         }
-
-        internal override string PlanetInstanceID => report.PlanetInstanceID;
 
         /// <summary>
         /// Returns the outcome summary frozen into the delivered message.

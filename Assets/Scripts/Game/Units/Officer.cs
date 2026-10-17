@@ -7,6 +7,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Logging;
+using Rebellion.Util.Mathematics;
 using Rebellion.Util.Random;
 using Rebellion.Util.Serialization;
 
@@ -231,6 +232,10 @@ namespace Rebellion.Game.Units
     {
         private const int _ratingPercentScale = 100;
 
+        [PersistableIgnore]
+        private IReadOnlyDictionary<string, OfficerTraitDefinition> _traitDefinitions =
+            new Dictionary<string, OfficerTraitDefinition>(StringComparer.Ordinal);
+
         [PersistableMember(Name = nameof(CanBetray))]
         private bool _canBetray;
 
@@ -332,6 +337,12 @@ namespace Rebellion.Game.Units
         public string MissionReturnLocationInstanceID { get; set; }
         public OfficerVoiceSet VoiceSet { get; set; } = new OfficerVoiceSet();
         public OfficerImageSet ImageSet { get; set; } = new OfficerImageSet();
+
+        [PersistableCollectionItem(Name = "TraitID")]
+        public List<string> Traits { get; set; } = new List<string>();
+
+        [PersistableCollectionItem(Name = "Grant")]
+        public List<OfficerTraitGrant> TraitGrants { get; set; } = new List<OfficerTraitGrant>();
 
         // Mission rating info.
         public Dictionary<SkillRating, int> Ratings { get; set; } =
@@ -491,7 +502,114 @@ namespace Rebellion.Game.Units
             copy.MissionReturnLocationInstanceID = MissionReturnLocationInstanceID;
             copy.VoiceSet = VoiceSet?.CreateCopy();
             copy.ImageSet = ImageSet?.CreateCopy();
+            copy.Traits = new List<string>(Traits);
+            copy.TraitGrants = TraitGrants.ConvertAll(grant => new OfficerTraitGrant
+            {
+                TraitID = grant.TraitID,
+                SourceID = grant.SourceID,
+            });
+            copy._traitDefinitions = _traitDefinitions;
             copy.Ratings = new Dictionary<SkillRating, int>(Ratings);
+        }
+
+        /// <summary>
+        /// Connects this officer to the validated trait definitions for the active content pack.
+        /// </summary>
+        /// <param name="traitDefinitions">The definitions indexed by trait identifier.</param>
+        internal void BindTraitDefinitions(
+            IReadOnlyDictionary<string, OfficerTraitDefinition> traitDefinitions
+        )
+        {
+            _traitDefinitions =
+                traitDefinitions ?? throw new ArgumentNullException(nameof(traitDefinitions));
+        }
+
+        /// <summary>
+        /// Grants a trait from one stable gameplay source without duplicating that assignment.
+        /// </summary>
+        /// <param name="traitID">The content-authored trait identifier.</param>
+        /// <param name="sourceID">The source that owns the assignment.</param>
+        /// <returns>True when a new grant was recorded; otherwise false.</returns>
+        internal bool GrantTrait(string traitID, string sourceID)
+        {
+            RequireTraitDefinition(traitID);
+            if (string.IsNullOrWhiteSpace(sourceID))
+                throw new ArgumentException(
+                    "A trait grant requires a source ID.",
+                    nameof(sourceID)
+                );
+            if (
+                TraitGrants.Any(grant =>
+                    string.Equals(grant.TraitID, traitID, StringComparison.Ordinal)
+                    && string.Equals(grant.SourceID, sourceID, StringComparison.Ordinal)
+                )
+            )
+                return false;
+
+            TraitGrants.Add(new OfficerTraitGrant { TraitID = traitID, SourceID = sourceID });
+            return true;
+        }
+
+        /// <summary>
+        /// Removes the assignment owned by one gameplay source.
+        /// </summary>
+        /// <param name="traitID">The content-authored trait identifier.</param>
+        /// <param name="sourceID">The source that owns the assignment.</param>
+        /// <returns>True when an existing grant was removed; otherwise false.</returns>
+        internal bool RevokeTrait(string traitID, string sourceID)
+        {
+            RequireTraitDefinition(traitID);
+            if (string.IsNullOrWhiteSpace(sourceID))
+                throw new ArgumentException(
+                    "A trait grant requires a source ID.",
+                    nameof(sourceID)
+                );
+
+            return TraitGrants.RemoveAll(grant =>
+                    string.Equals(grant.TraitID, traitID, StringComparison.Ordinal)
+                    && string.Equals(grant.SourceID, sourceID, StringComparison.Ordinal)
+                ) > 0;
+        }
+
+        /// <summary>
+        /// Returns the travel-time percentage supplied by this officer's active traits.
+        /// </summary>
+        /// <returns>One hundred for normal travel, or the strongest active reduction.</returns>
+        public int GetPersonnelTravelTimePercent()
+        {
+            return GetPersonnelTravelTimePercent(sharedOnly: false);
+        }
+
+        /// <summary>
+        /// Returns the travel-time percentage supplied to an accompanying officer group.
+        /// </summary>
+        /// <returns>One hundred for normal travel, or the strongest shared reduction.</returns>
+        internal int GetSharedPersonnelTravelTimePercent()
+        {
+            return GetPersonnelTravelTimePercent(sharedOnly: true);
+        }
+
+        /// <summary>
+        /// Returns the strongest active personnel travel modifier matching the requested scope.
+        /// </summary>
+        /// <param name="sharedOnly">Whether to consider only modifiers authored to affect a group.</param>
+        /// <returns>One hundred for normal travel, or the strongest matching reduction.</returns>
+        private int GetPersonnelTravelTimePercent(bool sharedOnly)
+        {
+            int travelTimePercent = _ratingPercentScale;
+            foreach (OfficerTraitDefinition definition in _traitDefinitions.Values)
+            {
+                if (
+                    HasActiveTrait(definition.ID)
+                    && (!sharedOnly || definition.SharesPersonnelTravelTimeModifier)
+                )
+                    travelTimePercent = Math.Min(
+                        travelTimePercent,
+                        definition.PersonnelTravelTimePercent
+                    );
+            }
+
+            return travelTimePercent;
         }
 
         /// <summary>
@@ -553,7 +671,59 @@ namespace Rebellion.Game.Units
                 SkillRating.Combat => Math.Max(0, ApplyForceRatingBonus(baseRating) - InjuryPoints),
                 _ => baseRating,
             };
+
+            if (rating == SkillRating.Leadership)
+            {
+                int bonusPercent = 0;
+                foreach (OfficerTraitDefinition definition in _traitDefinitions.Values)
+                {
+                    if (HasActiveTrait(definition.ID))
+                        bonusPercent = checked(bonusPercent + definition.LeadershipBonusPercent);
+                }
+                officerRating = checked(
+                    officerRating + IntegerMath.ScaleByPercent(officerRating, bonusPercent)
+                );
+            }
             return officerRating;
+        }
+
+        /// <summary>
+        /// Returns whether the officer currently has a trait through either authorship or a grant.
+        /// </summary>
+        /// <param name="traitID">The trait identifier to find.</param>
+        /// <returns>True when the trait is active; otherwise false.</returns>
+        private bool HasActiveTrait(string traitID)
+        {
+            if (
+                Traits?.Any(authoredTraitID =>
+                    string.Equals(authoredTraitID, traitID, StringComparison.Ordinal)
+                ) == true
+            )
+            {
+                return true;
+            }
+
+            return TraitGrants?.Any(grant =>
+                    grant != null && string.Equals(grant.TraitID, traitID, StringComparison.Ordinal)
+                ) == true;
+        }
+
+        /// <summary>
+        /// Resolves a validated trait definition or rejects an invalid runtime assignment.
+        /// </summary>
+        /// <param name="traitID">The trait identifier to resolve.</param>
+        /// <returns>The resolved trait definition.</returns>
+        private OfficerTraitDefinition RequireTraitDefinition(string traitID)
+        {
+            if (
+                string.IsNullOrWhiteSpace(traitID)
+                || !_traitDefinitions.TryGetValue(traitID, out OfficerTraitDefinition definition)
+            )
+            {
+                throw new InvalidOperationException($"Unknown officer trait '{traitID}'.");
+            }
+
+            return definition;
         }
 
         /// <summary>

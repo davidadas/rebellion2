@@ -570,6 +570,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
                 controller.OpenDetail(report, MessagesTab.All);
 
                 Assert.AreSame(report, actions.OpenedCombatReport);
+                Assert.AreEqual(MessagesTab.All, actions.CombatReportReturnTab);
                 Assert.IsTrue(report.Read);
                 Assert.IsFalse(controller.IsOpen);
             }
@@ -752,13 +753,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         {
             public CombatReport OpenedCombatReport { get; private set; }
 
+            public MessagesTab CombatReportReturnTab { get; private set; }
+
             /// <summary>
             /// Opens combat report.
             /// </summary>
             /// <param name="report">The report.</param>
-            public void OpenCombatReport(CombatReport report)
+            /// <param name="returnTab">The Messages tab restored after closing the report.</param>
+            public void OpenCombatReport(CombatReport report, MessagesTab returnTab)
             {
                 OpenedCombatReport = report;
+                CombatReportReturnTab = returnTab;
             }
 
             /// <summary>
