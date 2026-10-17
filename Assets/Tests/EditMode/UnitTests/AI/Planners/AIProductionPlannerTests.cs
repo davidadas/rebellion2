@@ -297,7 +297,7 @@ namespace Rebellion.Tests.AI.Planners
         public void Plan_WithSoleConstructionLane_DoesNotUseReservedLaneForTraining()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            game.Config.AI.Infrastructure.PlanetsPerTrainingFacility = 1;
+            game.Config.AI.Infrastructure.TrainingFacilityHubTargetCount = 1;
             game.Config.AI.Infrastructure.FacilityConstructionLaneReserve = 1;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
             Planet planet = AITestSceneBuilder.AddPlanet(
@@ -2027,10 +2027,11 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Plan_WithMultipleShipyardDestinations_ExpandsSharedDemandAlternatives()
+        public void Plan_WithTwoShipyardHubPlanets_ExpandsDistinctHubDemands()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            game.Config.AI.Infrastructure.FacilityPlanetsPerSector = 2;
+            game.Config.AI.Infrastructure.ShipyardPrimaryHubTargetCount = 6;
+            game.Config.AI.Infrastructure.ShipyardSecondaryHubTargetCount = 4;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet demandPlanet = AITestSceneBuilder.AddPlanet(
                 game,
@@ -2063,10 +2064,26 @@ namespace Rebellion.Tests.AI.Planners
                 .ProductionDemands.Where(item => item.Kind == AIProductionDemandKind.Shipyard)
                 .ToList();
             Assert.AreEqual(2, demands.Count);
-            Assert.AreEqual(1, demands.Select(demand => demand.Id).Distinct().Count());
-            CollectionAssert.AreEquivalent(
-                new[] { demandPlanet, pendingPlanet },
-                demands.Select(demand => demand.DestinationPlanet)
+            Assert.AreEqual(2, demands.Select(demand => demand.Id).Distinct().Count());
+            Assert.AreEqual(
+                5,
+                demands.Single(demand => demand.DestinationPlanet == pendingPlanet).QuantityNeeded
+            );
+            Assert.AreEqual(
+                0,
+                demands
+                    .Single(demand => demand.DestinationPlanet == pendingPlanet)
+                    .InfrastructureHubIndex
+            );
+            Assert.AreEqual(
+                4,
+                demands.Single(demand => demand.DestinationPlanet == demandPlanet).QuantityNeeded
+            );
+            Assert.AreEqual(
+                1,
+                demands
+                    .Single(demand => demand.DestinationPlanet == demandPlanet)
+                    .InfrastructureHubIndex
             );
         }
 

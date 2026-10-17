@@ -82,7 +82,8 @@ namespace Rebellion.Tests.AI.Proposals
         )
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            game.Config.AI.Infrastructure.PlanetsPerShipyard = 2;
+            game.Config.AI.Infrastructure.ShipyardPrimaryHubTargetCount = 1;
+            game.Config.AI.Infrastructure.ShipyardSecondaryHubTargetCount = 0;
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
             lowerValue = AITestSceneBuilder.AddPlanet(
                 game,

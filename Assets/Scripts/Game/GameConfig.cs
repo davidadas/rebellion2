@@ -576,15 +576,10 @@ namespace Rebellion.Game
         [PersistableObject]
         public class AIInfrastructureConfig
         {
-            public int PlanetsPerConstructionFacility { get; set; }
-            public int MinimumConstructionFacilityLanes { get; set; }
             public int ConstructionFacilityTargetClearTicks { get; set; }
             public int ShipyardTargetClearTicks { get; set; }
             public int FleetProductionMinimumShipyardCount { get; set; }
             public int TrainingFacilityTargetClearTicks { get; set; }
-            public int PlanetsPerShipyard { get; set; }
-            public int PlanetsPerTrainingFacility { get; set; }
-            public int TrainingDemandsPerFacility { get; set; }
             public int ConstructionFacilityPortfolioPercent { get; set; }
             public int ShipyardPortfolioPercent { get; set; }
             public int TrainingFacilityPortfolioPercent { get; set; }
@@ -593,11 +588,11 @@ namespace Rebellion.Game
             public int ConstructionFacilityDemandPercent { get; set; }
             public int ShipyardDemandPercent { get; set; }
             public int TrainingFacilityDemandPercent { get; set; }
-            public int FacilitySectorHubTargetCount { get; set; }
-            public int ShipyardSectorHubTargetCount { get; set; }
-            public int FacilitySectorHubMaximumCount { get; set; }
-            public int FacilityPlanetsPerSector { get; set; }
-            public int FacilitySectorSecondaryTargetCount { get; set; }
+            public int ConstructionFacilityPrimaryHubTargetCount { get; set; }
+            public int ConstructionFacilitySecondaryHubTargetCount { get; set; }
+            public int ShipyardPrimaryHubTargetCount { get; set; }
+            public int ShipyardSecondaryHubTargetCount { get; set; }
+            public int TrainingFacilityHubTargetCount { get; set; }
             public AIInfrastructurePlacementUtilityConfig PlacementUtility { get; set; } =
                 new AIInfrastructurePlacementUtilityConfig();
             public AIInfrastructureAllocationUtilityConfig AllocationUtility { get; set; } =

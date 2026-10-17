@@ -84,6 +84,7 @@ namespace Rebellion.AI.Demands
         public Planet ReferencePlanet { get; }
         public bool EstablishesInitialShield { get; }
         public bool UsesIdleShipyardCapacity { get; }
+        public int InfrastructureHubIndex { get; }
 
         // Reserve Policy.
         public bool CanUseRefinedMaterialReserve =>
@@ -132,6 +133,7 @@ namespace Rebellion.AI.Demands
         /// <param name="embarkedRegimentDeficit">Unmet embarked-regiment count.</param>
         /// <param name="embarkedStarfighterDeficit">Unmet embarked-starfighter count.</param>
         /// <param name="escortDeficit">Unmet armed escort count.</param>
+        /// <param name="infrastructureHubIndex">Zero-based infrastructure hub position, or negative one when the demand is not for a hub.</param>
         public AIProductionDemand(
             string id,
             AIProductionDemandKind kind,
@@ -157,7 +159,8 @@ namespace Rebellion.AI.Demands
             int interdictionDeficit = 0,
             int embarkedRegimentDeficit = 0,
             int embarkedStarfighterDeficit = 0,
-            int escortDeficit = 0
+            int escortDeficit = 0,
+            int infrastructureHubIndex = -1
         )
         {
             Id = id;
@@ -185,6 +188,7 @@ namespace Rebellion.AI.Demands
             EmbarkedRegimentDeficit = Math.Max(0, embarkedRegimentDeficit);
             EmbarkedStarfighterDeficit = Math.Max(0, embarkedStarfighterDeficit);
             EscortDeficit = Math.Max(0, escortDeficit);
+            InfrastructureHubIndex = infrastructureHubIndex;
         }
 
         /// <summary>
@@ -219,7 +223,8 @@ namespace Rebellion.AI.Demands
                 InterdictionDeficit,
                 EmbarkedRegimentDeficit,
                 EmbarkedStarfighterDeficit,
-                EscortDeficit
+                EscortDeficit,
+                InfrastructureHubIndex
             );
         }
 

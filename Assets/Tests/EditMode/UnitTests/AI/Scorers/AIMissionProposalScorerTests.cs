@@ -111,7 +111,7 @@ namespace Rebellion.Tests.AI.Scorers
         public void GetDiplomacyTargetValue_WithInfrastructureDeficit_PrioritizesMatchingFacility()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            game.Config.AI.Infrastructure.PlanetsPerTrainingFacility = 1;
+            game.Config.AI.Infrastructure.TrainingFacilityHubTargetCount = 1;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
             AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
             Planet facilityWorld = AITestSceneBuilder.AddPlanet(

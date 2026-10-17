@@ -19,6 +19,7 @@ namespace Rebellion.AI
         private readonly int _targetMobileCombatStrength;
         private readonly Dictionary<BuildingType, int> _infrastructureCounts = new();
         private readonly Dictionary<BuildingType, int> _infrastructureTargets = new();
+        private readonly Dictionary<BuildingType, int> _infrastructureDeficits = new();
         private readonly Dictionary<string, AIPlanetDefenseCommitment> _defenseByPlanetId =
             new Dictionary<string, AIPlanetDefenseCommitment>(StringComparer.Ordinal);
 
@@ -68,9 +69,75 @@ namespace Rebellion.AI
         /// <returns>The nonnegative target shortfall.</returns>
         public int GetInfrastructureDeficit(BuildingType buildingType)
         {
-            return Math.Max(
-                0,
-                GetInfrastructureTarget(buildingType) - GetInfrastructureCount(buildingType)
+            return _infrastructureDeficits.TryGetValue(buildingType, out int deficit) ? deficit : 0;
+        }
+
+        /// <summary>
+        /// Returns the ordered per-planet hub targets for one production-infrastructure category.
+        /// </summary>
+        /// <param name="buildingType">Infrastructure category to inspect.</param>
+        /// <returns>The primary target followed by any secondary target.</returns>
+        public IReadOnlyList<int> GetInfrastructureHubTargets(BuildingType buildingType)
+        {
+            GameConfig.AIInfrastructureConfig config = _game.Config.AI.Infrastructure;
+            return buildingType switch
+            {
+                BuildingType.ConstructionFacility => new[]
+                {
+                    config.ConstructionFacilityPrimaryHubTargetCount,
+                    config.ConstructionFacilitySecondaryHubTargetCount,
+                },
+                BuildingType.Shipyard => new[]
+                {
+                    config.ShipyardPrimaryHubTargetCount,
+                    config.ShipyardSecondaryHubTargetCount,
+                },
+                BuildingType.TrainingFacility => new[] { config.TrainingFacilityHubTargetCount },
+                _ => Array.Empty<int>(),
+            };
+        }
+
+        /// <summary>
+        /// Returns the remaining hub deficit for one sector and infrastructure category.
+        /// </summary>
+        /// <param name="planets">Eligible owned planets in the sector.</param>
+        /// <param name="buildingType">Infrastructure category to inspect.</param>
+        /// <returns>The facilities still required on the sector's strongest hub planets.</returns>
+        public int GetInfrastructureDeficit(IEnumerable<Planet> planets, BuildingType buildingType)
+        {
+            List<int> facilityCounts =
+                planets
+                    ?.Where(planet => planet != null)
+                    .Select(planet => planet.GetTotalBuildingTypeCount(buildingType))
+                    .OrderByDescending(count => count)
+                    .ToList()
+                ?? new List<int>();
+            IReadOnlyList<int> hubTargets = GetInfrastructureHubTargets(buildingType);
+            int hubCount = Math.Min(facilityCounts.Count, hubTargets.Count);
+            int deficit = 0;
+            for (int index = 0; index < hubCount; index++)
+                deficit += Math.Max(0, hubTargets[index] - facilityCounts[index]);
+
+            return deficit;
+        }
+
+        /// <summary>
+        /// Returns owned planets that can host one infrastructure category.
+        /// </summary>
+        /// <param name="buildingType">Infrastructure category to inspect.</param>
+        /// <returns>The eligible owned planets.</returns>
+        public IEnumerable<Planet> GetInfrastructurePlanets(BuildingType buildingType)
+        {
+            return _assessment.OwnedPlanets.Where(planet =>
+                planet?.IsDestroyed == false
+                && (
+                    planet.IsColonized
+                    || (
+                        buildingType == BuildingType.ConstructionFacility
+                        && planet.GetParentOfType<PlanetSector>()?.SectorType
+                            == PlanetSectorType.OuterRim
+                    )
+                )
             );
         }
 
@@ -216,14 +283,13 @@ namespace Rebellion.AI
                     operationalPlanetCount * mobileCombatStrengthPerPlanet
                 )
             );
-            BuildInfrastructurePlan(_assessment.OwnedPlanets.Count);
+            BuildInfrastructurePlan();
         }
 
         /// <summary>
         /// Builds cached production-infrastructure counts and targets for this turn.
         /// </summary>
-        /// <param name="ownedPlanetCount">Number of faction planets used by infrastructure ratios.</param>
-        private void BuildInfrastructurePlan(int ownedPlanetCount)
+        private void BuildInfrastructurePlan()
         {
             BuildingType[] types =
             {
@@ -232,7 +298,11 @@ namespace Rebellion.AI
                 BuildingType.TrainingFacility,
             };
             foreach (BuildingType type in types)
+            {
                 _infrastructureCounts[type] = 0;
+                _infrastructureTargets[type] = 0;
+                _infrastructureDeficits[type] = 0;
+            }
 
             foreach (Planet planet in _assessment.OwnedPlanets)
             {
@@ -247,46 +317,21 @@ namespace Rebellion.AI
                 }
             }
 
-            GameConfig.AIInfrastructureConfig config = _game.Config.AI.Infrastructure;
-            SetInfrastructureTarget(
-                BuildingType.ConstructionFacility,
-                ownedPlanetCount,
-                config.PlanetsPerConstructionFacility,
-                config.MinimumConstructionFacilityLanes
-            );
-            SetInfrastructureTarget(
-                BuildingType.Shipyard,
-                ownedPlanetCount,
-                config.PlanetsPerShipyard,
-                0
-            );
-            SetInfrastructureTarget(
-                BuildingType.TrainingFacility,
-                ownedPlanetCount,
-                config.PlanetsPerTrainingFacility,
-                0
-            );
-        }
-
-        /// <summary>
-        /// Stores one infrastructure target derived from operational planets and a configured floor.
-        /// </summary>
-        /// <param name="buildingType">Infrastructure category being planned.</param>
-        /// <param name="operationalPlanetCount">Number of usable faction planets.</param>
-        /// <param name="planetsPerFacility">Planets supported by one facility.</param>
-        /// <param name="minimumCount">Minimum target count.</param>
-        private void SetInfrastructureTarget(
-            BuildingType buildingType,
-            int operationalPlanetCount,
-            int planetsPerFacility,
-            int minimumCount
-        )
-        {
-            int ratioTarget =
-                planetsPerFacility > 0
-                    ? IntegerMath.DivideRoundedUp(operationalPlanetCount, planetsPerFacility)
-                    : 0;
-            _infrastructureTargets[buildingType] = Math.Max(minimumCount, ratioTarget);
+            foreach (BuildingType type in types)
+            {
+                foreach (
+                    IGrouping<string, Planet> sector in GetInfrastructurePlanets(type)
+                        .GroupBy(planet =>
+                            planet.GetParentOfType<PlanetSector>()?.InstanceID ?? string.Empty
+                        )
+                )
+                {
+                    IReadOnlyList<int> hubTargets = GetInfrastructureHubTargets(type);
+                    int hubCount = Math.Min(sector.Count(), hubTargets.Count);
+                    _infrastructureTargets[type] += hubTargets.Take(hubCount).Sum();
+                    _infrastructureDeficits[type] += GetInfrastructureDeficit(sector, type);
+                }
+            }
         }
 
         /// <summary>

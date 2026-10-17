@@ -32,7 +32,6 @@ namespace Rebellion.AI.Demands
             AddProductionFacilityDemand(
                 context,
                 demands,
-                ManufacturingType.Ship,
                 AIProductionDemandKind.Shipyard,
                 BuildingType.Shipyard,
                 config.ShipyardDemandPercent
@@ -40,7 +39,6 @@ namespace Rebellion.AI.Demands
             AddProductionFacilityDemand(
                 context,
                 demands,
-                ManufacturingType.Building,
                 AIProductionDemandKind.ConstructionFacility,
                 BuildingType.ConstructionFacility,
                 config.ConstructionFacilityDemandPercent
@@ -48,7 +46,6 @@ namespace Rebellion.AI.Demands
             AddProductionFacilityDemand(
                 context,
                 demands,
-                ManufacturingType.Troop,
                 AIProductionDemandKind.TrainingFacility,
                 BuildingType.TrainingFacility,
                 config.TrainingFacilityDemandPercent
@@ -178,53 +175,21 @@ namespace Rebellion.AI.Demands
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demands">The demand list to update.</param>
-        /// <param name="manufacturingType">The manufacturing category.</param>
         /// <param name="kind">The facility demand kind.</param>
         /// <param name="buildingType">The required facility type.</param>
         /// <param name="baseDemandPercent">The base demand pressure.</param>
         private void AddProductionFacilityDemand(
             AITurnContext context,
             List<AIProductionDemand> demands,
-            ManufacturingType manufacturingType,
             AIProductionDemandKind kind,
             BuildingType buildingType,
             int baseDemandPercent
         )
         {
-            GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
-            int productionDemandCount = demands.Count(demand =>
-                demand.ManufacturingType == manufacturingType && demand.Kind != kind
-            );
             int desiredFacilityCount = context.StrategicPlan.GetInfrastructureTarget(buildingType);
-            if (buildingType == BuildingType.TrainingFacility)
-            {
-                int demandCapacityTarget = IntegerMath.DivideRoundedUp(
-                    productionDemandCount,
-                    Math.Max(1, config.TrainingDemandsPerFacility)
-                );
-                desiredFacilityCount = Math.Max(desiredFacilityCount, demandCapacityTarget);
-            }
-            List<IGrouping<string, Planet>> sectors = context
-                .Assessment.OwnedPlanets.Where(planet =>
-                    planet?.IsColonized == true && !planet.IsDestroyed
-                    || (
-                        buildingType == BuildingType.ConstructionFacility
-                        && planet?.IsDestroyed == false
-                        && planet.GetParentOfType<PlanetSector>()?.SectorType
-                            == PlanetSectorType.OuterRim
-                    )
-                )
-                .GroupBy(context.Assessment.GetPlanetSystemId)
-                .ToList();
-            int remainingFacilityCount = Math.Max(
-                0,
-                desiredFacilityCount - context.StrategicPlan.GetInfrastructureCount(buildingType)
+            int remainingFacilityCount = context.StrategicPlan.GetInfrastructureDeficit(
+                buildingType
             );
-            if (buildingType == BuildingType.ConstructionFacility)
-                remainingFacilityCount = Math.Max(
-                    remainingFacilityCount,
-                    CountUnseededOuterRimSectors(sectors)
-                );
             if (remainingFacilityCount == 0)
                 return;
 
@@ -240,24 +205,6 @@ namespace Rebellion.AI.Demands
                     baseDemandPercent: baseDemandPercent,
                     deficitCount: remainingFacilityCount
                 )
-            );
-        }
-
-        /// <summary>
-        /// Counts Outer Rim systems that still lack construction capacity.
-        /// </summary>
-        /// <param name="sectors">Owned planets grouped by system.</param>
-        /// <returns>The number of unseeded Outer Rim systems.</returns>
-        private static int CountUnseededOuterRimSectors(
-            IEnumerable<IGrouping<string, Planet>> sectors
-        )
-        {
-            return sectors.Count(sector =>
-                sector.FirstOrDefault()?.GetParentOfType<PlanetSector>()?.SectorType
-                    == PlanetSectorType.OuterRim
-                && sector.Sum(planet =>
-                    planet.GetTotalBuildingTypeCount(BuildingType.ConstructionFacility)
-                ) == 0
             );
         }
 
