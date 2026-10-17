@@ -665,6 +665,94 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void Constructor_LoadedInvisibleSnapshot_BindsRememberedOfficerTraits()
+        {
+            const string authoredTraitID = "authored-leadership";
+            const string grantedTraitID = "granted-leadership";
+            string saveDirectoryPath = Path.Combine(
+                Path.GetTempPath(),
+                $"rebellion2-snapshot-traits-{Guid.NewGuid():N}"
+            );
+            try
+            {
+                Faction opponent = new Faction { InstanceID = "opponent" };
+                _game.GetFactions().Add(opponent);
+                PlanetSector sector = _planet.GetParentOfType<PlanetSector>();
+                Planet hiddenPlanet = new Planet
+                {
+                    InstanceID = "hidden-planet",
+                    OwnerInstanceID = opponent.InstanceID,
+                    IsColonized = true,
+                };
+                _game.AttachNode(hiddenPlanet, sector);
+                Officer rememberedOfficer = EntityFactory.CreateOfficer(
+                    "remembered-officer",
+                    opponent.InstanceID
+                );
+                rememberedOfficer.SetBaseRating(SkillRating.Leadership, 40);
+                rememberedOfficer.Traits.Add(authoredTraitID);
+                rememberedOfficer.TraitGrants.Add(
+                    new OfficerTraitGrant
+                    {
+                        TraitID = grantedTraitID,
+                        SourceID = "remembered-event",
+                    }
+                );
+                PlanetSnapshot planetSnapshot = new PlanetSnapshot
+                {
+                    OwnerInstanceID = opponent.InstanceID,
+                    IsColonized = true,
+                };
+                planetSnapshot.Officers.Add(rememberedOfficer);
+                _faction.Fog.Snapshots[sector.InstanceID] = new PlanetSectorSnapshot();
+                _faction.Fog.Snapshots[sector.InstanceID].Planets[hiddenPlanet.InstanceID] =
+                    planetSnapshot;
+
+                Directory.CreateDirectory(saveDirectoryPath);
+                SaveGameManager saveManager = new SaveGameManager(saveDirectoryPath);
+                GameConfig config = _game.Config;
+                saveManager.SaveGameData(_game, "snapshot-traits");
+                GameRoot loadedGame = saveManager.LoadGameData("snapshot-traits");
+                GameDataCatalog gameData = TestGameData.Create(
+                    config,
+                    officerTraits: new[]
+                    {
+                        new OfficerTraitDefinition
+                        {
+                            ID = authoredTraitID,
+                            LeadershipBonusPercent = 50,
+                        },
+                        new OfficerTraitDefinition
+                        {
+                            ID = grantedTraitID,
+                            LeadershipBonusPercent = 25,
+                        },
+                    }
+                );
+
+                using GameSession loadedSession = new GameSession(loadedGame, gameData);
+
+                Faction loadedFaction = loadedGame
+                    .GetFactions()
+                    .Single(faction => faction.InstanceID == _faction.InstanceID);
+                Officer loadedOfficer = loadedFaction
+                    .Fog.Snapshots[sector.InstanceID]
+                    .Planets[hiddenPlanet.InstanceID]
+                    .Officers.Single();
+                Assert.AreEqual(70, loadedOfficer.GetEffectiveRating(SkillRating.Leadership));
+                CollectionAssert.AreEqual(new[] { authoredTraitID }, loadedOfficer.Traits);
+                Assert.AreEqual(1, loadedOfficer.TraitGrants.Count);
+                Assert.AreEqual(grantedTraitID, loadedOfficer.TraitGrants[0].TraitID);
+                Assert.AreEqual("remembered-event", loadedOfficer.TraitGrants[0].SourceID);
+            }
+            finally
+            {
+                if (Directory.Exists(saveDirectoryPath))
+                    Directory.Delete(saveDirectoryPath, recursive: true);
+            }
+        }
+
+        [Test]
         public void ReplaceGame_InvalidEvent_LeavesReplacementGameAssigned()
         {
             GameConfig config = TestConfig.Create();

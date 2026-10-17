@@ -312,19 +312,68 @@ namespace Rebellion.Simulation
             out int transitTicks
         )
         {
+            return TryEstimateRetargetedTransitTicks(new[] { unit }, destination, out transitTicks);
+        }
+
+        /// <summary>
+        /// Estimates how long an in-transit movement group would take if retargeted from each
+        /// member's current position.
+        /// </summary>
+        /// <param name="units">The complete in-transit movement group.</param>
+        /// <param name="destination">The proposed retarget destination.</param>
+        /// <param name="transitTicks">The shared estimated duration after retargeting.</param>
+        /// <returns>True when every live route can be estimated.</returns>
+        public bool TryEstimateRetargetedTransitTicks(
+            IReadOnlyList<IMovable> units,
+            Planet destination,
+            out int transitTicks
+        )
+        {
             transitTicks = 0;
-            IMovable liveUnit = ResolveLiveNode(unit) as IMovable;
             Planet liveDestination = ResolveLiveNode(destination) as Planet;
-            if (liveUnit?.Movement == null || liveDestination == null)
+            if (units == null || units.Count == 0 || liveDestination == null)
                 return false;
 
-            transitTicks = CalculateTransitTicks(
-                liveUnit,
-                liveUnit.Movement.CurrentPosition,
-                liveDestination,
-                sameSector: false
-            );
+            List<IMovable> liveUnits = new List<IMovable>(units.Count);
+            foreach (IMovable unit in units)
+            {
+                IMovable liveUnit = ResolveLiveNode(unit) as IMovable;
+                if (liveUnit?.Movement == null)
+                    return false;
+                liveUnits.Add(liveUnit);
+            }
+
+            transitTicks = CalculateRetargetedGroupTransitTicks(liveUnits, liveDestination);
             return true;
+        }
+
+        /// <summary>
+        /// Returns the in-transit units assigned to a fleet, grouped exactly as retarget execution
+        /// will move them.
+        /// </summary>
+        /// <param name="fleet">The fleet receiving a new destination.</param>
+        /// <returns>Movement groups with each ungrouped unit represented independently.</returns>
+        internal IReadOnlyList<IReadOnlyList<IMovable>> GetInTransitFleetJoinerGroups(Fleet fleet)
+        {
+            Fleet liveFleet = ResolveLiveNode(fleet) as Fleet;
+            if (liveFleet == null)
+                return Array.Empty<IReadOnlyList<IMovable>>();
+
+            List<IMovable> joiners = liveFleet
+                .GetChildren<IMovable>(recursive: true)
+                .Where(movable => movable.Movement != null)
+                .ToList();
+            List<IReadOnlyList<IMovable>> groups = joiners
+                .Where(joiner => !string.IsNullOrEmpty(joiner.Movement.MovementGroupID))
+                .GroupBy(joiner => joiner.Movement.MovementGroupID, StringComparer.Ordinal)
+                .Select(group => (IReadOnlyList<IMovable>)group.ToList())
+                .ToList();
+            groups.AddRange(
+                joiners
+                    .Where(joiner => string.IsNullOrEmpty(joiner.Movement.MovementGroupID))
+                    .Select(joiner => (IReadOnlyList<IMovable>)new[] { joiner })
+            );
+            return groups;
         }
 
         /// <summary>

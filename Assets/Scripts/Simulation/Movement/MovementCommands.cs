@@ -2184,27 +2184,8 @@ namespace Rebellion.Simulation
         /// <param name="destinationPlanet">The fleet's new destination planet.</param>
         private void RetargetInTransitFleetJoiners(Fleet fleet, Planet destinationPlanet)
         {
-            List<IMovable> joiners = fleet
-                .GetChildren<IMovable>(recursive: true)
-                .Where(movable => movable.Movement != null)
-                .ToList();
-            foreach (
-                IGrouping<string, IMovable> group in joiners
-                    .Where(joiner => !string.IsNullOrEmpty(joiner.Movement.MovementGroupID))
-                    .GroupBy(joiner => joiner.Movement.MovementGroupID, StringComparer.Ordinal)
-            )
-            {
-                RetargetMovementGroup(group.ToList(), destinationPlanet);
-            }
-
-            foreach (
-                IMovable ungrouped in joiners.Where(joiner =>
-                    string.IsNullOrEmpty(joiner.Movement.MovementGroupID)
-                )
-            )
-            {
-                RetargetMovementGroup(new List<IMovable> { ungrouped }, destinationPlanet);
-            }
+            foreach (IReadOnlyList<IMovable> group in _queries.GetInTransitFleetJoinerGroups(fleet))
+                RetargetMovementGroup(group, destinationPlanet);
         }
 
         /// <summary>
