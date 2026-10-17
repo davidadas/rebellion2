@@ -3,21 +3,12 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
-using UnityEngine.UI;
 
 /// <summary>
 /// Renders an authored planet-sector window and reports semantic planet interaction.
 /// </summary>
 public sealed class PlanetSectorWindowView : MonoBehaviour
 {
-    private const int _hoverLabelBorderWidth = 1;
-    private const int _hoverLabelGap = 1;
-    private const int _hoverLabelHeight = 14;
-    private const int _hoverLabelHorizontalPadding = 3;
-    private const int _maximumHoverLabelWidth = 160;
-    private const int _minimumHoverLabelWidth = 20;
-    private const float _statusBarHoverDelaySeconds = 0.5f;
-
     [SerializeField]
     private TextMeshProUGUI sectorNameTextField;
 
@@ -49,10 +40,7 @@ public sealed class PlanetSectorWindowView : MonoBehaviour
     private int planetPositionOffsetY;
 
     private readonly List<PlanetSectorPlanetView> planetViews = new List<PlanetSectorPlanetView>();
-    private Image hoverLabelBackgroundImage;
-    private RectTransform hoverLabelRoot;
-    private float hoverLabelShowTime;
-    private TextMeshProUGUI hoverLabelText;
+    private HoverTooltip hoverTooltip;
     private PlanetSectorStatusBar hoveredStatusBar;
     private PlanetSectorPlanetView hoveredStatusBarView;
     private WaypointRouteOverlay waypointOverlay;
@@ -114,7 +102,7 @@ public sealed class PlanetSectorWindowView : MonoBehaviour
 
         VerifyReferences();
         EnsureWaypointOverlay();
-        EnsureHoverLabel();
+        EnsureHoverTooltip();
         UILayout.SetTextContent(sectorNameTextField, data.Title);
         RectInt windowBounds = UILayout.GetSourceRect(transform as RectTransform);
         for (int index = 0; index < data.Planets.Count; index++)
@@ -207,56 +195,12 @@ public sealed class PlanetSectorWindowView : MonoBehaviour
     }
 
     /// <summary>
-    /// Creates the non-interactive status-bar hover label when needed.
+    /// Creates the shared status-bar tooltip controller when needed.
     /// </summary>
-    private void EnsureHoverLabel()
+    private void EnsureHoverTooltip()
     {
-        if (hoverLabelRoot == null || hoverLabelBackgroundImage == null || hoverLabelText == null)
-            CreateHoverLabel();
-    }
-
-    /// <summary>
-    /// Creates the cream status-bar hover label above the masked planet layer.
-    /// </summary>
-    private void CreateHoverLabel()
-    {
-        GameObject labelObject = new GameObject(
-            "StatusBarHoverLabel",
-            typeof(RectTransform),
-            typeof(CanvasRenderer),
-            typeof(Image)
-        );
-        labelObject.transform.SetParent(transform, false);
-        Image borderImage = labelObject.GetComponent<Image>();
-        borderImage.color = Color.black;
-        borderImage.raycastTarget = false;
-        hoverLabelRoot = borderImage.rectTransform;
-
-        GameObject backgroundObject = new GameObject(
-            "Background",
-            typeof(RectTransform),
-            typeof(CanvasRenderer),
-            typeof(Image)
-        );
-        backgroundObject.transform.SetParent(labelObject.transform, false);
-        hoverLabelBackgroundImage = backgroundObject.GetComponent<Image>();
-        hoverLabelBackgroundImage.color = new Color32(255, 255, 225, 255);
-        hoverLabelBackgroundImage.raycastTarget = false;
-
-        GameObject textObject = new GameObject(
-            "Text",
-            typeof(RectTransform),
-            typeof(CanvasRenderer),
-            typeof(TextMeshProUGUI)
-        );
-        textObject.transform.SetParent(labelObject.transform, false);
-        hoverLabelText = textObject.GetComponent<TextMeshProUGUI>();
-        hoverLabelText.color = Color.black;
-        hoverLabelText.fontSize = 8;
-        hoverLabelText.alignment = TextAlignmentOptions.Center;
-        hoverLabelText.textWrappingMode = TextWrappingModes.NoWrap;
-        hoverLabelText.raycastTarget = false;
-        labelObject.SetActive(false);
+        if (hoverTooltip == null)
+            hoverTooltip = new HoverTooltip(transform as RectTransform, "StatusBarHoverLabel");
     }
 
     /// <summary>
@@ -442,8 +386,8 @@ public sealed class PlanetSectorWindowView : MonoBehaviour
     {
         VerifyReferences();
         EnsureWaypointOverlay();
-        EnsureHoverLabel();
-        HideHoverLabel();
+        EnsureHoverTooltip();
+        hoverTooltip.Cancel();
     }
 
     /// <summary>
@@ -451,7 +395,7 @@ public sealed class PlanetSectorWindowView : MonoBehaviour
     /// </summary>
     private void Update()
     {
-        AdvanceStatusBarHover(Time.unscaledTime);
+        hoverTooltip?.Advance(Time.unscaledTime);
     }
 
     /// <summary>
@@ -469,6 +413,7 @@ public sealed class PlanetSectorWindowView : MonoBehaviour
     {
         for (int index = 0; index < planetViews.Count; index++)
             UnbindPlanetView(planetViews[index]);
+        hoverTooltip?.Destroy();
         Destroyed?.Invoke(this);
     }
 
@@ -478,15 +423,7 @@ public sealed class PlanetSectorWindowView : MonoBehaviour
     /// <param name="unscaledTime">The current unscaled time.</param>
     internal void AdvanceStatusBarHover(float unscaledTime)
     {
-        if (
-            hoveredStatusBarView == null
-            || hoveredStatusBar == PlanetSectorStatusBar.None
-            || hoverLabelRoot?.gameObject.activeSelf == true
-            || unscaledTime < hoverLabelShowTime
-        )
-            return;
-
-        ShowHoverLabel(hoveredStatusBarView, hoveredStatusBar);
+        hoverTooltip?.Advance(unscaledTime);
     }
 
     /// <summary>
@@ -612,72 +549,30 @@ public sealed class PlanetSectorWindowView : MonoBehaviour
         if (hoveredStatusBarView == view && hoveredStatusBar == statusBar)
             return;
 
-        HideHoverLabel();
+        EnsureHoverTooltip();
         hoveredStatusBarView = view;
         hoveredStatusBar = statusBar;
-        hoverLabelShowTime = Time.unscaledTime + _statusBarHoverDelaySeconds;
+        hoverTooltip.Begin(GetHoveredStatusBarTooltipContent, Time.unscaledTime);
     }
 
     /// <summary>
-    /// Sizes and positions the status-bar hover label within the sector window.
+    /// Resolves current content for the hovered planet status bar.
     /// </summary>
-    /// <param name="view">The planet view containing the status bar.</param>
-    /// <param name="statusBar">The hovered status bar.</param>
-    private void ShowHoverLabel(PlanetSectorPlanetView view, PlanetSectorStatusBar statusBar)
+    /// <returns>Current tooltip content, or null when the hovered bar is unavailable.</returns>
+    private HoverTooltipContent? GetHoveredStatusBarTooltipContent()
     {
-        EnsureHoverLabel();
         if (
-            view == null
-            || !view.TryGetStatusBarTooltip(statusBar, out string text, out RectInt barBounds)
+            hoveredStatusBarView == null
+            || hoveredStatusBar == PlanetSectorStatusBar.None
+            || !hoveredStatusBarView.TryGetStatusBarTooltip(
+                hoveredStatusBar,
+                out string text,
+                out RectInt barBounds
+            )
         )
-        {
-            CancelHoverLabel();
-            return;
-        }
+            return null;
 
-        hoverLabelText.text = text;
-        RectInt windowBounds = UILayout.GetSourceRect(transform as RectTransform);
-        int maximumWidth = Mathf.Max(_minimumHoverLabelWidth, windowBounds.width - 2);
-        int width = Mathf.Clamp(
-            Mathf.CeilToInt(hoverLabelText.preferredWidth)
-                + 2 * (_hoverLabelHorizontalPadding + _hoverLabelBorderWidth),
-            _minimumHoverLabelWidth,
-            Mathf.Min(_maximumHoverLabelWidth, maximumWidth)
-        );
-        int x = barBounds.x + (barBounds.width - width) / 2;
-        x = Mathf.Clamp(x, 1, Mathf.Max(1, windowBounds.width - width - 1));
-
-        int y = barBounds.yMax + _hoverLabelGap;
-        if (y + _hoverLabelHeight > windowBounds.height - 1)
-            y = barBounds.y - _hoverLabelGap - _hoverLabelHeight;
-        y = Mathf.Clamp(y, 1, Mathf.Max(1, windowBounds.height - _hoverLabelHeight - 1));
-
-        UILayout.SetSourceRect(hoverLabelRoot, x, y, width, _hoverLabelHeight);
-        UILayout.SetSourceRect(
-            hoverLabelBackgroundImage.rectTransform,
-            _hoverLabelBorderWidth,
-            _hoverLabelBorderWidth,
-            width - 2 * _hoverLabelBorderWidth,
-            _hoverLabelHeight - 2 * _hoverLabelBorderWidth
-        );
-        UILayout.SetSourceRect(
-            hoverLabelText.rectTransform,
-            _hoverLabelBorderWidth + _hoverLabelHorizontalPadding,
-            _hoverLabelBorderWidth,
-            width - 2 * (_hoverLabelBorderWidth + _hoverLabelHorizontalPadding),
-            _hoverLabelHeight - 2 * _hoverLabelBorderWidth
-        );
-        hoverLabelRoot.gameObject.SetActive(true);
-        hoverLabelRoot.SetAsLastSibling();
-    }
-
-    /// <summary>
-    /// Hides the status-bar hover label.
-    /// </summary>
-    private void HideHoverLabel()
-    {
-        if (hoverLabelRoot != null)
-            hoverLabelRoot.gameObject.SetActive(false);
+        return new HoverTooltipContent(text, barBounds);
     }
 
     /// <summary>
@@ -687,8 +582,7 @@ public sealed class PlanetSectorWindowView : MonoBehaviour
     {
         hoveredStatusBarView = null;
         hoveredStatusBar = PlanetSectorStatusBar.None;
-        hoverLabelShowTime = 0f;
-        HideHoverLabel();
+        hoverTooltip?.Cancel();
     }
 
     /// <summary>

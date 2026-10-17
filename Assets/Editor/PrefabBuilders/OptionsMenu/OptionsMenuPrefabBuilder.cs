@@ -1526,8 +1526,14 @@ public static class OptionsMenuPrefabBuilder
         valueField.color = new Color(0.875f, 0.910f, 0.941f);
         valueField.fontSize = 10;
         valueField.alignment = TextAlignmentOptions.Midline;
+        valueField.overflowMode = TextOverflowModes.Ellipsis;
+        valueField.raycastTarget = false;
         SetSourceRect(valueField.rectTransform, 218, y, 107, 18);
         nextButton = CreateOptionsStepperButton(parent, $"{name}Next", ">", 272, y, 77, 51);
+        OverflowTextTooltip tooltip = valueField.gameObject.AddComponent<OverflowTextTooltip>();
+        tooltip.Configure(valueField);
+        prevButton.gameObject.AddComponent<OverflowTextTooltipTrigger>().Configure(tooltip);
+        nextButton.gameObject.AddComponent<OverflowTextTooltipTrigger>().Configure(tooltip);
         return valueField;
     }
 
