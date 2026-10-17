@@ -249,6 +249,20 @@ Passes when the unit is the location itself or is contained anywhere beneath it.
 </IsAtLocation>
 ```
 
+### HasParent
+
+Passes when a node's immediate parent is the specified scene node. Use this when containment through
+a fleet, ship, or mission should not count as a match.
+
+**Required options**
+
+- `UnitInstanceID` **[Required]:** The `InstanceID` of the child unit to evaluate.
+- `ParentInstanceID` **[Required]:** The `InstanceID` required as its immediate parent.
+
+```xml
+<HasParent UnitInstanceID="EMPEROR_PALPATINE" ParentInstanceID="CORUSCANT"/>
+```
+
 ### ShareParent
 
 Passes when every listed unit has the exact same immediate parent.
