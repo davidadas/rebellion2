@@ -222,8 +222,8 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
 
         header.text = "CUSTOM GAME";
         header.enableAutoSizing = true;
-        header.fontSizeMin = 16f;
-        header.fontSizeMax = 22f;
+        header.fontSizeMin = 14f;
+        header.fontSizeMax = 19f;
     }
 
     /// <summary>
@@ -378,29 +378,43 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
 
         if (difficultySelected)
         {
-            HideGenerationSectionRowsAfter(0);
             HideGenerationTableHeaderRowsAfter(0);
             HideGenerationTableRowsAfter(0);
             float contentOffset = 0f;
-            for (int index = 0; index < settingsSession.DifficultyEntries.Count; index++)
+            int sectionIndex = 0;
+            int rowIndex = 0;
+            foreach (
+                var sectionGroup in settingsSession.DifficultyEntries.GroupBy(entry =>
+                    entry.Section
+                )
+            )
             {
-                var entry = settingsSession.DifficultyEntries[index];
-                GameObject row = GetRow(index);
-                row.name = "Setting-" + entry.Key;
-                row.SetActive(true);
-                contentOffset += ConfigureTextRow(
-                    row,
-                    contentOffset,
-                    entry.Label,
-                    entry.Description,
-                    _defaultLabelWidth
-                );
-                SetDifficultyControlsVisible(row.transform, true);
-                ConfigureValueControl(row.transform, entry, ModifierRecipient.Player);
-                ConfigureValueControl(row.transform, entry, ModifierRecipient.AI);
+                if (sectionIndex > 0)
+                    contentOffset += _sectionSpacing - _rowSpacing;
+                GameObject sectionRow = GetGenerationSectionRow(sectionIndex++);
+                ConfigureGenerationSectionRow(sectionRow, sectionGroup.Key, contentOffset);
+                contentOffset += _sectionStride;
+
+                foreach (var entry in sectionGroup)
+                {
+                    GameObject row = GetRow(rowIndex++);
+                    row.name = "Setting-" + entry.Key;
+                    row.SetActive(true);
+                    contentOffset += ConfigureTextRow(
+                        row,
+                        contentOffset,
+                        entry.Label,
+                        entry.Description,
+                        _defaultLabelWidth
+                    );
+                    SetDifficultyControlsVisible(row.transform, true);
+                    ConfigureValueControl(row.transform, entry, ModifierRecipient.Player);
+                    ConfigureValueControl(row.transform, entry, ModifierRecipient.AI);
+                }
             }
 
-            HideRowsAfter(settingsSession.DifficultyEntries.Count);
+            HideRowsAfter(rowIndex);
+            HideGenerationSectionRowsAfter(sectionIndex);
             scrollArea.SetContentHeight(
                 Mathf.Max(0f, contentOffset - _rowSpacing),
                 _minimumRowHeight,
@@ -1036,7 +1050,7 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
                 "The selected custom-game preset requires different active content."
             );
 
-        Initialize(settingsSession.Pack, loaded, optionsMenuPrefab, presetManager);
+        Initialize(settingsSession.Pack, loaded, optionsMenuPrefab, presetManager, availablePacks);
     }
 
     /// <summary>
@@ -1478,6 +1492,7 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
         Transform row,
         (
             string Key,
+            string Section,
             string Label,
             string Description,
             bool AllowsFraction,

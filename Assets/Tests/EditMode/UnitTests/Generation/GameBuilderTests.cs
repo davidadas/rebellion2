@@ -187,6 +187,30 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
+        public void Build_DuplicateFactionModifier_ThrowsInvalidOperationException()
+        {
+            string factionID = TestContent.Data.Factions[0].InstanceID;
+            GameGenerationConfig generation = TestContent.Data.GenerationConfig.GetDeepCopy();
+            generation.FactionModifiers = new List<FactionModifierConfig>
+            {
+                new FactionModifierConfig { FactionID = factionID },
+                new FactionModifierConfig { FactionID = factionID },
+            };
+            GameSummary summary = new GameSummary
+            {
+                GalaxySize = _size,
+                PlayerFactionID = "FNALL1",
+                GenerationConfigOverrideXml = GameGenerationConfigCodec.Serialize(generation),
+            };
+
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+                new GameBuilder(summary, TestContent.Data).Build()
+            );
+
+            StringAssert.Contains("duplicate faction modifier", exception.Message);
+        }
+
+        [Test]
         public void Build_ValidConfig_CreatesOnePlayerPerFaction()
         {
             Assert.AreEqual(_game.GetFactions().Count, _game.GetPlayers().Count);

@@ -59,6 +59,23 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
+        public void Seed_MaximumSupportBoost_SaturatesAtFullSupport()
+        {
+            Planet planet = MakePlanet("p1", "FNALL1");
+            planet.SetPopularSupport("FNALL1", 50);
+            planet.AddChild(new Regiment { InstanceID = "r1", OwnerInstanceID = "FNALL1" });
+            PlanetSector sector = MakeSector(planet);
+            Faction[] factions = { new Faction { InstanceID = "FNALL1" } };
+            GenerationContext context = BuildContext(sector, factions);
+            context.Config.Balance.SupportBoostPerUnit = int.MaxValue;
+            context.Config.Balance.MaxMilitaryPresenceBoost = int.MaxValue;
+
+            new BalanceSeeder().Seed(context);
+
+            Assert.AreEqual(100, planet.GetPopularSupport("FNALL1"));
+        }
+
+        [Test]
         public void Seed_UnownedPlanet_NoSupportChange()
         {
             Planet planet = MakePlanet("p1", null);

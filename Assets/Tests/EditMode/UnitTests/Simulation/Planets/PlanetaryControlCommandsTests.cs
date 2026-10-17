@@ -1033,6 +1033,16 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void ChangePopularSupport_MaximumPositiveShift_SaturatesAtFullSupport()
+        {
+            _targetPlanet.SetPopularSupport(_empire.InstanceID, 50);
+
+            _commands.ChangePopularSupport(_targetPlanet, _empire, int.MaxValue);
+
+            Assert.AreEqual(100, _targetPlanet.GetPopularSupport(_empire.InstanceID));
+        }
+
+        [Test]
         public void ReconcilePlanet_ColonizedPlanetLosesLastRegiment_BecomesNeutralWithoutControllingSupport()
         {
             (Planet planet, Regiment regiment) = StageUncolonizedPlanetWithFleet("wild3", "empire");

@@ -31,6 +31,24 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
+        public void Seed_MaximumMineMultiplier_PreservesGuaranteedMineChance()
+        {
+            PlanetSector sector = CreateCore(energy: 1, rawNodes: 2);
+            GameGenerationConfig rules = CreateRules();
+            rules.FacilityGeneration.CoreMineMultiplier = int.MaxValue;
+
+            List<Building> deployed = SeedFacilities(
+                new[] { sector },
+                CreateTemplates(),
+                rules,
+                new GalaxyClassificationResult(),
+                new StubRNG()
+            );
+
+            Assert.AreEqual(BuildingType.Mine, deployed.Single().BuildingType);
+        }
+
+        [Test]
         public void Seed_RimPlanetColonized_PlacesFacilities()
         {
             PlanetSector sector = CreateRim(energy: 3, rawNodes: 0, colonized: true);

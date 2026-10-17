@@ -1465,6 +1465,44 @@ namespace Rebellion.Tests.Game.Factions
             Assert.AreEqual(50, capacity);
         }
 
+        [Test]
+        public void MaintenanceCapacity_MaximumProcessingMultiplier_SaturatesAtIntegerMaximum()
+        {
+            GameRoot game = CreateGame();
+            Faction empire = CreateFaction("empire", "Empire");
+            empire.Settings.ResourceProcessingPointsPerFacility = int.MaxValue;
+            game.GetFactions().Add(empire);
+            PlanetSector sector = new PlanetSector { InstanceID = "s1", DisplayName = "Sector" };
+            Planet planet = CreatePlanet("p1", "Coruscant", empire.InstanceID);
+            game.AttachNode(sector, game.GetGalaxyMap());
+            game.AttachNode(planet, sector);
+            game.AttachNode(CreateMine("mine1", empire.InstanceID), planet);
+            game.AttachNode(CreateMine("mine2", empire.InstanceID), planet);
+            game.AttachNode(CreateRefinery("ref1", empire.InstanceID), planet);
+            game.AttachNode(CreateRefinery("ref2", empire.InstanceID), planet);
+
+            Assert.AreEqual(int.MaxValue, empire.MaintenanceCapacity);
+        }
+
+        [Test]
+        public void RefinedMaterialSupply_MaximumRefinementMultiplier_SaturatesAtIntegerMaximum()
+        {
+            GameRoot game = CreateGame();
+            Faction empire = CreateFaction("empire", "Empire");
+            empire.Settings.RefinementMultiplier = int.MaxValue;
+            game.GetFactions().Add(empire);
+            PlanetSector sector = new PlanetSector { InstanceID = "s1", DisplayName = "Sector" };
+            Planet planet = CreatePlanet("p1", "Coruscant", empire.InstanceID);
+            game.AttachNode(sector, game.GetGalaxyMap());
+            game.AttachNode(planet, sector);
+            game.AttachNode(CreateMine("mine1", empire.InstanceID), planet);
+            game.AttachNode(CreateMine("mine2", empire.InstanceID), planet);
+            game.AttachNode(CreateRefinery("ref1", empire.InstanceID), planet);
+            game.AttachNode(CreateRefinery("ref2", empire.InstanceID), planet);
+
+            Assert.AreEqual(int.MaxValue, empire.RefinedMaterialSupply);
+        }
+
         /// <summary>
         /// Creates operational fleet.
         /// </summary>

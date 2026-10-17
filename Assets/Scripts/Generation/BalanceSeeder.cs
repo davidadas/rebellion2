@@ -1,6 +1,7 @@
 using System;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
+using Rebellion.Util.Mathematics;
 
 namespace Rebellion.Generation
 {
@@ -71,10 +72,13 @@ namespace Rebellion.Generation
 
             int currentSupport = planet.GetPopularSupport(planet.OwnerInstanceID);
             int boost = Math.Min(
-                militaryPresence * balance.SupportBoostPerUnit,
+                IntegerMath.SaturatingMultiply(militaryPresence, balance.SupportBoostPerUnit),
                 balance.MaxMilitaryPresenceBoost
             );
-            planet.SetPopularSupport(planet.OwnerInstanceID, currentSupport + boost);
+            planet.SetPopularSupport(
+                planet.OwnerInstanceID,
+                IntegerMath.SaturatingAdd(currentSupport, boost)
+            );
         }
 
         /// <summary>

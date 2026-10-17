@@ -144,8 +144,18 @@ namespace Rebellion.Generation
             if (modifiers == null)
                 return;
 
+            HashSet<string> appliedFactionIDs = new HashSet<string>(StringComparer.Ordinal);
             foreach (FactionModifierConfig modifier in modifiers)
             {
+                if (modifier == null || string.IsNullOrWhiteSpace(modifier.FactionID))
+                    throw new InvalidOperationException(
+                        "Game generation config contains an unidentified faction modifier."
+                    );
+                if (!appliedFactionIDs.Add(modifier.FactionID))
+                    throw new InvalidOperationException(
+                        $"Game generation config contains duplicate faction modifier '{modifier.FactionID}'."
+                    );
+
                 Faction faction = factions.SingleOrDefault(candidate =>
                     candidate.InstanceID == modifier.FactionID
                 );

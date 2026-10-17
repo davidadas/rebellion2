@@ -162,7 +162,7 @@ public static class MainMenuPrefabBuilder
             "Assets/Content/Application/MainMenu/Models/holocron.glb",
             "Assets/Art/Models/MainMenu/Holocron.renderTexture",
             "NewGameSettingsButton",
-            0.5f,
+            -0.5f,
             Vector3.up,
             0.90f,
             Vector3.zero,

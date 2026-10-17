@@ -1211,7 +1211,15 @@ namespace Rebellion.Simulation
             double multiplier = _game
                 .GetDifficultyModifier(detector?.GetOwnerInstanceID())
                 .DetectionRatingMultiplier;
-            return (int)Math.Round(authoredRating * multiplier, MidpointRounding.AwayFromZero);
+            double scaledRating = Math.Round(
+                authoredRating * multiplier,
+                MidpointRounding.AwayFromZero
+            );
+            if (scaledRating >= int.MaxValue)
+                return int.MaxValue;
+            if (scaledRating <= int.MinValue)
+                return int.MinValue;
+            return (int)scaledRating;
         }
 
         /// <summary>

@@ -149,6 +149,46 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void ProcessTick_MaximumMineOutput_CompletesAccumulatedCyclesInBulk()
+        {
+            _game.Summary.Difficulty = GameDifficulty.Easy;
+            _game.Summary.PlayerFactionID = "FACTION2";
+            _game.Config.DifficultyModifiers[GameDifficulty.Easy] = new DifficultyModifiers
+            {
+                MineOutputPercent = int.MaxValue,
+            };
+            Building mine = AddCompleteBuilding(_planet, BuildingType.Mine, processRate: 1);
+            mine.ProductionInputReserved = true;
+            mine.ResourceStartupCyclePending = false;
+
+            _system.ProcessTick(_game);
+
+            Assert.AreEqual(int.MaxValue / 100, _faction.RawMaterialStockpile);
+            Assert.AreEqual(0.47, mine.ProductionCycleProgress, 0.0001);
+        }
+
+        [Test]
+        public void ProcessTick_MaximumRefineryOutput_StopsAtAvailableRawMaterials()
+        {
+            _game.Summary.Difficulty = GameDifficulty.Easy;
+            _game.Summary.PlayerFactionID = "FACTION2";
+            _game.Config.DifficultyModifiers[GameDifficulty.Easy] = new DifficultyModifiers
+            {
+                RefineryOutputPercent = int.MaxValue,
+            };
+            Building refinery = AddCompleteBuilding(_planet, BuildingType.Refinery, processRate: 1);
+            refinery.ProductionInputReserved = true;
+            refinery.ResourceStartupCyclePending = false;
+            _faction.RawMaterialStockpile = 2;
+
+            _system.ProcessTick(_game);
+
+            Assert.AreEqual(3, _faction.RefinedMaterialStockpile);
+            Assert.AreEqual(0, _faction.RawMaterialStockpile);
+            Assert.IsFalse(refinery.ProductionInputReserved);
+        }
+
+        [Test]
         public void ProcessTick_SmugglingRoll_RedirectsCompletedResourceToBeneficiary()
         {
             _planet.PopularSupport = new Dictionary<string, int>

@@ -5,6 +5,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.Util.Mathematics;
 
 namespace Rebellion.Simulation
 {
@@ -269,11 +270,9 @@ namespace Rebellion.Simulation
                 mine.ProductionInputReserved = true;
 
             AdvanceResourceProgress(game, faction, mine);
-            while (TryCompleteResourceCycle(game, faction, mine))
-            {
-                _smugglingCommands.ResolveProductionRecipient(faction, mine).RawMaterialStockpile++;
-                mine.ProductionInputReserved = true;
-            }
+            int completedCycles = ConsumeCompletedResourceCycles(game, faction, mine, int.MaxValue);
+            DeliverRawMaterials(faction, mine, completedCycles);
+            mine.ProductionInputReserved = true;
         }
 
         /// <summary>
@@ -291,13 +290,77 @@ namespace Rebellion.Simulation
             }
 
             AdvanceResourceProgress(game, faction, refinery);
-            while (TryCompleteResourceCycle(game, faction, refinery))
+            int availableInputs =
+                faction.RawMaterialStockpile == int.MaxValue
+                    ? int.MaxValue
+                    : faction.RawMaterialStockpile + 1;
+            int completedCycles = ConsumeCompletedResourceCycles(
+                game,
+                faction,
+                refinery,
+                availableInputs
+            );
+            if (completedCycles <= 0)
+                return;
+
+            faction.RawMaterialStockpile -= completedCycles - 1;
+            DeliverRefinedMaterials(faction, refinery, completedCycles);
+            faction.RequestRawMaterial(refinery);
+        }
+
+        /// <summary>
+        /// Delivers completed mine output without iterating when no smuggling roll is active.
+        /// </summary>
+        /// <param name="controller">The faction controlling the mine.</param>
+        /// <param name="mine">The producing mine.</param>
+        /// <param name="quantity">The number of completed resources.</param>
+        private void DeliverRawMaterials(Faction controller, Building mine, int quantity)
+        {
+            if (quantity <= 0)
+                return;
+
+            (Faction beneficiary, int divertedQuantity) = _smugglingCommands.ResolveProductionBatch(
+                mine,
+                quantity
+            );
+            controller.RawMaterialStockpile = IntegerMath.SaturatingAdd(
+                controller.RawMaterialStockpile,
+                quantity - divertedQuantity
+            );
+            if (beneficiary != null)
             {
-                _smugglingCommands
-                    .ResolveProductionRecipient(faction, refinery)
-                    .RefinedMaterialStockpile++;
-                if (!faction.RequestRawMaterial(refinery))
-                    break;
+                beneficiary.RawMaterialStockpile = IntegerMath.SaturatingAdd(
+                    beneficiary.RawMaterialStockpile,
+                    divertedQuantity
+                );
+            }
+        }
+
+        /// <summary>
+        /// Delivers completed refinery output without iterating when no smuggling roll is active.
+        /// </summary>
+        /// <param name="controller">The faction controlling the refinery.</param>
+        /// <param name="refinery">The producing refinery.</param>
+        /// <param name="quantity">The number of completed resources.</param>
+        private void DeliverRefinedMaterials(Faction controller, Building refinery, int quantity)
+        {
+            if (quantity <= 0)
+                return;
+
+            (Faction beneficiary, int divertedQuantity) = _smugglingCommands.ResolveProductionBatch(
+                refinery,
+                quantity
+            );
+            controller.RefinedMaterialStockpile = IntegerMath.SaturatingAdd(
+                controller.RefinedMaterialStockpile,
+                quantity - divertedQuantity
+            );
+            if (beneficiary != null)
+            {
+                beneficiary.RefinedMaterialStockpile = IntegerMath.SaturatingAdd(
+                    beneficiary.RefinedMaterialStockpile,
+                    divertedQuantity
+                );
             }
         }
 
@@ -337,15 +400,17 @@ namespace Rebellion.Simulation
         /// <param name="game">The game state being advanced.</param>
         /// <param name="faction">The owning faction.</param>
         /// <param name="facility">The facility whose ready cycle is consumed.</param>
-        /// <returns>True when one cycle was completed.</returns>
-        private static bool TryCompleteResourceCycle(
+        /// <param name="maximumCycles">The greatest number of cycles backed by available input.</param>
+        /// <returns>The number of completed cycles consumed from accumulated progress.</returns>
+        private static int ConsumeCompletedResourceCycles(
             GameRoot game,
             Faction faction,
-            Building facility
+            Building facility,
+            int maximumCycles
         )
         {
-            if (!facility.ProductionInputReserved)
-                return false;
+            if (!facility.ProductionInputReserved || maximumCycles <= 0)
+                return 0;
 
             if (facility.ProductionCycleDuration <= 0)
                 facility.ProductionCycleDuration = CalculateResourceCycleDuration(
@@ -355,13 +420,23 @@ namespace Rebellion.Simulation
                 );
 
             if (facility.ProductionCycleProgress < facility.ProductionCycleDuration)
-                return false;
+                return 0;
 
             facility.ProductionCycleProgress -= facility.ProductionCycleDuration;
-            facility.ProductionCycleDuration = 0;
             facility.ProductionInputReserved = false;
             facility.ResourceStartupCyclePending = false;
-            return true;
+            int completedCycles = 1;
+
+            int steadyDuration = CalculateResourceCycleDuration(game, faction, facility);
+            long maximumAdditionalCycles = (long)maximumCycles - completedCycles;
+            double availableAdditionalCycles = facility.ProductionCycleProgress / steadyDuration;
+            long additionalCycles =
+                availableAdditionalCycles >= maximumAdditionalCycles
+                    ? maximumAdditionalCycles
+                    : (long)availableAdditionalCycles;
+            facility.ProductionCycleProgress -= additionalCycles * steadyDuration;
+            facility.ProductionCycleDuration = steadyDuration;
+            return IntegerMath.SaturateToInt(completedCycles + additionalCycles);
         }
 
         /// <summary>

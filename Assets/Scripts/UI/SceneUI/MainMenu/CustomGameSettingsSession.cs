@@ -30,6 +30,7 @@ internal sealed class CustomGameSettingsSession
 
     private readonly List<(
         string Key,
+        string Section,
         string Label,
         string Description,
         bool AllowsFraction,
@@ -48,10 +49,12 @@ internal sealed class CustomGameSettingsSession
     private readonly ContentPack activePack;
     private readonly GameGenerationConfig generationDefaults;
     private readonly GameGenerationConfig generationDraft;
+    private string currentDifficultySection;
     private string currentGenerationSection;
 
     internal IReadOnlyList<(
         string Key,
+        string Section,
         string Label,
         string Description,
         bool AllowsFraction,
@@ -334,6 +337,7 @@ internal sealed class CustomGameSettingsSession
         DifficultyModifiers aiValues
     )
     {
+        currentDifficultySection = "ECONOMY";
         Add(
             "mine-output",
             "Mine Output Modifier",
@@ -386,6 +390,8 @@ internal sealed class CustomGameSettingsSession
             playerValues.ManufacturingSpeedPercent,
             aiValues.ManufacturingSpeedPercent
         );
+
+        currentDifficultySection = "MISSIONS AND INTELLIGENCE";
         Add(
             "mission-success",
             "Mission Success Bonus",
@@ -478,6 +484,7 @@ internal sealed class CustomGameSettingsSession
 
             difficultyEntries[index] = (
                 entry.Key,
+                entry.Section,
                 entry.Label,
                 entry.Description,
                 entry.AllowsFraction,
@@ -551,6 +558,8 @@ internal sealed class CustomGameSettingsSession
         AddStartingResearchEntries(pack.GameData.Factions);
         currentGenerationSection = "STARTING OFFICERS";
         AddOfficerEntries(pack.GameData.Factions, summary.GalaxySize);
+        currentGenerationSection = "STARTING FORCES";
+        AddStartingForceEntries(pack.GameData.Factions, summary.GalaxySize);
         currentGenerationSection = "CORE WORLD CONTROL";
         AddGalaxyClassificationEntries(pack, summary);
         AddResourceEntries(summary.ResourceAvailability);
@@ -773,6 +782,53 @@ internal sealed class CustomGameSettingsSession
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(galaxySize), galaxySize, null);
+        }
+    }
+
+    /// <summary>
+    /// Adds each faction's variable starting-unit budget for the selected galaxy size.
+    /// </summary>
+    /// <param name="factions">The active faction templates in display order.</param>
+    /// <param name="galaxySize">The selected galaxy size.</param>
+    private void AddStartingForceEntries(IReadOnlyList<Faction> factions, GameSize galaxySize)
+    {
+        foreach (Faction faction in factions)
+        {
+            string factionID = faction.InstanceID;
+            int budgetIndex = generationDefaults.UnitDeployment.FactionBudgets.FindIndex(budget =>
+                budget.FactionID == factionID
+            );
+            if (budgetIndex < 0)
+                continue;
+            List<BudgetLevel> levels = generationDefaults
+                .UnitDeployment
+                .FactionBudgets[budgetIndex]
+                .BudgetLevels;
+            int levelIndex = levels.FindIndex(level => level.GalaxySize == (int)galaxySize);
+            if (levelIndex < 0)
+                levelIndex = 0;
+
+            AddGenerationTableCell(
+                "starting-forces",
+                factionID.ToLowerInvariant() + "-starting-forces",
+                "Extra Starting Forces %",
+                "Share of spare maintenance capacity used for extra starting ships, fighters, troops, and special forces. Range: 0% to 100%.",
+                faction.GetDisplayName(),
+                0,
+                100,
+                config =>
+                    config
+                        .UnitDeployment
+                        .FactionBudgets[budgetIndex]
+                        .BudgetLevels[levelIndex]
+                        .Percentage,
+                (config, value) =>
+                    config
+                        .UnitDeployment
+                        .FactionBudgets[budgetIndex]
+                        .BudgetLevels[levelIndex]
+                        .Percentage = value
+            );
         }
     }
 
@@ -1150,8 +1206,8 @@ internal sealed class CustomGameSettingsSession
         AddGeneration(
             NewGameSettingsCategory.WorldGeneration,
             "support-boost-per-unit",
-            "Support Boost per Unit",
-            "Owner support added for each starting troop, fighter squadron, or fleet. Range: 0 or higher.",
+            "Support per Starting Force",
+            "Each starting regiment, fighter squadron, or fleet adds this many owner-support points to its planet. Range: 0 or higher.",
             0,
             int.MaxValue,
             config => config.Balance.SupportBoostPerUnit,
@@ -1160,8 +1216,8 @@ internal sealed class CustomGameSettingsSession
         AddGeneration(
             NewGameSettingsCategory.WorldGeneration,
             "maximum-military-support",
-            "Maximum Military Support Boost",
-            "Largest owner-support bonus a planet can receive from its starting forces. Range: 0 or higher.",
+            "Maximum Starting Force Support",
+            "Most owner-support points a planet can gain from its starting regiments, fighter squadrons, and fleets. Range: 0 or higher.",
             0,
             int.MaxValue,
             config => config.Balance.MaxMilitaryPresenceBoost,
@@ -1329,6 +1385,7 @@ internal sealed class CustomGameSettingsSession
         difficultyEntries.Add(
             (
                 key,
+                currentDifficultySection,
                 label,
                 description,
                 allowsFraction,

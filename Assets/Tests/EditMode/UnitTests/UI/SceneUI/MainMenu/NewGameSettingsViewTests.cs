@@ -1,5 +1,6 @@
 using System;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
@@ -113,6 +114,21 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                 .ToArray();
 
             CollectionAssert.AreEqual(expected, actual);
+        }
+
+        [Test]
+        public void Initialize_DifficultyModifiers_GroupsRowsUnderTwoSectionHeadings()
+        {
+            view.Initialize(TestContent.Pack, summary);
+
+            string[] actual = instance
+                .GetComponentsInChildren<TMP_Text>()
+                .Where(text => text.name.StartsWith("Section-", StringComparison.Ordinal))
+                .OrderByDescending(text => text.rectTransform.anchoredPosition.y)
+                .Select(text => text.text)
+                .ToArray();
+
+            CollectionAssert.AreEqual(new[] { "ECONOMY", "MISSIONS AND INTELLIGENCE" }, actual);
         }
 
         [Test]
@@ -542,6 +558,48 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         [Test]
+        public void LoadPreset_InstalledContentPacks_RetainsContentPackChoices()
+        {
+            string directory = Path.Combine(
+                Path.GetTempPath(),
+                "rebellion2-custom-game-view-tests-" + Guid.NewGuid().ToString("N")
+            );
+            try
+            {
+                CustomGamePresetManager manager = new CustomGamePresetManager(directory);
+                GameSummary preset = GameLaunchContext.CreateDefaultSummary(TestContent.Pack);
+                manager.CreatePreset("Preset", preset);
+                ContentPackDefinition[] installed =
+                {
+                    TestContent.Pack.Definition,
+                    new ContentPackDefinition { ID = "alternate", DisplayName = "Alternate" },
+                };
+                string requested = null;
+                view.ContentPackRequested += packID => requested = packID;
+                view.Initialize(TestContent.Pack, preset, optionsPrefab, manager, installed);
+                view.SelectCategory(NewGameSettingsCategory.SaveLoad);
+                instance
+                    .GetComponentsInChildren<Button>(true)
+                    .Single(button => button.name == "SlotRow1")
+                    .onClick.Invoke();
+                instance
+                    .GetComponentsInChildren<Button>(true)
+                    .Single(button => button.name == "LoadIcon")
+                    .onClick.Invoke();
+                view.SelectCategory(NewGameSettingsCategory.GameSetup);
+
+                StepSetupChoice("content-pack", 1);
+
+                Assert.AreEqual("alternate", requested);
+            }
+            finally
+            {
+                if (Directory.Exists(directory))
+                    Directory.Delete(directory, true);
+            }
+        }
+
+        [Test]
         public void Initialize_FactionModifiers_RendersConfiguredFactionColumnsAndConsumedValues()
         {
             view.Initialize(TestContent.Pack, summary);
@@ -619,6 +677,38 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.AreEqual(
                 2,
                 TableRow("starting-officers").GetComponentsInChildren<TMP_InputField>().Length
+            );
+        }
+
+        [Test]
+        public void Apply_PerFactionStartingForceBudgets_PublishesSelectedGalaxySizeValues()
+        {
+            GameSummary applied = null;
+            summary.GalaxySize = GameSize.Small;
+            view.StartRequested += (_, launchSummary) => applied = launchSummary;
+            view.Initialize(TestContent.Pack, summary);
+            view.SelectCategory(NewGameSettingsCategory.WorldGeneration);
+
+            TableInput("starting-forces", "Player").onEndEdit.Invoke("40");
+            TableInput("starting-forces", "AI").onEndEdit.Invoke("50");
+            ApplyButton().onClick.Invoke();
+
+            GameGenerationConfig config = GameGenerationConfigCodec.Deserialize(
+                applied.GenerationConfigOverrideXml
+            );
+            Assert.AreEqual(
+                40,
+                config
+                    .UnitDeployment.FactionBudgets[0]
+                    .BudgetLevels.Single(level => level.GalaxySize == (int)GameSize.Small)
+                    .Percentage
+            );
+            Assert.AreEqual(
+                50,
+                config
+                    .UnitDeployment.FactionBudgets[1]
+                    .BudgetLevels.Single(level => level.GalaxySize == (int)GameSize.Small)
+                    .Percentage
             );
         }
 
@@ -1021,8 +1111,8 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
 
             Assert.AreEqual(TextAlignmentOptions.Midline, header.alignment);
             Assert.IsTrue(header.enableAutoSizing);
-            Assert.AreEqual(16f, header.fontSizeMin);
-            Assert.AreEqual(22f, header.fontSizeMax);
+            Assert.AreEqual(14f, header.fontSizeMin);
+            Assert.AreEqual(19f, header.fontSizeMax);
         }
 
         [Test]

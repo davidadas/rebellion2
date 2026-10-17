@@ -5,6 +5,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Mathematics;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Generation
@@ -102,7 +103,7 @@ namespace Rebellion.Generation
 
                     int deficit = config.UprisingPreventionThreshold - ownerSupport;
                     int divisor = config.SupportDeficitPerGarrisonTroop;
-                    int troopsNeeded = (deficit + divisor - 1) / divisor;
+                    int troopsNeeded = IntegerMath.DivideRoundedUp(deficit, divisor);
 
                     for (int i = 0; i < troopsNeeded; i++)
                     {
@@ -667,7 +668,7 @@ namespace Rebellion.Generation
         )
         {
             BudgetLevel level = ResolveBudgetLevel(budgetLevels, galaxySize);
-            return availableCapacity * level.Percentage / 100;
+            return IntegerMath.ScaleByPercent(availableCapacity, level.Percentage);
         }
 
         /// <summary>
@@ -699,7 +700,10 @@ namespace Rebellion.Generation
                 .ToList();
             int mines = ownedPlanets.Sum(planet => planet.GetRawMinedResources());
             int refineries = ownedPlanets.Sum(planet => planet.GetRawRefinementCapacity());
-            return Math.Min(mines, refineries) * resourceProcessingPointsPerFacility;
+            return IntegerMath.SaturatingMultiply(
+                Math.Min(mines, refineries),
+                resourceProcessingPointsPerFacility
+            );
         }
 
         /// <summary>

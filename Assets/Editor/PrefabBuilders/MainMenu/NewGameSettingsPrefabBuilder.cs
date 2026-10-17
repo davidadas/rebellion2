@@ -41,8 +41,8 @@ public static class NewGameSettingsPrefabBuilder
             out TextMeshProUGUI title
         );
         header.enableAutoSizing = true;
-        header.fontSizeMin = 16f;
-        header.fontSizeMax = 22f;
+        header.fontSizeMin = 14f;
+        header.fontSizeMax = 19f;
         title.text = "GAME SETUP";
         RectTransform difficultyPage = CreateLayer("DifficultyPage", contentRoot)
             .GetComponent<RectTransform>();

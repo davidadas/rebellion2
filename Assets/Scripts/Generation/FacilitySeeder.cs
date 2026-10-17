@@ -182,7 +182,7 @@ namespace Rebellion.Generation
             out string typeID
         )
         {
-            int mineProbability = (planet.NumRawResourceNodes - mineCount) * mineMultiplier;
+            long mineProbability = (long)(planet.NumRawResourceNodes - mineCount) * mineMultiplier;
             if (mineProbability > 0 && rng.NextInt(0, 100) < mineProbability)
             {
                 mineCount++;
