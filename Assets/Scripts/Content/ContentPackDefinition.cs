@@ -48,6 +48,9 @@ public sealed class ContentPackDefinition
     public string BuildingsPath { get; set; }
 
     [XmlElement]
+    public string OfficerTraitsPath { get; set; }
+
+    [XmlElement]
     public string GameEventsPath { get; set; }
 
     [XmlElement]

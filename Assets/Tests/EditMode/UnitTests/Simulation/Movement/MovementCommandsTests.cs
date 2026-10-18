@@ -901,6 +901,40 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void RequestMove_OfficerGroupWithTravelTrait_UsesDisplayedReducedTransitTime()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+            Officer companion = EntityFactory.CreateOfficer("o2", "empire");
+            game.AttachNode(companion, origin);
+            MovementQueries queries = new MovementQueries(game);
+            List<IMovable> group = new List<IMovable> { officer, companion };
+            Assert.IsTrue(queries.TryGetTransitTicks(group, destination, out int normalTicks));
+            OfficerTraitDefinition trait = new OfficerTraitDefinition
+            {
+                ID = "travel",
+                PersonnelTravelTimePercent = 50,
+                SharesPersonnelTravelTimeModifier = true,
+            };
+            officer.Traits.Add(trait.ID);
+            officer.BindTraitDefinitions(
+                new Dictionary<string, OfficerTraitDefinition> { [trait.ID] = trait }
+            );
+            Assert.IsTrue(queries.TryGetTransitTicks(group, destination, out int displayedTicks));
+
+            movement.RequestMove(group, destination);
+
+            Assert.Less(displayedTicks, normalTicks);
+            Assert.AreEqual(displayedTicks, officer.Movement.TransitTicks);
+            Assert.AreEqual(displayedTicks, companion.Movement.TransitTicks);
+        }
+
+        [Test]
         public void RequestMove_GroupToFactionViewFleet_BoardsLiveFleet()
         {
             (GameRoot game, Planet origin, Planet _, Officer officer, MovementCommands movement) =
@@ -1392,6 +1426,66 @@ namespace Rebellion.Tests.Simulation
                     previousMovement.TicksRemaining()
                 );
             }
+        }
+
+        [Test]
+        public void RequestMove_FleetWithInboundOfficerGroup_PreservesSharedTravelTime()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet fleetPlanet,
+                Officer officer,
+                MovementCommands movement
+            ) = BuildScene();
+            Planet destination = new Planet
+            {
+                InstanceID = "retarget-destination",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 1000,
+                PositionY = 1000,
+            };
+            game.AttachNode(destination, fleetPlanet.GetParent());
+            Fleet fleet = EntityFactory.CreateFleet("destination-fleet", "empire");
+            CapitalShip carrier = new CapitalShip
+            {
+                InstanceID = "destination-carrier",
+                OwnerInstanceID = "empire",
+                Hyperdrive = 100,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, fleetPlanet);
+            game.AttachNode(carrier, fleet);
+            Officer companion = EntityFactory.CreateOfficer("companion", "empire");
+            game.AttachNode(companion, origin);
+            OfficerTraitDefinition trait = new OfficerTraitDefinition
+            {
+                ID = "shared-travel",
+                PersonnelTravelTimePercent = 50,
+                SharesPersonnelTravelTimeModifier = true,
+            };
+            officer.Traits.Add(trait.ID);
+            officer.BindTraitDefinitions(
+                new Dictionary<string, OfficerTraitDefinition> { [trait.ID] = trait }
+            );
+            movement.RequestMove(new List<IMovable> { officer, companion }, fleet);
+            string movementGroupID = officer.Movement.MovementGroupID;
+            MovementQueries queries = new MovementQueries(game);
+            Assert.IsTrue(
+                queries.TryEstimateRetargetedTransitTicks(
+                    companion,
+                    destination,
+                    out int unsharedTransitTicks
+                )
+            );
+
+            movement.RequestMove(fleet, destination);
+
+            Assert.AreEqual(movementGroupID, officer.Movement.MovementGroupID);
+            Assert.AreEqual(movementGroupID, companion.Movement.MovementGroupID);
+            Assert.AreEqual(officer.Movement.TransitTicks, companion.Movement.TransitTicks);
+            Assert.Less(officer.Movement.TransitTicks, unsharedTransitTicks);
         }
 
         [Test]

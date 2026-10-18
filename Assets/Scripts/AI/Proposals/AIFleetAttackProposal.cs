@@ -435,12 +435,15 @@ namespace Rebellion.AI.Proposals
             )
                 return false;
 
-            foreach (IMovable inboundUnit in Fleet.GetChildren<IMovable>(recursive: true))
+            foreach (
+                IReadOnlyList<IMovable> inboundGroup in context.MovementQueries.GetInTransitFleetJoinerGroups(
+                    Fleet
+                )
+            )
             {
                 if (
-                    inboundUnit.Movement != null
-                    && context.MovementQueries.TryEstimateRetargetedTransitTicks(
-                        inboundUnit,
+                    context.MovementQueries.TryEstimateRetargetedTransitTicks(
+                        inboundGroup,
                         TargetPlanet,
                         out int inboundTransitTicks
                     )

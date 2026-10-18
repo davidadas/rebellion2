@@ -313,9 +313,7 @@ internal sealed class DefenseWindowProjector
             troopBadgeTexture: null,
             personnelBadgeTexture: null,
             canDrag: DefenseWindowSession.CanDragItem(item),
-            statsOverlay: showStatsOverlay
-                ? StrategyUnitCardStatsOverlayBuilder.Build(item, uiContext.Game)
-                : null
+            statsOverlay: showStatsOverlay ? StrategyUnitCardStatsOverlayBuilder.Build(item) : null
         );
     }
 

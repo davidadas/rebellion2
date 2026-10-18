@@ -700,6 +700,18 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 "Classic Galactic Civil War",
                 GetField<TextMeshProUGUI>("_contentPackValueField").text
             );
+            TextMeshProUGUI contentPackValue = GetField<TextMeshProUGUI>("_contentPackValueField");
+            Assert.AreEqual(TextOverflowModes.Ellipsis, contentPackValue.overflowMode);
+            Assert.IsFalse(contentPackValue.raycastTarget);
+            Assert.IsNotNull(contentPackValue.GetComponent<OverflowTextTooltip>());
+            Assert.IsNotNull(
+                GetField<Button>("_contentPackPrevButton")
+                    .GetComponent<OverflowTextTooltipTrigger>()
+            );
+            Assert.IsNotNull(
+                GetField<Button>("_contentPackNextButton")
+                    .GetComponent<OverflowTextTooltipTrigger>()
+            );
             int packDelta = 0;
             _view.ContentPackStepRequested += delta => packDelta = delta;
             GetField<Button>("_contentPackNextButton").onClick.Invoke();

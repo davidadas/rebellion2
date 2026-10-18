@@ -504,10 +504,12 @@ public static class TestGameData
     /// </summary>
     /// <param name="config">The config.</param>
     /// <param name="messageDefinitions">The message definitions.</param>
+    /// <param name="officerTraits">The officer trait definitions.</param>
     /// <returns>The created value.</returns>
     public static GameDataCatalog Create(
         GameConfig config = null,
-        MessageDefinition[] messageDefinitions = null
+        MessageDefinition[] messageDefinitions = null,
+        OfficerTraitDefinition[] officerTraits = null
     )
     {
         return new GameDataCatalog(
@@ -524,7 +526,8 @@ public static class TestGameData
             Array.Empty<GameEvent>(),
             messageDefinitions ?? Array.Empty<MessageDefinition>(),
             new EncyclopediaEntries(),
-            new FactionThemes()
+            new FactionThemes(),
+            officerTraits
         );
     }
 }

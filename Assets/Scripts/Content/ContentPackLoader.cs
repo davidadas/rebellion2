@@ -423,6 +423,13 @@ public static class ContentPackLoader
             pack.BuildingsPath,
             "Buildings"
         );
+        OfficerTraitDefinition[] officerTraits = string.IsNullOrWhiteSpace(pack.OfficerTraitsPath)
+            ? Array.Empty<OfficerTraitDefinition>()
+            : DeserializeGameData<OfficerTraitDefinition[]>(
+                fileResolver,
+                pack.OfficerTraitsPath,
+                "OfficerTraits"
+            );
         GameEvent[] gameEvents = DeserializeGameData<GameEvent[]>(
             fileResolver,
             pack.GameEventsPath,
@@ -516,7 +523,8 @@ public static class ContentPackLoader
             gameEvents,
             messageDefinitions,
             encyclopediaEntries,
-            themes
+            themes,
+            officerTraits
         );
     }
 
