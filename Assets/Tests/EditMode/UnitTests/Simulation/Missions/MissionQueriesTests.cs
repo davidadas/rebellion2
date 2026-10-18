@@ -492,9 +492,17 @@ namespace Rebellion.Tests.Simulation
             MissionOdds odds = missions.GetMissionOdds(
                 CreateContext(DiplomacyMission.MissionTypeID, diplomat, observedPlanet)
             );
+            MissionOdds completionOdds = missions.GetCompletionMissionOdds(
+                CreateContext(DiplomacyMission.MissionTypeID, diplomat, observedPlanet)
+            );
 
             Assert.IsNotNull(odds);
             Assert.AreEqual(90, odds.ObjectiveSuccessProbability, 0.001);
+            Assert.AreEqual(
+                odds.ObjectiveSuccessProbability,
+                completionOdds.ObjectiveSuccessProbability
+            );
+            Assert.AreEqual(odds.FoilProbability, completionOdds.FoilProbability);
         }
 
         [Test]

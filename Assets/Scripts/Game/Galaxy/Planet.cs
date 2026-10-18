@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using Rebellion.Game.Encyclopedia;
+using Rebellion.Game.Factions;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -467,6 +468,82 @@ namespace Rebellion.Game.Galaxy
         public int GetOpposingPopularSupport(string factionInstanceId)
         {
             return _maximumPopularSupport - GetPopularSupport(factionInstanceId);
+        }
+
+        /// <summary>
+        /// Resolves control from stationary regiment owners before falling back to popular support.
+        /// </summary>
+        /// <param name="game">The game supplying faction identities and the control threshold.</param>
+        /// <param name="regimentOwners">The distinct owners of completed stationary regiments.</param>
+        /// <returns>The controlling faction, or null when control is contested or unsupported.</returns>
+        internal Faction ResolveController(GameRoot game, IReadOnlyList<string> regimentOwners)
+        {
+            if (regimentOwners.Count == 1)
+                return game.GetFactionByOwnerInstanceID(regimentOwners[0]);
+            if (regimentOwners.Count > 1)
+                return null;
+
+            int threshold = game.Config.SupportShift.OwnershipTransferThreshold;
+            return game.GetFactions()
+                .Where(faction => GetPopularSupport(faction.InstanceID) >= threshold)
+                .OrderByDescending(faction => GetPopularSupport(faction.InstanceID))
+                .FirstOrDefault();
+        }
+
+        /// <summary>
+        /// Applies a signed support shift, transferring lost support to the opposing faction.
+        /// </summary>
+        /// <param name="faction">The faction whose support changes.</param>
+        /// <param name="shift">The signed support adjustment.</param>
+        /// <param name="game">The game supplying factions in their established order.</param>
+        internal void ChangePopularSupport(Faction faction, int shift, GameRoot game)
+        {
+            if (faction == null || shift == 0 || !IsPopulated())
+                return;
+            int currentSupport = GetPopularSupport(faction.InstanceID);
+            int newSupport = Math.Clamp(currentSupport + shift, 0, 100);
+            if (newSupport == currentSupport)
+                return;
+            if (shift > 0)
+            {
+                SetPopularSupport(faction.InstanceID, newSupport);
+                return;
+            }
+            Faction opposingFaction = game.GetFactions()
+                .FirstOrDefault(candidate => candidate.InstanceID != faction.InstanceID);
+            if (opposingFaction == null)
+            {
+                SetPopularSupport(faction.InstanceID, newSupport);
+                return;
+            }
+            SetPopularSupport(opposingFaction.InstanceID, 100 - newSupport);
+        }
+
+        /// <summary>
+        /// Calculates the controlling faction's required stationary garrison from support and uprising state.
+        /// </summary>
+        /// <param name="faction">The faction whose garrison requirement is evaluated.</param>
+        /// <param name="config">The configured support threshold, divisor, and uprising multiplier.</param>
+        /// <returns>The required regiment count.</returns>
+        internal int GetGarrisonRequirement(Faction faction, GameConfig.GarrisonConfig config)
+        {
+            int popularSupport = GetPopularSupport(faction.InstanceID);
+            if (popularSupport >= config.SupportThreshold)
+                return 0;
+            int garrison = (int)
+                Math.Ceiling(
+                    (config.SupportThreshold - popularSupport) / (double)config.GarrisonDivisor
+                );
+            PlanetSector sector = GetParentOfType<PlanetSector>();
+            if (
+                sector != null
+                && sector.SectorType == PlanetSectorType.Core
+                && faction.Settings.GarrisonEfficiency > 1
+            )
+                garrison = Math.Max(1, garrison / faction.Settings.GarrisonEfficiency);
+            if (IsInUprising)
+                garrison *= config.UprisingMultiplier;
+            return garrison;
         }
 
         /// <summary>

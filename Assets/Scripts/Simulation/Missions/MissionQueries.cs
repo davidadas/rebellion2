@@ -145,23 +145,22 @@ namespace Rebellion.Simulation
         /// <returns>The completion and foiling odds, or null when the mission cannot be created.</returns>
         internal MissionOdds GetCompletionMissionOdds(MissionContext context)
         {
-            MissionOdds odds = GetOperationalMissionOdds(context);
-            if (odds == null)
-                return null;
-            if (
-                context.MissionTypeID != InciteUprisingMission.MissionTypeID
-                && context.MissionTypeID != SubdueUprisingMission.MissionTypeID
-            )
-                return odds;
             if (!TryCreateMission(context, out Mission mission))
                 return null;
 
-            double completionProbability = new UprisingMissionQueries(
-                _game
-            ).GetCompletionProbability(mission, context.Location as Planet);
             return new MissionOdds(
-                odds.ObjectiveSuccessProbability * completionProbability,
-                odds.FoilProbability
+                mission.GetCompletionSuccessProbability(
+                    mission.GetMainParticipants(),
+                    _game,
+                    context.Location as Planet,
+                    context.SelectedTarget
+                ),
+                EstimateFoilProbability(
+                    mission,
+                    context.Location as Planet,
+                    context.SelectedTarget ?? context.Location,
+                    null
+                )
             );
         }
 

@@ -515,6 +515,41 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
+        /// Calculates the chance that the next execution reports success against observed state.
+        /// </summary>
+        /// <param name="participants">The mission participants to evaluate.</param>
+        /// <param name="game">The authoritative game supplying factions and configuration.</param>
+        /// <param name="observedPlanet">The destination state available to the caller.</param>
+        /// <param name="observedTarget">The objective state available to the caller.</param>
+        /// <returns>The percentage chance of reporting success if the mission reaches execution.</returns>
+        internal double GetCompletionSuccessProbability(
+            IEnumerable<IMissionParticipant> participants,
+            GameRoot game,
+            Planet observedPlanet = null,
+            ISceneNode observedTarget = null
+        )
+        {
+            MissionEvaluationContext context = new MissionEvaluationContext(
+                game,
+                observedPlanet,
+                observedTarget
+            );
+            return GetObjectiveSuccessProbability(participants, context)
+                * GetCompletionProbability(context);
+        }
+
+        /// <summary>
+        /// Calculates any additional completion requirement after a successful participant roll.
+        /// Missions whose objective odds already describe their final outcome need no adjustment.
+        /// </summary>
+        /// <param name="context">The authoritative or observed objective state.</param>
+        /// <returns>The conditional completion probability between zero and one.</returns>
+        protected virtual double GetCompletionProbability(MissionEvaluationContext context)
+        {
+            return 1;
+        }
+
+        /// <summary>
         /// Combines independent success probabilities into one success chance.
         /// </summary>
         /// <param name="probabilities">The individual percentage probabilities.</param>

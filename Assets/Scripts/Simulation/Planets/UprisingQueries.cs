@@ -1,4 +1,3 @@
-using System;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
@@ -26,30 +25,7 @@ namespace Rebellion.Simulation
             GameConfig.GarrisonConfig config
         )
         {
-            int popularSupport = planet.GetPopularSupport(faction.InstanceID);
-
-            if (popularSupport >= config.SupportThreshold)
-                return 0;
-
-            int garrison = (int)
-                Math.Ceiling(
-                    (config.SupportThreshold - popularSupport) / (double)config.GarrisonDivisor
-                );
-
-            PlanetSector parentSector = planet.GetParentOfType<PlanetSector>();
-            if (
-                parentSector != null
-                && parentSector.SectorType == PlanetSectorType.Core
-                && faction.Settings.GarrisonEfficiency > 1
-            )
-            {
-                garrison = Math.Max(1, garrison / faction.Settings.GarrisonEfficiency);
-            }
-
-            if (planet.IsInUprising)
-                garrison *= config.UprisingMultiplier;
-
-            return garrison;
+            return planet.GetGarrisonRequirement(faction, config);
         }
     }
 }
