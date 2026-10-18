@@ -807,7 +807,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                 transforms.Single(candidate => candidate.name == "Section-STARTING-RESEARCH");
             RectTransform header = transforms
                 .Where(candidate => candidate.name == "GenerationTableHeader")
-                .Select(candidate => (RectTransform)candidate)
+                .Cast<RectTransform>()
                 .OrderByDescending(candidate => candidate.anchoredPosition.y)
                 .First();
 
@@ -1172,18 +1172,6 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         /// <returns>The reset button.</returns>
         private Button ResetButton(string key, string column) =>
             Input(key, column).transform.parent.Find(column + "Reset").GetComponent<Button>();
-
-        /// <summary>
-        /// Finds an active world-generation input by its row identity.
-        /// </summary>
-        /// <param name="key">The row identity.</param>
-        /// <returns>The active integer input.</returns>
-        private TMP_InputField WorldInput(string key) =>
-            instance
-                .GetComponentsInChildren<TMP_InputField>()
-                .Single(input =>
-                    input.transform.parent.name == "Setting-" + key && input.name == "WorldValue"
-                );
 
         /// <summary>
         /// Finds an active table input by its shared row identity and authored control prefix.
