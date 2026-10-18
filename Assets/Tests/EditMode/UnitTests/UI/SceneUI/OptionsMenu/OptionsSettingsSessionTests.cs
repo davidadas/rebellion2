@@ -152,6 +152,45 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         /// <summary>
+        /// Verifies that VSync communicates and enforces its ownership of frame pacing.
+        /// </summary>
+        [Test]
+        public void GetGraphicsValues_VSyncEnabled_DisablesFrameRateLimitControl()
+        {
+            OptionsGraphicsValue value = _session.GetGraphicsValues()[
+                UserGraphicsSetting.FrameRateLimit
+            ];
+
+            Assert.IsFalse(value.Available);
+            Assert.AreEqual("Controlled by VSync", value.Label);
+
+            _session.StepGraphics(UserGraphicsSetting.FrameRateLimit, 1);
+
+            Assert.AreEqual(0, _session.Video.FrameRateLimit);
+
+            _session.StepGraphics(UserGraphicsSetting.VerticalSync, 1);
+            value = _session.GetGraphicsValues()[UserGraphicsSetting.FrameRateLimit];
+
+            Assert.IsTrue(value.Available);
+            Assert.AreEqual("Unlimited", value.Label);
+        }
+
+        /// <summary>
+        /// Verifies that changing a setting outside preset ownership preserves the preset label.
+        /// </summary>
+        [Test]
+        public void StepGraphics_VerticalSyncChanged_PreservesPresetSelection()
+        {
+            _session.StepGraphics(UserGraphicsSetting.VerticalSync, 1);
+
+            Assert.IsFalse(_session.Video.GraphicsPresetCustomized);
+            Assert.AreEqual(
+                "Ultra",
+                _session.GetGraphicsValues()[UserGraphicsSetting.QualityPreset].Label
+            );
+        }
+
+        /// <summary>
         /// Verifies settings that require runtime hardware support expose availability separately
         /// from their player-facing value.
         /// </summary>

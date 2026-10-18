@@ -119,7 +119,7 @@ public sealed class ScrollAreaView : MonoBehaviour
             viewportSize.y
         );
         SetTopLeftRect(ViewportRoot, 0f, 0f, viewportSize.x, viewportSize.y);
-        SetTopLeftRect(contentRoot, 0f, 0f, viewportSize.x, viewportSize.y);
+        ApplyContentViewportWidth(viewportSize.x, viewportSize.y);
 
         if (scrollbar == null)
             return;
@@ -132,6 +132,28 @@ public sealed class ScrollAreaView : MonoBehaviour
             scrollbarSize.y
         );
         SetScrollbarChildrenLayout(scrollbarSize.x, scrollbarSize.y);
+    }
+
+    /// <summary>
+    /// Fits content to the viewport width without discarding an established height or scroll
+    /// offset.
+    /// </summary>
+    /// <param name="viewportWidth">The current viewport width.</param>
+    /// <param name="initialHeight">The content height used before its first data layout.</param>
+    private void ApplyContentViewportWidth(float viewportWidth, float initialHeight)
+    {
+        if (!hasContentLayout)
+        {
+            SetTopLeftRect(contentRoot, 0f, 0f, viewportWidth, initialHeight);
+            return;
+        }
+
+        contentRoot.anchorMin = new Vector2(0f, 1f);
+        contentRoot.anchorMax = new Vector2(0f, 1f);
+        contentRoot.pivot = new Vector2(0f, 1f);
+        contentRoot.anchoredPosition = new Vector2(0f, contentRoot.anchoredPosition.y);
+        contentRoot.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, viewportWidth);
+        contentRoot.localScale = Vector3.one;
     }
 
     /// <summary>

@@ -94,7 +94,8 @@ public sealed class GraphicsManager : IDisposable
         settings.QualityLevel = qualityLevel;
         QualitySettings.SetQualityLevel(qualityLevel, true);
         QualitySettings.vSyncCount = settings.VerticalSync ? 1 : 0;
-        Application.targetFrameRate = settings.FrameRateLimit == 0 ? -1 : settings.FrameRateLimit;
+        Application.targetFrameRate =
+            settings.VerticalSync || settings.FrameRateLimit == 0 ? -1 : settings.FrameRateLimit;
 
         _antiAliasingMode = (UserAntiAliasingMode)settings.AntiAliasingMode;
         _renderScalePercent = settings.RenderScalePercent;

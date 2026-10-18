@@ -123,6 +123,32 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(new RectInt(0, 8, 14, 80), UILayout.GetSourceRect(_slidingAreaRoot));
         }
 
+        /// <summary>
+        /// Verifies that refreshing shared layout geometry does not discard established scrolling.
+        /// </summary>
+        [Test]
+        public void SetLayout_AfterContentLayout_PreservesContentHeightAndScrollPosition()
+        {
+            _scrollArea.SetContentHeight(200, 10, true);
+            _scrollRoot.GetComponent<ScrollRect>().verticalNormalizedPosition = 0.5f;
+            float scrollOffset = _contentRoot.anchoredPosition.y;
+
+            _scrollArea.SetLayout(
+                new Vector2(1, 2),
+                new Vector2(120, 50),
+                new Vector2(130, 4),
+                new Vector2(14, 100)
+            );
+
+            Assert.AreEqual(120f, _contentRoot.rect.width);
+            Assert.AreEqual(200f, _contentRoot.rect.height);
+            Assert.AreEqual(scrollOffset, _contentRoot.anchoredPosition.y);
+
+            _scrollArea.SetContentHeight(200, 10, false);
+
+            Assert.AreEqual(0.5f, _scrollbar.value, 0.01f);
+        }
+
         [Test]
         public void SetContentHeight_ContentFitsViewport_HidesScrollControlsAndResetsOffset()
         {

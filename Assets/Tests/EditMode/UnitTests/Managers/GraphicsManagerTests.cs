@@ -74,6 +74,26 @@ namespace Rebellion.Tests.Managers
         }
 
         /// <summary>
+        /// Verifies that vertical synchronization owns frame pacing when both persisted controls
+        /// have values.
+        /// </summary>
+        [Test]
+        public void Apply_VSyncEnabled_DisablesSoftwareFrameLimit()
+        {
+            UserVideoSettings settings = new UserVideoSettings
+            {
+                QualityLevel = _originalQualityLevel,
+                VerticalSync = true,
+                FrameRateLimit = 30,
+            };
+
+            _manager.Apply(settings);
+
+            Assert.AreEqual(1, QualitySettings.vSyncCount);
+            Assert.AreEqual(-1, Application.targetFrameRate);
+        }
+
+        /// <summary>
         /// Verifies that adding HDRP camera data retains an authored solid-color clear rather than
         /// exposing the pipeline sky.
         /// </summary>

@@ -236,7 +236,7 @@ internal sealed class OptionsSettingsSession
         {
             bool available = IsGraphicsSettingAvailable(setting);
             values[setting] = new OptionsGraphicsValue(
-                available ? GetGraphicsLabel(setting) : "Unavailable",
+                available ? GetGraphicsLabel(setting) : GetUnavailableGraphicsLabel(setting),
                 available
             );
         }
@@ -390,7 +390,6 @@ internal sealed class OptionsSettingsSession
                     delta,
                     Enum.GetValues(typeof(UserAntiAliasingMode)).Length
                 );
-                RefreshGraphicsPresetCustomization();
                 break;
             case UserGraphicsSetting.RenderScale:
                 Video.RenderScalePercent = StepValue(
@@ -398,7 +397,6 @@ internal sealed class OptionsSettingsSession
                     Video.RenderScalePercent,
                     delta
                 );
-                RefreshGraphicsPresetCustomization();
                 break;
             case UserGraphicsSetting.VerticalSync:
                 Video.VerticalSync = !Video.VerticalSync;
@@ -415,15 +413,12 @@ internal sealed class OptionsSettingsSession
                 Video.AmbientOcclusion = !Video.AmbientOcclusion;
                 if (!Video.AmbientOcclusion)
                     Video.RayTracing = false;
-                RefreshGraphicsPresetCustomization();
                 break;
             case UserGraphicsSetting.Bloom:
                 Video.Bloom = !Video.Bloom;
-                RefreshGraphicsPresetCustomization();
                 break;
             case UserGraphicsSetting.MotionBlur:
                 Video.MotionBlur = !Video.MotionBlur;
-                RefreshGraphicsPresetCustomization();
                 break;
             case UserGraphicsSetting.HdrOutput:
                 Video.HdrOutput = !Video.HdrOutput;
@@ -432,6 +427,7 @@ internal sealed class OptionsSettingsSession
                 throw new ArgumentOutOfRangeException(nameof(setting), setting, null);
         }
 
+        RefreshGraphicsPresetCustomization();
         RefreshDirtyState();
     }
 
@@ -751,10 +747,23 @@ internal sealed class OptionsSettingsSession
     {
         return setting switch
         {
+            UserGraphicsSetting.FrameRateLimit => !Video.VerticalSync,
             UserGraphicsSetting.RayTracing => _graphicsManager?.RayTracingAvailable == true,
             UserGraphicsSetting.HdrOutput => _graphicsManager?.HdrOutputAvailable == true,
             _ => true,
         };
+    }
+
+    /// <summary>
+    /// Formats the reason one graphics setting cannot currently be changed.
+    /// </summary>
+    /// <param name="setting">The unavailable graphics setting.</param>
+    /// <returns>The player-facing unavailability label.</returns>
+    private string GetUnavailableGraphicsLabel(UserGraphicsSetting setting)
+    {
+        return setting == UserGraphicsSetting.FrameRateLimit && Video.VerticalSync
+            ? "Controlled by VSync"
+            : "Unavailable";
     }
 
     /// <summary>
