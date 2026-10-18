@@ -51,6 +51,56 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
+        public void Build_GalaxySize_ContainsExpectedPlanetCount()
+        {
+            int expected = _size switch
+            {
+                GameSize.Small => 100,
+                GameSize.Medium => 150,
+                GameSize.Large => 200,
+                _ => throw new ArgumentOutOfRangeException(nameof(_size)),
+            };
+
+            int actual = _game
+                .Galaxy.GetChildren<PlanetSector>()
+                .Sum(sector => sector.GetChildren<Planet>().Count);
+
+            Assert.AreEqual(expected, actual);
+        }
+
+        [Test]
+        public void Build_GalaxySize_ContainsExpectedSectors()
+        {
+            IEnumerable<string> expected = new[]
+            {
+                "Corellian",
+                "Sesswenna",
+                "Sluis",
+                "Calaron",
+                "Churba",
+                "Dufilvan",
+                "Mayagil",
+                "Moddell",
+                "Orus",
+                "Sumitra",
+            };
+            if (_size >= GameSize.Medium)
+                expected = expected.Concat(
+                    new[] { "Farfin", "Glythe", "Jospro", "Kanchen", "Quelli" }
+                );
+            if (_size >= GameSize.Large)
+                expected = expected.Concat(
+                    new[] { "Abrion", "Atrivis", "Dolomar", "Fakir", "Xappyh" }
+                );
+
+            IEnumerable<string> actual = _game
+                .Galaxy.GetChildren<PlanetSector>()
+                .Select(sector => sector.GetDisplayName());
+
+            CollectionAssert.AreEquivalent(expected, actual);
+        }
+
+        [Test]
         public void Build_ValidConfig_SetsConsistentOwners()
         {
             _game.Galaxy.Traverse(node =>
