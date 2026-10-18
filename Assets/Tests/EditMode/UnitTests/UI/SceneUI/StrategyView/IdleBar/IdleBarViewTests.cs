@@ -227,6 +227,66 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Assert.IsFalse(hoverLabel.gameObject.activeSelf);
         }
 
+        [TestCase(ManufacturingType.Building)]
+        [TestCase(ManufacturingType.Ship)]
+        [TestCase(ManufacturingType.Troop)]
+        public void Render_ManufacturingLane_ShowsIdleAndTotalCountsInsideIcon(
+            ManufacturingType lane
+        )
+        {
+            _view.Render(
+                new IdleBarRenderData(
+                    true,
+                    new[] { new IdleBarEntry(CreatePlanet("Coruscant"), null, lane, 2, 6) },
+                    new RectInt(0, 0, 640, 480)
+                )
+            );
+            IdleBarSlotView slot = GetVisibleSlots().Single();
+            TextMeshProUGUI count = slot
+                .transform.Find("OverflowTextField")
+                .GetComponent<TextMeshProUGUI>();
+            count.ForceMeshUpdate();
+
+            Assert.IsTrue(count.gameObject.activeSelf);
+            Assert.AreEqual("2/6", count.GetParsedText());
+            Assert.IsTrue(slot.transform.Find("PortraitMask").gameObject.activeSelf);
+            Assert.AreEqual(new Vector2(24, 10), count.rectTransform.sizeDelta);
+        }
+
+        [Test]
+        public void Render_ManufacturingSlotReusedForOfficer_HidesFacilityCounts()
+        {
+            RectInt bounds = new RectInt(0, 0, 640, 480);
+            _view.Render(
+                new IdleBarRenderData(
+                    true,
+                    new[]
+                    {
+                        new IdleBarEntry(
+                            CreatePlanet("Coruscant"),
+                            null,
+                            ManufacturingType.Building,
+                            2,
+                            6
+                        ),
+                    },
+                    bounds
+                )
+            );
+
+            _view.Render(
+                new IdleBarRenderData(
+                    true,
+                    new[] { new IdleBarEntry(CreateOfficer("Officer"), null) },
+                    bounds
+                )
+            );
+
+            Assert.IsFalse(
+                GetVisibleSlots().Single().transform.Find("OverflowTextField").gameObject.activeSelf
+            );
+        }
+
         [Test]
         public void Render_MultipleLanesOnSamePlanet_ShowsHoveredLaneName()
         {

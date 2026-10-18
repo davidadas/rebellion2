@@ -104,7 +104,98 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             );
 
             CollectionAssert.AreEqual(
-                new[] { "Coruscant (Shipyard)", "Coruscant (Construction Yard)" },
+                new[] { "Coruscant (Construction Yard)", "Coruscant (Shipyard)" },
+                result.Entries.Select(entry => entry.Name)
+            );
+        }
+
+        [Test]
+        public void Project_IdleLane_CapturesCompletedStationaryFacilityCounts()
+        {
+            Planet planet = CreateManufacturingPlanet("Coruscant");
+            planet.AddTestChild(
+                new Building
+                {
+                    ProductionType = ManufacturingType.Ship,
+                    ProcessRate = 1,
+                    ManufacturingStatus = ManufacturingStatus.Building,
+                }
+            );
+            planet.AddTestChild(
+                new Building
+                {
+                    ProductionType = ManufacturingType.Ship,
+                    ProcessRate = 1,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                    Movement = new MovementState(),
+                }
+            );
+
+            IdleBarEntry entry = new IdleBarProjector(() => null)
+                .Project(_playerFaction, new RectInt())
+                .Entries.Single();
+
+            Assert.AreEqual(1, entry.IdleFacilityCount);
+            Assert.AreEqual(1, entry.TotalFacilityCount);
+        }
+
+        [Test]
+        public void Project_MultipleLaneTypes_OrdersByLaneThenDescendingFacilityCount()
+        {
+            Officer officer = CreateOfficer("Officer");
+            Planet smallPlanet = CreateManufacturingPlanet("A Small Planet");
+            Planet largePlanet = CreateManufacturingPlanet("Z Large Planet");
+            foreach (Planet planet in new[] { smallPlanet, largePlanet })
+            {
+                foreach (
+                    ManufacturingType type in new[]
+                    {
+                        ManufacturingType.Building,
+                        ManufacturingType.Troop,
+                    }
+                )
+                    planet.AddTestChild(
+                        new Building
+                        {
+                            ProductionType = type,
+                            ProcessRate = 1,
+                            ManufacturingStatus = ManufacturingStatus.Complete,
+                        }
+                    );
+            }
+            foreach (
+                ManufacturingType type in new[]
+                {
+                    ManufacturingType.Building,
+                    ManufacturingType.Ship,
+                    ManufacturingType.Troop,
+                }
+            )
+                largePlanet.AddTestChild(
+                    new Building
+                    {
+                        ProductionType = type,
+                        ProcessRate = 1,
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                    }
+                );
+
+            IdleBarRenderData result = new IdleBarProjector(() => null).Project(
+                _playerFaction,
+                new RectInt()
+            );
+
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    officer.GetDisplayName(),
+                    "Z Large Planet (Construction Yard)",
+                    "A Small Planet (Construction Yard)",
+                    "Z Large Planet (Shipyard)",
+                    "A Small Planet (Shipyard)",
+                    "Z Large Planet (Training Facility)",
+                    "A Small Planet (Training Facility)",
+                },
                 result.Entries.Select(entry => entry.Name)
             );
         }

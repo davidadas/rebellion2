@@ -234,24 +234,49 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             recreated.Dispose();
         }
 
-        [Test]
-        public void IgnoreButton_ManufacturingEntry_UntracksOnlySelectedLane()
+        [TestCase(ManufacturingType.Building)]
+        [TestCase(ManufacturingType.Ship)]
+        [TestCase(ManufacturingType.Troop)]
+        public void IgnoreButton_ManufacturingEntry_UntracksOnlySelectedLane(
+            ManufacturingType selectedLane
+        )
         {
             Planet planet = new Planet { InstanceID = "planet", DisplayName = "Coruscant" };
             _resolvedEntity = planet;
             _view.Render(
                 new IdleBarRenderData(
                     true,
-                    new[] { new IdleBarEntry(planet, null, ManufacturingType.Ship) },
+                    new[]
+                    {
+                        new IdleBarEntry(planet, null, ManufacturingType.Building),
+                        new IdleBarEntry(planet, null, ManufacturingType.Ship),
+                        new IdleBarEntry(planet, null, ManufacturingType.Troop),
+                    },
                     new RectInt(0, 0, 640, 480)
                 )
             );
 
-            IdleBarSlotView slot = _view.GetComponentInChildren<IdleBarSlotView>(false);
+            int laneIndex = Array.IndexOf(
+                new[]
+                {
+                    ManufacturingType.Building,
+                    ManufacturingType.Ship,
+                    ManufacturingType.Troop,
+                },
+                selectedLane
+            );
+            IdleBarSlotView slot = _view.GetComponentsInChildren<IdleBarSlotView>(false)[laneIndex];
             slot.transform.Find("IgnoreButton").GetComponent<Button>().onClick.Invoke();
 
-            Assert.IsFalse(_controller.IsIdleBarTracked(planet, ManufacturingType.Ship));
-            Assert.IsTrue(_controller.IsIdleBarTracked(planet, ManufacturingType.Building));
+            foreach (
+                ManufacturingType lane in new[]
+                {
+                    ManufacturingType.Building,
+                    ManufacturingType.Ship,
+                    ManufacturingType.Troop,
+                }
+            )
+                Assert.AreEqual(lane != selectedLane, _controller.IsIdleBarTracked(planet, lane));
         }
 
         [Test]

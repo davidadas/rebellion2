@@ -14,9 +14,9 @@ internal sealed class IdleBarProjector
 {
     private static readonly ManufacturingType[] _manufacturingTypes =
     {
+        ManufacturingType.Building,
         ManufacturingType.Ship,
         ManufacturingType.Troop,
-        ManufacturingType.Building,
     };
 
     private readonly Func<UIContext> getUIContext;
@@ -53,21 +53,18 @@ internal sealed class IdleBarProjector
             .Concat(
                 playerFaction
                     ?.GetOwnedUnitsByType<Planet>()
-                    .OrderBy(
-                        candidate => candidate.GetDisplayName(),
+                    .SelectMany(planet =>
+                        CreateManufacturingEntries(planet, uiContext, manufacturingTheme)
+                    )
+                    .OrderBy(entry =>
+                        Array.IndexOf(_manufacturingTypes, entry.ManufacturingLane.Value)
+                    )
+                    .ThenByDescending(entry => entry.TotalFacilityCount)
+                    .ThenBy(
+                        entry => entry.Entity.GetDisplayName(),
                         StringComparer.OrdinalIgnoreCase
                     )
-                    .ThenBy(candidate => candidate.InstanceID, StringComparer.Ordinal)
-                    .SelectMany(planet =>
-                        GetIdleManufacturingTypes(planet)
-                            .Select(type => new IdleBarEntry(
-                                planet,
-                                uiContext?.GetTexture(
-                                    GetManufacturingImagePath(type, manufacturingTheme)
-                                ),
-                                type
-                            ))
-                    )
+                    .ThenBy(entry => entry.Entity.InstanceID, StringComparer.Ordinal)
                     ?? Enumerable.Empty<IdleBarEntry>()
             )
             .ToList();
@@ -153,6 +150,38 @@ internal sealed class IdleBarProjector
         return planet is { IsDestroyed: false }
             ? _manufacturingTypes.Where(type => planet.GetIdleManufacturingFacilities(type) > 0)
             : Enumerable.Empty<ManufacturingType>();
+    }
+
+    /// <summary>
+    /// Captures each idle lane's artwork and facility counts for one planet.
+    /// </summary>
+    /// <param name="planet">The planet containing the manufacturing facilities.</param>
+    /// <param name="uiContext">The current texture resolver.</param>
+    /// <param name="theme">The faction's manufacturing artwork.</param>
+    /// <returns>The planet's idle manufacturing entries.</returns>
+    private static IEnumerable<IdleBarEntry> CreateManufacturingEntries(
+        Planet planet,
+        UIContext uiContext,
+        StatusWindowTheme theme
+    )
+    {
+        if (planet is not { IsDestroyed: false })
+            yield break;
+
+        foreach (ManufacturingType type in _manufacturingTypes)
+        {
+            int idleCount = planet.GetIdleManufacturingFacilities(type);
+            if (idleCount <= 0)
+                continue;
+
+            yield return new IdleBarEntry(
+                planet,
+                uiContext?.GetTexture(GetManufacturingImagePath(type, theme)),
+                type,
+                idleCount,
+                planet.GetProductionFacilityCount(type)
+            );
+        }
     }
 
     /// <summary>

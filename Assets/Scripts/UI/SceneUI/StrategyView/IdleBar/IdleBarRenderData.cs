@@ -17,20 +17,30 @@ internal sealed class IdleBarEntry
 
     internal ManufacturingType? ManufacturingLane { get; }
 
+    internal int IdleFacilityCount { get; }
+
+    internal int TotalFacilityCount { get; }
+
     /// <summary>
     /// Creates one idle-bar entry.
     /// </summary>
     /// <param name="entity">The represented strategy entity.</param>
     /// <param name="texture">The resolved portrait texture.</param>
     /// <param name="manufacturingLane">The represented manufacturing lane, when applicable.</param>
+    /// <param name="idleFacilityCount">The lane's facilities without queued work.</param>
+    /// <param name="totalFacilityCount">The lane's completed production facilities.</param>
     internal IdleBarEntry(
         ISceneNode entity,
         Texture2D texture,
-        ManufacturingType? manufacturingLane = null
+        ManufacturingType? manufacturingLane = null,
+        int idleFacilityCount = 0,
+        int totalFacilityCount = 0
     )
     {
         Entity = entity;
         ManufacturingLane = manufacturingLane;
+        IdleFacilityCount = idleFacilityCount;
+        TotalFacilityCount = totalFacilityCount;
         string entityName = entity?.GetDisplayName() ?? string.Empty;
         Name = manufacturingLane.HasValue
             ? $"{entityName} ({GetManufacturingLaneName(manufacturingLane.Value)})"

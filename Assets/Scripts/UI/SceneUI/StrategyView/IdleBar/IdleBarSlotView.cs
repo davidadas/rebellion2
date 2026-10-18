@@ -100,7 +100,11 @@ public sealed class IdleBarSlotView
         SetHovered(hovered);
 
         portraitMask.gameObject.SetActive(true);
-        overflowTextField.gameObject.SetActive(false);
+        overflowTextField.text = entry.ManufacturingLane.HasValue
+            ? $"<mark=#000000CC>{entry.IdleFacilityCount}/{entry.TotalFacilityCount}</mark>"
+            : string.Empty;
+        SetSourceRect(overflowTextField.rectTransform, 2, 14, 24, 10);
+        overflowTextField.gameObject.SetActive(entry.ManufacturingLane.HasValue);
         portraitImage.texture = entry.Texture;
         portraitImage.uvRect = GetCenteredSquareUv(entry.Texture);
         button.interactable = !string.IsNullOrEmpty(instanceId);
@@ -125,6 +129,7 @@ public sealed class IdleBarSlotView
         SetSourceRect(transform as RectTransform, x, y, slotSize, slotSize);
         portraitMask.gameObject.SetActive(false);
         overflowTextField.text = $"+{hiddenCount}";
+        FillParent(overflowTextField.rectTransform);
         overflowTextField.gameObject.SetActive(true);
         button.interactable = false;
         SetHovered(hovered);
