@@ -1,11 +1,6 @@
 using System;
-using System.Linq;
 using System.Threading.Tasks;
-using Rebellion.Game;
 using UnityEngine;
-#if UNITY_EDITOR
-using UnityEditor;
-#endif
 
 /// <summary>
 /// Initializes the GameRuntime and wires up global systems and
@@ -18,11 +13,7 @@ public sealed class AppBootstrap : MonoBehaviour
         "Application/Common/UI/ui_common_cursor_default_outlined";
     private const string _mainMenuPreloadID = "main-menu";
     private const string _strategyPreloadID = "strategy";
-
-#if UNITY_EDITOR
-    private const string _editorCutscenePrefabPath =
-        "Assets/Prefabs/UI/Cutscenes/CutscenePlayer.prefab";
-#endif
+    private const string _cutscenePlayerResourcePath = "UI/CutscenePlayer";
 
     /// <summary>
     /// Gets the active application bootstrap instance.
@@ -71,11 +62,30 @@ public sealed class AppBootstrap : MonoBehaviour
     /// <returns>The existing or newly created AppBootstrap instance.</returns>
     public static AppBootstrap EnsureExists()
     {
+        return EnsureExists(null);
+    }
+
+    /// <summary>
+    /// Reconstructs application services using explicitly prepared content.
+    /// </summary>
+    /// <param name="contentPack">The verified pack, or null for normal startup selection.</param>
+    /// <returns>The initialized application bootstrap.</returns>
+    internal static AppBootstrap EnsureExists(ContentPack contentPack)
+    {
         if (Instance != null)
+        {
+            if (contentPack != null && !ReferenceEquals(Instance._contentPack, contentPack))
+                throw new InvalidOperationException(
+                    "Different application content is already active."
+                );
             return Instance;
+        }
 
         GameObject obj = new GameObject("AppBootstrap (Auto)");
+        obj.SetActive(false);
         AppBootstrap bootstrap = obj.AddComponent<AppBootstrap>();
+        bootstrap._contentPack = contentPack;
+        obj.SetActive(true);
         if (Instance == bootstrap)
             return bootstrap;
 
@@ -123,7 +133,6 @@ public sealed class AppBootstrap : MonoBehaviour
         _sceneLoader = GetComponent<SceneLoader>();
         if (_sceneLoader == null)
             _sceneLoader = gameObject.AddComponent<SceneLoader>();
-        _contentPack = GameLaunchContext.ConsumeContentPackAfterRestart();
         if (_contentPack == null)
         {
             // Read the saved selection directly; the settings system loads after content.
@@ -155,7 +164,6 @@ public sealed class AppBootstrap : MonoBehaviour
         Cursor.SetCursor(cursorTexture, Vector2.zero, CursorMode.Auto);
         _contentModelCache = new ContentModelCache(_contentAssets);
         GameLaunchContext.Reset(_contentPack);
-        GameLaunchContext.RestoreSaveLoadAfterContentRestart();
         audioManager = AudioManager.EnsureExists(transform);
         audioManager.InitializeContent(_contentAssets);
 
@@ -165,12 +173,12 @@ public sealed class AppBootstrap : MonoBehaviour
         _cutsceneManager.InitializeContent(_contentAssets);
         _cutsceneManager.InitializeAudio(audioManager);
 
-#if UNITY_EDITOR
-        GameObject cutscenePrefab = AssetDatabase.LoadAssetAtPath<GameObject>(
-            _editorCutscenePrefabPath
-        );
+        GameObject cutscenePrefab = Resources.Load<GameObject>(_cutscenePlayerResourcePath);
+        if (cutscenePrefab == null)
+            throw new MissingReferenceException(
+                $"Cutscene-player prefab is missing: {_cutscenePlayerResourcePath}"
+            );
         _cutsceneManager.Initialize(cutscenePrefab);
-#endif
 
         if (inputManager == null)
             inputManager = CreateInputManager();
@@ -267,105 +275,21 @@ public sealed class AppBootstrap : MonoBehaviour
         )
             return false;
 
-        LoadingScreenController.ReloadContent(
-            this,
-            PrepareContentReloadAsync(packID, disabledModIDs)
+        LoadingScreenController.ReloadContent(this, packID, disabledModIDs);
+        return true;
+    }
+
+    /// <summary>
+    /// Creates one content-loading owner whose lifetime can span bootstrap reconstruction.
+    /// </summary>
+    /// <returns>The operation holding the active content and committed preference snapshot.</returns>
+    internal ContentLoadOperation CreateContentLoadOperation()
+    {
+        return new ContentLoadOperation(
+            _contentPack,
+            _userSettingsManager.Settings.Content,
+            new[] { _mainMenuPreloadID, _strategyPreloadID }
         );
-        return true;
-    }
-
-    /// <summary>
-    /// Validates an installed pack and its default scenario before active content is replaced.
-    /// </summary>
-    /// <param name="packID">The installed pack to validate.</param>
-    /// <param name="disabledModIDs">The mods excluded from the selected content.</param>
-    /// <returns>The verified replacement content and complete pending mod selection.</returns>
-    internal Task<ContentReloadPreparation> PrepareContentReloadAsync(
-        string packID,
-        string[] disabledModIDs
-    )
-    {
-        string contentRoot = _contentPack.ContentRootPath;
-        string[] disabled = disabledModIDs?.ToArray() ?? Array.Empty<string>();
-        return Task.Run(() =>
-        {
-            ContentPackDefinition definition = ContentPackLoader
-                .DiscoverPacks(contentRoot)
-                .FirstOrDefault(pack => string.Equals(pack.ID, packID, StringComparison.Ordinal));
-            if (definition == null)
-                throw new InvalidOperationException($"Content pack '{packID}' is not installed.");
-
-            ContentPack contentPack = ContentPackLoader.OpenExact(
-                contentRoot,
-                packID,
-                definition.DefaultScenarioID,
-                disabled
-            );
-            ContentPackLoader.LoadApplicationPreloadManifest(
-                contentPack.FileResolver,
-                _mainMenuPreloadID
-            );
-            ContentPackLoader.LoadApplicationPreloadManifest(
-                contentPack.FileResolver,
-                _strategyPreloadID
-            );
-            return new ContentReloadPreparation(contentPack, disabled);
-        });
-    }
-
-    /// <summary>
-    /// Transfers verified content without persisting a selection that has not finished loading.
-    /// </summary>
-    /// <param name="preparation">The verified content and complete pending mod selection.</param>
-    internal void ApplyContentReload(ContentReloadPreparation preparation)
-    {
-        if (preparation == null)
-            throw new ArgumentNullException(nameof(preparation));
-
-        GameLaunchContext.PrepareContentRestart(preparation.Pack);
-    }
-
-    /// <summary>
-    /// Reads save metadata and verifies any required replacement content away from the main thread.
-    /// </summary>
-    /// <param name="fileName">The save identifier to prepare.</param>
-    /// <returns>The verified loading preparation.</returns>
-    internal Task<SaveLoadPreparation> PrepareSaveLoadAsync(string fileName)
-    {
-        if (string.IsNullOrWhiteSpace(fileName))
-            throw new ArgumentException("A save file name is required.", nameof(fileName));
-
-        SaveGameManager saveGameManager = SaveGameManager.Instance;
-        ContentPack activePack = _contentPack;
-        return Task.Run(() =>
-        {
-            GameMetadata metadata = saveGameManager.GetSaveMetadata(fileName);
-            SaveContentSelection selection = activePack.MatchesContentIdentity(metadata)
-                ? null
-                : SaveContentResolver.Resolve(activePack, metadata);
-            return new SaveLoadPreparation(fileName, selection);
-        });
-    }
-
-    /// <summary>
-    /// Applies a verified loading preparation on the Unity thread.
-    /// </summary>
-    /// <param name="preparation">The verified save and content selection.</param>
-    /// <returns>True when application content must be reconstructed.</returns>
-    internal bool ApplySaveLoadPreparation(SaveLoadPreparation preparation)
-    {
-        if (preparation == null)
-            throw new ArgumentNullException(nameof(preparation));
-
-        if (!preparation.RequiresContentRestart)
-        {
-            GameLaunchContext.PrepareSaveLoad(preparation.FileName);
-            return false;
-        }
-
-        SaveContentSelection selection = preparation.ContentSelection;
-        GameLaunchContext.PrepareSaveLoadAfterContentRestart(preparation.FileName, selection.Pack);
-        return true;
     }
 
     /// <summary>
@@ -375,15 +299,6 @@ public sealed class AppBootstrap : MonoBehaviour
     {
         LoadStarting?.Invoke();
         _runtime.EndGame();
-    }
-
-    /// <summary>
-    /// Composes the persistent cutscene manager with its authored player prefab.
-    /// </summary>
-    /// <param name="cutscenePrefab">The cutscene player prefab.</param>
-    internal void InitializeCutsceneManager(GameObject cutscenePrefab)
-    {
-        _cutsceneManager.Initialize(cutscenePrefab);
     }
 
     /// <summary>

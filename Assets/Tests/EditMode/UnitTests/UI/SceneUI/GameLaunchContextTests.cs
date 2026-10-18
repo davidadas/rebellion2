@@ -76,56 +76,15 @@ namespace Rebellion.Tests.UI.SceneUI
         }
 
         [Test]
-        public void RestoreSaveLoadAfterContentRestart_PreservedRequest_RestoresSavedGameLaunch()
+        public void Reset_PendingSavedGame_ClearsPreviousLaunchRequest()
         {
-            GameLaunchContext.PrepareSaveLoadAfterContentRestart("campaign");
+            GameLaunchContext.PrepareSaveLoad("old-campaign");
+
             GameLaunchContext.Reset(TestContent.Pack);
 
-            GameLaunchContext.RestoreSaveLoadAfterContentRestart();
-
-            Assert.AreEqual("campaign", GameLaunchContext.SaveFileName);
-            Assert.IsTrue(GameLaunchContext.IsLoadGame);
+            Assert.IsNull(GameLaunchContext.SaveFileName);
+            Assert.IsFalse(GameLaunchContext.IsLoadGame);
             Assert.IsFalse(GameLaunchContext.PlayIntroCutscene);
-        }
-
-        [Test]
-        public void RestoreSaveLoadAfterContentRestart_ConsumedRequest_DoesNotRestoreTwice()
-        {
-            GameLaunchContext.PrepareSaveLoadAfterContentRestart("campaign");
-            GameLaunchContext.RestoreSaveLoadAfterContentRestart();
-            GameLaunchContext.Reset(TestContent.Pack);
-
-            GameLaunchContext.RestoreSaveLoadAfterContentRestart();
-
-            Assert.IsNull(GameLaunchContext.SaveFileName);
-            Assert.IsFalse(GameLaunchContext.IsLoadGame);
-        }
-
-        [Test]
-        public void PrepareContentRestart_PendingSavedGame_ClearsSavedGameRestoration()
-        {
-            GameLaunchContext.PrepareSaveLoadAfterContentRestart("old-campaign", TestContent.Pack);
-
-            GameLaunchContext.PrepareContentRestart(TestContent.Pack);
-            ContentPack selected = GameLaunchContext.ConsumeContentPackAfterRestart();
-            GameLaunchContext.Reset(selected);
-            GameLaunchContext.RestoreSaveLoadAfterContentRestart();
-
-            Assert.AreSame(TestContent.Pack, selected);
-            Assert.IsNull(GameLaunchContext.SaveFileName);
-            Assert.IsFalse(GameLaunchContext.IsLoadGame);
-        }
-
-        [Test]
-        public void ConsumeContentPackAfterRestart_PreparedPack_ReturnsPackOnce()
-        {
-            GameLaunchContext.PrepareSaveLoadAfterContentRestart("campaign", TestContent.Pack);
-
-            ContentPack first = GameLaunchContext.ConsumeContentPackAfterRestart();
-            ContentPack second = GameLaunchContext.ConsumeContentPackAfterRestart();
-
-            Assert.AreSame(TestContent.Pack, first);
-            Assert.IsNull(second);
         }
     }
 }

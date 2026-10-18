@@ -61,8 +61,6 @@ namespace Rebellion.Tests.App
                     Directory.Delete(_modDirectory, true);
                 _modDirectory = null;
                 _packDirectory = null;
-                GameLaunchContext.PrepareContentRestart(TestContent.Pack);
-                GameLaunchContext.ConsumeContentPackAfterRestart();
                 GameLaunchContext.Reset(TestContent.Pack);
             }
             finally
@@ -75,26 +73,27 @@ namespace Rebellion.Tests.App
         }
 
         [Test]
-        public void PrepareContentReloadAsync_DerivedPack_LoadsSelectedPackWithoutReplacingActiveContent()
+        public void CreateContentLoadOperation_DerivedPack_PreparesSelectionWithoutReplacingActiveContent()
         {
             UIComponentTestHelper.InvokeLifecycle(_bootstrap, "InitializeRuntimeCore");
             ContentPack active = _bootstrap.GetContentPack();
             string packID = CreateDerivedPack(active);
 
-            ContentReloadPreparation preparation = _bootstrap
+            ContentLoadOperation operation = _bootstrap.CreateContentLoadOperation();
+            operation
                 .PrepareContentReloadAsync(packID, System.Array.Empty<string>())
                 .GetAwaiter()
                 .GetResult();
 
-            Assert.AreEqual(packID, preparation.Pack.Definition.ID);
-            Assert.AreEqual(active.Scenario.ID, preparation.Pack.Scenario.ID);
+            Assert.AreEqual(packID, operation.Pack.Definition.ID);
+            Assert.AreEqual(active.Scenario.ID, operation.Pack.Scenario.ID);
             Assert.AreSame(active, _bootstrap.GetContentPack());
             Assert.IsFalse(LoadingScreenController.IsLoadInProgress);
         }
 
         [TestCase("main-menu")]
         [TestCase("strategy")]
-        public void PrepareContentReloadAsync_MalformedApplicationPreload_RejectsSelection(
+        public void CreateContentLoadOperation_MalformedApplicationPreload_RejectsSelection(
             string preloadID
         )
         {
@@ -111,6 +110,7 @@ namespace Rebellion.Tests.App
 
             Assert.Throws<InvalidDataException>(() =>
                 _bootstrap
+                    .CreateContentLoadOperation()
                     .PrepareContentReloadAsync(active.Definition.ID, System.Array.Empty<string>())
                     .GetAwaiter()
                     .GetResult()
@@ -120,13 +120,14 @@ namespace Rebellion.Tests.App
         }
 
         [Test]
-        public void PrepareContentReloadAsync_MissingPack_RejectsSelectionWithoutFallingBack()
+        public void CreateContentLoadOperation_MissingPack_RejectsSelectionWithoutFallingBack()
         {
             UIComponentTestHelper.InvokeLifecycle(_bootstrap, "InitializeRuntimeCore");
             ContentPack active = _bootstrap.GetContentPack();
 
             Assert.Throws<System.InvalidOperationException>(() =>
                 _bootstrap
+                    .CreateContentLoadOperation()
                     .PrepareContentReloadAsync("not-installed", System.Array.Empty<string>())
                     .GetAwaiter()
                     .GetResult()
@@ -192,7 +193,6 @@ namespace Rebellion.Tests.App
             Assert.AreEqual(1, transitions);
             Assert.IsFalse(GameLaunchContext.IsLoadGame);
             Assert.IsNull(GameLaunchContext.SaveFileName);
-            Assert.IsNotNull(GameLaunchContext.ConsumeContentPackAfterRestart());
         }
 
         [Test]
@@ -245,18 +245,6 @@ namespace Rebellion.Tests.App
                 GameLaunchContext.Summary.PackVersion
             );
             Assert.AreEqual(activeContent.Scenario.ID, GameLaunchContext.Summary.ScenarioID);
-        }
-
-        [Test]
-        public void InitializeRuntimeCore_PendingSaveAfterContentRestart_RestoresLoadRequest()
-        {
-            GameLaunchContext.PrepareSaveLoadAfterContentRestart("campaign", TestContent.Pack);
-
-            UIComponentTestHelper.InvokeLifecycle(_bootstrap, "InitializeRuntimeCore");
-
-            Assert.AreEqual("campaign", GameLaunchContext.SaveFileName);
-            Assert.IsTrue(GameLaunchContext.IsLoadGame);
-            Assert.AreSame(TestContent.Pack, _bootstrap.GetContentPack());
         }
 
         [Test]
