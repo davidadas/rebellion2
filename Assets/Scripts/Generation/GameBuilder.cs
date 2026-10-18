@@ -104,11 +104,9 @@ namespace Rebellion.Generation
                 )
                 .Where(s => (int)s.Visibility <= galaxySize)
                 .ToArray();
-            GameGenerationConfig generationConfig = string.IsNullOrWhiteSpace(
-                _summary.GenerationConfigOverrideXml
-            )
-                ? _gameData.GenerationConfig.GetDeepCopy()
-                : GameGenerationConfigCodec.Deserialize(_summary.GenerationConfigOverrideXml);
+            GameGenerationConfig generationConfig =
+                _summary.GenerationConfigOverride?.GetDeepCopy()
+                ?? _gameData.GenerationConfig.GetDeepCopy();
             Faction[] factions = _gameData.Factions.GetDeepCopy();
             ApplyFactionModifiers(factions, generationConfig.FactionModifiers);
 

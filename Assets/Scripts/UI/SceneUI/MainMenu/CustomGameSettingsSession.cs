@@ -4,7 +4,6 @@ using System.Globalization;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
-using Rebellion.Generation;
 using Rebellion.Util.Reflection;
 
 /// <summary>
@@ -96,9 +95,9 @@ internal sealed class CustomGameSettingsSession
         if (!summaryDraft.StartingFactionIDs.Contains(summaryDraft.PlayerFactionID))
             summaryDraft.PlayerFactionID = summaryDefaults.PlayerFactionID;
         generationDefaults = pack.GameData.GenerationConfig.GetDeepCopy();
-        generationDraft = string.IsNullOrWhiteSpace(summaryDraft.GenerationConfigOverrideXml)
-            ? pack.GameData.GenerationConfig.GetDeepCopy()
-            : GameGenerationConfigCodec.Deserialize(summaryDraft.GenerationConfigOverrideXml);
+        generationDraft =
+            summaryDraft.GenerationConfigOverride?.GetDeepCopy()
+            ?? pack.GameData.GenerationConfig.GetDeepCopy();
         ReconcileFactionModifiers(generationDefaults, pack.GameData.Factions);
         ReconcileFactionModifiers(generationDraft, pack.GameData.Factions);
 
@@ -330,7 +329,7 @@ internal sealed class CustomGameSettingsSession
         GameSummary snapshot = summaryDraft.GetDeepCopy();
         snapshot.PlayerDifficultyModifiers = CreateModifiers(playerDraft);
         snapshot.AIDifficultyModifiers = aiCustomized.Count == 0 ? null : CreateModifiers(aiDraft);
-        snapshot.GenerationConfigOverrideXml = GameGenerationConfigCodec.Serialize(generationDraft);
+        snapshot.GenerationConfigOverride = generationDraft.GetDeepCopy();
         return snapshot;
     }
 

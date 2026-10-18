@@ -5,7 +5,6 @@ using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
-using Rebellion.Generation;
 using Rebellion.Simulation;
 using Rebellion.Util.Logging;
 using Rebellion.Util.Reflection;
@@ -322,11 +321,10 @@ public sealed class GameRuntime
         Dictionary<string, FactionSettings> overrides = new Dictionary<string, FactionSettings>(
             StringComparer.Ordinal
         );
-        string xml = game.Summary.GenerationConfigOverrideXml;
-        if (string.IsNullOrWhiteSpace(xml))
+        GameGenerationConfig config = game.Summary.GenerationConfigOverride;
+        if (config == null)
             return overrides;
 
-        GameGenerationConfig config = GameGenerationConfigCodec.Deserialize(xml);
         foreach (
             FactionModifierConfig modifier in config.FactionModifiers
                 ?? Enumerable.Empty<FactionModifierConfig>()

@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
-using Rebellion.Generation;
 using TMPro;
 using UnityEditor;
 using UnityEngine;
@@ -481,7 +480,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.AreEqual(GameResourceAvailability.Abundant, launched.ResourceAvailability);
             Assert.IsNotNull(launched.PlayerDifficultyModifiers);
             Assert.IsNull(launched.AIDifficultyModifiers);
-            Assert.IsNotEmpty(launched.GenerationConfigOverrideXml);
+            Assert.IsNotNull(launched.GenerationConfigOverride);
         }
 
         [Test]
@@ -663,9 +662,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             TableInput("garrison-efficiency", "Player").onEndEdit.Invoke("3");
             ApplyButton().onClick.Invoke();
 
-            GameGenerationConfig config = GameGenerationConfigCodec.Deserialize(
-                applied.GenerationConfigOverrideXml
-            );
+            GameGenerationConfig config = applied.GenerationConfigOverride;
             Assert.AreEqual(3, config.FactionModifiers[0].Settings.GarrisonEfficiency);
             Assert.AreEqual(
                 authored,
@@ -718,9 +715,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             TableInput("starting-forces", "AI").onEndEdit.Invoke("50");
             ApplyButton().onClick.Invoke();
 
-            GameGenerationConfig config = GameGenerationConfigCodec.Deserialize(
-                applied.GenerationConfigOverrideXml
-            );
+            GameGenerationConfig config = applied.GenerationConfigOverride;
             Assert.AreEqual(
                 40,
                 config
@@ -749,9 +744,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             TableInput("starting-research", "AI").onEndEdit.Invoke("7");
             ApplyButton().onClick.Invoke();
 
-            GameGenerationConfig config = GameGenerationConfigCodec.Deserialize(
-                applied.GenerationConfigOverrideXml
-            );
+            GameGenerationConfig config = applied.GenerationConfigOverride;
             Assert.AreEqual(3, config.GalaxyClassification.FactionSetups[0].StartingResearchLevel);
             Assert.AreEqual(7, config.GalaxyClassification.FactionSetups[1].StartingResearchLevel);
         }
@@ -983,9 +976,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             TableInput("mine-chance-per-resource", "Player").onEndEdit.Invoke("7");
             ApplyButton().onClick.Invoke();
 
-            GameGenerationConfig config = GameGenerationConfigCodec.Deserialize(
-                applied.GenerationConfigOverrideXml
-            );
+            GameGenerationConfig config = applied.GenerationConfigOverride;
             Assert.AreEqual(7, config.FacilityGeneration.CoreMineMultiplier);
             Assert.AreEqual(
                 authored,

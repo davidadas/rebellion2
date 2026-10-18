@@ -1,5 +1,6 @@
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Util.Reflection;
 
 namespace Rebellion.Tests.Game
 {
@@ -51,6 +52,8 @@ namespace Rebellion.Tests.Game
         [Test]
         public void SerializeAndDeserialize_PopulatedSummary_MaintainsState()
         {
+            GameGenerationConfig generationConfig = TestContent.Data.GenerationConfig.GetDeepCopy();
+            generationConfig.FacilityGeneration.CoreMineMultiplier = 17;
             GameSummary summary = new GameSummary
             {
                 GalaxySize = GameSize.Medium,
@@ -71,7 +74,7 @@ namespace Rebellion.Tests.Game
                     MissionFoilChancePoints = 20,
                     DetectionRatingMultiplier = 1.25,
                 },
-                GenerationConfigOverrideXml = "<GameGenerationConfig />",
+                GenerationConfigOverride = generationConfig,
             };
 
             string serialized = SerializationHelper.Serialize(summary);
@@ -138,8 +141,8 @@ namespace Rebellion.Tests.Game
                 "AI detection modifiers should be correctly deserialized."
             );
             Assert.AreEqual(
-                "<GameGenerationConfig />",
-                deserialized.GenerationConfigOverrideXml,
+                17,
+                deserialized.GenerationConfigOverride.FacilityGeneration.CoreMineMultiplier,
                 "Generation overrides should be correctly deserialized."
             );
         }

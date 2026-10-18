@@ -120,7 +120,7 @@ namespace Rebellion.Tests.App
             config.FactionModifiers.Add(
                 new FactionModifierConfig { FactionID = template.InstanceID, Settings = configured }
             );
-            game.Summary.GenerationConfigOverrideXml = GameGenerationConfigCodec.Serialize(config);
+            game.Summary.GenerationConfigOverride = config;
 
             GameSession session = _runtime.StartGame(game);
 

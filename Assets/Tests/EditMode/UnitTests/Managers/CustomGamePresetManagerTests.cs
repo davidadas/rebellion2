@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Util.Reflection;
 
 namespace Rebellion.Tests.Managers
 {
@@ -54,8 +55,8 @@ namespace Rebellion.Tests.Managers
                 loaded.AIDifficultyModifiers.MineOutputPercent
             );
             Assert.AreEqual(
-                summary.GenerationConfigOverrideXml,
-                loaded.GenerationConfigOverrideXml
+                summary.GenerationConfigOverride.FacilityGeneration.CoreMineMultiplier,
+                loaded.GenerationConfigOverride.FacilityGeneration.CoreMineMultiplier
             );
         }
 
@@ -104,8 +105,19 @@ namespace Rebellion.Tests.Managers
                 ModVersions = new[] { "2.0" },
                 PlayerDifficultyModifiers = new DifficultyModifiers { MineOutputPercent = 115 },
                 AIDifficultyModifiers = new DifficultyModifiers { MineOutputPercent = 135 },
-                GenerationConfigOverrideXml = "<generation value=\"custom\" />",
+                GenerationConfigOverride = CreateGenerationConfig(),
             };
+        }
+
+        /// <summary>
+        /// Creates a detached generation configuration with a recognizable override.
+        /// </summary>
+        /// <returns>The customized generation configuration.</returns>
+        private static GameGenerationConfig CreateGenerationConfig()
+        {
+            GameGenerationConfig config = TestContent.Data.GenerationConfig.GetDeepCopy();
+            config.FacilityGeneration.CoreMineMultiplier = 17;
+            return config;
         }
     }
 }

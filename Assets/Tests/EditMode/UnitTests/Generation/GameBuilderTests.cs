@@ -140,7 +140,7 @@ namespace Rebellion.Tests.Generation
                 ResourceAvailability = GameResourceAvailability.Normal,
                 PlayerFactionID = "FNALL1",
                 Seed = 12345,
-                GenerationConfigOverrideXml = GameGenerationConfigCodec.Serialize(generation),
+                GenerationConfigOverride = generation,
             };
 
             GameRoot game = new GameBuilder(summary, TestContent.Data).Build();
@@ -172,7 +172,7 @@ namespace Rebellion.Tests.Generation
                 ResourceAvailability = GameResourceAvailability.Normal,
                 PlayerFactionID = "FNALL1",
                 Seed = 12345,
-                GenerationConfigOverrideXml = GameGenerationConfigCodec.Serialize(generation),
+                GenerationConfigOverride = generation,
             };
 
             GameRoot game = new GameBuilder(summary, TestContent.Data).Build();
@@ -200,7 +200,7 @@ namespace Rebellion.Tests.Generation
             {
                 GalaxySize = _size,
                 PlayerFactionID = "FNALL1",
-                GenerationConfigOverrideXml = GameGenerationConfigCodec.Serialize(generation),
+                GenerationConfigOverride = generation,
             };
 
             InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
