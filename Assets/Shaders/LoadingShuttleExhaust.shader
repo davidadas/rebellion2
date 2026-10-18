@@ -12,11 +12,13 @@ Shader "Custom/LoadingShuttleExhaust"
             "Queue" = "Transparent"
             "RenderType" = "Transparent"
             "RenderPipeline" = "HDRenderPipeline"
+            "IgnoreProjector" = "True"
         }
 
         Blend SrcAlpha One
         Cull Off
         ZWrite Off
+        ZTest LEqual
 
         Pass
         {
@@ -34,11 +36,13 @@ Shader "Custom/LoadingShuttleExhaust"
             struct Attributes
             {
                 float4 positionOS : POSITION;
+                half4 color : COLOR;
             };
 
             struct Varyings
             {
                 float4 positionHCS : SV_POSITION;
+                half4 color : COLOR;
             };
 
             CBUFFER_START(UnityPerMaterial)
@@ -49,12 +53,13 @@ Shader "Custom/LoadingShuttleExhaust"
             {
                 Varyings output;
                 output.positionHCS = TransformObjectToHClip(input.positionOS.xyz);
+                output.color = input.color * _Color;
                 return output;
             }
 
             half4 Frag(Varyings input) : SV_Target
             {
-                return _Color;
+                return input.color;
             }
             ENDHLSL
         }

@@ -15,6 +15,8 @@ using Rebellion.Generation;
 /// </summary>
 public sealed class GameDataCatalog
 {
+    private readonly IReadOnlyDictionary<string, OfficerTraitDefinition> _officerTraitsByID;
+
     public GameConfig GameConfig { get; }
 
     public GameGenerationConfig GenerationConfig { get; }
@@ -34,6 +36,8 @@ public sealed class GameDataCatalog
     public SpecialForces[] SpecialForces { get; }
 
     public Officer[] Officers { get; }
+
+    public OfficerTraitDefinition[] OfficerTraits { get; }
 
     public GameEvent[] GameEvents { get; }
 
@@ -60,6 +64,7 @@ public sealed class GameDataCatalog
     /// <param name="messageDefinitions">The message definitions.</param>
     /// <param name="encyclopediaEntries">The authored encyclopedia entries.</param>
     /// <param name="factionThemes">The neutral and faction presentation themes.</param>
+    /// <param name="officerTraits">The content-authored officer trait definitions.</param>
     public GameDataCatalog(
         GameConfig gameConfig,
         GameGenerationConfig generationConfig,
@@ -74,7 +79,8 @@ public sealed class GameDataCatalog
         GameEvent[] gameEvents,
         MessageDefinition[] messageDefinitions,
         EncyclopediaEntries encyclopediaEntries,
-        FactionThemes factionThemes
+        FactionThemes factionThemes,
+        OfficerTraitDefinition[] officerTraits = null
     )
     {
         GameConfig = gameConfig ?? throw new ArgumentNullException(nameof(gameConfig));
@@ -89,12 +95,104 @@ public sealed class GameDataCatalog
         Regiments = regiments ?? throw new ArgumentNullException(nameof(regiments));
         SpecialForces = specialForces ?? throw new ArgumentNullException(nameof(specialForces));
         Officers = officers ?? throw new ArgumentNullException(nameof(officers));
+        OfficerTraits = officerTraits ?? Array.Empty<OfficerTraitDefinition>();
+        _officerTraitsByID = ValidateOfficerTraits(OfficerTraits, Officers);
+        foreach (Officer officer in Officers)
+            officer.BindTraitDefinitions(_officerTraitsByID);
         GameEvents = gameEvents ?? throw new ArgumentNullException(nameof(gameEvents));
         MessageDefinitions =
             messageDefinitions ?? throw new ArgumentNullException(nameof(messageDefinitions));
         EncyclopediaEntries =
             encyclopediaEntries ?? throw new ArgumentNullException(nameof(encyclopediaEntries));
         FactionThemes = factionThemes ?? throw new ArgumentNullException(nameof(factionThemes));
+    }
+
+    /// <summary>
+    /// Validates trait definitions and authored officer references, then indexes the definitions.
+    /// </summary>
+    /// <param name="traits">The trait definitions to validate.</param>
+    /// <param name="officers">The officer templates that reference those definitions.</param>
+    /// <returns>The validated definitions indexed by identifier.</returns>
+    internal static IReadOnlyDictionary<string, OfficerTraitDefinition> ValidateOfficerTraits(
+        IReadOnlyCollection<OfficerTraitDefinition> traits,
+        IReadOnlyCollection<Officer> officers
+    )
+    {
+        if (traits == null)
+            throw new ArgumentNullException(nameof(traits));
+        if (officers == null)
+            throw new ArgumentNullException(nameof(officers));
+
+        Dictionary<string, OfficerTraitDefinition> traitsByID = new Dictionary<
+            string,
+            OfficerTraitDefinition
+        >(StringComparer.Ordinal);
+        foreach (OfficerTraitDefinition trait in traits)
+        {
+            if (trait == null || string.IsNullOrWhiteSpace(trait.ID))
+                throw new InvalidDataException("Every officer trait requires an ID.");
+            if (!traitsByID.TryAdd(trait.ID, trait))
+                throw new InvalidDataException($"Duplicate officer trait ID '{trait.ID}'.");
+            if (trait.LeadershipBonusPercent < 0)
+                throw new InvalidDataException(
+                    $"Officer trait '{trait.ID}' has a negative leadership bonus."
+                );
+            if (trait.PersonnelTravelTimePercent is < 1 or > 100)
+                throw new InvalidDataException(
+                    $"Officer trait '{trait.ID}' requires a personnel travel-time percentage from 1 through 100."
+                );
+        }
+
+        foreach (Officer officer in officers)
+        {
+            if (officer == null)
+                throw new InvalidDataException("Officer templates cannot contain null entries.");
+            HashSet<string> discoveredTraits = new HashSet<string>(StringComparer.Ordinal);
+            foreach (string traitID in officer.Traits ?? new List<string>())
+            {
+                if (!traitsByID.ContainsKey(traitID))
+                    throw new InvalidDataException(
+                        $"Officer '{officer.InstanceID}' references missing trait '{traitID}'."
+                    );
+                if (!discoveredTraits.Add(traitID))
+                    throw new InvalidDataException(
+                        $"Officer '{officer.InstanceID}' contains duplicate trait '{traitID}'."
+                    );
+            }
+        }
+
+        return traitsByID;
+    }
+
+    /// <summary>
+    /// Connects runtime officers to the validated trait definitions in this catalog.
+    /// </summary>
+    /// <param name="officers">The runtime officers to bind.</param>
+    internal void BindOfficerTraits(IEnumerable<Officer> officers)
+    {
+        foreach (Officer officer in officers ?? throw new ArgumentNullException(nameof(officers)))
+        {
+            HashSet<(string TraitID, string SourceID)> discoveredGrants =
+                new HashSet<(string TraitID, string SourceID)>();
+            foreach (
+                OfficerTraitGrant grant in officer.TraitGrants ?? new List<OfficerTraitGrant>()
+            )
+            {
+                if (grant == null || !_officerTraitsByID.ContainsKey(grant.TraitID))
+                    throw new InvalidDataException(
+                        $"Officer '{officer.InstanceID}' contains an invalid trait grant."
+                    );
+                if (string.IsNullOrWhiteSpace(grant.SourceID))
+                    throw new InvalidDataException(
+                        $"Officer '{officer.InstanceID}' contains a trait grant without a source."
+                    );
+                if (!discoveredGrants.Add((grant.TraitID, grant.SourceID)))
+                    throw new InvalidDataException(
+                        $"Officer '{officer.InstanceID}' contains a duplicate trait grant."
+                    );
+            }
+            officer.BindTraitDefinitions(_officerTraitsByID);
+        }
     }
 
     /// <summary>

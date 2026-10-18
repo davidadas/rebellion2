@@ -179,6 +179,58 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        public void GetEffectiveRating_LeadershipTrait_AppliesConfiguredBonus()
+        {
+            Officer officer = CreateOfficerWithTrait(
+                new OfficerTraitDefinition { ID = "leadership", LeadershipBonusPercent = 50 },
+                "leadership"
+            );
+            officer.SetBaseRating(SkillRating.Leadership, 41);
+
+            Assert.AreEqual(61, officer.GetEffectiveRating(SkillRating.Leadership));
+        }
+
+        [Test]
+        public void GrantTrait_MultipleSources_DoesNotStackSameTrait()
+        {
+            Officer officer = CreateOfficerWithTrait(
+                new OfficerTraitDefinition { ID = "leadership", LeadershipBonusPercent = 50 }
+            );
+            officer.SetBaseRating(SkillRating.Leadership, 40);
+
+            Assert.IsTrue(officer.GrantTrait("leadership", "first-event"));
+            Assert.IsTrue(officer.GrantTrait("leadership", "second-event"));
+
+            Assert.AreEqual(60, officer.GetEffectiveRating(SkillRating.Leadership));
+        }
+
+        [Test]
+        public void RevokeTrait_RemainingSource_PreservesTraitEffect()
+        {
+            Officer officer = CreateOfficerWithTrait(
+                new OfficerTraitDefinition { ID = "leadership", LeadershipBonusPercent = 50 }
+            );
+            officer.SetBaseRating(SkillRating.Leadership, 40);
+            officer.GrantTrait("leadership", "first-event");
+            officer.GrantTrait("leadership", "second-event");
+
+            Assert.IsTrue(officer.RevokeTrait("leadership", "first-event"));
+
+            Assert.AreEqual(60, officer.GetEffectiveRating(SkillRating.Leadership));
+        }
+
+        [Test]
+        public void GetPersonnelTravelTimePercent_TravelTrait_ReturnsConfiguredPercentage()
+        {
+            Officer officer = CreateOfficerWithTrait(
+                new OfficerTraitDefinition { ID = "travel", PersonnelTravelTimePercent = 50 },
+                "travel"
+            );
+
+            Assert.AreEqual(50, officer.GetPersonnelTravelTimePercent());
+        }
+
+        [Test]
         public void GetEffectiveRating_ShipResearch_DoesNotApplyForceRankBonus()
         {
             Officer officer = new Officer { ForceValue = 50, ForceTrainingAdjustment = 50 };
@@ -288,12 +340,20 @@ namespace Rebellion.Tests.Game.Units
             originalOfficer.NextEscapeAttemptTick = 725;
             originalOfficer.MissionReturnParentInstanceID = "return-parent";
             originalOfficer.MissionReturnLocationInstanceID = "return-location";
+            originalOfficer.Traits.Add("smuggler");
+            originalOfficer.TraitGrants.Add(
+                new OfficerTraitGrant { TraitID = "leadership", SourceID = "event" }
+            );
 
             string xml = SerializationHelper.Serialize(originalOfficer);
             Officer deserializedOfficer = SerializationHelper.Deserialize<Officer>(xml);
 
             StringAssert.Contains("<CanBetray>False</CanBetray>", xml);
             StringAssert.Contains("<Loyalty>75</Loyalty>", xml);
+            CollectionAssert.AreEqual(originalOfficer.Traits, deserializedOfficer.Traits);
+            Assert.AreEqual(1, deserializedOfficer.TraitGrants.Count);
+            Assert.AreEqual("leadership", deserializedOfficer.TraitGrants[0].TraitID);
+            Assert.AreEqual("event", deserializedOfficer.TraitGrants[0].SourceID);
             Assert.AreEqual(originalOfficer.IsMain, deserializedOfficer.IsMain, "IsMain mismatch");
             Assert.AreEqual(
                 originalOfficer.CurrentRank,
@@ -476,6 +536,26 @@ namespace Rebellion.Tests.Game.Units
                 "configured",
                 officer.GetVoicePath(OfficerVoiceLineType.PersonnelArrived, null)
             );
+        }
+
+        /// <summary>
+        /// Creates an officer connected to one trait definition for focused behavior tests.
+        /// </summary>
+        /// <param name="definition">The trait definition.</param>
+        /// <param name="inherentTraitID">The optional inherent trait identifier.</param>
+        /// <returns>The configured officer.</returns>
+        private static Officer CreateOfficerWithTrait(
+            OfficerTraitDefinition definition,
+            string inherentTraitID = null
+        )
+        {
+            Officer officer = new Officer();
+            if (!string.IsNullOrEmpty(inherentTraitID))
+                officer.Traits.Add(inherentTraitID);
+            officer.BindTraitDefinitions(
+                new Dictionary<string, OfficerTraitDefinition> { [definition.ID] = definition }
+            );
+            return officer;
         }
     }
 }
