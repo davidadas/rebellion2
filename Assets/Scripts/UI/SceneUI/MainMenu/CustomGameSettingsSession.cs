@@ -443,7 +443,7 @@ internal sealed class CustomGameSettingsSession
         );
         Add(
             "detection-rating",
-            "Detection Rating Bonus",
+            "Detection Rating Multiplier",
             "How easily this faction detects enemy missions. Higher improves detection. Range: greater than 0.",
             true,
             0,

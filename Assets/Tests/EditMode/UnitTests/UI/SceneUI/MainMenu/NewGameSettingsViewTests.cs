@@ -101,7 +101,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                 "Mission Success Bonus",
                 "Mission Foil Bonus",
                 "Mission Speed Bonus",
-                "Detection Rating Bonus",
+                "Detection Rating Multiplier",
             };
             view.Initialize(TestContent.Pack, summary);
 
