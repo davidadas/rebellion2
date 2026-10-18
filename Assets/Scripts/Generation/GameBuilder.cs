@@ -104,16 +104,21 @@ namespace Rebellion.Generation
                 )
                 .Where(s => (int)s.Visibility <= galaxySize)
                 .ToArray();
+            GameGenerationConfig generationConfig =
+                _summary.GenerationConfigOverride?.GetDeepCopy()
+                ?? _gameData.GenerationConfig.GetDeepCopy();
+            Faction[] factions = _gameData.Factions.GetDeepCopy();
+            ApplyFactionModifiers(factions, generationConfig.FactionModifiers);
 
             return new GenerationContext
             {
                 Summary = _summary,
-                Config = _gameData.GenerationConfig.GetDeepCopy(),
+                Config = generationConfig,
                 GameConfig = _gameData.GameConfig.GetDeepCopy(),
                 Rng = _randomProvider,
 
                 Sectors = sectors,
-                Factions = _gameData.Factions.GetDeepCopy(),
+                Factions = factions,
                 Buildings = CopyTemplates(_gameData.Buildings),
                 CapitalShips = CopyTemplates(_gameData.CapitalShips),
                 Starfighters = CopyTemplates(_gameData.Starfighters),
@@ -122,6 +127,47 @@ namespace Rebellion.Generation
                 Officers = CopyTemplates(_gameData.Officers),
                 Events = _gameData.GameEvents.GetDeepCopy(),
             };
+        }
+
+        /// <summary>
+        /// Applies launch-specific settings to the detached faction templates.
+        /// </summary>
+        /// <param name="factions">The detached factions used by generation.</param>
+        /// <param name="modifiers">The configured faction overrides.</param>
+        private static void ApplyFactionModifiers(
+            IReadOnlyList<Faction> factions,
+            IReadOnlyList<FactionModifierConfig> modifiers
+        )
+        {
+            if (modifiers == null)
+                return;
+
+            HashSet<string> appliedFactionIDs = new HashSet<string>(StringComparer.Ordinal);
+            foreach (FactionModifierConfig modifier in modifiers)
+            {
+                if (modifier == null || string.IsNullOrWhiteSpace(modifier.FactionID))
+                    throw new InvalidOperationException(
+                        "Game generation config contains an unidentified faction modifier."
+                    );
+                if (!appliedFactionIDs.Add(modifier.FactionID))
+                    throw new InvalidOperationException(
+                        $"Game generation config contains duplicate faction modifier '{modifier.FactionID}'."
+                    );
+
+                Faction faction = factions.SingleOrDefault(candidate =>
+                    candidate.InstanceID == modifier.FactionID
+                );
+                if (faction == null)
+                    throw new InvalidOperationException(
+                        $"Faction modifier references unknown faction '{modifier.FactionID}'."
+                    );
+                if (modifier.Settings == null)
+                    throw new InvalidOperationException(
+                        $"Faction modifier '{modifier.FactionID}' requires settings."
+                    );
+
+                faction.Settings = modifier.Settings.GetDeepCopy();
+            }
         }
 
         /// <summary>

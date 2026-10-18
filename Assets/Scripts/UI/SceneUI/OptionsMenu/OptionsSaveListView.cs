@@ -169,12 +169,30 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
     /// <param name="resetScroll">Whether to show the top of the rebuilt list.</param>
     public void Render(OptionsMenuRenderData data, bool resetScroll)
     {
-        int selected = data.SelectedSlot;
+        if (data == null)
+            throw new ArgumentNullException(nameof(data));
+
+        Render(data.SaveSlots, data.SelectedSlot, data.CanSave, resetScroll);
+    }
+
+    /// <summary>
+    /// Renders reusable save-list rows for a host-specific collection.
+    /// </summary>
+    /// <param name="slots">The rows to display.</param>
+    /// <param name="selected">The selected row index, or -1.</param>
+    /// <param name="canSaveState">Whether the host can save its current state.</param>
+    /// <param name="resetScroll">Whether to show the top of the rebuilt list.</param>
+    public void Render(
+        IReadOnlyList<OptionsSaveSlot> slots,
+        int selected,
+        bool canSaveState,
+        bool resetScroll
+    )
+    {
+        slots ??= Array.Empty<OptionsSaveSlot>();
         bool existingSelected =
-            selected >= 0
-            && selected < data.SaveSlots.Count
-            && !data.SaveSlots[selected].IsCreateNew;
-        _canSaveGame = data.CanSave;
+            selected >= 0 && selected < slots.Count && !slots[selected].IsCreateNew;
+        _canSaveGame = canSaveState;
         _existingSaveSelected = existingSelected;
         bool canSave = CanSaveCurrentEntry();
         bool canLoad = existingSelected;
@@ -193,9 +211,9 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
         _rowTops.Clear();
         const int gap = 6;
         int contentHeight = 0;
-        for (int index = 0; index < data.SaveSlots.Count; index++)
+        for (int index = 0; index < slots.Count; index++)
         {
-            OptionsSaveSlot slot = data.SaveSlots[index];
+            OptionsSaveSlot slot = slots[index];
             int top = contentHeight;
             _slots.Add(slot);
             _rowTops.Add(top);
@@ -291,12 +309,12 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
         }
 
         _scrollArea.SetContentHeight(contentHeight, rowRect.height + gap, resetScroll);
-        HideFrom(_rowImages, data.SaveSlots.Count);
-        HideFrom(_iconImages, data.SaveSlots.Count);
-        HideFrom(_nameFields, data.SaveSlots.Count);
-        HideFrom(_metaFields, data.SaveSlots.Count);
-        HideFrom(_dateFields, data.SaveSlots.Count);
-        HideFrom(_deleteButtons, data.SaveSlots.Count);
+        HideFrom(_rowImages, slots.Count);
+        HideFrom(_iconImages, slots.Count);
+        HideFrom(_nameFields, slots.Count);
+        HideFrom(_metaFields, slots.Count);
+        HideFrom(_dateFields, slots.Count);
+        HideFrom(_deleteButtons, slots.Count);
         SetRowNameVisible(_renameRow, false);
     }
 

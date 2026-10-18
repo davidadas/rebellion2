@@ -5,6 +5,7 @@ using TMPro;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
+using static MenuPrefabBuilder;
 
 /// <summary>
 /// Builds the Options menu prefab.
@@ -20,16 +21,6 @@ public static class OptionsMenuPrefabBuilder
     private const int _footerNavigationStartY = 318;
     private const string _optionsMenuWindowPrefabPath =
         "Assets/Prefabs/UI/OptionsMenu/OptionsMenu.prefab";
-    private const string _optionsPanelAddress =
-        "Application/OptionsMenu/UI/ui_settingsmenu_panel_background";
-    private const string _optionsRowAddress =
-        "Application/OptionsMenu/UI/ui_settingsmenu_row_background";
-    private const string _optionsRowActiveAddress =
-        "Application/OptionsMenu/UI/ui_settingsmenu_row_selected_background";
-    private const string _optionsBadgeAddress =
-        "Application/OptionsMenu/UI/ui_settingsmenu_badge_background";
-    private const string _optionsFrameGlowAddress =
-        "Application/OptionsMenu/UI/ui_settingsmenu_frame_overlay";
     private const string _optionsToggleOnAddress =
         "Application/OptionsMenu/UI/ui_settingsmenu_toggle_selected_icon";
     private const string _optionsToggleOffAddress =
@@ -38,20 +29,6 @@ public static class OptionsMenuPrefabBuilder
         "Application/OptionsMenu/UI/ui_settingsmenu_slider_knob";
     private const string _contextMenuCheckMarkAddress =
         "Pack/Shared/Strategy/UI/ContextMenus/context-menu-check-mark.png";
-    private const string _restoreDefaultIconAddress =
-        "Application/OptionsMenu/UI/ui_settingsmenu_restore_default_icon";
-    private const string _scrollAreaPrefabPath = "Assets/Prefabs/UI/Common/ScrollArea.prefab";
-    private const string _textInputPrefabPath = "Assets/Prefabs/UI/Common/TextInput.prefab";
-    private const string _scrollUpAddress =
-        "Application/Strategy/UI/Controls/ui_strategyview_scrollbar_arrow_up.png";
-    private const string _scrollDownAddress =
-        "Application/Strategy/UI/Controls/ui_strategyview_scrollbar_arrow_pressed_2.png";
-    private const string _scrollHandleAddress =
-        "Application/Strategy/UI/Controls/ui_strategyview_scrollbar_middle.png";
-
-    private static readonly Vector4 _panelBorder = new Vector4(7f, 7f, 7f, 7f);
-    private static readonly Vector4 _badgeBorder = new Vector4(6f, 6f, 6f, 6f);
-    private static readonly Color32 _buttonSurfaceColor = new Color32(35, 56, 80, 255);
 
     /// <summary>
     /// Rebuilds the generated Options menu prefab.
@@ -85,73 +62,14 @@ public static class OptionsMenuPrefabBuilder
         ConfigureWindowRoot(window.GetComponent<UIWindow>());
         SetSourceRect(window.GetComponent<RectTransform>(), 0, 0, 454, 341);
 
-        // Options Menu Content.
-        RectTransform contentRoot = CreateSourceRectLayer(
-            "ContentRoot",
+        RectTransform contentRoot = CreateMenuWindowContent(
             window.transform,
-            632,
-            474
+            "OPTIONS",
+            out TextMeshProUGUI header,
+            out TextMeshProUGUI pageTitle
         );
-        contentRoot.localScale = new Vector3(0.719f, 0.719f, 1f);
-
-        RawImage background = CreateRawImage(
-            "BackgroundImage",
-            contentRoot,
-            "Application/OptionsMenu/UI/ui_settingsmenu_background",
-            0,
-            0,
-            632,
-            474
-        );
-        background.raycastTarget = true;
-        CreateSlicedImage(
-            "FrameGlow",
-            contentRoot,
-            _optionsFrameGlowAddress,
-            _panelBorder,
-            2,
-            2,
-            628,
-            470,
-            Color.white
-        );
-
-        CreateSlicedImage(
-            "NavPanel",
-            contentRoot,
-            _optionsPanelAddress,
-            _panelBorder,
-            23,
-            70,
-            192,
-            364,
-            Color.white
-        );
-        CreateSlicedImage(
-            "ContentPanel",
-            contentRoot,
-            _optionsPanelAddress,
-            _panelBorder,
-            228,
-            70,
-            382,
-            364,
-            Color.white
-        );
-
-        TextMeshProUGUI header = CreateTextLabel("HeaderTextField", contentRoot);
-        header.text = "OPTIONS";
-        header.color = textColor;
-        header.fontSize = 22;
-        header.alignment = TextAlignmentOptions.Midline;
-        SetSourceRect(header.rectTransform, 41, 32, 155, 26);
-
-        TextMeshProUGUI pageTitle = CreateTextLabel("PageTitleTextField", contentRoot);
         pageTitle.text = "GAMEPLAY";
-        pageTitle.color = accent;
-        pageTitle.fontSize = 14;
-        pageTitle.alignment = TextAlignmentOptions.Midline;
-        SetSourceRect(pageTitle.rectTransform, 240, 36, 357, 22);
+        RawImage background = FindRequiredChild<RawImage>(contentRoot, "BackgroundImage");
 
         BuildTabNavigation(view, contentRoot, textColor);
 
@@ -195,14 +113,10 @@ public static class OptionsMenuPrefabBuilder
         AssignReference(view, "_backgroundImage", background);
         AssignReference(view, "_headerTextField", header);
         AssignReference(view, "_pageTitleTextField", pageTitle);
-        AssignReference(view, "_rowIdleSprite", LoadSprite(_optionsRowAddress, _panelBorder));
-        AssignReference(
-            view,
-            "_rowActiveSprite",
-            LoadSprite(_optionsRowActiveAddress, _panelBorder)
-        );
-        AssignString(view, "_rowIdleSpriteAddress", _optionsRowAddress);
-        AssignString(view, "_rowActiveSpriteAddress", _optionsRowActiveAddress);
+        AssignReference(view, "_rowIdleSprite", LoadSprite(_menuRowAddress, _panelBorder));
+        AssignReference(view, "_rowActiveSprite", LoadSprite(_menuRowActiveAddress, _panelBorder));
+        AssignString(view, "_rowIdleSpriteAddress", _menuRowAddress);
+        AssignString(view, "_rowActiveSpriteAddress", _menuRowActiveAddress);
         AssignReference(view, "_gameplayPage", gameplayPage.gameObject);
         AssignReference(view, "_userInterfacePage", userInterfacePage.gameObject);
         AssignReference(view, "_graphicsPage", graphicsPage.gameObject);
@@ -255,7 +169,7 @@ public static class OptionsMenuPrefabBuilder
         Image[] tabSurfaces = new Image[tabNames.Length];
         for (int i = 0; i < tabNames.Length; i++)
         {
-            Button tabButton = CreateOptionsNavigationRow(
+            Button tabButton = CreateMenuNavigationRow(
                 tabObjectNames[i],
                 contentRoot,
                 tabNames[i],
@@ -557,7 +471,7 @@ public static class OptionsMenuPrefabBuilder
         Image surface = CreateSlicedImage(
             $"{name}Dropdown",
             parent,
-            _optionsBadgeAddress,
+            _menuBadgeAddress,
             _badgeBorder,
             controlRight - controlWidth,
             y,
@@ -588,7 +502,7 @@ public static class OptionsMenuPrefabBuilder
         Image templateImage = CreateSlicedImage(
             "Template",
             surface.transform,
-            _optionsPanelAddress,
+            _menuPanelAddress,
             _panelBorder,
             0,
             controlHeight,
@@ -627,7 +541,7 @@ public static class OptionsMenuPrefabBuilder
         Image itemImage = CreateSlicedImage(
             "Item",
             content,
-            _optionsRowAddress,
+            _menuRowAddress,
             _panelBorder,
             0,
             0,
@@ -639,7 +553,7 @@ public static class OptionsMenuPrefabBuilder
         Toggle item = itemImage.gameObject.AddComponent<Toggle>();
         item.targetGraphic = itemImage;
         item.transition = Selectable.Transition.SpriteSwap;
-        Sprite activeRowSprite = LoadSprite(_optionsRowActiveAddress, _panelBorder);
+        Sprite activeRowSprite = LoadSprite(_menuRowActiveAddress, _panelBorder);
         SpriteState itemSprites = item.spriteState;
         itemSprites.highlightedSprite = activeRowSprite;
         itemSprites.selectedSprite = activeRowSprite;
@@ -825,7 +739,7 @@ public static class OptionsMenuPrefabBuilder
         Image slotRowTemplate = CreateSlicedImage(
             "SlotRowTemplate",
             slotContent,
-            _optionsRowAddress,
+            _menuRowAddress,
             _panelBorder,
             0,
             0,
@@ -924,18 +838,14 @@ public static class OptionsMenuPrefabBuilder
         AssignReference(saveListView, "_metaTemplate", slotMetaTemplate);
         AssignReference(saveListView, "_deleteTemplate", slotDeleteTemplate);
         AssignReference(saveListView, "_renameField", slotRenameField);
-        AssignReference(
-            saveListView,
-            "_rowIdleSprite",
-            LoadSprite(_optionsRowAddress, _panelBorder)
-        );
+        AssignReference(saveListView, "_rowIdleSprite", LoadSprite(_menuRowAddress, _panelBorder));
         AssignReference(
             saveListView,
             "_rowActiveSprite",
-            LoadSprite(_optionsRowActiveAddress, _panelBorder)
+            LoadSprite(_menuRowActiveAddress, _panelBorder)
         );
-        AssignString(saveListView, "_rowIdleSpriteAddress", _optionsRowAddress);
-        AssignString(saveListView, "_rowActiveSpriteAddress", _optionsRowActiveAddress);
+        AssignString(saveListView, "_rowIdleSpriteAddress", _menuRowAddress);
+        AssignString(saveListView, "_rowActiveSpriteAddress", _menuRowActiveAddress);
     }
 
     /// <summary>
@@ -990,7 +900,7 @@ public static class OptionsMenuPrefabBuilder
         Image bindingRowTemplate = CreateSlicedImage(
             "BindingRowTemplate",
             controlsContent,
-            _optionsRowAddress,
+            _menuRowAddress,
             _panelBorder,
             0,
             0,
@@ -1022,7 +932,7 @@ public static class OptionsMenuPrefabBuilder
         Image bindingKeyBadgeTemplate = CreateSlicedImage(
             "BindingKeyBadgeTemplate",
             controlsContent,
-            _optionsBadgeAddress,
+            _menuBadgeAddress,
             _badgeBorder,
             251,
             3,
@@ -1033,7 +943,7 @@ public static class OptionsMenuPrefabBuilder
         bindingKeyBadgeTemplate.raycastTarget = true;
         Button bindingKeyBadgeButton = bindingKeyBadgeTemplate.gameObject.AddComponent<Button>();
         bindingKeyBadgeButton.targetGraphic = bindingKeyBadgeTemplate;
-        ApplyOptionsFillButtonFeedback(bindingKeyBadgeButton);
+        ApplyMenuFillButtonFeedback(bindingKeyBadgeButton);
         bindingKeyBadgeTemplate.gameObject.SetActive(false);
         TextMeshProUGUI bindingKeyTemplate = CreateTextLabel("BindingKeyTemplate", controlsContent);
         bindingKeyTemplate.text = "Key";
@@ -1042,31 +952,13 @@ public static class OptionsMenuPrefabBuilder
         bindingKeyTemplate.alignment = TextAlignmentOptions.Midline;
         SetSourceRect(bindingKeyTemplate.rectTransform, 251, 3, 57, 16);
         bindingKeyTemplate.gameObject.SetActive(false);
-        Image bindingRestoreTemplate = CreateSlicedImage(
+        Button bindingRestoreButton = CreateMenuRestoreButton(
             "BindingRestoreTemplate",
             controlsContent,
-            _optionsBadgeAddress,
-            _badgeBorder,
             312,
-            3,
-            30,
-            16,
-            Color.white
+            3
         );
-        bindingRestoreTemplate.raycastTarget = true;
-        Button bindingRestoreButton = bindingRestoreTemplate.gameObject.AddComponent<Button>();
-        bindingRestoreButton.targetGraphic = bindingRestoreTemplate;
-        ApplyOptionsFillButtonFeedback(bindingRestoreButton);
-        RawImage bindingRestoreIcon = CreateRawImage(
-            "Icon",
-            bindingRestoreTemplate.transform,
-            _restoreDefaultIconAddress,
-            9,
-            2,
-            12,
-            12
-        );
-        bindingRestoreIcon.raycastTarget = false;
+        Image bindingRestoreTemplate = bindingRestoreButton.GetComponent<Image>();
         bindingRestoreTemplate.gameObject.SetActive(false);
 
         AssignReference(view, "_controlsScrollArea", controlsScrollArea);
@@ -1094,7 +986,7 @@ public static class OptionsMenuPrefabBuilder
     {
         RectTransform footerNavigation = CreateChildLayer("FooterNavigation", contentRoot);
         SetSourceRect(footerNavigation, 38, _footerNavigationStartY, 163, _footerNavigationHeight);
-        Button backToGameButton = CreateOptionsNavigationRow(
+        Button backToGameButton = CreateMenuNavigationRow(
             "BackToGame",
             footerNavigation,
             "RETURN TO GAME",
@@ -1104,7 +996,7 @@ public static class OptionsMenuPrefabBuilder
             out _,
             out _
         );
-        Button mainMenuButton = CreateOptionsNavigationRow(
+        Button mainMenuButton = CreateMenuNavigationRow(
             "MainMenu",
             footerNavigation,
             "RETURN TO MAIN MENU",
@@ -1114,7 +1006,7 @@ public static class OptionsMenuPrefabBuilder
             out _,
             out _
         );
-        Button quitButton = CreateOptionsNavigationRow(
+        Button quitButton = CreateMenuNavigationRow(
             "Quit",
             footerNavigation,
             "QUIT",
@@ -1125,7 +1017,7 @@ public static class OptionsMenuPrefabBuilder
             out _
         );
         RectTransform settingsActions = CreateChildLayer("SettingsActions", contentRoot);
-        Button defaultsButton = CreateOptionsActionButton(
+        Button defaultsButton = CreateMenuActionButton(
             settingsActions,
             "DefaultsButton",
             "APPLY DEFAULTS",
@@ -1133,7 +1025,7 @@ public static class OptionsMenuPrefabBuilder
             textColor,
             114
         );
-        Button applyButton = CreateOptionsActionButton(
+        Button applyButton = CreateMenuActionButton(
             settingsActions,
             "ApplyButton",
             "APPLY",
@@ -1188,50 +1080,6 @@ public static class OptionsMenuPrefabBuilder
     }
 
     /// <summary>
-    /// Adds color feedback to a filled button.
-    /// </summary>
-    /// <param name="button">The fill button to restyle.</param>
-    private static void ApplyOptionsFillButtonFeedback(Button button)
-    {
-        if (button == null)
-            return;
-
-        button.transition = Selectable.Transition.ColorTint;
-        ColorBlock colors = button.colors;
-        colors.normalColor = new Color(0.34f, 0.44f, 0.60f);
-        colors.highlightedColor = new Color(0.49f, 0.61f, 0.80f);
-        colors.pressedColor = new Color(0.66f, 0.79f, 0.98f);
-        colors.selectedColor = colors.normalColor;
-        colors.disabledColor = new Color(0.22f, 0.24f, 0.28f, 0.55f);
-        colors.colorMultiplier = 1f;
-        colors.fadeDuration = 0.08f;
-        button.colors = colors;
-    }
-
-    /// <summary>
-    /// Adds pronounced hover feedback to a selectable control's visible cut-corner surface.
-    /// </summary>
-    /// <param name="selectable">The selectable control to restyle.</param>
-    /// <param name="surface">The visible surface receiving the tint.</param>
-    private static void ApplyOptionsSurfaceFeedback(Selectable selectable, Graphic surface)
-    {
-        if (selectable == null || surface == null)
-            return;
-
-        selectable.targetGraphic = surface;
-        selectable.transition = Selectable.Transition.ColorTint;
-        ColorBlock colors = selectable.colors;
-        colors.normalColor = Color.white;
-        colors.highlightedColor = new Color(1.55f, 1.55f, 1.55f, 1f);
-        colors.pressedColor = new Color(1.85f, 1.85f, 1.85f, 1f);
-        colors.selectedColor = colors.normalColor;
-        colors.disabledColor = new Color(0.55f, 0.55f, 0.55f, 0.55f);
-        colors.colorMultiplier = 1f;
-        colors.fadeDuration = 0.06f;
-        selectable.colors = colors;
-    }
-
-    /// <summary>
     /// Adds visible pointer feedback to a dropdown's light-colored surface.
     /// </summary>
     /// <param name="dropdown">The dropdown to restyle.</param>
@@ -1252,21 +1100,6 @@ public static class OptionsMenuPrefabBuilder
         colors.colorMultiplier = 1f;
         colors.fadeDuration = 0.06f;
         dropdown.colors = colors;
-    }
-
-    /// <summary>
-    /// Adds a border to a button.
-    /// </summary>
-    /// <param name="graphic">The button fill graphic to outline.</param>
-    private static void AddOptionsButtonBorder(Graphic graphic)
-    {
-        if (graphic == null)
-            return;
-
-        Outline outline = graphic.gameObject.AddComponent<Outline>();
-        outline.effectColor = new Color(0.60f, 0.69f, 0.85f, 0.9f);
-        outline.effectDistance = new Vector2(1.2f, -1.2f);
-        outline.useGraphicAlpha = false;
     }
 
     /// <summary>
@@ -1299,62 +1132,9 @@ public static class OptionsMenuPrefabBuilder
     )
     {
         TextMeshProUGUI headerField = CreateTextLabel(name, parent);
-        headerField.text = caption;
-        headerField.color = accent;
-        headerField.fontSize = 13;
-        headerField.alignment = TextAlignmentOptions.MidlineLeft;
+        UILayout.ConfigureMenuSectionHeading(headerField, caption, accent);
         SetSourceRect(headerField.rectTransform, 20, y, 200, 16);
         return headerField;
-    }
-
-    /// <summary>
-    /// Creates an Options menu navigation row.
-    /// </summary>
-    /// <param name="name">The button object name.</param>
-    /// <param name="parent">The content-root transform.</param>
-    /// <param name="label">The caps row caption.</param>
-    /// <param name="x">The source-space row left position.</param>
-    /// <param name="y">The source-space row top.</param>
-    /// <param name="color">The label color.</param>
-    /// <param name="labelField">Receives the row label.</param>
-    /// <param name="surface">Receives the row's tinted surface.</param>
-    /// <returns>The configured button.</returns>
-    private static Button CreateOptionsNavigationRow(
-        string name,
-        Transform parent,
-        string label,
-        int x,
-        int y,
-        Color color,
-        out TextMeshProUGUI labelField,
-        out Image surface
-    )
-    {
-        Button button = CreateSlicedButton(
-            name,
-            parent,
-            _optionsRowAddress,
-            _panelBorder,
-            x,
-            y,
-            163,
-            _navigationRowHeight,
-            Color.white
-        );
-        Graphic buttonFrame = button.targetGraphic;
-        surface = CreateOptionsButtonSurface(button);
-        labelField = CreateTextLabel($"{name}Label", button.transform);
-        labelField.text = label;
-        labelField.color = color;
-        labelField.fontSize = 13;
-        labelField.enableAutoSizing = true;
-        labelField.fontSizeMin = 11;
-        labelField.fontSizeMax = 13;
-        labelField.alignment = TextAlignmentOptions.MidlineLeft;
-        SetSourceRect(labelField.rectTransform, 14, 0, 140, _navigationRowHeight);
-        ApplyOptionsSurfaceFeedback(button, surface);
-        AddOptionsButtonBorder(buttonFrame);
-        return button;
     }
 
     /// <summary>
@@ -1398,92 +1178,6 @@ public static class OptionsMenuPrefabBuilder
     }
 
     /// <summary>
-    /// Creates a settings button.
-    /// </summary>
-    /// <param name="parent">The settings-actions container.</param>
-    /// <param name="name">The button object name.</param>
-    /// <param name="label">The caps caption.</param>
-    /// <param name="x">The source-space left position.</param>
-    /// <param name="color">The label color.</param>
-    /// <param name="width">The source-space button width.</param>
-    /// <returns>The configured button.</returns>
-    private static Button CreateOptionsActionButton(
-        Transform parent,
-        string name,
-        string label,
-        int x,
-        Color color,
-        int width = 76
-    )
-    {
-        Button button = CreateSlicedButton(
-            name,
-            parent,
-            _optionsBadgeAddress,
-            _badgeBorder,
-            x,
-            408,
-            width,
-            22,
-            Color.white
-        );
-        Graphic buttonFrame = button.targetGraphic;
-        Image surface = CreateOptionsButtonSurface(button);
-        TextMeshProUGUI text = CreateTextLabel("Label", button.transform);
-        text.text = label;
-        text.color = color;
-        text.fontSize = 11;
-        text.alignment = TextAlignmentOptions.Midline;
-        SetSourceRect(text.rectTransform, 0, 4, width, 14);
-        ApplyOptionsSurfaceFeedback(button, surface);
-        AddOptionsButtonBorder(buttonFrame);
-        return button;
-    }
-
-    /// <summary>
-    /// Adds a high-contrast surface clipped to the button's authored cut-corner shape.
-    /// </summary>
-    /// <param name="button">The button receiving the surface.</param>
-    /// <returns>The clipped surface image.</returns>
-    private static Image CreateOptionsButtonSurface(Button button)
-    {
-        Image buttonImage = button.targetGraphic as Image;
-        GameObject maskObject = new GameObject(
-            "SurfaceMask",
-            typeof(RectTransform),
-            typeof(CanvasRenderer),
-            typeof(Image),
-            typeof(Mask)
-        );
-        maskObject.transform.SetParent(button.transform, false);
-        maskObject.transform.SetAsFirstSibling();
-        RectTransform maskRect = maskObject.GetComponent<RectTransform>();
-        FillParent(maskRect);
-
-        Image maskImage = maskObject.GetComponent<Image>();
-        maskImage.sprite = buttonImage.sprite;
-        maskImage.type = buttonImage.type;
-        maskImage.pixelsPerUnitMultiplier = buttonImage.pixelsPerUnitMultiplier;
-        maskImage.raycastTarget = false;
-        Mask mask = maskObject.GetComponent<Mask>();
-        mask.showMaskGraphic = false;
-
-        GameObject surface = new GameObject(
-            "Surface",
-            typeof(RectTransform),
-            typeof(CanvasRenderer),
-            typeof(Image)
-        );
-        surface.transform.SetParent(maskObject.transform, false);
-        RectTransform surfaceRect = surface.GetComponent<RectTransform>();
-        FillParent(surfaceRect);
-        Image surfaceImage = surface.GetComponent<Image>();
-        surfaceImage.color = _buttonSurfaceColor;
-        surfaceImage.raycastTarget = false;
-        return surfaceImage;
-    }
-
-    /// <summary>
     /// Creates a display setting row.
     /// </summary>
     /// <param name="parent">The Graphics-page container.</param>
@@ -1512,7 +1206,7 @@ public static class OptionsMenuPrefabBuilder
         CreateSlicedImage(
             $"{name}Badge",
             parent,
-            _optionsBadgeAddress,
+            _menuBadgeAddress,
             _badgeBorder,
             194,
             y,
@@ -1567,7 +1261,7 @@ public static class OptionsMenuPrefabBuilder
         badgeImage = CreateSlicedImage(
             $"{name}Badge",
             parent,
-            _optionsBadgeAddress,
+            _menuBadgeAddress,
             _badgeBorder,
             fieldX,
             y,
@@ -1584,25 +1278,10 @@ public static class OptionsMenuPrefabBuilder
             fieldWidth - inputInset * 2,
             18
         );
-        SetSourceRect(input.textViewport, 0, 1, fieldWidth - inputInset * 2, 16);
         input.contentType = TMP_InputField.ContentType.IntegerNumber;
         input.characterValidation = TMP_InputField.CharacterValidation.Integer;
         input.characterLimit = 10;
-        if (input.textComponent is TextMeshProUGUI text)
-        {
-            // TMP's geometry-based Midline alignment cannot place an empty-field caret
-            // reliably because there is no glyph geometry to center against. Middle uses
-            // stable font metrics, keeping the caret and entered text vertically aligned.
-            text.alignment = TextAlignmentOptions.Center;
-            text.fontSize = 10;
-            SetSourceRect(text.rectTransform, 0, 0, fieldWidth - inputInset * 2, 16);
-        }
-        if (input.placeholder is TextMeshProUGUI placeholder)
-        {
-            placeholder.alignment = TextAlignmentOptions.Center;
-            placeholder.fontSize = 10;
-            SetSourceRect(placeholder.rectTransform, 0, 0, fieldWidth - inputInset * 2, 16);
-        }
+        UILayout.ConfigureCenteredNumericInput(input, new Color(0.875f, 0.910f, 0.941f), 10f, 0, 1);
         return input;
     }
 
@@ -1810,40 +1489,6 @@ public static class OptionsMenuPrefabBuilder
     }
 
     /// <summary>
-    /// Enables a generated runtime component and rejects a missing reference.
-    /// </summary>
-    /// <typeparam name="T">The runtime component type.</typeparam>
-    /// <param name="component">The component to enable.</param>
-    /// <returns>The enabled component.</returns>
-    private static T EnableRuntimeComponent<T>(T component)
-        where T : MonoBehaviour
-    {
-        if (component == null)
-            throw new ArgumentNullException(nameof(component));
-
-        component.enabled = true;
-        return component;
-    }
-
-    /// <summary>
-    /// Enables a generated window and gives it an interactive canvas group.
-    /// </summary>
-    /// <param name="window">The window root being authored.</param>
-    private static void ConfigureWindowRoot(UIWindow window)
-    {
-        EnableRuntimeComponent(window);
-        CanvasGroup inputGroup = window.GetComponent<CanvasGroup>();
-        if (inputGroup == null)
-            inputGroup = window.gameObject.AddComponent<CanvasGroup>();
-
-        inputGroup.alpha = 1f;
-        inputGroup.interactable = true;
-        inputGroup.blocksRaycasts = true;
-        inputGroup.ignoreParentGroups = false;
-        AssignReference(window, "inputGroup", inputGroup);
-    }
-
-    /// <summary>
     /// Creates a rectangular child layer stretched across its parent.
     /// </summary>
     /// <param name="name">The generated object name.</param>
@@ -1854,203 +1499,6 @@ public static class OptionsMenuPrefabBuilder
         RectTransform rect = CreateLayer(name, parent).GetComponent<RectTransform>();
         FillParent(rect);
         return rect;
-    }
-
-    /// <summary>
-    /// Creates a top-left anchored layer with a source-pixel size.
-    /// </summary>
-    /// <param name="name">The generated object name.</param>
-    /// <param name="parent">The layer's parent.</param>
-    /// <param name="width">The layer width in source pixels.</param>
-    /// <param name="height">The layer height in source pixels.</param>
-    /// <returns>The generated rectangle.</returns>
-    private static RectTransform CreateSourceRectLayer(
-        string name,
-        Transform parent,
-        int width,
-        int height
-    )
-    {
-        RectTransform rect = CreateLayer(name, parent).GetComponent<RectTransform>();
-        SetSourceRect(rect, 0, 0, width, height);
-        return rect;
-    }
-
-    /// <summary>
-    /// Creates and positions a sliced sprite image.
-    /// </summary>
-    /// <param name="name">The generated object name.</param>
-    /// <param name="parent">The image's parent.</param>
-    /// <param name="spriteAddress">The stable content address of the sliced sprite.</param>
-    /// <param name="border">The sprite's explicit nine-slice border.</param>
-    /// <param name="x">The source-space left coordinate.</param>
-    /// <param name="y">The source-space top coordinate.</param>
-    /// <param name="width">The source-space width.</param>
-    /// <param name="height">The source-space height.</param>
-    /// <param name="color">The image tint.</param>
-    /// <returns>The generated image.</returns>
-    private static Image CreateSlicedImage(
-        string name,
-        Transform parent,
-        string spriteAddress,
-        Vector4 border,
-        int x,
-        int y,
-        int width,
-        int height,
-        Color color
-    )
-    {
-        GameObject imageObject = new GameObject(
-            name,
-            typeof(RectTransform),
-            typeof(CanvasRenderer),
-            typeof(Image)
-        );
-        imageObject.transform.SetParent(parent, false);
-        Image image = imageObject.GetComponent<Image>();
-        image.sprite = LoadSprite(spriteAddress, border);
-        image.type = Image.Type.Sliced;
-        image.color = color;
-        image.raycastTarget = false;
-        ContentSpriteBinding binding = imageObject.AddComponent<ContentSpriteBinding>();
-        binding.SetAddress(spriteAddress, border);
-        SetSourceRect(image.rectTransform, x, y, width, height);
-        return image;
-    }
-
-    /// <summary>
-    /// Creates a sliced image configured as a non-transitioning button.
-    /// </summary>
-    /// <param name="name">The generated object name.</param>
-    /// <param name="parent">The button's parent.</param>
-    /// <param name="spriteAddress">The stable content address of the sliced sprite.</param>
-    /// <param name="border">The sprite's explicit nine-slice border.</param>
-    /// <param name="x">The source-space left coordinate.</param>
-    /// <param name="y">The source-space top coordinate.</param>
-    /// <param name="width">The source-space width.</param>
-    /// <param name="height">The source-space height.</param>
-    /// <param name="color">The image tint.</param>
-    /// <returns>The generated button.</returns>
-    private static Button CreateSlicedButton(
-        string name,
-        Transform parent,
-        string spriteAddress,
-        Vector4 border,
-        int x,
-        int y,
-        int width,
-        int height,
-        Color color
-    )
-    {
-        Image image = CreateSlicedImage(
-            name,
-            parent,
-            spriteAddress,
-            border,
-            x,
-            y,
-            width,
-            height,
-            color
-        );
-        image.raycastTarget = true;
-        Button button = image.gameObject.AddComponent<Button>();
-        button.targetGraphic = image;
-        button.transition = Selectable.Transition.None;
-        return button;
-    }
-
-    /// <summary>
-    /// Creates a text label with the Options menu's baseline presentation.
-    /// </summary>
-    /// <param name="name">The generated object name.</param>
-    /// <param name="parent">The label's parent.</param>
-    /// <returns>The generated text label.</returns>
-    private static TextMeshProUGUI CreateTextLabel(string name, Transform parent)
-    {
-        GameObject labelObject = new GameObject(
-            name,
-            typeof(RectTransform),
-            typeof(CanvasRenderer),
-            typeof(TextMeshProUGUI),
-            typeof(Shadow)
-        );
-        labelObject.transform.SetParent(parent, false);
-
-        TextMeshProUGUI label = labelObject.GetComponent<TextMeshProUGUI>();
-        label.text = "Corellian";
-        label.color = Color.yellow;
-        label.fontSize = 13;
-        label.alignment = TextAlignmentOptions.Top;
-        label.textWrappingMode = TextWrappingModes.NoWrap;
-        label.overflowMode = TextOverflowModes.Overflow;
-        label.raycastTarget = false;
-
-        Shadow shadow = labelObject.GetComponent<Shadow>();
-        shadow.effectColor = Color.black;
-        shadow.effectDistance = new Vector2(1f, -1f);
-        return label;
-    }
-
-    /// <summary>
-    /// Creates an optionally textured raw-image surface used by menu controls.
-    /// </summary>
-    /// <param name="name">The generated object name.</param>
-    /// <param name="parent">The image's parent.</param>
-    /// <param name="texturePath">The optional content texture address.</param>
-    /// <returns>The generated raw image.</returns>
-    private static RawImage CreateRawButton(
-        string name,
-        Transform parent,
-        string texturePath = null
-    )
-    {
-        GameObject imageObject = new GameObject(
-            name,
-            typeof(RectTransform),
-            typeof(CanvasRenderer),
-            typeof(RawImage)
-        );
-        imageObject.transform.SetParent(parent, false);
-        RawImage image = imageObject.GetComponent<RawImage>();
-        image.texture = string.IsNullOrEmpty(texturePath) ? null : LoadTexture(texturePath);
-        image.raycastTarget = false;
-        if (!string.IsNullOrEmpty(texturePath))
-            AttachTextureBinding(image, texturePath);
-        if (image.texture != null)
-        {
-            Vector2Int size = UILayout.GetTextureSourceSize(image.texture);
-            SetSourceRect(image.rectTransform, 0, 0, size.x, size.y);
-        }
-        return image;
-    }
-
-    /// <summary>
-    /// Creates a textured raw image at a source-space rectangle.
-    /// </summary>
-    /// <param name="name">The generated object name.</param>
-    /// <param name="parent">The image's parent.</param>
-    /// <param name="texturePath">The content texture address.</param>
-    /// <param name="x">The source-space left coordinate.</param>
-    /// <param name="y">The source-space top coordinate.</param>
-    /// <param name="width">The source-space width.</param>
-    /// <param name="height">The source-space height.</param>
-    /// <returns>The generated raw image.</returns>
-    private static RawImage CreateRawImage(
-        string name,
-        Transform parent,
-        string texturePath,
-        int x,
-        int y,
-        int width,
-        int height
-    )
-    {
-        RawImage image = CreateRawButton(name, parent, texturePath);
-        SetSourceRect(image.rectTransform, x, y, width, height);
-        return image;
     }
 
     /// <summary>
@@ -2081,256 +1529,6 @@ public static class OptionsMenuPrefabBuilder
             UnityEngine.Object.DestroyImmediate(textureBinding);
         }
         return button;
-    }
-
-    /// <summary>
-    /// Instantiates and configures the shared text-input prefab for the Options layout.
-    /// </summary>
-    /// <param name="name">The generated object name.</param>
-    /// <param name="parent">The field's parent.</param>
-    /// <param name="placeholderText">The empty-field prompt.</param>
-    /// <param name="x">The source-space left coordinate.</param>
-    /// <param name="y">The source-space top coordinate.</param>
-    /// <param name="width">The source-space width.</param>
-    /// <param name="height">The source-space height.</param>
-    /// <returns>The configured input field.</returns>
-    private static TMP_InputField CreateTextInputField(
-        string name,
-        Transform parent,
-        string placeholderText,
-        int x,
-        int y,
-        int width,
-        int height
-    )
-    {
-        TMP_InputField input = InstantiatePrefabComponent<TMP_InputField>(
-            _textInputPrefabPath,
-            parent
-        );
-        input.gameObject.name = name;
-        RectTransform rect = input.transform as RectTransform;
-        SetSourceRect(rect, x, y, width, height);
-
-        Image image = input.GetComponent<Image>();
-        image.color = Color.clear;
-        image.raycastTarget = true;
-
-        TextMeshProUGUI text = input.textComponent as TextMeshProUGUI;
-        if (text == null)
-            throw new MissingReferenceException($"{name}/Text is missing.");
-        text.text = string.Empty;
-        text.color = Color.white;
-        text.fontSize = 12;
-        text.alignment = TextAlignmentOptions.TopLeft;
-        SetSourceRect(text.rectTransform, 2, 1, width - 2, height - 2);
-
-        TextMeshProUGUI placeholder = input.placeholder as TextMeshProUGUI;
-        if (placeholder == null)
-            throw new MissingReferenceException($"{name}/Placeholder is missing.");
-        placeholder.text = placeholderText;
-        placeholder.color = Color.white;
-        placeholder.fontSize = 12;
-        placeholder.alignment = TextAlignmentOptions.TopLeft;
-        SetSourceRect(placeholder.rectTransform, 2, 1, width - 2, height - 2);
-
-        input.enabled = true;
-        input.targetGraphic = image;
-        input.transition = Selectable.Transition.None;
-        input.lineType = TMP_InputField.LineType.SingleLine;
-        if (input.textViewport == null || input.textViewport == rect)
-            throw new MissingReferenceException($"{name}/TextViewport is missing or invalid.");
-        input.textComponent = text;
-        input.placeholder = placeholder;
-        return input;
-    }
-
-    /// <summary>
-    /// Instantiates and lays out a shared scroll area for an Options list.
-    /// </summary>
-    /// <param name="parent">The scroll area's parent.</param>
-    /// <param name="name">The generated object name.</param>
-    /// <param name="x">The source-space left coordinate.</param>
-    /// <param name="y">The source-space top coordinate.</param>
-    /// <param name="width">The source-space width.</param>
-    /// <param name="height">The source-space height.</param>
-    /// <param name="viewportX">The viewport left coordinate within the scroll area.</param>
-    /// <param name="viewportY">The viewport top coordinate within the scroll area.</param>
-    /// <param name="viewportWidth">The viewport width.</param>
-    /// <param name="viewportHeight">The viewport height.</param>
-    /// <param name="scrollbarX">The scrollbar left coordinate within the scroll area.</param>
-    /// <param name="scrollbarY">The scrollbar top coordinate within the scroll area.</param>
-    /// <param name="scrollbarWidth">The scrollbar width.</param>
-    /// <param name="scrollbarHeight">The scrollbar height.</param>
-    /// <param name="contentRoot">The generated content container.</param>
-    /// <returns>The configured scroll-area view.</returns>
-    private static ScrollAreaView CreateScrollAreaView(
-        Transform parent,
-        string name,
-        int x,
-        int y,
-        int width,
-        int height,
-        int viewportX,
-        int viewportY,
-        int viewportWidth,
-        int viewportHeight,
-        int scrollbarX,
-        int scrollbarY,
-        int scrollbarWidth,
-        int scrollbarHeight,
-        out RectTransform contentRoot
-    )
-    {
-        ScrollAreaView view = InstantiatePrefabComponent<ScrollAreaView>(
-            _scrollAreaPrefabPath,
-            parent
-        );
-        GameObject root = view.gameObject;
-        root.name = name;
-        root.SetActive(false);
-        SetSourceRect(root.GetComponent<RectTransform>(), x, y, width, height);
-        view.enabled = true;
-
-        RectTransform scrollRoot = view.ScrollRoot;
-        SetSourceRect(scrollRoot, viewportX, viewportY, viewportWidth, viewportHeight);
-        ScrollRect scrollRect = scrollRoot.GetComponent<ScrollRect>();
-        scrollRect.horizontal = false;
-        scrollRect.vertical = true;
-        scrollRect.movementType = ScrollRect.MovementType.Clamped;
-        scrollRect.inertia = false;
-
-        RectTransform viewportRect = view.ViewportRoot;
-        SetSourceRect(viewportRect, 0, 0, viewportWidth, viewportHeight);
-        Image viewportImage = viewportRect.GetComponent<Image>();
-        viewportImage.color = Color.clear;
-        viewportImage.raycastTarget = true;
-
-        contentRoot = view.ContentRoot;
-        SetSourceRect(contentRoot, 0, 0, viewportWidth, viewportHeight);
-        scrollRect.viewport = viewportRect;
-        scrollRect.content = contentRoot;
-
-        Scrollbar scrollbar = view.GetComponentInChildren<Scrollbar>(true);
-        if (scrollbar == null)
-            throw new MissingReferenceException($"{name}/Scrollbar is missing.");
-        scrollbar.handleRect = null;
-        SetSourceRect(
-            scrollbar.transform as RectTransform,
-            scrollbarX,
-            scrollbarY,
-            scrollbarWidth,
-            scrollbarHeight
-        );
-
-        Texture2D scrollUpTexture = LoadTexture(_scrollUpAddress);
-        Texture2D scrollDownTexture = LoadTexture(_scrollDownAddress);
-        int upArrowHeight = GetTextureHeight(scrollUpTexture, 9);
-        int downArrowHeight = GetTextureHeight(scrollDownTexture, 9);
-        int trackHeight = Mathf.Max(0, scrollbarHeight - upArrowHeight - downArrowHeight);
-
-        Image scrollbarBackground = scrollbar.GetComponent<Image>();
-        scrollbarBackground.color = Color.clear;
-        scrollbarBackground.raycastTarget = true;
-        scrollbar.direction = Scrollbar.Direction.BottomToTop;
-
-        Image trackBackground = FindRequiredChild<Image>(
-            scrollbar.transform,
-            "TrackBackgroundImage"
-        );
-        trackBackground.color = Color.black;
-        SetSourceRect(trackBackground.rectTransform, 0, upArrowHeight, scrollbarWidth, trackHeight);
-
-        RawImage scrollUpImage = FindRequiredChild<RawImage>(
-            scrollbar.transform,
-            "ScrollUpButtonImage"
-        );
-        scrollUpImage.texture = scrollUpTexture;
-        AttachTextureBinding(scrollUpImage, _scrollUpAddress);
-        SetSourceRect(scrollUpImage.rectTransform, 0, 0, scrollbarWidth, upArrowHeight);
-        ConfigureScrollButton(scrollUpImage);
-
-        RawImage scrollDownImage = FindRequiredChild<RawImage>(
-            scrollbar.transform,
-            "ScrollDownButtonImage"
-        );
-        scrollDownImage.texture = scrollDownTexture;
-        AttachTextureBinding(scrollDownImage, _scrollDownAddress);
-        SetSourceRect(
-            scrollDownImage.rectTransform,
-            0,
-            scrollbarHeight - downArrowHeight,
-            scrollbarWidth,
-            downArrowHeight
-        );
-        ConfigureScrollButton(scrollDownImage);
-
-        RectTransform slidingArea = FindRequiredChild<RectTransform>(
-            scrollbar.transform,
-            "SlidingArea"
-        );
-        SetSourceRect(slidingArea, 0, upArrowHeight, scrollbarWidth, trackHeight);
-        RawImage handleImage = FindRequiredChild<RawImage>(slidingArea, "Handle");
-        handleImage.texture = LoadTexture(_scrollHandleAddress);
-        AttachTextureBinding(handleImage, _scrollHandleAddress);
-        FillParent(handleImage.rectTransform);
-        handleImage.raycastTarget = true;
-        scrollbar.handleRect = handleImage.rectTransform;
-        scrollbar.targetGraphic = handleImage;
-        scrollbar.transition = Selectable.Transition.None;
-        scrollRect.verticalScrollbar = scrollbar;
-        scrollRect.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.Permanent;
-
-        root.SetActive(true);
-        return view;
-    }
-
-    /// <summary>
-    /// Applies a top-left anchored source-pixel rectangle.
-    /// </summary>
-    /// <param name="rect">The rectangle to place.</param>
-    /// <param name="x">The source-space left coordinate.</param>
-    /// <param name="y">The source-space top coordinate.</param>
-    /// <param name="width">The source-space width.</param>
-    /// <param name="height">The source-space height.</param>
-    private static void SetSourceRect(RectTransform rect, int x, int y, int width, int height)
-    {
-        rect.anchorMin = new Vector2(0f, 1f);
-        rect.anchorMax = new Vector2(0f, 1f);
-        rect.pivot = new Vector2(0f, 1f);
-        rect.anchoredPosition = new Vector2(x, -y);
-        rect.sizeDelta = new Vector2(width, height);
-        rect.localScale = Vector3.one;
-    }
-
-    /// <summary>
-    /// Stretches a rectangle across its parent without offsets.
-    /// </summary>
-    /// <param name="rect">The rectangle to stretch.</param>
-    private static void FillParent(RectTransform rect)
-    {
-        rect.anchorMin = Vector2.zero;
-        rect.anchorMax = Vector2.one;
-        rect.offsetMin = Vector2.zero;
-        rect.offsetMax = Vector2.zero;
-        rect.localScale = Vector3.one;
-    }
-
-    /// <summary>
-    /// Assigns an object reference to a serialized component field.
-    /// </summary>
-    /// <param name="target">The component containing the serialized field.</param>
-    /// <param name="propertyName">The serialized field name.</param>
-    /// <param name="value">The object reference to assign.</param>
-    private static void AssignReference(
-        UnityEngine.Object target,
-        string propertyName,
-        UnityEngine.Object value
-    )
-    {
-        SerializedObject serializedObject = new SerializedObject(target);
-        FindRequiredProperty(target, serializedObject, propertyName).objectReferenceValue = value;
-        serializedObject.ApplyModifiedPropertiesWithoutUndo();
     }
 
     /// <summary>
@@ -2380,186 +1578,5 @@ public static class OptionsMenuPrefabBuilder
         SerializedObject serializedObject = new SerializedObject(target);
         FindRequiredProperty(target, serializedObject, propertyName).stringValue = value;
         serializedObject.ApplyModifiedPropertiesWithoutUndo();
-    }
-
-    /// <summary>
-    /// Saves a generated hierarchy as a prefab and rejects an unsuccessful write.
-    /// </summary>
-    /// <param name="root">The generated hierarchy root.</param>
-    /// <param name="path">The destination prefab path.</param>
-    /// <returns>The saved prefab asset.</returns>
-    private static GameObject SaveGeneratedPrefabAsset(GameObject root, string path)
-    {
-        Directory.CreateDirectory(Path.GetDirectoryName(path));
-        GameObject saved = PrefabUtility.SaveAsPrefabAsset(root, path, out bool success);
-        if (!success || saved == null)
-            throw new InvalidOperationException($"Failed to save generated prefab at {path}.");
-        return saved;
-    }
-
-    /// <summary>
-    /// Creates an empty rectangular layer under a parent.
-    /// </summary>
-    /// <param name="name">The generated object name.</param>
-    /// <param name="parent">The layer's parent.</param>
-    /// <returns>The generated layer.</returns>
-    private static GameObject CreateLayer(string name, Transform parent)
-    {
-        GameObject layer = new GameObject(name, typeof(RectTransform));
-        layer.transform.SetParent(parent, false);
-        return layer;
-    }
-
-    /// <summary>
-    /// Instantiates a shared nested prefab and returns its required component.
-    /// </summary>
-    /// <typeparam name="T">The required root component type.</typeparam>
-    /// <param name="path">The shared prefab path.</param>
-    /// <param name="parent">The nested instance's parent.</param>
-    /// <returns>The enabled component on the nested instance.</returns>
-    private static T InstantiatePrefabComponent<T>(string path, Transform parent)
-        where T : MonoBehaviour
-    {
-        GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
-        if (prefab == null)
-            throw new MissingReferenceException($"Prefab asset is missing at {path}.");
-        T prefabComponent = prefab.GetComponent<T>();
-        if (prefabComponent == null)
-            throw new MissingReferenceException(
-                $"Prefab asset at {path} is missing {typeof(T).Name}."
-            );
-
-        GameObject instance = (GameObject)
-            PrefabUtility.InstantiatePrefab(prefabComponent.gameObject, parent);
-        T component = instance.GetComponent<T>();
-        if (component == null)
-            throw new MissingReferenceException(
-                $"Nested prefab instance from {path} is missing {typeof(T).Name}."
-            );
-        component.enabled = true;
-        return component;
-    }
-
-    /// <summary>
-    /// Finds a required component on a named direct child.
-    /// </summary>
-    /// <typeparam name="T">The required component type.</typeparam>
-    /// <param name="parent">The hierarchy parent to search.</param>
-    /// <param name="childName">The direct child name.</param>
-    /// <returns>The required child component.</returns>
-    private static T FindRequiredChild<T>(Transform parent, string childName)
-        where T : Component
-    {
-        Transform child = parent.Find(childName);
-        T component = child == null ? null : child.GetComponent<T>();
-        if (component == null)
-            throw new MissingReferenceException(
-                $"{parent.name}/{childName} is missing {typeof(T).Name}."
-            );
-        return component;
-    }
-
-    /// <summary>
-    /// Loads a texture from the active development content pack.
-    /// </summary>
-    /// <param name="path">The content texture address.</param>
-    /// <returns>The loaded texture.</returns>
-    private static Texture2D LoadTexture(string path)
-    {
-        return ContentPackEditor.Assets.GetTexture(path);
-    }
-
-    /// <summary>
-    /// Loads a sprite with an explicit border from the active development content pack.
-    /// </summary>
-    /// <param name="address">The content sprite address.</param>
-    /// <param name="border">The sprite's nine-slice border in pixels.</param>
-    /// <returns>The loaded sprite.</returns>
-    private static Sprite LoadSprite(string address, Vector4 border)
-    {
-        return ContentPackEditor.Assets.GetSprite(address, border);
-    }
-
-    /// <summary>
-    /// Replaces a raw image's runtime content binding with the requested address.
-    /// </summary>
-    /// <param name="image">The image receiving the runtime binding.</param>
-    /// <param name="texturePath">The content texture address.</param>
-    private static void AttachTextureBinding(RawImage image, string texturePath)
-    {
-        string address = ToContentAddress(texturePath);
-        if (image.TryGetComponent(out RawImagePressVisual _))
-        {
-            ContentTextureBinding textureBinding = image.GetComponent<ContentTextureBinding>();
-            if (textureBinding != null)
-                UnityEngine.Object.DestroyImmediate(textureBinding);
-
-            ContentPressVisualBinding pressBinding =
-                image.GetComponent<ContentPressVisualBinding>()
-                ?? image.gameObject.AddComponent<ContentPressVisualBinding>();
-            pressBinding.SetAddresses(address, null);
-            return;
-        }
-
-        ContentTextureBinding existing = image.GetComponent<ContentTextureBinding>();
-        if (existing != null)
-            UnityEngine.Object.DestroyImmediate(existing);
-        ContentTextureBinding binding = image.gameObject.AddComponent<ContentTextureBinding>();
-        binding.SetAddress(address);
-    }
-
-    /// <summary>
-    /// Removes a texture extension to produce a runtime content address.
-    /// </summary>
-    /// <param name="texturePath">The authored texture path.</param>
-    /// <returns>The extensionless runtime address.</returns>
-    private static string ToContentAddress(string texturePath)
-    {
-        int separatorIndex = texturePath.LastIndexOf('/');
-        int extensionIndex = texturePath.LastIndexOf('.');
-        return extensionIndex > separatorIndex ? texturePath[..extensionIndex] : texturePath;
-    }
-
-    /// <summary>
-    /// Reads a texture's source height or uses a fallback when unavailable.
-    /// </summary>
-    /// <param name="texture">The texture whose source height is needed.</param>
-    /// <param name="fallback">The height used when metadata is unavailable.</param>
-    /// <returns>The usable source height.</returns>
-    private static int GetTextureHeight(Texture texture, int fallback)
-    {
-        int height = UILayout.GetTextureSourceHeight(texture);
-        return height > 0 ? height : fallback;
-    }
-
-    /// <summary>
-    /// Configures an authored scrollbar arrow as a raw-image button.
-    /// </summary>
-    /// <param name="image">The arrow image to configure.</param>
-    private static void ConfigureScrollButton(RawImage image)
-    {
-        image.raycastTarget = true;
-        Button button = image.GetComponent<Button>();
-        button.targetGraphic = image;
-        button.transition = Selectable.Transition.None;
-    }
-
-    /// <summary>
-    /// Finds a serialized field or fails the UI build when the field is missing.
-    /// </summary>
-    /// <param name="target">The component expected to contain the field.</param>
-    /// <param name="serializedObject">The serialized representation of the component.</param>
-    /// <param name="propertyName">The serialized field name.</param>
-    /// <returns>The required serialized field.</returns>
-    private static SerializedProperty FindRequiredProperty(
-        UnityEngine.Object target,
-        SerializedObject serializedObject,
-        string propertyName
-    )
-    {
-        SerializedProperty property = serializedObject.FindProperty(propertyName);
-        if (property == null)
-            throw new MissingMemberException(target.GetType().Name, propertyName);
-        return property;
     }
 }
