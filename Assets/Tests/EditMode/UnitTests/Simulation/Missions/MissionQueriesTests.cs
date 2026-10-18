@@ -182,6 +182,67 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void GetFoilProbability_MaximumDetectionWithCommander_SaturatesNegativeScore()
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer defender) = BuildDetectionScene();
+            Regiment detector = planet.GetChildren<Regiment>().Single();
+            planet.AddVisitor("empire");
+            game.Config.ProbabilityTables.Mission.FoilDefenderScalingPercent = 100;
+            SetFoilTable(game, new Dictionary<int, int> { { int.MinValue, 100 }, { 0, 0 } });
+            MissionQueries queries = new MissionQueries(game);
+            Assert.IsTrue(
+                queries.TryCreateMission(
+                    CreateContext(EspionageMission.MissionTypeID, spy, planet),
+                    out Mission mission
+                )
+            );
+            spy.SetBaseRating(SkillRating.Espionage, 0);
+            defender.SetBaseRating(SkillRating.Espionage, 50);
+            detector.DetectionRating = int.MaxValue;
+
+            int probability = queries.GetFoilProbability(
+                mission,
+                detector,
+                0,
+                new[] { spy },
+                planet
+            );
+
+            Assert.AreEqual(100, probability);
+        }
+
+        [Test]
+        public void GetDecoyProbability_MaximumDetectionWithCommander_SaturatesNegativeScore()
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer defender) = BuildDetectionScene();
+            Regiment detector = planet.GetChildren<Regiment>().Single();
+            Officer decoy = EntityFactory.CreateOfficer("decoy", "empire");
+            game.AttachNode(decoy, spy.GetParent());
+            planet.AddVisitor("empire");
+            game.Config.ProbabilityTables.Mission.DecoyDefenderScalingPercent = 100;
+            SetDecoyTable(game, new Dictionary<int, int> { { int.MinValue, 100 }, { 0, 0 } });
+            MissionQueries queries = new MissionQueries(game);
+            Assert.IsTrue(
+                queries.TryCreateMission(
+                    CreateContext(
+                        EspionageMission.MissionTypeID,
+                        new List<IMissionParticipant> { spy },
+                        new List<IMissionParticipant> { decoy },
+                        planet
+                    ),
+                    out Mission mission
+                )
+            );
+            decoy.SetBaseRating(SkillRating.Espionage, 0);
+            defender.SetBaseRating(SkillRating.Espionage, 50);
+            detector.DetectionRating = int.MaxValue;
+
+            int probability = queries.GetDecoyProbability(mission, decoy, detector, planet);
+
+            Assert.AreEqual(100, probability);
+        }
+
+        [Test]
         public void GetMissionOdds_GroundDetector_OnlyChecksBeforeObjective()
         {
             (GameRoot game, Planet planet, Officer spy, Officer _) = BuildDetectionScene();

@@ -1047,7 +1047,6 @@ namespace Rebellion.Tests.Managers
                 ResourceAvailability = GameResourceAvailability.Limited,
                 PlayerFactionID = "FNEMP1",
                 StartingFactionIDs = new string[] { "FNALL1", "FNEMP1" },
-                StartingResearchLevel = 3,
             };
 
             GameRoot game = new GameRoot { Summary = summary, Galaxy = new GalaxyMap() };
@@ -1066,7 +1065,6 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(2, loadedGame.Summary.StartingFactionIDs.Length);
             Assert.AreEqual("FNALL1", loadedGame.Summary.StartingFactionIDs[0]);
             Assert.AreEqual("FNEMP1", loadedGame.Summary.StartingFactionIDs[1]);
-            Assert.AreEqual(3, loadedGame.Summary.StartingResearchLevel);
         }
 
         [Test]

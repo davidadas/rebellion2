@@ -8,6 +8,7 @@ using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Logging;
+using Rebellion.Util.Mathematics;
 
 namespace Rebellion.Simulation
 {

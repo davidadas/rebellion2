@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.Util.Random;
@@ -182,7 +183,7 @@ namespace Rebellion.Generation
             out string typeID
         )
         {
-            int mineProbability = (planet.NumRawResourceNodes - mineCount) * mineMultiplier;
+            long mineProbability = (long)(planet.NumRawResourceNodes - mineCount) * mineMultiplier;
             if (mineProbability > 0 && rng.NextInt(0, 100) < mineProbability)
             {
                 mineCount++;

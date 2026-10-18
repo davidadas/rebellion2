@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
+using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.Generation;
@@ -28,6 +29,24 @@ namespace Rebellion.Tests.Generation
                 deployed,
                 "Core planet with energy should receive at least one facility."
             );
+        }
+
+        [Test]
+        public void Seed_MaximumMineMultiplier_PreservesGuaranteedMineChance()
+        {
+            PlanetSector sector = CreateCore(energy: 1, rawNodes: 2);
+            GameGenerationConfig rules = CreateRules();
+            rules.FacilityGeneration.CoreMineMultiplier = int.MaxValue;
+
+            List<Building> deployed = SeedFacilities(
+                new[] { sector },
+                CreateTemplates(),
+                rules,
+                new GalaxyClassificationResult(),
+                new StubRNG()
+            );
+
+            Assert.AreEqual(BuildingType.Mine, deployed.Single().BuildingType);
         }
 
         [Test]

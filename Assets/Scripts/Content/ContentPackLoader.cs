@@ -11,7 +11,6 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Units;
-using Rebellion.Generation;
 using Rebellion.Util.Serialization;
 using UnityEngine;
 

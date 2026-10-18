@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
+using Rebellion.Util.Mathematics;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Generation
@@ -339,12 +340,25 @@ namespace Rebellion.Generation
         /// <returns>The rolled value.</returns>
         private int RollDice(DiceFormula diceConfig, IRandomNumberProvider rng)
         {
-            int value = diceConfig.Base;
-            if (diceConfig.Random1 > 0)
-                value += rng.NextInt(0, diceConfig.Random1 + 1);
-            if (diceConfig.Random2 > 0)
-                value += rng.NextInt(0, diceConfig.Random2 + 1);
-            return value;
+            long value = diceConfig.Base;
+            value += RollInclusiveBonus(diceConfig.Random1, rng);
+            value += RollInclusiveBonus(diceConfig.Random2, rng);
+            return IntegerMath.SaturateToInt(value);
+        }
+
+        /// <summary>
+        /// Rolls a non-negative bonus including its configured upper bound.
+        /// </summary>
+        /// <param name="maximum">The inclusive upper bound.</param>
+        /// <param name="rng">Random number provider.</param>
+        /// <returns>The rolled bonus, or zero for a non-positive bound.</returns>
+        private static int RollInclusiveBonus(int maximum, IRandomNumberProvider rng)
+        {
+            if (maximum <= 0)
+                return 0;
+            if (maximum == int.MaxValue)
+                return (int)(rng.NextDouble() * ((double)int.MaxValue + 1));
+            return rng.NextInt(0, maximum + 1);
         }
     }
 }

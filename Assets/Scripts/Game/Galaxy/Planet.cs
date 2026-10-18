@@ -7,6 +7,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Mathematics;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Galaxy
@@ -501,7 +502,7 @@ namespace Rebellion.Game.Galaxy
             if (faction == null || shift == 0 || !IsPopulated())
                 return;
             int currentSupport = GetPopularSupport(faction.InstanceID);
-            int newSupport = Math.Clamp(currentSupport + shift, 0, 100);
+            int newSupport = Math.Clamp(IntegerMath.SaturatingAdd(currentSupport, shift), 0, 100);
             if (newSupport == currentSupport)
                 return;
             if (shift > 0)

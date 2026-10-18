@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Util.Reflection;
 
 /// <summary>
 /// Carries new-game and load-game selections between menu and strategy scenes.
@@ -8,6 +9,7 @@ using Rebellion.Game;
 public static class GameLaunchContext
 {
     private static ContentPack _contentPackAfterRestart;
+    private static GameSummary _customGameSummaryAfterContentRestart;
     private static string _saveFileNameAfterContentRestart;
 
     /// <summary>
@@ -49,7 +51,26 @@ public static class GameLaunchContext
             throw new ArgumentException("A save file name is required.", nameof(fileName));
 
         _saveFileNameAfterContentRestart = fileName;
+        _customGameSummaryAfterContentRestart = null;
         _contentPackAfterRestart = contentPack;
+    }
+
+    /// <summary>
+    /// Preserves a custom-game launch while application content is reconstructed.
+    /// </summary>
+    /// <param name="summary">The complete custom-game configuration.</param>
+    /// <param name="contentPack">The selected content pack.</param>
+    internal static void PrepareCustomGameAfterContentRestart(
+        GameSummary summary,
+        ContentPack contentPack
+    )
+    {
+        _customGameSummaryAfterContentRestart = (
+            summary ?? throw new ArgumentNullException(nameof(summary))
+        ).GetDeepCopy();
+        _saveFileNameAfterContentRestart = null;
+        _contentPackAfterRestart =
+            contentPack ?? throw new ArgumentNullException(nameof(contentPack));
     }
 
     /// <summary>
@@ -78,6 +99,19 @@ public static class GameLaunchContext
     }
 
     /// <summary>
+    /// Restores and consumes a custom-game launch preserved across content reconstruction.
+    /// </summary>
+    internal static void RestoreCustomGameAfterContentRestart()
+    {
+        if (_customGameSummaryAfterContentRestart == null)
+            return;
+
+        GameSummary summary = _customGameSummaryAfterContentRestart;
+        _customGameSummaryAfterContentRestart = null;
+        ApplyCustomGameSummary(summary);
+    }
+
+    /// <summary>
     /// Restores the launch context to the authored new-game defaults.
     /// </summary>
     /// <param name="contentPack">The active content pack.</param>
@@ -90,11 +124,23 @@ public static class GameLaunchContext
     }
 
     /// <summary>
+    /// Replaces the pending launch configuration with a detached custom-game summary.
+    /// </summary>
+    /// <param name="summary">The complete custom-game configuration.</param>
+    internal static void ApplyCustomGameSummary(GameSummary summary)
+    {
+        Summary = (summary ?? throw new ArgumentNullException(nameof(summary))).GetDeepCopy();
+        SaveFileName = null;
+        IsLoadGame = false;
+        PlayIntroCutscene = false;
+    }
+
+    /// <summary>
     /// Creates the default launch summary.
     /// </summary>
     /// <param name="contentPack">The active content pack.</param>
     /// <returns>The default launch summary.</returns>
-    private static GameSummary CreateDefaultSummary(ContentPack contentPack)
+    internal static GameSummary CreateDefaultSummary(ContentPack contentPack)
     {
         if (contentPack == null)
             throw new ArgumentNullException(nameof(contentPack));
@@ -106,7 +152,6 @@ public static class GameLaunchContext
             GalaxySize = GameSize.Large,
             VictoryCondition = GameVictoryCondition.Conquest,
             ResourceAvailability = GameResourceAvailability.Normal,
-            StartingResearchLevel = 0,
             PlayerFactionID = contentPack.Scenario.DefaultPlayerFactionID,
             StartingFactionIDs = startingFactionIds,
             PackID = contentPack.Definition.ID,
