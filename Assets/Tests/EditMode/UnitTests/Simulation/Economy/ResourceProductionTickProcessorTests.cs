@@ -209,6 +209,37 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void ProcessTick_MaximumCustomMineOutputWithSmuggling_DivertsCompletedCycles()
+        {
+            _game.Summary.Difficulty = GameDifficulty.Easy;
+            _game.Summary.PlayerFactionID = "FACTION2";
+            _game.Config.DifficultyModifiers[GameDifficulty.Easy] = new DifficultyModifiers
+            {
+                MineOutputPercent = 1000,
+            };
+            _planet.PopularSupport = new Dictionary<string, int>
+            {
+                { "FACTION1", 15 },
+                { "FACTION2", 85 },
+            };
+            SmugglingCommands smuggling = new SmugglingCommands(_game);
+            _system = new ResourceProductionTickProcessor(
+                new SmugglingTickProcessor(smuggling),
+                smuggling
+            );
+            Building mine = AddCompleteBuilding(_planet, BuildingType.Mine, processRate: 1);
+            mine.ProductionInputReserved = true;
+            mine.ProductionCycleDuration = 1;
+            mine.ResourceStartupCyclePending = false;
+            Faction beneficiary = _game.GetFactionByOwnerInstanceID("FACTION2");
+
+            _system.ProcessTick(_game);
+
+            Assert.AreEqual(0, _faction.RawMaterialStockpile);
+            Assert.AreEqual(2, beneficiary.RawMaterialStockpile);
+        }
+
+        [Test]
         public void ProcessTick_SmugglingRoll_RedirectsCompletedRefinedResourceToBeneficiary()
         {
             _planet.PopularSupport = new Dictionary<string, int>

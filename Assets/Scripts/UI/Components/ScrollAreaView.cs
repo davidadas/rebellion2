@@ -178,6 +178,7 @@ public sealed class ScrollAreaView : MonoBehaviour
             resetScroll || !hasContentLayout
                 ? 1f
                 : Mathf.Clamp01(scrollRect.verticalNormalizedPosition);
+        float pendingTargetOffset = targetScrollOffset;
         hasContentLayout = true;
 
         contentRoot.sizeDelta = new Vector2(
@@ -199,7 +200,16 @@ public sealed class ScrollAreaView : MonoBehaviour
         {
             if (scrollbar != null)
                 scrollbar.size = Mathf.Clamp01(viewportHeight / appliedContentHeight);
-            SetImmediateNormalizedScrollPosition(normalizedPosition);
+            if (resetScroll)
+            {
+                SetImmediateNormalizedScrollPosition(normalizedPosition);
+            }
+            else
+            {
+                ApplyNormalizedScrollPosition(normalizedPosition);
+                SetScrollbarValue(normalizedPosition);
+                targetScrollOffset = Mathf.Clamp(pendingTargetOffset, 0f, GetMaxScrollOffset());
+            }
         }
         else if (!scrollbarVisible)
         {

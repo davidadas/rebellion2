@@ -19,6 +19,8 @@ public sealed class AppBootstrap : MonoBehaviour
     private const string _mainMenuPreloadID = "main-menu";
     private const string _strategyPreloadID = "strategy";
 
+    private static GameObject _cutscenePlayerPrefab;
+
 #if UNITY_EDITOR
     private const string _editorCutscenePrefabPath =
         "Assets/Prefabs/UI/Cutscenes/CutscenePlayer.prefab";
@@ -166,11 +168,17 @@ public sealed class AppBootstrap : MonoBehaviour
         _cutsceneManager.InitializeContent(_contentAssets);
         _cutsceneManager.InitializeAudio(audioManager);
 
+        if (_cutscenePlayerPrefab != null)
+            _cutsceneManager.Initialize(_cutscenePlayerPrefab);
+
 #if UNITY_EDITOR
-        GameObject cutscenePrefab = AssetDatabase.LoadAssetAtPath<GameObject>(
-            _editorCutscenePrefabPath
-        );
-        _cutsceneManager.Initialize(cutscenePrefab);
+        if (_cutscenePlayerPrefab == null)
+        {
+            GameObject cutscenePrefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+                _editorCutscenePrefabPath
+            );
+            InitializeCutsceneManager(cutscenePrefab);
+        }
 #endif
 
         if (inputManager == null)
@@ -353,6 +361,12 @@ public sealed class AppBootstrap : MonoBehaviour
     /// <param name="cutscenePrefab">The cutscene player prefab.</param>
     internal void InitializeCutsceneManager(GameObject cutscenePrefab)
     {
+        _cutscenePlayerPrefab =
+            cutscenePrefab
+            ?? throw new ArgumentNullException(
+                nameof(cutscenePrefab),
+                "Cutscene player prefab is missing."
+            );
         _cutsceneManager.Initialize(cutscenePrefab);
     }
 

@@ -197,6 +197,18 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.IsTrue(ApplyButton().interactable);
         }
 
+        [TestCase("mine-output")]
+        [TestCase("refinery-output")]
+        public void EditValue_ResourceOutputAboveSafeLimit_RetainsPreviousValue(string key)
+        {
+            view.Initialize(TestContent.Pack, summary);
+            string original = Input(key, "Player").text;
+
+            Input(key, "Player").onEndEdit.Invoke("1001");
+
+            Assert.AreEqual(original, Input(key, "Player").text);
+        }
+
         [Test]
         public void EditValue_MissionPointBonus_AcceptsNegativeInteger()
         {
@@ -629,7 +641,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                 TableRow("refinement-multiplier").Find("Description").GetComponent<TMP_Text>().text
             );
             Assert.AreEqual(
-                "Maintenance from each working mine and refinery pair. Higher supports more units. Range: 1 or higher.",
+                "Maintenance from each working mine and refinery pair. Higher supports more units. Range: 1 to 500.",
                 TableRow("resource-processing").Find("Description").GetComponent<TMP_Text>().text
             );
             Assert.IsFalse(
@@ -659,6 +671,19 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                 authored,
                 TestContent.Pack.GameData.Factions[0].Settings.GarrisonEfficiency
             );
+        }
+
+        [Test]
+        public void EditValue_ProcessingPerFacilityAboveSafeLimit_RetainsPreviousValue()
+        {
+            view.Initialize(TestContent.Pack, summary);
+            view.SelectCategory(NewGameSettingsCategory.FactionModifiers);
+            TMP_InputField input = TableInput("resource-processing", "Player");
+            string original = input.text;
+
+            input.onEndEdit.Invoke("501");
+
+            Assert.AreEqual(original, TableInput("resource-processing", "Player").text);
         }
 
         [Test]
@@ -998,7 +1023,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             RectTransform label = (RectTransform)row.Find("Label");
             TMP_Text description = row.Find("Description").GetComponent<TMP_Text>();
             Assert.AreEqual(
-                "How fast mines produce raw materials. Higher is faster. Range: 0% or higher.",
+                "How fast mines produce raw materials. Higher is faster. Range: 0% to 1,000%.",
                 description.text
             );
             Assert.AreEqual(9f, description.fontSize);

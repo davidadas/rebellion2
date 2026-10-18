@@ -208,6 +208,23 @@ namespace Rebellion.Tests.UI.Components
         }
 
         [Test]
+        public void SetContentHeight_PendingWheelMovement_PreservesQueuedTarget()
+        {
+            _scrollArea.SetContentHeight(200, 10, true);
+            PointerEventData eventData = new PointerEventData(null)
+            {
+                scrollDelta = new Vector2(0, -1),
+            };
+            _scrollArea.RelayScroll(eventData);
+
+            _scrollArea.SetContentHeight(200, 10, false);
+            for (int frame = 0; frame < 30; frame++)
+                _scrollArea.AdvanceScroll(0.04f);
+
+            Assert.AreEqual(5f, _contentRoot.anchoredPosition.y, 0.01f);
+        }
+
+        [Test]
         public void RelayScroll_NullEventData_PreservesPosition()
         {
             _scrollArea.SetContentHeight(200, 10, true);

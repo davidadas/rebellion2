@@ -12,6 +12,9 @@ using Rebellion.Util.Reflection;
 /// </summary>
 internal sealed class CustomGameSettingsSession
 {
+    private const int _maximumResourceOutputPercent = 1000;
+    private const int _maximumResourceProcessingPointsPerFacility = 500;
+
     internal sealed class GenerationEntry
     {
         internal NewGameSettingsCategory Category;
@@ -349,11 +352,11 @@ internal sealed class CustomGameSettingsSession
         Add(
             "mine-output",
             "Mine Output Modifier",
-            "How fast mines produce raw materials. Higher is faster. Range: 0% or higher.",
+            "How fast mines produce raw materials. Higher is faster. Range: 0% to 1,000%.",
             false,
             0,
             false,
-            null,
+            _maximumResourceOutputPercent,
             playerDefaults.MineOutputPercent,
             aiDefaults.MineOutputPercent,
             playerValues.MineOutputPercent,
@@ -362,11 +365,11 @@ internal sealed class CustomGameSettingsSession
         Add(
             "refinery-output",
             "Refinery Output Modifier",
-            "How fast refineries produce refined materials. Higher is faster. Range: 0% or higher.",
+            "How fast refineries produce refined materials. Higher is faster. Range: 0% to 1,000%.",
             false,
             0,
             false,
-            null,
+            _maximumResourceOutputPercent,
             playerDefaults.RefineryOutputPercent,
             aiDefaults.RefineryOutputPercent,
             playerValues.RefineryOutputPercent,
@@ -593,6 +596,7 @@ internal sealed class CustomGameSettingsSession
             "Refinement Multiplier",
             "Usable supply gained from raw and refined materials. Higher provides more supply. Range: 1 or higher.",
             1,
+            int.MaxValue,
             settings => settings.RefinementMultiplier,
             (settings, value) => settings.RefinementMultiplier = value
         );
@@ -600,8 +604,9 @@ internal sealed class CustomGameSettingsSession
             factions,
             "resource-processing",
             "Processing per Facility",
-            "Maintenance from each working mine and refinery pair. Higher supports more units. Range: 1 or higher.",
+            "Maintenance from each working mine and refinery pair. Higher supports more units. Range: 1 to 500.",
             1,
+            _maximumResourceProcessingPointsPerFacility,
             settings => settings.ResourceProcessingPointsPerFacility,
             (settings, value) => settings.ResourceProcessingPointsPerFacility = value
         );
@@ -613,6 +618,7 @@ internal sealed class CustomGameSettingsSession
             "Garrison Efficiency",
             "Troops needed to garrison core worlds. Higher requires fewer troops. Range: 1 or higher.",
             1,
+            int.MaxValue,
             settings => settings.GarrisonEfficiency,
             (settings, value) => settings.GarrisonEfficiency = value
         );
@@ -622,6 +628,7 @@ internal sealed class CustomGameSettingsSession
             "Uprising Resistance",
             "Garrison strength during core-world uprisings. Higher makes each troop stronger. Range: 1 or higher.",
             1,
+            int.MaxValue,
             settings => settings.UprisingResistance,
             (settings, value) => settings.UprisingResistance = value
         );
@@ -633,6 +640,7 @@ internal sealed class CustomGameSettingsSession
             "Core Bombardment Penalty",
             "Sets the sector-wide support shift after civilian bombardment in a core sector.",
             int.MinValue,
+            int.MaxValue,
             settings => settings.CivilianBombardmentCoreSupportPenalty,
             (settings, value) => settings.CivilianBombardmentCoreSupportPenalty = value
         );
@@ -642,6 +650,7 @@ internal sealed class CustomGameSettingsSession
             "Rim Bombardment Penalty",
             "Sets the sector-wide support shift after civilian bombardment in a rim sector.",
             int.MinValue,
+            int.MaxValue,
             settings => settings.CivilianBombardmentOuterRimSupportPenalty,
             (settings, value) => settings.CivilianBombardmentOuterRimSupportPenalty = value
         );
@@ -651,6 +660,7 @@ internal sealed class CustomGameSettingsSession
             "Battle-Loss Loyalty Divisor",
             "How strongly battle losses affect officer loyalty. Higher reduces the effect. Range: 1 or higher.",
             1,
+            int.MaxValue,
             settings => settings.BattleLossLoyaltyDivisor,
             (settings, value) => settings.BattleLossLoyaltyDivisor = value
         );
@@ -664,6 +674,7 @@ internal sealed class CustomGameSettingsSession
     /// <param name="label">The visible row label.</param>
     /// <param name="description">The visible behavior description.</param>
     /// <param name="minimum">The inclusive minimum value.</param>
+    /// <param name="maximum">The inclusive maximum value.</param>
     /// <param name="read">Reads the value from one faction's settings.</param>
     /// <param name="write">Writes the value to one faction's settings.</param>
     private void AddFactionModifierRow(
@@ -672,6 +683,7 @@ internal sealed class CustomGameSettingsSession
         string label,
         string description,
         int minimum,
+        int maximum,
         Func<FactionSettings, int> read,
         Action<FactionSettings, int> write
     )
@@ -687,7 +699,7 @@ internal sealed class CustomGameSettingsSession
                 description,
                 faction.GetDisplayName(),
                 minimum,
-                int.MaxValue,
+                maximum,
                 config => read(config.FactionModifiers[index].Settings),
                 (config, value) => write(config.FactionModifiers[index].Settings, value)
             );
