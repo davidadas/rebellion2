@@ -1030,6 +1030,145 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(0, game.GetSceneNodesByType<Mission>().Count);
         }
 
+        [Test]
+        public void GetCompletionMissionOdds_InciteStrongGarrison_ReturnsZeroWithoutChangingOperationalOdds()
+        {
+            (GameRoot game, Planet _, Planet target, Officer officer, MissionQueries queries) =
+                BuildMissionOddsScene("rebels");
+            game.Config.ProbabilityTables.Mission.InciteUprising = new Dictionary<int, int>
+            {
+                { -1000, 100 },
+            };
+            for (int index = 0; index < 20; index++)
+                game.AttachNode(CreateCompletedRegiment($"guard-{index}", "rebels"), target);
+            MissionContext context = CreateContext(
+                InciteUprisingMission.MissionTypeID,
+                officer,
+                target
+            );
+
+            MissionOdds displayed = queries.GetCompletionMissionOdds(context);
+            MissionOdds operational = queries.GetOperationalMissionOdds(context);
+
+            Assert.AreEqual(0, displayed.ObjectiveSuccessProbability);
+            Assert.AreEqual(100, operational.ObjectiveSuccessProbability);
+        }
+
+        [Test]
+        public void GetCompletionMissionOdds_IncitePartialControlChance_CombinesSkillAndIncidentProbabilities()
+        {
+            (GameRoot game, Planet _, Planet target, Officer officer, MissionQueries queries) =
+                BuildMissionOddsScene("rebels");
+            game.Config.ProbabilityTables.Mission.InciteUprising = new Dictionary<int, int>
+            {
+                { -1000, 50 },
+            };
+            game.Config.ProbabilityTables.Mission.Foil = new Dictionary<int, int> { { -1000, 0 } };
+            game.Config.AI.Garrison.SupportThreshold = 60;
+            game.Config.Uprising.DiceRange = 1;
+            game.Config.Uprising.DiceAddend = 0;
+            game.Config.Uprising.MissionLeadershipDivisor = 10;
+            game.Config.Uprising.InciteMissionSupportShift = -10;
+            game.Config.Uprising.PrimaryConsequenceTable = new Dictionary<int, int> { { 10, 2 } };
+            game.Config.Uprising.SecondaryConsequenceTable.Clear();
+            officer.SetBaseRating(SkillRating.Leadership, 100);
+            target.PopularSupport = new Dictionary<string, int>
+            {
+                { "rebels", 60 },
+                { "empire", 40 },
+            };
+            game.AttachNode(CreateCompletedRegiment("guard", "rebels"), target);
+
+            MissionOdds odds = queries.GetCompletionMissionOdds(
+                CreateContext(InciteUprisingMission.MissionTypeID, officer, target)
+            );
+
+            Assert.AreEqual(37.5, odds.ObjectiveSuccessProbability, 0.000001);
+            Assert.AreEqual(37.5, odds.OverallSuccessProbability, 0.000001);
+        }
+
+        [Test]
+        public void GetCompletionMissionOdds_ObservedGarrison_DoesNotReadHiddenLiveRegiments()
+        {
+            (GameRoot game, Planet _, Planet target, Officer officer, MissionQueries queries) =
+                BuildMissionOddsScene("rebels");
+            game.Config.ProbabilityTables.Mission.InciteUprising = new Dictionary<int, int>
+            {
+                { -1000, 100 },
+            };
+            target.PopularSupport = new Dictionary<string, int>
+            {
+                { "rebels", 60 },
+                { "empire", 40 },
+            };
+            game.Config.Uprising.InciteMissionSupportShift = -10;
+            game.Config.SupportShift.OwnershipTransferThreshold = 60;
+            for (int index = 0; index < 20; index++)
+                game.AttachNode(CreateCompletedRegiment($"guard-{index}", "rebels"), target);
+            Planet observed = (Planet)target.CreateCopy();
+            observed.SetParent(target.GetParent());
+
+            MissionOdds visible = queries.GetCompletionMissionOdds(
+                CreateContext(InciteUprisingMission.MissionTypeID, officer, observed)
+            );
+            MissionOdds live = queries.GetCompletionMissionOdds(
+                CreateContext(InciteUprisingMission.MissionTypeID, officer, target)
+            );
+
+            Assert.AreEqual(100, visible.ObjectiveSuccessProbability);
+            Assert.AreEqual(0, live.ObjectiveSuccessProbability);
+            Assert.AreEqual(20, target.GetRegimentCount());
+            Assert.AreEqual(60, target.GetPopularSupport("rebels"));
+        }
+
+        [TestCase(1, 50)]
+        [TestCase(2, 75)]
+        public void GetCompletionMissionOdds_InciteTeam_CombinesIndependentSkillRolls(
+            int participantCount,
+            double expected
+        )
+        {
+            (GameRoot game, Planet origin, Planet target, Officer officer, MissionQueries queries) =
+                BuildMissionOddsScene("rebels");
+            game.Config.ProbabilityTables.Mission.InciteUprising = new Dictionary<int, int>
+            {
+                { -1000, 50 },
+            };
+            game.Config.Uprising.InciteMissionSupportShift = -10;
+            target.PopularSupport = new Dictionary<string, int>
+            {
+                { "rebels", 60 },
+                { "empire", 40 },
+            };
+            game.Config.SupportShift.OwnershipTransferThreshold = 60;
+            List<IMissionParticipant> participants = new List<IMissionParticipant> { officer };
+            if (participantCount == 2)
+            {
+                Officer second = EntityFactory.CreateOfficer("second", "empire");
+                game.AttachNode(second, origin);
+                participants.Add(second);
+            }
+
+            MissionOdds odds = queries.GetCompletionMissionOdds(
+                CreateContext(
+                    InciteUprisingMission.MissionTypeID,
+                    participants,
+                    new List<IMissionParticipant>(),
+                    target
+                )
+            );
+
+            Assert.AreEqual(expected, odds.ObjectiveSuccessProbability, 0.000001);
+        }
+
+        [Test]
+        public void GetCompletionMissionOdds_NullContext_ReturnsNull()
+        {
+            MissionQueries queries = new MissionQueries(TestGame.Create(TestConfig.Create()));
+
+            Assert.IsNull(queries.GetCompletionMissionOdds(null));
+        }
+
         /// <summary>
         /// Builds scene.
         /// </summary>

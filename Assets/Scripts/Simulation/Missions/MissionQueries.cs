@@ -137,6 +137,35 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
+        /// Estimates the chance of reporting success on the next execution using the caller's
+        /// observed planet state. Uprising missions include their control and garrison objectives.
+        /// Operational odds remain available for valuing progress across repeated executions.
+        /// </summary>
+        /// <param name="context">The mission configuration and observed destination.</param>
+        /// <returns>The completion and foiling odds, or null when the mission cannot be created.</returns>
+        internal MissionOdds GetCompletionMissionOdds(MissionContext context)
+        {
+            MissionOdds odds = GetOperationalMissionOdds(context);
+            if (odds == null)
+                return null;
+            if (
+                context.MissionTypeID != InciteUprisingMission.MissionTypeID
+                && context.MissionTypeID != SubdueUprisingMission.MissionTypeID
+            )
+                return odds;
+            if (!TryCreateMission(context, out Mission mission))
+                return null;
+
+            double completionProbability = new UprisingMissionQueries(
+                _game
+            ).GetCompletionProbability(mission, context.Location as Planet);
+            return new MissionOdds(
+                odds.ObjectiveSuccessProbability * completionProbability,
+                odds.FoilProbability
+            );
+        }
+
+        /// <summary>
         /// Estimates mission odds from detector snapshots supplied for every encounter planet.
         /// </summary>
         /// <param name="context">The mission configuration to evaluate.</param>
