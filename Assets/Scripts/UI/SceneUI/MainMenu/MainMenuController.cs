@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -7,7 +8,7 @@ using UnityEngine;
 /// <summary>
 /// Owns main-menu launch state, audio, cutscenes, and scene navigation.
 /// </summary>
-public sealed class MainMenuController : MonoBehaviour
+public sealed class MainMenuController : MonoBehaviour, ICancelable
 {
     private const string _creditsVideoPath = "Application/Credits/Videos/credits";
     private const string _selectSfxPath = "Application/MainMenu/Audio/select";
@@ -17,6 +18,14 @@ public sealed class MainMenuController : MonoBehaviour
 
     [SerializeField]
     private OptionsMenuView _optionsMenuPrefab;
+
+    [SerializeField]
+    private NewGameSettingsView _newGameSettingsPrefab;
+
+    private UIWindow _newGameSettingsWindow;
+    private NewGameSettingsView _newGameSettingsView;
+    private IReadOnlyList<ContentPackDefinition> _customGamePacks;
+    private CustomGamePresetManager _customGamePresetManager;
 
     [SerializeField]
     [Min(0f)]
@@ -34,6 +43,7 @@ public sealed class MainMenuController : MonoBehaviour
     /// </summary>
     private void Awake()
     {
+        _customGamePresetManager = new CustomGamePresetManager();
         if (Application.isPlaying)
         {
             if (view == null)
@@ -77,6 +87,7 @@ public sealed class MainMenuController : MonoBehaviour
         view.SaveLoadMenuRequested += OpenSaveLoadMenu;
         view.ExitRequested += ExitApplication;
         view.CreditsRequested += ShowCredits;
+        view.NewGameSettingsRequested += OpenNewGameSettings;
         view.AudioCueRequested += PlayAudioCue;
     }
 
@@ -99,6 +110,7 @@ public sealed class MainMenuController : MonoBehaviour
             view?.InitializeContent(bootstrap.GetContentAssets());
             view?.RenderVictoryCondition(currentVictoryCondition);
             view?.RenderFactions(contentPack.Scenario.PlayableFactionIDs);
+            view?.ResetNewGameSettingsPresentation();
             AudioManager audioManager = bootstrap.GetAudioManager();
             audioManager.PreloadSfx(view?.GetAudioCuePaths());
             if (LoadingScreenController.IsLoadInProgress)
@@ -131,6 +143,7 @@ public sealed class MainMenuController : MonoBehaviour
     /// </summary>
     private void OnDisable()
     {
+        CloseNewGameSettings();
         if (view == null)
             return;
 
@@ -141,6 +154,7 @@ public sealed class MainMenuController : MonoBehaviour
         view.SaveLoadMenuRequested -= OpenSaveLoadMenu;
         view.ExitRequested -= ExitApplication;
         view.CreditsRequested -= ShowCredits;
+        view.NewGameSettingsRequested -= OpenNewGameSettings;
         view.AudioCueRequested -= PlayAudioCue;
 
         if (_appInputController != null)
@@ -182,6 +196,8 @@ public sealed class MainMenuController : MonoBehaviour
     /// </summary>
     private void HandleOptionsMenuRequested()
     {
+        if (TryCancel())
+            return;
         EnsureOptionsController();
         if (optionsMenuController == null)
             return;
@@ -284,7 +300,7 @@ public sealed class MainMenuController : MonoBehaviour
     /// </summary>
     private void Update()
     {
-        bool open = optionsMenuController?.IsOpen == true;
+        bool open = optionsMenuController?.IsOpen == true || _newGameSettingsWindow != null;
         view?.RenderOptionsOverlay(open);
         if (!open || !optionsDirty)
             return;
@@ -332,6 +348,8 @@ public sealed class MainMenuController : MonoBehaviour
     /// <param name="tab">The page to show initially.</param>
     private void OpenOptions(OptionsMenuTab tab)
     {
+        if (_newGameSettingsWindow != null)
+            return;
         EnsureOptionsController();
         if (optionsMenuController == null)
             return;
@@ -356,6 +374,143 @@ public sealed class MainMenuController : MonoBehaviour
     private void MarkOptionsDirty()
     {
         optionsDirty = true;
+    }
+
+    /// <summary>
+    /// Opens the custom-game editor through the existing main-menu modal surface.
+    /// </summary>
+    private void OpenNewGameSettings()
+    {
+        if (_newGameSettingsWindow != null || optionsMenuController?.IsOpen == true)
+            return;
+        AppBootstrap bootstrap = AppBootstrap.EnsureExists();
+        UIWindowManager manager = view.OptionsWindowManager;
+        manager.SetContentSource(bootstrap.GetContentAssets());
+        Vector2Int position = view.GetOptionsWindowPosition(_newGameSettingsPrefab);
+        Vector2 size = ((RectTransform)_newGameSettingsPrefab.transform).sizeDelta;
+        view.RenderOptionsOverlay(true);
+        try
+        {
+            _newGameSettingsWindow = manager.CreateWindow(
+                _newGameSettingsPrefab,
+                view.OptionsWindowLayer,
+                "NewGameSettings",
+                position.x,
+                position.y,
+                new Vector2Int((int)size.x, (int)size.y),
+                true,
+                true,
+                false,
+                false,
+                out _newGameSettingsView
+            );
+            _newGameSettingsView.CloseRequested += CloseNewGameSettings;
+            _newGameSettingsView.StartRequested += StartCustomGame;
+            _newGameSettingsView.ContentPackRequested += SelectCustomGameContentPack;
+            ContentPack contentPack = bootstrap.GetContentPack();
+            _customGamePacks = ContentPackLoader.DiscoverPacks(contentPack.ContentRootPath);
+            _newGameSettingsView.Initialize(
+                contentPack,
+                GameLaunchContext.Summary,
+                _optionsMenuPrefab,
+                _customGamePresetManager,
+                _customGamePacks
+            );
+            bootstrap.GetCancelStack()?.Register(this);
+        }
+        catch
+        {
+            CloseNewGameSettings();
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Loads a selected content pack and resets content-dependent custom-game choices.
+    /// </summary>
+    /// <param name="packID">The selected installed content-pack identity.</param>
+    private void SelectCustomGameContentPack(string packID)
+    {
+        if (_newGameSettingsView == null || string.IsNullOrWhiteSpace(packID))
+            return;
+
+        ContentPackDefinition definition = _customGamePacks?.FirstOrDefault(candidate =>
+            string.Equals(candidate.ID, packID, System.StringComparison.Ordinal)
+        );
+        if (definition == null)
+            throw new InvalidDataException($"Content pack '{packID}' is not installed.");
+
+        ContentPack current = _appBootstrap.GetContentPack();
+        string[] disabledModIDs = _appBootstrap
+            .GetUserSettingsManager()
+            .Settings.Content.DisabledModIDs;
+        ContentPack selected = ContentPackLoader.OpenExact(
+            current.ContentRootPath,
+            definition.ID,
+            definition.DefaultScenarioID,
+            disabledModIDs
+        );
+        _newGameSettingsView.Initialize(
+            selected,
+            GameLaunchContext.CreateDefaultSummary(selected),
+            _optionsMenuPrefab,
+            _customGamePresetManager,
+            _customGamePacks
+        );
+    }
+
+    /// <summary>
+    /// Applies the complete custom-game configuration and starts its strategy scene.
+    /// </summary>
+    /// <param name="contentPack">The selected content pack.</param>
+    /// <param name="summary">The configured launch summary.</param>
+    private void StartCustomGame(ContentPack contentPack, GameSummary summary)
+    {
+        currentVictoryCondition = summary.VictoryCondition;
+        if (_appBootstrap.GetContentPack().MatchesContentIdentity(summary))
+        {
+            GameLaunchContext.ApplyCustomGameSummary(summary);
+            StartGame();
+            return;
+        }
+
+        LoadingScreenController.StartCustomGame(_appBootstrap, contentPack, summary);
+        CloseNewGameSettings();
+    }
+
+    /// <summary>
+    /// Closes the custom-game editor.
+    /// </summary>
+    private void CloseNewGameSettings()
+    {
+        if (_newGameSettingsWindow == null)
+            return;
+        if (_newGameSettingsView != null)
+        {
+            _newGameSettingsView.CloseRequested -= CloseNewGameSettings;
+            _newGameSettingsView.StartRequested -= StartCustomGame;
+            _newGameSettingsView.ContentPackRequested -= SelectCustomGameContentPack;
+        }
+        AppBootstrap.Instance?.GetCancelStack()?.Unregister(this);
+        if (view?.OptionsWindowManager != null)
+        {
+            view.OptionsWindowManager.DestroyWindow(_newGameSettingsWindow);
+            view.RenderOptionsOverlay(false);
+        }
+        _newGameSettingsWindow = null;
+        _newGameSettingsView = null;
+    }
+
+    /// <summary>
+    /// Handles cancellation only while this scene owns the custom-game editor.
+    /// </summary>
+    /// <returns>Whether the preview consumed cancellation.</returns>
+    public bool TryCancel()
+    {
+        if (_newGameSettingsWindow == null)
+            return false;
+        CloseNewGameSettings();
+        return true;
     }
 
     /// <summary>

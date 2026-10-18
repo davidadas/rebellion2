@@ -8,7 +8,6 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Units;
-using Rebellion.Generation;
 
 /// <summary>
 /// Provides the typed game data composed from the selected content pack and scenario.

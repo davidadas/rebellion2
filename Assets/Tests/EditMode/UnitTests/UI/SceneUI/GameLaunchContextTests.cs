@@ -1,5 +1,6 @@
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Util.Reflection;
 
 namespace Rebellion.Tests.UI.SceneUI
 {
@@ -46,7 +47,6 @@ namespace Rebellion.Tests.UI.SceneUI
                 GameResourceAvailability.Normal,
                 GameLaunchContext.Summary.ResourceAvailability
             );
-            Assert.AreEqual(0, GameLaunchContext.Summary.StartingResearchLevel);
             Assert.AreEqual("FNALL1", GameLaunchContext.Summary.PlayerFactionID);
             Assert.IsNull(GameLaunchContext.SaveFileName);
             Assert.IsFalse(GameLaunchContext.IsLoadGame);
@@ -85,6 +85,41 @@ namespace Rebellion.Tests.UI.SceneUI
             Assert.IsNull(GameLaunchContext.SaveFileName);
             Assert.IsFalse(GameLaunchContext.IsLoadGame);
             Assert.IsFalse(GameLaunchContext.PlayIntroCutscene);
+        }
+
+        [Test]
+        public void ApplyCustomGameSummary_ConfiguredSummary_ReplacesContextWithDetachedCopy()
+        {
+            GameSummary configured = new GameSummary
+            {
+                PlayerFactionID = "FNEMP1",
+                Difficulty = GameDifficulty.Hard,
+                GalaxySize = GameSize.Small,
+                VictoryCondition = GameVictoryCondition.Headquarters,
+                ResourceAvailability = GameResourceAvailability.Abundant,
+                StartingFactionIDs = new[] { "FNEMP1", "FNALL1" },
+                GenerationConfigOverride = TestContent.Data.GenerationConfig.GetDeepCopy(),
+            };
+            GameLaunchContext.PrepareSaveLoad("campaign");
+
+            GameLaunchContext.ApplyCustomGameSummary(configured);
+            configured.StartingFactionIDs[0] = "changed";
+            configured.GenerationConfigOverride.FacilityGeneration.CoreMineMultiplier = 999;
+
+            Assert.AreEqual("FNEMP1", GameLaunchContext.Summary.PlayerFactionID);
+            Assert.AreEqual(GameDifficulty.Hard, GameLaunchContext.Summary.Difficulty);
+            Assert.AreEqual("FNEMP1", GameLaunchContext.Summary.StartingFactionIDs[0]);
+            Assert.AreNotEqual(
+                999,
+                GameLaunchContext
+                    .Summary
+                    .GenerationConfigOverride
+                    .FacilityGeneration
+                    .CoreMineMultiplier
+            );
+            Assert.AreNotSame(configured, GameLaunchContext.Summary);
+            Assert.IsNull(GameLaunchContext.SaveFileName);
+            Assert.IsFalse(GameLaunchContext.IsLoadGame);
         }
     }
 }

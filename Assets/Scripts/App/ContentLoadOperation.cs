@@ -2,9 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Rebellion.Game;
+using Rebellion.Util.Reflection;
 
 /// <summary>
-/// Owns preparation, commitment, and recovery for one saved-game or content-selection load.
+/// Owns preparation, commitment, and recovery for one game or content-selection load.
 /// The operation survives reconstruction of the application services that consume its content.
 /// </summary>
 internal sealed class ContentLoadOperation
@@ -27,6 +29,7 @@ internal sealed class ContentLoadOperation
     private ContentPack _candidate;
     private string[] _disabledModIDs;
     private string _saveFileName;
+    private GameSummary _customGameSummary;
     private bool _isContentReload;
     private LoadState _state;
 
@@ -56,6 +59,12 @@ internal sealed class ContentLoadOperation
     /// Gets the requested save, or null for a content selection or recovery to the main menu.
     /// </summary>
     internal string SaveFileName => IsRecovering ? null : _saveFileName;
+
+    /// <summary>
+    /// Gets an independent custom-game configuration, or null during other loads and recovery.
+    /// </summary>
+    internal GameSummary CustomGameSummary =>
+        IsRecovering ? null : _customGameSummary?.GetDeepCopy();
 
     /// <summary>
     /// Captures the active content and committed preferences before any preparation starts.
@@ -151,7 +160,36 @@ internal sealed class ContentLoadOperation
     }
 
     /// <summary>
-    /// Admits one recovery attempt and selects the previous content without retaining the failed save.
+    /// Validates a custom-game launch and stages its content without committing preferences.
+    /// </summary>
+    /// <param name="contentPack">The selected content already opened by the custom-game menu.</param>
+    /// <param name="summary">The complete custom-game configuration.</param>
+    internal void PrepareCustomGame(ContentPack contentPack, GameSummary summary)
+    {
+        if (contentPack == null)
+            throw new ArgumentNullException(nameof(contentPack));
+        if (summary == null)
+            throw new ArgumentNullException(nameof(summary));
+        if (!contentPack.MatchesContentIdentity(summary))
+            throw new InvalidOperationException(
+                "The custom-game configuration does not match its selected content pack."
+            );
+
+        BeginPreparation();
+        ValidateApplicationPreloads(contentPack);
+        _customGameSummary = summary.GetDeepCopy();
+        UserContentSettings requested = CopySettings(_previousSettings);
+        requested.SetDisabledModsForPack(
+            contentPack.FileResolver.AvailableMods.Select(mod => mod.ID),
+            contentPack
+                .FileResolver.AvailableMods.Select(mod => mod.ID)
+                .Except(contentPack.FileResolver.Mods.Select(mod => mod.ID), StringComparer.Ordinal)
+        );
+        AcceptPreparation(contentPack, requested.DisabledModIDs);
+    }
+
+    /// <summary>
+    /// Admits one recovery attempt and selects the previous content without retaining the failed launch.
     /// </summary>
     /// <returns>True when recovery may proceed; false after recovery or successful completion.</returns>
     internal bool BeginRecovery()

@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Util.Reflection;
 using UnityEngine;
 
 namespace Rebellion.Tests.App
@@ -329,6 +330,99 @@ namespace Rebellion.Tests.App
             Assert.IsNull(operation.SaveFileName);
             operation.Complete(current, _settings);
             Assert.IsFalse(operation.BeginRecovery());
+        }
+
+        [Test]
+        public void PrepareCustomGame_ValidSelection_PreservesDetachedConfigurationWithoutSaving()
+        {
+            ContentPack selected = TestContent.Pack;
+            GameSummary summary = GameLaunchContext.CreateDefaultSummary(selected);
+            summary.Difficulty = GameDifficulty.Hard;
+            summary.GenerationConfigOverride = selected.GameData.GenerationConfig.GetDeepCopy();
+            byte[] before = File.ReadAllBytes(_settingsPath);
+            ContentLoadOperation operation = CreateOperation();
+
+            operation.PrepareCustomGame(selected, summary);
+            summary.Difficulty = GameDifficulty.Easy;
+            summary.GenerationConfigOverride.FacilityGeneration.CoreMineMultiplier = 999;
+
+            Assert.AreSame(selected, operation.Pack);
+            Assert.IsTrue(operation.RequiresContentRestart);
+            Assert.AreEqual("StrategyView", operation.DestinationScene);
+            Assert.IsNull(operation.SaveFileName);
+            Assert.AreEqual(GameDifficulty.Hard, operation.CustomGameSummary.Difficulty);
+            Assert.AreNotEqual(
+                999,
+                operation
+                    .CustomGameSummary
+                    .GenerationConfigOverride
+                    .FacilityGeneration
+                    .CoreMineMultiplier
+            );
+            GameSummary exposed = operation.CustomGameSummary;
+            exposed.Difficulty = GameDifficulty.Easy;
+            Assert.AreEqual(GameDifficulty.Hard, operation.CustomGameSummary.Difficulty);
+            CollectionAssert.AreEqual(before, File.ReadAllBytes(_settingsPath));
+        }
+
+        [Test]
+        public void PrepareCustomGame_MismatchedIdentity_RejectsLaunchWithoutSaving()
+        {
+            GameSummary summary = GameLaunchContext.CreateDefaultSummary(TestContent.Pack);
+            summary.PackID = "missing";
+            byte[] before = File.ReadAllBytes(_settingsPath);
+            ContentLoadOperation operation = CreateOperation();
+
+            Assert.Throws<InvalidOperationException>(() =>
+                operation.PrepareCustomGame(TestContent.Pack, summary)
+            );
+
+            Assert.AreSame(_previous, operation.Pack);
+            Assert.IsNull(operation.CustomGameSummary);
+            CollectionAssert.AreEqual(before, File.ReadAllBytes(_settingsPath));
+        }
+
+        [Test]
+        public void BeginRecovery_CustomGame_DiscardsLaunchAndPreservesPreviousPreferences()
+        {
+            ContentLoadOperation operation = CreateOperation();
+            operation.PrepareCustomGame(
+                TestContent.Pack,
+                GameLaunchContext.CreateDefaultSummary(TestContent.Pack)
+            );
+            byte[] before = File.ReadAllBytes(_settingsPath);
+
+            Assert.IsTrue(operation.BeginRecovery());
+            operation.Complete(_previous, _settings);
+
+            Assert.AreSame(_previous, operation.Pack);
+            Assert.AreEqual("MainMenu", operation.DestinationScene);
+            Assert.IsNull(operation.CustomGameSummary);
+            CollectionAssert.AreEqual(before, File.ReadAllBytes(_settingsPath));
+        }
+
+        [Test]
+        public void Complete_CustomGame_PreservesOtherPacksModPreferences()
+        {
+            string modID = CreateMod();
+            ContentPack selected = ContentPackLoader.OpenExact(
+                TestContent.Pack.ContentRootPath,
+                TestContent.Pack.Definition.ID,
+                TestContent.Pack.Scenario.ID,
+                new[] { modID }
+            );
+            ContentLoadOperation operation = CreateOperation();
+            operation.PrepareCustomGame(selected, GameLaunchContext.CreateDefaultSummary(selected));
+
+            operation.Complete(operation.Pack, _settings);
+
+            UserContentSettings content = CreateSettings(_settingsPath).Settings.Content;
+            Assert.AreEqual(TestContent.Pack.Definition.ID, content.ActivePackID);
+            Assert.AreEqual(TestContent.Pack.Scenario.ID, content.ActiveScenarioID);
+            CollectionAssert.AreEquivalent(
+                new[] { "other-pack-mod", "previous-mod", modID },
+                content.DisabledModIDs
+            );
         }
 
         /// <summary>

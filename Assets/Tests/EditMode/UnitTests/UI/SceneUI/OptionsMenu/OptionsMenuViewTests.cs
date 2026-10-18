@@ -326,11 +326,16 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.AreEqual(badge.anchoredPosition.y, inputRect.anchoredPosition.y);
             Assert.AreEqual(18f, inputRect.sizeDelta.y);
             Assert.AreNotSame(inputRect, intervalField.textViewport);
-            Assert.AreEqual(-1f, intervalField.textViewport.anchoredPosition.y);
-            Assert.AreEqual(16f, intervalField.textViewport.sizeDelta.y);
+            Assert.AreEqual(Vector2.zero, intervalField.textViewport.anchorMin);
+            Assert.AreEqual(Vector2.one, intervalField.textViewport.anchorMax);
+            Assert.AreEqual(new Vector2(0f, 1f), intervalField.textViewport.offsetMin);
+            Assert.AreEqual(new Vector2(0f, -1f), intervalField.textViewport.offsetMax);
+            Assert.AreEqual(16f, intervalField.textViewport.rect.height);
             Assert.AreEqual(TextAlignmentOptions.Center, intervalField.textComponent.alignment);
-            Assert.AreEqual(0f, intervalField.textComponent.rectTransform.anchoredPosition.y);
-            Assert.AreEqual(16f, intervalField.textComponent.rectTransform.sizeDelta.y);
+            Assert.AreEqual(Vector2.zero, intervalField.textComponent.rectTransform.anchorMin);
+            Assert.AreEqual(Vector2.one, intervalField.textComponent.rectTransform.anchorMax);
+            Assert.AreEqual(Vector2.zero, intervalField.textComponent.rectTransform.offsetMin);
+            Assert.AreEqual(Vector2.zero, intervalField.textComponent.rectTransform.offsetMax);
             Assert.IsTrue(intervalField.interactable);
             Assert.IsTrue(retainedField.interactable);
         }

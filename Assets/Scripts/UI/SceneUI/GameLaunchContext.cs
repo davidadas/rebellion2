@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Util.Reflection;
 
 /// <summary>
 /// Carries new-game and load-game selections between menu and strategy scenes.
@@ -45,11 +46,23 @@ public static class GameLaunchContext
     }
 
     /// <summary>
+    /// Replaces the pending launch configuration with a detached custom-game summary.
+    /// </summary>
+    /// <param name="summary">The complete custom-game configuration.</param>
+    internal static void ApplyCustomGameSummary(GameSummary summary)
+    {
+        Summary = (summary ?? throw new ArgumentNullException(nameof(summary))).GetDeepCopy();
+        SaveFileName = null;
+        IsLoadGame = false;
+        PlayIntroCutscene = false;
+    }
+
+    /// <summary>
     /// Creates the default launch summary.
     /// </summary>
     /// <param name="contentPack">The active content pack.</param>
     /// <returns>The default launch summary.</returns>
-    private static GameSummary CreateDefaultSummary(ContentPack contentPack)
+    internal static GameSummary CreateDefaultSummary(ContentPack contentPack)
     {
         if (contentPack == null)
             throw new ArgumentNullException(nameof(contentPack));
@@ -61,7 +74,6 @@ public static class GameLaunchContext
             GalaxySize = GameSize.Large,
             VictoryCondition = GameVictoryCondition.Conquest,
             ResourceAvailability = GameResourceAvailability.Normal,
-            StartingResearchLevel = 0,
             PlayerFactionID = contentPack.Scenario.DefaultPlayerFactionID,
             StartingFactionIDs = startingFactionIds,
             PackID = contentPack.Definition.ID,

@@ -113,16 +113,42 @@ namespace Rebellion.Simulation
         /// <returns>The controlling faction or the faction benefiting from smuggling.</returns>
         internal Faction ResolveProductionRecipient(Faction controller, Building facility)
         {
-            Planet planet = facility.GetParentOfType<Planet>();
+            (Faction beneficiary, int divertedQuantity) = ResolveProductionBatch(facility, 1);
+            return divertedQuantity == 1 ? beneficiary : controller;
+        }
+
+        /// <summary>
+        /// Rolls smuggling for a completed production batch and returns its diverted portion.
+        /// </summary>
+        /// <param name="facility">The facility whose production is being completed.</param>
+        /// <param name="quantity">The number of completed resources.</param>
+        /// <returns>The beneficiary and number of resources diverted to it.</returns>
+        internal (Faction Beneficiary, int DivertedQuantity) ResolveProductionBatch(
+            Building facility,
+            int quantity
+        )
+        {
+            Planet planet = facility?.GetParentOfType<Planet>();
             if (
-                planet == null
+                quantity <= 0
+                || planet == null
                 || !_states.TryGetValue(planet.InstanceID, out PlanetSmugglingState state)
                 || state.DiversionPercent <= 0
-                || _game.Random.NextInt(0, _percentScale) >= state.DiversionPercent
             )
-                return controller;
+            {
+                return (null, 0);
+            }
 
-            return FindFaction(state.BeneficiaryInstanceID) ?? controller;
+            Faction beneficiary = FindFaction(state.BeneficiaryInstanceID);
+            int divertedQuantity = 0;
+            for (int index = 0; index < quantity; index++)
+            {
+                bool diverted = _game.Random.NextInt(0, _percentScale) < state.DiversionPercent;
+                if (diverted && beneficiary != null)
+                    divertedQuantity++;
+            }
+
+            return (beneficiary, divertedQuantity);
         }
 
         /// <summary>

@@ -200,6 +200,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             scrollArea.RelayScroll(
                 new PointerEventData(null) { scrollDelta = new Vector2(0f, -1f) }
             );
+            scrollArea.AdvanceScroll(0.04f);
             float scrolledOffset = scrollArea.ContentRoot.anchoredPosition.y;
 
             _view.Render(CreateRenderData(items, true, true));

@@ -5,6 +5,8 @@ using System.Xml.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Simulation;
+using Rebellion.Util.Reflection;
+using UnityEditor;
 using UnityEngine;
 
 namespace Rebellion.Tests.App
@@ -245,6 +247,36 @@ namespace Rebellion.Tests.App
                 GameLaunchContext.Summary.PackVersion
             );
             Assert.AreEqual(activeContent.Scenario.ID, GameLaunchContext.Summary.ScenarioID);
+        }
+
+        [Test]
+        public void StartCustomGame_SelectedContent_PreservesLaunchConfigurationThroughLoadingPresentation()
+        {
+            UIComponentTestHelper.InvokeLifecycle(_bootstrap, "InitializeRuntimeCore");
+            ContentPack selected = _bootstrap.GetContentPack();
+            GameSummary summary = GameLaunchContext.CreateDefaultSummary(selected);
+            summary.Difficulty = GameDifficulty.Hard;
+            summary.GenerationConfigOverride = selected.GameData.GenerationConfig.GetDeepCopy();
+            summary.GenerationConfigOverride.FacilityGeneration.CoreMineMultiplier = 17;
+            int transitionCount = 0;
+            _bootstrap.LoadStarting += () => transitionCount++;
+
+            LoadingScreenController.StartCustomGame(_bootstrap, selected, summary);
+            summary.GenerationConfigOverride.FacilityGeneration.CoreMineMultiplier = 999;
+
+            Assert.AreEqual(1, transitionCount);
+            Assert.IsTrue(LoadingScreenController.IsLoadInProgress);
+            Assert.IsFalse(GameLaunchContext.IsLoadGame);
+            Assert.IsTrue(GameLaunchContext.PlayIntroCutscene);
+            Assert.AreEqual(GameDifficulty.Hard, GameLaunchContext.Summary.Difficulty);
+            Assert.AreEqual(
+                17,
+                GameLaunchContext
+                    .Summary
+                    .GenerationConfigOverride
+                    .FacilityGeneration
+                    .CoreMineMultiplier
+            );
         }
 
         [Test]

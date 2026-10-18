@@ -9,7 +9,9 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.Generation;
 using Rebellion.Simulation;
+using Rebellion.Util.Reflection;
 
 namespace Rebellion.Tests.App
 {
@@ -105,6 +107,28 @@ namespace Rebellion.Tests.App
             GameSession session = _runtime.StartGame(game);
 
             AssertFactionSettingsMatchActiveContent(session.Game);
+        }
+
+        [Test]
+        public void StartGame_FactionModifierOverride_RestoresConfiguredSettings()
+        {
+            GameRoot game = CreateGameWithLegacyFactionSettings();
+            Faction template = _contentPack.GameData.Factions[0];
+            FactionSettings configured = template.Settings.GetDeepCopy();
+            configured.GarrisonEfficiency++;
+            GameGenerationConfig config = _contentPack.GameData.GenerationConfig.GetDeepCopy();
+            config.FactionModifiers.Add(
+                new FactionModifierConfig { FactionID = template.InstanceID, Settings = configured }
+            );
+            game.Summary.GenerationConfigOverride = config;
+
+            GameSession session = _runtime.StartGame(game);
+
+            Faction loaded = session
+                .Game.GetFactions()
+                .Single(faction => faction.InstanceID == template.InstanceID);
+            Assert.AreEqual(configured.GarrisonEfficiency, loaded.Settings.GarrisonEfficiency);
+            Assert.AreNotSame(configured, loaded.Settings);
         }
 
         [Test]

@@ -337,16 +337,26 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     private void ResetContentSelection()
     {
         UserContentSettings content = _bootstrap.GetUserSettingsManager().Settings.Content;
-        string savedPackID = content.ActivePackID;
-        _selectedPackID = _availablePacks.Any(pack =>
-            string.Equals(pack.ID, savedPackID, StringComparison.Ordinal)
-        )
-            ? savedPackID
-            : _bootstrap.GetContentPack().Definition.ID;
+        _selectedPackID = ResolveSavedPackID(content);
         _selectedDisabledModIDs.Clear();
         foreach (string disabledModID in content.DisabledModIDs ?? Array.Empty<string>())
             _selectedDisabledModIDs.Add(disabledModID);
         RefreshSelectedModResolver();
+    }
+
+    /// <summary>
+    /// Resolves the persisted pack selection to an available pack.
+    /// </summary>
+    /// <param name="content">The persisted content settings.</param>
+    /// <returns>The persisted pack ID when available; otherwise the loaded pack ID.</returns>
+    private string ResolveSavedPackID(UserContentSettings content)
+    {
+        string savedPackID = content.ActivePackID;
+        return _availablePacks.Any(pack =>
+            string.Equals(pack.ID, savedPackID, StringComparison.Ordinal)
+        )
+            ? savedPackID
+            : _bootstrap.GetContentPack().Definition.ID;
     }
 
     /// <summary>
@@ -356,9 +366,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     private bool IsContentSelectionDirty()
     {
         UserContentSettings content = _bootstrap.GetUserSettingsManager().Settings.Content;
-        string savedPackID = content.ActivePackID;
-        if (string.IsNullOrWhiteSpace(savedPackID))
-            savedPackID = _bootstrap.GetContentPack().Definition.ID;
+        string savedPackID = ResolveSavedPackID(content);
         return !string.Equals(_selectedPackID, savedPackID, StringComparison.Ordinal)
             || !_selectedDisabledModIDs.SetEquals(content.DisabledModIDs ?? Array.Empty<string>());
     }
