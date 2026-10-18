@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using UnityEngine;
 
@@ -14,16 +15,43 @@ internal sealed class IdleBarEntry
 
     internal Texture2D Texture { get; }
 
+    internal ManufacturingType? ManufacturingLane { get; }
+
     /// <summary>
     /// Creates one idle-bar entry.
     /// </summary>
     /// <param name="entity">The represented strategy entity.</param>
     /// <param name="texture">The resolved portrait texture.</param>
-    internal IdleBarEntry(ISceneNode entity, Texture2D texture)
+    /// <param name="manufacturingLane">The represented manufacturing lane, when applicable.</param>
+    internal IdleBarEntry(
+        ISceneNode entity,
+        Texture2D texture,
+        ManufacturingType? manufacturingLane = null
+    )
     {
         Entity = entity;
-        Name = entity?.GetDisplayName() ?? string.Empty;
+        ManufacturingLane = manufacturingLane;
+        string entityName = entity?.GetDisplayName() ?? string.Empty;
+        Name = manufacturingLane.HasValue
+            ? $"{entityName} ({GetManufacturingLaneName(manufacturingLane.Value)})"
+            : entityName;
         Texture = texture;
+    }
+
+    /// <summary>
+    /// Names the manufacturing capacity represented by an idle-bar entry.
+    /// </summary>
+    /// <param name="type">The represented manufacturing lane.</param>
+    /// <returns>The singular lane name displayed beside its planet.</returns>
+    private static string GetManufacturingLaneName(ManufacturingType type)
+    {
+        return type switch
+        {
+            ManufacturingType.Ship => "Shipyard",
+            ManufacturingType.Troop => "Training Facility",
+            ManufacturingType.Building => "Construction Yard",
+            _ => throw new ArgumentOutOfRangeException(nameof(type)),
+        };
     }
 }
 

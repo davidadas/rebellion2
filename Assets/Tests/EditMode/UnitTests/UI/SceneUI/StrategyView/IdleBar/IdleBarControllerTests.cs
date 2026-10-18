@@ -235,6 +235,26 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         }
 
         [Test]
+        public void IgnoreButton_ManufacturingEntry_UntracksOnlySelectedLane()
+        {
+            Planet planet = new Planet { InstanceID = "planet", DisplayName = "Coruscant" };
+            _resolvedEntity = planet;
+            _view.Render(
+                new IdleBarRenderData(
+                    true,
+                    new[] { new IdleBarEntry(planet, null, ManufacturingType.Ship) },
+                    new RectInt(0, 0, 640, 480)
+                )
+            );
+
+            IdleBarSlotView slot = _view.GetComponentInChildren<IdleBarSlotView>(false);
+            slot.transform.Find("IgnoreButton").GetComponent<Button>().onClick.Invoke();
+
+            Assert.IsFalse(_controller.IsIdleBarTracked(planet, ManufacturingType.Ship));
+            Assert.IsTrue(_controller.IsIdleBarTracked(planet, ManufacturingType.Building));
+        }
+
+        [Test]
         public void ToggleTracking_Default_PlanetPersistsEachManufacturingLane()
         {
             Planet planet = new Planet { InstanceID = "planet" };
@@ -268,8 +288,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Assert.AreEqual(2, _actions.RenderRequestCount);
         }
 
-        [Test]
-        public void Render_UntrackedOnlyIdleManufacturingLane_RemovesPlanetEntry()
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Render_UntrackedIdleManufacturingLane_PreservesOtherLanes(bool hasConstruction)
         {
             const string factionId = "FNALL1";
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -292,6 +313,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
                 }
             );
             faction.AddOwnedUnit(planet);
+            if (hasConstruction)
+                planet.AddTestChild(
+                    new Building
+                    {
+                        ProductionType = ManufacturingType.Building,
+                        ProcessRate = 1,
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                    }
+                );
             UIContext uiContext = TestContent.CreateUIContext(
                 game,
                 TestContent.CreateThemeLibrary(),
@@ -310,12 +340,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             _controller.BindView(_view);
 
             _controller.Render();
-            Assert.AreEqual(1, _view.GetComponentsInChildren<IdleBarSlotView>(false).Length);
+            Assert.AreEqual(
+                hasConstruction ? 2 : 1,
+                _view.GetComponentsInChildren<IdleBarSlotView>(false).Length
+            );
 
             _controller.ToggleIdleBarTracking(planet, ManufacturingType.Ship);
             _controller.Render();
 
-            Assert.IsEmpty(_view.GetComponentsInChildren<IdleBarSlotView>(false));
+            Assert.AreEqual(
+                hasConstruction ? 1 : 0,
+                _view.GetComponentsInChildren<IdleBarSlotView>(false).Length
+            );
         }
 
         [Test]

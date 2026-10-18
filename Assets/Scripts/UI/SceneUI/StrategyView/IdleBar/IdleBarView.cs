@@ -48,7 +48,7 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
     private IdleBarRenderData currentData;
     private bool contextMenuOpen;
     private bool hoverExitPending;
-    private string hoveredEntryId;
+    private IdleBarEntry hoveredEntry;
     private bool initialized;
     private IdleBarSlotView overflowSlot;
     private bool pointerOverShelf;
@@ -61,7 +61,7 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
     /// <summary>
     /// Raised when the player ignores an idle-bar entry.
     /// </summary>
-    internal event Action<string> EntryIgnoreRequested;
+    internal event Action<IdleBarEntry> EntryIgnoreRequested;
 
     /// <summary>
     /// Raised when the player requests an entry's normal context menu.
@@ -438,7 +438,7 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
             entriesScrollArea.gameObject.SetActive(false);
         if (overflowSlot != null)
             overflowSlot.gameObject.SetActive(false);
-        hoveredEntryId = null;
+        hoveredEntry = null;
         if (hoverLabelRoot != null)
             hoverLabelRoot.gameObject.SetActive(false);
         foreach (IdleBarSlotView slot in slots)
@@ -479,10 +479,10 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
     /// <summary>
     /// Forwards one slot's ignore request through the desktop view boundary.
     /// </summary>
-    /// <param name="instanceId">The ignored entity identifier.</param>
-    private void HandleSlotIgnoreRequested(string instanceId)
+    /// <param name="entry">The ignored entity and its optional manufacturing lane.</param>
+    private void HandleSlotIgnoreRequested(IdleBarEntry entry)
     {
-        EntryIgnoreRequested?.Invoke(instanceId);
+        EntryIgnoreRequested?.Invoke(entry);
     }
 
     /// <summary>
@@ -498,26 +498,29 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
     /// <summary>
     /// Forwards one slot's hover through the desktop view boundary.
     /// </summary>
-    /// <param name="instanceId">The hovered entity identifier.</param>
-    private void HandleSlotHovered(string instanceId)
+    /// <param name="entry">The hovered entity and its optional manufacturing lane.</param>
+    private void HandleSlotHovered(IdleBarEntry entry)
     {
-        hoveredEntryId = instanceId;
+        hoveredEntry = entry;
         UpdateHoverLabel();
-        EntryHovered?.Invoke(instanceId);
+        EntryHovered?.Invoke(entry.Entity?.InstanceID);
     }
 
     /// <summary>
     /// Forwards one slot's hover exit through the desktop view boundary.
     /// </summary>
-    /// <param name="instanceId">The entity identifier whose hover ended.</param>
-    private void HandleSlotHoverCleared(string instanceId)
+    /// <param name="entry">The entry whose hover ended.</param>
+    private void HandleSlotHoverCleared(IdleBarEntry entry)
     {
-        if (hoveredEntryId == instanceId)
+        if (
+            hoveredEntry?.Entity?.InstanceID == entry.Entity?.InstanceID
+            && hoveredEntry?.ManufacturingLane == entry.ManufacturingLane
+        )
         {
-            hoveredEntryId = null;
+            hoveredEntry = null;
             hoverLabelRoot.gameObject.SetActive(false);
+            EntryHoverCleared?.Invoke(entry.Entity?.InstanceID);
         }
-        EntryHoverCleared?.Invoke(instanceId);
     }
 
     /// <summary>
@@ -526,7 +529,9 @@ public sealed class IdleBarView : MonoBehaviour, IPointerEnterHandler, IPointerE
     private void UpdateHoverLabel()
     {
         IdleBarEntry entry = currentData?.Entries.FirstOrDefault(candidate =>
-            candidate.Entity?.InstanceID == hoveredEntryId
+            hoveredEntry != null
+            && candidate.Entity?.InstanceID == hoveredEntry.Entity?.InstanceID
+            && candidate.ManufacturingLane == hoveredEntry.ManufacturingLane
         );
         if (
             entry == null

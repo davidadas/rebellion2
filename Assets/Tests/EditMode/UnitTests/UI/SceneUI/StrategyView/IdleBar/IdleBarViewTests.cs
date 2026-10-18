@@ -228,6 +228,90 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         }
 
         [Test]
+        public void Render_MultipleLanesOnSamePlanet_ShowsHoveredLaneName()
+        {
+            Planet planet = CreatePlanet("Coruscant");
+            _view.Render(
+                new IdleBarRenderData(
+                    true,
+                    new[]
+                    {
+                        new IdleBarEntry(planet, null, ManufacturingType.Ship),
+                        new IdleBarEntry(planet, null, ManufacturingType.Building),
+                    },
+                    new RectInt(0, 0, 640, 480)
+                )
+            );
+            IdleBarSlotView[] slots = _view.GetComponentsInChildren<IdleBarSlotView>(false);
+            TextMeshProUGUI label = GetField<TextMeshProUGUI>("hoverLabelText");
+
+            slots[0].OnPointerEnter(null);
+            Assert.AreEqual("Coruscant (Shipyard)", label.text);
+            slots[0].OnPointerExit(null);
+            slots[1].OnPointerEnter(null);
+
+            Assert.AreEqual("Coruscant (Construction Yard)", label.text);
+        }
+
+        [Test]
+        public void Render_HoveredSlotChangesLane_RefreshesLaneLabel()
+        {
+            Planet planet = CreatePlanet("Coruscant");
+            RectInt bounds = new RectInt(0, 0, 640, 480);
+            _view.Render(
+                new IdleBarRenderData(
+                    true,
+                    new[] { new IdleBarEntry(planet, null, ManufacturingType.Ship) },
+                    bounds
+                )
+            );
+            _view.GetComponentInChildren<IdleBarSlotView>(false).OnPointerEnter(null);
+
+            _view.Render(
+                new IdleBarRenderData(
+                    true,
+                    new[] { new IdleBarEntry(planet, null, ManufacturingType.Building) },
+                    bounds
+                )
+            );
+
+            Assert.AreEqual(
+                "Coruscant (Construction Yard)",
+                GetField<TextMeshProUGUI>("hoverLabelText").text
+            );
+        }
+
+        [Test]
+        public void Render_PreviousLaneExitsLate_PreservesCurrentHover()
+        {
+            Planet planet = CreatePlanet("Coruscant");
+            _view.Render(
+                new IdleBarRenderData(
+                    true,
+                    new[]
+                    {
+                        new IdleBarEntry(planet, null, ManufacturingType.Ship),
+                        new IdleBarEntry(planet, null, ManufacturingType.Building),
+                    },
+                    new RectInt(0, 0, 640, 480)
+                )
+            );
+            int clearedCount = 0;
+            _view.EntryHoverCleared += _ => clearedCount++;
+            IdleBarSlotView[] slots = _view.GetComponentsInChildren<IdleBarSlotView>(false);
+            slots[0].OnPointerEnter(null);
+            slots[1].OnPointerEnter(null);
+
+            slots[0].OnPointerExit(null);
+
+            Assert.Zero(clearedCount);
+            Assert.AreEqual(
+                "Coruscant (Construction Yard)",
+                GetField<TextMeshProUGUI>("hoverLabelText").text
+            );
+        }
+
+        [Test]
         public void Render_HoveredSlotChangesEntity_RebindsHoverIdentity()
         {
             List<string> hoverEvents = new List<string>();

@@ -40,6 +40,9 @@ internal sealed class IdleBarProjector
     internal IdleBarRenderData Project(Faction playerFaction, RectInt desktopBounds)
     {
         UIContext uiContext = getUIContext();
+        StatusWindowTheme manufacturingTheme = uiContext
+            ?.GetTheme(playerFaction?.InstanceID)
+            ?.StrategyWindows?.Status;
         List<IdleBarEntry> entries = FindAvailableParticipants<Officer>(playerFaction)
             .OrderByDescending(officer => officer.IsMain)
             .Select(officer => CreateEntry(officer, uiContext))
@@ -50,13 +53,21 @@ internal sealed class IdleBarProjector
             .Concat(
                 playerFaction
                     ?.GetOwnedUnitsByType<Planet>()
-                    .Where(HasIdleManufacturing)
                     .OrderBy(
                         candidate => candidate.GetDisplayName(),
                         StringComparer.OrdinalIgnoreCase
                     )
                     .ThenBy(candidate => candidate.InstanceID, StringComparer.Ordinal)
-                    .Select(planet => CreateEntry(planet, uiContext))
+                    .SelectMany(planet =>
+                        GetIdleManufacturingTypes(planet)
+                            .Select(type => new IdleBarEntry(
+                                planet,
+                                uiContext?.GetTexture(
+                                    GetManufacturingImagePath(type, manufacturingTheme)
+                                ),
+                                type
+                            ))
+                    )
                     ?? Enumerable.Empty<IdleBarEntry>()
             )
             .ToList();
@@ -68,25 +79,31 @@ internal sealed class IdleBarProjector
     /// Enumerates artwork needed by the current idle-bar entries without loading it.
     /// </summary>
     /// <param name="playerFaction">The faction whose available entities are displayed.</param>
+    /// <param name="manufacturingTheme">The faction's configured manufacturing artwork.</param>
     /// <returns>The configured texture paths.</returns>
-    internal static IEnumerable<string> GetTexturePaths(Faction playerFaction)
+    internal static IEnumerable<string> GetTexturePaths(
+        Faction playerFaction,
+        StatusWindowTheme manufacturingTheme
+    )
     {
         IEnumerable<ISceneNode> entities = FindAvailableParticipants<Officer>(playerFaction)
             .Cast<ISceneNode>()
-            .Concat(FindAvailableParticipants<SpecialForces>(playerFaction))
-            .Concat(
-                playerFaction
-                    ?.GetOwnedUnitsByType<Planet>()
-                    .Where(HasIdleManufacturing)
-                    .Cast<ISceneNode>()
-                    ?? Enumerable.Empty<ISceneNode>()
-            );
+            .Concat(FindAvailableParticipants<SpecialForces>(playerFaction));
 
         return entities
             .Select(entity =>
-                entity is Planet planet ? planet.GetPlanetIconPath()
-                : string.IsNullOrEmpty(entity.SmallDisplayImagePath) ? entity.GetDisplayImagePath()
-                : entity.SmallDisplayImagePath
+                string.IsNullOrEmpty(entity.SmallDisplayImagePath)
+                    ? entity.GetDisplayImagePath()
+                    : entity.SmallDisplayImagePath
+            )
+            .Concat(
+                playerFaction
+                    ?.GetOwnedUnitsByType<Planet>()
+                    .SelectMany(planet =>
+                        GetIdleManufacturingTypes(planet)
+                            .Select(type => GetManufacturingImagePath(type, manufacturingTheme))
+                    )
+                    ?? Enumerable.Empty<string>()
             )
             .Where(path => !string.IsNullOrEmpty(path));
     }
@@ -127,14 +144,32 @@ internal sealed class IdleBarProjector
     }
 
     /// <summary>
-    /// Reports whether an owned planet has at least one empty manufacturing lane.
+    /// Selects each manufacturing lane with available capacity once per planet.
     /// </summary>
     /// <param name="planet">The planet to evaluate.</param>
-    /// <returns><see langword="true"/> when any manufacturing lane is idle.</returns>
-    private static bool HasIdleManufacturing(Planet planet)
+    /// <returns>The idle lane types in display order.</returns>
+    private static IEnumerable<ManufacturingType> GetIdleManufacturingTypes(Planet planet)
     {
         return planet is { IsDestroyed: false }
-            && _manufacturingTypes.Any(type => planet.GetIdleManufacturingFacilities(type) > 0);
+            ? _manufacturingTypes.Where(type => planet.GetIdleManufacturingFacilities(type) > 0)
+            : Enumerable.Empty<ManufacturingType>();
+    }
+
+    /// <summary>
+    /// Resolves the existing faction artwork for one manufacturing lane.
+    /// </summary>
+    /// <param name="type">The manufacturing lane type.</param>
+    /// <param name="theme">The faction's status-window artwork.</param>
+    /// <returns>The configured manufacturing icon path.</returns>
+    private static string GetManufacturingImagePath(ManufacturingType type, StatusWindowTheme theme)
+    {
+        return type switch
+        {
+            ManufacturingType.Ship => theme?.ShipyardImagePath,
+            ManufacturingType.Troop => theme?.TrainingImagePath,
+            ManufacturingType.Building => theme?.ConstructionImagePath,
+            _ => throw new ArgumentOutOfRangeException(nameof(type)),
+        };
     }
 
     /// <summary>

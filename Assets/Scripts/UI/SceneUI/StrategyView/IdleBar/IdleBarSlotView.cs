@@ -40,6 +40,7 @@ public sealed class IdleBarSlotView
     private TextMeshProUGUI overflowTextField;
 
     private string instanceId;
+    private IdleBarEntry currentEntry;
     private bool hovered;
     private bool initialized;
     private int currentSlotSize;
@@ -52,7 +53,7 @@ public sealed class IdleBarSlotView
     /// <summary>
     /// Raised when the player ignores this entry.
     /// </summary>
-    internal event Action<string> IgnoreRequested;
+    internal event Action<IdleBarEntry> IgnoreRequested;
 
     /// <summary>
     /// Raised when the player requests this entry's normal context menu.
@@ -62,12 +63,12 @@ public sealed class IdleBarSlotView
     /// <summary>
     /// Raised when the pointer begins hovering this entity.
     /// </summary>
-    internal event Action<string> Hovered;
+    internal event Action<IdleBarEntry> Hovered;
 
     /// <summary>
     /// Raised when the pointer stops hovering this entity.
     /// </summary>
-    internal event Action<string> HoverCleared;
+    internal event Action<IdleBarEntry> HoverCleared;
 
     /// <summary>
     /// Raised when a primary press may begin dragging this entity.
@@ -93,7 +94,7 @@ public sealed class IdleBarSlotView
 
         Initialize();
         currentSlotSize = slotSize;
-        SetInstanceId(entry.Entity?.InstanceID);
+        SetEntry(entry);
         gameObject.name = entry.Name;
         SetSourceRect(transform as RectTransform, x, y, slotSize, slotSize);
         SetHovered(hovered);
@@ -119,7 +120,7 @@ public sealed class IdleBarSlotView
 
         Initialize();
         currentSlotSize = slotSize;
-        SetInstanceId(null);
+        SetEntry(null);
         gameObject.name = $"+{hiddenCount}";
         SetSourceRect(transform as RectTransform, x, y, slotSize, slotSize);
         portraitMask.gameObject.SetActive(false);
@@ -137,7 +138,7 @@ public sealed class IdleBarSlotView
     {
         SetHovered(true);
         if (!string.IsNullOrEmpty(instanceId))
-            Hovered?.Invoke(instanceId);
+            Hovered?.Invoke(currentEntry);
     }
 
     /// <summary>
@@ -148,7 +149,7 @@ public sealed class IdleBarSlotView
     {
         SetHovered(false);
         if (!string.IsNullOrEmpty(instanceId))
-            HoverCleared?.Invoke(instanceId);
+            HoverCleared?.Invoke(currentEntry);
     }
 
     /// <summary>
@@ -207,21 +208,26 @@ public sealed class IdleBarSlotView
     /// <summary>
     /// Rebinds the rendered entity and transfers an active hover to its new identity.
     /// </summary>
-    /// <param name="value">The rendered entity identity, or null for an overflow slot.</param>
-    private void SetInstanceId(string value)
+    /// <param name="value">The rendered entry, or null for an overflow slot.</param>
+    private void SetEntry(IdleBarEntry value)
     {
-        if (instanceId == value)
-            return;
-
+        IdleBarEntry previousEntry = currentEntry;
         string previousInstanceId = instanceId;
-        instanceId = value;
-        if (!hovered)
+        currentEntry = value;
+        instanceId = value?.Entity?.InstanceID;
+        if (
+            !hovered
+            || (
+                previousInstanceId == instanceId
+                && previousEntry?.ManufacturingLane == value?.ManufacturingLane
+            )
+        )
             return;
 
         if (!string.IsNullOrEmpty(previousInstanceId))
-            HoverCleared?.Invoke(previousInstanceId);
+            HoverCleared?.Invoke(previousEntry);
         if (!string.IsNullOrEmpty(instanceId))
-            Hovered?.Invoke(instanceId);
+            Hovered?.Invoke(currentEntry);
     }
 
     /// <summary>
@@ -324,7 +330,7 @@ public sealed class IdleBarSlotView
 
         SetHovered(false);
         if (!string.IsNullOrEmpty(instanceId))
-            HoverCleared?.Invoke(instanceId);
+            HoverCleared?.Invoke(currentEntry);
     }
 
     /// <summary>
@@ -342,7 +348,7 @@ public sealed class IdleBarSlotView
     private void HandleIgnored()
     {
         if (!string.IsNullOrEmpty(instanceId))
-            IgnoreRequested?.Invoke(instanceId);
+            IgnoreRequested?.Invoke(currentEntry);
     }
 
     /// <summary>

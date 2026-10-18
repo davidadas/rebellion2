@@ -240,9 +240,7 @@ public sealed class IdleBarController
 
         RectInt desktopBounds = GetDesktopBounds();
         IdleBarRenderData projected = projector.Project(getFaction(), desktopBounds);
-        List<IdleBarEntry> entries = projected
-            .Entries.Where(entry => IsIdleBarEntryTracked(entry.Entity))
-            .ToList();
+        List<IdleBarEntry> entries = projected.Entries.Where(IsIdleBarEntryTracked).ToList();
         if (
             !string.IsNullOrEmpty(highlightedEntityId)
             && entries.All(entry => entry.Entity?.InstanceID != highlightedEntityId)
@@ -322,12 +320,15 @@ public sealed class IdleBarController
     /// <summary>
     /// Reports whether an available entry has at least one tracked reason to appear.
     /// </summary>
-    /// <param name="entity">The projected idle-bar entity.</param>
+    /// <param name="entry">The projected entity and its optional manufacturing lane.</param>
     /// <returns>True when the entry should remain visible.</returns>
-    private bool IsIdleBarEntryTracked(ISceneNode entity)
+    private bool IsIdleBarEntryTracked(IdleBarEntry entry)
     {
-        if (entity is not Planet planet)
-            return IsIdleBarTracked(entity);
+        if (entry.Entity is not Planet planet)
+            return IsIdleBarTracked(entry.Entity);
+
+        if (entry.ManufacturingLane.HasValue)
+            return IsIdleBarTracked(planet, entry.ManufacturingLane.Value);
 
         return _planetManufacturingTypes.Any(type =>
             planet.GetIdleManufacturingFacilities(type) > 0 && IsIdleBarTracked(planet, type)
@@ -472,11 +473,14 @@ public sealed class IdleBarController
     /// <summary>
     /// Ignores the requested idle-bar entity and refreshes the shelf.
     /// </summary>
-    /// <param name="instanceId">The ignored entity identifier.</param>
-    private void HandleEntryIgnoreRequested(string instanceId)
+    /// <param name="entry">The ignored entity and its optional manufacturing lane.</param>
+    private void HandleEntryIgnoreRequested(IdleBarEntry entry)
     {
+        string instanceId = entry?.Entity?.InstanceID;
         ISceneNode target = string.IsNullOrEmpty(instanceId) ? null : resolveEntity(instanceId);
-        if (target != null)
+        if (target is Planet planet && entry.ManufacturingLane.HasValue)
+            ToggleIdleBarTracking(planet, entry.ManufacturingLane.Value);
+        else if (target != null)
             ToggleIdleBarTracking(target);
     }
 

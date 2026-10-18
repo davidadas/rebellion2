@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
+using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
@@ -73,6 +74,131 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             );
 
             Assert.IsEmpty(result.Entries);
+        }
+
+        [Test]
+        public void Project_MultipleFacilities_ReturnsOneEntryPerIdleManufacturingLane()
+        {
+            Planet planet = CreateManufacturingPlanet("Coruscant");
+            for (int index = 0; index < 4; index++)
+                planet.AddTestChild(
+                    new Building
+                    {
+                        ProductionType = ManufacturingType.Ship,
+                        ProcessRate = 1,
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                    }
+                );
+            planet.AddTestChild(
+                new Building
+                {
+                    ProductionType = ManufacturingType.Building,
+                    ProcessRate = 1,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                }
+            );
+
+            IdleBarRenderData result = new IdleBarProjector(() => null).Project(
+                _playerFaction,
+                new RectInt()
+            );
+
+            CollectionAssert.AreEqual(
+                new[] { "Coruscant (Shipyard)", "Coruscant (Construction Yard)" },
+                result.Entries.Select(entry => entry.Name)
+            );
+        }
+
+        [Test]
+        public void Project_BusyShipyard_KeepsIdleConstructionLane()
+        {
+            Planet planet = CreateManufacturingPlanet("Coruscant");
+            planet.ManufacturingQueue[ManufacturingType.Ship] = new List<IManufacturable>
+            {
+                new CapitalShip(),
+            };
+            planet.AddTestChild(
+                new Building
+                {
+                    ProductionType = ManufacturingType.Building,
+                    ProcessRate = 1,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                }
+            );
+
+            IdleBarRenderData result = new IdleBarProjector(() => null).Project(
+                _playerFaction,
+                new RectInt()
+            );
+
+            Assert.AreEqual("Coruscant (Construction Yard)", result.Entries.Single().Name);
+        }
+
+        [TestCase(ManufacturingType.Ship, "shipyard")]
+        [TestCase(ManufacturingType.Troop, "training")]
+        [TestCase(ManufacturingType.Building, "construction")]
+        public void Project_IdleManufacturingLane_UsesThemedIcon(
+            ManufacturingType type,
+            string expectedPath
+        )
+        {
+            Planet planet = new Planet { InstanceID = "planet", DisplayName = "Coruscant" };
+            planet.AddTestChild(
+                new Building
+                {
+                    ProductionType = type,
+                    ProcessRate = 1,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                }
+            );
+            _playerFaction.AddOwnedUnit(planet);
+            List<string> requestedPaths = new List<string>();
+            StatusWindowTheme theme = new StatusWindowTheme
+            {
+                ShipyardImagePath = "shipyard",
+                TrainingImagePath = "training",
+                ConstructionImagePath = "construction",
+            };
+            Texture2D texture = new Texture2D(2, 2);
+            try
+            {
+                UIContext uiContext = new UIContext(
+                    TestGame.Create(TestConfig.Create()),
+                    new FactionThemeLibrary(
+                        new FactionThemes
+                        {
+                            new FactionTheme { FactionInstanceID = "DEFAULT" },
+                            new FactionTheme
+                            {
+                                FactionInstanceID = _playerFactionId,
+                                StrategyWindows = new StrategyWindowsTheme { Status = theme },
+                            },
+                        }
+                    ),
+                    new EncyclopediaCatalog(System.Array.Empty<EncyclopediaEntry>()),
+                    path =>
+                    {
+                        requestedPaths.Add(path);
+                        return texture;
+                    }
+                );
+
+                IdleBarRenderData result = new IdleBarProjector(() => uiContext).Project(
+                    _playerFaction,
+                    new RectInt()
+                );
+
+                Assert.AreSame(texture, result.Entries.Single().Texture);
+                CollectionAssert.AreEqual(new[] { expectedPath }, requestedPaths);
+                CollectionAssert.AreEqual(
+                    new[] { expectedPath },
+                    IdleBarProjector.GetTexturePaths(_playerFaction, theme)
+                );
+            }
+            finally
+            {
+                Object.DestroyImmediate(texture);
+            }
         }
 
         [Test]

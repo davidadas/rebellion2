@@ -242,7 +242,12 @@ public sealed class StrategyController
             TexturesPerFrame = strategyPreload.TexturesPerFrame,
             Textures = StrategyHudController
                 .GetTexturePaths(uiContext.GetPlayerFactionTheme())
-                .Concat(IdleBarProjector.GetTexturePaths(playerFaction))
+                .Concat(
+                    IdleBarProjector.GetTexturePaths(
+                        playerFaction,
+                        uiContext.GetPlayerFactionTheme()?.StrategyWindows?.Status
+                    )
+                )
                 .Distinct(StringComparer.Ordinal)
                 .ToList(),
         };
