@@ -16,6 +16,17 @@ public static class OptionsMenuPrefabBuilder
     private const int _navigationRowStride = _navigationRowHeight + _navigationRowSpacing;
     private const int _footerNavigationHeight =
         3 * _navigationRowHeight + 2 * _navigationRowSpacing;
+    private const int _optionsPageTopInset = 16;
+    private const int _optionsPageBottomInset = 10;
+    private const int _optionsContentInset = 20;
+    private const int _optionsSectionHeaderHeight = 16;
+    private const int _optionsSectionHeaderSpacing = 12;
+    private const int _optionsSectionSpacing = 10;
+    private const int _optionsFieldRowHeight = 18;
+    private const int _optionsFieldRowSpacing = 8;
+    private const int _optionsSectionHeaderStride =
+        _optionsSectionHeaderHeight + _optionsSectionHeaderSpacing;
+    private const int _optionsFieldRowStride = _optionsFieldRowHeight + _optionsFieldRowSpacing;
     private const int _tabNavigationStartY = 82;
     private const int _footerNavigationStartY = 318;
     private const string _optionsMenuWindowPrefabPath =
@@ -42,13 +53,6 @@ public static class OptionsMenuPrefabBuilder
         "Application/OptionsMenu/UI/ui_settingsmenu_restore_default_icon";
     private const string _scrollAreaPrefabPath = "Assets/Prefabs/UI/Common/ScrollArea.prefab";
     private const string _textInputPrefabPath = "Assets/Prefabs/UI/Common/TextInput.prefab";
-    private const string _scrollUpAddress =
-        "Application/Strategy/UI/Controls/ui_strategyview_scrollbar_arrow_up.png";
-    private const string _scrollDownAddress =
-        "Application/Strategy/UI/Controls/ui_strategyview_scrollbar_arrow_pressed_2.png";
-    private const string _scrollHandleAddress =
-        "Application/Strategy/UI/Controls/ui_strategyview_scrollbar_middle.png";
-
     private static readonly Vector4 _panelBorder = new Vector4(7f, 7f, 7f, 7f);
     private static readonly Vector4 _badgeBorder = new Vector4(6f, 6f, 6f, 6f);
     private static readonly Color32 _buttonSurfaceColor = new Color32(35, 56, 80, 255);
@@ -437,30 +441,185 @@ public static class OptionsMenuPrefabBuilder
         Color accent
     )
     {
-        CreateOptionsSectionHeader(graphicsPage, "DisplayHeader", "DISPLAY", 16, accent);
-        TextMeshProUGUI resolutionValue = CreateOptionsFieldRow(
+        ScrollAreaView graphicsScrollArea = CreateScrollAreaView(
             graphicsPage,
+            "GraphicsScrollArea",
+            0,
+            0,
+            374,
+            328,
+            0,
+            0,
+            356,
+            328,
+            362,
+            0,
+            12,
+            328,
+            out RectTransform graphicsContent
+        );
+        int nextRowY = _optionsPageTopInset;
+        AppendOptionsSectionHeader(
+            graphicsContent,
+            "DisplayHeader",
+            "DISPLAY",
+            accent,
+            ref nextRowY
+        );
+        TextMeshProUGUI resolutionValue = AppendOptionsFieldRow(
+            graphicsContent,
             "Resolution",
             "Resolution",
-            41,
+            ref nextRowY,
             out Button resolutionPrev,
             out Button resolutionNext
         );
-        TextMeshProUGUI fullScreenValue = CreateOptionsFieldRow(
-            graphicsPage,
+        TextMeshProUGUI fullScreenValue = AppendOptionsFieldRow(
+            graphicsContent,
             "Display",
             "Display Mode",
-            68,
+            ref nextRowY,
             out Button fullScreenPrev,
             out Button fullScreenNext
         );
+
+        int graphicsSettingCount = Enum.GetValues(typeof(UserGraphicsSetting)).Length;
+        TextMeshProUGUI[] valueFields = new TextMeshProUGUI[graphicsSettingCount];
+        Button[] previousButtons = new Button[graphicsSettingCount];
+        Button[] nextButtons = new Button[graphicsSettingCount];
+
+        AppendGraphicsFieldRow(
+            graphicsContent,
+            UserGraphicsSetting.VerticalSync,
+            "VSync",
+            ref nextRowY,
+            valueFields,
+            previousButtons,
+            nextButtons
+        );
+        AppendGraphicsFieldRow(
+            graphicsContent,
+            UserGraphicsSetting.FrameRateLimit,
+            "Frame Rate Limit",
+            ref nextRowY,
+            valueFields,
+            previousButtons,
+            nextButtons
+        );
+        AppendGraphicsFieldRow(
+            graphicsContent,
+            UserGraphicsSetting.HdrOutput,
+            "HDR Output",
+            ref nextRowY,
+            valueFields,
+            previousButtons,
+            nextButtons
+        );
+
+        AppendOptionsSectionHeader(
+            graphicsContent,
+            "RenderingHeader",
+            "RENDERING",
+            accent,
+            ref nextRowY
+        );
+        AppendGraphicsFieldRow(
+            graphicsContent,
+            UserGraphicsSetting.QualityPreset,
+            "Quality Preset",
+            ref nextRowY,
+            valueFields,
+            previousButtons,
+            nextButtons
+        );
+        AppendGraphicsFieldRow(
+            graphicsContent,
+            UserGraphicsSetting.AntiAliasing,
+            "Anti-Aliasing",
+            ref nextRowY,
+            valueFields,
+            previousButtons,
+            nextButtons
+        );
+        AppendGraphicsFieldRow(
+            graphicsContent,
+            UserGraphicsSetting.RenderScale,
+            "Render Scale",
+            ref nextRowY,
+            valueFields,
+            previousButtons,
+            nextButtons
+        );
+
+        AppendOptionsSectionHeader(
+            graphicsContent,
+            "RayTracingHeader",
+            "RAY TRACING",
+            accent,
+            ref nextRowY
+        );
+        AppendGraphicsFieldRow(
+            graphicsContent,
+            UserGraphicsSetting.RayTracing,
+            "Ray-Traced AO (RTX)",
+            ref nextRowY,
+            valueFields,
+            previousButtons,
+            nextButtons
+        );
+
+        AppendOptionsSectionHeader(
+            graphicsContent,
+            "EffectsHeader",
+            "EFFECTS",
+            accent,
+            ref nextRowY
+        );
+        AppendGraphicsFieldRow(
+            graphicsContent,
+            UserGraphicsSetting.AmbientOcclusion,
+            "Ambient Occlusion",
+            ref nextRowY,
+            valueFields,
+            previousButtons,
+            nextButtons
+        );
+        AppendGraphicsFieldRow(
+            graphicsContent,
+            UserGraphicsSetting.Bloom,
+            "Bloom",
+            ref nextRowY,
+            valueFields,
+            previousButtons,
+            nextButtons
+        );
+        AppendGraphicsFieldRow(
+            graphicsContent,
+            UserGraphicsSetting.MotionBlur,
+            "Motion Blur",
+            ref nextRowY,
+            valueFields,
+            previousButtons,
+            nextButtons
+        );
+
         AssignReferenceArray(view, "_tacticalRows", Array.Empty<OptionsToggleRowView>());
+        AssignReference(view, "_graphicsScrollArea", graphicsScrollArea);
+        AssignInt(
+            view,
+            "_graphicsContentHeight",
+            nextRowY - _optionsFieldRowSpacing + _optionsPageBottomInset
+        );
+        AssignInt(view, "_graphicsScrollStep", _optionsFieldRowStride);
         AssignReference(view, "_resolutionValueField", resolutionValue);
         AssignReference(view, "_resolutionPrevButton", resolutionPrev);
         AssignReference(view, "_resolutionNextButton", resolutionNext);
         AssignReference(view, "_fullScreenValueField", fullScreenValue);
         AssignReference(view, "_fullScreenPrevButton", fullScreenPrev);
         AssignReference(view, "_fullScreenNextButton", fullScreenNext);
+        AssignReferenceArray(view, "_graphicsValueFields", valueFields);
+        AssignReferenceArray(view, "_graphicsPrevButtons", previousButtons);
+        AssignReferenceArray(view, "_graphicsNextButtons", nextButtons);
     }
 
     /// <summary>
@@ -503,8 +662,17 @@ public static class OptionsMenuPrefabBuilder
             UserInterfaceOption.ShowIdleBar,
             UserInterfaceOption.KeepIdleBarOpen,
             UserInterfaceOption.ShowUnitCardStats,
+            UserInterfaceOption.ShowFrameRate,
         };
-        string[] labels = { "Show Idle Bar", "Keep Idle Bar Open", "Show Unit Card Stats" };
+        string[] labels =
+        {
+            "Show Idle Bar",
+            "Keep Idle Bar Open",
+            "Show Unit Card Stats",
+            "Show FPS Counter",
+        };
+        int[] yPositions = { 96, 122, 148, 206 };
+        CreateOptionsSectionHeader(userInterfacePage, "OverlayHeader", "OVERLAY", 184, accent);
         OptionsToggleRowView[] rows = new OptionsToggleRowView[options.Length];
         for (int i = 0; i < options.Length; i++)
         {
@@ -514,7 +682,7 @@ public static class OptionsMenuPrefabBuilder
                 (int)options[i],
                 labels[i],
                 20,
-                96 + i * 26
+                yPositions[i]
             );
         }
 
@@ -1303,8 +1471,45 @@ public static class OptionsMenuPrefabBuilder
         headerField.color = accent;
         headerField.fontSize = 13;
         headerField.alignment = TextAlignmentOptions.MidlineLeft;
-        SetSourceRect(headerField.rectTransform, 20, y, 200, 16);
+        SetSourceRect(
+            headerField.rectTransform,
+            _optionsContentInset,
+            y,
+            200,
+            _optionsSectionHeaderHeight
+        );
         return headerField;
+    }
+
+    /// <summary>
+    /// Appends a section header using the shared Options-page vertical rhythm.
+    /// </summary>
+    /// <param name="parent">The page container.</param>
+    /// <param name="name">The header object name.</param>
+    /// <param name="caption">The header caption.</param>
+    /// <param name="accent">The accent color.</param>
+    /// <param name="nextRowY">The shared page-layout cursor.</param>
+    /// <returns>The header text field.</returns>
+    private static TextMeshProUGUI AppendOptionsSectionHeader(
+        RectTransform parent,
+        string name,
+        string caption,
+        Color accent,
+        ref int nextRowY
+    )
+    {
+        if (nextRowY != _optionsPageTopInset)
+            nextRowY += _optionsSectionSpacing;
+
+        TextMeshProUGUI header = CreateOptionsSectionHeader(
+            parent,
+            name,
+            caption,
+            nextRowY,
+            accent
+        );
+        nextRowY += _optionsSectionHeaderStride;
+        return header;
     }
 
     /// <summary>
@@ -1486,7 +1691,7 @@ public static class OptionsMenuPrefabBuilder
     /// <summary>
     /// Creates a display setting row.
     /// </summary>
-    /// <param name="parent">The Graphics-page container.</param>
+    /// <param name="parent">The Options-page container.</param>
     /// <param name="name">The row object-name prefix.</param>
     /// <param name="caption">The row caption.</param>
     /// <param name="y">The source-space row top.</param>
@@ -1507,7 +1712,7 @@ public static class OptionsMenuPrefabBuilder
         labelField.color = new Color(0.875f, 0.910f, 0.941f);
         labelField.fontSize = 11;
         labelField.alignment = TextAlignmentOptions.MidlineLeft;
-        SetSourceRect(labelField.rectTransform, 20, y + 2, 150, 14);
+        SetSourceRect(labelField.rectTransform, _optionsContentInset, y + 2, 150, 14);
 
         CreateSlicedImage(
             $"{name}Badge",
@@ -1517,7 +1722,7 @@ public static class OptionsMenuPrefabBuilder
             194,
             y,
             155,
-            18,
+            _optionsFieldRowHeight,
             Color.white
         );
         prevButton = CreateOptionsStepperButton(parent, $"{name}Prev", "<", 194, y, 78, 0);
@@ -1528,13 +1733,75 @@ public static class OptionsMenuPrefabBuilder
         valueField.alignment = TextAlignmentOptions.Midline;
         valueField.overflowMode = TextOverflowModes.Ellipsis;
         valueField.raycastTarget = false;
-        SetSourceRect(valueField.rectTransform, 218, y, 107, 18);
+        SetSourceRect(valueField.rectTransform, 218, y, 107, _optionsFieldRowHeight);
         nextButton = CreateOptionsStepperButton(parent, $"{name}Next", ">", 272, y, 77, 51);
         OverflowTextTooltip tooltip = valueField.gameObject.AddComponent<OverflowTextTooltip>();
         tooltip.Configure(valueField);
         prevButton.gameObject.AddComponent<OverflowTextTooltipTrigger>().Configure(tooltip);
         nextButton.gameObject.AddComponent<OverflowTextTooltipTrigger>().Configure(tooltip);
         return valueField;
+    }
+
+    /// <summary>
+    /// Appends a stepped field using the shared Options-page vertical rhythm.
+    /// </summary>
+    /// <param name="parent">The page container.</param>
+    /// <param name="name">The row object-name prefix.</param>
+    /// <param name="caption">The row caption.</param>
+    /// <param name="nextRowY">The shared page-layout cursor.</param>
+    /// <param name="prevButton">Receives the previous-step button.</param>
+    /// <param name="nextButton">Receives the next-step button.</param>
+    /// <returns>The value text field.</returns>
+    private static TextMeshProUGUI AppendOptionsFieldRow(
+        RectTransform parent,
+        string name,
+        string caption,
+        ref int nextRowY,
+        out Button prevButton,
+        out Button nextButton
+    )
+    {
+        TextMeshProUGUI value = CreateOptionsFieldRow(
+            parent,
+            name,
+            caption,
+            nextRowY,
+            out prevButton,
+            out nextButton
+        );
+        nextRowY += _optionsFieldRowStride;
+        return value;
+    }
+
+    /// <summary>
+    /// Appends and indexes one Graphics setting using the shared stepped-field component.
+    /// </summary>
+    /// <param name="parent">The Graphics-page content container.</param>
+    /// <param name="setting">The setting represented by the row.</param>
+    /// <param name="caption">The displayed row caption.</param>
+    /// <param name="nextRowY">The shared page-layout cursor.</param>
+    /// <param name="valueFields">The setting-indexed value fields.</param>
+    /// <param name="previousButtons">The setting-indexed previous-step buttons.</param>
+    /// <param name="nextButtons">The setting-indexed next-step buttons.</param>
+    private static void AppendGraphicsFieldRow(
+        RectTransform parent,
+        UserGraphicsSetting setting,
+        string caption,
+        ref int nextRowY,
+        TextMeshProUGUI[] valueFields,
+        Button[] previousButtons,
+        Button[] nextButtons
+    )
+    {
+        int index = (int)setting;
+        valueFields[index] = AppendOptionsFieldRow(
+            parent,
+            setting.ToString(),
+            caption,
+            ref nextRowY,
+            out previousButtons[index],
+            out nextButtons[index]
+        );
     }
 
     /// <summary>
@@ -1637,7 +1904,13 @@ public static class OptionsMenuPrefabBuilder
         Image hitArea = hotspot.GetComponent<Image>();
         hitArea.color = Color.clear;
         hitArea.raycastTarget = true;
-        SetSourceRect(hotspot.GetComponent<RectTransform>(), x, y, hitWidth, 18);
+        SetSourceRect(
+            hotspot.GetComponent<RectTransform>(),
+            x,
+            y,
+            hitWidth,
+            _optionsFieldRowHeight
+        );
         Button button = hotspot.AddComponent<Button>();
         button.targetGraphic = hitArea;
         button.transition = Selectable.Transition.None;
@@ -1646,7 +1919,7 @@ public static class OptionsMenuPrefabBuilder
         glyphText.color = new Color(0.373f, 0.659f, 0.925f);
         glyphText.fontSize = 10;
         glyphText.alignment = TextAlignmentOptions.Midline;
-        SetSourceRect(glyphText.rectTransform, glyphX, 0, 26, 18);
+        SetSourceRect(glyphText.rectTransform, glyphX, 0, 26, _optionsFieldRowHeight);
         ApplyOptionsButtonFeedback(button, glyphText);
         return button;
     }
@@ -2191,96 +2464,13 @@ public static class OptionsMenuPrefabBuilder
         root.SetActive(false);
         SetSourceRect(root.GetComponent<RectTransform>(), x, y, width, height);
         view.enabled = true;
-
-        RectTransform scrollRoot = view.ScrollRoot;
-        SetSourceRect(scrollRoot, viewportX, viewportY, viewportWidth, viewportHeight);
-        ScrollRect scrollRect = scrollRoot.GetComponent<ScrollRect>();
-        scrollRect.horizontal = false;
-        scrollRect.vertical = true;
-        scrollRect.movementType = ScrollRect.MovementType.Clamped;
-        scrollRect.inertia = false;
-
-        RectTransform viewportRect = view.ViewportRoot;
-        SetSourceRect(viewportRect, 0, 0, viewportWidth, viewportHeight);
-        Image viewportImage = viewportRect.GetComponent<Image>();
-        viewportImage.color = Color.clear;
-        viewportImage.raycastTarget = true;
-
+        view.SetLayout(
+            new Vector2(viewportX, viewportY),
+            new Vector2(viewportWidth, viewportHeight),
+            new Vector2(scrollbarX, scrollbarY),
+            new Vector2(scrollbarWidth, scrollbarHeight)
+        );
         contentRoot = view.ContentRoot;
-        SetSourceRect(contentRoot, 0, 0, viewportWidth, viewportHeight);
-        scrollRect.viewport = viewportRect;
-        scrollRect.content = contentRoot;
-
-        Scrollbar scrollbar = view.GetComponentInChildren<Scrollbar>(true);
-        if (scrollbar == null)
-            throw new MissingReferenceException($"{name}/Scrollbar is missing.");
-        scrollbar.handleRect = null;
-        SetSourceRect(
-            scrollbar.transform as RectTransform,
-            scrollbarX,
-            scrollbarY,
-            scrollbarWidth,
-            scrollbarHeight
-        );
-
-        Texture2D scrollUpTexture = LoadTexture(_scrollUpAddress);
-        Texture2D scrollDownTexture = LoadTexture(_scrollDownAddress);
-        int upArrowHeight = GetTextureHeight(scrollUpTexture, 9);
-        int downArrowHeight = GetTextureHeight(scrollDownTexture, 9);
-        int trackHeight = Mathf.Max(0, scrollbarHeight - upArrowHeight - downArrowHeight);
-
-        Image scrollbarBackground = scrollbar.GetComponent<Image>();
-        scrollbarBackground.color = Color.clear;
-        scrollbarBackground.raycastTarget = true;
-        scrollbar.direction = Scrollbar.Direction.BottomToTop;
-
-        Image trackBackground = FindRequiredChild<Image>(
-            scrollbar.transform,
-            "TrackBackgroundImage"
-        );
-        trackBackground.color = Color.black;
-        SetSourceRect(trackBackground.rectTransform, 0, upArrowHeight, scrollbarWidth, trackHeight);
-
-        RawImage scrollUpImage = FindRequiredChild<RawImage>(
-            scrollbar.transform,
-            "ScrollUpButtonImage"
-        );
-        scrollUpImage.texture = scrollUpTexture;
-        AttachTextureBinding(scrollUpImage, _scrollUpAddress);
-        SetSourceRect(scrollUpImage.rectTransform, 0, 0, scrollbarWidth, upArrowHeight);
-        ConfigureScrollButton(scrollUpImage);
-
-        RawImage scrollDownImage = FindRequiredChild<RawImage>(
-            scrollbar.transform,
-            "ScrollDownButtonImage"
-        );
-        scrollDownImage.texture = scrollDownTexture;
-        AttachTextureBinding(scrollDownImage, _scrollDownAddress);
-        SetSourceRect(
-            scrollDownImage.rectTransform,
-            0,
-            scrollbarHeight - downArrowHeight,
-            scrollbarWidth,
-            downArrowHeight
-        );
-        ConfigureScrollButton(scrollDownImage);
-
-        RectTransform slidingArea = FindRequiredChild<RectTransform>(
-            scrollbar.transform,
-            "SlidingArea"
-        );
-        SetSourceRect(slidingArea, 0, upArrowHeight, scrollbarWidth, trackHeight);
-        RawImage handleImage = FindRequiredChild<RawImage>(slidingArea, "Handle");
-        handleImage.texture = LoadTexture(_scrollHandleAddress);
-        AttachTextureBinding(handleImage, _scrollHandleAddress);
-        FillParent(handleImage.rectTransform);
-        handleImage.raycastTarget = true;
-        scrollbar.handleRect = handleImage.rectTransform;
-        scrollbar.targetGraphic = handleImage;
-        scrollbar.transition = Selectable.Transition.None;
-        scrollRect.verticalScrollbar = scrollbar;
-        scrollRect.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.Permanent;
-
         root.SetActive(true);
         return view;
     }
@@ -2441,25 +2631,6 @@ public static class OptionsMenuPrefabBuilder
     }
 
     /// <summary>
-    /// Finds a required component on a named direct child.
-    /// </summary>
-    /// <typeparam name="T">The required component type.</typeparam>
-    /// <param name="parent">The hierarchy parent to search.</param>
-    /// <param name="childName">The direct child name.</param>
-    /// <returns>The required child component.</returns>
-    private static T FindRequiredChild<T>(Transform parent, string childName)
-        where T : Component
-    {
-        Transform child = parent.Find(childName);
-        T component = child == null ? null : child.GetComponent<T>();
-        if (component == null)
-            throw new MissingReferenceException(
-                $"{parent.name}/{childName} is missing {typeof(T).Name}."
-            );
-        return component;
-    }
-
-    /// <summary>
     /// Loads a texture from the active development content pack.
     /// </summary>
     /// <param name="path">The content texture address.</param>
@@ -2518,30 +2689,6 @@ public static class OptionsMenuPrefabBuilder
         int separatorIndex = texturePath.LastIndexOf('/');
         int extensionIndex = texturePath.LastIndexOf('.');
         return extensionIndex > separatorIndex ? texturePath[..extensionIndex] : texturePath;
-    }
-
-    /// <summary>
-    /// Reads a texture's source height or uses a fallback when unavailable.
-    /// </summary>
-    /// <param name="texture">The texture whose source height is needed.</param>
-    /// <param name="fallback">The height used when metadata is unavailable.</param>
-    /// <returns>The usable source height.</returns>
-    private static int GetTextureHeight(Texture texture, int fallback)
-    {
-        int height = UILayout.GetTextureSourceHeight(texture);
-        return height > 0 ? height : fallback;
-    }
-
-    /// <summary>
-    /// Configures an authored scrollbar arrow as a raw-image button.
-    /// </summary>
-    /// <param name="image">The arrow image to configure.</param>
-    private static void ConfigureScrollButton(RawImage image)
-    {
-        image.raycastTarget = true;
-        Button button = image.GetComponent<Button>();
-        button.targetGraphic = image;
-        button.transition = Selectable.Transition.None;
     }
 
     /// <summary>

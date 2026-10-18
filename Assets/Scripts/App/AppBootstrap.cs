@@ -45,6 +45,7 @@ public sealed class AppBootstrap : MonoBehaviour
     private ContentPack _contentPack;
     private CutsceneManager _cutsceneManager;
     private DisplayManager _displayManager;
+    private GraphicsManager _graphicsManager;
     private Task _mainMenuContentTask;
     private Task _strategyContentTask;
     private GameRuntime _runtime;
@@ -176,8 +177,18 @@ public sealed class AppBootstrap : MonoBehaviour
             inputManager = CreateInputManager();
 
         _displayManager = new DisplayManager();
-        _userSettingsManager = new UserSettingsManager(audioManager, _displayManager, inputManager);
+        _graphicsManager = new GraphicsManager(transform);
+        _userSettingsManager = new UserSettingsManager(
+            audioManager,
+            _displayManager,
+            _graphicsManager,
+            inputManager
+        );
         _userSettingsManager.Load();
+        FrameRateMonitor.EnsureExists(
+            transform,
+            () => _userSettingsManager?.Settings?.UserInterface?.ShowFrameRate == true
+        );
         _runtime = new GameRuntime(
             _contentPack,
             getGameplaySettings: () => _userSettingsManager.Settings.Gameplay
@@ -394,11 +405,13 @@ public sealed class AppBootstrap : MonoBehaviour
     /// </summary>
     private void ReleaseRuntimeServices()
     {
+        _graphicsManager?.Dispose();
         _contentModelCache?.Dispose();
         _contentAssets?.Dispose();
         _contentModelCache = null;
         _contentAssets = null;
         _contentPack = null;
+        _graphicsManager = null;
         _mainMenuApplicationPreload = null;
         _strategyApplicationPreload = null;
         _runtime = null;
@@ -474,6 +487,15 @@ public sealed class AppBootstrap : MonoBehaviour
     public DisplayManager GetDisplayManager()
     {
         return _displayManager;
+    }
+
+    /// <summary>
+    /// Returns the application graphics manager.
+    /// </summary>
+    /// <returns>The active graphics manager.</returns>
+    public GraphicsManager GetGraphicsManager()
+    {
+        return _graphicsManager;
     }
 
     /// <summary>

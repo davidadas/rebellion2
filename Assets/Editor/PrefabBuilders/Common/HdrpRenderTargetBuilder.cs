@@ -58,10 +58,7 @@ public static class HdrpRenderTargetBuilder
     /// <param name="parent">The generated prefab root that owns the volume.</param>
     public static void AddPlanetPostProcessingVolume(Transform parent)
     {
-        GameObject volumeObject = new GameObject(
-            "PlanetRenderTargetVolume",
-            typeof(Volume)
-        );
+        GameObject volumeObject = new GameObject("PlanetRenderTargetVolume", typeof(Volume));
         volumeObject.layer = _planetPostProcessingVolumeLayer;
         volumeObject.transform.SetParent(parent, false);
 
@@ -119,6 +116,7 @@ public static class HdrpRenderTargetBuilder
         cameraData.customRenderingSettings = true;
         cameraData.volumeLayerMask =
             1 << _volumeLayer
+            | 1 << GraphicsManager.RuntimeVolumeLayer
             | (includeFlatAmbientLighting ? 1 << _flatAmbientVolumeLayer : 0)
             | (includePlanetPostProcessing ? 1 << _planetPostProcessingVolumeLayer : 0);
         ConfigureFrameSetting(cameraData, FrameSettingsField.ExposureControl, false);
@@ -127,6 +125,7 @@ public static class HdrpRenderTargetBuilder
             FrameSettingsField.Postprocess,
             antialiasing != HDAdditionalCameraData.AntialiasingMode.None
         );
+        ConfigureFrameSetting(cameraData, FrameSettingsField.Bloom, includePlanetPostProcessing);
         ConfigureFrameSetting(cameraData, FrameSettingsField.ReflectionProbe, false);
         ConfigureFrameSetting(cameraData, FrameSettingsField.PlanarProbe, false);
         ConfigureFrameSetting(cameraData, FrameSettingsField.SkyReflection, false);

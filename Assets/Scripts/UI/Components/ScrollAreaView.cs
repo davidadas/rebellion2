@@ -119,6 +119,7 @@ public sealed class ScrollAreaView : MonoBehaviour
             viewportSize.y
         );
         SetTopLeftRect(ViewportRoot, 0f, 0f, viewportSize.x, viewportSize.y);
+        SetTopLeftRect(contentRoot, 0f, 0f, viewportSize.x, viewportSize.y);
 
         if (scrollbar == null)
             return;

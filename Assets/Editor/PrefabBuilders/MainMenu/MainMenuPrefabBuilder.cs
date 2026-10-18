@@ -9,6 +9,7 @@ using UnityEditor.Events;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.EventSystems;
+using UnityEngine.Rendering;
 using UnityEngine.Rendering.HighDefinition;
 using UnityEngine.UI;
 using Object = UnityEngine.Object;
@@ -53,6 +54,17 @@ public static class MainMenuPrefabBuilder
     private const string _planetCompositeMaterialPath =
         _planetAssetRoot + "/Generated/PlanetComposite.mat";
     private const string _planetPrefabPath = _planetAssetRoot + "/Planet.prefab";
+    private const string _terrestrialSurfaceMaterialPath =
+        _planetAssetRoot + "/Materials/TerrestrialSurface.mat";
+    private const string _terrestrialAtmosphereMaterialPath =
+        _planetAssetRoot + "/Materials/TerrestrialAtmosphere.mat";
+    private const string _thunderstormSurfaceMaterialPath =
+        _planetAssetRoot + "/Materials/PlanetSurface.mat";
+    private const string _thunderstormAtmosphereMaterialPath =
+        _planetAssetRoot + "/Materials/PlanetAtmosphere.mat";
+    private const string _stellarFlareMeshPath = _planetAssetRoot + "/Flare/PurpleFlareMesh.asset";
+    private const string _stellarFlareMaterialPath =
+        _planetAssetRoot + "/Flare/PurpleFlareMaterial.mat";
     private const string _citadelModelAddress = "Application/MainMenu/Models/citadel";
     private const string _citadelRenderTexturePath =
         "Assets/Art/Models/MainMenu/HqCitadel.renderTexture";
@@ -71,6 +83,7 @@ public static class MainMenuPrefabBuilder
     private const string _lightsName = "SharedLights";
     private static readonly Color _iconAmbientColor = new Color(0.212f, 0.227f, 0.259f).linear;
     private const float _builtInDirectionalLightIntensityToHdrp = Mathf.PI;
+    private const float _hqUnderLightIntensity = 60f;
 
     // The five icon slots -- two faction coins and three difficulty ships/sphere -- each carrying
     // its model + RenderTexture paths and the orientation its rig applies. (Face is defined below.)
@@ -2040,11 +2053,11 @@ public static class MainMenuPrefabBuilder
     /// <param name="rect">The RectTransform to place.</param>
     private static void ApplyPlanetBackdropRect(RectTransform rect)
     {
-        rect.anchorMin = new Vector2(0.5f, 0.63f);
-        rect.anchorMax = new Vector2(0.5f, 0.63f);
+        rect.anchorMin = new Vector2(0.5f, 0.5f);
+        rect.anchorMax = new Vector2(0.5f, 0.5f);
         rect.pivot = new Vector2(0.5f, 0.5f);
         rect.sizeDelta = new Vector2(3770.957f, 3526.246f);
-        rect.anchoredPosition = new Vector2(74f, -734f);
+        rect.anchoredPosition = Vector2.zero;
         rect.localRotation = Quaternion.identity;
     }
 
@@ -2063,15 +2076,28 @@ public static class MainMenuPrefabBuilder
         pivot.transform.SetParent(rig.transform, false);
 
         const int planetLayer = 31;
-        GameObject planetPrefab = LoadRequiredAsset<GameObject>(_planetPrefabPath);
-        GameObject planet = (GameObject)
-            PrefabUtility.InstantiatePrefab(planetPrefab, pivot.transform);
-        planet.name = "Planet";
-        planet.transform.localPosition = Vector3.zero;
-        planet.transform.localRotation = Quaternion.Euler(0f, 95f, 0f);
-        planet.transform.localScale = Vector3.one * 2f;
-        foreach (Transform child in planet.GetComponentsInChildren<Transform>(true))
-            child.gameObject.layer = planetLayer;
+        BuildStellarFlare(pivot.transform, planetLayer);
+        BuildPlanet(
+            pivot.transform,
+            "Terrestrial 02",
+            Vector3.zero,
+            Quaternion.identity,
+            2f,
+            _terrestrialSurfaceMaterialPath,
+            _terrestrialAtmosphereMaterialPath,
+            planetLayer
+        );
+        BuildPlanet(
+            pivot.transform,
+            "Thunderstorm Moon",
+            new Vector3(0.86f, 0.88f, 0.3f),
+            Quaternion.Euler(0f, -35f, 0f),
+            0.48f,
+            _thunderstormSurfaceMaterialPath,
+            _thunderstormAtmosphereMaterialPath,
+            planetLayer
+        );
+        BuildPlanetSun(pivot.transform, planetLayer);
 
         GameObject cameraObject = new GameObject("Camera", typeof(Camera));
         cameraObject.transform.SetParent(rig.transform, false);
@@ -2080,19 +2106,112 @@ public static class MainMenuPrefabBuilder
         camera.clearFlags = CameraClearFlags.SolidColor;
         camera.backgroundColor = new Color(0f, 0f, 0f, 0f);
         camera.orthographic = true;
-        camera.orthographicSize = 1.75f;
+        camera.orthographicSize = 3.25f;
         camera.nearClipPlane = 0.1f;
         camera.farClipPlane = 50f;
         camera.cullingMask = 1 << planetLayer;
-        camera.allowHDR = true;
         camera.allowMSAA = false;
         camera.targetTexture = renderTexture;
         HdrpRenderTargetBuilder.ConfigureCamera(
             camera,
             includePlanetPostProcessing: true,
-            antialiasing: HDAdditionalCameraData.AntialiasingMode
-                .SubpixelMorphologicalAntiAliasing
+            antialiasing: HDAdditionalCameraData.AntialiasingMode.SubpixelMorphologicalAntiAliasing
         );
+    }
+
+    /// <summary>
+    /// Builds the package-authored stellar flare that peeks over the primary planet.
+    /// </summary>
+    /// <param name="parent">The planetary-system pivot that owns the flare.</param>
+    /// <param name="layer">The isolated render layer used by the planet camera.</param>
+    private static void BuildStellarFlare(Transform parent, int layer)
+    {
+        GameObject flare = new GameObject(
+            "Stellar Flare",
+            typeof(MeshFilter),
+            typeof(MeshRenderer)
+        );
+        flare.layer = layer;
+        flare.transform.SetParent(parent, false);
+        flare.transform.localPosition = new Vector3(-1.55f, 0.95f, 0.75f);
+        flare.transform.localRotation = Quaternion.identity;
+        flare.transform.localScale = Vector3.one * 0.11f;
+
+        flare.GetComponent<MeshFilter>().sharedMesh = LoadRequiredAsset<Mesh>(
+            _stellarFlareMeshPath
+        );
+        MeshRenderer renderer = flare.GetComponent<MeshRenderer>();
+        renderer.sharedMaterial = LoadRequiredAsset<Material>(_stellarFlareMaterialPath);
+        renderer.shadowCastingMode = ShadowCastingMode.Off;
+        renderer.receiveShadows = false;
+    }
+
+    /// <summary>
+    /// Instantiates one authored planet body and applies its surface and atmosphere materials.
+    /// </summary>
+    /// <param name="parent">The planetary-system pivot that owns the body.</param>
+    /// <param name="name">The generated body's scene name.</param>
+    /// <param name="position">The body's local position within the planetary system.</param>
+    /// <param name="rotation">The body's local rotation.</param>
+    /// <param name="scale">The body's uniform local scale.</param>
+    /// <param name="surfaceMaterialPath">The authored surface-material asset path.</param>
+    /// <param name="atmosphereMaterialPath">The authored atmosphere-material asset path.</param>
+    /// <param name="layer">The isolated render layer used by the planet camera.</param>
+    private static void BuildPlanet(
+        Transform parent,
+        string name,
+        Vector3 position,
+        Quaternion rotation,
+        float scale,
+        string surfaceMaterialPath,
+        string atmosphereMaterialPath,
+        int layer
+    )
+    {
+        GameObject prefab = LoadRequiredAsset<GameObject>(_planetPrefabPath);
+        GameObject planet = (GameObject)PrefabUtility.InstantiatePrefab(prefab, parent);
+        planet.name = name;
+        planet.transform.localPosition = position;
+        planet.transform.localRotation = rotation;
+        planet.transform.localScale = Vector3.one * scale;
+
+        MeshRenderer surfaceRenderer = planet.GetComponent<MeshRenderer>();
+        if (surfaceRenderer == null)
+            throw new InvalidOperationException($"{_planetPrefabPath} has no surface renderer.");
+        surfaceRenderer.sharedMaterial = LoadRequiredAsset<Material>(surfaceMaterialPath);
+
+        Transform atmosphere = planet.transform.Find("Atmosphere");
+        MeshRenderer atmosphereRenderer = atmosphere?.GetComponent<MeshRenderer>();
+        if (atmosphereRenderer == null)
+            throw new InvalidOperationException($"{_planetPrefabPath} has no atmosphere renderer.");
+        atmosphereRenderer.sharedMaterial = LoadRequiredAsset<Material>(atmosphereMaterialPath);
+
+        foreach (Transform child in planet.GetComponentsInChildren<Transform>(true))
+            child.gameObject.layer = layer;
+    }
+
+    /// <summary>
+    /// Builds the shared stellar light used by every body in the planet rig.
+    /// </summary>
+    /// <param name="parent">The planetary-system pivot that owns the light.</param>
+    /// <param name="layer">The isolated render layer used by the planet camera.</param>
+    private static void BuildPlanetSun(Transform parent, int layer)
+    {
+        GameObject lightObject = new GameObject("Planet Sun", typeof(Light));
+        lightObject.layer = layer;
+        lightObject.transform.SetParent(parent, false);
+        lightObject.transform.localRotation = new Quaternion(
+            0.47797772f,
+            0.5164945f,
+            -0.088936515f,
+            0.7048837f
+        );
+        Light light = lightObject.GetComponent<Light>();
+        light.type = LightType.Directional;
+        HdrpRenderTargetBuilder.ConfigureLight(light, 1f);
+        light.color = Color.white;
+        light.cullingMask = 1 << layer;
+        light.shadows = LightShadows.Soft;
     }
 
     /// <summary>
@@ -2110,6 +2229,7 @@ public static class MainMenuPrefabBuilder
                 || existing.height != size
                 || existing.format != RenderTextureFormat.ARGBHalf
                 || existing.antiAliasing != 1
+                || !existing.useDynamicScale
             )
             {
                 existing.Release();
@@ -2117,6 +2237,7 @@ public static class MainMenuPrefabBuilder
                 existing.height = size;
                 existing.format = RenderTextureFormat.ARGBHalf;
                 existing.antiAliasing = 1;
+                existing.useDynamicScale = true;
                 EditorUtility.SetDirty(existing);
             }
             return existing;
@@ -2126,6 +2247,7 @@ public static class MainMenuPrefabBuilder
         {
             name = "Planet",
             antiAliasing = 1,
+            useDynamicScale = true,
         };
         EnsureAssetFolder(Path.GetDirectoryName(_renderTexturePath));
         AssetDatabase.CreateAsset(created, _renderTexturePath);
@@ -2481,16 +2603,19 @@ public static class MainMenuPrefabBuilder
         camera.farClipPlane = 20f;
         camera.allowMSAA = false;
         camera.targetTexture = renderTexture;
-        HdrpRenderTargetBuilder.ConfigureCamera(camera);
+        HdrpRenderTargetBuilder.ConfigureCamera(camera, includeFlatAmbientLighting: true);
 
         GameObject underLightObject = new GameObject("UnderLight", typeof(Light));
         underLightObject.transform.SetParent(rig.transform, false);
-        underLightObject.transform.localPosition = new Vector3(0f, -2.5f, -1.5f);
+        underLightObject.transform.localPosition = new Vector3(0f, -0.55f, -2.5f);
         Light underLight = underLightObject.GetComponent<Light>();
-        underLight.type = LightType.Point;
-        HdrpRenderTargetBuilder.ConfigureLight(underLight, 2f);
-        underLight.range = 8f;
+        underLight.type = LightType.Spot;
+        HdrpRenderTargetBuilder.ConfigureLight(underLight, _hqUnderLightIntensity);
+        underLight.range = 6f;
+        underLight.spotAngle = 18f;
+        underLight.innerSpotAngle = 12f;
         underLight.color = Color.white;
+        underLight.shadows = LightShadows.None;
 
         return spinner;
     }
@@ -2514,12 +2639,18 @@ public static class MainMenuPrefabBuilder
         if (existing != null)
         {
             // Re-assert the intended dimensions in case an older square asset is on disk.
-            if (existing.width != width || existing.height != height || existing.antiAliasing != 1)
+            if (
+                existing.width != width
+                || existing.height != height
+                || existing.antiAliasing != 1
+                || !existing.useDynamicScale
+            )
             {
                 existing.Release();
                 existing.width = width;
                 existing.height = height;
                 existing.antiAliasing = 1;
+                existing.useDynamicScale = true;
                 EditorUtility.SetDirty(existing);
             }
             return existing;
@@ -2529,6 +2660,7 @@ public static class MainMenuPrefabBuilder
         {
             name = $"Icon_{factionId}",
             antiAliasing = 1,
+            useDynamicScale = true,
         };
         EnsureAssetFolder(Path.GetDirectoryName(path));
         AssetDatabase.CreateAsset(created, path);
@@ -2618,10 +2750,7 @@ public static class MainMenuPrefabBuilder
             underLightObject.transform.localPosition = new Vector3(0f, -2.5f, -1.5f);
             Light underLight = underLightObject.GetComponent<Light>();
             underLight.type = LightType.Point;
-            HdrpRenderTargetBuilder.ConfigureLight(
-                underLight,
-                face.UnderLightIntensity
-            );
+            HdrpRenderTargetBuilder.ConfigureLight(underLight, face.UnderLightIntensity);
             underLight.range = 8f;
             underLight.color = Color.white;
         }

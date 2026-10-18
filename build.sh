@@ -175,10 +175,26 @@ do_lint() {
         done
 
         echo "=== Architecture Tests ==="
-        dotnet test "$ARCHITECTURE_TEST_PROJECT" \
+        architecture_output="$(dirname "$ARCHITECTURE_TEST_PROJECT")/bin/Debug/net8.0"
+        case "$(uname -s)" in
+            Darwin)
+                unity_engine_assemblies="$(dirname "$UNITY")/../Managed/UnityEngine"
+                ;;
+            *)
+                unity_engine_assemblies="$(dirname "$UNITY")/Data/Managed/UnityEngine"
+                ;;
+        esac
+        dotnet build "$ARCHITECTURE_TEST_PROJECT" \
             --configuration Debug \
             --verbosity quiet \
             -p:BuildProjectReferences=false
+        if [ -d "$unity_engine_assemblies" ]; then
+            cp "$unity_engine_assemblies"/*.dll "$architecture_output"/
+        fi
+        dotnet test "$ARCHITECTURE_TEST_PROJECT" \
+            --configuration Debug \
+            --verbosity quiet \
+            --no-build
         echo ""
     fi
 

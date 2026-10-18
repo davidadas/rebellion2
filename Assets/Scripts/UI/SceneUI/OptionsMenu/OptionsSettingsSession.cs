@@ -14,8 +14,12 @@ internal sealed class OptionsSettingsSession
         (int)FullScreenMode.Windowed,
     };
 
+    private static readonly int[] _renderScalePercentages = { 50, 67, 75, 85, 100 };
+    private static readonly int[] _frameRateLimits = { 0, 30, 60, 120, 144, 165, 240 };
+
     private readonly UserSettingsManager _userSettings;
     private readonly DisplayManager _displayManager;
+    private readonly GraphicsManager _graphicsManager;
     private readonly AudioManager _audioManager;
     private readonly InputManager _inputManager;
 
@@ -33,6 +37,17 @@ internal sealed class OptionsSettingsSession
     private int _snapshotResolutionWidth;
     private int _snapshotResolutionHeight;
     private int _snapshotFullScreenMode;
+    private int _snapshotQualityLevel;
+    private bool _snapshotGraphicsPresetCustomized;
+    private int _snapshotAntiAliasingMode;
+    private int _snapshotRenderScalePercent;
+    private int _snapshotFrameRateLimit;
+    private bool _snapshotVerticalSync;
+    private bool _snapshotRayTracing;
+    private bool _snapshotAmbientOcclusion;
+    private bool _snapshotBloom;
+    private bool _snapshotMotionBlur;
+    private bool _snapshotHdrOutput;
     private int _snapshotAutosaveIntervalTicks;
     private int _snapshotAutosavesToKeep;
     private IdleBarLocation _snapshotIdleBarLocation;
@@ -61,15 +76,18 @@ internal sealed class OptionsSettingsSession
     /// <param name="displayManager">The display manager.</param>
     /// <param name="audioManager">The audio manager.</param>
     /// <param name="inputManager">The input manager.</param>
+    /// <param name="graphicsManager">The optional HDRP graphics manager.</param>
     internal OptionsSettingsSession(
         UserSettingsManager userSettings,
         DisplayManager displayManager,
         AudioManager audioManager,
-        InputManager inputManager
+        InputManager inputManager,
+        GraphicsManager graphicsManager = null
     )
     {
         _userSettings = userSettings ?? throw new ArgumentNullException(nameof(userSettings));
         _displayManager = displayManager ?? throw new ArgumentNullException(nameof(displayManager));
+        _graphicsManager = graphicsManager;
         _audioManager = audioManager ?? throw new ArgumentNullException(nameof(audioManager));
         _inputManager = inputManager ?? throw new ArgumentNullException(nameof(inputManager));
     }
@@ -107,6 +125,17 @@ internal sealed class OptionsSettingsSession
         Video.ResolutionWidth = _snapshotResolutionWidth;
         Video.ResolutionHeight = _snapshotResolutionHeight;
         Video.FullScreenMode = _snapshotFullScreenMode;
+        Video.QualityLevel = _snapshotQualityLevel;
+        Video.GraphicsPresetCustomized = _snapshotGraphicsPresetCustomized;
+        Video.AntiAliasingMode = _snapshotAntiAliasingMode;
+        Video.RenderScalePercent = _snapshotRenderScalePercent;
+        Video.FrameRateLimit = _snapshotFrameRateLimit;
+        Video.VerticalSync = _snapshotVerticalSync;
+        Video.RayTracing = _snapshotRayTracing;
+        Video.AmbientOcclusion = _snapshotAmbientOcclusion;
+        Video.Bloom = _snapshotBloom;
+        Video.MotionBlur = _snapshotMotionBlur;
+        Video.HdrOutput = _snapshotHdrOutput;
         foreach (KeyValuePair<UserTacticalOption, bool> entry in _snapshotTactical)
             Video.SetEnabled(entry.Key, entry.Value);
         foreach (KeyValuePair<UserGameplayOption, bool> entry in _snapshotGameplay)
@@ -143,6 +172,7 @@ internal sealed class OptionsSettingsSession
                 Video.ResolutionWidth = 0;
                 Video.ResolutionHeight = 0;
                 Video.FullScreenMode = (int)FullScreenMode.ExclusiveFullScreen;
+                Video.RestoreGraphicsDefaults();
                 Video.RestoreTacticalDefaults();
                 RebuildResolutions();
                 break;
@@ -192,6 +222,25 @@ internal sealed class OptionsSettingsSession
         foreach (UserTacticalOption option in Enum.GetValues(typeof(UserTacticalOption)))
             states[option] = Video.IsEnabled(option);
         return states;
+    }
+
+    /// <summary>
+    /// Projects every staged graphics setting for presentation.
+    /// </summary>
+    /// <returns>The displayed value and availability keyed by graphics setting.</returns>
+    internal Dictionary<UserGraphicsSetting, OptionsGraphicsValue> GetGraphicsValues()
+    {
+        Dictionary<UserGraphicsSetting, OptionsGraphicsValue> values =
+            new Dictionary<UserGraphicsSetting, OptionsGraphicsValue>();
+        foreach (UserGraphicsSetting setting in Enum.GetValues(typeof(UserGraphicsSetting)))
+        {
+            bool available = IsGraphicsSettingAvailable(setting);
+            values[setting] = new OptionsGraphicsValue(
+                available ? GetGraphicsLabel(setting) : "Unavailable",
+                available
+            );
+        }
+        return values;
     }
 
     /// <summary>
@@ -315,6 +364,78 @@ internal sealed class OptionsSettingsSession
     }
 
     /// <summary>
+    /// Stages an adjacent supported value for one HDRP graphics setting.
+    /// </summary>
+    /// <param name="setting">The graphics setting to change.</param>
+    /// <param name="delta">The requested direction.</param>
+    internal void StepGraphics(UserGraphicsSetting setting, int delta)
+    {
+        if (delta == 0 || !IsGraphicsSettingAvailable(setting))
+            return;
+
+        switch (setting)
+        {
+            case UserGraphicsSetting.QualityPreset:
+                Video.ApplyGraphicsPreset(
+                    StepWrapped(
+                        Video.QualityLevel,
+                        delta,
+                        Math.Max(1, QualitySettings.names.Length)
+                    )
+                );
+                break;
+            case UserGraphicsSetting.AntiAliasing:
+                Video.AntiAliasingMode = StepWrapped(
+                    Video.AntiAliasingMode,
+                    delta,
+                    Enum.GetValues(typeof(UserAntiAliasingMode)).Length
+                );
+                RefreshGraphicsPresetCustomization();
+                break;
+            case UserGraphicsSetting.RenderScale:
+                Video.RenderScalePercent = StepValue(
+                    _renderScalePercentages,
+                    Video.RenderScalePercent,
+                    delta
+                );
+                RefreshGraphicsPresetCustomization();
+                break;
+            case UserGraphicsSetting.VerticalSync:
+                Video.VerticalSync = !Video.VerticalSync;
+                break;
+            case UserGraphicsSetting.FrameRateLimit:
+                Video.FrameRateLimit = StepValue(_frameRateLimits, Video.FrameRateLimit, delta);
+                break;
+            case UserGraphicsSetting.RayTracing:
+                Video.RayTracing = !Video.RayTracing;
+                if (Video.RayTracing)
+                    Video.AmbientOcclusion = true;
+                break;
+            case UserGraphicsSetting.AmbientOcclusion:
+                Video.AmbientOcclusion = !Video.AmbientOcclusion;
+                if (!Video.AmbientOcclusion)
+                    Video.RayTracing = false;
+                RefreshGraphicsPresetCustomization();
+                break;
+            case UserGraphicsSetting.Bloom:
+                Video.Bloom = !Video.Bloom;
+                RefreshGraphicsPresetCustomization();
+                break;
+            case UserGraphicsSetting.MotionBlur:
+                Video.MotionBlur = !Video.MotionBlur;
+                RefreshGraphicsPresetCustomization();
+                break;
+            case UserGraphicsSetting.HdrOutput:
+                Video.HdrOutput = !Video.HdrOutput;
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(setting), setting, null);
+        }
+
+        RefreshDirtyState();
+    }
+
+    /// <summary>
     /// Stores and immediately applies a normalized audio-channel volume.
     /// </summary>
     /// <param name="channel">The channel.</param>
@@ -350,6 +471,17 @@ internal sealed class OptionsSettingsSession
         _snapshotResolutionWidth = Video.ResolutionWidth;
         _snapshotResolutionHeight = Video.ResolutionHeight;
         _snapshotFullScreenMode = Video.FullScreenMode;
+        _snapshotQualityLevel = Video.QualityLevel;
+        _snapshotGraphicsPresetCustomized = Video.GraphicsPresetCustomized;
+        _snapshotAntiAliasingMode = Video.AntiAliasingMode;
+        _snapshotRenderScalePercent = Video.RenderScalePercent;
+        _snapshotFrameRateLimit = Video.FrameRateLimit;
+        _snapshotVerticalSync = Video.VerticalSync;
+        _snapshotRayTracing = Video.RayTracing;
+        _snapshotAmbientOcclusion = Video.AmbientOcclusion;
+        _snapshotBloom = Video.Bloom;
+        _snapshotMotionBlur = Video.MotionBlur;
+        _snapshotHdrOutput = Video.HdrOutput;
         _snapshotAutosaveIntervalTicks = Gameplay.AutosaveIntervalTicks;
         _snapshotAutosavesToKeep = Gameplay.AutosavesToKeep;
         _snapshotIdleBarLocation = UserInterface.IdleBarLocation;
@@ -401,6 +533,17 @@ internal sealed class OptionsSettingsSession
             Video.ResolutionWidth != _snapshotResolutionWidth
             || Video.ResolutionHeight != _snapshotResolutionHeight
             || Video.FullScreenMode != _snapshotFullScreenMode
+            || Video.QualityLevel != _snapshotQualityLevel
+            || Video.GraphicsPresetCustomized != _snapshotGraphicsPresetCustomized
+            || Video.AntiAliasingMode != _snapshotAntiAliasingMode
+            || Video.RenderScalePercent != _snapshotRenderScalePercent
+            || Video.FrameRateLimit != _snapshotFrameRateLimit
+            || Video.VerticalSync != _snapshotVerticalSync
+            || Video.RayTracing != _snapshotRayTracing
+            || Video.AmbientOcclusion != _snapshotAmbientOcclusion
+            || Video.Bloom != _snapshotBloom
+            || Video.MotionBlur != _snapshotMotionBlur
+            || Video.HdrOutput != _snapshotHdrOutput
         )
         {
             IsDirty = true;
@@ -562,5 +705,120 @@ internal sealed class OptionsSettingsSession
             FullScreenMode.Windowed => "Windowed",
             _ => "Fullscreen",
         };
+    }
+
+    /// <summary>
+    /// Formats one staged graphics setting for display.
+    /// </summary>
+    /// <param name="setting">The graphics setting to format.</param>
+    /// <returns>The displayed value.</returns>
+    private string GetGraphicsLabel(UserGraphicsSetting setting)
+    {
+        return setting switch
+        {
+            UserGraphicsSetting.QualityPreset => Video.GraphicsPresetCustomized
+                ? "Custom"
+                : GetQualityLabel(Video.QualityLevel),
+            UserGraphicsSetting.AntiAliasing => (
+                (UserAntiAliasingMode)Video.AntiAliasingMode
+            ) switch
+            {
+                UserAntiAliasingMode.Fxaa => "FXAA",
+                UserAntiAliasingMode.Smaa => "SMAA",
+                UserAntiAliasingMode.Taa => "TAA",
+                _ => "Off",
+            },
+            UserGraphicsSetting.RenderScale => $"{Video.RenderScalePercent}%",
+            UserGraphicsSetting.VerticalSync => GetToggleLabel(Video.VerticalSync),
+            UserGraphicsSetting.FrameRateLimit => Video.FrameRateLimit == 0
+                ? "Unlimited"
+                : $"{Video.FrameRateLimit} FPS",
+            UserGraphicsSetting.RayTracing => GetToggleLabel(Video.RayTracing),
+            UserGraphicsSetting.AmbientOcclusion => GetToggleLabel(Video.AmbientOcclusion),
+            UserGraphicsSetting.Bloom => GetToggleLabel(Video.Bloom),
+            UserGraphicsSetting.MotionBlur => GetToggleLabel(Video.MotionBlur),
+            UserGraphicsSetting.HdrOutput => GetToggleLabel(Video.HdrOutput),
+            _ => throw new ArgumentOutOfRangeException(nameof(setting), setting, null),
+        };
+    }
+
+    /// <summary>
+    /// Gets whether the active runtime can change one graphics setting.
+    /// </summary>
+    /// <param name="setting">The graphics setting to inspect.</param>
+    /// <returns>True when the setting is available.</returns>
+    private bool IsGraphicsSettingAvailable(UserGraphicsSetting setting)
+    {
+        return setting switch
+        {
+            UserGraphicsSetting.RayTracing => _graphicsManager?.RayTracingAvailable == true,
+            UserGraphicsSetting.HdrOutput => _graphicsManager?.HdrOutputAvailable == true,
+            _ => true,
+        };
+    }
+
+    /// <summary>
+    /// Reconciles the custom-preset marker with the values owned by the selected quality preset.
+    /// </summary>
+    private void RefreshGraphicsPresetCustomization()
+    {
+        UserVideoSettings preset = new UserVideoSettings();
+        preset.ApplyGraphicsPreset(Video.QualityLevel);
+        Video.GraphicsPresetCustomized =
+            Video.AntiAliasingMode != preset.AntiAliasingMode
+            || Video.RenderScalePercent != preset.RenderScalePercent
+            || Video.AmbientOcclusion != preset.AmbientOcclusion
+            || Video.Bloom != preset.Bloom
+            || Video.MotionBlur != preset.MotionBlur;
+    }
+
+    /// <summary>
+    /// Formats a quality-level index using the active Unity quality names.
+    /// </summary>
+    /// <param name="qualityLevel">The quality-level index.</param>
+    /// <returns>The quality name.</returns>
+    private static string GetQualityLabel(int qualityLevel)
+    {
+        string[] names = QualitySettings.names;
+        if (names.Length == 0)
+            return "Default";
+        return names[Mathf.Clamp(qualityLevel, 0, names.Length - 1)];
+    }
+
+    /// <summary>
+    /// Formats a boolean graphics value.
+    /// </summary>
+    /// <param name="enabled">Whether the setting is enabled.</param>
+    /// <returns>On or Off.</returns>
+    private static string GetToggleLabel(bool enabled)
+    {
+        return enabled ? "On" : "Off";
+    }
+
+    /// <summary>
+    /// Steps a zero-based value through a wrapped range.
+    /// </summary>
+    /// <param name="current">The current value.</param>
+    /// <param name="delta">The requested direction.</param>
+    /// <param name="count">The number of available values.</param>
+    /// <returns>The wrapped value.</returns>
+    private static int StepWrapped(int current, int delta, int count)
+    {
+        return ((current + Math.Sign(delta)) % count + count) % count;
+    }
+
+    /// <summary>
+    /// Steps through a discrete ordered set of integer values.
+    /// </summary>
+    /// <param name="values">The supported values.</param>
+    /// <param name="current">The current value.</param>
+    /// <param name="delta">The requested direction.</param>
+    /// <returns>The adjacent wrapped value.</returns>
+    private static int StepValue(int[] values, int current, int delta)
+    {
+        int index = Array.IndexOf(values, current);
+        if (index < 0)
+            index = values.Length - 1;
+        return values[StepWrapped(index, delta, values.Length)];
     }
 }

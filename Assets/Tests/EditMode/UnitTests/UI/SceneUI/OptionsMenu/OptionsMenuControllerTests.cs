@@ -306,6 +306,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             bool initiallyShowingStats = _bootstrap
                 .GetUserSettingsManager()
                 .Settings.UserInterface.ShowUnitCardStats;
+            bool initiallyShowingFrameRate = _bootstrap
+                .GetUserSettingsManager()
+                .Settings.UserInterface.ShowFrameRate;
             OptionsToggleRowView[] rows = GetField<OptionsToggleRowView[]>(
                 view,
                 "_userInterfaceRows"
@@ -318,6 +321,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             );
             OptionsToggleRowView statsRow = rows.Single(row =>
                 row.OptionIndex == (int)UserInterfaceOption.ShowUnitCardStats
+            );
+            OptionsToggleRowView frameRateRow = rows.Single(row =>
+                row.OptionIndex == (int)UserInterfaceOption.ShowFrameRate
             );
 
             GetField<Button>(showRow, "_button").onClick.Invoke();
@@ -336,6 +342,12 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.AreEqual(
                 !initiallyShowingStats,
                 _bootstrap.GetUserSettingsManager().Settings.UserInterface.ShowUnitCardStats
+            );
+
+            GetField<Button>(frameRateRow, "_button").onClick.Invoke();
+            Assert.AreEqual(
+                !initiallyShowingFrameRate,
+                _bootstrap.GetUserSettingsManager().Settings.UserInterface.ShowFrameRate
             );
         }
 

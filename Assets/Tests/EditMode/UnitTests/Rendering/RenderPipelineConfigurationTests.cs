@@ -1,5 +1,6 @@
 using NUnit.Framework;
 using UnityEditor;
+using UnityEditor.Rendering;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.HighDefinition;
@@ -17,6 +18,7 @@ public sealed class RenderPipelineConfigurationTests
     public void RenderPipeline_AllQualityLevels_UsesHighDefinitionRenderPipeline()
     {
         Assert.IsInstanceOf<HDRenderPipelineAsset>(GraphicsSettings.defaultRenderPipeline);
+        Assert.AreEqual(UserVideoSettings.DefaultQualityLevel + 1, QualitySettings.names.Length);
         Assert.AreSame(
             GraphicsSettings.defaultRenderPipeline,
             QualitySettings.GetRenderPipelineAssetAt(QualitySettings.GetQualityLevel())
@@ -95,12 +97,23 @@ public sealed class RenderPipelineConfigurationTests
     [TestCase("Custom/PlanetDayNightShade")]
     [TestCase("Custom/PlanetSurface")]
     [TestCase("Custom/PremultipliedTexture")]
+    [TestCase("FORGE3D/Planets HD/HDRP/Atmosphere")]
+    [TestCase("FORGE3D/Planets HD/HDRP/Terrestrial")]
+    [TestCase("FORGE3D/Planets HD/HDRP/Thunderstorm")]
     public void CustomShader_HighDefinitionPipeline_IsSupported(string shaderName)
     {
         Shader shader = Shader.Find(shaderName);
 
         Assert.IsNotNull(shader, shaderName);
         Assert.IsTrue(shader.isSupported, shaderName);
+        foreach (ShaderMessage message in ShaderUtil.GetShaderMessages(shader))
+        {
+            Assert.AreNotEqual(
+                ShaderCompilerMessageSeverity.Error,
+                message.severity,
+                $"{shaderName}: {message.message}"
+            );
+        }
     }
 
     /// <summary>

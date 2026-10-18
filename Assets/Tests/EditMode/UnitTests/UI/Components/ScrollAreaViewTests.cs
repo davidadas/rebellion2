@@ -17,6 +17,7 @@ namespace Rebellion.Tests.UI.Components
         private Scrollbar _scrollbar;
         private Button _scrollDownButton;
         private Button _scrollUpButton;
+        private RectTransform _scrollRoot;
         private RectTransform _slidingAreaRoot;
         private RectTransform _trackBackgroundRoot;
         private RectTransform _viewportRoot;
@@ -30,13 +31,13 @@ namespace Rebellion.Tests.UI.Components
             _rootObject = new GameObject(
                 "ScrollArea",
                 typeof(RectTransform),
-                typeof(ScrollRect),
                 typeof(ScrollAreaView)
             );
             _rootObject.SetActive(false);
             _scrollArea = _rootObject.GetComponent<ScrollAreaView>();
-            ScrollRect scrollRect = _rootObject.GetComponent<ScrollRect>();
-            _viewportRoot = CreateRect("Viewport", _rootObject.transform, 100, 50);
+            _scrollRoot = CreateRect("ScrollRect", _rootObject.transform, 100, 50);
+            ScrollRect scrollRect = _scrollRoot.gameObject.AddComponent<ScrollRect>();
+            _viewportRoot = CreateRect("Viewport", _scrollRoot, 100, 50);
             _contentRoot = CreateRect("Content", _viewportRoot, 100, 50);
             scrollRect.viewport = _viewportRoot;
             scrollRect.content = _contentRoot;
@@ -51,7 +52,7 @@ namespace Rebellion.Tests.UI.Components
             _slidingAreaRoot = CreateRect("SlidingArea", scrollbarObject.transform, 10, 30);
             _scrollUpButton = CreateButton("ScrollUpButton", scrollbarObject.transform, 10, 8);
             _scrollDownButton = CreateButton("ScrollDownButton", scrollbarObject.transform, 10, 12);
-            _dragRelay = _viewportRoot.gameObject.AddComponent<ScrollAreaDragRelay>();
+            _dragRelay = _scrollRoot.gameObject.AddComponent<ScrollAreaDragRelay>();
             SetField("scrollRect", scrollRect);
             SetField("contentRoot", _contentRoot);
             SetField("scrollbar", _scrollbar);
@@ -77,7 +78,7 @@ namespace Rebellion.Tests.UI.Components
         {
             Assert.AreSame(_contentRoot, _scrollArea.ContentRoot);
             Assert.AreSame(_viewportRoot, _scrollArea.ViewportRoot);
-            Assert.AreSame(_rootObject.transform, _scrollArea.ScrollRoot);
+            Assert.AreSame(_scrollRoot, _scrollArea.ScrollRoot);
             Assert.AreEqual(100f, _scrollArea.ViewportWidth);
             Assert.AreEqual(50f, _scrollArea.ViewportHeight);
         }
@@ -100,11 +101,9 @@ namespace Rebellion.Tests.UI.Components
                 new Vector2(14, 100)
             );
 
-            Assert.AreEqual(
-                new RectInt(1, 2, 120, 60),
-                UILayout.GetSourceRect(_rootObject.transform as RectTransform)
-            );
+            Assert.AreEqual(new RectInt(1, 2, 120, 60), UILayout.GetSourceRect(_scrollRoot));
             Assert.AreEqual(new RectInt(0, 0, 120, 60), UILayout.GetSourceRect(_viewportRoot));
+            Assert.AreEqual(new RectInt(0, 0, 120, 60), UILayout.GetSourceRect(_contentRoot));
             Assert.AreEqual(
                 new RectInt(130, 4, 14, 100),
                 UILayout.GetSourceRect(_scrollbar.transform as RectTransform)
@@ -156,13 +155,13 @@ namespace Rebellion.Tests.UI.Components
         public void SetContentHeight_FirstLayout_StartsAtTopThenPreservesPosition()
         {
             _contentRoot.sizeDelta = new Vector2(100, 200);
-            _rootObject.GetComponent<ScrollRect>().verticalNormalizedPosition = 0f;
+            _scrollRoot.GetComponent<ScrollRect>().verticalNormalizedPosition = 0f;
 
             _scrollArea.SetContentHeight(200, 10, false);
 
             Assert.AreEqual(1f, _scrollbar.value, 0.01f);
 
-            _rootObject.GetComponent<ScrollRect>().verticalNormalizedPosition = 0.5f;
+            _scrollRoot.GetComponent<ScrollRect>().verticalNormalizedPosition = 0.5f;
             _scrollArea.SetContentHeight(200, 10, false);
 
             Assert.AreEqual(0.5f, _scrollbar.value, 0.01f);

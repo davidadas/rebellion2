@@ -163,39 +163,69 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         [Test]
-        public void AuthoredPrefab_PlanetRig_UsesAuthoredPlanet()
+        public void AuthoredPrefab_PlanetRig_UsesAuthoredPlanetarySystem()
         {
-            Transform model = _prefabRoot.transform.Find("PlanetRig/Pivot/Planet");
+            Transform pivot = _prefabRoot.transform.Find("PlanetRig/Pivot");
+            Transform primaryPlanet = pivot.Find("Terrestrial 02");
+            Transform moon = pivot.Find("Thunderstorm Moon");
+            Transform flare = pivot.Find("Stellar Flare");
             RawImage planet = _prefabRoot
                 .transform.Find("UI/Canvas/Viewport/SpaceBackdrop/Planet")
                 .GetComponent<RawImage>();
 
-            Assert.IsNotNull(model);
-            Renderer renderer = model.GetComponent<Renderer>();
-            Material earthMaterial = renderer.sharedMaterial;
-            Assert.AreEqual("Rebellion/MainMenu/PlanetSurface", earthMaterial.shader.name);
-            Assert.IsNotNull(earthMaterial.GetTexture("_CloudsTop"));
-            Assert.IsNotNull(earthMaterial.GetTexture("_LandMask"));
-            Assert.IsNotNull(earthMaterial.GetTexture("_NormalMap"));
-            Assert.Greater(model.GetComponent<MeshFilter>().sharedMesh.vertexCount, 1000);
+            Assert.IsNotNull(primaryPlanet);
+            Assert.AreEqual(Vector3.one * 2f, primaryPlanet.localScale);
+            Material primarySurface = primaryPlanet.GetComponent<Renderer>().sharedMaterial;
+            Assert.AreEqual(
+                "Assets/Art/MainMenu/Planet/Materials/TerrestrialSurface.mat",
+                AssetDatabase.GetAssetPath(primarySurface)
+            );
+            Assert.AreEqual("FORGE3D/Planets HD/HDRP/Terrestrial", primarySurface.shader.name);
+            Assert.IsNotNull(primarySurface.GetTexture("_CloudsTop"));
+            Assert.IsNotNull(primarySurface.GetTexture("_LandMask"));
+            Assert.IsNotNull(primarySurface.GetTexture("_NormalMap"));
+            Assert.IsNotNull(primarySurface.GetTexture("_CityLightMap"));
+            Assert.Greater(primaryPlanet.GetComponent<MeshFilter>().sharedMesh.vertexCount, 1000);
 
-            Transform atmosphere = model.Find("Atmosphere");
-            Assert.AreEqual(Vector3.one * 1.062f, atmosphere.localScale);
-            Material atmosphereMaterial = atmosphere.GetComponent<Renderer>().sharedMaterial;
-            Assert.AreEqual("Rebellion/MainMenu/PlanetAtmosphere", atmosphereMaterial.shader.name);
-            Assert.AreEqual(0.23f, atmosphereMaterial.GetFloat("_VertexOffset"));
-            Assert.AreEqual(4.3f, atmosphereMaterial.GetFloat("_ScatteringFactor"));
-            Assert.AreEqual(8f, atmosphereMaterial.GetFloat("_ScatteringIntensity"));
-            Assert.AreEqual(0.06f, atmosphereMaterial.GetFloat("_GlowIntensity"));
+            Transform primaryAtmosphere = primaryPlanet.Find("Atmosphere");
+            Material primaryAtmosphereMaterial = primaryAtmosphere
+                .GetComponent<Renderer>()
+                .sharedMaterial;
+            Assert.AreEqual(
+                "Assets/Art/MainMenu/Planet/Materials/TerrestrialAtmosphere.mat",
+                AssetDatabase.GetAssetPath(primaryAtmosphereMaterial)
+            );
+            Assert.AreEqual(
+                "FORGE3D/Planets HD/HDRP/Atmosphere",
+                primaryAtmosphereMaterial.shader.name
+            );
 
-            Light sun = _prefabRoot.transform.Find("PlanetRig/PlanetSun").GetComponent<Light>();
+            Assert.IsNotNull(moon);
+            Assert.AreEqual(Vector3.one * 0.48f, moon.localScale);
+            Material moonSurface = moon.GetComponent<Renderer>().sharedMaterial;
+            Assert.AreEqual(
+                "Assets/Art/MainMenu/Planet/Materials/PlanetSurface.mat",
+                AssetDatabase.GetAssetPath(moonSurface)
+            );
+            Assert.AreEqual("FORGE3D/Planets HD/HDRP/Thunderstorm", moonSurface.shader.name);
+            Assert.AreEqual(
+                "Assets/Art/MainMenu/Planet/Materials/PlanetAtmosphere.mat",
+                AssetDatabase.GetAssetPath(
+                    moon.Find("Atmosphere").GetComponent<Renderer>().sharedMaterial
+                )
+            );
+
+            Assert.IsNotNull(flare.GetComponent<MeshFilter>().sharedMesh);
+            Assert.IsNotNull(flare.GetComponent<MeshRenderer>().sharedMaterial);
+
+            Light sun = pivot.Find("Planet Sun").GetComponent<Light>();
             Assert.AreEqual(LightType.Directional, sun.type);
             Assert.AreEqual(1f, sun.intensity);
             Assert.IsNotNull(sun.GetComponent<HDAdditionalLightData>());
             Assert.AreEqual(1 << 31, sun.cullingMask);
 
             Camera camera = _prefabRoot.transform.Find("PlanetRig/Camera").GetComponent<Camera>();
-            Assert.IsTrue(camera.allowHDR);
+            Assert.IsFalse(camera.allowHDR);
             Assert.IsNotNull(camera.GetComponent<HDAdditionalCameraData>());
             Assert.IsNotNull(planet.material);
             Assert.AreEqual("Custom/PremultipliedTexture", planet.material.shader.name);
