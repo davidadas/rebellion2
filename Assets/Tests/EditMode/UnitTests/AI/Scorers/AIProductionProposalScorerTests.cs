@@ -17,6 +17,60 @@ namespace Rebellion.Tests.AI.Scorers
     [TestFixture]
     public class AIProductionProposalScorerTests
     {
+        /// <summary>Removes the initial-foundation bonus once a construction yard is committed.</summary>
+        /// <param name="status">The committed yard's manufacturing state.</param>
+        [TestCase(ManufacturingStatus.Building)]
+        [TestCase(ManufacturingStatus.Delivering)]
+        public void Score_ConstructionYardAlreadyCommitted_DoesNotAddFoundationBonus(
+            ManufacturingStatus status
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "outer-rim");
+            sector.SectorType = PlanetSectorType.OuterRim;
+            Planet destination = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "hub",
+                faction.InstanceID
+            );
+            Building committed = AITestSceneBuilder.AddProductionFacility(
+                game,
+                destination,
+                "committed-yard",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+            committed.ManufacturingStatus = status;
+            Building template = AITestSceneBuilder.CreateBuildingTemplate(
+                "construction-template",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+            AIManufactureProposal proposal = new AIManufactureProposal(
+                new AIProductionDemand(
+                    "construction-demand",
+                    AIProductionDemandKind.ConstructionFacility,
+                    ManufacturingType.Building,
+                    BuildingType.ConstructionFacility,
+                    destination,
+                    1,
+                    targetCount: 5,
+                    baseDemandPercent: 100
+                ),
+                destination,
+                new Technology(template),
+                false
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
+            AIProductionProposalScorer scorer = new AIProductionProposalScorer();
+            game.Config.AI.Selection.ProductionUtility.ColonyFoundation.Weight = 0;
+            double withoutBonus = scorer.Score(context, proposal);
+            game.Config.AI.Selection.ProductionUtility.ColonyFoundation.Weight = 1;
+
+            Assert.AreEqual(withoutBonus, scorer.Score(context, proposal));
+        }
+
         [Test]
         public void GetDemandPressure_ShieldsElsewhereExceedPortfolio_KeepsLocalDefenseRequest()
         {

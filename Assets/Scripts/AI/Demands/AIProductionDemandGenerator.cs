@@ -19,7 +19,7 @@ namespace Rebellion.AI.Demands
         private const int _completeDemandPercent = 100;
 
         /// <summary>
-        /// Adds production-facility expansion demands.
+        /// Adds construction capacity before shipyard and training expansion so hub space follows dependency order.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demands">The demand list to update.</param>
@@ -32,16 +32,16 @@ namespace Rebellion.AI.Demands
             AddProductionFacilityDemand(
                 context,
                 demands,
-                AIProductionDemandKind.Shipyard,
-                BuildingType.Shipyard,
-                config.ShipyardDemandPercent
+                AIProductionDemandKind.ConstructionFacility,
+                BuildingType.ConstructionFacility,
+                config.ConstructionFacilityDemandPercent
             );
             AddProductionFacilityDemand(
                 context,
                 demands,
-                AIProductionDemandKind.ConstructionFacility,
-                BuildingType.ConstructionFacility,
-                config.ConstructionFacilityDemandPercent
+                AIProductionDemandKind.Shipyard,
+                BuildingType.Shipyard,
+                config.ShipyardDemandPercent
             );
             AddProductionFacilityDemand(
                 context,

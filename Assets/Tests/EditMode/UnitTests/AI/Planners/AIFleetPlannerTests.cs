@@ -4,6 +4,7 @@ using System.Linq;
 using NUnit.Framework;
 using Rebellion.AI;
 using Rebellion.AI.Demands;
+using Rebellion.AI.Phases;
 using Rebellion.AI.Planners;
 using Rebellion.AI.Proposals;
 using Rebellion.AI.Scorers;
@@ -20,6 +21,206 @@ namespace Rebellion.Tests.AI.Fleets
     [TestFixture]
     public class AIFleetPlannerTests
     {
+        [Test]
+        public void Plan_CompletedCaptureWithReadyTarget_MovesFleetAndLeavesPlanetaryGarrison()
+        {
+            AITurnContext context = CreateCompletedCaptureContext(
+                out Fleet fleet,
+                out Planet captured,
+                out Planet target,
+                out Regiment garrison
+            );
+
+            ExecuteFleetPlan(context);
+
+            Assert.IsNotNull(fleet.Movement);
+            Assert.AreEqual(target.InstanceID, fleet.Order.TargetPlanetId);
+            Assert.AreSame(captured, garrison.GetParent());
+        }
+
+        [Test]
+        public void Plan_CompletedCaptureWithoutReadyTarget_DoesNotMoveFleet()
+        {
+            AITurnContext context = CreateCompletedCaptureContext(
+                out Fleet fleet,
+                out Planet _,
+                out Planet _,
+                out Regiment _
+            );
+            context.Game.Config.AI.FleetDeployment.MinimumAttackStrength = int.MaxValue;
+            context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+
+            ExecuteFleetPlan(context);
+
+            Assert.IsNull(fleet.Movement);
+        }
+
+        [Test]
+        public void Plan_CompletedCaptureWithUnreadyPreferredTarget_SelectsReadyAlternative()
+        {
+            AITurnContext context = CreateCompletedCaptureContext(
+                out Fleet fleet,
+                out Planet captured,
+                out Planet target,
+                out Regiment _
+            );
+            target.IsHeadquarters = true;
+            context.Game.Config.AI.FleetDeployment.AttackUtility.Headquarters.Weight = 10;
+            context.Game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit = 1;
+            AddShield(context.Game, target, "shield", target.OwnerInstanceID);
+            Planet alternative = AITestSceneBuilder.AddPlanet(
+                context.Game,
+                captured.GetParentOfType<PlanetSector>(),
+                "alternative",
+                target.OwnerInstanceID,
+                positionX: 5000
+            );
+            AITestSceneBuilder.RevealPlanet(context.Game, context.Faction, target);
+            AITestSceneBuilder.RevealPlanet(context.Game, context.Faction, alternative);
+            context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+
+            ExecuteFleetPlan(context);
+
+            Assert.AreEqual(alternative.InstanceID, fleet.Order?.TargetPlanetId);
+            Assert.IsNotNull(fleet.Movement);
+        }
+
+        [Test]
+        public void Plan_CompletedCaptureWithAlreadyAssignedTarget_DoesNotDuplicateAttack()
+        {
+            AITurnContext context = CreateCompletedCaptureContext(
+                out Fleet fleet,
+                out Planet captured,
+                out Planet target,
+                out Regiment _
+            );
+            Fleet assigned = AddBattleFleet(
+                context.Game,
+                captured,
+                context.Faction.InstanceID,
+                "assigned"
+            );
+            assigned.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                Status = FleetOrderStatus.Building,
+                TargetPlanetId = target.InstanceID,
+            };
+            context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+
+            ExecuteFleetPlan(context);
+
+            Assert.IsNull(fleet.Movement);
+        }
+
+        [Test]
+        public void Plan_CompletedCaptureWithoutEnemyTargets_DoesNotMoveFleet()
+        {
+            AITurnContext context = CreateCompletedCaptureContext(
+                out Fleet fleet,
+                out Planet _,
+                out Planet target,
+                out Regiment _
+            );
+            target.OwnerInstanceID = context.Faction.InstanceID;
+            context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+
+            ExecuteFleetPlan(context);
+
+            Assert.IsNull(fleet.Movement);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Plan_CompletedCaptureAtHeadquarters_DoesNotMoveFleet(bool enemyHeadquarters)
+        {
+            AITurnContext context = CreateCompletedCaptureContext(
+                out Fleet fleet,
+                out Planet captured,
+                out Planet _,
+                out Regiment _
+            );
+            Faction headquartersOwner = enemyHeadquarters
+                ? context.Game.GetFactions().First(faction => faction != context.Faction)
+                : context.Faction;
+            headquartersOwner.HQInstanceID = captured.InstanceID;
+            context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+
+            ExecuteFleetPlan(context);
+
+            Assert.IsNull(fleet.Movement);
+        }
+
+        [Test]
+        public void Plan_CompletedCaptureWithHostileFleet_UsesFleetForLocalDefense()
+        {
+            AITurnContext context = CreateCompletedCaptureContext(
+                out Fleet fleet,
+                out Planet captured,
+                out Planet _,
+                out Regiment _
+            );
+            Faction enemy = context.Game.GetFactions().First(faction => faction != context.Faction);
+            AddBattleFleet(context.Game, captured, enemy.InstanceID, "hostile", combatStrength: 1);
+            context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+
+            ExecuteFleetPlan(context);
+
+            Assert.AreEqual(FleetOrderType.Defend, fleet.Order?.OrderType);
+            Assert.AreEqual(captured.InstanceID, fleet.Order?.TargetPlanetId);
+            Assert.IsNull(fleet.Movement);
+        }
+
+        [TestCase(1000, 1, true)]
+        [TestCase(10, 5000, false)]
+        public void Plan_CompletedCaptureWithCompetingDefense_SelectsHigherValueOrder(
+            int energyCapacity,
+            int distance,
+            bool defends
+        )
+        {
+            AITurnContext context = CreateCompletedCaptureContext(
+                out Fleet fleet,
+                out Planet captured,
+                out Planet nextTarget,
+                out Regiment _
+            );
+            context.Game.Config.AI.FleetDeployment.AttackUtility =
+                new GameConfig.AIAttackUtilityConfig
+                {
+                    Ready = new GameConfig.AIConsiderationConfig { Weight = 0.2 },
+                };
+            Faction enemy = context.Game.GetFactions().First(faction => faction != context.Faction);
+            Planet threatened = AITestSceneBuilder.AddPlanet(
+                context.Game,
+                captured.GetParentOfType<PlanetSector>(),
+                "threatened",
+                context.Faction.InstanceID,
+                positionX: distance,
+                energyCapacity: energyCapacity
+            );
+            AddBattleFleet(
+                context.Game,
+                threatened,
+                enemy.InstanceID,
+                "hostile",
+                combatStrength: 1
+            );
+            context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+
+            ExecuteFleetPlan(context);
+
+            Assert.AreEqual(
+                defends ? FleetOrderType.Defend : FleetOrderType.Attack,
+                fleet.Order?.OrderType
+            );
+            Assert.AreEqual(
+                (defends ? threatened : nextTarget).InstanceID,
+                fleet.Order?.TargetPlanetId
+            );
+            Assert.IsNotNull(fleet.Movement);
+        }
+
         [TestCase(true, 1000, true)]
         [TestCase(false, 1000, true)]
         [TestCase(true, 999, false)]
@@ -2596,6 +2797,53 @@ namespace Rebellion.Tests.AI.Fleets
         }
 
         [Test]
+        public void Plan_DefenseWithIdleAlternative_PreservesCommittedAttackFleet()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction enemy);
+            game.Config.AI.FleetDeployment.DefenseUtility = new GameConfig.AIDefenseUtilityConfig
+            {
+                Base = new GameConfig.AIConsiderationConfig { Weight = 1 },
+                OpportunityCost = new GameConfig.AIConsiderationConfig { Weight = 1 },
+            };
+            game.Config.AI.FleetDeployment.AttackUtility = new GameConfig.AIAttackUtilityConfig
+            {
+                ExistingOrder = new GameConfig.AIConsiderationConfig { Weight = 1 },
+            };
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet origin = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "origin",
+                faction.InstanceID
+            );
+            Planet target = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "target",
+                faction.InstanceID
+            );
+            Planet attack = AITestSceneBuilder.AddPlanet(game, sector, "attack", enemy.InstanceID);
+            AddBattleFleet(game, target, enemy.InstanceID, "enemy", 10);
+            Fleet committed = AddBattleFleet(game, origin, faction.InstanceID, "committed", 100);
+            committed.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                Status = FleetOrderStatus.Staging,
+                TargetPlanetId = attack.InstanceID,
+            };
+            Fleet idle = AddBattleFleet(game, origin, faction.InstanceID, "idle", 100);
+            AITestSceneBuilder.RevealPlanet(game, faction, attack);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
+
+            AIFleetDefenseProposal defense = new AIFleetPlanner()
+                .Plan(context)
+                .OfType<AIFleetDefenseProposal>()
+                .Single();
+
+            Assert.AreSame(idle, defense.Fleet);
+        }
+
+        [Test]
         public void Plan_WithThreatenedOwnedPlanet_AddsNearestSufficientDefenseProposal()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
@@ -3070,6 +3318,72 @@ namespace Rebellion.Tests.AI.Fleets
             List<AIProposal> proposals = new AIFleetPlanner().Plan(context);
 
             Assert.IsFalse(proposals.OfType<AIFleetDefenseProposal>().Any());
+        }
+
+        /// <summary>
+        /// Creates a completed capture with a ready fleet and another enemy target.
+        /// </summary>
+        /// <param name="fleet">Receives the fleet awaiting its next assignment.</param>
+        /// <param name="captured">Receives the newly friendly planet.</param>
+        /// <param name="target">Receives the next possible enemy target.</param>
+        /// <param name="garrison">Receives the regiment stationed on the captured planet.</param>
+        /// <returns>The current faction turn context.</returns>
+        private static AITurnContext CreateCompletedCaptureContext(
+            out Fleet fleet,
+            out Planet captured,
+            out Planet target,
+            out Regiment garrison
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction enemy);
+            game.Config.AI.FleetDeployment.MinimumAttackStrength = 1;
+            game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 1;
+            game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultSuccessPercent = 0;
+            game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount = 1;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            captured = AITestSceneBuilder.AddPlanet(game, sector, "captured", faction.InstanceID);
+            captured.SetPopularSupport(faction.InstanceID, 100);
+            target = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "next-target",
+                enemy.InstanceID,
+                positionX: 10000
+            );
+            target.SetPopularSupport(faction.InstanceID, 100);
+            fleet = AddBattleFleet(
+                game,
+                captured,
+                faction.InstanceID,
+                "fleet",
+                combatStrength: 1000
+            );
+            fleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                Status = FleetOrderStatus.Staging,
+                TargetPlanetId = captured.InstanceID,
+            };
+            game.AttachNode(
+                AITestSceneBuilder.CreateRegiment("carried", faction.InstanceID),
+                fleet.GetChildren<CapitalShip>().Single()
+            );
+            garrison = AITestSceneBuilder.CreateRegiment("garrison", faction.InstanceID);
+            game.AttachNode(garrison, captured);
+            AITestSceneBuilder.RevealPlanet(game, faction, target);
+            return AITestSceneBuilder.CreateContext(game, faction);
+        }
+
+        /// <summary>
+        /// Plans, scores, selects, and executes ordinary fleet assignments.
+        /// </summary>
+        /// <param name="context">The faction turn to execute.</param>
+        private static void ExecuteFleetPlan(AITurnContext context)
+        {
+            context.AddProposals(new AIFleetPlanner().Plan(context));
+            new AIScoringPhase().Execute(context);
+            context.SetSelectedProposals(new AISelectionPhase().Select(context));
+            new AIExecutionPhase().Execute(context);
         }
 
         /// <summary>

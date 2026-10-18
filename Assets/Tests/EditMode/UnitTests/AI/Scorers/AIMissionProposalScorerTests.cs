@@ -1,7 +1,9 @@
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.AI;
 using Rebellion.AI.Demands;
+using Rebellion.AI.Phases;
 using Rebellion.AI.Planners;
 using Rebellion.AI.Proposals;
 using Rebellion.AI.Scorers;
@@ -20,6 +22,410 @@ namespace Rebellion.Tests.AI.Scorers
     [TestFixture]
     public class AIMissionProposalScorerTests
     {
+        /// <summary>Raises diplomacy value only when acquiring the planet supplies an industrial opportunity.</summary>
+        /// <param name="ownedSpace">The owned planet's building capacity.</param>
+        /// <param name="expectedBonus">Whether acquisition should increase the target's value.</param>
+        [TestCase(0, true)]
+        [TestCase(20, false)]
+        public void GetDiplomacyTargetValue_IndustrialSiteNeeded_BoostsOnlyUsefulAcquisitions(
+            int ownedSpace,
+            bool expectedBonus
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "industry-sector");
+            AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "owned",
+                faction.InstanceID,
+                energyCapacity: ownedSpace
+            );
+            Planet candidate = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "neutral",
+                null,
+                energyCapacity: 20
+            );
+            AITestSceneBuilder.RevealPlanet(game, faction, candidate);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
+            game.Config.AI.MissionPlanning.Utility.Diplomacy.IndustrialOpportunity.Weight = 0;
+            double withoutBonus = AIMissionProposalScorer.GetDiplomacyTargetValue(
+                context,
+                candidate
+            );
+            game.Config.AI.MissionPlanning.Utility.Diplomacy.IndustrialOpportunity.Weight = 0.3;
+
+            double withBonus = AIMissionProposalScorer.GetDiplomacyTargetValue(context, candidate);
+
+            Assert.AreEqual(expectedBonus, withBonus > withoutBonus);
+            if (!expectedBonus)
+                Assert.AreEqual(withoutBonus, withBonus);
+        }
+
+        [TestCase(3, 0, 1, 4)]
+        [TestCase(3, 1, 1, 4)]
+        [TestCase(1, 1, 0, 3)]
+        public void Score_DiplomacyGroupCompetition_ConcentratesOnPreferredNearbySector(
+            int nearbyRivals,
+            int alternativeRivals,
+            int preferredSector,
+            int expectedDiplomats
+        )
+        {
+            (AITurnContext context, PlanetSector[] sectors) =
+                CreateDiplomacyGroupCompetitionContext(nearbyRivals, alternativeRivals);
+            context.AddProposals(new AIMissionPlanner().Plan(context));
+
+            AIMissionProposal[] selected = new AISelectionPhase()
+                .Select(context)
+                .OfType<AIMissionProposal>()
+                .Where(proposal => proposal.MissionTypeID == MissionTypeIDs.Diplomacy)
+                .ToArray();
+
+            Assert.AreEqual(4, selected.Length);
+            Assert.AreEqual(
+                expectedDiplomats,
+                selected.Count(proposal =>
+                    proposal.TargetPlanet.GetParentOfType<PlanetSector>().InstanceID
+                    == sectors[preferredSector].InstanceID
+                )
+            );
+        }
+
+        [Test]
+        public void Score_DiplomacyGroupWithEqualRivals_DoesNotSeekDistantEmptySector()
+        {
+            (AITurnContext context, PlanetSector[] sectors) =
+                CreateDiplomacyGroupCompetitionContext(1, 1);
+            context.AddProposals(new AIMissionPlanner().Plan(context));
+
+            AIMissionProposal[] selected = new AISelectionPhase()
+                .Select(context)
+                .OfType<AIMissionProposal>()
+                .Where(proposal => proposal.MissionTypeID == MissionTypeIDs.Diplomacy)
+                .ToArray();
+
+            Assert.AreEqual(4, selected.Length);
+            Assert.IsFalse(
+                selected.Any(proposal =>
+                    proposal.TargetPlanet.GetParentOfType<PlanetSector>().InstanceID
+                    == sectors[2].InstanceID
+                )
+            );
+        }
+
+        [TestCase(0)]
+        [TestCase(1)]
+        [TestCase(3)]
+        [TestCase(8)]
+        public void GetScoreUpperBound_DiplomacyExpansionCosts_AppliesSameDiscountAsScore(
+            int rivals
+        )
+        {
+            (AITurnContext context, Officer officer, Planet[] targets) =
+                CreateDiplomacyCompetitionContext(rivals, 0);
+            var scorer = new AIMissionProposalScorer();
+            var proposal = new AIMissionProposal(
+                new[] { officer },
+                MissionTypeIDs.Diplomacy,
+                targets[0]
+            );
+            double adjusted = scorer.Score(context, proposal);
+            double adjustedBound = scorer.GetScoreUpperBound(context, proposal);
+            context.Game.Config.AI.MissionPlanning.Utility.Diplomacy.Competition.Weight = 0;
+            context.Game.Config.AI.MissionPlanning.Utility.Diplomacy.TravelTime.Weight = 0;
+            double unadjusted = scorer.Score(context, proposal);
+            double unadjustedBound = scorer.GetScoreUpperBound(context, proposal);
+
+            Assert.Greater(adjusted, 0);
+            Assert.GreaterOrEqual(adjustedBound, adjusted);
+            Assert.That(
+                adjustedBound / unadjustedBound,
+                Is.EqualTo(adjusted / unadjusted).Within(1e-12)
+            );
+        }
+
+        [TestCase(0, 0, 0)]
+        [TestCase(1, 1, 0)]
+        [TestCase(3, 0, 1)]
+        [TestCase(8, 1, 1)]
+        public void Score_DiplomacyCompetitionAndDistance_SelectsNearbyViableSector(
+            int nearbyRivals,
+            int alternativeRivals,
+            int expectedTarget
+        )
+        {
+            (AITurnContext context, Officer officer, Planet[] targets) =
+                CreateDiplomacyCompetitionContext(nearbyRivals, alternativeRivals);
+            context.AddProposals(new AIMissionPlanner().Plan(context));
+
+            AIMissionProposal selected = new AISelectionPhase()
+                .Select(context)
+                .OfType<AIMissionProposal>()
+                .Single(proposal => proposal.MissionTypeID == MissionTypeIDs.Diplomacy);
+
+            Assert.AreEqual(targets[expectedTarget].InstanceID, selected.TargetPlanet.InstanceID);
+            Assert.AreSame(officer, selected.Participant);
+        }
+
+        [Test]
+        public void Score_DiplomacyWithIncreasingCompetition_DecreasesWithoutRejectingTarget()
+        {
+            var scorer = new AIMissionProposalScorer();
+            double previous = double.MaxValue;
+            foreach (int rivals in new[] { 0, 1, 3, 8 })
+            {
+                (AITurnContext context, Officer officer, Planet[] targets) =
+                    CreateDiplomacyCompetitionContext(rivals, 0);
+
+                double score = scorer.Score(
+                    context,
+                    new AIMissionProposal(new[] { officer }, MissionTypeIDs.Diplomacy, targets[0])
+                );
+
+                Assert.Greater(score, 0);
+                Assert.Less(score, previous);
+                previous = score;
+            }
+        }
+
+        [Test]
+        public void Score_DiplomacyBeyondGeneralTravelSaturation_StillPrefersShorterJourney()
+        {
+            (AITurnContext context, Officer officer, Planet[] targets) =
+                CreateDiplomacyCompetitionContext(0, 0);
+            targets[0].PositionX = 200;
+            targets[1].PositionX = 500;
+            var scorer = new AIMissionProposalScorer();
+
+            double nearer = scorer.Score(
+                context,
+                new AIMissionProposal(new[] { officer }, MissionTypeIDs.Diplomacy, targets[0])
+            );
+            double farther = scorer.Score(
+                context,
+                new AIMissionProposal(new[] { officer }, MissionTypeIDs.Diplomacy, targets[1])
+            );
+
+            Assert.Greater(nearer, farther);
+        }
+
+        [Test]
+        public void Score_DiplomacyWithDistantUncontestedAlternative_PreservesCloserContestedTarget()
+        {
+            (AITurnContext context, Officer officer, Planet[] targets) =
+                CreateDiplomacyCompetitionContext(3, 0);
+            targets[1].PositionX = 10000;
+            targets[2].PositionX = 10000;
+            context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+            context.AddProposals(new AIMissionPlanner().Plan(context));
+
+            AIMissionProposal selected = new AISelectionPhase()
+                .Select(context)
+                .OfType<AIMissionProposal>()
+                .Single(proposal => proposal.MissionTypeID == MissionTypeIDs.Diplomacy);
+
+            Assert.AreEqual(targets[0].InstanceID, selected.TargetPlanet.InstanceID);
+        }
+
+        [Test]
+        public void Score_DiplomacyOnOwnedPlanet_DoesNotApplyExpansionCosts()
+        {
+            (AITurnContext context, Officer officer, Planet[] targets) =
+                CreateDiplomacyCompetitionContext(3, 0);
+            targets[0].OwnerInstanceID = context.Faction.InstanceID;
+            context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+            var scorer = new AIMissionProposalScorer();
+            var proposal = new AIMissionProposal(
+                new[] { officer },
+                MissionTypeIDs.Diplomacy,
+                targets[0]
+            );
+            double withCosts = scorer.Score(context, proposal);
+            context.Game.Config.AI.MissionPlanning.Utility.Diplomacy.Competition.Weight = 0;
+            context.Game.Config.AI.MissionPlanning.Utility.Diplomacy.TravelTime.Weight = 0;
+
+            Assert.AreEqual(withCosts, scorer.Score(context, proposal));
+        }
+
+        [TestCase(3, 3, 90, 0, true, 40, true)]
+        [TestCase(2, 3, 90, 0, true, 40, false)]
+        [TestCase(3, 2, 90, 0, true, 40, false)]
+        [TestCase(3, 3, 74, 0, true, 40, false)]
+        [TestCase(3, 3, 90, 1000, true, 40, false)]
+        [TestCase(3, 3, 90, 0, false, 40, false)]
+        [TestCase(3, 3, 90, 0, true, 0, false)]
+        [TestCase(4, 3, 90, 0, true, 40, true)]
+        public void Score_DiplomacyGroup_AppliesConcentrationOnlyForNearbyKnownOpportunities(
+            int diplomatCount,
+            int targetCount,
+            int rating,
+            int originX,
+            bool revealed,
+            int support,
+            bool expectsBonus
+        )
+        {
+            (AITurnContext context, Officer officer, Planet target) =
+                CreateDiplomacyConcentrationContext(
+                    diplomatCount,
+                    targetCount,
+                    rating,
+                    originX,
+                    revealed,
+                    support
+                );
+            AIMissionProposal proposal = new(new[] { officer }, MissionTypeIDs.Diplomacy, target);
+            AIMissionProposalScorer scorer = new();
+            GameConfig.AIDiplomacyUtilityConfig utility = context
+                .Game
+                .Config
+                .AI
+                .MissionPlanning
+                .Utility
+                .Diplomacy;
+            utility.Concentration.Weight = 0;
+            double withoutBonus = scorer.Score(context, proposal);
+            utility.Concentration.Weight = 0.6;
+
+            double withBonus = scorer.Score(context, proposal);
+
+            if (expectsBonus)
+                Assert.Greater(withBonus, withoutBonus);
+            else
+                Assert.AreEqual(withoutBonus, withBonus);
+        }
+
+        [Test]
+        public void GetDiplomacyTargetValue_KnownHostileFleet_DoesNotReceiveConcentrationBonus()
+        {
+            (AITurnContext context, _, Planet target) = CreateDiplomacyConcentrationContext(
+                targetCount: 4
+            );
+            Fleet blockade = EntityFactory.CreateFleet("blockade", "rebels");
+            context.Game.AttachNode(blockade, target);
+            context.Game.AttachNode(
+                AITestSceneBuilder.CreateCapitalShip("blockader", "rebels"),
+                blockade
+            );
+            AITestSceneBuilder.RevealPlanet(context.Game, context.Faction, target);
+            context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+            Planet known = context.Assessment.GetKnownPlanet(target.InstanceID);
+            Assert.IsTrue(context.Assessment.HasKnownHostileFleet(known));
+            context.Game.Config.AI.MissionPlanning.Utility.Diplomacy.Concentration.Weight = 0;
+            double withoutBonus = AIMissionProposalScorer.GetDiplomacyTargetValue(context, known);
+            context.Game.Config.AI.MissionPlanning.Utility.Diplomacy.Concentration.Weight = 0.6;
+
+            Assert.AreEqual(
+                withoutBonus,
+                AIMissionProposalScorer.GetDiplomacyTargetValue(context, known)
+            );
+        }
+
+        [Test]
+        public void Score_DistantDiplomat_DoesNotReceiveNearbyGroupBonus()
+        {
+            (AITurnContext context, _, Planet target) = CreateDiplomacyConcentrationContext();
+            Planet remote = AITestSceneBuilder.AddPlanet(
+                context.Game,
+                context.Game.GetSceneNodeByInstanceID<PlanetSector>("origin-sector"),
+                "remote",
+                context.Faction.InstanceID,
+                positionX: 1000
+            );
+            Officer officer = EntityFactory.CreateOfficer(
+                "remote-diplomat",
+                context.Faction.InstanceID
+            );
+            officer.Ratings[OfficerRating.Diplomacy] = 90;
+            context.Game.AttachNode(officer, remote);
+            context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+            AIMissionProposal proposal = new(new[] { officer }, MissionTypeIDs.Diplomacy, target);
+            AIMissionProposalScorer scorer = new();
+            context.Game.Config.AI.MissionPlanning.Utility.Diplomacy.Concentration.Weight = 0;
+            double withoutBonus = scorer.Score(context, proposal);
+            context.Game.Config.AI.MissionPlanning.Utility.Diplomacy.Concentration.Weight = 0.6;
+
+            Assert.AreEqual(withoutBonus, scorer.Score(context, proposal));
+        }
+
+        [Test]
+        public void Score_NearbyDiplomacyGroup_SelectsDifferentNeutralWorldsInSameSector()
+        {
+            (AITurnContext context, _, Planet target) = CreateDiplomacyConcentrationContext();
+            PlanetSector competitor = AITestSceneBuilder.AddSector(
+                context.Game,
+                "competitor-sector"
+            );
+            competitor.SectorType = PlanetSectorType.Core;
+            Planet alternative = null;
+            for (int index = 0; index < 10; index++)
+            {
+                string owner =
+                    index < 2 ? context.Faction.InstanceID
+                    : index == 2 ? null
+                    : "rebels";
+                Planet candidate = AITestSceneBuilder.AddPlanet(
+                    context.Game,
+                    competitor,
+                    "competitor-" + index,
+                    owner,
+                    positionX: 10
+                );
+                candidate.SetPopularSupport(
+                    context.Faction.InstanceID,
+                    owner == context.Faction.InstanceID ? 100 : 40
+                );
+                candidate.SetPopularSupport("rebels", owner == context.Faction.InstanceID ? 0 : 60);
+                candidate.AddVisitor(context.Faction.InstanceID);
+                AITestSceneBuilder.RevealPlanet(context.Game, context.Faction, candidate);
+                if (index == 2)
+                    alternative = candidate;
+            }
+            context.Game.Config.AI.MissionPlanning.Utility.Diplomacy.Concentration.Weight = 0;
+            context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+            foreach (AIProposal proposal in new AIMissionPlanner().Plan(context))
+                context.AddProposal(proposal);
+            AIMissionProposal[] withoutBonus = new AISelectionPhase()
+                .Select(context)
+                .OfType<AIMissionProposal>()
+                .ToArray();
+
+            context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+            context.Game.Config.AI.MissionPlanning.Utility.Diplomacy.Concentration.Weight = 0.6;
+            foreach (AIProposal proposal in new AIMissionPlanner().Plan(context))
+                context.AddProposal(proposal);
+
+            AIMissionProposal[] selected = new AISelectionPhase()
+                .Select(context)
+                .OfType<AIMissionProposal>()
+                .Where(proposal => proposal.MissionTypeID == MissionTypeIDs.Diplomacy)
+                .ToArray();
+
+            Assert.AreEqual(3, selected.Length);
+            Assert.IsTrue(
+                withoutBonus.Any(proposal =>
+                    proposal.TargetPlanet.InstanceID == alternative.InstanceID
+                )
+            );
+            Assert.AreEqual(
+                3,
+                selected.Select(proposal => proposal.Participant.InstanceID).Distinct().Count()
+            );
+            Assert.AreEqual(
+                3,
+                selected.Select(proposal => proposal.TargetPlanet.InstanceID).Distinct().Count()
+            );
+            Assert.IsTrue(
+                selected.All(proposal =>
+                    proposal.TargetPlanet.GetParentOfType<PlanetSector>().InstanceID
+                    == target.GetParentOfType<PlanetSector>().InstanceID
+                )
+            );
+        }
+
         [Test]
         public void Score_StaleDefenderIntel_RecordsAssessmentFoilProbability()
         {
@@ -162,6 +568,140 @@ namespace Rebellion.Tests.AI.Scorers
             );
 
             Assert.Greater(facilityValue, emptyValue);
+        }
+
+        [TestCase(true, false, true, 0.25)]
+        [TestCase(false, false, true, 0.25)]
+        [TestCase(true, true, true, 0.25)]
+        [TestCase(false, true, true, 0.25)]
+        [TestCase(true, false, true, 0)]
+        [TestCase(false, true, true, 0)]
+        [TestCase(true, false, false, 0.25)]
+        [TestCase(false, true, false, 0.25)]
+        public void Score_ComparableDiplomacyTargets_AppliesConfiguredHeadquartersSectorPreference(
+            bool useEmpire,
+            bool ownedTargets,
+            bool hasHeadquarters,
+            double weight
+        )
+        {
+            (AITurnContext context, Officer diplomat, Planet homeTarget, Planet otherTarget) =
+                CreateHeadquartersDiplomacyContext(useEmpire, ownedTargets, hasHeadquarters);
+            context.Game.Config.AI.MissionPlanning.Utility.Diplomacy.HeadquartersSector.Weight =
+                weight;
+            AIMissionProposalScorer scorer = new AIMissionProposalScorer();
+
+            double homeScore = scorer.Score(
+                context,
+                new AIMissionProposal(new[] { diplomat }, MissionTypeIDs.Diplomacy, homeTarget)
+            );
+            double otherScore = scorer.Score(
+                context,
+                new AIMissionProposal(new[] { diplomat }, MissionTypeIDs.Diplomacy, otherTarget)
+            );
+
+            if (hasHeadquarters && weight > 0)
+                Assert.Greater(homeScore, otherScore);
+            else
+                Assert.AreEqual(otherScore, homeScore, 0.000001);
+        }
+
+        [Test]
+        public void GetDiplomacyTargetValue_TargetOutsideHeadquartersSector_DoesNotChangeWhenBonusEnabled()
+        {
+            (AITurnContext context, _, _, Planet otherTarget) = CreateHeadquartersDiplomacyContext(
+                true,
+                false,
+                true
+            );
+            context.Game.Config.AI.MissionPlanning.Utility.Diplomacy.HeadquartersSector.Weight = 0;
+            double withoutBonus = AIMissionProposalScorer.GetDiplomacyTargetValue(
+                context,
+                otherTarget
+            );
+            context.Game.Config.AI.MissionPlanning.Utility.Diplomacy.HeadquartersSector.Weight =
+                0.25;
+
+            double withBonus = AIMissionProposalScorer.GetDiplomacyTargetValue(
+                context,
+                otherTarget
+            );
+
+            Assert.AreEqual(withoutBonus, withBonus);
+        }
+
+        [TestCase(true, true)]
+        [TestCase(false, true)]
+        [TestCase(true, false)]
+        [TestCase(false, false)]
+        public void Score_CompetingDiplomacySectors_PrioritizesHeadquartersThenStrongestPresence(
+            bool useEmpire,
+            bool hasHeadquarters
+        )
+        {
+            (AITurnContext context, Officer diplomat, Planet homeTarget, Planet otherTarget) =
+                CreateHeadquartersDiplomacyContext(useEmpire, false, hasHeadquarters);
+            PlanetSector homeSector = homeTarget.GetParentOfType<PlanetSector>();
+            PlanetSector otherSector = otherTarget.GetParentOfType<PlanetSector>();
+            homeSector.SectorType = hasHeadquarters
+                ? PlanetSectorType.OuterRim
+                : PlanetSectorType.Core;
+            otherSector.SectorType = hasHeadquarters
+                ? PlanetSectorType.Core
+                : PlanetSectorType.OuterRim;
+            for (int index = 0; index < 9; index++)
+            {
+                AITestSceneBuilder.AddPlanet(
+                    context.Game,
+                    otherSector,
+                    "owned-" + index,
+                    context.Faction.InstanceID
+                );
+                if (index < 8)
+                    AITestSceneBuilder.AddPlanet(
+                        context.Game,
+                        homeSector,
+                        "neutral-" + index,
+                        null
+                    );
+            }
+            context.Game.Config.AI.MissionPlanning.Utility.Diplomacy.HeadquartersSector.Weight = 1;
+            context.Game.Config.AI.MissionPlanning.Utility.Diplomacy.SystemPresence.Weight = 0.6;
+            AITurnContext updated = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+            AIMissionProposalScorer scorer = new AIMissionProposalScorer();
+
+            double homeScore = scorer.Score(
+                updated,
+                new AIMissionProposal(new[] { diplomat }, MissionTypeIDs.Diplomacy, homeTarget)
+            );
+            double otherScore = scorer.Score(
+                updated,
+                new AIMissionProposal(new[] { diplomat }, MissionTypeIDs.Diplomacy, otherTarget)
+            );
+
+            if (hasHeadquarters)
+                Assert.Greater(homeScore, otherScore);
+            else
+                Assert.Greater(otherScore, homeScore);
+        }
+
+        [Test]
+        public void GetDiplomacyTargetValue_HeadquartersChangesSector_PrefersCurrentHeadquartersSector()
+        {
+            (AITurnContext context, _, Planet homeTarget, Planet otherTarget) =
+                CreateHeadquartersDiplomacyContext(false, true, true);
+            context.Game.Config.AI.MissionPlanning.Utility.Diplomacy.HeadquartersSector.Weight =
+                0.25;
+            context.Faction.HQInstanceID = otherTarget.InstanceID;
+            AITurnContext updated = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+
+            double homeValue = AIMissionProposalScorer.GetDiplomacyTargetValue(updated, homeTarget);
+            double otherValue = AIMissionProposalScorer.GetDiplomacyTargetValue(
+                updated,
+                otherTarget
+            );
+
+            Assert.Greater(otherValue, homeValue);
         }
 
         [Test]
@@ -1185,6 +1725,297 @@ namespace Rebellion.Tests.AI.Scorers
             );
 
             Assert.Greater(attackTargetScore, otherTargetScore);
+        }
+
+        /// <summary>
+        /// Creates a configurable group of diplomats beside an unclaimed sector.
+        /// </summary>
+        /// <param name="diplomatCount">The number of idle diplomats.</param>
+        /// <param name="targetCount">The number of neutral target worlds.</param>
+        /// <param name="rating">Each diplomat's skill rating.</param>
+        /// <param name="originX">The diplomats' horizontal location.</param>
+        /// <param name="revealed">Whether the target worlds are known.</param>
+        /// <param name="support">The faction's initial popular support on target worlds.</param>
+        /// <returns>The turn context, one diplomat, and one target.</returns>
+        private static (
+            AITurnContext Context,
+            Officer Officer,
+            Planet Target
+        ) CreateDiplomacyConcentrationContext(
+            int diplomatCount = 3,
+            int targetCount = 3,
+            int rating = 90,
+            int originX = 0,
+            bool revealed = true,
+            int support = 40
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(
+                out Faction faction,
+                out Faction opponent
+            );
+            GameConfig.AIDiplomacyUtilityConfig utility = game.Config
+                .AI
+                .MissionPlanning
+                .Utility
+                .Diplomacy;
+            PlanetSector originSector = AITestSceneBuilder.AddSector(game, "origin-sector");
+            Planet origin = AITestSceneBuilder.AddPlanet(
+                game,
+                originSector,
+                "origin",
+                faction.InstanceID,
+                positionX: originX
+            );
+            origin.SetPopularSupport(faction.InstanceID, 100);
+            PlanetSector targetSector = AITestSceneBuilder.AddSector(game, "target-sector");
+            targetSector.SectorType = PlanetSectorType.OuterRim;
+            Planet target = null;
+            for (int index = 0; index < targetCount; index++)
+            {
+                Planet candidate = AITestSceneBuilder.AddPlanet(
+                    game,
+                    targetSector,
+                    "target-" + index,
+                    null,
+                    positionX: 30 + index
+                );
+                candidate.SetPopularSupport(faction.InstanceID, support);
+                candidate.SetPopularSupport(opponent.InstanceID, 100 - support);
+                if (revealed)
+                {
+                    candidate.AddVisitor(faction.InstanceID);
+                    AITestSceneBuilder.RevealPlanet(game, faction, candidate);
+                }
+                target ??= candidate;
+            }
+            Officer officer = null;
+            for (int index = 0; index < diplomatCount; index++)
+            {
+                Officer candidate = EntityFactory.CreateOfficer(
+                    "diplomat-" + index,
+                    faction.InstanceID
+                );
+                candidate.Ratings[OfficerRating.Diplomacy] = rating;
+                game.AttachNode(candidate, origin);
+                officer ??= candidate;
+            }
+            return (AITestSceneBuilder.CreateContext(game, faction), officer, target);
+        }
+
+        /// <summary>
+        /// Creates a distributed diplomacy group with competing neutral-sector opportunities.
+        /// </summary>
+        /// <param name="nearbyRivals">Strong rivals in the sector nearest most of the group.</param>
+        /// <param name="alternativeRivals">Strong rivals in the other nearby sector.</param>
+        /// <returns>The acting turn and three candidate sectors.</returns>
+        private static (
+            AITurnContext Context,
+            PlanetSector[] Sectors
+        ) CreateDiplomacyGroupCompetitionContext(int nearbyRivals, int alternativeRivals)
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction enemy);
+            game.Config.Movement.DistanceDivisor = 1;
+            game.Config.Movement.DefaultPersonnelHyperdrive = 100;
+            PlanetSector home = AITestSceneBuilder.AddSector(game, "home");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, home, "origin", faction.InstanceID);
+            Planet alternativeOrigin = AITestSceneBuilder.AddPlanet(
+                game,
+                home,
+                "alternative-origin",
+                faction.InstanceID,
+                positionX: 50
+            );
+            origin.SetPopularSupport(faction.InstanceID, 100);
+            alternativeOrigin.SetPopularSupport(faction.InstanceID, 100);
+            for (int index = 0; index < 4; index++)
+            {
+                Officer officer = EntityFactory.CreateOfficer(
+                    "diplomat-" + index,
+                    faction.InstanceID
+                );
+                officer.SetBaseRating(SkillRating.Diplomacy, 90);
+                game.AttachNode(officer, index < 3 ? origin : alternativeOrigin);
+            }
+
+            int[] distances = { 20, 50, 10000 };
+            int[] rivals = { nearbyRivals, alternativeRivals, 0 };
+            PlanetSector[] sectors = new PlanetSector[distances.Length];
+            for (int sectorIndex = 0; sectorIndex < sectors.Length; sectorIndex++)
+            {
+                PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector-" + sectorIndex);
+                sector.SectorType = PlanetSectorType.Core;
+                sectors[sectorIndex] = sector;
+                for (int targetIndex = 0; targetIndex < 4; targetIndex++)
+                {
+                    Planet target = AITestSceneBuilder.AddPlanet(
+                        game,
+                        sector,
+                        $"target-{sectorIndex}-{targetIndex}",
+                        null,
+                        positionX: distances[sectorIndex] + targetIndex
+                    );
+                    target.SetPopularSupport(faction.InstanceID, 40);
+                    target.SetPopularSupport(enemy.InstanceID, 60);
+                    target.AddVisitor(faction.InstanceID);
+                    AITestSceneBuilder.RevealPlanet(game, faction, target);
+                }
+                Planet rivalBase = AITestSceneBuilder.AddPlanet(
+                    game,
+                    sector,
+                    "base-" + sectorIndex,
+                    enemy.InstanceID,
+                    positionX: distances[sectorIndex]
+                );
+                for (int rivalIndex = 0; rivalIndex < rivals[sectorIndex]; rivalIndex++)
+                {
+                    Officer rival = EntityFactory.CreateOfficer(
+                        $"rival-{sectorIndex}-{rivalIndex}",
+                        enemy.InstanceID
+                    );
+                    rival.SetBaseRating(SkillRating.Diplomacy, 90);
+                    game.AttachNode(rival, rivalBase);
+                }
+                AITestSceneBuilder.RevealPlanet(game, faction, rivalBase);
+            }
+            return (AITestSceneBuilder.CreateContext(game, faction), sectors);
+        }
+
+        /// <summary>
+        /// Creates comparable expansion opportunities with known rival diplomats and different travel times.
+        /// </summary>
+        /// <param name="nearbyRivals">Rivals in the nearest sector.</param>
+        /// <param name="alternativeRivals">Rivals in the next-nearest sector.</param>
+        /// <returns>The acting turn, diplomat, and three neutral target planets.</returns>
+        private static (
+            AITurnContext Context,
+            Officer Officer,
+            Planet[] Targets
+        ) CreateDiplomacyCompetitionContext(int nearbyRivals, int alternativeRivals)
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction enemy);
+            game.Config.Movement.DistanceDivisor = 1;
+            game.Config.Movement.DefaultPersonnelHyperdrive = 100;
+            GameConfig.AIDiplomacyUtilityConfig tuning = game.Config
+                .AI
+                .MissionPlanning
+                .Utility
+                .Diplomacy;
+            game.Config.AI.MissionPlanning.Utility.Diplomacy =
+                new GameConfig.AIDiplomacyUtilityConfig
+                {
+                    CoreWorld = new GameConfig.AIConsiderationConfig { Weight = 0.2 },
+                    Competition = tuning.Competition,
+                    TravelTime = tuning.TravelTime,
+                };
+            PlanetSector home = AITestSceneBuilder.AddSector(game, "home");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, home, "origin", faction.InstanceID);
+            Officer diplomat = EntityFactory.CreateOfficer("diplomat", faction.InstanceID);
+            diplomat.SetBaseRating(SkillRating.Diplomacy, 90);
+            game.AttachNode(diplomat, origin);
+            int[] distances = { 40, 60, 1000 };
+            int[] rivals = { nearbyRivals, alternativeRivals, 0 };
+            Planet[] targets = new Planet[3];
+            for (int index = 0; index < targets.Length; index++)
+            {
+                PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector-" + index);
+                sector.SectorType = PlanetSectorType.Core;
+                Planet target = AITestSceneBuilder.AddPlanet(
+                    game,
+                    sector,
+                    "target-" + index,
+                    null,
+                    positionX: distances[index]
+                );
+                target.SetPopularSupport(faction.InstanceID, 40);
+                target.SetPopularSupport(enemy.InstanceID, 60);
+                Planet rivalBase = AITestSceneBuilder.AddPlanet(
+                    game,
+                    sector,
+                    "base-" + index,
+                    enemy.InstanceID
+                );
+                for (int rivalIndex = 0; rivalIndex < rivals[index]; rivalIndex++)
+                {
+                    Officer rival = EntityFactory.CreateOfficer(
+                        $"rival-{index}-{rivalIndex}",
+                        enemy.InstanceID
+                    );
+                    rival.SetBaseRating(SkillRating.Diplomacy, 90);
+                    game.AttachNode(rival, rivalBase);
+                }
+                target.AddVisitor(faction.InstanceID);
+                AITestSceneBuilder.RevealPlanet(game, faction, target);
+                AITestSceneBuilder.RevealPlanet(game, faction, rivalBase);
+                targets[index] = target;
+            }
+            return (AITestSceneBuilder.CreateContext(game, faction), diplomat, targets);
+        }
+
+        /// <summary>
+        /// Creates otherwise equivalent diplomacy targets inside and outside the headquarters sector.
+        /// </summary>
+        /// <param name="useEmpire">Whether the acting faction is the Empire.</param>
+        /// <param name="ownedTargets">Whether both target planets belong to the acting faction.</param>
+        /// <param name="hasHeadquarters">Whether the faction has an active headquarters.</param>
+        /// <returns>The turn context, diplomat, and comparable targets.</returns>
+        private static (
+            AITurnContext Context,
+            Officer Diplomat,
+            Planet HomeTarget,
+            Planet OtherTarget
+        ) CreateHeadquartersDiplomacyContext(
+            bool useEmpire,
+            bool ownedTargets,
+            bool hasHeadquarters
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.MissionPlanning.Utility.Diplomacy.SystemPresence.Weight = 0;
+            game.Config.AI.MissionPlanning.Utility.Diplomacy.TravelTime.Weight = 0;
+            game.Config.AI.MissionPlanning.Utility.Diplomacy.Competition.Weight = 0;
+            Faction faction = useEmpire ? empire : rebels;
+            Faction opposingFaction = useEmpire ? rebels : empire;
+            PlanetSector homeSector = AITestSceneBuilder.AddSector(game, "home-sector");
+            PlanetSector otherSector = AITestSceneBuilder.AddSector(game, "other-sector");
+            homeSector.SectorType = PlanetSectorType.Core;
+            otherSector.SectorType = PlanetSectorType.Core;
+            Planet headquarters = AITestSceneBuilder.AddPlanet(
+                game,
+                homeSector,
+                "headquarters",
+                faction.InstanceID
+            );
+            headquarters.SetPopularSupport(faction.InstanceID, 100);
+            faction.HQInstanceID = hasHeadquarters ? headquarters.InstanceID : null;
+            string targetOwner = ownedTargets ? faction.InstanceID : null;
+            Planet homeTarget = AITestSceneBuilder.AddPlanet(
+                game,
+                homeSector,
+                "home-target",
+                targetOwner
+            );
+            Planet otherTarget = AITestSceneBuilder.AddPlanet(
+                game,
+                otherSector,
+                "other-target",
+                targetOwner
+            );
+            foreach (Planet target in new[] { homeTarget, otherTarget })
+            {
+                target.SetPopularSupport(faction.InstanceID, 50);
+                target.SetPopularSupport(opposingFaction.InstanceID, 50);
+                target.AddVisitor(faction.InstanceID);
+            }
+            Officer diplomat = EntityFactory.CreateOfficer("diplomat", faction.InstanceID);
+            diplomat.Ratings[OfficerRating.Diplomacy] = 100;
+            game.AttachNode(diplomat, headquarters);
+            return (
+                AITestSceneBuilder.CreateContext(game, faction),
+                diplomat,
+                homeTarget,
+                otherTarget
+            );
         }
 
         /// <summary>

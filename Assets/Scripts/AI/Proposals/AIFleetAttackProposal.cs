@@ -143,12 +143,12 @@ namespace Rebellion.AI.Proposals
             Planet liveTarget = ResolveLiveTarget(context);
             bool isAtTarget =
                 Fleet.GetParentOfType<Planet>()?.InstanceID == TargetPlanet.InstanceID;
-            if (isAtTarget && TryClearCompletedAttackOrder(context, liveTarget))
+            if (isAtTarget && TryCompleteAttackOrder(context, liveTarget))
                 return;
 
             if (!isAtTarget)
             {
-                if (!IsReadyToLaunch(context))
+                if (!CanLaunch(context))
                 {
                     Fleet.Order.Status = FleetOrderStatus.Building;
                     return;
@@ -203,7 +203,7 @@ namespace Rebellion.AI.Proposals
 
             context.Bombardment.TryExecute(attackingFleets, liveTarget, BombardmentType.Military);
 
-            if (!TryClearCompletedAttackOrder(context, liveTarget))
+            if (!TryCompleteAttackOrder(context, liveTarget))
             {
                 if (!IsLiveTargetHostile(context, liveTarget))
                     ClearOrder();
@@ -227,16 +227,16 @@ namespace Rebellion.AI.Proposals
             context.AddResult(assaultResult);
             context.AddResults(assaultResult.Events);
             context.AddResult(assaultResult.OwnershipChange);
-            TryClearCompletedAttackOrder(context, liveTarget);
+            TryCompleteAttackOrder(context, liveTarget);
         }
 
         /// <summary>
-        /// Clears the attack order after the target changes ownership.
+        /// Finishes an attack after capture and stages the fleet for its next planning pass.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="liveTarget">The current scene-graph target.</param>
-        /// <returns>True if the order was cleared.</returns>
-        private bool TryClearCompletedAttackOrder(AITurnContext context, Planet liveTarget)
+        /// <returns>True when the attack has completed.</returns>
+        private bool TryCompleteAttackOrder(AITurnContext context, Planet liveTarget)
         {
             if (!IsOwnedBy(context, Fleet) || TargetPlanet == null)
                 return false;
@@ -252,7 +252,7 @@ namespace Rebellion.AI.Proposals
             if (liveTarget?.GetOwnerInstanceID() != context.Faction.InstanceID)
                 return false;
 
-            if (context.Assessment.IsCapturedEnemyHeadquarters(liveTarget))
+            if (context.Assessment.IsPriorityDefensePlanet(liveTarget))
             {
                 Fleet.Order = new FleetOrder
                 {
@@ -263,7 +263,7 @@ namespace Rebellion.AI.Proposals
             }
             else
             {
-                ClearOrder();
+                order.Status = FleetOrderStatus.Staging;
             }
 
             return true;
@@ -315,7 +315,7 @@ namespace Rebellion.AI.Proposals
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <returns>True if the fleet is ready to launch.</returns>
-        private bool IsReadyToLaunch(AITurnContext context)
+        internal bool CanLaunch(AITurnContext context)
         {
             return context.StrategicPlan.CanFleetDepart(Fleet)
                 && IsReadyToAttack(context, TargetPlanet);

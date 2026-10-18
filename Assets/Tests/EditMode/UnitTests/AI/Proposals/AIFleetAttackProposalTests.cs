@@ -4,6 +4,7 @@ using System.Linq;
 using NUnit.Framework;
 using Rebellion.AI;
 using Rebellion.AI.Demands;
+using Rebellion.AI.Phases;
 using Rebellion.AI.Planners;
 using Rebellion.AI.Proposals;
 using Rebellion.AI.Scorers;
@@ -428,14 +429,26 @@ namespace Rebellion.Tests.AI.Fleets
         }
 
         [Test]
-        public void Execute_BombardmentCapturesTarget_ClearsAttackOrderImmediately()
+        public void Execute_CaptureAndFollowOnAttack_LeavesOldFleetPositionInEnemyIntelligence()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            ConfigureMinimalAttackRequirements(game);
+            game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount = 1;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
             target.SetPopularSupport(empire.InstanceID, 60);
             target.SetPopularSupport(rebels.InstanceID, 40);
-            Fleet fleet = AddBattleFleet(game, target, empire.InstanceID);
+            Planet nextTarget = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "next-target",
+                rebels.InstanceID,
+                positionX: 10000
+            );
+            nextTarget.SetPopularSupport(empire.InstanceID, 0);
+            nextTarget.SetPopularSupport(rebels.InstanceID, 100);
+            AITestSceneBuilder.RevealPlanet(game, empire, nextTarget);
+            Fleet fleet = AddBattleFleet(game, target, empire.InstanceID, regimentCount: 1);
             fleet.GetChildren<CapitalShip>().Single().Bombardment = 1;
             fleet.Order = new FleetOrder
             {
@@ -468,7 +481,26 @@ namespace Rebellion.Tests.AI.Fleets
 
             Assert.AreEqual(1, resolvedResults.OfType<BombardmentResult>().Count());
             Assert.AreEqual(empire.InstanceID, target.GetOwnerInstanceID());
-            Assert.IsNull(fleet.Order);
+            Assert.AreEqual(FleetOrderStatus.Staging, fleet.Order?.Status);
+            Assert.AreEqual(target.InstanceID, fleet.Order?.TargetPlanetId);
+            Assert.AreEqual(rebels.InstanceID, nextTarget.GetOwnerInstanceID());
+
+            AITurnContext nextTurn = AITestSceneBuilder.CreateContext(game, empire);
+            nextTurn.AddProposals(new AIFleetPlanner().Plan(nextTurn));
+            new AIScoringPhase().Execute(nextTurn);
+            new AISelectionPhase().Execute(nextTurn);
+            new AIExecutionPhase().Execute(nextTurn);
+            Planet remembered = new FogOfWarQueries(game)
+                .BuildFactionView(rebels)
+                .GetChildren<PlanetSector>()
+                .SelectMany(sector => sector.GetChildren<Planet>())
+                .Single(planet => planet.InstanceID == target.InstanceID);
+
+            Assert.IsNotNull(fleet.Movement);
+            Assert.AreEqual(nextTarget.InstanceID, fleet.Order.TargetPlanetId);
+            Assert.IsTrue(
+                remembered.GetChildren<Fleet>().Any(item => item.InstanceID == fleet.InstanceID)
+            );
         }
 
         [Test]

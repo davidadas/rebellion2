@@ -87,7 +87,7 @@ namespace Rebellion.AI.Planners
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <returns>Fleet-defense proposals generated for the faction.</returns>
-        private static List<AIProposal> PlanDefense(AITurnContext context)
+        private List<AIProposal> PlanDefense(AITurnContext context)
         {
             List<AIProposal> proposals = new List<AIProposal>();
             if (context?.Game == null || context.Faction == null)
@@ -163,7 +163,7 @@ namespace Rebellion.AI.Planners
         /// <param name="context">The current AI turn context.</param>
         /// <param name="proposals">The proposal collection to update.</param>
         /// <param name="headquartersDefense">The fleet already reserved for headquarters defense.</param>
-        private static void AddPlanetDefenseProposals(
+        private void AddPlanetDefenseProposals(
             AITurnContext context,
             ICollection<AIProposal> proposals,
             Fleet headquartersDefense
@@ -202,7 +202,7 @@ namespace Rebellion.AI.Planners
         /// <param name="targetPlanet">The threatened planet.</param>
         /// <param name="assignedFleets">Fleets already assigned during this planning pass.</param>
         /// <returns>The selected fleet, or null when none can defend the planet.</returns>
-        private static Fleet FindPlanetDefenseFleet(
+        private Fleet FindPlanetDefenseFleet(
             AITurnContext context,
             Planet targetPlanet,
             ISet<Fleet> assignedFleets
@@ -214,10 +214,28 @@ namespace Rebellion.AI.Planners
                     && CanAssignPlanetDefense(context, fleet)
                     && context.StrategicPlan.CanDefend(fleet, targetPlanet)
                 )
-                .OrderByDescending(fleet =>
-                    AIFleetProposalScorer.ScoreDefenseAssignment(context, fleet, targetPlanet)
+                .Select(fleet =>
+                    (
+                        Fleet: fleet,
+                        Score: _scorer.Score(
+                            context,
+                            new AIFleetDefenseProposal(fleet, targetPlanet)
+                        )
+                    )
                 )
-                .ThenBy(fleet => fleet.InstanceID)
+                .Where(candidate =>
+                    candidate.Score > context.Game.Config.AI.Selection.MinimumSelectableScore
+                )
+                .OrderByDescending(candidate => candidate.Score)
+                .ThenByDescending(candidate =>
+                    AIFleetProposalScorer.ScoreDefenseAssignment(
+                        context,
+                        candidate.Fleet,
+                        targetPlanet
+                    )
+                )
+                .ThenBy(candidate => candidate.Fleet.InstanceID)
+                .Select(candidate => candidate.Fleet)
                 .FirstOrDefault();
         }
 
@@ -432,11 +450,38 @@ namespace Rebellion.AI.Planners
 
             Planet targetPlanet = context.Assessment.GetKnownPlanet(order.TargetPlanetId);
             string targetOwnerId = targetPlanet?.GetOwnerInstanceID();
-            if (
-                targetPlanet == null
-                || string.IsNullOrEmpty(targetOwnerId)
-                || targetOwnerId == context.Faction.InstanceID
-            )
+            if (targetOwnerId == context.Faction.InstanceID)
+            {
+                AIFleetAttackProposal followOn = null;
+                if (
+                    currentPlanet?.InstanceID == targetPlanet.InstanceID
+                    && !context.Assessment.IsPriorityDefensePlanet(targetPlanet)
+                    && context.StrategicPlan.GetPlanetDefenseStrength(targetPlanet) <= 0
+                    && CanStartAttackOrder(context, fleet)
+                )
+                {
+                    followOn = SelectAttack(
+                        context,
+                        new[] { fleet },
+                        context.Assessment.EnemyPlanets.Where(target =>
+                            !HasAttackFleetForTarget(context, target, fleet)
+                        ),
+                        requireReady: true
+                    );
+                }
+
+                if (followOn != null)
+                    proposals.Add(followOn);
+                else if (
+                    !proposals
+                        .OfType<AIFleetDefenseProposal>()
+                        .Any(proposal => proposal.Fleet == fleet)
+                )
+                    proposals.Add(new AIClearFleetOrderProposal(fleet, order));
+                return;
+            }
+
+            if (targetPlanet == null || string.IsNullOrEmpty(targetOwnerId))
             {
                 proposals.Add(new AIClearFleetOrderProposal(fleet, order));
                 return;
@@ -879,11 +924,13 @@ namespace Rebellion.AI.Planners
         /// <param name="context">The current AI turn context.</param>
         /// <param name="fleets">The fleets available for a new attack order.</param>
         /// <param name="targets">Eligible attack targets.</param>
+        /// <param name="requireReady">Whether the fleet must be able to launch immediately.</param>
         /// <returns>The highest-scoring proposal, or null when no target has value.</returns>
         private AIFleetAttackProposal SelectAttack(
             AITurnContext context,
             IEnumerable<Fleet> fleets,
-            IEnumerable<Planet> targets
+            IEnumerable<Planet> targets,
+            bool requireReady = false
         )
         {
             AIFleetAttackProposal selected = null;
@@ -913,6 +960,9 @@ namespace Rebellion.AI.Planners
                             : FleetOrderStatus.Staging,
                         candidate.Target
                     );
+                    if (requireReady && !proposal.CanLaunch(context))
+                        continue;
+
                     proposal.SetScore(_scorer.Score(context, proposal));
                     if (proposal.Score <= 0 || !IsPreferred(proposal, selected))
                         continue;

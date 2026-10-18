@@ -21,6 +21,9 @@ namespace Rebellion.AI
         private readonly Dictionary<BuildingType, int> _infrastructureCounts = new();
         private readonly Dictionary<BuildingType, int> _infrastructureTargets = new();
         private readonly Dictionary<BuildingType, int> _infrastructureDeficits = new();
+        private readonly Dictionary<string, double> _infrastructureAcquisitionValues = new(
+            StringComparer.Ordinal
+        );
         private readonly Dictionary<
             string,
             Dictionary<BuildingType, int>
@@ -155,6 +158,58 @@ namespace Rebellion.AI
         {
             int target = GetInfrastructureTarget(buildingType);
             return target > 0 ? GetInfrastructureDeficit(buildingType) / (double)target : 0;
+        }
+
+        /// <summary>
+        /// Values known neutral industrial capacity and missing hub sites in established sectors.
+        /// </summary>
+        /// <param name="planet">The neutral planet being considered for acquisition.</param>
+        /// <returns>The greatest industrial benefit from zero through one.</returns>
+        public double GetInfrastructureAcquisitionValue(Planet planet)
+        {
+            planet = _assessment.GetKnownPlanet(planet?.InstanceID);
+            if (
+                planet?.IsDestroyed != false
+                || !planet.IsColonized
+                || !_assessment.IsNeutralPlanet(planet)
+                || _assessment.GetHostileFleets(planet).Any()
+            )
+                return 0;
+            if (_infrastructureAcquisitionValues.TryGetValue(planet.InstanceID, out double value))
+                return value;
+
+            string systemId = _assessment.GetPlanetSystemId(planet);
+            foreach (BuildingType type in _infrastructureTargets.Keys)
+            {
+                List<Planet> owned = GetInfrastructurePlanets(type)
+                    .Where(candidate => _assessment.GetPlanetSystemId(candidate) == systemId)
+                    .ToList();
+                int target = GetInfrastructureHubTargets(type).FirstOrDefault(count => count > 0);
+                int deficit = GetInfrastructureDeficit(owned, type);
+                if (target <= 0 || deficit <= 0)
+                    continue;
+
+                ManufacturingType productionType = type switch
+                {
+                    BuildingType.Shipyard => ManufacturingType.Ship,
+                    BuildingType.TrainingFacility => ManufacturingType.Troop,
+                    _ => ManufacturingType.Building,
+                };
+                double benefit = Math.Min(
+                    1,
+                    Math.Min(planet.GetProductionFacilityCount(productionType), deficit)
+                        / (double)target
+                );
+                if (
+                    !owned.Any(candidate => CanAllocateInfrastructureHub(candidate, type, target))
+                    && GetConstructionSpace(planet, type, false, acquiring: true)
+                        >= Math.Max(0, target - planet.GetTotalBuildingTypeCount(type))
+                )
+                    benefit = 1;
+                value = Math.Max(value, benefit * Math.Min(1, deficit / (double)target));
+            }
+            _infrastructureAcquisitionValues[planet.InstanceID] = value;
+            return value;
         }
 
         /// <summary>
@@ -305,18 +360,23 @@ namespace Rebellion.AI
         /// <param name="buildingType">The building category being placed.</param>
         /// <param name="isEmergencyDefense">Whether an immediate defense takes priority over unfinished industry.</param>
         /// <param name="selectedBuildings">Building counts already accepted for this destination.</param>
+        /// <param name="acquiring">Whether to evaluate a neutral planet's industrial layout after acquisition.</param>
         /// <returns>The signed remaining space before clamping an overcommitted layout.</returns>
         private int GetConstructionSpace(
             Planet planet,
             BuildingType buildingType,
             bool isEmergencyDefense,
-            IReadOnlyDictionary<BuildingType, int> selectedBuildings = null
+            IReadOnlyDictionary<BuildingType, int> selectedBuildings = null,
+            bool acquiring = false
         )
         {
             if (
                 _game?.Config == null
                 || planet?.IsDestroyed != false
-                || !_assessment.IsOwnedPlanet(planet)
+                || !(
+                    _assessment.IsOwnedPlanet(planet)
+                    || acquiring && _assessment.IsNeutralPlanet(planet)
+                )
             )
                 return 0;
             int available = ManufacturingQueries.GetAvailableBuildingSpace(_game, planet, true);
@@ -349,7 +409,11 @@ namespace Rebellion.AI
             int shieldDeficit = protectsLayout
                 ? Math.Max(
                     0,
-                    GetPlanetaryShieldTarget(planet, IsInfrastructureType(buildingType))
+                    (
+                        acquiring
+                            ? Math.Min(1, _game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit)
+                            : GetPlanetaryShieldTarget(planet, IsInfrastructureType(buildingType))
+                    )
                         - CountCommittedDefense(planet, true)
                         - GetSelectedBuildingCount(selectedBuildings, BuildingType.Defense)
                 )

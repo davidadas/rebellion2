@@ -150,7 +150,15 @@ namespace Rebellion.AI.Scorers
                 .FleetDeployment
                 .DefenseUtility;
             AIUtilityScore score = new AIUtilityScore();
-            score.Add(1, utility.Base);
+            bool priorityDefense = context.Assessment.IsPriorityDefensePlanet(
+                proposal.TargetPlanet
+            );
+            score.Add(
+                priorityDefense
+                    ? 1
+                    : ScoreFriendlyPlanetValue(context.Assessment, proposal.TargetPlanet),
+                utility.Base
+            );
             score.Add(
                 AIUtility.Fulfillment(
                     context.Assessment.GetDefensiveSupportRisk(proposal.TargetPlanet),
@@ -158,7 +166,52 @@ namespace Rebellion.AI.Scorers
                 ),
                 utility.SectorRisk
             );
+            if (!priorityDefense)
+            {
+                if (utility.TravelTime.Weight > 0)
+                {
+                    Planet origin = context.Assessment.GetFleetPlanet(proposal.Fleet);
+                    if (origin == null || proposal.TargetPlanet == null)
+                        return 0;
+                    int transitTicks =
+                        origin.InstanceID == proposal.TargetPlanet.InstanceID
+                            ? 0
+                            : context.MovementQueries.CalculateTransitTicks(
+                                proposal.Fleet,
+                                origin,
+                                proposal.TargetPlanet
+                            );
+                    score.AddCost(
+                        AIUtility.Fulfillment(transitTicks, utility.TravelTime),
+                        utility.TravelTime
+                    );
+                }
+                if (utility.OpportunityCost.Weight > 0)
+                    score.AddCost(
+                        ScoreDefenseOpportunityCost(context, proposal.Fleet),
+                        utility.OpportunityCost
+                    );
+            }
             return GetSelectionValue(score);
+        }
+
+        /// <summary>
+        /// Returns the utility forfeited by interrupting a fleet's staged attack.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="fleet">The candidate defense fleet.</param>
+        /// <returns>The existing attack's score, or zero when no staged attack would be displaced.</returns>
+        private double ScoreDefenseOpportunityCost(AITurnContext context, Fleet fleet)
+        {
+            FleetOrder order = fleet?.Order;
+            if (
+                order?.OrderType != FleetOrderType.Attack
+                || order.Status != FleetOrderStatus.Staging
+            )
+                return 0;
+
+            Planet target = context.Assessment.GetKnownPlanet(order.TargetPlanetId);
+            return ScoreAttack(context, fleet, target, true);
         }
 
         /// <summary>
@@ -334,7 +387,7 @@ namespace Rebellion.AI.Scorers
                 utility.TravelEfficiency
             );
             score.AddCost(ScoreOpportunityCost(context, fleet), utility.OpportunityCost);
-            return GetSelectionValue(score);
+            return ApplyIntelAgeRisk(context, target, GetSelectionValue(score));
         }
 
         /// <summary>
@@ -392,7 +445,6 @@ namespace Rebellion.AI.Scorers
                 utility.ExpectedLossRisk
             );
             score.AddCost(ScoreOpportunityCost(context, fleet), utility.OpportunityCost);
-            score.AddCost(ScoreIntelAgeRisk(context, targetPlanet), utility.IntelAgeRisk);
             score.Add(targetPlanet.IsHeadquarters ? 1 : 0, utility.Headquarters);
             score.Add(
                 CanWinOrbitalCombat(context, fleet, targetPlanet) ? 1 : 0,
@@ -406,11 +458,41 @@ namespace Rebellion.AI.Scorers
                 utility.ExposedBombardment
             );
             score.Add(existingOrder ? 1 : 0, utility.ExistingOrder);
-            return GetSelectionValue(score);
+            double value = GetSelectionValue(score);
+            if (
+                targetPlanet.IsHeadquarters
+                && targetPlanet.InstanceID != context.Faction.HQInstanceID
+            )
+                value *=
+                    1 - AIUtility.Evaluate(1 - readiness.Score, utility.HeadquartersBuildupCost);
+            return ApplyIntelAgeRisk(context, targetPlanet, value);
         }
 
         /// <summary>
-        /// Returns normalized intelligence age for an attack target.
+        /// Reduces offensive priority according to intelligence age without changing force requirements.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="targetPlanet">The prospective attack target.</param>
+        /// <param name="score">The target's priority before intelligence risk.</param>
+        /// <returns>The priority after the configured proportional reduction.</returns>
+        private static double ApplyIntelAgeRisk(
+            AITurnContext context,
+            Planet targetPlanet,
+            double score
+        )
+        {
+            return score
+                * (
+                    1
+                    - AIUtility.Evaluate(
+                        ScoreIntelAgeRisk(context, targetPlanet),
+                        context.Game.Config.AI.FleetDeployment.AttackUtility.IntelAgeRisk
+                    )
+                );
+        }
+
+        /// <summary>
+        /// Returns normalized intelligence age beyond the offensive grace period.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="targetPlanet">The prospective attack target.</param>
@@ -418,13 +500,11 @@ namespace Rebellion.AI.Scorers
         private static double ScoreIntelAgeRisk(AITurnContext context, Planet targetPlanet)
         {
             int age = context.Assessment.GetPlanetIntelAge(targetPlanet);
-            int maximumAge = context
-                .Game
-                .Config
-                .AI
-                .MissionPlanning
-                .HostileMissionMaximumIntelAgeTicks;
-            return age < int.MaxValue ? AIUtility.Fulfillment(age, maximumAge) : 1;
+            GameConfig.AIFleetDeploymentConfig config = context.Game.Config.AI.FleetDeployment;
+            long staleAge = Math.Max(0L, (long)age - config.AttackIntelAgeGraceTicks);
+            return age < int.MaxValue
+                ? AIUtility.Fulfillment(staleAge, config.AttackUtility.IntelAgeRisk)
+                : 1;
         }
 
         /// <summary>

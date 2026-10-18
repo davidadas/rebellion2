@@ -100,8 +100,13 @@ namespace Rebellion.Tests.AI.Demands
             CollectionAssert.AreEqual(new[] { next }, context.FleetProductionPriorities);
         }
 
-        [Test]
-        public void BuildDemands_PlannedIndustrialAndDefenseSlots_PlacesEconomyOnAnotherPlanet()
+        [TestCase(BuildingType.ConstructionFacility, 5)]
+        [TestCase(BuildingType.Shipyard, 6)]
+        [TestCase(BuildingType.TrainingFacility, 4)]
+        public void BuildDemands_PlannedIndustrialAndDefenseSlots_PlacesEconomyOnAnotherPlanet(
+            BuildingType facilityType,
+            int facilityTarget
+        )
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
             game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit = 2;
@@ -111,7 +116,7 @@ namespace Rebellion.Tests.AI.Demands
                 sector,
                 "hub",
                 faction.InstanceID,
-                energyCapacity: 7,
+                energyCapacity: facilityTarget + 1,
                 rawResourceNodes: 10
             );
             Planet economy = AITestSceneBuilder.AddPlanet(
@@ -125,7 +130,11 @@ namespace Rebellion.Tests.AI.Demands
             economy.SetPopularSupport(faction.InstanceID, 100);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
             Assert.IsTrue(
-                context.StrategicPlan.TryAllocateInfrastructureHub(hub, BuildingType.Shipyard, 6)
+                context.StrategicPlan.TryAllocateInfrastructureHub(
+                    hub,
+                    facilityType,
+                    facilityTarget
+                )
             );
 
             var demands = new AIProductionDemandGenerator().BuildDemands(context);

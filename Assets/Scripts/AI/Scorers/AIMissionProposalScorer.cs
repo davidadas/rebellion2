@@ -96,9 +96,16 @@ namespace Rebellion.AI.Scorers
                 utility.Objective.OfficerRisk
             );
 
-            return score.RankValue >= context.Game.Config.AI.MissionPlanning.MinimumMissionScore
-                ? score.RankValue
-                : 0;
+            double value =
+                missionProposal.MissionTypeID == MissionTypeIDs.Diplomacy
+                    ? ApplyDiplomacyModifiers(
+                        context,
+                        missionProposal.TargetPlanet,
+                        missionProposal.Participant,
+                        score.RankValue
+                    )
+                    : score.RankValue;
+            return value >= context.Game.Config.AI.MissionPlanning.MinimumMissionScore ? value : 0;
         }
 
         /// <summary>
@@ -155,7 +162,14 @@ namespace Rebellion.AI.Scorers
                 HasOfficerReplacementRisk(context, proposal) ? 1 : 0,
                 utility.Objective.OfficerRisk
             );
-            return score.RankValue;
+            return proposal.MissionTypeID == MissionTypeIDs.Diplomacy
+                ? ApplyDiplomacyModifiers(
+                    context,
+                    proposal.TargetPlanet,
+                    proposal.Participant,
+                    score.RankValue
+                )
+                : score.RankValue;
         }
 
         /// <summary>
@@ -361,6 +375,87 @@ namespace Rebellion.AI.Scorers
         }
 
         /// <summary>
+        /// Values industrial opportunities before discounting travel and diplomatic competition.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="planet">The proposed target.</param>
+        /// <param name="participant">The assigned diplomat, or null for target ordering.</param>
+        /// <param name="value">The utility before diplomatic costs.</param>
+        /// <returns>The utility after travel costs and applicable competition costs.</returns>
+        private static double ApplyDiplomacyModifiers(
+            AITurnContext context,
+            Planet planet,
+            IMissionParticipant participant,
+            double value
+        )
+        {
+            if (context?.Assessment == null || planet == null)
+                return value;
+
+            GameConfig.AIDiplomacyUtilityConfig utility = context
+                .Game
+                .Config
+                .AI
+                .MissionPlanning
+                .Utility
+                .Diplomacy;
+            if (
+                utility.IndustrialOpportunity.Weight > 0
+                && context.Assessment.IsNeutralPlanet(planet)
+            )
+            {
+                double opportunity = Math.Clamp(
+                    AIUtility.Evaluate(
+                        context.StrategicPlan.GetInfrastructureAcquisitionValue(planet),
+                        utility.IndustrialOpportunity
+                    ),
+                    0,
+                    1
+                );
+                value += (1 - value) * opportunity;
+            }
+            if (utility.Competition.Weight > 0 && context.Assessment.IsNeutralPlanet(planet))
+            {
+                double competition = context.Assessment.GetEnemyDiplomacyStrengthInSystem(
+                    planet.GetParentOfType<PlanetSector>()?.InstanceID
+                );
+                value *=
+                    1
+                    - AIUtility.Evaluate(
+                        AIUtility.Fulfillment(
+                            competition,
+                            competition + Math.Max(1, utility.Competition.SaturationValue)
+                        ),
+                        utility.Competition
+                    );
+            }
+            if (
+                utility.TravelTime.Weight > 0
+                && participant?.GetParentOfType<Planet>() is Planet departure
+            )
+            {
+                int ticks =
+                    departure.InstanceID == planet.InstanceID
+                        ? 0
+                        : context.MovementQueries.CalculateTransitTicks(
+                            participant,
+                            departure,
+                            planet
+                        );
+                value *=
+                    1
+                    - AIUtility.Evaluate(
+                        AIUtility.Fulfillment(
+                            ticks,
+                            ticks + Math.Max(1, utility.TravelTime.SaturationValue)
+                        ),
+                        utility.TravelTime
+                    );
+            }
+            return value;
+        }
+
+        /// <summary>
         /// Returns whether a target is directly stationed on a planet.
         /// </summary>
         /// <param name="planet">The planet to inspect.</param>
@@ -398,7 +493,12 @@ namespace Rebellion.AI.Scorers
             if (!enabled)
                 return;
 
-            AddDiplomacyTargetUtility(ref score, context, proposal.TargetPlanet);
+            AddDiplomacyTargetUtility(
+                ref score,
+                context,
+                proposal.TargetPlanet,
+                proposal.Participant
+            );
         }
 
         /// <summary>
@@ -411,7 +511,7 @@ namespace Rebellion.AI.Scorers
         {
             AIUtilityScore score = new AIUtilityScore();
             AddDiplomacyTargetUtility(ref score, context, planet);
-            return score.Value;
+            return ApplyDiplomacyModifiers(context, planet, null, score.Value);
         }
 
         /// <summary>
@@ -420,10 +520,12 @@ namespace Rebellion.AI.Scorers
         /// <param name="score">Score receiving diplomacy considerations.</param>
         /// <param name="context">Current faction turn.</param>
         /// <param name="planet">Diplomacy target to evaluate.</param>
+        /// <param name="participant">The diplomat receiving the score, or null for target ordering.</param>
         private static void AddDiplomacyTargetUtility(
             ref AIUtilityScore score,
             AITurnContext context,
-            Planet planet
+            Planet planet,
+            IMissionParticipant participant = null
         )
         {
             if (context?.Assessment == null || context.StrategicPlan == null || planet == null)
@@ -437,9 +539,29 @@ namespace Rebellion.AI.Scorers
                 .Utility
                 .Diplomacy;
             int opposingSupport = planet.GetOpposingPopularSupport(context.Faction.InstanceID);
-            bool isCoreWorld =
-                planet.GetParentOfType<PlanetSector>()?.SectorType == PlanetSectorType.Core;
+            PlanetSector sector = planet.GetParentOfType<PlanetSector>();
+            bool isCoreWorld = sector?.SectorType == PlanetSectorType.Core;
             score.Add(isCoreWorld ? 1 : 0, utility.CoreWorld);
+            PlanetSector headquartersSector =
+                context.Assessment.FactionHeadquarters?.GetParentOfType<PlanetSector>();
+            if (headquartersSector != null && sector?.InstanceID == headquartersSector.InstanceID)
+                score.Add(1, utility.HeadquartersSector);
+            if (utility.SystemPresence.Weight > 0)
+                score.Add(
+                    context.Assessment.GetOwnedSystemPresenceRatio(sector?.InstanceID),
+                    utility.SystemPresence
+                );
+
+            if (utility.Concentration.Weight > 0)
+            {
+                double concentration = context.Assessment.GetDiplomacyConcentrationValue(
+                    planet,
+                    context.MovementQueries,
+                    participant
+                );
+                if (concentration > 0)
+                    score.Add(concentration, utility.Concentration);
+            }
 
             if (context.Assessment.IsOwnedPlanet(planet))
             {

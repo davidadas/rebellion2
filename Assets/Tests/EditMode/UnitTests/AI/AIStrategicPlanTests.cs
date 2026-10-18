@@ -12,6 +12,100 @@ namespace Rebellion.Tests.AI
     [TestFixture]
     public class AIStrategicPlanTests
     {
+        /// <summary>Requires room for the completed industrial layout and its shield.</summary>
+        /// <param name="availableSpace">The neutral planet's building capacity.</param>
+        /// <param name="expectedOpportunity">Whether the layout fits.</param>
+        [TestCase(3, false)]
+        [TestCase(4, true)]
+        public void GetInfrastructureAcquisitionValue_NeutralHubNeedsShieldSpace_RequiresFinishedLayout(
+            int availableSpace,
+            bool expectedOpportunity
+        )
+        {
+            AITurnContext context = CreateIndustrialAcquisitionContext(
+                0,
+                availableSpace,
+                out Planet candidate
+            );
+
+            double value = context.StrategicPlan.GetInfrastructureAcquisitionValue(candidate);
+
+            Assert.AreEqual(expectedOpportunity, value > 0);
+        }
+
+        /// <summary>Avoids rewarding redundant industrial sites.</summary>
+        [Test]
+        public void GetInfrastructureAcquisitionValue_OwnedHubSiteAvailable_DoesNotRewardAnotherEmptySite()
+        {
+            AITurnContext context = CreateIndustrialAcquisitionContext(4, 4, out Planet candidate);
+
+            Assert.Zero(context.StrategicPlan.GetInfrastructureAcquisitionValue(candidate));
+        }
+
+        /// <summary>Counts committed capacity when assessing acquisition needs.</summary>
+        /// <param name="status">The committed facilities' manufacturing state.</param>
+        [TestCase(ManufacturingStatus.Building)]
+        [TestCase(ManufacturingStatus.Delivering)]
+        [TestCase(ManufacturingStatus.Complete)]
+        public void GetInfrastructureAcquisitionValue_HubCapacityCommitted_RemovesAcquisitionNeed(
+            ManufacturingStatus status
+        )
+        {
+            AITurnContext initial = CreateIndustrialAcquisitionContext(4, 4, out Planet candidate);
+            Planet owned = initial.Assessment.OwnedPlanets[0];
+            for (int index = 0; index < 3; index++)
+            {
+                Building building = AITestSceneBuilder.AddProductionFacility(
+                    initial.Game,
+                    owned,
+                    "yard-" + index,
+                    BuildingType.ConstructionFacility,
+                    ManufacturingType.Building
+                );
+                building.ManufacturingStatus = status;
+            }
+            AITurnContext context = AITestSceneBuilder.CreateContext(initial.Game, initial.Faction);
+
+            Assert.Zero(context.StrategicPlan.GetInfrastructureAcquisitionValue(candidate));
+        }
+
+        /// <summary>Does not encourage expansion into sectors without an existing presence.</summary>
+        [Test]
+        public void GetInfrastructureAcquisitionValue_SectorWithoutOwnedPlanets_DoesNotCreateExpansionBonus()
+        {
+            AITurnContext initial = CreateIndustrialAcquisitionContext(0, 4, out Planet candidate);
+            PlanetSector other = AITestSceneBuilder.AddSector(initial.Game, "other-sector");
+            candidate = AITestSceneBuilder.AddPlanet(
+                initial.Game,
+                other,
+                "other-neutral",
+                null,
+                energyCapacity: 4
+            );
+            AITestSceneBuilder.RevealPlanet(initial.Game, initial.Faction, candidate);
+            AITurnContext context = AITestSceneBuilder.CreateContext(initial.Game, initial.Faction);
+
+            Assert.Zero(context.StrategicPlan.GetInfrastructureAcquisitionValue(candidate));
+        }
+
+        /// <summary>Values immediately usable construction capacity despite an existing empty hub site.</summary>
+        [Test]
+        public void GetInfrastructureAcquisitionValue_NeutralPlanetSuppliesNeededCapacity_ValuesExistingYards()
+        {
+            AITurnContext initial = CreateIndustrialAcquisitionContext(4, 2, out Planet candidate);
+            AITestSceneBuilder.AddProductionFacility(
+                initial.Game,
+                candidate,
+                "neutral-yard",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+            AITestSceneBuilder.RevealPlanet(initial.Game, initial.Faction, candidate);
+            AITurnContext context = AITestSceneBuilder.CreateContext(initial.Game, initial.Faction);
+
+            Assert.Greater(context.StrategicPlan.GetInfrastructureAcquisitionValue(candidate), 0);
+        }
+
         [TestCase(1000, true)]
         [TestCase(999, false)]
         public void CanReleaseCapitalShip_HeadquartersDefender_PreservesRequiredStrength(
@@ -555,6 +649,43 @@ namespace Rebellion.Tests.AI
             AIStrategicPlan plan = AITestSceneBuilder.CreateContext(game, empire).StrategicPlan;
 
             Assert.IsFalse(plan.CanReinforce(receivingFleet));
+        }
+
+        /// <summary>Creates a sector with a construction-hub shortage and a known neutral candidate.</summary>
+        /// <param name="ownedSpace">The owned planet's building capacity.</param>
+        /// <param name="candidateSpace">The neutral planet's building capacity.</param>
+        /// <param name="candidate">The neutral acquisition candidate.</param>
+        /// <returns>The faction's turn context.</returns>
+        private static AITurnContext CreateIndustrialAcquisitionContext(
+            int ownedSpace,
+            int candidateSpace,
+            out Planet candidate
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
+            game.Config.AI.Infrastructure.ConstructionFacilityPrimaryHubTargetCount = 3;
+            game.Config.AI.Infrastructure.ConstructionFacilitySecondaryHubTargetCount = 0;
+            game.Config.AI.Infrastructure.ShipyardPrimaryHubTargetCount = 0;
+            game.Config.AI.Infrastructure.ShipyardSecondaryHubTargetCount = 0;
+            game.Config.AI.Infrastructure.TrainingFacilityHubTargetCount = 0;
+            game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit = 1;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "industry-sector");
+            AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "owned",
+                faction.InstanceID,
+                energyCapacity: ownedSpace
+            );
+            candidate = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "neutral",
+                null,
+                energyCapacity: candidateSpace
+            );
+            AITestSceneBuilder.RevealPlanet(game, faction, candidate);
+            return AITestSceneBuilder.CreateContext(game, faction);
         }
 
         /// <summary>

@@ -1487,6 +1487,16 @@ namespace Rebellion.AI.Planners
         )
         {
             List<Technology> eligible = new List<Technology>(technologies.Count);
+            int preferredInterdictionCount = context
+                .Game
+                .Config
+                .AI
+                .Selection
+                .PreferredInterdictionCountPerFleet;
+            bool preferOtherHulls =
+                preferredInterdictionCount > 0
+                && context.Assessment.GetProjectedFleetInterdictionCount(demand.DestinationFleet)
+                    >= preferredInterdictionCount;
             foreach (
                 Func<CapitalShip, bool> requirement in GetCapitalShipRequirements(context, demand)
             )
@@ -1498,8 +1508,20 @@ namespace Rebellion.AI.Planners
                         eligible.Add(technology);
                 }
 
-                if (eligible.Count > 0)
-                    return eligible[context.Random.NextInt(0, eligible.Count)];
+                if (eligible.Count == 0)
+                    continue;
+
+                if (
+                    preferOtherHulls
+                    && eligible.Any(technology =>
+                        !((CapitalShip)technology.GetReference()).HasGravityWell
+                    )
+                )
+                    eligible.RemoveAll(technology =>
+                        ((CapitalShip)technology.GetReference()).HasGravityWell
+                    );
+
+                return eligible[context.Random.NextInt(0, eligible.Count)];
             }
 
             return null;
@@ -1920,19 +1942,6 @@ namespace Rebellion.AI.Planners
                     ) == null
                 )
             );
-            if (mode == ProducerMode.FacilityExpansion && destinationPlanet != null)
-            {
-                string destinationSystemId = context.Assessment.GetPlanetSystemId(
-                    destinationPlanet
-                );
-                List<Planet> localProducers = eligibleProducers
-                    .Where(planet =>
-                        context.Assessment.GetPlanetSystemId(planet) == destinationSystemId
-                    )
-                    .ToList();
-                if (localProducers.Count > 0)
-                    eligibleProducers = localProducers;
-            }
             producers =
                 mode == ProducerMode.FacilityExpansion
                     ? eligibleProducers

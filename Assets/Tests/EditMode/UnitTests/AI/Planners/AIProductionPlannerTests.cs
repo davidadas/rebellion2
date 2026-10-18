@@ -21,6 +21,100 @@ namespace Rebellion.Tests.AI.Planners
     [TestFixture]
     public sealed partial class AIProductionPlannerTests
     {
+        [TestCase(1, 2, false, false, "a-interdictor")]
+        [TestCase(2, 2, false, false, "z-warship")]
+        [TestCase(3, 2, false, false, "z-warship")]
+        [TestCase(2, 3, false, false, "a-interdictor")]
+        [TestCase(2, 0, false, false, "a-interdictor")]
+        [TestCase(2, 2, true, false, "a-interdictor")]
+        [TestCase(2, 2, false, true, "z-warship")]
+        public void Plan_ProjectedInterdictorsAtPreference_PrefersOtherEligibleHulls(
+            int existingCount,
+            int preferredCount,
+            bool onlyInterdictors,
+            bool pending,
+            string expectedType
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Selection.PreferredInterdictionCountPerFleet = preferredCount;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "producer",
+                empire.InstanceID
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "yard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
+            game.AttachNode(fleet, planet);
+            for (int index = 0; index < existingCount; index++)
+            {
+                CapitalShip existing = AITestSceneBuilder.CreateCapitalShip(
+                    "existing-" + index,
+                    empire.InstanceID
+                );
+                existing.HasGravityWell = true;
+                if (pending)
+                {
+                    if (index == 0)
+                        existing.ManufacturingStatus = ManufacturingStatus.Building;
+                    else
+                        existing.Movement = new MovementState { TransitTicks = 10 };
+                }
+                game.AttachNode(existing, fleet);
+            }
+            CapitalShip interdictor = AITestSceneBuilder.CreateCapitalShip(
+                "a-interdictor",
+                empire.InstanceID
+            );
+            interdictor.HasGravityWell = true;
+            interdictor.MaintenanceCost = 0;
+            CapitalShip warship = AITestSceneBuilder.CreateCapitalShip(
+                "z-warship",
+                empire.InstanceID
+            );
+            warship.MaintenanceCost = 0;
+            empire.ResearchQueue[ManufacturingType.Ship] = new List<Technology>
+            {
+                new Technology(interdictor),
+            };
+            if (!onlyInterdictors)
+                empire.ResearchQueue[ManufacturingType.Ship].Add(new Technology(warship));
+            AITurnContext context = AITestSceneBuilder.CreateContext(
+                game,
+                empire,
+                random: new StubRNG()
+            );
+            context.SetProductionDemands(
+                new[]
+                {
+                    new AIProductionDemand(
+                        "hull",
+                        AIProductionDemandKind.FleetCapitalShip,
+                        ManufacturingType.Ship,
+                        BuildingType.None,
+                        fleet,
+                        1,
+                        capitalFirepowerDeficit: 100
+                    ),
+                }
+            );
+
+            AIManufactureProposal proposal = new AIProductionPlanner()
+                .Plan(context)
+                .OfType<AIManufactureProposal>()
+                .Single();
+
+            Assert.AreEqual(expectedType, proposal.Product.GetReference().GetTypeID());
+        }
+
         [Test]
         public void Plan_PriorityFleetsWithSevenAndOneYard_AssignsLargeAndSmallHullsRespectively()
         {

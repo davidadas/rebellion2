@@ -806,11 +806,7 @@ namespace Rebellion.AI.Scorers
                 return 0;
             }
 
-            return
-                context.Assessment.GetPlanetProductionFacilityCount(
-                    destination,
-                    ManufacturingType.Building
-                ) == 0
+            return destination.GetTotalBuildingTypeCount(BuildingType.ConstructionFacility) == 0
                 ? 1
                 : 0;
         }

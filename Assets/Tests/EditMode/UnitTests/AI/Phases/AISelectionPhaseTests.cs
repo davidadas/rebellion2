@@ -365,8 +365,30 @@ namespace Rebellion.Tests.AI.Phases
             CollectionAssert.AreEqual(new[] { primary }, selected);
         }
 
-        [Test]
-        public void Select_IndustryUsesAllocatedSpace_PreservesShieldAndRejectsExtraEconomy()
+        [TestCase(
+            BuildingType.ConstructionFacility,
+            ManufacturingType.Building,
+            AIProductionDemandKind.ConstructionFacility,
+            5
+        )]
+        [TestCase(
+            BuildingType.Shipyard,
+            ManufacturingType.Ship,
+            AIProductionDemandKind.Shipyard,
+            6
+        )]
+        [TestCase(
+            BuildingType.TrainingFacility,
+            ManufacturingType.Troop,
+            AIProductionDemandKind.TrainingFacility,
+            4
+        )]
+        public void Select_IndustryUsesAllocatedSpace_PreservesShieldAndRejectsExtraEconomy(
+            BuildingType facilityType,
+            ManufacturingType productionType,
+            AIProductionDemandKind demandKind,
+            int facilityTarget
+        )
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
             game.Config.AI.Selection.MaintenanceHeadroomReserve = 0;
@@ -378,7 +400,7 @@ namespace Rebellion.Tests.AI.Phases
                 sector,
                 "hub",
                 faction.InstanceID,
-                energyCapacity: 7,
+                energyCapacity: facilityTarget + 1,
                 rawResourceNodes: 1
             );
             Planet industryProducer = AITestSceneBuilder.AddPlanet(
@@ -393,7 +415,7 @@ namespace Rebellion.Tests.AI.Phases
                 "defense",
                 faction.InstanceID
             );
-            for (int index = 0; index < 6; index++)
+            for (int index = 0; index < facilityTarget; index++)
                 AITestSceneBuilder.AddProductionFacility(
                     game,
                     industryProducer,
@@ -410,12 +432,16 @@ namespace Rebellion.Tests.AI.Phases
             );
             AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
             Assert.IsTrue(
-                context.StrategicPlan.TryAllocateInfrastructureHub(hub, BuildingType.Shipyard, 6)
+                context.StrategicPlan.TryAllocateInfrastructureHub(
+                    hub,
+                    facilityType,
+                    facilityTarget
+                )
             );
             Building yard = AITestSceneBuilder.CreateBuildingTemplate(
                 "yard",
-                BuildingType.Shipyard,
-                ManufacturingType.Ship
+                facilityType,
+                productionType
             );
             Building shield = AITestSceneBuilder.CreateBuildingTemplate(
                 "shield",
@@ -426,11 +452,11 @@ namespace Rebellion.Tests.AI.Phases
             AIManufactureProposal industry = new(
                 new AIProductionDemand(
                     "industry",
-                    AIProductionDemandKind.Shipyard,
+                    demandKind,
                     ManufacturingType.Building,
-                    BuildingType.Shipyard,
+                    facilityType,
                     hub,
-                    6
+                    facilityTarget
                 ),
                 industryProducer,
                 new Technology(yard),
@@ -479,7 +505,7 @@ namespace Rebellion.Tests.AI.Phases
             );
             foreach (var proposal in selected)
                 proposal.Execute(context);
-            Assert.AreEqual(6, hub.GetTotalBuildingTypeCount(BuildingType.Shipyard));
+            Assert.AreEqual(facilityTarget, hub.GetTotalBuildingTypeCount(facilityType));
             Assert.AreEqual(1, hub.GetTotalBuildingTypeCount(BuildingType.Defense));
             Assert.AreEqual(0, hub.GetTotalBuildingTypeCount(BuildingType.Mine));
         }

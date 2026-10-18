@@ -2,6 +2,7 @@ using System.Linq;
 using NUnit.Framework;
 using Rebellion.AI;
 using Rebellion.AI.Demands;
+using Rebellion.AI.Phases;
 using Rebellion.AI.Planners;
 using Rebellion.AI.Proposals;
 using Rebellion.AI.Scorers;
@@ -17,6 +18,83 @@ namespace Rebellion.Tests.AI.Fleets
     [TestFixture]
     public class AIFleetProposalScorerTests
     {
+        [TestCase(0.03, false)]
+        [TestCase(0.15, true)]
+        public void Score_StrongerSectorOwnershipPreference_FavorsConsolidationOverShorterTravel(
+            double weight,
+            bool prefersConsolidation
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.FleetDeployment.AttackUtility = new GameConfig.AIAttackUtilityConfig
+            {
+                SystemPresence = new GameConfig.AIConsiderationConfig { Weight = weight },
+                TravelEfficiency = new GameConfig.AIConsiderationConfig { Weight = 0.1 },
+            };
+            PlanetSector originSector = AITestSceneBuilder.AddSector(game, "origin-sector");
+            Planet origin = AITestSceneBuilder.AddPlanet(
+                game,
+                originSector,
+                "origin",
+                empire.InstanceID
+            );
+            PlanetSector distantSector = AITestSceneBuilder.AddSector(game, "distant-sector");
+            for (int index = 0; index < 3; index++)
+                AITestSceneBuilder.AddPlanet(
+                    game,
+                    distantSector,
+                    "friendly-" + index,
+                    empire.InstanceID
+                );
+            Planet consolidationTarget = AITestSceneBuilder.AddPlanet(
+                game,
+                distantSector,
+                "last-enemy",
+                rebels.InstanceID,
+                positionX: 2000
+            );
+            PlanetSector nearbySector = AITestSceneBuilder.AddSector(game, "nearby-sector");
+            Planet nearbyTarget = AITestSceneBuilder.AddPlanet(
+                game,
+                nearbySector,
+                "nearby-enemy",
+                rebels.InstanceID,
+                positionX: 1000
+            );
+            AITestSceneBuilder.RevealPlanet(game, empire, consolidationTarget);
+            AITestSceneBuilder.RevealPlanet(game, empire, nearbyTarget);
+            Fleet fleet = AddBattleFleet(
+                game,
+                origin,
+                "fleet",
+                empire.InstanceID,
+                combatStrength: 1000
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIFleetProposalScorer scorer = new AIFleetProposalScorer();
+
+            double consolidationScore = scorer.Score(
+                context,
+                new AIFleetAttackProposal(
+                    fleet,
+                    FleetOrderType.Attack,
+                    FleetOrderStatus.Staging,
+                    consolidationTarget
+                )
+            );
+            double nearbyScore = scorer.Score(
+                context,
+                new AIFleetAttackProposal(
+                    fleet,
+                    FleetOrderType.Attack,
+                    FleetOrderStatus.Staging,
+                    nearbyTarget
+                )
+            );
+
+            Assert.AreEqual(prefersConsolidation, consolidationScore > nearbyScore);
+        }
+
         [Test]
         public void Score_ReturningAttackFleetInHostileTerritory_ReturnsHighestScore()
         {
@@ -303,68 +381,79 @@ namespace Rebellion.Tests.AI.Fleets
             Assert.GreaterOrEqual(upperBound, score);
         }
 
-        [Test]
-        public void Score_AttackProposalWithOlderIntelligence_ReturnsLowerScore()
+        [TestCase(false, 0)]
+        [TestCase(false, 200)]
+        [TestCase(true, 0)]
+        [TestCase(true, 200)]
+        public void Score_OffensiveTargetWithinIntelGracePeriod_PreservesPriority(
+            bool engagement,
+            int intelAge
+        )
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
-            GameConfig.AIFleetDeploymentConfig config = game.Config.AI.FleetDeployment;
-            config.AttackUtility.StrategicValue.Weight = 1;
-            config.AttackUtility.SectorSupport.Weight = 0;
-            config.AttackUtility.SystemPresence.Weight = 0;
-            config.AttackUtility.Readiness.Weight = 0;
-            config.AttackUtility.CaptureViability.Weight = 0;
-            config.AttackUtility.TravelEfficiency.Weight = 0;
-            config.AttackUtility.ExpectedLossRisk.Weight = 0;
-            config.AttackUtility.OpportunityCost.Weight = 0;
-            config.AttackUtility.IntelAgeRisk.Weight = 1;
-            config.AttackUtility.OrbitalAdvantage.Weight = 0;
-            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
-            Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
-            Planet olderTarget = AITestSceneBuilder.AddPlanet(
-                game,
-                system,
-                "older",
-                rebels.InstanceID
-            );
-            Planet freshTarget = AITestSceneBuilder.AddPlanet(
-                game,
-                system,
-                "fresh",
-                rebels.InstanceID
-            );
-            AITestSceneBuilder.RevealPlanet(game, empire, olderTarget);
-            game.CurrentTick = 20;
-            AITestSceneBuilder.RevealPlanet(game, empire, freshTarget);
-            Fleet fleet = AddBattleFleet(
-                game,
-                owned,
-                "fleet",
-                empire.InstanceID,
-                combatStrength: 1000
-            );
-            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            var (context, fleet, target, _) = CreateIntelAgeContext(intelAge);
+            AIProposal proposal = CreateOffensiveProposal(context, fleet, target, engagement);
             AIFleetProposalScorer scorer = new AIFleetProposalScorer();
 
-            double olderScore = scorer.Score(
-                context,
-                new AIFleetAttackProposal(
-                    fleet,
-                    FleetOrderType.Attack,
-                    FleetOrderStatus.Staging,
-                    olderTarget
-                )
-            );
-            double freshScore = scorer.Score(
-                context,
-                new AIFleetAttackProposal(
-                    fleet,
-                    FleetOrderType.Attack,
-                    FleetOrderStatus.Staging,
-                    freshTarget
-                )
-            );
+            double score = scorer.Score(context, proposal);
+            context.Game.Config.AI.FleetDeployment.AttackUtility.IntelAgeRisk.Weight = 0;
 
-            Assert.Greater(freshScore, olderScore);
+            Assert.AreEqual(scorer.Score(context, proposal), score);
+        }
+
+        [TestCase(false, 300, 0.525)]
+        [TestCase(false, 400, 0.05)]
+        [TestCase(false, 683, 0.05)]
+        [TestCase(true, 300, 0.525)]
+        [TestCase(true, 400, 0.05)]
+        [TestCase(true, 683, 0.05)]
+        public void Score_OffensiveTargetBeyondIntelGracePeriod_ReducesPriority(
+            bool engagement,
+            int intelAge,
+            double retainedPriority
+        )
+        {
+            var (context, fleet, target, _) = CreateIntelAgeContext(intelAge);
+            AIProposal proposal = CreateOffensiveProposal(context, fleet, target, engagement);
+            AIFleetProposalScorer scorer = new AIFleetProposalScorer();
+
+            double score = scorer.Score(context, proposal);
+            context.Game.Config.AI.FleetDeployment.AttackUtility.IntelAgeRisk.Weight = 0;
+
+            Assert.AreEqual(scorer.Score(context, proposal) * retainedPriority, score, 1e-9);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Select_StaleOffensiveTargetWithoutAlternative_RemainsSelectable(bool engagement)
+        {
+            var (context, fleet, target, _) = CreateIntelAgeContext(683);
+            AIProposal proposal = CreateOffensiveProposal(context, fleet, target, engagement);
+            proposal.SetScore(new AIFleetProposalScorer().Score(context, proposal));
+            context.AddProposal(proposal);
+
+            var selected = new AISelectionPhase().Select(context);
+
+            Assert.That(selected, Does.Contain(proposal));
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Select_EquivalentFreshAndStaleOffensiveTargets_PrefersFreshTarget(
+            bool engagement
+        )
+        {
+            var (context, fleet, target, freshTarget) = CreateIntelAgeContext(683);
+            AIProposal stale = CreateOffensiveProposal(context, fleet, target, engagement);
+            AIProposal fresh = CreateOffensiveProposal(context, fleet, freshTarget, engagement);
+            AIFleetProposalScorer scorer = new AIFleetProposalScorer();
+            stale.SetScore(scorer.Score(context, stale));
+            fresh.SetScore(scorer.Score(context, fresh));
+            context.AddProposal(stale);
+            context.AddProposal(fresh);
+
+            var selected = new AISelectionPhase().Select(context);
+
+            Assert.That(selected, Is.EquivalentTo(new[] { fresh }));
         }
 
         [Test]
@@ -901,6 +990,139 @@ namespace Rebellion.Tests.AI.Fleets
         }
 
         [Test]
+        public void Score_OrdinaryDefenseWithHigherPlanetValue_IncreasesPriority()
+        {
+            AITurnContext context = CreateDefenseContext(out Fleet fleet, out Planet target);
+            var scorer = new AIFleetProposalScorer();
+            double lowerValue = scorer.Score(context, new AIFleetDefenseProposal(fleet, target));
+            target.EnergyCapacity = 1000;
+            context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+
+            double higherValue = scorer.Score(context, new AIFleetDefenseProposal(fleet, target));
+
+            Assert.Greater(higherValue, lowerValue);
+        }
+
+        [Test]
+        public void Score_OrdinaryDefenseWithLongerTravel_DecreasesPriority()
+        {
+            AITurnContext context = CreateDefenseContext(out Fleet fleet, out Planet target);
+            context.Game.Config.AI.FleetDeployment.DefenseUtility.TravelTime.Weight = 0.5;
+            target.PositionX = 10;
+            var scorer = new AIFleetProposalScorer();
+            double nearby = scorer.Score(context, new AIFleetDefenseProposal(fleet, target));
+            target.PositionX = 100;
+
+            double distant = scorer.Score(context, new AIFleetDefenseProposal(fleet, target));
+
+            Assert.Less(distant, nearby);
+        }
+
+        [Test]
+        public void Score_OrdinaryDefenseWithSlowerHyperdrive_DecreasesPriority()
+        {
+            AITurnContext context = CreateDefenseContext(out Fleet fleet, out Planet target);
+            context.Game.Config.AI.FleetDeployment.DefenseUtility.TravelTime.Weight = 0.5;
+            target.EnergyCapacity = 1000;
+            context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+            target.PositionX = 50;
+            CapitalShip ship = fleet.GetChildren<CapitalShip>().Single();
+            ship.Hyperdrive = 100;
+            var scorer = new AIFleetProposalScorer();
+            double faster = scorer.Score(context, new AIFleetDefenseProposal(fleet, target));
+            ship.Hyperdrive = 200;
+
+            double slower = scorer.Score(context, new AIFleetDefenseProposal(fleet, target));
+
+            Assert.Less(slower, faster);
+        }
+
+        [Test]
+        public void Score_DefenseAlreadyAtDestination_DoesNotApplyTravelCost()
+        {
+            AITurnContext context = CreateDefenseContext(out Fleet fleet, out Planet target);
+            context.Game.MoveNode(fleet, target);
+            context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+            var scorer = new AIFleetProposalScorer();
+            double before = scorer.Score(context, new AIFleetDefenseProposal(fleet, target));
+            context.Game.Config.AI.FleetDeployment.DefenseUtility.TravelTime.Weight = 1;
+
+            double after = scorer.Score(context, new AIFleetDefenseProposal(fleet, target));
+
+            Assert.That(after, Is.EqualTo(before).Within(1e-12));
+        }
+
+        [Test]
+        public void Score_OrdinaryDefenseInterruptingStagedAttack_DecreasesPriority()
+        {
+            AITurnContext context = CreateDefenseContext(out Fleet fleet, out Planet target);
+            context.Game.Config.AI.FleetDeployment.DefenseUtility.OpportunityCost.Weight = 0.5;
+            FleetOrder order = fleet.Order;
+            var scorer = new AIFleetProposalScorer();
+            double committed = scorer.Score(context, new AIFleetDefenseProposal(fleet, target));
+            fleet.Order = null;
+
+            double idle = scorer.Score(context, new AIFleetDefenseProposal(fleet, target));
+
+            Assert.AreEqual(FleetOrderType.Attack, order.OrderType);
+            Assert.Less(committed, idle);
+        }
+
+        [Test]
+        public void Score_HeadquartersDefenseWithDiversionCosts_PreservesPriority()
+        {
+            AITurnContext context = CreateDefenseContext(out Fleet fleet, out Planet target);
+            target.IsHeadquarters = true;
+            context.Faction.HQInstanceID = target.InstanceID;
+            context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+            var scorer = new AIFleetProposalScorer();
+            double before = scorer.Score(context, new AIFleetDefenseProposal(fleet, target));
+            context.Game.Config.AI.FleetDeployment.DefenseUtility.TravelTime.Weight = 1;
+            context.Game.Config.AI.FleetDeployment.DefenseUtility.OpportunityCost.Weight = 1;
+            target.PositionX = 1000;
+
+            double after = scorer.Score(context, new AIFleetDefenseProposal(fleet, target));
+
+            Assert.AreEqual(before, after);
+        }
+
+        [TestCase(10, 100, 1, false)]
+        [TestCase(1000, 1, 0.2, true)]
+        public void Score_CompetingDefenseAndStagedAttack_SelectsHigherValueOrder(
+            int targetValue,
+            int distance,
+            double attackWeight,
+            bool selectsDefense
+        )
+        {
+            AITurnContext context = CreateDefenseContext(out Fleet fleet, out Planet target);
+            target.EnergyCapacity = targetValue;
+            target.PositionX = distance;
+            context.Game.Config.AI.FleetDeployment.DefenseUtility.TravelTime.Weight = 0.5;
+            context.Game.Config.AI.FleetDeployment.DefenseUtility.OpportunityCost.Weight = 0.5;
+            context.Game.Config.AI.FleetDeployment.AttackUtility.ExistingOrder.Weight =
+                attackWeight;
+            context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+            var defense = new AIFleetDefenseProposal(fleet, target);
+            var attack = new AIFleetAttackProposal(
+                fleet,
+                FleetOrderType.Attack,
+                FleetOrderStatus.Staging,
+                context.Assessment.GetKnownPlanet(fleet.Order.TargetPlanetId)
+            );
+            context.AddProposal(defense);
+            context.AddProposal(attack);
+            new AIScoringPhase().Execute(context);
+
+            var selected = new AISelectionPhase().Select(context);
+
+            CollectionAssert.AreEqual(
+                new AIProposal[] { selectsDefense ? defense : attack },
+                selected
+            );
+        }
+
+        [Test]
         public void Score_FleetDefenseProposal_ReturnsConfiguredScore()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
@@ -1062,6 +1284,122 @@ namespace Rebellion.Tests.AI.Fleets
             double score = new AIFleetProposalScorer().Score(context, proposal);
 
             Assert.Zero(score);
+        }
+
+        /// <summary>
+        /// Creates equally valuable targets with different intelligence ages.
+        /// </summary>
+        /// <param name="intelAge">The older target's intelligence age.</param>
+        /// <returns>The context, available fleet, older target, and fresh target.</returns>
+        private static (
+            AITurnContext Context,
+            Fleet Fleet,
+            Planet Target,
+            Planet FreshTarget
+        ) CreateIntelAgeContext(int intelAge)
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            var config = game.Config.AI.FleetDeployment;
+            config.AttackIntelAgeGraceTicks = 200;
+            config.AttackUtility = new GameConfig.AIAttackUtilityConfig
+            {
+                StrategicValue = new GameConfig.AIConsiderationConfig { Weight = 1 },
+                OrbitalAdvantage = new GameConfig.AIConsiderationConfig { Weight = 1 },
+                IntelAgeRisk = new GameConfig.AIConsiderationConfig
+                {
+                    Weight = 0.95,
+                    SaturationValue = 200,
+                },
+            };
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, sector, "origin", empire.InstanceID);
+            Planet target = AITestSceneBuilder.AddPlanet(game, sector, "target", rebels.InstanceID);
+            Planet fresh = AITestSceneBuilder.AddPlanet(game, sector, "fresh", rebels.InstanceID);
+            Fleet fleet = AddBattleFleet(game, origin, "fleet", empire.InstanceID, 10000);
+            AddBattleFleet(game, target, "hostile", rebels.InstanceID, 100);
+            AddBattleFleet(game, fresh, "fresh-hostile", rebels.InstanceID, 100);
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+            game.CurrentTick = intelAge;
+            AITestSceneBuilder.RevealPlanet(game, empire, fresh);
+            return (AITestSceneBuilder.CreateContext(game, empire), fleet, target, fresh);
+        }
+
+        /// <summary>
+        /// Creates an invasion or orbital engagement for the supplied fleet and target.
+        /// </summary>
+        /// <param name="context">The faction turn context.</param>
+        /// <param name="fleet">The fleet to assign.</param>
+        /// <param name="target">The known target.</param>
+        /// <param name="engagement">Whether the proposal engages orbital defenders only.</param>
+        /// <returns>The offensive proposal.</returns>
+        private static AIProposal CreateOffensiveProposal(
+            AITurnContext context,
+            Fleet fleet,
+            Planet target,
+            bool engagement
+        )
+        {
+            return engagement
+                ? new AIOrbitalEngagementProposal(
+                    fleet,
+                    target,
+                    context.Assessment.GetFleetPlanet(fleet)
+                )
+                : new AIFleetAttackProposal(
+                    fleet,
+                    FleetOrderType.Attack,
+                    FleetOrderStatus.Staging,
+                    target
+                );
+        }
+
+        /// <summary>
+        /// Creates a threatened planet and a fleet assembling for an alternative attack.
+        /// </summary>
+        /// <param name="fleet">Receives the available battle fleet.</param>
+        /// <param name="target">Receives the threatened owned planet.</param>
+        /// <returns>The faction turn containing both competing destinations.</returns>
+        private static AITurnContext CreateDefenseContext(out Fleet fleet, out Planet target)
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction enemy);
+            game.Config.Movement.DistanceDivisor = 1;
+            game.Config.Movement.SameSectorMinTransitTicks = 1;
+            game.Config.AI.FleetDeployment.DefenseUtility = new GameConfig.AIDefenseUtilityConfig
+            {
+                Base = new GameConfig.AIConsiderationConfig { Weight = 1 },
+                TravelTime = new GameConfig.AIConsiderationConfig { SaturationValue = 100 },
+            };
+            game.Config.AI.FleetDeployment.AttackUtility = new GameConfig.AIAttackUtilityConfig
+            {
+                ExistingOrder = new GameConfig.AIConsiderationConfig { Weight = 1 },
+            };
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet origin = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "origin",
+                faction.InstanceID,
+                energyCapacity: 1000
+            );
+            target = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "defense",
+                faction.InstanceID,
+                energyCapacity: 100
+            );
+            Planet attack = AITestSceneBuilder.AddPlanet(game, sector, "attack", enemy.InstanceID);
+            fleet = AddAssaultFleet(game, origin, "fleet", faction.InstanceID);
+            fleet.GetChildren<CapitalShip>().Single().Hyperdrive = 100;
+            fleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                Status = FleetOrderStatus.Staging,
+                TargetPlanetId = attack.InstanceID,
+            };
+            AddBattleFleet(game, target, "enemy", enemy.InstanceID, 10);
+            AITestSceneBuilder.RevealPlanet(game, faction, attack);
+            return AITestSceneBuilder.CreateContext(game, faction);
         }
 
         /// <summary>

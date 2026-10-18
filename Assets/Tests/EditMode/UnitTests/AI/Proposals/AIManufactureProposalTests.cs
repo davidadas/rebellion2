@@ -112,6 +112,81 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.AreEqual(1, planet.GetManufacturingQueue()[ManufacturingType.Building].Count);
         }
 
+        [TestCase(100, true)]
+        [TestCase(101, false)]
+        public void Execute_HeadroomBelowEconomyTarget_RespectsManufacturingReserve(
+            int maintenanceCost,
+            bool expectedQueued
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
+            game.Config.AI.Selection.MaintenanceHeadroomReserve = 500;
+            game.Config.AI.Selection.MaintenanceHeadroomTarget = 1500;
+            game.Config.AI.Infrastructure.PlanetaryDefenseMaintenanceReservePercent = 0;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet producer = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "producer",
+                faction.InstanceID,
+                energyCapacity: 40,
+                rawResourceNodes: 12
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                producer,
+                "constructor",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+            for (int index = 0; index < 12; index++)
+            {
+                AITestSceneBuilder.AddProductionFacility(
+                    game,
+                    producer,
+                    $"mine-{index}",
+                    BuildingType.Mine,
+                    ManufacturingType.None
+                );
+                AITestSceneBuilder.AddProductionFacility(
+                    game,
+                    producer,
+                    $"refinery-{index}",
+                    BuildingType.Refinery,
+                    ManufacturingType.None
+                );
+            }
+            Building yard = AITestSceneBuilder.CreateBuildingTemplate(
+                "yard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            yard.MaintenanceCost = maintenanceCost;
+            AIManufactureProposal proposal = new(
+                new AIProductionDemand(
+                    "shipyard",
+                    AIProductionDemandKind.Shipyard,
+                    ManufacturingType.Building,
+                    BuildingType.Shipyard,
+                    producer,
+                    1
+                ),
+                producer,
+                new Technology(yard),
+                false
+            );
+
+            proposal.Execute(AITestSceneBuilder.CreateContext(game, faction));
+
+            Assert.AreEqual(
+                expectedQueued,
+                producer
+                    .GetManufacturingQueue()
+                    .TryGetValue(ManufacturingType.Building, out var queue)
+                    && queue.Count == 1
+            );
+        }
+
         [Test]
         public void Execute_WithFacilityBatch_QueuesExactlyCalculatedQuantity()
         {

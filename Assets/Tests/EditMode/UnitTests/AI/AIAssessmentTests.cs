@@ -21,6 +21,59 @@ namespace Rebellion.Tests.AI
     [TestFixture]
     public class AIAssessmentTests
     {
+        [TestCase(1, 90, true, "active", false, 90)]
+        [TestCase(3, 90, true, "active", false, 270)]
+        [TestCase(3, 30, true, "active", false, 90)]
+        [TestCase(3, 0, true, "active", false, 0)]
+        [TestCase(3, 90, false, "active", false, 0)]
+        [TestCase(3, 90, true, "active", true, 0)]
+        [TestCase(3, 90, true, "captured", false, 0)]
+        [TestCase(3, 90, true, "killed", false, 0)]
+        [TestCase(3, 90, true, "retired", false, 0)]
+        [TestCase(3, 90, true, "disabled", false, 0)]
+        public void GetEnemyDiplomacyStrengthInSystem_ObservedOfficers_SumsOnlyActiveOpponents(
+            int count,
+            int rating,
+            bool revealed,
+            string state,
+            bool friendly,
+            double expected
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction enemy);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "competition");
+            sector.SectorType = PlanetSectorType.OuterRim;
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "enemy-base",
+                friendly ? faction.InstanceID : enemy.InstanceID
+            );
+            for (int index = 0; index < count; index++)
+            {
+                Officer officer = EntityFactory.CreateOfficer(
+                    "diplomat-" + index,
+                    friendly ? faction.InstanceID : enemy.InstanceID
+                );
+                officer.SetBaseRating(SkillRating.Diplomacy, rating);
+                officer.IsCaptured = state == "captured";
+                officer.IsKilled = state == "killed";
+                officer.IsRetired = state == "retired";
+                officer.IsEnabled = state != "disabled";
+                game.AttachNode(officer, planet);
+            }
+            if (revealed)
+                AITestSceneBuilder.RevealPlanet(game, faction, planet);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
+
+            double strength = context.Assessment.GetEnemyDiplomacyStrengthInSystem(
+                sector.InstanceID
+            );
+
+            Assert.AreEqual(expected, strength);
+            Assert.AreEqual(0, context.Assessment.GetEnemyDiplomacyStrengthInSystem("unknown"));
+        }
+
         [TestCase(0, 100)]
         [TestCase(50, 100)]
         [TestCase(100, 100)]
