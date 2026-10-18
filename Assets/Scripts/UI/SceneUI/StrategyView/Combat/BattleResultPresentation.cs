@@ -535,7 +535,16 @@ internal abstract class BattleResultPresentation
                 ? StrategyUISoundPaths.PlanetaryAssault
                 : null;
 
-        internal override string Title => report.Title;
+        internal override string Title =>
+            !string.IsNullOrEmpty(report.Title)
+                ? report.Title
+                : report.CombatType switch
+                {
+                    CombatReportType.SpaceBattle => $"Battle at {GetPlanetName()}",
+                    CombatReportType.Bombardment => $"Orbital bombardment of {GetPlanetName()}",
+                    CombatReportType.PlanetaryAssault => $"Assault on {GetPlanetName()}",
+                    _ => string.Empty,
+                };
 
         internal override bool UsesPlanetaryLayout =>
             report.CombatType != CombatReportType.SpaceBattle;
@@ -559,7 +568,36 @@ internal abstract class BattleResultPresentation
         /// <returns>The requested summary.</returns>
         internal override string GetSummary(UIContext uiContext, string playerFactionId)
         {
-            return report.Body ?? string.Empty;
+            if (!string.IsNullOrEmpty(report.Body))
+                return report.Body;
+
+            return report.CombatType switch
+            {
+                CombatReportType.Bombardment => BattleAlertWindowProjector.GetBombardmentSummary(
+                    uiContext,
+                    report.AttackerOwnerInstanceID,
+                    report.DefenderOwnerInstanceID,
+                    report.PlanetName
+                ),
+                CombatReportType.PlanetaryAssault =>
+                    BattleAlertWindowProjector.GetPlanetaryAssaultSummary(
+                        uiContext,
+                        report.AttackerOwnerInstanceID,
+                        report.DefenderOwnerInstanceID,
+                        report.PlanetName,
+                        report.Success
+                    ),
+                _ => string.Empty,
+            };
+        }
+
+        /// <summary>
+        /// Returns the detached report planet name with the standard fallback.
+        /// </summary>
+        /// <returns>The report planet name.</returns>
+        private string GetPlanetName()
+        {
+            return string.IsNullOrEmpty(report.PlanetName) ? "Unknown Planet" : report.PlanetName;
         }
 
         /// <summary>

@@ -807,12 +807,35 @@ internal sealed class BattleAlertWindowProjector
     /// <returns>The displayed bombardment summary.</returns>
     internal static string GetBombardmentSummary(UIContext uiContext, BombardmentResult result)
     {
-        string attacker = GetOwnerLabel(uiContext, result?.AttackerOwnerInstanceID, "Attacking");
-        string planet = GetPlanetName(result?.Planet);
-        if (string.IsNullOrEmpty(result?.DefenderOwnerInstanceID))
+        return GetBombardmentSummary(
+            uiContext,
+            result?.AttackerOwnerInstanceID,
+            result?.DefenderOwnerInstanceID,
+            GetPlanetName(result?.Planet)
+        );
+    }
+
+    /// <summary>
+    /// Builds bombardment summary text from detached report fields.
+    /// </summary>
+    /// <param name="uiContext">The current strategy UI context.</param>
+    /// <param name="attackerOwnerInstanceId">The attacking faction identifier.</param>
+    /// <param name="defenderOwnerInstanceId">The defending faction identifier.</param>
+    /// <param name="planetName">The target planet name.</param>
+    /// <returns>The displayed bombardment summary.</returns>
+    internal static string GetBombardmentSummary(
+        UIContext uiContext,
+        string attackerOwnerInstanceId,
+        string defenderOwnerInstanceId,
+        string planetName
+    )
+    {
+        string attacker = GetOwnerLabel(uiContext, attackerOwnerInstanceId, "Attacking");
+        string planet = string.IsNullOrEmpty(planetName) ? "the target planet" : planetName;
+        if (string.IsNullOrEmpty(defenderOwnerInstanceId))
             return $"{attacker} ships have conducted an orbital strike on the non-aligned system {planet}.";
 
-        string defender = GetOwnerLabel(uiContext, result.DefenderOwnerInstanceID, "defending");
+        string defender = GetOwnerLabel(uiContext, defenderOwnerInstanceId, "defending");
         return $"{attacker} ships have conducted an orbital strike on the {defender} system of {planet}.";
     }
 
@@ -827,17 +850,43 @@ internal sealed class BattleAlertWindowProjector
         PlanetaryAssaultResult result
     )
     {
-        string attacker = GetOwnerLabel(uiContext, result?.AttackerOwnerInstanceID, "Attacking");
-        string planet = GetPlanetName(result?.Planet);
-        if (string.IsNullOrEmpty(result?.DefenderOwnerInstanceID))
+        return GetPlanetaryAssaultSummary(
+            uiContext,
+            result?.AttackerOwnerInstanceID,
+            result?.DefenderOwnerInstanceID,
+            GetPlanetName(result?.Planet),
+            result?.Success == true
+        );
+    }
+
+    /// <summary>
+    /// Builds planetary-assault summary text from detached report fields.
+    /// </summary>
+    /// <param name="uiContext">The current strategy UI context.</param>
+    /// <param name="attackerOwnerInstanceId">The attacking faction identifier.</param>
+    /// <param name="defenderOwnerInstanceId">The defending faction identifier.</param>
+    /// <param name="planetName">The target planet name.</param>
+    /// <param name="success">Whether the assault succeeded.</param>
+    /// <returns>The displayed planetary-assault summary.</returns>
+    internal static string GetPlanetaryAssaultSummary(
+        UIContext uiContext,
+        string attackerOwnerInstanceId,
+        string defenderOwnerInstanceId,
+        string planetName,
+        bool success
+    )
+    {
+        string attacker = GetOwnerLabel(uiContext, attackerOwnerInstanceId, "Attacking");
+        string planet = string.IsNullOrEmpty(planetName) ? "the target planet" : planetName;
+        if (string.IsNullOrEmpty(defenderOwnerInstanceId))
         {
-            return result?.Success == true
+            return success
                 ? $"{attacker} troops have seized control of the neutral system {planet}."
                 : $"The neutral system {planet} has repulsed an attack by {attacker} troops.";
         }
 
-        string defender = GetOwnerLabel(uiContext, result.DefenderOwnerInstanceID, "defending");
-        return result.Success
+        string defender = GetOwnerLabel(uiContext, defenderOwnerInstanceId, "defending");
+        return success
             ? $"{attacker} troops have taken control of the {defender} system {planet}."
             : $"{defender} Troops have defended {planet} from an {attacker} assault.";
     }

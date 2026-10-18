@@ -71,7 +71,7 @@ namespace Rebellion.Simulation
             liveTarget = string.IsNullOrEmpty(targetPlanet?.InstanceID)
                 ? null
                 : _game.GetSceneNodeByInstanceID<Planet>(targetPlanet.InstanceID);
-            if (liveTarget == null || fleets?.Count < 1)
+            if (liveTarget == null || fleets == null || fleets.Count < 1)
                 return false;
 
             HashSet<string> fleetIds = new HashSet<string>(StringComparer.Ordinal);

@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Galaxy;
-using Rebellion.Game.Results;
+using Rebellion.Game.Messages;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using UnityEngine;
@@ -21,8 +21,8 @@ public interface IPlanetSectorWindowActions
     /// <summary>
     /// Opens the completed planetary combat result.
     /// </summary>
-    /// <param name="result">The completed combat result.</param>
-    void OpenPlanetSectorBattleResult(GameResult result);
+    /// <param name="report">The faction-visible combat report.</param>
+    void OpenPlanetSectorBattleResult(CombatReport report);
 
     /// <summary>
     /// Opens one planet icon window at a source-space position.
@@ -871,16 +871,16 @@ public sealed class PlanetSectorWindowController
             hit?.Icon == PlanetIcon.Fleet
                 ? GetPlayerFleetItems(hit.Planet)
                 : new List<ISceneNode>();
-        GameResult result = fleetCommandController.ExecutePlanetaryCombat(
+        CombatReport report = fleetCommandController.ExecutePlanetaryCombat(
             items,
             hit?.Planet,
             action
         );
-        if (result == null)
+        if (report == null)
             return false;
 
         actions.RefreshPlanetSectorState();
-        actions.OpenPlanetSectorBattleResult(result);
+        actions.OpenPlanetSectorBattleResult(report);
         return true;
     }
 

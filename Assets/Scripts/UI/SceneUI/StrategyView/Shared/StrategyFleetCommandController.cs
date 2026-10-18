@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -79,8 +80,8 @@ public sealed class StrategyFleetCommandController
     /// <param name="items">The selected fleets.</param>
     /// <param name="targetPlanet">The requested target planet snapshot.</param>
     /// <param name="action">The requested planetary combat action.</param>
-    /// <returns>The completed combat result, or null when the command cannot execute.</returns>
-    public GameResult ExecutePlanetaryCombat(
+    /// <returns>The faction-visible combat report, or null when the command cannot execute.</returns>
+    public CombatReport ExecutePlanetaryCombat(
         IReadOnlyList<ISceneNode> items,
         Planet targetPlanet,
         StrategyMenuAction action
@@ -89,13 +90,19 @@ public sealed class StrategyFleetCommandController
         if (!TryCreateCommand(items, targetPlanet, out List<Fleet> fleets))
             return null;
 
+        string playerFactionId = getPlayerFactionId();
+        if (string.IsNullOrEmpty(playerFactionId))
+            return null;
+
         if (action.TryGetBombardmentType(out BombardmentType type))
             return services
                 .GetService<BombardmentCommands>()
-                ?.TryExecute(fleets, targetPlanet, type);
+                ?.TryExecuteReport(fleets, targetPlanet, type, playerFactionId);
 
         return action == StrategyMenuAction.PlanetaryAssault
-            ? services.GetService<PlanetaryAssaultCommands>()?.TryExecute(fleets, targetPlanet)
+            ? services
+                .GetService<PlanetaryAssaultCommands>()
+                ?.TryExecuteReport(fleets, targetPlanet, playerFactionId)
             : null;
     }
 

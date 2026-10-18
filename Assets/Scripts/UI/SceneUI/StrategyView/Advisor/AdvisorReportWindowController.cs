@@ -16,7 +16,7 @@ public sealed class AdvisorReportWindowController
     private readonly Func<Vector2Int> getWindowPosition;
     private readonly Func<UIContext> getUIContext;
     private readonly Func<Rebellion.Game.Galaxy.GalaxyMap> getFactionView;
-    private readonly VictoryQueries victoryQueries;
+    private readonly Func<VictoryQueries> getVictoryQueries;
     private readonly Action markDirty;
     private readonly Dictionary<AdvisorReportWindowView, AdvisorReportWindowSession> sessions =
         new Dictionary<AdvisorReportWindowView, AdvisorReportWindowSession>();
@@ -28,7 +28,7 @@ public sealed class AdvisorReportWindowController
     /// </summary>
     /// <param name="getUIContext">Returns the current strategy presentation context.</param>
     /// <param name="getFactionView">Returns the faction-filtered galaxy view.</param>
-    /// <param name="victoryQueries">Provides authorized objective status.</param>
+    /// <param name="getVictoryQueries">Returns the current game's objective-status queries.</param>
     /// <param name="windowLayer">Provides the authored advisor-report prefab and window layer.</param>
     /// <param name="windowManager">Owns strategy-window creation and focus.</param>
     /// <param name="getWindowPosition">Returns the authored advisor-report placement.</param>
@@ -37,7 +37,7 @@ public sealed class AdvisorReportWindowController
     public AdvisorReportWindowController(
         Func<UIContext> getUIContext,
         Func<Rebellion.Game.Galaxy.GalaxyMap> getFactionView,
-        VictoryQueries victoryQueries,
+        Func<VictoryQueries> getVictoryQueries,
         StrategyWindowLayerView windowLayer,
         UIWindowManager windowManager,
         Func<Vector2Int> getWindowPosition,
@@ -48,8 +48,8 @@ public sealed class AdvisorReportWindowController
         this.getUIContext = getUIContext ?? throw new ArgumentNullException(nameof(getUIContext));
         this.getFactionView =
             getFactionView ?? throw new ArgumentNullException(nameof(getFactionView));
-        this.victoryQueries =
-            victoryQueries ?? throw new ArgumentNullException(nameof(victoryQueries));
+        this.getVictoryQueries =
+            getVictoryQueries ?? throw new ArgumentNullException(nameof(getVictoryQueries));
         this.windowLayer = windowLayer ?? throw new ArgumentNullException(nameof(windowLayer));
         this.windowManager =
             windowManager ?? throw new ArgumentNullException(nameof(windowManager));
@@ -154,7 +154,7 @@ public sealed class AdvisorReportWindowController
         IReadOnlyList<AdvisorReportRow> rows = AdvisorReportBuilder.Build(
             getFactionView(),
             uiContext.GetPlayerFactionInstanceID(),
-            victoryQueries,
+            getVictoryQueries(),
             theme,
             mode
         );

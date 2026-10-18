@@ -47,7 +47,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
             _controller = new AdvisorReportWindowController(
                 () => uiContext,
                 () => new GalaxyMapModel(),
-                new VictoryQueries(game),
+                () => new VictoryQueries(game),
                 _windowLayer,
                 _windowManager,
                 () => new Vector2Int(102, 58),
@@ -72,7 +72,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
                 new AdvisorReportWindowController(
                     null,
                     () => new GalaxyMapModel(),
-                    new VictoryQueries(TestGame.Create(TestConfig.Create())),
+                    () => new VictoryQueries(TestGame.Create(TestConfig.Create())),
                     _windowLayer,
                     _windowManager,
                     () => Vector2Int.zero,
@@ -123,6 +123,45 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
 
             Assert.IsEmpty(_windowManager.Windows);
             Assert.IsNull(_windowManager.ActiveWindow);
+        }
+
+        [Test]
+        public void RenderWindows_AfterVictoryQueriesChange_UsesCurrentQueries()
+        {
+            VictoryQueries first = new VictoryQueries(TestGame.Create(TestConfig.Create()));
+            VictoryQueries second = new VictoryQueries(TestGame.Create(TestConfig.Create()));
+            VictoryQueries current = first;
+            var requested = new System.Collections.Generic.List<VictoryQueries>();
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            game.GetFactions()
+                .Add(new Faction { InstanceID = _playerFactionId, DisplayName = "Player" });
+            game.Summary.PlayerFactionID = _playerFactionId;
+            UIContext uiContext = TestContent.CreateUIContext(
+                game,
+                TestContent.CreateThemeLibrary(),
+                new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
+            );
+            AdvisorReportWindowController controller = new AdvisorReportWindowController(
+                () => uiContext,
+                () => new GalaxyMapModel(),
+                () =>
+                {
+                    requested.Add(current);
+                    return current;
+                },
+                _windowLayer,
+                _windowManager,
+                () => Vector2Int.zero,
+                _windowManager.DestroyWindow,
+                () => { }
+            );
+            controller.Open(AdvisorReportMode.GalaxyOverview);
+
+            controller.RenderWindows();
+            current = second;
+            controller.RenderWindows();
+
+            CollectionAssert.AreEqual(new[] { first, second }, requested);
         }
 
         [Test]

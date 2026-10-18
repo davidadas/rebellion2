@@ -658,7 +658,7 @@ public sealed class StrategyController
         advisorReportWindowController = new AdvisorReportWindowController(
             () => uiContext,
             () => galaxyMapController.VisibleGalaxyMap,
-            session.GetService<VictoryQueries>(),
+            () => session.GetService<VictoryQueries>(),
             strategyWindowLayerView,
             strategyWindowManager,
             windowPlacementController.GetAdvisorReportWindowPosition,
@@ -2315,10 +2315,10 @@ public sealed class StrategyController
     /// <summary>
     /// Opens the completed planetary combat result.
     /// </summary>
-    /// <param name="result">The completed combat result.</param>
-    void IFleetWindowActions.OpenFleetBattleResult(GameResult result)
+    /// <param name="report">The faction-visible combat report.</param>
+    void IFleetWindowActions.OpenFleetBattleResult(CombatReport report)
     {
-        battleAlertWindowController.OpenResult(result);
+        battleAlertWindowController.OpenReport(report);
     }
 
     /// <summary>
@@ -2386,10 +2386,10 @@ public sealed class StrategyController
     /// <summary>
     /// Opens the completed planetary combat result.
     /// </summary>
-    /// <param name="result">The completed combat result.</param>
-    void IPlanetSectorWindowActions.OpenPlanetSectorBattleResult(GameResult result)
+    /// <param name="report">The faction-visible combat report.</param>
+    void IPlanetSectorWindowActions.OpenPlanetSectorBattleResult(CombatReport report)
     {
-        battleAlertWindowController.OpenResult(result);
+        battleAlertWindowController.OpenReport(report);
     }
 
     /// <summary>

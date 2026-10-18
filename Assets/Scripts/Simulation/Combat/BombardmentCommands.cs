@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -142,6 +143,30 @@ namespace Rebellion.Simulation
 
             ResultsProduced?.Invoke(results);
             return result;
+        }
+
+        /// <summary>
+        /// Executes bombardment and returns a detached report limited to the supplied visible state.
+        /// </summary>
+        /// <param name="attackingFleets">The attacking fleet snapshots.</param>
+        /// <param name="targetPlanet">The visible target planet snapshot.</param>
+        /// <param name="type">The bombardment target profile.</param>
+        /// <param name="perspectiveOwnerInstanceId">The faction receiving the report.</param>
+        /// <returns>The faction-visible report, or null when bombardment cannot execute.</returns>
+        public CombatReport TryExecuteReport(
+            IReadOnlyList<Fleet> attackingFleets,
+            Planet targetPlanet,
+            BombardmentType type,
+            string perspectiveOwnerInstanceId
+        )
+        {
+            HashSet<string> visibleUnitIds = CombatReport.CaptureVisibleUnitInstanceIDs(
+                (attackingFleets ?? Array.Empty<Fleet>()).Cast<ISceneNode>().Append(targetPlanet)
+            );
+            BombardmentResult result = TryExecute(attackingFleets, targetPlanet, type);
+            return result?.AttackerOwnerInstanceID == perspectiveOwnerInstanceId
+                ? CombatReport.CaptureVisible(result, perspectiveOwnerInstanceId, visibleUnitIds)
+                : null;
         }
 
         /// <summary>

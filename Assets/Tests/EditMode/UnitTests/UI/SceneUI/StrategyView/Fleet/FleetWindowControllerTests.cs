@@ -6,6 +6,7 @@ using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -796,11 +797,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             bool selected = contextMenuController.TrySelectCommand(command);
 
             Assert.IsTrue(selected);
-            Assert.IsInstanceOf<BombardmentResult>(_actions.LastBattleResult);
-            Assert.AreEqual(
-                BombardmentType.General,
-                ((BombardmentResult)_actions.LastBattleResult).Type
-            );
+            Assert.IsNotNull(_actions.LastBattleResult);
+            Assert.AreEqual(CombatReportType.Bombardment, _actions.LastBattleResult.CombatType);
+            Assert.AreEqual(BombardmentType.General, _actions.LastBattleResult.BombardmentType);
             Assert.AreEqual(1, _actions.RefreshCount);
         }
 
@@ -1108,7 +1107,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 IStrategyWindowCommandActions,
                 IStrategyConfirmationActions
         {
-            public GameResult LastBattleResult { get; private set; }
+            public CombatReport LastBattleResult { get; private set; }
 
             public OfficerRank LastOfficerRank { get; private set; }
 
@@ -1165,10 +1164,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             /// <summary>
             /// Opens fleet battle result.
             /// </summary>
-            /// <param name="result">The result.</param>
-            public void OpenFleetBattleResult(GameResult result)
+            /// <param name="report">The faction-visible combat report.</param>
+            public void OpenFleetBattleResult(CombatReport report)
             {
-                LastBattleResult = result;
+                LastBattleResult = report;
             }
 
             /// <summary>
