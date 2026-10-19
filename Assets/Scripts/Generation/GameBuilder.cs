@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.SceneGraph;
@@ -125,7 +126,17 @@ namespace Rebellion.Generation
                 Regiments = CopyTemplates(_gameData.Regiments),
                 SpecialForces = CopyTemplates(_gameData.SpecialForces),
                 Officers = CopyTemplates(_gameData.Officers),
-                Events = _gameData.GameEvents.GetDeepCopy(),
+                Events = _gameData
+                    .GameEvents.Where(gameEvent =>
+                        gameEvent.Category switch
+                        {
+                            GameEventCategory.Story => _summary.StoryEventsEnabled,
+                            GameEventCategory.Disaster => _summary.DisasterEventsEnabled,
+                            _ => true,
+                        }
+                    )
+                    .ToArray()
+                    .GetDeepCopy(),
             };
         }
 

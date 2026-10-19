@@ -619,7 +619,25 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
             CycleResourceAvailability
         );
         contentOffset += ConfigureSeedRow(6, contentOffset);
-        HideRowsAfter(7);
+        contentOffset += ConfigureSetupRow(
+            7,
+            contentOffset,
+            "story-events",
+            "Story Events",
+            "Includes character stories and their linked events in the campaign.",
+            settingsSession.Draft.StoryEventsEnabled ? "Enabled" : "Disabled",
+            CycleStoryEvents
+        );
+        contentOffset += ConfigureSetupRow(
+            8,
+            contentOffset,
+            "disaster-events",
+            "Disaster Events",
+            "Includes natural disasters in the campaign.",
+            settingsSession.Draft.DisasterEventsEnabled ? "Enabled" : "Disabled",
+            CycleDisasterEvents
+        );
+        HideRowsAfter(9);
         scrollArea.SetContentHeight(
             Mathf.Max(0f, contentOffset - _rowSpacing),
             _minimumRowHeight,
@@ -831,6 +849,36 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
             CycleEnum(settingsSession.Draft.ResourceAvailability, delta)
         );
         SelectCategory(selectedCategory);
+    }
+
+    /// <summary>
+    /// Toggles story events without moving the scrolled setup page.
+    /// </summary>
+    /// <param name="delta">The requested step direction.</param>
+    private void CycleStoryEvents(int delta)
+    {
+        if (delta == 0)
+            return;
+
+        settingsSession.SetStoryEventsEnabled(!settingsSession.Draft.StoryEventsEnabled);
+        float position = scrollArea.VerticalNormalizedPosition;
+        SelectCategory(selectedCategory);
+        scrollArea.VerticalNormalizedPosition = position;
+    }
+
+    /// <summary>
+    /// Toggles disaster events without moving the scrolled setup page.
+    /// </summary>
+    /// <param name="delta">The requested step direction.</param>
+    private void CycleDisasterEvents(int delta)
+    {
+        if (delta == 0)
+            return;
+
+        settingsSession.SetDisasterEventsEnabled(!settingsSession.Draft.DisasterEventsEnabled);
+        float position = scrollArea.VerticalNormalizedPosition;
+        SelectCategory(selectedCategory);
+        scrollArea.VerticalNormalizedPosition = position;
     }
 
     /// <summary>

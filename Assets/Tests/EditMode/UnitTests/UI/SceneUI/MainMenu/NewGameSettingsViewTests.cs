@@ -363,6 +363,8 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                     "Choice-galaxy-size",
                     "Choice-victory-condition",
                     "Choice-resource-availability",
+                    "Choice-story-events",
+                    "Choice-disaster-events",
                 },
                 instance
                     .GetComponentsInChildren<OptionsChoiceFieldView>()
@@ -388,6 +390,106 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                 seedLabelY,
                 ((RectTransform)SeedResetButton().transform).anchoredPosition.y
             );
+        }
+
+        /// <summary>
+        /// Verifies that the setup page displays the summary's saved event selections.
+        /// </summary>
+        /// <param name="storyEnabled">Whether story events are selected.</param>
+        /// <param name="disasterEnabled">Whether disaster events are selected.</param>
+        [TestCase(true, true)]
+        [TestCase(false, true)]
+        [TestCase(true, false)]
+        [TestCase(false, false)]
+        public void Initialize_EventSelections_DisplaysSelectedValues(
+            bool storyEnabled,
+            bool disasterEnabled
+        )
+        {
+            summary.StoryEventsEnabled = storyEnabled;
+            summary.DisasterEventsEnabled = disasterEnabled;
+
+            view.Initialize(TestContent.Pack, summary, optionsPrefab, null);
+
+            Assert.AreEqual(
+                storyEnabled ? "ENABLED" : "DISABLED",
+                SetupChoiceValue("story-events")
+            );
+            Assert.AreEqual(
+                disasterEnabled ? "ENABLED" : "DISABLED",
+                SetupChoiceValue("disaster-events")
+            );
+        }
+
+        /// <summary>
+        /// Verifies that either direction changes only the selected event category's draft.
+        /// </summary>
+        /// <param name="key">The selected event setting.</param>
+        /// <param name="delta">The selector direction.</param>
+        [TestCase("story-events", -1)]
+        [TestCase("story-events", 1)]
+        [TestCase("disaster-events", -1)]
+        [TestCase("disaster-events", 1)]
+        public void Apply_ChangedEventSelection_PublishesOnlySelectedCategory(string key, int delta)
+        {
+            GameSummary launched = null;
+            view.StartRequested += (_, configured) => launched = configured;
+            view.Initialize(TestContent.Pack, summary, optionsPrefab, null);
+
+            StepSetupChoice(key, delta);
+            ApplyButton().onClick.Invoke();
+
+            Assert.AreEqual(key != "story-events", launched.StoryEventsEnabled);
+            Assert.AreEqual(key != "disaster-events", launched.DisasterEventsEnabled);
+            Assert.IsTrue(summary.StoryEventsEnabled);
+            Assert.IsTrue(summary.DisasterEventsEnabled);
+            Assert.AreEqual("DISABLED", SetupChoiceValue(key));
+        }
+
+        /// <summary>
+        /// Verifies that disabled event categories can be re-enabled without losing scroll position.
+        /// </summary>
+        /// <param name="key">The selected event setting.</param>
+        [TestCase("story-events")]
+        [TestCase("disaster-events")]
+        public void Apply_EventSelectionToggledTwice_ReenablesCategoryAndPreservesScroll(string key)
+        {
+            GameSummary launched = null;
+            view.StartRequested += (_, configured) => launched = configured;
+            view.Initialize(TestContent.Pack, summary, optionsPrefab, null);
+            ScrollAreaView scroll = instance.GetComponentInChildren<ScrollAreaView>();
+            scroll.VerticalNormalizedPosition = 0.25f;
+
+            StepSetupChoice(key, 1);
+            Assert.AreEqual(0.25f, scroll.VerticalNormalizedPosition, 0.001f);
+            StepSetupChoice(key, -1);
+            ApplyButton().onClick.Invoke();
+
+            Assert.IsTrue(launched.StoryEventsEnabled);
+            Assert.IsTrue(launched.DisasterEventsEnabled);
+            Assert.AreEqual("ENABLED", SetupChoiceValue(key));
+            Assert.AreEqual(0.25f, scroll.VerticalNormalizedPosition, 0.001f);
+        }
+
+        /// <summary>
+        /// Verifies that restoring setup defaults re-enables both event categories.
+        /// </summary>
+        [Test]
+        public void RestoreDefaults_DisabledEventSelections_ReenablesBothCategories()
+        {
+            GameSummary launched = null;
+            view.StartRequested += (_, configured) => launched = configured;
+            summary.StoryEventsEnabled = false;
+            summary.DisasterEventsEnabled = false;
+            view.Initialize(TestContent.Pack, summary, optionsPrefab, null);
+
+            view.RestoreDefaults();
+            ApplyButton().onClick.Invoke();
+
+            Assert.IsTrue(launched.StoryEventsEnabled);
+            Assert.IsTrue(launched.DisasterEventsEnabled);
+            Assert.AreEqual("ENABLED", SetupChoiceValue("story-events"));
+            Assert.AreEqual("ENABLED", SetupChoiceValue("disaster-events"));
         }
 
         [Test]
@@ -1235,6 +1337,19 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         /// <returns>The Apply button.</returns>
         private Button ApplyButton() =>
             instance.transform.Find("ContentRoot/Apply").GetComponent<Button>();
+
+        /// <summary>
+        /// Returns the visible value of one game-setup selector.
+        /// </summary>
+        /// <param name="key">The stable setup-choice identity.</param>
+        /// <returns>The selector's displayed value.</returns>
+        private string SetupChoiceValue(string key) =>
+            instance
+                .GetComponentsInChildren<OptionsChoiceFieldView>()
+                .Single(choice => choice.name == "Choice-" + key)
+                .transform.Find("Value")
+                .GetComponent<TMP_Text>()
+                .text;
 
         /// <summary>
         /// Steps one active game-setup choice through its shared Options selector.

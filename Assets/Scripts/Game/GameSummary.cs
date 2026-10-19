@@ -49,6 +49,12 @@ namespace Rebellion.Game
         [PersistableMember(Name = nameof(ResourceAvailability))]
         private GameResourceAvailability _resourceAvailability = GameResourceAvailability.Normal;
 
+        [PersistableMember(Name = nameof(StoryEventsEnabled))]
+        private bool _storyEventsEnabled = true;
+
+        [PersistableMember(Name = nameof(DisasterEventsEnabled))]
+        private bool _disasterEventsEnabled = true;
+
         [PersistableMember(Name = nameof(PlayerDifficultyModifiers))]
         private DifficultyModifiers _playerDifficultyModifiers;
 
@@ -108,6 +114,20 @@ namespace Rebellion.Game
         {
             get => _resourceAvailability;
             set => _resourceAvailability = value;
+        }
+
+        [PersistableIgnore]
+        public bool StoryEventsEnabled
+        {
+            get => _storyEventsEnabled;
+            set => _storyEventsEnabled = value;
+        }
+
+        [PersistableIgnore]
+        public bool DisasterEventsEnabled
+        {
+            get => _disasterEventsEnabled;
+            set => _disasterEventsEnabled = value;
         }
 
         [PersistableIgnore]

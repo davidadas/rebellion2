@@ -36,6 +36,48 @@ namespace Rebellion.Tests.Game
                 summary.StartingFactionIDs,
                 "StartingFactionIDs should be empty by default"
             );
+            Assert.IsTrue(summary.StoryEventsEnabled);
+            Assert.IsTrue(summary.DisasterEventsEnabled);
+        }
+
+        /// <summary>
+        /// Verifies that summaries without event settings keep both categories enabled.
+        /// </summary>
+        [Test]
+        public void SerializeAndDeserialize_OmittedEventSettings_DefaultsToEnabled()
+        {
+            GameSummary summary = SerializationHelper.Deserialize<GameSummary>("<GameSummary/>");
+
+            Assert.IsTrue(summary.StoryEventsEnabled);
+            Assert.IsTrue(summary.DisasterEventsEnabled);
+        }
+
+        /// <summary>
+        /// Verifies that event selections survive save and preset serialization.
+        /// </summary>
+        /// <param name="storyEnabled">Whether story events are selected.</param>
+        /// <param name="disasterEnabled">Whether disaster events are selected.</param>
+        [TestCase(true, true)]
+        [TestCase(false, true)]
+        [TestCase(true, false)]
+        [TestCase(false, false)]
+        public void SerializeAndDeserialize_EventSettings_PreservesSelections(
+            bool storyEnabled,
+            bool disasterEnabled
+        )
+        {
+            GameSummary summary = new GameSummary
+            {
+                StoryEventsEnabled = storyEnabled,
+                DisasterEventsEnabled = disasterEnabled,
+            };
+
+            GameSummary restored = SerializationHelper.Deserialize<GameSummary>(
+                SerializationHelper.Serialize(summary)
+            );
+
+            Assert.AreEqual(storyEnabled, restored.StoryEventsEnabled);
+            Assert.AreEqual(disasterEnabled, restored.DisasterEventsEnabled);
         }
 
         [Test]
