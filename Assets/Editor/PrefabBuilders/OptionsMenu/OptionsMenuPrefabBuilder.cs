@@ -456,16 +456,6 @@ public static class OptionsMenuPrefabBuilder
             previousButtons,
             nextButtons
         );
-        AppendGraphicsFieldRow(
-            graphicsContent,
-            UserGraphicsSetting.RenderScale,
-            "Render Scale",
-            ref nextRowY,
-            valueFields,
-            previousButtons,
-            nextButtons
-        );
-
         AppendOptionsSectionHeader(
             graphicsContent,
             "RayTracingHeader",

@@ -147,7 +147,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                 .OrderBy(speed => speed)
                 .ToArray();
 
-            CollectionAssert.AreEqual(new[] { 120f, 120f, 240f, 240f, 240f, 240f, 240f }, speeds);
+            CollectionAssert.AreEqual(new[] { 120f, 120f, 180f, 180f, 180f, 240f, 240f }, speeds);
         }
 
         [Test]

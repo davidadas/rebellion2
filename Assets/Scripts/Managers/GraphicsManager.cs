@@ -22,7 +22,6 @@ public sealed class GraphicsManager : IDisposable
     private readonly HashSet<EntityId> _configuredCameraIds = new HashSet<EntityId>();
 
     private UserAntiAliasingMode _antiAliasingMode;
-    private int _renderScalePercent = UserVideoSettings.DefaultRenderScalePercent;
     private bool _ambientOcclusionEnabled = true;
     private bool _bloomEnabled = true;
     private bool _motionBlurEnabled = true;
@@ -98,7 +97,6 @@ public sealed class GraphicsManager : IDisposable
             settings.VerticalSync || settings.FrameRateLimit == 0 ? -1 : settings.FrameRateLimit;
 
         _antiAliasingMode = (UserAntiAliasingMode)settings.AntiAliasingMode;
-        _renderScalePercent = settings.RenderScalePercent;
         _ambientOcclusionEnabled = settings.AmbientOcclusion;
         _bloomEnabled = settings.Bloom;
         _motionBlurEnabled = settings.MotionBlur;
@@ -109,10 +107,6 @@ public sealed class GraphicsManager : IDisposable
         _bloom.active = _bloomEnabled;
         _motionBlur.active = _motionBlurEnabled;
 
-        DynamicResolutionHandler.SetDynamicResScaler(
-            GetRenderScale,
-            DynamicResScalePolicyType.ReturnsPercentage
-        );
         _configuredCameraIds.Clear();
         _hasAppliedSettings = true;
         ApplyToManagedCameras();
@@ -129,10 +123,6 @@ public sealed class GraphicsManager : IDisposable
 
         SceneManager.sceneLoaded -= HandleSceneLoaded;
         RenderPipelineManager.beginCameraRendering -= HandleBeginCameraRendering;
-        DynamicResolutionHandler.SetDynamicResScaler(
-            GetFullRenderScale,
-            DynamicResScalePolicyType.ReturnsPercentage
-        );
         DestroyObject(_runtimeVolumeProfile);
         DestroyObject(_runtimeVolumeObject);
         _disposed = true;
@@ -190,7 +180,7 @@ public sealed class GraphicsManager : IDisposable
     }
 
     /// <summary>
-    /// Applies anti-aliasing, dynamic resolution, and effect gates to one scene camera.
+    /// Applies anti-aliasing and effect gates to one scene camera.
     /// </summary>
     /// <param name="camera">The scene camera to configure.</param>
     private void ApplyToCamera(Camera camera)
@@ -204,7 +194,7 @@ public sealed class GraphicsManager : IDisposable
         cameraData.antialiasing = ConvertAntiAliasing(_antiAliasingMode);
         cameraData.SMAAQuality = HDAdditionalCameraData.SMAAQualityLevel.High;
         cameraData.TAAQuality = HDAdditionalCameraData.TAAQualityLevel.High;
-        cameraData.allowDynamicResolution = _renderScalePercent < 100;
+        cameraData.allowDynamicResolution = false;
         cameraData.volumeLayerMask |= 1 << RuntimeVolumeLayer;
         cameraData.customRenderingSettings = true;
         SetFrameSetting(cameraData, FrameSettingsField.Postprocess, true);
@@ -294,24 +284,6 @@ public sealed class GraphicsManager : IDisposable
     private static RenderPipelineAsset GetActivePipelineAsset()
     {
         return GraphicsSettings.currentRenderPipeline ?? GraphicsSettings.defaultRenderPipeline;
-    }
-
-    /// <summary>
-    /// Gets the selected dynamic-resolution scale as a percentage.
-    /// </summary>
-    /// <returns>The selected percentage.</returns>
-    private float GetRenderScale()
-    {
-        return _renderScalePercent;
-    }
-
-    /// <summary>
-    /// Gets the full-resolution fallback used after this owner is disposed.
-    /// </summary>
-    /// <returns>One hundred percent.</returns>
-    private static float GetFullRenderScale()
-    {
-        return 100f;
     }
 
     /// <summary>

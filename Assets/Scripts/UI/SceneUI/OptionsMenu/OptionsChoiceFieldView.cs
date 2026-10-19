@@ -99,6 +99,11 @@ public sealed class OptionsChoiceFieldView : MonoBehaviour
         next.name = "Next";
         SetRelativeRect((RectTransform)next.transform, badgeRect, sourceNext.transform);
 
+        OverflowTextTooltip tooltip = value.GetComponent<OverflowTextTooltip>();
+        tooltip.Configure(value);
+        previous.GetComponent<OverflowTextTooltipTrigger>().Configure(tooltip);
+        next.GetComponent<OverflowTextTooltipTrigger>().Configure(tooltip);
+
         OptionsChoiceFieldView choice = root.AddComponent<OptionsChoiceFieldView>();
         choice.Configure(value, previous, next);
         return choice;
