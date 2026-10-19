@@ -275,19 +275,6 @@ internal sealed class CustomGameSettingsSession
         summaryDraft.VictoryCondition = condition;
 
     /// <summary>
-    /// Selects whether story events are included in the new campaign.
-    /// </summary>
-    /// <param name="enabled">Whether story events should be enabled.</param>
-    internal void SetStoryEventsEnabled(bool enabled) => summaryDraft.StoryEventsEnabled = enabled;
-
-    /// <summary>
-    /// Selects whether disaster events are included in the new campaign.
-    /// </summary>
-    /// <param name="enabled">Whether disaster events should be enabled.</param>
-    internal void SetDisasterEventsEnabled(bool enabled) =>
-        summaryDraft.DisasterEventsEnabled = enabled;
-
-    /// <summary>
     /// Selects a resource profile and rebuilds applicable generation settings.
     /// </summary>
     /// <param name="availability">The selected resource availability.</param>
@@ -310,8 +297,6 @@ internal sealed class CustomGameSettingsSession
             summaryDraft.GalaxySize = summaryDefaults.GalaxySize;
             summaryDraft.VictoryCondition = summaryDefaults.VictoryCondition;
             summaryDraft.ResourceAvailability = summaryDefaults.ResourceAvailability;
-            summaryDraft.StoryEventsEnabled = summaryDefaults.StoryEventsEnabled;
-            summaryDraft.DisasterEventsEnabled = summaryDefaults.DisasterEventsEnabled;
             summaryDraft.Seed = summaryDefaults.Seed;
             UpdateAIDifficultyDefaults(summaryDraft.Difficulty);
             BuildGenerationEntries(activePack, summaryDraft);

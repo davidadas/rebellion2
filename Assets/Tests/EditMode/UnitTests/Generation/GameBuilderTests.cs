@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
-using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
@@ -520,67 +519,6 @@ namespace Rebellion.Tests.Generation
                 1,
                 "Game should have at least one event in the event pool."
             );
-        }
-
-        /// <summary>
-        /// Verifies that generation includes only enabled categories and always retains None.
-        /// </summary>
-        /// <param name="storyEnabled">Whether story events are selected.</param>
-        /// <param name="disasterEnabled">Whether disaster events are selected.</param>
-        [TestCase(true, true)]
-        [TestCase(false, true)]
-        [TestCase(true, false)]
-        [TestCase(false, false)]
-        public void Build_EventSelections_FiltersOnlyDisabledCategories(
-            bool storyEnabled,
-            bool disasterEnabled
-        )
-        {
-            GameEvent[] templates = TestContent.Data.GameEvents;
-            string[] templateIDs = templates.Select(gameEvent => gameEvent.InstanceID).ToArray();
-            CollectionAssert.AreEquivalent(
-                new[]
-                {
-                    GameEventCategory.None,
-                    GameEventCategory.Story,
-                    GameEventCategory.Disaster,
-                },
-                templates.Select(gameEvent => gameEvent.Category).Distinct().ToArray()
-            );
-            GameSummary summary = new GameSummary
-            {
-                GalaxySize = _size,
-                PlayerFactionID = "FNALL1",
-                Seed = 12345,
-                StoryEventsEnabled = storyEnabled,
-                DisasterEventsEnabled = disasterEnabled,
-            };
-
-            GameRoot game = new GameBuilder(summary, TestContent.Data).Build();
-
-            GameEvent[] expected = templates
-                .Where(gameEvent =>
-                    gameEvent.Category == GameEventCategory.None
-                    || (gameEvent.Category == GameEventCategory.Story && storyEnabled)
-                    || (gameEvent.Category == GameEventCategory.Disaster && disasterEnabled)
-                )
-                .ToArray();
-            Assert.DoesNotThrow(() =>
-                new GameEventCommands(game, game.Random).ValidateEvents(game.GetEventPool())
-            );
-            CollectionAssert.AreEquivalent(
-                expected.Select(gameEvent => gameEvent.InstanceID).ToArray(),
-                game.GetEventPool().Select(gameEvent => gameEvent.InstanceID).ToArray()
-            );
-            CollectionAssert.AreEqual(
-                templateIDs,
-                TestContent.Data.GameEvents.Select(gameEvent => gameEvent.InstanceID).ToArray()
-            );
-            foreach (GameEvent gameEvent in game.GetEventPool())
-                Assert.AreNotSame(
-                    templates.Single(template => template.InstanceID == gameEvent.InstanceID),
-                    gameEvent
-                );
         }
 
         [Test]

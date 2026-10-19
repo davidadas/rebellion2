@@ -60,31 +60,6 @@ namespace Rebellion.Tests.Managers
             );
         }
 
-        /// <summary>
-        /// Verifies that custom-game presets retain both independent event selections.
-        /// </summary>
-        /// <param name="storyEnabled">Whether story events are selected.</param>
-        /// <param name="disasterEnabled">Whether disaster events are selected.</param>
-        [TestCase(true, true)]
-        [TestCase(false, true)]
-        [TestCase(true, false)]
-        [TestCase(false, false)]
-        public void SavePreset_EventSelections_RoundTripsSelections(
-            bool storyEnabled,
-            bool disasterEnabled
-        )
-        {
-            GameSummary summary = CreateSummary();
-            summary.StoryEventsEnabled = storyEnabled;
-            summary.DisasterEventsEnabled = disasterEnabled;
-
-            manager.SavePreset("events", "Events", summary);
-            GameSummary loaded = manager.LoadPreset("events");
-
-            Assert.AreEqual(storyEnabled, loaded.StoryEventsEnabled);
-            Assert.AreEqual(disasterEnabled, loaded.DisasterEventsEnabled);
-        }
-
         [Test]
         public void RenamePreset_ExistingPreset_UpdatesDisplayNameAndPreservesSummary()
         {
