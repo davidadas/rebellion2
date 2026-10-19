@@ -100,7 +100,7 @@ public sealed class RenderPipelineConfigurationTests
     }
 
     /// <summary>
-    /// Verifies that each custom shader compiles for the active high-definition pipeline.
+    /// Verifies that each project shader compiles for the active high-definition pipeline.
     /// </summary>
     /// <param name="shaderName">The shader name to resolve.</param>
     [TestCase("Custom/PlanetAtmosphere")]
@@ -109,15 +109,37 @@ public sealed class RenderPipelineConfigurationTests
     [TestCase("Custom/PlanetDayNightShade")]
     [TestCase("Custom/PlanetSurface")]
     [TestCase("Custom/PremultipliedTexture")]
-    [TestCase("FORGE3D/Planets HD/HDRP/Atmosphere")]
-    [TestCase("FORGE3D/Planets HD/HDRP/Terrestrial")]
-    [TestCase("FORGE3D/Planets HD/HDRP/Thunderstorm")]
-    public void CustomShader_HighDefinitionPipeline_IsSupported(string shaderName)
+    public void ProjectShader_HighDefinitionPipeline_IsSupported(string shaderName)
     {
         Shader shader = Shader.Find(shaderName);
 
         Assert.IsNotNull(shader, shaderName);
         Assert.IsTrue(shader.isSupported, shaderName);
+        AssertShaderHasNoCompilerErrors(shaderName, shader);
+    }
+
+    /// <summary>
+    /// Verifies that each packaged shader is available and compiles for the active build target.
+    /// </summary>
+    /// <param name="shaderName">The shader name to resolve.</param>
+    [TestCase("FORGE3D/Planets HD/HDRP/Atmosphere")]
+    [TestCase("FORGE3D/Planets HD/HDRP/Terrestrial")]
+    [TestCase("FORGE3D/Planets HD/HDRP/Thunderstorm")]
+    public void PackagedShader_HighDefinitionPipeline_IsAvailable(string shaderName)
+    {
+        Shader shader = Shader.Find(shaderName);
+
+        Assert.IsNotNull(shader, shaderName);
+        AssertShaderHasNoCompilerErrors(shaderName, shader);
+    }
+
+    /// <summary>
+    /// Verifies that Unity reports no compiler errors for a shader.
+    /// </summary>
+    /// <param name="shaderName">The shader name used in assertion messages.</param>
+    /// <param name="shader">The shader to inspect.</param>
+    private static void AssertShaderHasNoCompilerErrors(string shaderName, Shader shader)
+    {
         foreach (ShaderMessage message in ShaderUtil.GetShaderMessages(shader))
         {
             Assert.AreNotEqual(
