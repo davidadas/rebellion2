@@ -32,10 +32,10 @@ TagManager:
   - 
   - 
   - 
+  - RuntimeGraphicsVolume
   - 
   - 
-  - 
-  - 
+  - RenderTargetVolume
   - 
   m_SortingLayers:
   - name: Default

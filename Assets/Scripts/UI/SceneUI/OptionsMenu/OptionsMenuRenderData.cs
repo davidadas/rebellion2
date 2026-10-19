@@ -87,6 +87,26 @@ public sealed class OptionsBindingRow
 }
 
 /// <summary>
+/// Represents the displayed value and runtime availability of one graphics setting.
+/// </summary>
+public readonly struct OptionsGraphicsValue
+{
+    public string Label { get; }
+    public bool Available { get; }
+
+    /// <summary>
+    /// Creates one graphics-setting presentation value.
+    /// </summary>
+    /// <param name="label">The player-facing setting value.</param>
+    /// <param name="available">Whether the active hardware can change the setting.</param>
+    public OptionsGraphicsValue(string label, bool available)
+    {
+        Label = label ?? string.Empty;
+        Available = available;
+    }
+}
+
+/// <summary>
 /// Represents one row in the Save/Load menu.
 /// </summary>
 public sealed class OptionsSaveSlot
@@ -144,6 +164,7 @@ public sealed class OptionsMenuRenderData
 
     public string ResolutionLabel { get; }
     public string FullScreenLabel { get; }
+    public IReadOnlyDictionary<UserGraphicsSetting, OptionsGraphicsValue> GraphicsValues { get; }
     public IReadOnlyDictionary<UserTacticalOption, bool> TacticalStates { get; }
     public IReadOnlyDictionary<UserGameplayOption, bool> GameplayStates { get; }
     public IReadOnlyDictionary<UserInterfaceOption, bool> UserInterfaceStates { get; }
@@ -191,6 +212,7 @@ public sealed class OptionsMenuRenderData
     /// <param name="contentPackLabel">The selected content pack's display name.</param>
     /// <param name="contentRestartRequired">Whether content changes require a restart.</param>
     /// <param name="showModsTab">Whether the host exposes content management.</param>
+    /// <param name="graphicsValues">The current graphics values keyed by setting.</param>
     public OptionsMenuRenderData(
         int x,
         int y,
@@ -215,7 +237,8 @@ public sealed class OptionsMenuRenderData
         IReadOnlyList<OptionsModRow> mods = null,
         string contentPackLabel = "",
         bool contentRestartRequired = false,
-        bool showModsTab = true
+        bool showModsTab = true,
+        IReadOnlyDictionary<UserGraphicsSetting, OptionsGraphicsValue> graphicsValues = null
     )
     {
         X = x;
@@ -223,6 +246,8 @@ public sealed class OptionsMenuRenderData
         ActiveTab = activeTab;
         ResolutionLabel = resolutionLabel ?? string.Empty;
         FullScreenLabel = fullScreenLabel ?? string.Empty;
+        GraphicsValues =
+            graphicsValues ?? new Dictionary<UserGraphicsSetting, OptionsGraphicsValue>();
         TacticalStates = tacticalStates ?? new Dictionary<UserTacticalOption, bool>();
         GameplayStates = gameplayStates ?? new Dictionary<UserGameplayOption, bool>();
         UserInterfaceStates = userInterfaceStates ?? new Dictionary<UserInterfaceOption, bool>();

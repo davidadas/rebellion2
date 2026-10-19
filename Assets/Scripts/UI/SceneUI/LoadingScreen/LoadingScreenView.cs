@@ -37,6 +37,8 @@ public sealed class LoadingScreenView : MonoBehaviour
     private const float _maximumFlightOffsetY = 0.55f;
     private const float _flightPositionSmoothTime = 0.28f;
     private const float _flightAttitudeSmoothTime = 0.08f;
+    private const float _engineBankCenterOffsetRatio = 0.3044f;
+    private const float _enginePlumeWidthRatio = 0.36f;
 
     [SerializeField]
     private TextMeshProUGUI statusText;
@@ -536,7 +538,8 @@ public sealed class LoadingScreenView : MonoBehaviour
         )
         {
             name = "Loading Shuttle",
-            antiAliasing = 4,
+            antiAliasing = 1,
+            useDynamicScale = true,
             useMipMap = false,
             filterMode = FilterMode.Bilinear,
             wrapMode = TextureWrapMode.Clamp,
@@ -796,10 +799,10 @@ public sealed class LoadingScreenView : MonoBehaviour
             engineBounds.min.z
         );
         float width = engineBounds.size.x;
-        float bankWidth = width * 0.49f;
+        float bankWidth = width * _enginePlumeWidthRatio;
         float bankHeight = Mathf.Max(engineBounds.size.y * 0.72f, width * 0.055f);
         float plumeLength = width * 0.62f;
-        float[] horizontalOffsets = { -0.25f, 0.25f };
+        float[] horizontalOffsets = { -_engineBankCenterOffsetRatio, _engineBankCenterOffsetRatio };
         shuttleExhaustPlumes = new Transform[horizontalOffsets.Length * 2];
         shuttleExhaustScales = new Vector3[shuttleExhaustPlumes.Length];
         int plumeIndex = 0;
