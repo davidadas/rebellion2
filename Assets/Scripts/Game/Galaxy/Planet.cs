@@ -478,16 +478,44 @@ namespace Rebellion.Game.Galaxy
         /// <returns>The controlling faction, or null when control is contested or unsupported.</returns>
         internal Faction ResolveController(GameRoot game, IReadOnlyList<string> regimentOwners)
         {
-            if (regimentOwners.Count == 1)
-                return game.GetFactionByOwnerInstanceID(regimentOwners[0]);
-            if (regimentOwners.Count > 1)
+            return ResolveController(
+                game,
+                regimentOwners.Count,
+                regimentOwners.Count == 1 ? regimentOwners[0] : null
+            );
+        }
+
+        /// <summary>
+        /// Resolves control from an assessed regiment-owner count without allocating owner lists.
+        /// </summary>
+        /// <param name="game">The game supplying factions and the control threshold.</param>
+        /// <param name="regimentOwnerCount">The number of distinct active regiment owners.</param>
+        /// <param name="soleRegimentOwner">The regiment owner when exactly one is present.</param>
+        /// <returns>The controlling faction, or null when control is contested or unsupported.</returns>
+        internal Faction ResolveController(
+            GameRoot game,
+            int regimentOwnerCount,
+            string soleRegimentOwner
+        )
+        {
+            if (regimentOwnerCount == 1)
+                return game.GetFactionByOwnerInstanceID(soleRegimentOwner);
+            if (regimentOwnerCount > 1)
                 return null;
 
             int threshold = game.Config.SupportShift.OwnershipTransferThreshold;
-            return game.GetFactions()
-                .Where(faction => GetPopularSupport(faction.InstanceID) >= threshold)
-                .OrderByDescending(faction => GetPopularSupport(faction.InstanceID))
-                .FirstOrDefault();
+            Faction controller = null;
+            int highestSupport = threshold;
+            foreach (Faction faction in game.GetFactions())
+            {
+                int support = GetPopularSupport(faction.InstanceID);
+                if (support >= threshold && (controller == null || support > highestSupport))
+                {
+                    controller = faction;
+                    highestSupport = support;
+                }
+            }
+            return controller;
         }
 
         /// <summary>
@@ -544,6 +572,38 @@ namespace Rebellion.Game.Galaxy
             if (IsInUprising)
                 garrison *= config.UprisingMultiplier;
             return garrison;
+        }
+
+        /// <summary>
+        /// Calculates the deterministic incident-score contribution from support, garrison, and missions.
+        /// </summary>
+        /// <param name="faction">The controlling faction.</param>
+        /// <param name="config">The configured support threshold and garrison divisor.</param>
+        /// <param name="support">The controlling faction's support before the incident.</param>
+        /// <param name="troops">The controlling faction's active regiment count.</param>
+        /// <param name="missionAdjustment">The signed adjustment from active mission teams.</param>
+        /// <returns>The incident score before dice are added.</returns>
+        internal int GetUprisingIncidentBaseScore(
+            Faction faction,
+            GameConfig.GarrisonConfig config,
+            int support,
+            int troops,
+            int missionAdjustment
+        )
+        {
+            int threshold =
+                support >= config.SupportThreshold
+                    ? 0
+                    : (int)
+                        Math.Ceiling(
+                            (config.SupportThreshold - support) / (double)config.GarrisonDivisor
+                        );
+            int multiplier =
+                GetParentOfType<PlanetSector>()?.SectorType == PlanetSectorType.Core
+                && faction.Settings.UprisingResistance > 1
+                    ? faction.Settings.UprisingResistance
+                    : 1;
+            return threshold - multiplier * troops + missionAdjustment;
         }
 
         /// <summary>

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
@@ -48,21 +49,190 @@ namespace Rebellion.Game.Missions
 
             public ISceneNode Target { get; }
 
+            public MissionEvaluationState State { get; }
+
             /// <summary>
             /// Creates an objective-scoring context from authoritative and optional observed state.
             /// </summary>
             /// <param name="game">The authoritative game state.</param>
             /// <param name="planet">The optional observed planet.</param>
             /// <param name="target">The optional observed target.</param>
+            /// <param name="state">The optional turn-scoped observed-planet assessment.</param>
             public MissionEvaluationContext(
                 GameRoot game,
                 Planet planet = null,
-                ISceneNode target = null
+                ISceneNode target = null,
+                MissionEvaluationState state = null
             )
             {
                 Game = game;
                 Planet = planet;
                 Target = target;
+                State = state;
+            }
+        }
+
+        /// <summary>
+        /// Reuses observed planetary facts while evaluating mission alternatives during one turn.
+        /// A caller must create a fresh assessment when its observed planet state changes.
+        /// </summary>
+        protected internal sealed class MissionEvaluationState
+        {
+            private readonly GameRoot _game;
+            private readonly Planet _planet;
+            private Dictionary<string, int> _garrisonCounts;
+            private string[] _garrisonOwners;
+            private Dictionary<(string OwnerId, int Shift), Planet> _supportProjections;
+            private IReadOnlyList<Mission> _activeMissions;
+            private Dictionary<Mission, int> _leadership;
+            private Dictionary<(string TypeId, string OwnerId, int Adjustment), double> _outcomes;
+
+            /// <summary>
+            /// Creates an assessment of one observed planet without traversing the scene graph.
+            /// </summary>
+            /// <param name="game">The game supplying factions and configuration.</param>
+            /// <param name="planet">The observed planet being evaluated.</param>
+            public MissionEvaluationState(GameRoot game, Planet planet)
+            {
+                _game = game;
+                _planet = planet;
+            }
+
+            /// <summary>
+            /// Returns the cached completed, stationary regiment count for a faction.
+            /// </summary>
+            /// <param name="ownerId">The regiment owner's identifier.</param>
+            /// <returns>The active regiment count.</returns>
+            public int GetGarrisonCount(string ownerId)
+            {
+                if (string.IsNullOrEmpty(ownerId))
+                    return 0;
+                EnsureGarrisonCounts();
+                return _garrisonCounts.TryGetValue(ownerId, out int count) ? count : 0;
+            }
+
+            /// <summary>
+            /// Returns the distinct active regiment owners captured for this observed planet.
+            /// </summary>
+            /// <returns>The read-only owner snapshot.</returns>
+            public IReadOnlyList<string> GetGarrisonOwners()
+            {
+                EnsureGarrisonCounts();
+                return _garrisonOwners;
+            }
+
+            /// <summary>
+            /// Returns a reusable support projection without modifying the observed planet.
+            /// </summary>
+            /// <param name="faction">The faction whose support changes.</param>
+            /// <param name="shift">The signed support adjustment.</param>
+            /// <returns>The projection, which callers must treat as read-only.</returns>
+            public Planet GetSupportProjection(Faction faction, int shift)
+            {
+                _supportProjections ??= new Dictionary<(string OwnerId, int Shift), Planet>();
+                var key = (faction.InstanceID, shift);
+                if (!_supportProjections.TryGetValue(key, out Planet projection))
+                {
+                    projection = (Planet)_planet.CreateCopy();
+                    projection.SetParent(_planet.GetParent());
+                    projection.ChangePopularSupport(faction, shift, _game);
+                    _supportProjections.Add(key, projection);
+                }
+                return projection;
+            }
+
+            /// <summary>
+            /// Returns the observed missions whose participants have reached this planet.
+            /// </summary>
+            /// <returns>The active mission snapshot.</returns>
+            public IReadOnlyList<Mission> GetActiveMissions()
+            {
+                return _activeMissions ??= _planet
+                    .GetChildren<Mission>()
+                    .Where(mission => mission.HasInitiated && !mission.IsWaitingForParticipants())
+                    .ToArray();
+            }
+
+            /// <summary>
+            /// Returns an active mission team's captured average leadership.
+            /// </summary>
+            /// <param name="mission">The observed active mission.</param>
+            /// <returns>The integer average leadership rating.</returns>
+            public int GetAverageLeadership(Mission mission)
+            {
+                _leadership ??= new Dictionary<Mission, int>();
+                if (!_leadership.TryGetValue(mission, out int average))
+                {
+                    IReadOnlyList<IMissionParticipant> participants = mission.GetMainParticipants();
+                    int total = 0;
+                    for (int index = 0; index < participants.Count; index++)
+                        total += participants[index].GetEffectiveRating(SkillRating.Leadership);
+                    average = participants.Count == 0 ? 0 : total / participants.Count;
+                    _leadership.Add(mission, average);
+                }
+                return average;
+            }
+
+            /// <summary>
+            /// Looks up a conditional objective probability previously evaluated for this planet.
+            /// </summary>
+            /// <param name="typeId">The mission type identifier.</param>
+            /// <param name="ownerId">The mission owner's identifier.</param>
+            /// <param name="adjustment">The team's contribution to the objective calculation.</param>
+            /// <param name="probability">The cached conditional probability when present.</param>
+            /// <returns>True when the probability has already been evaluated.</returns>
+            public bool TryGetOutcomeProbability(
+                string typeId,
+                string ownerId,
+                int adjustment,
+                out double probability
+            )
+            {
+                probability = 0;
+                return _outcomes != null
+                    && _outcomes.TryGetValue((typeId, ownerId, adjustment), out probability);
+            }
+
+            /// <summary>
+            /// Records a conditional objective probability for reuse during this assessment.
+            /// </summary>
+            /// <param name="typeId">The mission type identifier.</param>
+            /// <param name="ownerId">The mission owner's identifier.</param>
+            /// <param name="adjustment">The team's contribution to the objective calculation.</param>
+            /// <param name="probability">The evaluated conditional probability.</param>
+            public void CacheOutcomeProbability(
+                string typeId,
+                string ownerId,
+                int adjustment,
+                double probability
+            )
+            {
+                _outcomes ??=
+                    new Dictionary<(string TypeId, string OwnerId, int Adjustment), double>();
+                _outcomes[(typeId, ownerId, adjustment)] = probability;
+            }
+
+            /// <summary>
+            /// Indexes the observed garrison once for this planet assessment.
+            /// </summary>
+            private void EnsureGarrisonCounts()
+            {
+                if (_garrisonCounts != null)
+                    return;
+                _garrisonCounts = new Dictionary<string, int>(StringComparer.Ordinal);
+                foreach (Regiment regiment in _planet.GetAllRegiments())
+                {
+                    string owner = regiment.OwnerInstanceID;
+                    if (
+                        regiment.ManufacturingStatus != ManufacturingStatus.Complete
+                        || regiment.Movement != null
+                        || string.IsNullOrEmpty(owner)
+                    )
+                        continue;
+                    _garrisonCounts.TryGetValue(owner, out int count);
+                    _garrisonCounts[owner] = count + 1;
+                }
+                _garrisonOwners = _garrisonCounts.Keys.ToArray();
             }
         }
 
@@ -483,16 +653,20 @@ namespace Rebellion.Game.Missions
         /// <param name="game">The authoritative game state.</param>
         /// <param name="observedPlanet">Optional player-visible planet state used for planning.</param>
         /// <param name="observedTarget">Optional player-visible target state used for planning.</param>
-        /// <returns>The probability that at least one participant succeeds.</returns>
+        /// <param name="evaluationState">The optional turn-scoped observed-planet assessment.</param>
+        /// <returns>The percentage chance that the next execution reports objective success if reached.</returns>
         internal double GetObjectiveSuccessProbability(
             IEnumerable<IMissionParticipant> participants,
             GameRoot game,
             Planet observedPlanet = null,
-            ISceneNode observedTarget = null
+            ISceneNode observedTarget = null,
+            MissionEvaluationState evaluationState = null
         ) =>
             GetObjectiveSuccessProbability(
-                participants,
-                new MissionEvaluationContext(game, observedPlanet, observedTarget)
+                participants as IReadOnlyList<IMissionParticipant>
+                    ?? participants?.ToArray()
+                    ?? Array.Empty<IMissionParticipant>(),
+                new MissionEvaluationContext(game, observedPlanet, observedTarget, evaluationState)
             );
 
         /// <summary>
@@ -500,7 +674,7 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="participants">The participants to evaluate.</param>
         /// <param name="context">The state used for evaluation.</param>
-        /// <returns>The probability that at least one participant succeeds.</returns>
+        /// <returns>The percentage chance that the next execution reports objective success if reached.</returns>
         protected virtual double GetObjectiveSuccessProbability(
             IEnumerable<IMissionParticipant> participants,
             MissionEvaluationContext context
@@ -512,41 +686,6 @@ namespace Rebellion.Game.Missions
                 .Where(participant => participant != null)
                 .Select(participant => GetAgentProbability(participant, context));
             return CombineSuccessProbabilities(probabilities);
-        }
-
-        /// <summary>
-        /// Calculates the chance that the next execution reports success against observed state.
-        /// </summary>
-        /// <param name="participants">The mission participants to evaluate.</param>
-        /// <param name="game">The authoritative game supplying factions and configuration.</param>
-        /// <param name="observedPlanet">The destination state available to the caller.</param>
-        /// <param name="observedTarget">The objective state available to the caller.</param>
-        /// <returns>The percentage chance of reporting success if the mission reaches execution.</returns>
-        internal double GetCompletionSuccessProbability(
-            IEnumerable<IMissionParticipant> participants,
-            GameRoot game,
-            Planet observedPlanet = null,
-            ISceneNode observedTarget = null
-        )
-        {
-            MissionEvaluationContext context = new MissionEvaluationContext(
-                game,
-                observedPlanet,
-                observedTarget
-            );
-            return GetObjectiveSuccessProbability(participants, context)
-                * GetCompletionProbability(context);
-        }
-
-        /// <summary>
-        /// Calculates any additional completion requirement after a successful participant roll.
-        /// Missions whose objective odds already describe their final outcome need no adjustment.
-        /// </summary>
-        /// <param name="context">The authoritative or observed objective state.</param>
-        /// <returns>The conditional completion probability between zero and one.</returns>
-        protected virtual double GetCompletionProbability(MissionEvaluationContext context)
-        {
-            return 1;
         }
 
         /// <summary>

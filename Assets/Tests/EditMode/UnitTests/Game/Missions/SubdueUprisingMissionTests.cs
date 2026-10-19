@@ -387,7 +387,7 @@ namespace Rebellion.Tests.Game.Missions
         [TestCase(2, 40, false)]
         [TestCase(2, 40, true)]
         [TestCase(1, 55, false)]
-        public void GetCompletionSuccessProbability_SubdueSupportOutcomes_MatchesResolvedSuccessFrequency(
+        public void GetObjectiveSuccessProbability_SubdueSupportOutcomes_MatchesResolvedSuccessFrequency(
             int troops,
             int support,
             bool core
@@ -402,7 +402,7 @@ namespace Rebellion.Tests.Game.Missions
                 subdue: true
             );
             double probability =
-                mission.GetCompletionSuccessProbability(mission.GetMainParticipants(), game, planet)
+                mission.GetObjectiveSuccessProbability(mission.GetMainParticipants(), game, planet)
                 / 100d;
             int successes = 0;
             for (int roll = 0; roll <= config.Uprising.SubdueOwnedSupportRange; roll++)
@@ -430,6 +430,27 @@ namespace Rebellion.Tests.Game.Missions
                 probability,
                 0.000001
             );
+        }
+
+        [Test]
+        public void GetObjectiveSuccessProbability_UprisingEnded_ReturnsZero()
+        {
+            (GameRoot game, Planet planet, Mission mission) = BuildCompletionScene(
+                CreateCompletionConfig(),
+                2,
+                40,
+                false,
+                subdue: true
+            );
+            planet.EndUprising();
+
+            double probability = mission.GetObjectiveSuccessProbability(
+                mission.GetMainParticipants(),
+                game,
+                planet
+            );
+
+            Assert.Zero(probability);
         }
 
         /// <summary>

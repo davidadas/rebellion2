@@ -256,7 +256,7 @@ namespace Rebellion.Tests.Game.Missions
         [TestCase(6, 20, false)]
         [TestCase(20, 0, true)]
         [TestCase(1, 20, true)]
-        public void GetCompletionSuccessProbability_InciteDiceOutcomes_MatchesResolvedSuccessFrequency(
+        public void GetObjectiveSuccessProbability_InciteDiceOutcomes_MatchesResolvedSuccessFrequency(
             int troops,
             int support,
             bool core
@@ -270,7 +270,7 @@ namespace Rebellion.Tests.Game.Missions
                 core
             );
             double probability =
-                mission.GetCompletionSuccessProbability(mission.GetMainParticipants(), game, planet)
+                mission.GetObjectiveSuccessProbability(mission.GetMainParticipants(), game, planet)
                 / 100d;
             int successes = 0;
             for (int first = 0; first <= config.Uprising.DiceRange; first++)
@@ -310,7 +310,7 @@ namespace Rebellion.Tests.Game.Missions
 
         [TestCase(false)]
         [TestCase(true)]
-        public void GetCompletionSuccessProbability_TwoRegimentConsequences_CountsBothLosses(
+        public void GetObjectiveSuccessProbability_TwoRegimentConsequences_CountsBothLosses(
             bool primaryEnabled
         )
         {
@@ -323,7 +323,7 @@ namespace Rebellion.Tests.Game.Missions
             (GameRoot game, Planet planet, Mission mission) = BuildCompletionScene(config, 2, 20);
 
             double probability =
-                mission.GetCompletionSuccessProbability(mission.GetMainParticipants(), game, planet)
+                mission.GetObjectiveSuccessProbability(mission.GetMainParticipants(), game, planet)
                 / 100d;
             UprisingResolver resolver = CreateCompletionResolver(game, new QueueRNG(0));
             resolver.TryExecuteMission(mission, out List<GameResult> results);
@@ -336,7 +336,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void GetCompletionSuccessProbability_ObservedSnapshot_DoesNotMutateSupportGarrisonOrTimers()
+        public void GetObjectiveSuccessProbability_ObservedSnapshot_DoesNotMutateSupportGarrisonOrTimers()
         {
             (GameRoot game, Planet planet, Mission mission) = BuildCompletionScene(
                 CreateCompletionConfig(),
@@ -346,13 +346,44 @@ namespace Rebellion.Tests.Game.Missions
             Dictionary<string, int> support = new Dictionary<string, int>(planet.PopularSupport);
             Regiment regiment = planet.GetAllRegiments().Single();
 
-            mission.GetCompletionSuccessProbability(mission.GetMainParticipants(), game, planet);
+            mission.GetObjectiveSuccessProbability(mission.GetMainParticipants(), game, planet);
 
             CollectionAssert.AreEquivalent(support, planet.PopularSupport);
             Assert.AreSame(regiment, planet.GetAllRegiments().Single());
             Assert.IsFalse(planet.IsInUprising);
             Assert.AreEqual(0, planet.NextUprisingIncidentTick);
             Assert.AreSame(planet, mission.GetParent());
+        }
+
+        [Test]
+        public void GetObjectiveSuccessProbability_AlternativeTeam_UsesSuppliedLeadershipForIncidentOdds()
+        {
+            GameConfig config = CreateCompletionConfig();
+            config.Uprising.DiceRange = 1;
+            config.Uprising.DiceAddend = 0;
+            config.Uprising.MissionLeadershipDivisor = 10;
+            config.Uprising.InciteMissionSupportShift = -10;
+            config.Uprising.PrimaryConsequenceTable = new Dictionary<int, int> { { 10, 2 } };
+            config.Uprising.SecondaryConsequenceTable.Clear();
+            config.AI.Garrison.SupportThreshold = 60;
+            config.SupportShift.OwnershipTransferThreshold = 60;
+            (GameRoot game, Planet planet, Mission mission) = BuildCompletionScene(config, 1, 60);
+            Officer alternative = EntityFactory.CreateOfficer("alternative", "rebels");
+            alternative.SetBaseRating(SkillRating.Leadership, 0);
+
+            double storedTeamOdds = mission.GetObjectiveSuccessProbability(
+                mission.GetMainParticipants(),
+                game,
+                planet
+            );
+            double suppliedTeamOdds = mission.GetObjectiveSuccessProbability(
+                new[] { alternative },
+                game,
+                planet
+            );
+
+            Assert.AreEqual(75, storedTeamOdds, 0.000001);
+            Assert.AreEqual(0, suppliedTeamOdds);
         }
 
         /// <summary>

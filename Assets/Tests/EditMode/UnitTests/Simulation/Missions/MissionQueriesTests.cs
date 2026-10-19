@@ -257,7 +257,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void GetOperationalMissionOdds_MultipleDecoysAndDetectors_MatchesCompleteOdds()
+        public void GetMissionOdds_OmittedPersonnelLoss_MatchesCompleteSuccessAndFoilOdds()
         {
             (GameRoot game, Planet planet, Officer spy, Officer _) = BuildDetectionScene();
             Regiment secondDetector = CreateCompletedRegiment("r2", "rebels");
@@ -282,7 +282,7 @@ namespace Rebellion.Tests.Simulation
             );
 
             MissionOdds complete = system.GetMissionOdds(context);
-            MissionOdds operational = system.GetOperationalMissionOdds(context);
+            MissionOdds operational = system.GetMissionOdds(context, includePersonnelLoss: false);
 
             Assert.IsNotNull(complete);
             Assert.IsNotNull(operational);
@@ -492,17 +492,9 @@ namespace Rebellion.Tests.Simulation
             MissionOdds odds = missions.GetMissionOdds(
                 CreateContext(DiplomacyMission.MissionTypeID, diplomat, observedPlanet)
             );
-            MissionOdds completionOdds = missions.GetCompletionMissionOdds(
-                CreateContext(DiplomacyMission.MissionTypeID, diplomat, observedPlanet)
-            );
 
             Assert.IsNotNull(odds);
             Assert.AreEqual(90, odds.ObjectiveSuccessProbability, 0.001);
-            Assert.AreEqual(
-                odds.ObjectiveSuccessProbability,
-                completionOdds.ObjectiveSuccessProbability
-            );
-            Assert.AreEqual(odds.FoilProbability, completionOdds.FoilProbability);
         }
 
         [Test]
@@ -1039,7 +1031,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void GetCompletionMissionOdds_InciteStrongGarrison_ReturnsZeroWithoutChangingOperationalOdds()
+        public void GetMissionOdds_InciteStrongGarrison_ReturnsZeroForBothRiskDetailLevels()
         {
             (GameRoot game, Planet _, Planet target, Officer officer, MissionQueries queries) =
                 BuildMissionOddsScene("rebels");
@@ -1055,15 +1047,18 @@ namespace Rebellion.Tests.Simulation
                 target
             );
 
-            MissionOdds displayed = queries.GetCompletionMissionOdds(context);
-            MissionOdds operational = queries.GetOperationalMissionOdds(context);
+            MissionOdds displayed = queries.GetMissionOdds(context);
+            MissionOdds operational = queries.GetMissionOdds(context, includePersonnelLoss: false);
 
             Assert.AreEqual(0, displayed.ObjectiveSuccessProbability);
-            Assert.AreEqual(100, operational.ObjectiveSuccessProbability);
+            Assert.AreEqual(
+                displayed.ObjectiveSuccessProbability,
+                operational.ObjectiveSuccessProbability
+            );
         }
 
         [Test]
-        public void GetCompletionMissionOdds_IncitePartialControlChance_CombinesSkillAndIncidentProbabilities()
+        public void GetMissionOdds_IncitePartialControlChance_CombinesSkillAndIncidentProbabilities()
         {
             (GameRoot game, Planet _, Planet target, Officer officer, MissionQueries queries) =
                 BuildMissionOddsScene("rebels");
@@ -1087,7 +1082,7 @@ namespace Rebellion.Tests.Simulation
             };
             game.AttachNode(CreateCompletedRegiment("guard", "rebels"), target);
 
-            MissionOdds odds = queries.GetCompletionMissionOdds(
+            MissionOdds odds = queries.GetMissionOdds(
                 CreateContext(InciteUprisingMission.MissionTypeID, officer, target)
             );
 
@@ -1096,7 +1091,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void GetCompletionMissionOdds_ObservedGarrison_DoesNotReadHiddenLiveRegiments()
+        public void GetMissionOdds_ObservedGarrison_DoesNotReadHiddenLiveRegiments()
         {
             (GameRoot game, Planet _, Planet target, Officer officer, MissionQueries queries) =
                 BuildMissionOddsScene("rebels");
@@ -1116,10 +1111,10 @@ namespace Rebellion.Tests.Simulation
             Planet observed = (Planet)target.CreateCopy();
             observed.SetParent(target.GetParent());
 
-            MissionOdds visible = queries.GetCompletionMissionOdds(
+            MissionOdds visible = queries.GetMissionOdds(
                 CreateContext(InciteUprisingMission.MissionTypeID, officer, observed)
             );
-            MissionOdds live = queries.GetCompletionMissionOdds(
+            MissionOdds live = queries.GetMissionOdds(
                 CreateContext(InciteUprisingMission.MissionTypeID, officer, target)
             );
 
@@ -1131,7 +1126,7 @@ namespace Rebellion.Tests.Simulation
 
         [TestCase(1, 50)]
         [TestCase(2, 75)]
-        public void GetCompletionMissionOdds_InciteTeam_CombinesIndependentSkillRolls(
+        public void GetMissionOdds_InciteTeam_CombinesIndependentSkillRolls(
             int participantCount,
             double expected
         )
@@ -1157,7 +1152,7 @@ namespace Rebellion.Tests.Simulation
                 participants.Add(second);
             }
 
-            MissionOdds odds = queries.GetCompletionMissionOdds(
+            MissionOdds odds = queries.GetMissionOdds(
                 CreateContext(
                     InciteUprisingMission.MissionTypeID,
                     participants,
@@ -1170,11 +1165,99 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void GetCompletionMissionOdds_NullContext_ReturnsNull()
+        public void GetMissionOdds_NullContext_ReturnsNull()
         {
             MissionQueries queries = new MissionQueries(TestGame.Create(TestConfig.Create()));
 
-            Assert.IsNull(queries.GetCompletionMissionOdds(null));
+            Assert.IsNull(queries.GetMissionOdds(null));
+        }
+
+        [Test]
+        public void GetMissionOdds_UnstartedInciteProposal_DoesNotConsumeInstanceIdentifiers()
+        {
+            (GameRoot game, Planet _, Planet target, Officer officer, MissionQueries queries) =
+                BuildMissionOddsScene("rebels");
+            target.PopularSupport = new Dictionary<string, int>
+            {
+                { "rebels", 60 },
+                { "empire", 40 },
+            };
+            game.Config.ProbabilityTables.Mission.InciteUprising = new Dictionary<int, int>
+            {
+                { -1000, 100 },
+            };
+            MissionContext context = CreateContext(
+                InciteUprisingMission.MissionTypeID,
+                officer,
+                target
+            );
+            try
+            {
+                BaseGameEntity.SetInstanceIdSeed(12345);
+                string expected = new Regiment().InstanceID;
+                BaseGameEntity.SetInstanceIdSeed(12345);
+
+                Assert.IsNotNull(queries.GetMissionOdds(context));
+                string actual = new Regiment().InstanceID;
+
+                Assert.AreEqual(expected, actual);
+            }
+            finally
+            {
+                BaseGameEntity.SetInstanceIdSeed(null);
+            }
+        }
+
+        [Test]
+        public void GetMissionOdds_SharedPlanetAssessment_KeepsEachTeamsSkillProbability()
+        {
+            (GameRoot game, Planet origin, Planet target, Officer first, MissionQueries queries) =
+                BuildMissionOddsScene("rebels");
+            game.Config.ProbabilityTables.Mission.InciteUprising = new Dictionary<int, int>
+            {
+                { -1000, 50 },
+            };
+            game.Config.ProbabilityTables.Mission.Foil = new Dictionary<int, int> { { -1000, 0 } };
+            game.Config.Uprising.DiceRange = 1;
+            game.Config.Uprising.DiceAddend = 0;
+            game.Config.Uprising.MissionLeadershipDivisor = 10;
+            game.Config.Uprising.InciteMissionSupportShift = -10;
+            game.Config.Uprising.PrimaryConsequenceTable = new Dictionary<int, int> { { 10, 2 } };
+            game.Config.Uprising.SecondaryConsequenceTable.Clear();
+            game.Config.AI.Garrison.SupportThreshold = 60;
+            game.Config.SupportShift.OwnershipTransferThreshold = 60;
+            first.SetBaseRating(SkillRating.Leadership, 100);
+            Officer second = EntityFactory.CreateOfficer("second", "empire");
+            second.SetBaseRating(SkillRating.Leadership, 100);
+            game.AttachNode(second, origin);
+            target.PopularSupport = new Dictionary<string, int>
+            {
+                { "rebels", 60 },
+                { "empire", 40 },
+            };
+            game.AttachNode(CreateCompletedRegiment("guard", "rebels"), target);
+            Mission.MissionEvaluationState state = new Mission.MissionEvaluationState(game, target);
+
+            MissionOdds single = queries.GetMissionOdds(
+                CreateContext(InciteUprisingMission.MissionTypeID, first, target),
+                (_, _, _, _) => Array.Empty<ISceneNode>(),
+                includePersonnelLoss: false,
+                evaluationState: state
+            );
+            MissionOdds team = queries.GetMissionOdds(
+                CreateContext(
+                    InciteUprisingMission.MissionTypeID,
+                    new List<IMissionParticipant> { first, second },
+                    new List<IMissionParticipant>(),
+                    target
+                ),
+                (_, _, _, _) => Array.Empty<ISceneNode>(),
+                includePersonnelLoss: false,
+                evaluationState: state
+            );
+
+            Assert.AreEqual(37.5, single.ObjectiveSuccessProbability, 0.000001);
+            Assert.AreEqual(56.25, team.ObjectiveSuccessProbability, 0.000001);
         }
 
         /// <summary>

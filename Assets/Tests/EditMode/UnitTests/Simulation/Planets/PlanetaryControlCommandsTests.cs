@@ -854,6 +854,27 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(15, planet.GetPopularSupport("empire"));
         }
 
+        [TestCase(50, 50, "rebels")]
+        [TestCase(40, 60, "empire")]
+        [TestCase(49, 49, null)]
+        public void ProcessTick_NoGarrison_SelectsHighestQualifyingSupport(
+            int rebelSupport,
+            int empireSupport,
+            string expectedOwner
+        )
+        {
+            _game.Config.SupportShift.OwnershipTransferThreshold = 50;
+            _targetPlanet.PopularSupport = new Dictionary<string, int>
+            {
+                { _rebels.InstanceID, rebelSupport },
+                { _empire.InstanceID, empireSupport },
+            };
+
+            new PlanetaryControlTickProcessor(_commands).ProcessTick(_game);
+
+            Assert.AreEqual(expectedOwner, _targetPlanet.OwnerInstanceID);
+        }
+
         [Test]
         public void ProcessTick_BlockadeFleetOpposesFavoredSide_ShiftsTowardFavoredSide()
         {

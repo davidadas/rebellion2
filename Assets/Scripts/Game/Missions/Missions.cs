@@ -1242,178 +1242,174 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Calculates the additional chance of completing the objective after a successful skill roll.
-        /// Travel, hidden missions, and later ticks are outside this observed-state estimate.
+        /// Includes the incident and control requirements for the next execution to report success.
         /// </summary>
-        /// <param name="context">The authoritative or observed destination and configuration.</param>
-        /// <returns>The conditional completion probability between zero and one.</returns>
-        protected override double GetCompletionProbability(MissionEvaluationContext context)
+        /// <param name="participants">The single proposed participant snapshot.</param>
+        /// <param name="context">The authoritative or observed objective state.</param>
+        /// <returns>The percentage chance of reporting success if the objective is reached.</returns>
+        protected override double GetObjectiveSuccessProbability(
+            IEnumerable<IMissionParticipant> participants,
+            MissionEvaluationContext context
+        )
         {
+            IReadOnlyList<IMissionParticipant> team =
+                participants as IReadOnlyList<IMissionParticipant>
+                ?? participants?.ToArray()
+                ?? Array.Empty<IMissionParticipant>();
+            double skillProbability = base.GetObjectiveSuccessProbability(team, context);
+            if (skillProbability <= 0)
+                return 0;
             GameRoot game = context.Game;
             Planet planet = GetMissionPlanet(context);
-            Dictionary<string, int> regiments = planet
-                .GetAllRegiments()
-                .Where(regiment =>
-                    regiment.ManufacturingStatus == ManufacturingStatus.Complete
-                    && regiment.Movement == null
-                    && !string.IsNullOrEmpty(regiment.OwnerInstanceID)
+            MissionEvaluationState state =
+                context.State ?? new MissionEvaluationState(game, planet);
+            if (state.GetGarrisonCount(OwnerInstanceID) > 0)
+                return 0;
+            int adjustment = GetMissionAdjustment(
+                state,
+                this,
+                team,
+                game.Config.Uprising.MissionLeadershipDivisor
+            );
+            if (
+                state.TryGetOutcomeProbability(
+                    ConfigKey,
+                    OwnerInstanceID,
+                    adjustment,
+                    out double probability
                 )
-                .GroupBy(regiment => regiment.OwnerInstanceID)
-                .ToDictionary(group => group.Key, group => group.Count());
+            )
+                return skillProbability * probability;
             string opponent = game.GetFactions()
                 .Select(faction => faction.InstanceID)
                 .FirstOrDefault(id => id != OwnerInstanceID);
-            if (regiments.ContainsKey(OwnerInstanceID))
-                return 0;
-
             Faction controller =
                 string.IsNullOrEmpty(planet.OwnerInstanceID) || !planet.IsPopulated()
                     ? null
                     : game.GetFactionByOwnerInstanceID(planet.OwnerInstanceID);
             if (controller == null)
-                return GetProjectedController(game, planet, regiments, null, 0) != opponent ? 1 : 0;
-
+                return GetProjectedController(game, planet, state, null, 0) != opponent
+                    ? skillProbability
+                    : 0;
             GameConfig.UprisingConfig config = game.Config.Uprising;
-            Planet projection = CreateProjection(planet);
-            projection.ChangePopularSupport(controller, config.InciteMissionSupportShift, game);
-            int troopCount = regiments.TryGetValue(controller.InstanceID, out int count)
-                ? count
-                : 0;
-            bool[] completesAfterLosses = new bool[3];
-            for (int losses = 0; losses < completesAfterLosses.Length; losses++)
-                completesAfterLosses[losses] =
-                    GetProjectedController(
-                        game,
-                        projection,
-                        regiments,
-                        controller.InstanceID,
-                        losses
-                    ) != opponent;
-
-            int support = planet.GetPopularSupport(controller.InstanceID);
-            GameConfig.GarrisonConfig garrison = game.Config.AI.Garrison;
-            int threshold =
-                support >= garrison.SupportThreshold
-                    ? 0
-                    : (int)
-                        Math.Ceiling(
-                            (garrison.SupportThreshold - support) / (double)garrison.GarrisonDivisor
-                        );
-            int multiplier =
-                planet.GetParentOfType<PlanetSector>()?.SectorType == PlanetSectorType.Core
-                && controller.Settings.UprisingResistance > 1
-                    ? controller.Settings.UprisingResistance
-                    : 1;
-            int adjustment = GetMissionAdjustment(planet, this, config.MissionLeadershipDivisor);
-            KeyValuePair<int, int>[] primary = config
-                .PrimaryConsequenceTable.OrderBy(entry => entry.Key)
-                .ToArray();
-            KeyValuePair<int, int>[] secondary = config
-                .SecondaryConsequenceTable.OrderBy(entry => entry.Key)
-                .ToArray();
+            Planet projection = state.GetSupportProjection(
+                controller,
+                config.InciteMissionSupportShift
+            );
+            int troopCount = state.GetGarrisonCount(controller.InstanceID);
+            int completionMask = 0;
+            for (int losses = 0; losses < 3; losses++)
+            {
+                if (
+                    GetProjectedController(game, projection, state, controller.InstanceID, losses)
+                    != opponent
+                )
+                    completionMask |= 1 << losses;
+            }
+            int baseScore = planet.GetUprisingIncidentBaseScore(
+                controller,
+                game.Config.AI.Garrison,
+                planet.GetPopularSupport(controller.InstanceID),
+                troopCount,
+                adjustment
+            );
             double successes = 0;
             for (int sum = 0; sum <= 2 * config.DiceRange; sum++)
             {
-                int score =
-                    sum + 2 * config.DiceAddend + threshold - multiplier * troopCount + adjustment;
-                int effect = GetConsequence(primary, score);
-                int severity = effect > 0 ? GetConsequence(secondary, score) : 0;
+                int score = sum + 2 * config.DiceAddend + baseScore;
+                int effect = GameConfig.UprisingConfig.GetConsequence(
+                    config.PrimaryConsequenceTable,
+                    score
+                );
+                int severity =
+                    effect > 0
+                        ? GameConfig.UprisingConfig.GetConsequence(
+                            config.SecondaryConsequenceTable,
+                            score
+                        )
+                        : 0;
                 int losses = (effect == 2 ? 1 : 0) + (severity == 2 ? 1 : 0);
-                if (completesAfterLosses[losses])
+                if ((completionMask & (1 << losses)) != 0)
                     successes += config.DiceRange + 1 - Math.Abs(sum - config.DiceRange);
             }
-            return successes / ((config.DiceRange + 1d) * (config.DiceRange + 1d));
+            probability = successes / ((config.DiceRange + 1d) * (config.DiceRange + 1d));
+            state.CacheOutcomeProbability(ConfigKey, OwnerInstanceID, adjustment, probability);
+            return skillProbability * probability;
         }
 
         /// <summary>
-        /// Resolves control after removing up to two controller regiments from an observed snapshot.
+        /// Resolves projected control after controller losses without rebuilding regiment collections.
         /// </summary>
-        /// <param name="game">The game supplying faction identities and control configuration.</param>
-        /// <param name="planet">The projected support and colonization state.</param>
-        /// <param name="regiments">The initial stationary regiment counts.</param>
+        /// <param name="game">The game supplying factions and control configuration.</param>
+        /// <param name="planet">The projected planet support and colonization state.</param>
+        /// <param name="state">The captured garrison assessment.</param>
         /// <param name="losingOwner">The owner whose regiments may be destroyed.</param>
         /// <param name="losses">The maximum regiment losses.</param>
         /// <returns>The projected controlling faction identifier.</returns>
         private static string GetProjectedController(
             GameRoot game,
             Planet planet,
-            Dictionary<string, int> regiments,
+            MissionEvaluationState state,
             string losingOwner,
             int losses
         )
         {
-            List<string> owners = regiments
-                .Where(entry => entry.Value > (entry.Key == losingOwner ? losses : 0))
-                .Select(entry => entry.Key)
-                .ToList();
+            IReadOnlyList<string> owners = state.GetGarrisonOwners();
             if (!planet.IsColonized)
-                return owners.Contains(planet.OwnerInstanceID) ? planet.OwnerInstanceID : null;
-            return planet.ResolveController(game, owners)?.InstanceID;
+                return
+                    state.GetGarrisonCount(planet.OwnerInstanceID)
+                    > (planet.OwnerInstanceID == losingOwner ? losses : 0)
+                    ? planet.OwnerInstanceID
+                    : null;
+            int ownerCount = 0;
+            string soleOwner = null;
+            for (int index = 0; index < owners.Count; index++)
+            {
+                string owner = owners[index];
+                if (state.GetGarrisonCount(owner) <= (owner == losingOwner ? losses : 0))
+                    continue;
+                ownerCount++;
+                soleOwner = owner;
+            }
+            return planet.ResolveController(game, ownerCount, soleOwner)?.InstanceID;
         }
 
         /// <summary>
-        /// Copies mutable support state while retaining the sector used by garrison rules.
+        /// Combines captured active mission contributions with the supplied proposed team.
         /// </summary>
-        /// <param name="planet">The observed planet to copy.</param>
-        /// <returns>A detached projection whose mutations cannot affect the observed or live planet.</returns>
-        private static Planet CreateProjection(Planet planet)
-        {
-            Planet projection = (Planet)planet.CreateCopy();
-            projection.SetParent(planet.GetParent());
-            return projection;
-        }
-
-        /// <summary>
-        /// Combines visible active mission adjustments with the proposed mission's arriving team.
-        /// </summary>
-        /// <param name="planet">The observed destination.</param>
+        /// <param name="state">The observed planet assessment shared by candidate evaluations.</param>
         /// <param name="proposed">The proposed mission, counted exactly once.</param>
+        /// <param name="participants">The same proposed team used for skill probability.</param>
         /// <param name="divisor">The configured leadership divisor.</param>
         /// <returns>The signed incident-score adjustment.</returns>
-        private static int GetMissionAdjustment(Planet planet, Mission proposed, int divisor)
+        private static int GetMissionAdjustment(
+            MissionEvaluationState state,
+            Mission proposed,
+            IReadOnlyList<IMissionParticipant> participants,
+            int divisor
+        )
         {
             int adjustment = 0;
-            foreach (
-                Mission mission in planet
-                    .GetChildren<Mission>()
-                    .Where(mission =>
-                        mission.HasInitiated
-                        && !mission.IsWaitingForParticipants()
-                        && mission.InstanceID != proposed.InstanceID
-                    )
-                    .Append(proposed)
-            )
+            string proposedId = proposed.PeekInstanceID();
+            IReadOnlyList<Mission> active = state.GetActiveMissions();
+            for (int index = 0; index < active.Count; index++)
             {
-                if (mission is not InciteUprisingMission && mission is not SubdueUprisingMission)
+                Mission mission = active[index];
+                if (
+                    ReferenceEquals(mission, proposed)
+                    || (!string.IsNullOrEmpty(proposedId) && mission.PeekInstanceID() == proposedId)
+                )
                     continue;
-                IReadOnlyList<IMissionParticipant> participants = mission.GetMainParticipants();
-                int average =
-                    participants.Count == 0
-                        ? 0
-                        : participants.Sum(participant =>
-                            participant.GetEffectiveRating(SkillRating.Leadership)
-                        ) / participants.Count;
-                adjustment += (mission is InciteUprisingMission ? 1 : -1) * (average / divisor);
+                if (mission is InciteUprisingMission)
+                    adjustment += state.GetAverageLeadership(mission) / divisor;
+                else if (mission is SubdueUprisingMission)
+                    adjustment -= state.GetAverageLeadership(mission) / divisor;
             }
-            return adjustment;
-        }
-
-        /// <summary>
-        /// Looks up the consequence at the highest satisfied threshold.
-        /// </summary>
-        /// <param name="table">The consequence table sorted by threshold.</param>
-        /// <param name="score">The incident score.</param>
-        /// <returns>The matching consequence, or zero below the first threshold.</returns>
-        private static int GetConsequence(KeyValuePair<int, int>[] table, int score)
-        {
-            int consequence = 0;
-            foreach (KeyValuePair<int, int> entry in table)
-            {
-                if (entry.Key > score)
-                    break;
-                consequence = entry.Value;
-            }
-            return consequence;
+            int total = 0;
+            for (int index = 0; index < participants.Count; index++)
+                total += participants[index].GetEffectiveRating(SkillRating.Leadership);
+            int average = participants.Count == 0 ? 0 : total / participants.Count;
+            return adjustment + average / divisor;
         }
     }
 
@@ -3112,40 +3108,47 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Calculates the additional chance of completing the objective after a successful skill roll.
-        /// Travel, hidden missions, and later ticks are outside this observed-state estimate.
+        /// Includes the support and garrison requirements for the next execution to report success.
         /// </summary>
-        /// <param name="context">The authoritative or observed destination and configuration.</param>
-        /// <returns>The conditional completion probability between zero and one.</returns>
-        protected override double GetCompletionProbability(MissionEvaluationContext context)
+        /// <param name="participants">The proposed participant snapshot.</param>
+        /// <param name="context">The authoritative or observed objective state.</param>
+        /// <returns>The percentage chance of reporting success if the objective is reached.</returns>
+        protected override double GetObjectiveSuccessProbability(
+            IEnumerable<IMissionParticipant> participants,
+            MissionEvaluationContext context
+        )
         {
+            double skillProbability = base.GetObjectiveSuccessProbability(participants, context);
+            if (skillProbability <= 0)
+                return 0;
             GameRoot game = context.Game;
             Planet planet = GetMissionPlanet(context);
-            Dictionary<string, int> regiments = planet
-                .GetAllRegiments()
-                .Where(regiment =>
-                    regiment.ManufacturingStatus == ManufacturingStatus.Complete
-                    && regiment.Movement == null
-                    && !string.IsNullOrEmpty(regiment.OwnerInstanceID)
+            if (planet?.IsInUprising != true)
+                return 0;
+            MissionEvaluationState state =
+                context.State ?? new MissionEvaluationState(game, planet);
+            if (
+                state.TryGetOutcomeProbability(
+                    ConfigKey,
+                    OwnerInstanceID,
+                    0,
+                    out double probability
                 )
-                .GroupBy(regiment => regiment.OwnerInstanceID)
-                .ToDictionary(group => group.Key, group => group.Count());
+            )
+                return skillProbability * probability;
             GameConfig.UprisingConfig config = game.Config.Uprising;
             Faction faction = game.GetFactionByOwnerInstanceID(OwnerInstanceID);
-            List<string> owners = regiments.Keys.ToList();
+            IReadOnlyList<string> owners = state.GetGarrisonOwners();
             int successes = 0;
             for (int roll = 0; roll <= config.SubdueOwnedSupportRange; roll++)
             {
-                Planet projection = (Planet)planet.CreateCopy();
-                projection.SetParent(planet.GetParent());
-                projection.ChangePopularSupport(
+                Planet projection = state.GetSupportProjection(
                     faction,
-                    config.SubdueOwnedSupportBase + roll,
-                    game
+                    config.SubdueOwnedSupportBase + roll
                 );
                 string owner = !projection.IsColonized
                     ? (
-                        owners.Contains(projection.OwnerInstanceID)
+                        state.GetGarrisonCount(projection.OwnerInstanceID) > 0
                             ? projection.OwnerInstanceID
                             : null
                     )
@@ -3157,9 +3160,8 @@ namespace Rebellion.Game.Missions
                 }
                 if (string.IsNullOrEmpty(owner) || !projection.IsPopulated())
                     continue;
-                int troops = regiments.TryGetValue(owner, out int count) ? count : 0;
                 if (
-                    troops
+                    state.GetGarrisonCount(owner)
                     >= projection.GetGarrisonRequirement(
                         game.GetFactionByOwnerInstanceID(owner),
                         game.Config.AI.Garrison
@@ -3167,7 +3169,9 @@ namespace Rebellion.Game.Missions
                 )
                     successes++;
             }
-            return successes / (config.SubdueOwnedSupportRange + 1d);
+            probability = successes / (config.SubdueOwnedSupportRange + 1d);
+            state.CacheOutcomeProbability(ConfigKey, OwnerInstanceID, 0, probability);
+            return skillProbability * probability;
         }
     }
 }

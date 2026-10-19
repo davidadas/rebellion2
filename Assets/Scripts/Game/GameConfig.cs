@@ -875,6 +875,29 @@ namespace Rebellion.Game
             public int ClearUprisingMinTicks { get; set; }
 
             public int ClearUprisingMaxTicks { get; set; }
+
+            /// <summary>
+            /// Looks up the consequence at the highest satisfied threshold.
+            /// </summary>
+            /// <param name="table">The configured consequence table.</param>
+            /// <param name="score">The incident score.</param>
+            /// <returns>The matching consequence, or zero below the first threshold.</returns>
+            internal static int GetConsequence(Dictionary<int, int> table, int score)
+            {
+                int consequence = 0;
+                int matchedThreshold = int.MinValue;
+                bool found = false;
+                foreach (KeyValuePair<int, int> entry in table)
+                {
+                    if (entry.Key <= score && (!found || entry.Key > matchedThreshold))
+                    {
+                        matchedThreshold = entry.Key;
+                        consequence = entry.Value;
+                        found = true;
+                    }
+                }
+                return consequence;
+            }
         }
 
         /// <summary>
