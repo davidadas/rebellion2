@@ -41,6 +41,7 @@ internal sealed class PlanetSectorWindowProjector
     /// <param name="selectedFleetInstanceIds">The fleets selected in open strategy windows.</param>
     /// <param name="showAllWaypointRoutes">Whether every player waypoint route is visible.</param>
     /// <param name="filterMode">The galactic-information filter applied to visible planets.</param>
+    /// <param name="visibleSectors">All faction-filtered strategy sectors.</param>
     /// <returns>The immutable planet-sector presentation.</returns>
     public PlanetSectorWindowRenderData CreateRenderData(
         GalaxyMapSector mapSector,
@@ -51,7 +52,8 @@ internal sealed class PlanetSectorWindowProjector
         StrategyWindowTargetingSource waypointPlan = null,
         IReadOnlyCollection<string> selectedFleetInstanceIds = null,
         bool showAllWaypointRoutes = false,
-        GalacticInformationFilterMode filterMode = GalacticInformationFilterMode.DisplayOff
+        GalacticInformationFilterMode filterMode = GalacticInformationFilterMode.DisplayOff,
+        IReadOnlyList<GalaxyMapSector> visibleSectors = null
     )
     {
         UIContext uiContext = GetUIContext();
@@ -90,7 +92,8 @@ internal sealed class PlanetSectorWindowProjector
             out List<PlanetSectorWaypointSegmentRenderData> waypointSegments,
             out List<PlanetSectorWaypointRenderData> waypoints,
             selectedFleetInstanceIds,
-            showAllWaypointRoutes
+            showAllWaypointRoutes,
+            visibleSectors
         );
         return new PlanetSectorWindowRenderData(
             sector?.GetDisplayName(),
@@ -109,18 +112,21 @@ internal sealed class PlanetSectorWindowProjector
     /// <param name="waypoints">Receives numbered route stops visible in the sector.</param>
     /// <param name="selectedFleetInstanceIds">The fleet routes visible through selection.</param>
     /// <param name="showAllRoutes">Whether every player waypoint route is visible.</param>
+    /// <param name="visibleSectors">All faction-filtered strategy sectors.</param>
     internal void ProjectWaypointRoutes(
         GalaxyMapSector mapSector,
         StrategyWindowTargetingSource waypointPlan,
         out List<PlanetSectorWaypointSegmentRenderData> segments,
         out List<PlanetSectorWaypointRenderData> waypoints,
         IReadOnlyCollection<string> selectedFleetInstanceIds = null,
-        bool showAllRoutes = false
+        bool showAllRoutes = false,
+        IReadOnlyList<GalaxyMapSector> visibleSectors = null
     )
     {
         UIContext uiContext = GetUIContext();
         List<FleetWaypointRoute> resolvedRoutes = FleetWaypointRouteResolver.Resolve(
-            uiContext.Game,
+            visibleSectors
+                ?? (mapSector == null ? Array.Empty<GalaxyMapSector>() : new[] { mapSector }),
             uiContext.GetPlayerFactionInstanceID(),
             waypointPlan,
             selectedFleetInstanceIds,
@@ -328,16 +334,15 @@ internal sealed class PlanetSectorWindowProjector
     /// <returns>The represented headquarters faction identifier, or null when none exists.</returns>
     private static string ResolveHeadquartersFactionId(UIContext uiContext, Planet planet)
     {
-        if (uiContext?.Game == null || planet?.IsUnexploredView != false)
+        if (uiContext == null || planet?.IsUnexploredView != false)
             return null;
         if (planet.IsHeadquarters && !string.IsNullOrEmpty(planet.OwnerInstanceID))
             return planet.OwnerInstanceID;
 
         string playerFactionId = uiContext.GetPlayerFactionInstanceID();
-        Planet livePlanet = uiContext.Game.GetSceneNodeByInstanceID<Planet>(planet.InstanceID);
         bool receivesMovingHeadquarters =
-            livePlanet
-                ?.GetChildren<Building>()
+            planet
+                .GetChildren<Building>()
                 .Any(building =>
                     building.BuildingType == BuildingType.Headquarters
                     && building.Movement != null
@@ -606,39 +611,7 @@ internal sealed class PlanetSectorWindowProjector
     /// <returns>True when a defense overlay should be displayed.</returns>
     private static bool HasDefenses(Planet planet)
     {
-        return planet != null
-            && (
-                planet
-                    .GetChildren<Building>()
-                    .Any(building =>
-                        building.GetBuildingType() is (BuildingType.Defense or BuildingType.Weapon)
-                        && HasDefensePresence(building)
-                    )
-                || planet.GetChildren<Officer>().Any(HasDefensePresence)
-                || planet.GetChildren<SpecialForces>().Any(HasDefensePresence)
-                || planet.GetChildren<Regiment>().Any(HasDefensePresence)
-                || planet.GetChildren<Starfighter>().Any(HasDefensePresence)
-            );
-    }
-
-    /// <summary>
-    /// Returns whether a defensive unit is present or visibly under construction at its planet.
-    /// </summary>
-    /// <param name="unit">The unit to inspect.</param>
-    /// <returns>True when the unit contributes to the planet's defense overlay.</returns>
-    private static bool HasDefensePresence(IMovable unit)
-    {
-        if (unit?.IsActive() != true)
-            return false;
-
-        if (unit is IManufacturable { ManufacturingStatus: ManufacturingStatus.Building })
-            return true;
-
-        return unit.GetTransitMovement() == null
-            && (
-                unit is not IManufacturable manufacturable
-                || manufacturable.GetManufacturingStatus() == ManufacturingStatus.Complete
-            );
+        return DefenseWindowSession.HasPlanetItems(planet);
     }
 
     /// <summary>

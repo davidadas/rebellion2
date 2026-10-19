@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
@@ -41,6 +40,7 @@ public sealed class BattleAlertWindowController
 {
     private readonly Action<UIWindow> closeWindow;
     private readonly Func<PendingCombatResult> getPendingCombat;
+    private readonly Func<string, Planet> findVisiblePlanet;
     private readonly Func<SpaceCombatResult> resolveRetreat;
     private readonly Func<SpaceCombatResult> autoResolve;
     private readonly Func<UIContext> getUIContext;
@@ -63,6 +63,7 @@ public sealed class BattleAlertWindowController
     /// <param name="resolveRetreat">Resolves a player retreat.</param>
     /// <param name="autoResolve">Automatically resolves the pending encounter.</param>
     /// <param name="getUIContext">Returns the current strategy UI context.</param>
+    /// <param name="findVisiblePlanet">Finds a planet in the current faction-visible snapshot.</param>
     /// <param name="playSfx">Plays a strategy sound-effect path.</param>
     /// <param name="playTrack">Plays a music-track path.</param>
     /// <param name="stopMusic">Stops the current music track.</param>
@@ -76,6 +77,7 @@ public sealed class BattleAlertWindowController
         Func<SpaceCombatResult> resolveRetreat,
         Func<SpaceCombatResult> autoResolve,
         Func<UIContext> getUIContext,
+        Func<string, Planet> findVisiblePlanet,
         Action<string> playSfx,
         Action<string> playTrack,
         Action stopMusic,
@@ -92,6 +94,8 @@ public sealed class BattleAlertWindowController
             resolveRetreat ?? throw new ArgumentNullException(nameof(resolveRetreat));
         this.autoResolve = autoResolve ?? throw new ArgumentNullException(nameof(autoResolve));
         this.getUIContext = getUIContext ?? throw new ArgumentNullException(nameof(getUIContext));
+        this.findVisiblePlanet =
+            findVisiblePlanet ?? throw new ArgumentNullException(nameof(findVisiblePlanet));
         this.playSfx = playSfx ?? throw new ArgumentNullException(nameof(playSfx));
         this.playTrack = playTrack ?? throw new ArgumentNullException(nameof(playTrack));
         this.stopMusic = stopMusic ?? throw new ArgumentNullException(nameof(stopMusic));
@@ -230,7 +234,8 @@ public sealed class BattleAlertWindowController
     /// Opens a durable combat report.
     /// </summary>
     /// <param name="report">The durable report to display.</param>
-    internal void OpenReport(CombatReport report)
+    /// <param name="closeContinuation">The action to invoke after the report is explicitly closed.</param>
+    internal void OpenReport(CombatReport report, Action closeContinuation = null)
     {
         BattleResultPresentation presentation = BattleResultPresentation.Create(report);
 
@@ -239,7 +244,7 @@ public sealed class BattleAlertWindowController
         if (view == null)
             return;
 
-        SetCombatResult(view, presentation);
+        SetCombatResult(view, presentation, closeContinuation);
         PlayResultAudio(presentation);
         markDirty();
     }
@@ -272,6 +277,23 @@ public sealed class BattleAlertWindowController
     }
 
     /// <summary>
+    /// Routes a window-shell close request through the owning battle-alert session.
+    /// </summary>
+    /// <param name="window">The window requested for closure.</param>
+    /// <returns>True when the window belongs to this controller.</returns>
+    internal bool TryCloseWindow(UIWindow window)
+    {
+        if (
+            window == null
+            || !windowManager.TryGetWindowView(window, out BattleAlertWindowView view)
+        )
+            return false;
+
+        HandleCloseRequested(view);
+        return true;
+    }
+
+    /// <summary>
     /// Creates immutable presentation for one bound battle-alert view.
     /// </summary>
     /// <param name="view">The view whose controller-owned session is projected.</param>
@@ -294,6 +316,7 @@ public sealed class BattleAlertWindowController
             playerFactionId = GetPlayerFactionID();
 
         PendingCombatResult pending = getPendingCombat();
+        Planet pendingPlanet = pending == null ? null : findVisiblePlanet(pending.PlanetInstanceID);
 
         return projector.Project(
             session.Mode,
@@ -305,7 +328,8 @@ public sealed class BattleAlertWindowController
             playerFactionId,
             x,
             y,
-            getUIContext()
+            getUIContext(),
+            pendingPlanet
         );
     }
 
@@ -377,7 +401,11 @@ public sealed class BattleAlertWindowController
     /// <param name="view">The requesting battle-alert view.</param>
     private void HandleCloseRequested(BattleAlertWindowView view)
     {
+        Action closeContinuation = sessions.TryGetValue(view, out BattleAlertWindowSession session)
+            ? session.TakeCloseContinuation()
+            : null;
         CloseWindow(view);
+        closeContinuation?.Invoke();
     }
 
     /// <summary>
@@ -406,7 +434,7 @@ public sealed class BattleAlertWindowController
     {
         if (TryGetResultSession(view, out BattleAlertWindowSession session))
         {
-            Planet planet = session.Result.GetPlanet(getUIContext());
+            Planet planet = findVisiblePlanet(session.Result.PlanetInstanceID);
             if (planet == null)
             {
                 CloseWindow(view);
@@ -427,7 +455,7 @@ public sealed class BattleAlertWindowController
     {
         if (TryGetResultSession(view, out BattleAlertWindowSession session))
         {
-            Planet planet = session.Result.GetPlanet(getUIContext());
+            Planet planet = findVisiblePlanet(session.Result.PlanetInstanceID);
             if (planet?.GetParent() is not PlanetSector sector)
             {
                 CloseWindow(view);
@@ -507,9 +535,14 @@ public sealed class BattleAlertWindowController
     /// </summary>
     /// <param name="view">The result view.</param>
     /// <param name="result">The completed combat result.</param>
-    private void SetCombatResult(BattleAlertWindowView view, BattleResultPresentation result)
+    /// <param name="closeContinuation">The action to invoke after an explicit close.</param>
+    private void SetCombatResult(
+        BattleAlertWindowView view,
+        BattleResultPresentation result,
+        Action closeContinuation = null
+    )
     {
-        sessions[view].Complete(result);
+        sessions[view].Complete(result, closeContinuation);
     }
 
     /// <summary>
@@ -642,10 +675,7 @@ public sealed class BattleAlertWindowController
     /// <returns>The current player faction identifier.</returns>
     private string GetPlayerFactionID()
     {
-        return getUIContext()
-            ?.Game?.GetPlayers()
-            ?.FirstOrDefault(player => player.ControllerType == PlayerControllerType.Human)
-            ?.FactionID;
+        return getUIContext()?.GetPlayerFactionInstanceID();
     }
 
     /// <summary>
@@ -664,6 +694,8 @@ public sealed class BattleAlertWindowController
     /// </summary>
     private sealed class BattleAlertWindowSession
     {
+        private Action closeContinuation;
+
         internal BattleAlertWindowMode Mode { get; private set; } = BattleAlertWindowMode.Hidden;
 
         internal BattleAlertPanel PendingPanel { get; private set; } = BattleAlertPanel.Summary;
@@ -690,11 +722,24 @@ public sealed class BattleAlertWindowController
         /// Stores a completed combat result and restores default result selections.
         /// </summary>
         /// <param name="result">The completed combat result.</param>
-        internal void Complete(BattleResultPresentation result)
+        /// <param name="closeContinuation">The action to invoke after an explicit close.</param>
+        internal void Complete(BattleResultPresentation result, Action closeContinuation = null)
         {
             Result = result ?? throw new ArgumentNullException(nameof(result));
+            this.closeContinuation = closeContinuation;
             ReconcileMode(BattleAlertWindowMode.Result);
             ResultCategory = result.DefaultCategory;
+        }
+
+        /// <summary>
+        /// Takes the explicit-close continuation so it can run at most once.
+        /// </summary>
+        /// <returns>The stored continuation, or null when none was assigned.</returns>
+        internal Action TakeCloseContinuation()
+        {
+            Action continuation = closeContinuation;
+            closeContinuation = null;
+            return continuation;
         }
 
         /// <summary>

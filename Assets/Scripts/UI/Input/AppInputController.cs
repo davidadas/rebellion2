@@ -14,6 +14,7 @@ public sealed class AppInputController : MonoBehaviour, PlayerInputActions.IGlob
     private InputManager _inputManager;
     private CancelStack _cancelStack;
     private GameRuntime _runtime;
+    private Func<string, bool> _loadSave;
 
     /// <summary>
     /// Occurs when global input requests the scene's Options menu.
@@ -48,7 +49,13 @@ public sealed class AppInputController : MonoBehaviour, PlayerInputActions.IGlob
     /// <param name="inputManager">The input manager to listen to.</param>
     /// <param name="cancelStack">The cancel stack used before opening settings.</param>
     /// <param name="runtime">The runtime that receives global commands.</param>
-    public void Initialize(InputManager inputManager, CancelStack cancelStack, GameRuntime runtime)
+    /// <param name="loadSave">Starts the application saved-game transition.</param>
+    public void Initialize(
+        InputManager inputManager,
+        CancelStack cancelStack,
+        GameRuntime runtime,
+        Func<string, bool> loadSave = null
+    )
     {
         if (_inputManager != null)
             DetachInputActions();
@@ -56,6 +63,7 @@ public sealed class AppInputController : MonoBehaviour, PlayerInputActions.IGlob
         _inputManager = inputManager;
         _cancelStack = cancelStack;
         _runtime = runtime;
+        _loadSave = loadSave;
 
         EnsureBaseContext();
         AttachInputActions();
@@ -122,7 +130,7 @@ public sealed class AppInputController : MonoBehaviour, PlayerInputActions.IGlob
         if (!context.performed)
             return;
 
-        if (CurrentContext == InputContext.Cutscene)
+        if (CurrentContext == InputContext.Cutscene || LoadingScreenController.IsLoadInProgress)
             return;
 
         if (Keyboard.current?.shiftKey.isPressed == true)
@@ -137,7 +145,11 @@ public sealed class AppInputController : MonoBehaviour, PlayerInputActions.IGlob
     /// <param name="context">The input callback context.</param>
     public void OnOpenGameMenu(InputAction.CallbackContext context)
     {
-        if (!context.performed || CurrentContext == InputContext.Cutscene)
+        if (
+            !context.performed
+            || CurrentContext == InputContext.Cutscene
+            || LoadingScreenController.IsLoadInProgress
+        )
             return;
 
         OptionsMenuRequested?.Invoke();
@@ -170,7 +182,7 @@ public sealed class AppInputController : MonoBehaviour, PlayerInputActions.IGlob
         if (!CanUseGameplayShortcuts())
             return;
 
-        _runtime?.QuickLoad();
+        _loadSave?.Invoke(SaveGameManager.QuickSaveFileName);
     }
 
     /// <summary>
@@ -244,6 +256,7 @@ public sealed class AppInputController : MonoBehaviour, PlayerInputActions.IGlob
     private bool CanUseGameplayShortcuts()
     {
         return !UIInputFocus.IsTextEntryActive()
+            && !LoadingScreenController.IsLoadInProgress
             && (
                 CurrentContext == InputContext.Strategy
                 || CurrentContext == InputContext.Tactical

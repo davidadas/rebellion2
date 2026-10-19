@@ -296,20 +296,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 1
             );
 
+            float hoverStartTime = Time.unscaledTime;
             planet.OnPointerEnter(eventData);
 
-            RectTransform labelRoot = GetField<RectTransform>("hoverLabelRoot");
-            Image labelBackground = GetField<Image>("hoverLabelBackgroundImage");
-            TextMeshProUGUI labelText = GetField<TextMeshProUGUI>("hoverLabelText");
-            float showTime = GetField<float>("hoverLabelShowTime");
-            Assert.IsFalse(labelRoot.gameObject.activeSelf);
+            _view.AdvanceStatusBarHover(hoverStartTime + HoverTooltip.HoverDelaySeconds - 0.01f);
 
-            _view.AdvanceStatusBarHover(showTime - 0.01f);
+            Assert.IsNull(_view.transform.Find("StatusBarHoverLabel"));
 
-            Assert.IsFalse(labelRoot.gameObject.activeSelf);
+            _view.AdvanceStatusBarHover(float.PositiveInfinity);
 
-            _view.AdvanceStatusBarHover(showTime);
-
+            RectTransform labelRoot = _view.transform.Find("StatusBarHoverLabel") as RectTransform;
+            Image labelBackground = labelRoot.Find("Background").GetComponent<Image>();
+            TextMeshProUGUI labelText = labelRoot.Find("Text").GetComponent<TextMeshProUGUI>();
             Assert.IsTrue(labelRoot.gameObject.activeSelf);
             Assert.AreEqual(expectedText, labelText.text);
             Assert.AreEqual(Color.black, labelRoot.GetComponent<Image>().color);
@@ -340,11 +338,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             );
 
             planet.OnPointerEnter(eventData);
-            float showTime = GetField<float>("hoverLabelShowTime");
             planet.OnPointerExit(eventData);
-            _view.AdvanceStatusBarHover(showTime + 1f);
+            _view.AdvanceStatusBarHover(float.PositiveInfinity);
 
-            Assert.IsFalse(GetField<RectTransform>("hoverLabelRoot").gameObject.activeSelf);
+            Assert.IsNull(_view.transform.Find("StatusBarHoverLabel"));
         }
 
         [Test]

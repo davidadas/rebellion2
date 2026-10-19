@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using NUnit.Framework;
 using Rebellion.Game.Combat;
@@ -243,6 +244,61 @@ namespace Rebellion.Tests.Content
             );
         }
 
+        [Test]
+        public void ValidateOfficerTraits_ValidDefinitionAndReference_ReturnsIndexedDefinition()
+        {
+            OfficerTraitDefinition trait = CreateTrait("travel");
+            Officer officer = new Officer { InstanceID = "officer" };
+            officer.Traits.Add(trait.ID);
+
+            IReadOnlyDictionary<string, OfficerTraitDefinition> result =
+                GameDataCatalog.ValidateOfficerTraits(new[] { trait }, new[] { officer });
+
+            Assert.AreSame(trait, result[trait.ID]);
+        }
+
+        [Test]
+        public void ValidateOfficerTraits_DuplicateDefinition_ThrowsInvalidDataException()
+        {
+            InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+                GameDataCatalog.ValidateOfficerTraits(
+                    new[] { CreateTrait("duplicate"), CreateTrait("duplicate") },
+                    new Officer[0]
+                )
+            );
+
+            StringAssert.Contains("Duplicate officer trait ID 'duplicate'", exception.Message);
+        }
+
+        [Test]
+        public void ValidateOfficerTraits_MissingOfficerReference_ThrowsInvalidDataException()
+        {
+            Officer officer = new Officer { InstanceID = "officer" };
+            officer.Traits.Add("missing");
+
+            InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+                GameDataCatalog.ValidateOfficerTraits(
+                    new OfficerTraitDefinition[0],
+                    new[] { officer }
+                )
+            );
+
+            StringAssert.Contains("references missing trait 'missing'", exception.Message);
+        }
+
+        [Test]
+        public void ValidateOfficerTraits_InvalidTravelPercentage_ThrowsInvalidDataException()
+        {
+            OfficerTraitDefinition trait = CreateTrait("travel");
+            trait.PersonnelTravelTimePercent = 0;
+
+            InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+                GameDataCatalog.ValidateOfficerTraits(new[] { trait }, new Officer[0])
+            );
+
+            StringAssert.Contains("travel-time percentage", exception.Message);
+        }
+
         /// <summary>
         /// Creates building.
         /// </summary>
@@ -267,5 +323,13 @@ namespace Rebellion.Tests.Content
             sector.AddChild(planet);
             return sector;
         }
+
+        /// <summary>
+        /// Creates an officer trait with neutral modifier defaults.
+        /// </summary>
+        /// <param name="id">The trait identifier.</param>
+        /// <returns>The created trait.</returns>
+        private static OfficerTraitDefinition CreateTrait(string id) =>
+            new OfficerTraitDefinition { ID = id };
     }
 }

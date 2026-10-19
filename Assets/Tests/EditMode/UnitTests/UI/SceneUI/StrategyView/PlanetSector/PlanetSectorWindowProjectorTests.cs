@@ -515,19 +515,118 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreEqual(PlanetIcon.None, data.Planets[0].HoveredIcon);
         }
 
-        [Test]
-        public void CreateRenderData_StationedOfficer_ReturnsDefenseOverlay()
+        [TestCase(DefenseWindowItemKind.Officer)]
+        [TestCase(DefenseWindowItemKind.SpecialForces)]
+        [TestCase(DefenseWindowItemKind.Regiment)]
+        [TestCase(DefenseWindowItemKind.Starfighter)]
+        [TestCase(DefenseWindowItemKind.Shield)]
+        [TestCase(DefenseWindowItemKind.Battery)]
+        public void CreateRenderData_ActiveDefenseItem_ReturnsDefenseOverlay(
+            DefenseWindowItemKind itemKind
+        )
         {
             Planet planet = CreatePlanet("planet", _playerFactionId, 10, 20);
-            planet.AddTestChild(
-                new Officer { OwnerInstanceID = _playerFactionId, Movement = null }
-            );
+            IMovable item = CreateDefenseWindowItem(itemKind);
+            planet.AddTestChild((Rebellion.SceneGraph.ISceneNode)item);
             GalaxyMapSector sector = CreateSector(
                 new GalaxyMapPlanet(_planetSector, planet, string.Empty)
             );
 
             PlanetSectorWindowRenderData data = _projector.CreateRenderData(
                 sector,
+                null,
+                PlanetIcon.None,
+                null,
+                PlanetIcon.None
+            );
+
+            Assert.IsNotNull(data.Planets[0].DefenseTexture);
+            Assert.IsNotNull(data.Planets[0].DefensePressedTexture);
+        }
+
+        [TestCase(DefenseWindowItemKind.Officer)]
+        [TestCase(DefenseWindowItemKind.SpecialForces)]
+        [TestCase(DefenseWindowItemKind.Regiment)]
+        [TestCase(DefenseWindowItemKind.Starfighter)]
+        [TestCase(DefenseWindowItemKind.Shield)]
+        [TestCase(DefenseWindowItemKind.Battery)]
+        public void CreateRenderData_UnitMovesToEmptyPlanet_ReturnsDefenseOverlay(
+            DefenseWindowItemKind itemKind
+        )
+        {
+            Planet origin = CreatePlanet("origin", _playerFactionId, 10, 20);
+            Planet destination = CreatePlanet("destination", _playerFactionId, 20, 30);
+            origin.IsColonized = true;
+            destination.IsColonized = true;
+            origin.EnergyCapacity = 1;
+            destination.EnergyCapacity = 1;
+            IMovable item = CreateDefenseWindowItem(itemKind);
+            _game.AttachNode(_planetSector, _game.GetGalaxyMap());
+            _game.AttachNode(origin, _planetSector);
+            _game.AttachNode(destination, _planetSector);
+            GameSession session = TestContent.CreateGameSession(_game);
+
+            MoveDefenseWindowItem(session, item, origin, destination);
+            PlanetSectorWindowRenderData data = _projector.CreateRenderData(
+                CreateSector(
+                    new GalaxyMapPlanet(_planetSector, origin, string.Empty),
+                    new GalaxyMapPlanet(_planetSector, destination, string.Empty)
+                ),
+                null,
+                PlanetIcon.None,
+                null,
+                PlanetIcon.None
+            );
+
+            Assert.AreSame(destination, item.GetParent());
+            Assert.IsNotNull(item.Movement);
+            Assert.IsNull(data.Planets[0].DefenseTexture);
+            Assert.IsNotNull(data.Planets[1].DefenseTexture);
+            Assert.IsNotNull(data.Planets[1].DefensePressedTexture);
+        }
+
+        [TestCase(DefenseWindowItemKind.Officer)]
+        [TestCase(DefenseWindowItemKind.SpecialForces)]
+        [TestCase(DefenseWindowItemKind.Regiment)]
+        [TestCase(DefenseWindowItemKind.Starfighter)]
+        [TestCase(DefenseWindowItemKind.Shield)]
+        [TestCase(DefenseWindowItemKind.Battery)]
+        public void CreateRenderData_InactiveDefenseItem_ReturnsNoDefenseOverlay(
+            DefenseWindowItemKind itemKind
+        )
+        {
+            Planet planet = CreatePlanet("planet", _playerFactionId, 10, 20);
+            IMovable item = CreateDefenseWindowItem(itemKind);
+            item.IsEnabled = false;
+            planet.AddTestChild((Rebellion.SceneGraph.ISceneNode)item);
+
+            PlanetSectorWindowRenderData data = _projector.CreateRenderData(
+                CreateSector(new GalaxyMapPlanet(_planetSector, planet, string.Empty)),
+                null,
+                PlanetIcon.None,
+                null,
+                PlanetIcon.None
+            );
+
+            Assert.IsNull(data.Planets[0].DefenseTexture);
+            Assert.IsNull(data.Planets[0].DefensePressedTexture);
+        }
+
+        [Test]
+        public void CreateRenderData_CapturedInjuredEnemyOfficer_ReturnsDefenseOverlay()
+        {
+            Planet planet = CreatePlanet("planet", _playerFactionId, 10, 20);
+            planet.AddTestChild(
+                new Officer
+                {
+                    OwnerInstanceID = _opposingFactionId,
+                    IsCaptured = true,
+                    InjuryPoints = 1,
+                }
+            );
+
+            PlanetSectorWindowRenderData data = _projector.CreateRenderData(
+                CreateSector(new GalaxyMapPlanet(_planetSector, planet, string.Empty)),
                 null,
                 PlanetIcon.None,
                 null,
@@ -761,8 +860,87 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             return new Building
             {
                 BuildingType = type,
+                ShieldStrength = type == BuildingType.Defense ? 1 : 0,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
+        }
+
+        /// <summary>
+        /// Creates one active item represented by the Defense window.
+        /// </summary>
+        /// <param name="itemKind">The Defense-window item category to create.</param>
+        /// <returns>The configured item.</returns>
+        private static IMovable CreateDefenseWindowItem(DefenseWindowItemKind itemKind)
+        {
+            return itemKind switch
+            {
+                DefenseWindowItemKind.Officer => new Officer
+                {
+                    InstanceID = "officer",
+                    OwnerInstanceID = _playerFactionId,
+                },
+                DefenseWindowItemKind.SpecialForces => new SpecialForces
+                {
+                    InstanceID = "special-forces",
+                    OwnerInstanceID = _playerFactionId,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                DefenseWindowItemKind.Regiment => new Regiment
+                {
+                    InstanceID = "regiment",
+                    OwnerInstanceID = _playerFactionId,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                DefenseWindowItemKind.Starfighter => new Starfighter
+                {
+                    InstanceID = "starfighter",
+                    OwnerInstanceID = _playerFactionId,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                DefenseWindowItemKind.Shield => new Building
+                {
+                    InstanceID = "shield",
+                    OwnerInstanceID = _playerFactionId,
+                    BuildingType = BuildingType.Defense,
+                    ShieldStrength = 1,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                DefenseWindowItemKind.Battery => new Building
+                {
+                    InstanceID = "battery",
+                    OwnerInstanceID = _playerFactionId,
+                    BuildingType = BuildingType.Weapon,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                _ => throw new ArgumentOutOfRangeException(nameof(itemKind), itemKind, null),
+            };
+        }
+
+        /// <summary>
+        /// Starts transit for one Defense-window item using its normal movement path.
+        /// </summary>
+        /// <param name="session">The active game session.</param>
+        /// <param name="item">The item to move.</param>
+        /// <param name="origin">The item's origin planet.</param>
+        /// <param name="destination">The item's destination planet.</param>
+        private void MoveDefenseWindowItem(
+            GameSession session,
+            IMovable item,
+            Planet origin,
+            Planet destination
+        )
+        {
+            MovementCommands commands = session.GetService<MovementCommands>();
+            if (item is Building building)
+            {
+                building.ManufacturingStatus = ManufacturingStatus.Delivering;
+                _game.AttachNode(building, destination);
+                commands.RequestMove(building, destination, origin);
+                return;
+            }
+
+            _game.AttachNode((Rebellion.SceneGraph.ISceneNode)item, origin);
+            commands.RequestMove(item, destination);
         }
 
         /// <summary>
@@ -827,6 +1005,16 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             {
                 return false;
             }
+        }
+
+        public enum DefenseWindowItemKind
+        {
+            Officer,
+            SpecialForces,
+            Regiment,
+            Starfighter,
+            Shield,
+            Battery,
         }
     }
 }

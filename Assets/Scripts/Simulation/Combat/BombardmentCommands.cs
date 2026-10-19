@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -60,14 +61,20 @@ namespace Rebellion.Simulation
             BombardmentType type
         )
         {
-            if (targetPlanet == null)
-                return null;
-
-            List<Fleet> fleets =
+            List<Fleet> requestedFleets =
                 attackingFleets?.Where(fleet => fleet != null).ToList() ?? new List<Fleet>();
-            if (!_queries.CanExecute(fleets, targetPlanet, type))
+            if (
+                !_queries.TryResolveCommand(
+                    requestedFleets,
+                    targetPlanet,
+                    out List<Fleet> fleets,
+                    out Planet liveTarget
+                ) || !_queries.CanExecute(fleets, liveTarget, type)
+            )
                 return null;
 
+            targetPlanet = liveTarget;
+            bool wasBlockaded = targetPlanet.IsBlockaded();
             BombardmentResult result = new BombardmentResult
             {
                 Planet = targetPlanet,
@@ -129,11 +136,37 @@ namespace Rebellion.Simulation
                 SetBombardmentCombatState(fleets, targetPlanet, false);
             }
 
+            BlockadeTransitions.AddChangedResult(_game, targetPlanet, wasBlockaded, result.Events);
+
             List<GameResult> results = new List<GameResult> { result };
             results.AddRange(result.Events);
 
             ResultsProduced?.Invoke(results);
             return result;
+        }
+
+        /// <summary>
+        /// Executes bombardment and returns a detached report limited to the supplied visible state.
+        /// </summary>
+        /// <param name="attackingFleets">The attacking fleet snapshots.</param>
+        /// <param name="targetPlanet">The visible target planet snapshot.</param>
+        /// <param name="type">The bombardment target profile.</param>
+        /// <param name="perspectiveOwnerInstanceId">The faction receiving the report.</param>
+        /// <returns>The faction-visible report, or null when bombardment cannot execute.</returns>
+        public CombatReport TryExecuteReport(
+            IReadOnlyList<Fleet> attackingFleets,
+            Planet targetPlanet,
+            BombardmentType type,
+            string perspectiveOwnerInstanceId
+        )
+        {
+            HashSet<string> visibleUnitIds = CombatReport.CaptureVisibleUnitInstanceIDs(
+                (attackingFleets ?? Array.Empty<Fleet>()).Cast<ISceneNode>().Append(targetPlanet)
+            );
+            BombardmentResult result = TryExecute(attackingFleets, targetPlanet, type);
+            return result?.AttackerOwnerInstanceID == perspectiveOwnerInstanceId
+                ? CombatReport.CaptureVisible(result, perspectiveOwnerInstanceId, visibleUnitIds)
+                : null;
         }
 
         /// <summary>

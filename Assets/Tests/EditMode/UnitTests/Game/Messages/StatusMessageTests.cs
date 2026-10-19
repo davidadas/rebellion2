@@ -19,6 +19,7 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual("Test message", message.Title);
             Assert.AreEqual("Test message", message.Body);
             Assert.IsFalse(message.Read);
+            Assert.IsFalse(message.NotificationAcknowledged);
         }
 
         [Test]
@@ -28,7 +29,10 @@ namespace Rebellion.Tests.Game.Messages
                 MessageType.Advice,
                 "Advice title",
                 "Advice body"
-            );
+            )
+            {
+                NotificationAcknowledged = true,
+            };
 
             string serialized = SerializationHelper.Serialize(message);
             Message deserialized = SerializationHelper.Deserialize<Message>(serialized);
@@ -37,6 +41,15 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual(message.Type, deserialized.Type);
             Assert.AreEqual(message.Title, deserialized.Title);
             Assert.AreEqual(message.Body, deserialized.Body);
+            Assert.IsTrue(deserialized.NotificationAcknowledged);
+        }
+
+        [Test]
+        public void NotificationAcknowledged_ReadMessage_ReturnsTrue()
+        {
+            StatusMessage message = new StatusMessage { Read = true };
+
+            Assert.IsTrue(message.NotificationAcknowledged);
         }
     }
 }

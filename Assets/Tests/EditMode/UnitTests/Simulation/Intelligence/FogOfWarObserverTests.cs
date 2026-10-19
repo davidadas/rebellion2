@@ -3,6 +3,7 @@ using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -14,6 +15,15 @@ namespace Rebellion.Tests.Simulation
     [TestFixture]
     public class FogOfWarObserverTests : FogOfWarTestBase
     {
+        public enum SabotageTargetKind
+        {
+            Building,
+            CapitalShip,
+            Regiment,
+            SpecialForces,
+            Starfighter,
+        }
+
         private FogOfWarObserver _observer;
         private GameResultBus _results;
 
@@ -137,6 +147,213 @@ namespace Rebellion.Tests.Simulation
 
             Assert.IsFalse(_alliance.Fog.EntityLastSeenAt.ContainsKey(captive.InstanceID));
             Assert.IsFalse(_empire.Fog.EntityLastSeenAt.ContainsKey(captive.InstanceID));
+        }
+
+        [Test]
+        public void ProcessResults_AbductionTargetUnavailable_RemovesOwnersStaleLocation()
+        {
+            Faction observer = new Faction { InstanceID = "OBSERVER" };
+            _game.GetFactions().Add(observer);
+            Officer participant = CreateOfficer("PARTICIPANT", _alliance);
+            Officer target = CreateOfficer("TARGET", _empire);
+            _game.AttachNode(participant, _hoth);
+            _game.AttachNode(target, _coruscant);
+            AbductionMission mission = AbductionMission.TryCreate(
+                new MissionContext
+                {
+                    Game = _game,
+                    OwnerInstanceId = _alliance.InstanceID,
+                    Location = _coruscant,
+                    SelectedTarget = target,
+                    MainParticipants = new List<IMissionParticipant> { participant },
+                    DecoyParticipants = new List<IMissionParticipant>(),
+                }
+            );
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordPlanetSnapshot(_alliance, _coruscant, _coreSector, 10);
+            recorder.RecordPlanetSnapshot(observer, _coruscant, _coreSector, 10);
+            MakeTatooineImperial();
+            _game.MoveNode(target, _tatooine);
+
+            _observer.ProcessResults(
+                new GameResult[]
+                {
+                    new MissionCompletedResult
+                    {
+                        Mission = mission,
+                        Location = _coruscant,
+                        Outcome = MissionOutcome.Failed,
+                        CompletionReason = MissionCompletionReason.TargetUnavailable,
+                    },
+                }
+            );
+
+            Assert.IsFalse(_alliance.Fog.EntityLastSeenAt.ContainsKey(target.InstanceID));
+            Assert.IsFalse(
+                _alliance
+                    .Fog.Snapshots[_coreSector.InstanceID]
+                    .Planets[_coruscant.InstanceID]
+                    .Officers.Any(officer => officer.InstanceID == target.InstanceID)
+            );
+            Assert.IsTrue(observer.Fog.EntityLastSeenAt.ContainsKey(target.InstanceID));
+        }
+
+        [Test]
+        public void ProcessResults_AbductionTargetUnavailableAtLocation_PreservesOwnersSighting()
+        {
+            Officer participant = CreateOfficer("PARTICIPANT", _alliance);
+            Officer target = CreateOfficer("TARGET", _empire);
+            _game.AttachNode(participant, _hoth);
+            _game.AttachNode(target, _coruscant);
+            AbductionMission mission = AbductionMission.TryCreate(
+                new MissionContext
+                {
+                    Game = _game,
+                    OwnerInstanceId = _alliance.InstanceID,
+                    Location = _coruscant,
+                    SelectedTarget = target,
+                    MainParticipants = new List<IMissionParticipant> { participant },
+                    DecoyParticipants = new List<IMissionParticipant>(),
+                }
+            );
+            new FogOfWarRecorder().RecordPlanetSnapshot(_alliance, _coruscant, _coreSector, 10);
+            target.IsCaptured = true;
+
+            _observer.ProcessResults(
+                new GameResult[]
+                {
+                    new MissionCompletedResult
+                    {
+                        Mission = mission,
+                        Location = _coruscant,
+                        Outcome = MissionOutcome.Failed,
+                        CompletionReason = MissionCompletionReason.TargetUnavailable,
+                    },
+                }
+            );
+
+            Assert.AreEqual(
+                _coruscant.InstanceID,
+                _alliance.Fog.EntityLastSeenAt[target.InstanceID]
+            );
+            Assert.IsTrue(
+                _alliance
+                    .Fog.Snapshots[_coreSector.InstanceID]
+                    .Planets[_coruscant.InstanceID]
+                    .Officers.Any(officer => officer.InstanceID == target.InstanceID)
+            );
+        }
+
+        [Test]
+        public void ProcessResults_AssassinationTargetUnavailable_RemovesOwnersStaleLocation()
+        {
+            Officer target = CreateOfficer("TARGET", _empire);
+            _game.AttachNode(target, _coruscant);
+            AssassinationMission mission = AssassinationMission.TryCreate(
+                CreateTargetingMissionContext(target)
+            );
+
+            RecordTargetThenRemoveFromPlanet(target);
+            ProcessUnavailableTarget(mission);
+
+            AssertTargetForgotten(target.InstanceID);
+        }
+
+        [Test]
+        public void ProcessResults_RescueTargetUnavailable_RemovesOwnersStaleLocation()
+        {
+            Officer target = CreateOfficer("TARGET", _alliance);
+            target.IsCaptured = true;
+            target.CaptorInstanceID = _empire.InstanceID;
+            _game.AttachNode(target, _coruscant);
+            RescueMission mission = RescueMission.TryCreate(CreateTargetingMissionContext(target));
+
+            RecordTargetThenRemoveFromPlanet(target);
+            ProcessUnavailableTarget(mission);
+
+            AssertTargetForgotten(target.InstanceID);
+        }
+
+        [TestCase(SabotageTargetKind.Building)]
+        [TestCase(SabotageTargetKind.Regiment)]
+        [TestCase(SabotageTargetKind.SpecialForces)]
+        [TestCase(SabotageTargetKind.Starfighter)]
+        public void ProcessResults_SabotagePlanetTargetUnavailable_RemovesOwnersStaleLocation(
+            SabotageTargetKind targetKind
+        )
+        {
+            ISceneNode target = CreatePlanetSabotageTarget(targetKind);
+            if (target is Building)
+                _coruscant.EnergyCapacity = 1;
+            _game.AttachNode(target, _coruscant);
+            SabotageMission mission = SabotageMission.TryCreate(
+                CreateTargetingMissionContext(target)
+            );
+
+            RecordTargetThenRemoveFromPlanet(target);
+            ProcessUnavailableTarget(mission);
+
+            AssertTargetForgotten(target.GetInstanceID());
+        }
+
+        [TestCase(SabotageTargetKind.CapitalShip)]
+        [TestCase(SabotageTargetKind.Regiment)]
+        [TestCase(SabotageTargetKind.Starfighter)]
+        public void ProcessResults_SabotageFleetTargetUnavailable_RemovesOwnersStaleLocation(
+            SabotageTargetKind targetKind
+        )
+        {
+            ISceneNode target = CreateFleetSabotageTarget(targetKind);
+            SabotageMission mission = SabotageMission.TryCreate(
+                CreateTargetingMissionContext(target)
+            );
+
+            RecordTargetThenRemoveFromPlanet(target);
+            ProcessUnavailableTarget(mission);
+
+            AssertTargetForgotten(target.GetInstanceID());
+        }
+
+        [Test]
+        public void ProcessResults_SabotageTargetUnavailableAtLocation_PreservesOwnersSighting()
+        {
+            Starfighter target = CreateStarfighter("TARGET", _empire);
+            _game.AttachNode(target, _coruscant);
+            SabotageMission mission = SabotageMission.TryCreate(
+                CreateTargetingMissionContext(target)
+            );
+            new FogOfWarRecorder().RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
+            target.ManufacturingStatus = ManufacturingStatus.Building;
+
+            ProcessUnavailableTarget(mission);
+
+            Assert.AreEqual(
+                _coruscant.InstanceID,
+                _alliance.Fog.EntityLastSeenAt[target.InstanceID]
+            );
+            Assert.IsTrue(
+                _alliance
+                    .Fog.Snapshots[_coreSector.InstanceID]
+                    .Planets[_coruscant.InstanceID]
+                    .Starfighters.Any(starfighter => starfighter.InstanceID == target.InstanceID)
+            );
+        }
+
+        [Test]
+        public void ProcessResults_SabotageTargetAboardInTransitFleet_RemovesOwnersStaleLocation()
+        {
+            Starfighter target = (Starfighter)CreateFleetSabotageTarget(
+                SabotageTargetKind.Starfighter
+            );
+            SabotageMission mission = SabotageMission.TryCreate(
+                CreateTargetingMissionContext(target)
+            );
+            new FogOfWarRecorder().RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
+            target.GetParentOfType<Fleet>().Movement = new MovementState();
+
+            ProcessUnavailableTarget(mission);
+
+            AssertTargetForgotten(target.InstanceID);
         }
 
         [Test]
@@ -669,6 +886,136 @@ namespace Rebellion.Tests.Simulation
                 )
             );
             Assert.IsFalse(_alliance.Fog.EntityLastSeenAt.ContainsKey(ship.InstanceID));
+        }
+
+        /// <summary>
+        /// Creates a mission context for an Alliance participant targeting an entity at Coruscant.
+        /// </summary>
+        /// <param name="target">The selected mission target.</param>
+        /// <returns>The configured mission context.</returns>
+        private MissionContext CreateTargetingMissionContext(ISceneNode target)
+        {
+            Officer participant = CreateOfficer("PARTICIPANT", _alliance);
+            _game.AttachNode(participant, _hoth);
+            return new MissionContext
+            {
+                Game = _game,
+                OwnerInstanceId = _alliance.InstanceID,
+                Location = _coruscant,
+                SelectedTarget = target,
+                MainParticipants = new List<IMissionParticipant> { participant },
+                DecoyParticipants = new List<IMissionParticipant>(),
+            };
+        }
+
+        /// <summary>
+        /// Creates an operational sabotage target that is stationed directly on a planet.
+        /// </summary>
+        /// <param name="targetKind">The kind of sabotage target to create.</param>
+        /// <returns>The created target.</returns>
+        private ISceneNode CreatePlanetSabotageTarget(SabotageTargetKind targetKind)
+        {
+            return targetKind switch
+            {
+                SabotageTargetKind.Building => CreateBuilding("TARGET", _empire),
+                SabotageTargetKind.Regiment => CreateRegiment("TARGET", _empire),
+                SabotageTargetKind.SpecialForces => new SpecialForces
+                {
+                    InstanceID = "TARGET",
+                    OwnerInstanceID = _empire.InstanceID,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                SabotageTargetKind.Starfighter => CreateStarfighter("TARGET", _empire),
+                _ => throw new System.ArgumentOutOfRangeException(nameof(targetKind)),
+            };
+        }
+
+        /// <summary>
+        /// Creates an operational sabotage target aboard an enemy fleet.
+        /// </summary>
+        /// <param name="targetKind">The kind of sabotage target to create.</param>
+        /// <returns>The created target.</returns>
+        private ISceneNode CreateFleetSabotageTarget(SabotageTargetKind targetKind)
+        {
+            Fleet fleet = CreateFleet("FLEET", _empire);
+            _game.AttachNode(fleet, _coruscant);
+            CapitalShip ship = AddCapitalShip(fleet, _empire, "SHIP");
+            if (targetKind == SabotageTargetKind.CapitalShip)
+                return ship;
+
+            ISceneNode target;
+            if (targetKind == SabotageTargetKind.Regiment)
+            {
+                ship.RegimentCapacity = 1;
+                target = CreateRegiment("TARGET", _empire);
+            }
+            else if (targetKind == SabotageTargetKind.Starfighter)
+            {
+                ship.StarfighterCapacity = 1;
+                target = CreateStarfighter("TARGET", _empire);
+            }
+            else
+            {
+                throw new System.ArgumentOutOfRangeException(nameof(targetKind));
+            }
+
+            _game.AttachNode(target, ship);
+            return target;
+        }
+
+        /// <summary>
+        /// Records complete intelligence at Coruscant, then removes the target from that planet.
+        /// </summary>
+        /// <param name="target">The target whose stale observation is being arranged.</param>
+        private void RecordTargetThenRemoveFromPlanet(ISceneNode target)
+        {
+            new FogOfWarRecorder().RecordEspionageSnapshot(_alliance, _coruscant, _coreSector, 10);
+            _game.DetachNode(target);
+        }
+
+        /// <summary>
+        /// Processes a target-unavailable completion for the supplied mission.
+        /// </summary>
+        /// <param name="mission">The mission whose target was unavailable.</param>
+        private void ProcessUnavailableTarget(Mission mission)
+        {
+            Assert.IsNotNull(mission);
+            _observer.ProcessResults(
+                new GameResult[]
+                {
+                    new MissionCompletedResult
+                    {
+                        Mission = mission,
+                        Location = _coruscant,
+                        Outcome = MissionOutcome.Failed,
+                        CompletionReason = MissionCompletionReason.TargetUnavailable,
+                    },
+                }
+            );
+        }
+
+        /// <summary>
+        /// Asserts that an entity was removed from both the location index and Coruscant snapshot.
+        /// </summary>
+        /// <param name="targetInstanceId">The target entity instance ID.</param>
+        private void AssertTargetForgotten(string targetInstanceId)
+        {
+            Assert.IsFalse(_alliance.Fog.EntityLastSeenAt.ContainsKey(targetInstanceId));
+            PlanetSnapshot snapshot = _alliance.Fog.Snapshots[_coreSector.InstanceID].Planets[
+                _coruscant.InstanceID
+            ];
+            IEnumerable<ISceneNode> entities = snapshot
+                .Buildings.Cast<ISceneNode>()
+                .Concat(snapshot.Officers)
+                .Concat(snapshot.Regiments)
+                .Concat(snapshot.SpecialForces)
+                .Concat(snapshot.Starfighters)
+                .Concat(
+                    snapshot.Fleets.SelectMany(fleet =>
+                        fleet.GetChildren<ISceneNode>(recursive: true).Prepend(fleet)
+                    )
+                );
+            Assert.IsFalse(entities.Any(entity => entity.GetInstanceID() == targetInstanceId));
         }
     }
 }

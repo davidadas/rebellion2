@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
@@ -309,6 +310,18 @@ namespace Rebellion.Util.Serialization
     /// </summary>
     static class XmlSerializer
     {
+        private static readonly ConcurrentDictionary<(MemberInfo, Type), string> _elementNameCache =
+            new();
+        private static readonly ConcurrentDictionary<
+            MemberInfo,
+            PersistableAttributeAttribute
+        > _attributeCache = new();
+        private static readonly ConcurrentDictionary<
+            MemberInfo,
+            PersistableCollectionItemAttribute
+        > _collectionCache = new();
+        private static readonly ConcurrentDictionary<Type, bool> _persistableTypeCache = new();
+
         /// <summary>
         /// Writes an object to XML.
         /// </summary>
@@ -340,7 +353,7 @@ namespace Rebellion.Util.Serialization
             {
                 WriteCollection(enumerable, writer, name);
             }
-            else if (TypeHelper.HasAttribute<PersistableObjectAttribute>(objType))
+            else if (IsPersistableType(objType))
             {
                 WritePersistable(obj, writer, name);
             }
@@ -348,6 +361,42 @@ namespace Rebellion.Util.Serialization
             {
                 throw new ArgumentException($"Object type {objType} not supported.");
             }
+        }
+
+        /// <summary>
+        /// Returns whether a runtime type is persistable, reusing stable type metadata.
+        /// </summary>
+        /// <param name="type">The serialized runtime type.</param>
+        /// <returns>Whether the type is persistable.</returns>
+        private static bool IsPersistableType(Type type)
+        {
+            if (!_persistableTypeCache.TryGetValue(type, out bool result))
+            {
+                result = TypeHelper.HasAttribute<PersistableObjectAttribute>(type);
+                _persistableTypeCache[type] = result;
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Returns a member attribute, caching both configured and absent attributes.
+        /// </summary>
+        /// <typeparam name="T">The attribute type.</typeparam>
+        /// <param name="member">The serialized member.</param>
+        /// <param name="cache">The member attribute cache.</param>
+        /// <returns>The configured attribute, or null.</returns>
+        private static T GetCachedAttribute<T>(
+            MemberInfo member,
+            ConcurrentDictionary<MemberInfo, T> cache
+        )
+            where T : Attribute
+        {
+            if (!cache.TryGetValue(member, out T attribute))
+            {
+                attribute = (T)Attribute.GetCustomAttribute(member, typeof(T));
+                cache[member] = attribute;
+            }
+            return attribute;
         }
 
         /// <summary>
@@ -469,8 +518,10 @@ namespace Rebellion.Util.Serialization
 
             foreach (MemberInfo attribute in attributes)
             {
-                PersistableAttributeAttribute persistableAttr = (PersistableAttributeAttribute)
-                    Attribute.GetCustomAttribute(attribute, typeof(PersistableAttributeAttribute));
+                PersistableAttributeAttribute persistableAttr = GetCachedAttribute(
+                    attribute,
+                    _attributeCache
+                );
                 object attributeValue = ReflectionHelper.GetMemberValue(attribute, obj);
 
                 if (attributeValue != null)
@@ -514,12 +565,10 @@ namespace Rebellion.Util.Serialization
                     }
 
                     string elementName = GetElementName(member, value);
-                    PersistableCollectionItemAttribute collectionItem =
-                        (PersistableCollectionItemAttribute)
-                            Attribute.GetCustomAttribute(
-                                member,
-                                typeof(PersistableCollectionItemAttribute)
-                            );
+                    PersistableCollectionItemAttribute collectionItem = GetCachedAttribute(
+                        member,
+                        _collectionCache
+                    );
                     if (collectionItem != null && value is IEnumerable collection)
                     {
                         if (string.IsNullOrWhiteSpace(collectionItem.Name))
@@ -544,6 +593,23 @@ namespace Rebellion.Util.Serialization
         /// <param name="value">The value of the member.</param>
         /// <returns>The determined element name.</returns>
         private static string GetElementName(MemberInfo member, object value)
+        {
+            (MemberInfo, Type) cacheKey = (member, value.GetType());
+            if (!_elementNameCache.TryGetValue(cacheKey, out string name))
+            {
+                name = ResolveElementName(member, value);
+                _elementNameCache[cacheKey] = name;
+            }
+            return name;
+        }
+
+        /// <summary>
+        /// Resolves a member XML element name from its attributes and runtime value type.
+        /// </summary>
+        /// <param name="member">The serialized member.</param>
+        /// <param name="value">The member value.</param>
+        /// <returns>The configured XML element name.</returns>
+        private static string ResolveElementName(MemberInfo member, object value)
         {
             Type valueType = value.GetType();
             PersistableIncludeAttribute[] includeAttributes = (PersistableIncludeAttribute[])
@@ -1178,6 +1244,7 @@ namespace Rebellion.Util.Serialization
             | BindingFlags.Instance
             | BindingFlags.Static;
 
+        private static readonly ConcurrentDictionary<Type, string> _typeNameCache = new();
         private static IDictionary<string, Type> _persistableObjectMap;
         private static IDictionary<string, IReadOnlyList<Type>> _persistableTypesByName;
 
@@ -1659,10 +1726,14 @@ namespace Rebellion.Util.Serialization
         /// <returns>The configured persistable name, or the type name when none is configured.</returns>
         public static string GetPersistableElementName(Type type)
         {
+            if (_typeNameCache.TryGetValue(type, out string cachedName))
+                return cachedName;
             PersistableObjectAttribute attr = (PersistableObjectAttribute)
                 Attribute.GetCustomAttribute(type, typeof(PersistableObjectAttribute), false);
 
-            return string.IsNullOrWhiteSpace(attr?.Name) ? type.Name : attr.Name;
+            string name = string.IsNullOrWhiteSpace(attr?.Name) ? type.Name : attr.Name;
+            _typeNameCache[type] = name;
+            return name;
         }
 
         /// <summary>

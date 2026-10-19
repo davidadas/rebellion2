@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
-using Rebellion.Generation;
+using Rebellion.Game;
 using TMPro;
 using UnityEditor;
 using UnityEngine;
@@ -2343,6 +2343,8 @@ public static class StrategyViewPrefabBuilder
         SetSourceRect(background.rectTransform, 0, 0, _defenseItemWidth, _defenseItemImageHeight);
         RawImage entity = CreateRawButton("EntityImage", item.transform, null);
         SetSourceRect(entity.rectTransform, 0, 0, _defenseItemWidth, _defenseItemImageHeight);
+        RawImage statsOverlay = CreateRawButton("StatsOverlayImage", item.transform, null);
+        SetSourceRect(statsOverlay.rectTransform, 0, 0, _defenseItemWidth, _defenseItemImageHeight);
         RawImage enrouteOverlay = CreateRawButton("EnrouteOverlayImage", item.transform, null);
         SetSourceRect(
             enrouteOverlay.rectTransform,
@@ -2397,6 +2399,7 @@ public static class StrategyViewPrefabBuilder
             enrouteOverlay,
             damagedOverlay,
             entity,
+            statsOverlay,
             capturedOverlay,
             selection,
             null,
@@ -2808,6 +2811,8 @@ public static class StrategyViewPrefabBuilder
         SetSourceRect(background.rectTransform, 25, 5, 61, 25);
         RawImage entity = CreateRawImage("EntityImage", item.transform, null, 25, 5);
         SetSourceRect(entity.rectTransform, 25, 5, 61, 25);
+        RawImage statsOverlay = CreateRawImage("StatsOverlayImage", item.transform, null, 25, 5);
+        SetSourceRect(statsOverlay.rectTransform, 25, 5, 61, 25);
         RawImage enrouteOverlay = CreateRawImage(
             "EnrouteOverlayImage",
             item.transform,
@@ -2890,6 +2895,7 @@ public static class StrategyViewPrefabBuilder
             enrouteOverlay,
             damagedOverlay,
             entity,
+            statsOverlay,
             capturedOverlay,
             selection,
             starfighterBadge,
@@ -8953,6 +8959,7 @@ public static class StrategyViewPrefabBuilder
     /// <param name="enrouteOverlayImage">The enroute overlay image.</param>
     /// <param name="damagedOverlayImage">The damaged overlay image.</param>
     /// <param name="entityImage">The entity image.</param>
+    /// <param name="statsOverlayImage">The generated stat-graph overlay image.</param>
     /// <param name="capturedOverlayImage">The captured overlay image.</param>
     /// <param name="selectionImage">The selection image.</param>
     /// <param name="starfighterBadgeImage">The starfighter badge image.</param>
@@ -8967,6 +8974,7 @@ public static class StrategyViewPrefabBuilder
         RawImage enrouteOverlayImage,
         RawImage damagedOverlayImage,
         RawImage entityImage,
+        RawImage statsOverlayImage,
         RawImage capturedOverlayImage,
         RawImage selectionImage,
         RawImage starfighterBadgeImage,
@@ -8981,6 +8989,7 @@ public static class StrategyViewPrefabBuilder
         AssignReference(view, "enrouteOverlayImage", enrouteOverlayImage);
         AssignReference(view, "damagedOverlayImage", damagedOverlayImage);
         AssignReference(view, "entityImage", entityImage);
+        AssignReference(view, "statsOverlayImage", statsOverlayImage);
         AssignReference(view, "capturedOverlayImage", capturedOverlayImage);
         AssignReference(view, "selectionImage", selectionImage);
         AssignReference(view, "starfighterBadgeImage", starfighterBadgeImage);

@@ -70,8 +70,8 @@ namespace Rebellion.Analyzers
 
         private static readonly DiagnosticDescriptor _testCommentRule = new DiagnosticDescriptor(
             TestCommentDiagnosticId,
-            "Test methods must not have leading prose comments",
-            "Test method '{0}' must not have a leading prose comment",
+            "Test methods must not have leading non-documentation comments",
+            "Test method '{0}' must not have a leading non-documentation comment",
             "Documentation",
             DiagnosticSeverity.Error,
             isEnabledByDefault: true
@@ -231,10 +231,10 @@ namespace Rebellion.Analyzers
         }
 
         /// <summary>
-        /// Checks whether a test declaration has a comment before its method name.
+        /// Checks whether a test declaration has a non-documentation comment before its method name.
         /// </summary>
         /// <param name="method">The test method declaration to inspect.</param>
-        /// <returns>True when the declaration has a leading comment.</returns>
+        /// <returns>True when the declaration has a leading non-documentation comment.</returns>
         private static bool HasLeadingComment(MethodDeclarationSyntax method)
         {
             return method.GetLeadingTrivia().Any(IsAttachedLeadingComment)
@@ -263,10 +263,10 @@ namespace Rebellion.Analyzers
         }
 
         /// <summary>
-        /// Checks whether trivia is a regular prose comment rather than XML documentation.
+        /// Checks whether trivia is a regular comment.
         /// </summary>
         /// <param name="trivia">The syntax trivia to inspect.</param>
-        /// <returns>True when the trivia is a prose comment.</returns>
+        /// <returns>True when the trivia is a comment.</returns>
         private static bool IsComment(SyntaxTrivia trivia)
         {
             return trivia.IsKind(SyntaxKind.SingleLineCommentTrivia)

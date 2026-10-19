@@ -17,6 +17,8 @@ internal sealed class MessagesWindowSession
 
     public bool DetailVisible { get; private set; }
 
+    public bool HasPresentedTab { get; private set; }
+
     public IReadOnlyList<Message> Messages => messages;
 
     public string SelectedMessageId => selectedMessageId;
@@ -41,6 +43,14 @@ internal sealed class MessagesWindowSession
         ActiveTab = tab;
         DetailVisible = false;
         ClearSelection();
+    }
+
+    /// <summary>
+    /// Records that the active tab has been presented to the player.
+    /// </summary>
+    public void MarkTabPresented()
+    {
+        HasPresentedTab = true;
     }
 
     /// <summary>

@@ -49,11 +49,17 @@ namespace Rebellion.Game
         [PersistableMember(Name = nameof(ResourceAvailability))]
         private GameResourceAvailability _resourceAvailability = GameResourceAvailability.Normal;
 
+        [PersistableMember(Name = nameof(PlayerDifficultyModifiers))]
+        private DifficultyModifiers _playerDifficultyModifiers;
+
+        [PersistableMember(Name = nameof(AIDifficultyModifiers))]
+        private DifficultyModifiers _aiDifficultyModifiers;
+
+        [PersistableMember(Name = nameof(GenerationConfigOverride))]
+        private GameGenerationConfig _generationConfigOverride;
+
         [PersistableMember(Name = nameof(StartingFactionIDs))]
         private string[] _startingFactionIds = Array.Empty<string>();
-
-        [PersistableMember(Name = nameof(StartingResearchLevel))]
-        private int _startingResearchLevel;
 
         [PersistableMember(Name = nameof(PlayerFactionID))]
         private string _playerFactionId;
@@ -105,17 +111,31 @@ namespace Rebellion.Game
         }
 
         [PersistableIgnore]
+        public DifficultyModifiers PlayerDifficultyModifiers
+        {
+            get => _playerDifficultyModifiers;
+            set => _playerDifficultyModifiers = value;
+        }
+
+        [PersistableIgnore]
+        public DifficultyModifiers AIDifficultyModifiers
+        {
+            get => _aiDifficultyModifiers;
+            set => _aiDifficultyModifiers = value;
+        }
+
+        [PersistableIgnore]
+        public GameGenerationConfig GenerationConfigOverride
+        {
+            get => _generationConfigOverride;
+            set => _generationConfigOverride = value;
+        }
+
+        [PersistableIgnore]
         public string[] StartingFactionIDs
         {
             get => _startingFactionIds;
             set => _startingFactionIds = value;
-        }
-
-        [PersistableIgnore]
-        public int StartingResearchLevel
-        {
-            get => _startingResearchLevel;
-            set => _startingResearchLevel = value;
         }
 
         [PersistableIgnore]

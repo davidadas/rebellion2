@@ -50,6 +50,12 @@ namespace Rebellion.Simulation
                 case ChangeOfficerRatingAction definition:
                     Execute(definition, context);
                     break;
+                case ApplyOfficerTraitAction definition:
+                    Execute(definition, context);
+                    break;
+                case RemoveOfficerTraitAction definition:
+                    Execute(definition, context);
+                    break;
                 case IncreaseForceRankAction definition:
                     Execute(definition, context);
                     break;
@@ -540,6 +546,62 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
+        /// Grants one event-owned trait to every selected officer.
+        /// </summary>
+        /// <param name="action">The authored action definition.</param>
+        /// <param name="context">The current action execution context.</param>
+        private static void Execute(ApplyOfficerTraitAction action, GameActionContext context)
+        {
+            string sourceID = RequireTraitSource(context, nameof(ApplyOfficerTraitAction));
+            foreach (
+                Officer officer in ResolveOfficers(
+                    nameof(ApplyOfficerTraitAction),
+                    action.OfficerInstanceID,
+                    action.Selectors,
+                    context
+                )
+            )
+            {
+                officer.GrantTrait(action.TraitID, sourceID);
+            }
+        }
+
+        /// <summary>
+        /// Removes one event-owned trait from every selected officer.
+        /// </summary>
+        /// <param name="action">The authored action definition.</param>
+        /// <param name="context">The current action execution context.</param>
+        private static void Execute(RemoveOfficerTraitAction action, GameActionContext context)
+        {
+            string sourceID = RequireTraitSource(context, nameof(RemoveOfficerTraitAction));
+            foreach (
+                Officer officer in ResolveOfficers(
+                    nameof(RemoveOfficerTraitAction),
+                    action.OfficerInstanceID,
+                    action.Selectors,
+                    context
+                )
+            )
+            {
+                officer.RevokeTrait(action.TraitID, sourceID);
+            }
+        }
+
+        /// <summary>
+        /// Returns the active event identifier that owns a dynamic trait assignment.
+        /// </summary>
+        /// <param name="context">The current action execution context.</param>
+        /// <param name="actionName">The action name used in diagnostics.</param>
+        /// <returns>The stable event source identifier.</returns>
+        private static string RequireTraitSource(GameActionContext context, string actionName)
+        {
+            string sourceID = context.Evaluation?.Event?.InstanceID;
+            if (string.IsNullOrWhiteSpace(sourceID))
+                throw new InvalidOperationException($"{actionName} requires an event source.");
+            return sourceID;
+        }
+
+        /// <summary>
         /// Resolves and validates every officer targeted by this rating change.
         /// </summary>
         /// <param name="action">The authored action definition.</param>
@@ -550,19 +612,44 @@ namespace Rebellion.Simulation
             GameActionContext context
         )
         {
+            return ResolveOfficers(
+                nameof(ChangeOfficerRatingAction),
+                action.OfficerInstanceID,
+                action.Selectors,
+                context
+            );
+        }
+
+        /// <summary>
+        /// Resolves and validates every officer targeted by an officer action.
+        /// </summary>
+        /// <param name="actionName">The action name used in diagnostics.</param>
+        /// <param name="officerInstanceID">The optional explicitly named officer.</param>
+        /// <param name="selectors">The additional authored selectors.</param>
+        /// <param name="context">The current action execution context.</param>
+        /// <returns>The distinct resolved officers.</returns>
+        private static List<Officer> ResolveOfficers(
+            string actionName,
+            string officerInstanceID,
+            IEnumerable<GameEventSelector> selectors,
+            GameActionContext context
+        )
+        {
             GameRoot game = context.Game;
-            IEnumerable<ISceneNode> selected = action.Selectors.SelectMany(selector =>
+            IEnumerable<ISceneNode> selected = (
+                selectors ?? Enumerable.Empty<GameEventSelector>()
+            ).SelectMany(selector =>
                 GameEventCommands.Select(selector, game, context.Random, context.Evaluation)
             );
-            if (!string.IsNullOrWhiteSpace(action.OfficerInstanceID))
+            if (!string.IsNullOrWhiteSpace(officerInstanceID))
             {
                 Officer explicitOfficer = game.GetSceneNodeByInstanceID<Officer>(
-                    action.OfficerInstanceID,
+                    officerInstanceID,
                     includeDisabled: true
                 );
                 if (explicitOfficer == null)
                     throw new InvalidOperationException(
-                        $"ChangeOfficerRating could not resolve officer '{action.OfficerInstanceID}'."
+                        $"{actionName} could not resolve officer '{officerInstanceID}'."
                     );
                 selected = new ISceneNode[] { explicitOfficer }.Concat(selected);
             }
@@ -570,11 +657,11 @@ namespace Rebellion.Simulation
             List<ISceneNode> nodes = selected.Distinct().ToList();
             if (nodes.Count == 0)
                 throw new InvalidOperationException(
-                    "ChangeOfficerRating requires an officer or a matching selector."
+                    $"{actionName} requires an officer or a matching selector."
                 );
             if (nodes.Any(node => node is not Officer))
                 throw new InvalidOperationException(
-                    "ChangeOfficerRating selectors may return only officers."
+                    $"{actionName} selectors may return only officers."
                 );
             return nodes.Cast<Officer>().ToList();
         }
@@ -1234,6 +1321,11 @@ namespace Rebellion.Simulation
             List<ISceneNode> destroyedRoots = selected
                 .Where(unit => !HasSelectedAncestor(unit, selected))
                 .ToList();
+            Dictionary<Planet, bool> blockadeStates = destroyedRoots
+                .Select(root => root as Planet ?? root.GetParentOfType<Planet>())
+                .Where(planet => planet != null)
+                .Distinct()
+                .ToDictionary(planet => planet, planet => planet.IsBlockaded());
             List<ISceneNode> destroyed = new List<ISceneNode>();
 
             foreach (ISceneNode root in destroyedRoots)
@@ -1253,14 +1345,34 @@ namespace Rebellion.Simulation
                     includeDisabled: true
                 );
 
-            context.Record(
-                destroyed.ConvertAll<GameResult>(unit => new GameObjectDestroyedResult
+            List<GameResult> results = destroyed.ConvertAll<GameResult>(
+                unit => new GameObjectDestroyedResult
                 {
                     DestroyedObject = unit,
                     Context = planet,
                     Tick = game.CurrentTick,
-                })
+                }
             );
+            foreach (KeyValuePair<Planet, bool> blockadeState in blockadeStates)
+            {
+                Planet affectedPlanet = blockadeState.Key;
+                if (
+                    game.GetSceneNodeByInstanceID<Planet>(
+                        affectedPlanet.InstanceID,
+                        includeDisabled: true
+                    ) == affectedPlanet
+                )
+                {
+                    BlockadeTransitions.AddChangedResult(
+                        game,
+                        affectedPlanet,
+                        blockadeState.Value,
+                        results
+                    );
+                }
+            }
+
+            context.Record(results);
         }
 
         /// <summary>

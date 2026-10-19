@@ -58,6 +58,38 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
+        public void Rebuild_GameSpeedBindings_ShowsDirectionalMouseWheelDefaults()
+        {
+            using OptionsBindingSession session = new OptionsBindingSession(_inputManager);
+
+            session.Rebuild();
+
+            OptionsBindingRow decrease = session.Rows.Single(row =>
+                row.Action == "Decrease Game Speed"
+            );
+            OptionsBindingRow increase = session.Rows.Single(row =>
+                row.Action == "Increase Game Speed"
+            );
+            string modifier = Application.platform == RuntimePlatform.OSXEditor ? "CMD" : "CTRL";
+            Assert.AreEqual($"{modifier}+WHEEL DOWN", decrease.Secondary);
+            Assert.AreEqual($"{modifier}+WHEEL UP", increase.Secondary);
+        }
+
+        [Test]
+        public void Rebuild_CloseAllWindowsBinding_ShowsPlatformShortcut()
+        {
+            using OptionsBindingSession session = new OptionsBindingSession(_inputManager);
+
+            session.Rebuild();
+
+            OptionsBindingRow row = session.Rows.Single(candidate =>
+                candidate.Action == "Close All Windows"
+            );
+            string modifier = Application.platform == RuntimePlatform.OSXEditor ? "CMD" : "CTRL";
+            Assert.AreEqual($"{modifier}+W", row.Primary);
+        }
+
+        [Test]
         public void CompositeSignatures_EquivalentChordOverrides_Match()
         {
             InputAction expected = _inputManager.Asset.FindAction(
@@ -170,6 +202,45 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.IsTrue(session.ListeningSecondary);
             session.CancelRebind();
             Assert.AreEqual(-1, session.ListeningRow);
+        }
+
+        [Test]
+        public void BeginRebind_MouseWheelUp_BindsDirectionalWheelControl()
+        {
+            InputTestFixture inputFixture = new();
+            inputFixture.Setup();
+            GameObject inputRoot = new("IsolatedInputManager");
+            InputManager inputManager = inputRoot.AddComponent<InputManager>();
+            Mouse mouse = InputSystem.AddDevice<Mouse>();
+
+            try
+            {
+                using OptionsBindingSession session = new OptionsBindingSession(inputManager);
+                session.Rebuild();
+                int row = session
+                    .Rows.Select((binding, index) => (binding, index))
+                    .Single(item => item.binding.Action == "Show Troopers")
+                    .index;
+                session.BeginRebind(row, false);
+                InputSystem.Update();
+                InputSystem.QueueStateEvent(mouse, new MouseState { scroll = Vector2.up });
+                InputSystem.Update();
+                inputFixture.currentTime += 0.1;
+                InputSystem.Update();
+
+                InputAction action = inputManager.Asset.FindAction("Strategy/ShowTroopers", true);
+                Assert.AreEqual(-1, session.ListeningRow);
+                Assert.AreEqual(
+                    "<Mouse>/scroll/up",
+                    action.bindings[FindBinding(action, "Primary")].effectivePath
+                );
+                Assert.AreEqual("WHEEL UP", session.Rows[row].Primary);
+            }
+            finally
+            {
+                Object.DestroyImmediate(inputRoot);
+                inputFixture.TearDown();
+            }
         }
 
         [Test]

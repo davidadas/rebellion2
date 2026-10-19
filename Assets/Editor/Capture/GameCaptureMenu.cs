@@ -8,6 +8,7 @@ using UnityEngine;
 /// </summary>
 public static class GameCaptureMenu
 {
+    private const string _openScreenshotFolderMenuPath = "Rebellion/Open Screenshot Folder";
     private const string _screenshotMenuPath = "Rebellion/Capture Game Screenshot";
     private const string _startRecordingMenuPath = "Rebellion/Start Game Recording";
     private const string _screenshotDirectoryName = "_screenshots";
@@ -56,6 +57,17 @@ public static class GameCaptureMenu
         return !GameRecordingSession.IsRecording
             && EditorApplication.isPlaying
             && !EditorApplication.isPaused;
+    }
+
+    /// <summary>
+    /// Creates and reveals the project's screenshot output directory.
+    /// </summary>
+    [MenuItem(_openScreenshotFolderMenuPath, false, 202)]
+    public static void OpenScreenshotFolder()
+    {
+        string screenshotDirectory = GetScreenshotDirectory();
+        Directory.CreateDirectory(screenshotDirectory);
+        EditorUtility.RevealInFinder(screenshotDirectory);
     }
 
     /// <summary>

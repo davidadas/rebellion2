@@ -71,6 +71,35 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        public void ResolveFile_DerivedPackDoesNotContainAddress_FallsBackToInheritedPack()
+        {
+            string inheritedPackRoot = Path.Combine(_contentRoot, "Packs", "Inherited");
+            string inheritedFile = WriteFile(inheritedPackRoot, "Data/ships.xml", "inherited");
+            ContentFileResolver resolver = new ContentFileResolver(
+                _contentRoot,
+                _packRoot,
+                fallbackPackRootPaths: new[] { inheritedPackRoot }
+            );
+
+            Assert.AreEqual(inheritedFile, resolver.ResolveFile("Pack/Data/ships.xml"));
+        }
+
+        [Test]
+        public void ResolveFile_DerivedAndInheritedPacksContainAddress_DerivedPackWins()
+        {
+            string inheritedPackRoot = Path.Combine(_contentRoot, "Packs", "Inherited");
+            WriteFile(inheritedPackRoot, "Data/ships.xml", "inherited");
+            string derivedFile = WriteFile(_packRoot, "Data/ships.xml", "derived");
+            ContentFileResolver resolver = new ContentFileResolver(
+                _contentRoot,
+                _packRoot,
+                fallbackPackRootPaths: new[] { inheritedPackRoot }
+            );
+
+            Assert.AreEqual(derivedFile, resolver.ResolveFile("Pack/Data/ships.xml"));
+        }
+
+        [Test]
         public void ResolveFile_ModUsesDifferentExtension_ModStillWins()
         {
             WriteFile(_packRoot, "UI/portrait.png", "base");
@@ -111,6 +140,28 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        public void EnumerateFileAddresses_DerivedAndInheritedPacks_ReturnsLayeredUnion()
+        {
+            string inheritedPackRoot = Path.Combine(_contentRoot, "Packs", "Inherited");
+            WriteFile(inheritedPackRoot, "UI/inherited.png", "inherited");
+            WriteFile(inheritedPackRoot, "UI/replaced.png", "inherited");
+            WriteFile(_packRoot, "UI/replaced.png", "derived");
+            WriteFile(_packRoot, "UI/derived.png", "derived");
+            ContentFileResolver resolver = new ContentFileResolver(
+                _contentRoot,
+                _packRoot,
+                fallbackPackRootPaths: new[] { inheritedPackRoot }
+            );
+
+            string[] addresses = resolver.EnumerateFileAddresses("Pack/UI").ToArray();
+
+            CollectionAssert.AreEqual(
+                new[] { "Pack/UI/derived.png", "Pack/UI/inherited.png", "Pack/UI/replaced.png" },
+                addresses
+            );
+        }
+
+        [Test]
         public void Discover_CompatibleMod_LoadsDefinitionAndContent()
         {
             WriteFile(_packRoot, "Data/ships.xml", "base");
@@ -120,6 +171,7 @@ namespace Rebellion.Tests.Content
                 "mod.xml",
                 "<ContentModDefinition><ID>ship-rebalance</ID><Version>1.0.0</Version>"
                     + "<DisplayName>Ship Rebalance</DisplayName><BasePackID>base-pack</BasePackID>"
+                    + "<BasePackVersion>1.0.0</BasePackVersion>"
                     + "</ContentModDefinition>"
             );
             string modFile = WriteFile(modRoot, "Content/Pack/Data/ships.xml", "mod");
@@ -127,7 +179,8 @@ namespace Rebellion.Tests.Content
             ContentFileResolver resolver = ContentFileResolver.Discover(
                 _contentRoot,
                 _packRoot,
-                "base-pack"
+                "base-pack",
+                "1.0.0"
             );
 
             Assert.AreEqual(1, resolver.Mods.Count);
@@ -145,6 +198,7 @@ namespace Rebellion.Tests.Content
                 "mod.xml",
                 "<ContentModDefinition><ID>ship-rebalance</ID><Version>1.0.0</Version>"
                     + "<DisplayName>Ship Rebalance</DisplayName><BasePackID>base-pack</BasePackID>"
+                    + "<BasePackVersion>1.0.0</BasePackVersion>"
                     + "</ContentModDefinition>"
             );
             WriteFile(modRoot, "Content/Pack/Data/ships.xml", "mod");
@@ -153,12 +207,53 @@ namespace Rebellion.Tests.Content
                 _contentRoot,
                 _packRoot,
                 "base-pack",
+                "1.0.0",
                 new[] { "ship-rebalance" }
             );
 
             Assert.IsEmpty(resolver.Mods);
             Assert.AreEqual("ship-rebalance", resolver.AvailableMods.Single().ID);
             Assert.AreEqual("base", File.ReadAllText(resolver.ResolveFile("Pack/Data/ships.xml")));
+        }
+
+        [Test]
+        public void Discover_ModForDifferentPackVersion_IgnoresDefinition()
+        {
+            string modRoot = Path.Combine(_root, "Mods", "ShipRebalance");
+            WriteFile(
+                modRoot,
+                "mod.xml",
+                "<ContentModDefinition><ID>ship-rebalance</ID><Version>1.0.0</Version>"
+                    + "<DisplayName>Ship Rebalance</DisplayName><BasePackID>base-pack</BasePackID>"
+                    + "<BasePackVersion>2.0.0</BasePackVersion>"
+                    + "</ContentModDefinition>"
+            );
+
+            ContentFileResolver resolver = ContentFileResolver.Discover(
+                _contentRoot,
+                _packRoot,
+                "base-pack",
+                "1.0.0"
+            );
+
+            Assert.IsEmpty(resolver.AvailableMods);
+        }
+
+        [Test]
+        public void Discover_ModWithoutBasePackVersion_ThrowsInvalidDataException()
+        {
+            string modRoot = Path.Combine(_root, "Mods", "ShipRebalance");
+            WriteFile(
+                modRoot,
+                "mod.xml",
+                "<ContentModDefinition><ID>ship-rebalance</ID><Version>1.0.0</Version>"
+                    + "<DisplayName>Ship Rebalance</DisplayName><BasePackID>base-pack</BasePackID>"
+                    + "</ContentModDefinition>"
+            );
+
+            Assert.Throws<InvalidDataException>(() =>
+                ContentFileResolver.Discover(_contentRoot, _packRoot, "base-pack", "1.0.0")
+            );
         }
 
         [Test]
@@ -202,7 +297,8 @@ namespace Rebellion.Tests.Content
             ContentFileResolver resolver = ContentFileResolver.Discover(
                 _contentRoot,
                 _packRoot,
-                "base-pack"
+                "base-pack",
+                "1.0.0"
             );
 
             Assert.IsEmpty(resolver.Mods);

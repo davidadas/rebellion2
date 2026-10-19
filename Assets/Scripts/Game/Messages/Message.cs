@@ -64,6 +64,9 @@ namespace Rebellion.Game.Messages
         [PersistableMember(Name = nameof(Read))]
         private bool _read;
 
+        [PersistableMember(Name = nameof(NotificationAcknowledged))]
+        private bool _notificationAcknowledged;
+
         [PersistableIgnore]
         public MessageType Type
         {
@@ -160,6 +163,13 @@ namespace Rebellion.Game.Messages
         {
             get => _read;
             set => _read = value;
+        }
+
+        [PersistableIgnore]
+        public bool NotificationAcknowledged
+        {
+            get => _notificationAcknowledged || _read;
+            set => _notificationAcknowledged = value;
         }
 
         /// <summary>

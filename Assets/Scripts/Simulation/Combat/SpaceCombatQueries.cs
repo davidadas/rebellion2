@@ -64,7 +64,7 @@ namespace Rebellion.Simulation
                 DefenderFleets = defenderFleets,
                 AttackerOwnerInstanceID = decision.AttackerOwnerInstanceID,
                 DefenderOwnerInstanceID = decision.DefenderOwnerInstanceID,
-                Planet = planet,
+                PlanetInstanceID = planet?.InstanceID,
                 AttackerCanRetreat = CanRetreatForces(
                     attackerFleets,
                     defenderFleets,

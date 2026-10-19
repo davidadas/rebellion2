@@ -220,11 +220,11 @@ jobs:
 
           find .unity-lint-assemblies/UnityEngine .unity-lint-assemblies/UnityEditor -maxdepth 1 -name "*.dll" -exec cp {} .unity-lint-assemblies/ \; 2>/dev/null || true
 
-          # Stage uGUI and TextMeshPro package assemblies. These are not in Data/Managed; they are
+          # Stage package assemblies. These are not in Data/Managed; they are
           # precompiled in the editor image's project-template library cache. Resolving them keeps the
           # lint semantic model complete so IDE0005 does not falsely flag genuinely-used usings.
           docker cp "$CONTAINER_ID:/opt/unity/Editor/Data/Resources/PackageManager/ProjectTemplates/libcache/." /tmp/unity-libcache/ 2>/dev/null || true
-          for dll in UnityEngine.UI.dll Unity.TextMeshPro.dll Unity.TextMeshPro.Editor.dll Unity.InputSystem.dll; do
+          for dll in UnityEngine.UI.dll Unity.TextMeshPro.dll Unity.TextMeshPro.Editor.dll Unity.InputSystem.dll Unity.Burst.dll Unity.Collections.dll Unity.InternalAPIEngineBridge.004.dll Unity.InternalAPIEngineBridge.RenderPipelines.Core.Runtime.Shared.dll Unity.Mathematics.dll Unity.RenderPipelines.Core.Runtime.dll Unity.RenderPipelines.Core.Runtime.Shared.dll Unity.RenderPipelines.GPUDriven.Runtime.dll Unity.RenderPipelines.HighDefinition.Config.Runtime.dll Unity.RenderPipelines.HighDefinition.Runtime.dll Unity.Timeline.dll Unity.VisualEffectGraph.Runtime.dll; do
             src="$(find /tmp/unity-libcache -name "$dll" 2>/dev/null | head -n 1)"
             if [ -n "$src" ]; then
               cp "$src" .unity-lint-assemblies/
@@ -232,7 +232,7 @@ jobs:
           done
           rm -rf /tmp/unity-libcache
 
-          for assembly in UnityEngine.CoreModule.dll UnityEditor.dll UnityEngine.UI.dll Unity.TextMeshPro.dll Unity.InputSystem.dll UnityEngine.ImageConversionModule.dll UnityEngine.UnityWebRequestModule.dll UnityEngine.UnityWebRequestAudioModule.dll; do
+          for assembly in UnityEngine.CoreModule.dll UnityEditor.dll UnityEngine.UI.dll Unity.TextMeshPro.dll Unity.InputSystem.dll Unity.Burst.dll Unity.Collections.dll Unity.InternalAPIEngineBridge.004.dll Unity.InternalAPIEngineBridge.RenderPipelines.Core.Runtime.Shared.dll Unity.Mathematics.dll Unity.RenderPipelines.Core.Runtime.dll Unity.RenderPipelines.Core.Runtime.Shared.dll Unity.RenderPipelines.GPUDriven.Runtime.dll Unity.RenderPipelines.HighDefinition.Config.Runtime.dll Unity.RenderPipelines.HighDefinition.Runtime.dll Unity.Timeline.dll Unity.VisualEffectGraph.Runtime.dll UnityEngine.ImageConversionModule.dll UnityEngine.UnityWebRequestModule.dll UnityEngine.UnityWebRequestAudioModule.dll; do
             if [ ! -f ".unity-lint-assemblies/$assembly" ]; then
               echo "ERROR: Missing required Unity lint assembly: $assembly"
               exit 1
@@ -314,6 +314,21 @@ jobs:
             Library-test-
             Library-
 
+      - name: Prepare Vulkan-enabled Unity test image
+        run: |
+          BASE_IMAGE="unityci/editor:ubuntu-${{ env.UNITY_VERSION }}-linux-il2cpp-${{ env.UNITY_IMAGE_VERSION }}"
+          docker pull "$BASE_IMAGE"
+          docker build \
+            --build-arg BASE_IMAGE="$BASE_IMAGE" \
+            --tag rebellion2-unity-test:vulkan \
+            - <<'EOF'
+          ARG BASE_IMAGE
+          FROM ${BASE_IMAGE}
+          RUN apt-get update \
+              && apt-get install --yes --no-install-recommends libvulkan1 mesa-vulkan-drivers \
+              && rm -rf /var/lib/apt/lists/*
+          EOF
+
       - name: Run Unity Tests
         uses: game-ci/unity-test-runner@v4
         env:
@@ -326,7 +341,8 @@ jobs:
           githubToken: ${{ secrets.GITHUB_TOKEN }}
           dockerCpuLimit: 2
           dockerMemoryLimit: 8g
-          customParameters: -executeMethod UIBuilderMenu.BuildAll
+          customImage: rebellion2-unity-test:vulkan
+          customParameters: -force-vulkan -executeMethod UIBuilderMenu.BuildAll
           coverageOptions: "generateAdditionalMetrics;generateHtmlReport;assemblyFilters:+GameAssembly"
           cliVersion: v0.1.65
 

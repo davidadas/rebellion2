@@ -115,6 +115,52 @@ namespace Rebellion.Tests.AI
         }
 
         [Test]
+        public void Constructor_MaximumEconomyModifiers_SaturatesCachedValues()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Summary = new GameSummary { Difficulty = GameDifficulty.Hard };
+            game.SetFactionController(empire.InstanceID, "EMPIRE-AI", PlayerControllerType.AI);
+            game.Config.DifficultyModifiers[GameDifficulty.Hard] = new DifficultyModifiers
+            {
+                MaintenanceCapacityPercent = int.MaxValue,
+            };
+            empire.Settings.ResourceProcessingPointsPerFacility = int.MaxValue;
+            empire.Settings.RefinementMultiplier = int.MaxValue;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "owned",
+                empire.InstanceID,
+                rawResourceNodes: 2
+            );
+            for (int index = 0; index < 2; index++)
+            {
+                AITestSceneBuilder.AddProductionFacility(
+                    game,
+                    planet,
+                    $"mine-{index}",
+                    BuildingType.Mine,
+                    ManufacturingType.Building
+                );
+                AITestSceneBuilder.AddProductionFacility(
+                    game,
+                    planet,
+                    $"refinery-{index}",
+                    BuildingType.Refinery,
+                    ManufacturingType.Building
+                );
+            }
+
+            AIAssessment assessment = new AIAssessment(game, empire, game.Galaxy);
+
+            Assert.AreEqual(int.MaxValue, assessment.MaintenanceCapacity);
+            Assert.AreEqual(int.MaxValue, assessment.ProjectedMaintenanceHeadroom);
+            Assert.AreEqual(int.MaxValue, assessment.ProjectedEconomyMaintenanceHeadroom);
+            Assert.AreEqual(int.MaxValue, assessment.RefinedMaterialSupply);
+        }
+
+        [Test]
         public void GetAvailableProductionLaneCount_WithPartiallyUsedStack_ReturnsFreeLanes()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
@@ -1678,6 +1724,65 @@ namespace Rebellion.Tests.AI
 
             fleet.Order.TargetPlanetId = "missing";
             Assert.IsNull(assessment.GetAttackTargetPlanet(fleet));
+        }
+
+        [Test]
+        public void GetKnownIncomingHostileFleetStrength_StaleSnapshot_DoesNotPolluteFleetCombatCache()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet planet = AITestSceneBuilder.AddPlanet(game, sector, "owned", empire.InstanceID);
+            Fleet inboundFleet = EntityFactory.CreateFleet("inbound", rebels.InstanceID);
+            inboundFleet.Movement = new MovementState { TransitTicks = 10 };
+            CapitalShip inboundShip = AITestSceneBuilder.CreateCapitalShip(
+                "inbound-ship",
+                rebels.InstanceID,
+                combatStrength: 100
+            );
+            game.AttachNode(inboundFleet, planet);
+            game.AttachNode(inboundShip, inboundFleet);
+            AITestSceneBuilder.RevealPlanet(game, empire, planet);
+            inboundShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser][0] = 300;
+
+            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+
+            Assert.AreEqual(100, assessment.GetKnownIncomingHostileFleetStrength(planet));
+            Assert.Greater(assessment.GetFleetCombatValue(inboundFleet), 100);
+        }
+
+        [Test]
+        public void GetKnownIncomingHostileFleetStrength_MultipleSameOwnerFleets_ReturnsCombinedStrength()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet planet = AITestSceneBuilder.AddPlanet(game, sector, "owned", empire.InstanceID);
+            Fleet firstFleet = EntityFactory.CreateFleet("first-inbound", rebels.InstanceID);
+            firstFleet.Movement = new MovementState { TransitTicks = 10 };
+            game.AttachNode(firstFleet, planet);
+            game.AttachNode(
+                AITestSceneBuilder.CreateCapitalShip(
+                    "first-inbound-ship",
+                    rebels.InstanceID,
+                    combatStrength: 60
+                ),
+                firstFleet
+            );
+            Fleet secondFleet = EntityFactory.CreateFleet("second-inbound", rebels.InstanceID);
+            secondFleet.Movement = new MovementState { TransitTicks = 20 };
+            game.AttachNode(secondFleet, planet);
+            game.AttachNode(
+                AITestSceneBuilder.CreateCapitalShip(
+                    "second-inbound-ship",
+                    rebels.InstanceID,
+                    combatStrength: 70
+                ),
+                secondFleet
+            );
+            AITestSceneBuilder.RevealPlanet(game, empire, planet);
+
+            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+
+            Assert.AreEqual(130, assessment.GetKnownIncomingHostileFleetStrength(planet));
         }
     }
 }

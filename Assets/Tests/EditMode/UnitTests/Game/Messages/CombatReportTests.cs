@@ -1,3 +1,4 @@
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
@@ -66,6 +67,51 @@ namespace Rebellion.Tests.Game.Messages
                 report.DefendingUnits[0].Category
             );
             Assert.IsTrue(report.DefendingUnits[0].Destroyed);
+        }
+
+        [Test]
+        public void CaptureVisible_HiddenOpposingUnit_ExcludesUnitFromReport()
+        {
+            CapitalShip attackingShip = new CapitalShip
+            {
+                InstanceID = "ATTACKER",
+                OwnerInstanceID = "FNALL1",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Building visibleBuilding = new Building
+            {
+                InstanceID = "VISIBLE",
+                OwnerInstanceID = "FNEMP1",
+                BuildingType = BuildingType.Mine,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Building hiddenBuilding = new Building
+            {
+                InstanceID = "HIDDEN",
+                OwnerInstanceID = "FNEMP1",
+                BuildingType = BuildingType.Mine,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            BombardmentResult result = new BombardmentResult
+            {
+                AttackerOwnerInstanceID = "FNALL1",
+                DefenderOwnerInstanceID = "FNEMP1",
+                AttackingUnits = { new CombatUnitSnapshot(attackingShip) },
+                DefendingUnits =
+                {
+                    new CombatUnitSnapshot(visibleBuilding),
+                    new CombatUnitSnapshot(hiddenBuilding),
+                },
+            };
+
+            CombatReport report = CombatReport.CaptureVisible(
+                result,
+                "FNALL1",
+                new[] { "VISIBLE" }
+            );
+
+            Assert.AreEqual("ATTACKER", report.AttackingUnits.Single().InstanceID);
+            Assert.AreEqual("VISIBLE", report.DefendingUnits.Single().InstanceID);
         }
 
         [Test]

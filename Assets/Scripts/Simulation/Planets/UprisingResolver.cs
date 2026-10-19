@@ -8,6 +8,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Mathematics;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Simulation
@@ -770,11 +771,13 @@ namespace Rebellion.Simulation
             int threshold = CalculateUprisingThreshold(supportForController);
             int missionAdjustment = CalculateUprisingMissionAdjustment(planet, config);
 
-            int combinedScore =
-                rollA
-                + rollB
-                + (threshold - troopMultiplier * controllerTroopCount)
-                + missionAdjustment;
+            int combinedScore = IntegerMath.SaturateToInt(
+                (long)rollA
+                    + rollB
+                    + threshold
+                    - (long)troopMultiplier * controllerTroopCount
+                    + missionAdjustment
+            );
 
             uprisingEffect = GetThresholdTableValue(config.PrimaryConsequenceTable, combinedScore);
 

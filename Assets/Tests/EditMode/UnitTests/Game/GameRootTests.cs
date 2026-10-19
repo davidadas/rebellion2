@@ -125,6 +125,24 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
+        public void GetDifficultyModifier_AIControlledFaction_ReturnsLaunchOverride()
+        {
+            DifficultyModifiers expected = new DifficultyModifiers
+            {
+                MissionSuccessChancePoints = 25,
+            };
+            _summary.AIDifficultyModifiers = expected;
+            _game.Config.DifficultyModifiers[GameDifficulty.Medium] = new DifficultyModifiers
+            {
+                MissionSuccessChancePoints = 15,
+            };
+
+            DifficultyModifiers actual = _game.GetDifficultyModifier(_faction2);
+
+            Assert.AreSame(expected, actual);
+        }
+
+        [Test]
         public void GetDifficultyModifier_PlayerControlledFaction_ReturnsNeutralModifier()
         {
             _game.SetFactionController(_faction1.InstanceID, "PLAYER1", PlayerControllerType.Human);
@@ -139,6 +157,20 @@ namespace Rebellion.Tests.Game
             Assert.AreEqual(0, actual.MissionExecutionSpeedIncreasePercent);
             Assert.AreEqual(100, actual.MaintenanceCapacityPercent);
             Assert.AreEqual(100, actual.ManufacturingSpeedPercent);
+        }
+
+        [Test]
+        public void GetDifficultyModifier_PlayerControlledFaction_ReturnsLaunchOverride()
+        {
+            DifficultyModifiers expected = new DifficultyModifiers
+            {
+                ManufacturingSpeedPercent = 125,
+            };
+            _summary.PlayerDifficultyModifiers = expected;
+
+            DifficultyModifiers actual = _game.GetDifficultyModifier(_faction1);
+
+            Assert.AreSame(expected, actual);
         }
 
         [Test]

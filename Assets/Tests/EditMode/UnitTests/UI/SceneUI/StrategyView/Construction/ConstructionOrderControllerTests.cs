@@ -16,6 +16,63 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
     {
         private const int _destinationEnergyCapacity = 2;
 
+        [TestCase(FacilityWindowTab.Shipyards, ManufacturingType.Ship)]
+        [TestCase(FacilityWindowTab.Training, ManufacturingType.Troop)]
+        [TestCase(FacilityWindowTab.Construction, ManufacturingType.Building)]
+        public void GetBuildSelection_AllManufacturingTabs_SortsNamesBeforeResearchOrder(
+            FacilityWindowTab tab,
+            ManufacturingType type
+        )
+        {
+            const string ownerId = "owner";
+            string[] names = { "Zulu", "alpha", "Bravo" };
+            IManufacturable[] templates = names
+                .Select(name =>
+                {
+                    IManufacturable template = type switch
+                    {
+                        ManufacturingType.Ship => new CapitalShip
+                        {
+                            TypeID = name,
+                            DisplayName = name,
+                        },
+                        ManufacturingType.Troop => new Regiment
+                        {
+                            TypeID = name,
+                            DisplayName = name,
+                        },
+                        _ => new Building
+                        {
+                            TypeID = name,
+                            DisplayName = name,
+                            BuildingType = BuildingType.Mine,
+                        },
+                    };
+                    template.ManufacturingFactionInstanceIDs = new List<string> { ownerId };
+                    template.ResearchOrder = name == "Zulu" ? 0 : 1;
+                    return template;
+                })
+                .ToArray();
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            Faction owner = new Faction { InstanceID = ownerId };
+            owner.SetHighestUnlockedOrder(type, 1);
+            owner.RebuildResearchCatalog(templates);
+            game.GetFactions().Add(owner);
+            ServiceContainer container = new ServiceContainer();
+            container.AddSingletonInstance(game);
+            container.AddSingletonInstance(new ManufacturingQueries(game));
+            ConstructionOrderController controller = new ConstructionOrderController(
+                container.BuildServiceLocator()
+            );
+
+            IReadOnlyList<IManufacturable> selection = controller.GetBuildSelection(tab, ownerId);
+
+            CollectionAssert.AreEqual(
+                new[] { "alpha", "Bravo", "Zulu" },
+                selection.Select(template => template.GetDisplayName())
+            );
+        }
+
         [Test]
         public void TrySetConstructionOrder_BuildCountExceedsFacilityCount_UsesDestinationCapacity()
         {

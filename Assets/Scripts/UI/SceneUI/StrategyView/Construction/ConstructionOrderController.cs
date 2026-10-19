@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.Game;
-using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -36,19 +34,17 @@ public sealed class ConstructionOrderController
         string playerFactionId
     )
     {
-        Faction faction = GetFaction(playerFactionId);
         ManufacturingType? manufacturingType =
             FacilityManufacturingLaneCatalog.GetManufacturingType(manufacturingTab);
-        if (faction == null || !manufacturingType.HasValue)
+        if (!manufacturingType.HasValue)
             return Array.Empty<IManufacturable>();
 
-        return faction
-            .GetUnlockedTechnologies(manufacturingType.Value)
-            .Select(technology => technology.GetReference())
+        return services
+            .GetService<ManufacturingQueries>()
+            .GetUnlockedManufacturables(manufacturingType.Value, playerFactionId)
             .Where(item => BelongsToManufacturingTab(item, manufacturingTab))
             .Where(item => IManufacturable.CanBeManufacturedBy(item, playerFactionId))
-            .OrderBy(item => item.GetResearchOrder())
-            .ThenBy(item => item.GetDisplayName())
+            .OrderBy(item => item.GetDisplayName(), StringComparer.CurrentCultureIgnoreCase)
             .ToList()
             .AsReadOnly();
     }
@@ -237,21 +233,6 @@ public sealed class ConstructionOrderController
             FacilityWindowTab.Construction => item is Building,
             _ => false,
         };
-    }
-
-    /// <summary>
-    /// Gets a faction from the active game by its instance identifier.
-    /// </summary>
-    /// <param name="factionId">The faction instance identifier.</param>
-    /// <returns>The matching faction, or null.</returns>
-    private Faction GetFaction(string factionId)
-    {
-        return services
-            .GetService<GameRoot>()
-            ?.GetFactions()
-            .FirstOrDefault(faction =>
-                string.Equals(faction.InstanceID, factionId, StringComparison.Ordinal)
-            );
     }
 }
 

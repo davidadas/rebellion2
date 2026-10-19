@@ -72,6 +72,41 @@ namespace Rebellion.Tests.UI.Input
         }
 
         [Test]
+        public void QuickLoad_Performed_RoutesThroughSavedGameTransition()
+        {
+            InputTestFixture inputFixture = new();
+            inputFixture.Setup();
+            GameObject root = new("AppInputControllerUnderTest");
+            InputManager inputManager = root.AddComponent<InputManager>();
+            AppInputController controller = root.AddComponent<AppInputController>();
+            Keyboard keyboard = InputSystem.AddDevice<Keyboard>();
+            string requestedSave = null;
+
+            try
+            {
+                controller.Initialize(
+                    inputManager,
+                    new CancelStack(),
+                    null,
+                    fileName =>
+                    {
+                        requestedSave = fileName;
+                        return true;
+                    }
+                );
+                InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.F9));
+                InputSystem.Update();
+
+                Assert.AreEqual(SaveGameManager.QuickSaveFileName, requestedSave);
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+                inputFixture.TearDown();
+            }
+        }
+
+        [Test]
         public void GetSlowerGameSpeed_SupportedSpeeds_StepsTowardPaused()
         {
             Assert.AreEqual(

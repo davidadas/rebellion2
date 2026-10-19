@@ -65,7 +65,7 @@ namespace Rebellion.AI.Scorers
                 .MissionPlanning
                 .Utility;
             AIUtilityScore score = GetMissionScore(context, missionProposal, successProbability);
-            AddMissionPriorityUtility(ref score, utility.Priority, missionProposal);
+            AddMissionPriorityUtility(ref score, context, utility.Priority, missionProposal);
             score.AddCost(
                 AIUtility.Fulfillment(foilProbability, utility.Objective.FoilRisk),
                 utility.Objective.FoilRisk
@@ -128,7 +128,7 @@ namespace Rebellion.AI.Scorers
                 .MissionPlanning
                 .Utility;
             AIUtilityScore score = GetMissionScore(context, proposal, successProbability: 100);
-            AddMissionPriorityUtility(ref score, utility.Priority, proposal);
+            AddMissionPriorityUtility(ref score, context, utility.Priority, proposal);
             score.AddCost(0, utility.Objective.FoilRisk);
             score.AddCost(
                 AIUtility.Fulfillment(
@@ -526,11 +526,13 @@ namespace Rebellion.AI.Scorers
         /// Returns the configured strategic-priority bonus for a mission type.
         /// </summary>
         /// <param name="score">The score receiving mission-priority considerations.</param>
+        /// <param name="context">The current AI turn context.</param>
         /// <param name="utility">The applicable utility configuration.</param>
         /// <param name="proposal">The proposal to evaluate.</param>
         /// <returns>The mission-type priority bonus.</returns>
         private static void AddMissionPriorityUtility(
             ref AIUtilityScore score,
+            AITurnContext context,
             GameConfig.AIMissionPriorityUtilityConfig utility,
             AIMissionProposal proposal
         )
@@ -549,6 +551,15 @@ namespace Rebellion.AI.Scorers
             score.Add(missionTypeId == MissionTypeIDs.Research ? 1 : 0, utility.Research);
             score.Add(missionTypeId == MissionTypeIDs.JediTraining ? 1 : 0, utility.JediTraining);
             score.Add(missionTypeId == MissionTypeIDs.Espionage ? 1 : 0, utility.Espionage);
+            score.Add(
+                missionTypeId == MissionTypeIDs.Espionage
+                && proposal.Participant is SpecialForces specialForces
+                && context.IsHeadquartersEspionageAgent(specialForces)
+                && proposal.TargetPlanet == context.Assessment.FactionHeadquarters
+                    ? 1
+                    : 0,
+                utility.MobileHeadquartersEspionage
+            );
             score.Add(missionTypeId == MissionTypeIDs.Diplomacy ? 1 : 0, utility.Diplomacy);
         }
 
@@ -582,7 +593,7 @@ namespace Rebellion.AI.Scorers
         /// <returns>The normalized travel penalty.</returns>
         private static double GetTravelCost(AITurnContext context, AIMissionProposal proposal)
         {
-            int distanceDivisor = context.Game.Config.Movement.DistanceDivisor;
+            double distanceDivisor = context.Game.Config.Movement.DistanceDivisor;
             if (proposal.TargetPlanet == null || distanceDivisor <= 0)
                 return 0;
 

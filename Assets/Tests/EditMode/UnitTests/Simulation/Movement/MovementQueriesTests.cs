@@ -43,6 +43,161 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void TryGetTransitTicks_OfficerWithTravelTrait_HalvesTransitTime()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementQueries movement
+            ) = BuildScene();
+            Assert.IsTrue(
+                movement.TryGetTransitTicks(
+                    new List<IMovable> { officer },
+                    destination,
+                    out int normalTicks
+                )
+            );
+            BindTravelTrait(officer);
+
+            Assert.IsTrue(
+                movement.TryGetTransitTicks(
+                    new List<IMovable> { officer },
+                    destination,
+                    out int acceleratedTicks
+                )
+            );
+
+            Assert.AreEqual(Math.Max(1, normalTicks / 2), acceleratedTicks);
+        }
+
+        [Test]
+        public void TryGetTransitTicks_OfficerGroupWithTravelTrait_HalvesEntireGroupTransitTime()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementQueries movement
+            ) = BuildScene();
+            Officer companion = EntityFactory.CreateOfficer("o2", "empire");
+            game.AttachNode(companion, origin);
+            Assert.IsTrue(
+                movement.TryGetTransitTicks(
+                    new List<IMovable> { officer, companion },
+                    destination,
+                    out int normalTicks
+                )
+            );
+            BindTravelTrait(officer);
+
+            Assert.IsTrue(
+                movement.TryGetTransitTicks(
+                    new List<IMovable> { officer, companion },
+                    destination,
+                    out int acceleratedTicks
+                )
+            );
+
+            Assert.AreEqual(Math.Max(1, normalTicks / 2), acceleratedTicks);
+        }
+
+        [Test]
+        public void TryGetTransitTicks_OfficerGroupWithPersonalTravelTrait_UsesNormalTime()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementQueries movement
+            ) = BuildScene();
+            Officer companion = EntityFactory.CreateOfficer("o2", "empire");
+            game.AttachNode(companion, origin);
+            Assert.IsTrue(
+                movement.TryGetTransitTicks(
+                    new List<IMovable> { officer, companion },
+                    destination,
+                    out int normalTicks
+                )
+            );
+            BindTravelTrait(officer, sharesWithGroup: false);
+
+            Assert.IsTrue(
+                movement.TryGetTransitTicks(
+                    new List<IMovable> { officer, companion },
+                    destination,
+                    out int traitTicks
+                )
+            );
+
+            Assert.AreEqual(normalTicks, traitTicks);
+        }
+
+        [Test]
+        public void TryGetTransitTicks_OfficerGroupWithSpecialForces_DoesNotApplyTravelTrait()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementQueries movement
+            ) = BuildScene();
+            Assert.IsTrue(
+                movement.TryGetTransitTicks(
+                    new List<IMovable> { officer },
+                    destination,
+                    out int normalTicks
+                )
+            );
+            BindTravelTrait(officer);
+            SpecialForces specialForces = new SpecialForces
+            {
+                InstanceID = "special-forces",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(specialForces, origin);
+
+            Assert.IsTrue(
+                movement.TryGetTransitTicks(
+                    new List<IMovable> { officer, specialForces },
+                    destination,
+                    out int groupTicks
+                )
+            );
+
+            Assert.AreEqual(normalTicks, groupTicks);
+        }
+
+        [Test]
+        public void GetPersonnelGroupTravelTimePercent_FleetContainingTraitOfficer_ReturnsNormalTime()
+        {
+            Officer officer = EntityFactory.CreateOfficer("officer", "empire");
+            BindTravelTrait(officer);
+            Fleet fleet = EntityFactory.CreateFleet("fleet", "empire");
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "ship",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            fleet.AddChild(ship);
+            ship.SetParent(fleet);
+            ship.AddChild(officer);
+            officer.SetParent(ship);
+
+            int travelTimePercent = MovementQueries.GetPersonnelGroupTravelTimePercent(
+                new List<IMovable> { fleet }
+            );
+
+            Assert.AreEqual(100, travelTimePercent);
+        }
+
+        [Test]
         public void TryGetTransitTicks_FleetWithUnfinishedSlowerShip_IgnoresUnfinishedShip()
         {
             GameConfig config = new GameConfig
@@ -132,6 +287,33 @@ namespace Rebellion.Tests.Simulation
 
             Assert.AreEqual(16, fasterTransitTicks);
             Assert.AreEqual(20, slowerTransitTicks);
+        }
+
+        [Test]
+        public void CalculateTransitTicks_FractionalDistanceDivisor_ScalesDuration()
+        {
+            GameConfig config = new GameConfig
+            {
+                Movement = new GameConfig.MovementConfig
+                {
+                    DistanceDivisor = 2.5,
+                    MinTransitTicks = 1,
+                    SameSectorMinTransitTicks = 1,
+                    DefaultFighterHyperdrive = 60,
+                    DefaultPersonnelHyperdrive = 100,
+                },
+            };
+            (_, Planet origin, Planet destination, _, MovementQueries movement) = BuildScene(
+                config
+            );
+            destination.PositionX = 100;
+            destination.PositionY = 0;
+            CapitalShip ship = CreateMovableCapitalShip("ship");
+            ship.Hyperdrive = 80;
+
+            int transitTicks = movement.CalculateTransitTicks(ship, origin, destination);
+
+            Assert.AreEqual(32, transitTicks);
         }
 
         [Test]
@@ -268,6 +450,24 @@ namespace Rebellion.Tests.Simulation
             Assert.IsTrue(result);
             Assert.Greater(transitTicks, 0);
             Assert.IsNull(officer.Movement);
+        }
+
+        [Test]
+        public void TryEstimateManufacturedTransitTicks_ViewOriginAndDestinationAtSamePlanet_ReturnsZero()
+        {
+            (GameRoot game, Planet origin, Planet _, Officer officer, MovementQueries movement) =
+                BuildScene();
+            Planet viewOrigin = new Planet { InstanceID = origin.InstanceID };
+
+            bool result = movement.TryEstimateManufacturedTransitTicks(
+                officer,
+                viewOrigin,
+                viewOrigin,
+                out int transitTicks
+            );
+
+            Assert.IsTrue(result);
+            Assert.AreEqual(0, transitTicks);
         }
 
         [Test]
@@ -711,6 +911,25 @@ namespace Rebellion.Tests.Simulation
             MovementQueries movement = new MovementQueries(game);
 
             return (game, origin, destination, officer, movement);
+        }
+
+        /// <summary>
+        /// Connects an officer to a fifty-percent personnel travel trait.
+        /// </summary>
+        /// <param name="officer">The officer that receives the inherent trait.</param>
+        /// <param name="sharesWithGroup">Whether the trait also accelerates accompanying officers.</param>
+        private static void BindTravelTrait(Officer officer, bool sharesWithGroup = true)
+        {
+            OfficerTraitDefinition definition = new OfficerTraitDefinition
+            {
+                ID = "travel",
+                PersonnelTravelTimePercent = 50,
+                SharesPersonnelTravelTimeModifier = sharesWithGroup,
+            };
+            officer.Traits.Add(definition.ID);
+            officer.BindTraitDefinitions(
+                new Dictionary<string, OfficerTraitDefinition> { [definition.ID] = definition }
+            );
         }
 
         /// <summary>

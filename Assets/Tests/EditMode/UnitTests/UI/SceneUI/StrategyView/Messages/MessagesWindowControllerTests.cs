@@ -320,6 +320,81 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
+        public void Open_CategoryTab_PreservesIndividualUnreadState()
+        {
+            Message first = CreateMessage("first");
+            Message second = CreateMessage("second");
+            (GameObject root, Faction faction, _, _) = OpenMessagesWindow(
+                new[] { first, second },
+                () => default
+            );
+
+            try
+            {
+                Assert.IsFalse(first.Read);
+                Assert.IsFalse(second.Read);
+                Assert.IsFalse(first.NotificationAcknowledged);
+                Assert.IsFalse(second.NotificationAcknowledged);
+                Assert.IsTrue(faction.HasUnreadMessages());
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(root);
+            }
+        }
+
+        [Test]
+        public void OpenTab_DifferentTab_AcknowledgesPreviousTabWithoutMarkingMessagesRead()
+        {
+            Message first = CreateMessage("first");
+            Message second = CreateMessage("second");
+            (
+                GameObject root,
+                Faction faction,
+                MessagesWindowController controller,
+                MessagesWindowView view
+            ) = OpenMessagesWindow(new[] { first, second }, () => default);
+
+            try
+            {
+                controller.OpenTab(view, MessagesTab.Mission);
+
+                Assert.IsTrue(first.NotificationAcknowledged);
+                Assert.IsTrue(second.NotificationAcknowledged);
+                Assert.IsFalse(first.Read);
+                Assert.IsFalse(second.Read);
+                Assert.IsTrue(faction.HasUnreadMessages());
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(root);
+            }
+        }
+
+        [Test]
+        public void DestroyWindow_PresentedMessages_ClearsNotifications()
+        {
+            Message first = CreateMessage("first");
+            Message second = CreateMessage("second");
+            (GameObject root, _, _, _) = OpenMessagesWindow(new[] { first, second }, () => default);
+
+            try
+            {
+                UIWindowManager windowManager = root.GetComponentInChildren<UIWindowManager>(true);
+                windowManager.DestroyWindow(windowManager.Windows.Single());
+
+                Assert.IsTrue(first.NotificationAcknowledged);
+                Assert.IsTrue(second.NotificationAcknowledged);
+                Assert.IsFalse(first.Read);
+                Assert.IsFalse(second.Read);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(root);
+            }
+        }
+
+        [Test]
         public void HasNavigationTarget_AnyNavigationIdentifier_ReturnsTrue()
         {
             Message primary = new StatusMessage { NavigationTargetInstanceID = "primary" };
@@ -495,6 +570,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
                 controller.OpenDetail(report, MessagesTab.All);
 
                 Assert.AreSame(report, actions.OpenedCombatReport);
+                Assert.AreEqual(MessagesTab.All, actions.CombatReportReturnTab);
                 Assert.IsTrue(report.Read);
                 Assert.IsFalse(controller.IsOpen);
             }
@@ -677,13 +753,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         {
             public CombatReport OpenedCombatReport { get; private set; }
 
+            public MessagesTab CombatReportReturnTab { get; private set; }
+
             /// <summary>
             /// Opens combat report.
             /// </summary>
             /// <param name="report">The report.</param>
-            public void OpenCombatReport(CombatReport report)
+            /// <param name="returnTab">The Messages tab restored after closing the report.</param>
+            public void OpenCombatReport(CombatReport report, MessagesTab returnTab)
             {
                 OpenedCombatReport = report;
+                CombatReportReturnTab = returnTab;
             }
 
             /// <summary>

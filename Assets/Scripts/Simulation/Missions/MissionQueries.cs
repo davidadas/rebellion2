@@ -7,6 +7,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Mathematics;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Simulation
@@ -1117,15 +1118,15 @@ namespace Rebellion.Simulation
 
             GameConfig.MissionProbabilityTablesConfig missionTables = GetMissionTables();
             Officer commander = mission.FindDetectorCommander(detector, encounterPlanet);
-            int score =
-                decoy.GetEffectiveRating(SkillRating.Espionage)
+            long score =
+                (long)decoy.GetEffectiveRating(SkillRating.Espionage)
                 - GetEffectiveDetectionRating(detector)
                 - GetScaledCommanderEspionage(commander, missionTables.DecoyDefenderScalingPercent);
             Dictionary<int, int> table =
                 detector.GetParentOfType<Fleet>() != null
                     ? missionTables.FleetDecoy
                     : missionTables.PlanetaryDecoy;
-            return LookupProbability(table, score);
+            return LookupProbability(table, IntegerMath.SaturateToInt(score));
         }
 
         /// <summary>
@@ -1187,11 +1188,13 @@ namespace Rebellion.Simulation
         {
             GameConfig.MissionProbabilityTablesConfig missionTables = GetMissionTables();
             Officer commander = mission.FindDetectorCommander(detector, encounterPlanet);
-            return GetAverageEspionage(participants)
+            long score =
+                (long)GetAverageEspionage(participants)
                 - GetScaledCommanderEspionage(commander, missionTables.FoilDefenderScalingPercent)
                 - GetEffectiveDetectionRating(detector)
                 - participants.OfType<SpecialForces>().Count()
                 - missionTables.FoilFlatScoreAdjustment;
+            return IntegerMath.SaturateToInt(score);
         }
 
         /// <summary>
@@ -1211,7 +1214,15 @@ namespace Rebellion.Simulation
             double multiplier = _game
                 .GetDifficultyModifier(detector?.GetOwnerInstanceID())
                 .DetectionRatingMultiplier;
-            return (int)Math.Round(authoredRating * multiplier, MidpointRounding.AwayFromZero);
+            double scaledRating = Math.Round(
+                authoredRating * multiplier,
+                MidpointRounding.AwayFromZero
+            );
+            if (scaledRating >= int.MaxValue)
+                return int.MaxValue;
+            if (scaledRating <= int.MinValue)
+                return int.MinValue;
+            return (int)scaledRating;
         }
 
         /// <summary>
@@ -1234,9 +1245,9 @@ namespace Rebellion.Simulation
         /// <param name="commander">The detector commander, if one is assigned.</param>
         /// <param name="scalingPercent">The percentage of the rating applied to detection.</param>
         /// <returns>The scaled commander contribution.</returns>
-        private static int GetScaledCommanderEspionage(Officer commander, int scalingPercent)
+        private static long GetScaledCommanderEspionage(Officer commander, int scalingPercent)
         {
-            return (commander?.GetEffectiveRating(SkillRating.Espionage) ?? 0)
+            return (long)(commander?.GetEffectiveRating(SkillRating.Espionage) ?? 0)
                 * scalingPercent
                 / 100;
         }
@@ -1310,14 +1321,9 @@ namespace Rebellion.Simulation
         /// <returns>True for a planetary objective.</returns>
         internal bool IsPlanetaryObjective(Mission mission)
         {
-            string targetID = mission switch
-            {
-                AbductionMission abduction => abduction.TargetOfficerInstanceID,
-                AssassinationMission assassination => assassination.TargetOfficerInstanceID,
-                RescueMission rescue => rescue.TargetOfficerInstanceID,
-                SabotageMission sabotage => sabotage.SabotageTargetInstanceID,
-                _ => mission.LocationInstanceID,
-            };
+            string targetID = mission is IEntityTargetingMission targetedMission
+                ? targetedMission.TargetEntityInstanceID
+                : mission.LocationInstanceID;
             ISceneNode target = _game.GetSceneNodeByInstanceID<ISceneNode>(targetID);
             return UsesPlanetaryDetectors(MissionEncounterPhase.PreObjective, target);
         }

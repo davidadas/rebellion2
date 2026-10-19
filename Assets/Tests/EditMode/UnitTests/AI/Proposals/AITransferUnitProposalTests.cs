@@ -146,5 +146,73 @@ namespace Rebellion.Tests.AI.Fleets
 
             Assert.AreSame(transport, regiment.GetParent());
         }
+
+        [Test]
+        public void CanSelect_WithDeliveryOnlyTargetFleetAtBlockadedOwnedPlanet_ReturnsFalse()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
+            Planet staging = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "staging",
+                empire.InstanceID
+            );
+            Planet attackTarget = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "attack-target",
+                rebels.InstanceID
+            );
+            Fleet targetFleet = EntityFactory.CreateFleet("target-fleet", empire.InstanceID);
+            targetFleet.RoleType = FleetRoleType.Battle;
+            targetFleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                Status = FleetOrderStatus.Building,
+                TargetPlanetId = attackTarget.InstanceID,
+            };
+            game.AttachNode(targetFleet, staging);
+            CapitalShip targetShip = AITestSceneBuilder.CreateCapitalShip(
+                "target-ship",
+                empire.InstanceID,
+                combatStrength: 100
+            );
+            targetShip.ManufacturingStatus = ManufacturingStatus.Delivering;
+            targetShip.Movement = new MovementState { TransitTicks = 10 };
+            game.AttachNode(targetShip, targetFleet);
+            Fleet hostileFleet = EntityFactory.CreateFleet("hostile-fleet", rebels.InstanceID);
+            game.AttachNode(hostileFleet, staging);
+            game.AttachNode(
+                AITestSceneBuilder.CreateCapitalShip(
+                    "hostile-ship",
+                    rebels.InstanceID,
+                    combatStrength: 1000
+                ),
+                hostileFleet
+            );
+            Fleet sourceFleet = EntityFactory.CreateFleet("source-fleet", empire.InstanceID);
+            game.AttachNode(sourceFleet, staging);
+            CapitalShip reinforcement = AITestSceneBuilder.CreateCapitalShip(
+                "reinforcement",
+                empire.InstanceID
+            );
+            game.AttachNode(reinforcement, sourceFleet);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AITransferUnitProposal proposal = new AITransferUnitProposal(
+                sourceFleet,
+                targetFleet,
+                reinforcement,
+                targetFleet,
+                attackTarget
+            );
+
+            Assert.IsFalse(proposal.CanSelect(context));
+
+            proposal.Execute(context);
+
+            Assert.AreSame(sourceFleet, reinforcement.GetParent());
+            Assert.IsNull(reinforcement.Movement);
+        }
     }
 }

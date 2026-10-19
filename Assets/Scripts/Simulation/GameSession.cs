@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.FogOfWar;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -207,6 +209,8 @@ namespace Rebellion.Simulation
         /// </summary>
         private void RebuildDerivedState()
         {
+            _gameData.BindOfficerTraits(GetPersistedOfficers());
+
             IManufacturable[] templates = CopyTemplates(_gameData.Buildings)
                 .Cast<IManufacturable>()
                 .Concat(CopyTemplates(_gameData.CapitalShips))
@@ -220,6 +224,78 @@ namespace Rebellion.Simulation
 
             GetService<ManufacturingObserver>().RebuildQueues();
             GetService<FogOfWarObserver>().ReconcileKnowledge();
+        }
+
+        /// <summary>
+        /// Enumerates every authoritative and remembered officer whose derived trait definitions
+        /// must be restored after loading a game.
+        /// </summary>
+        /// <returns>All officers persisted by the active game.</returns>
+        private IEnumerable<Officer> GetPersistedOfficers()
+        {
+            foreach (
+                Officer officer in Game.GetRegisteredSceneNodesByType<Officer>(
+                    includeDisabled: true
+                )
+            )
+            {
+                yield return officer;
+            }
+
+            foreach (Officer officer in Game.GetUnrecruitedOfficers())
+                yield return officer;
+
+            foreach (Faction faction in Game.GetFactions())
+            {
+                foreach (
+                    PlanetSectorSnapshot sectorSnapshot in faction.Fog?.Snapshots?.Values
+                        ?? Enumerable.Empty<PlanetSectorSnapshot>()
+                )
+                {
+                    foreach (
+                        PlanetSnapshot planetSnapshot in sectorSnapshot?.Planets?.Values
+                            ?? Enumerable.Empty<PlanetSnapshot>()
+                    )
+                    {
+                        foreach (Officer officer in GetSnapshotOfficers(planetSnapshot))
+                            yield return officer;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Enumerates officers stored directly or as cargo and mission participants in one fog
+        /// snapshot.
+        /// </summary>
+        /// <param name="snapshot">The persisted planet snapshot.</param>
+        /// <returns>Every officer retained by the snapshot.</returns>
+        private static IEnumerable<Officer> GetSnapshotOfficers(PlanetSnapshot snapshot)
+        {
+            if (snapshot == null)
+                yield break;
+
+            foreach (Officer officer in snapshot.Officers ?? Enumerable.Empty<Officer>())
+            {
+                if (officer != null)
+                    yield return officer;
+            }
+
+            foreach (Fleet fleet in snapshot.Fleets ?? Enumerable.Empty<Fleet>())
+            {
+                if (fleet == null)
+                    continue;
+                foreach (Officer officer in fleet.GetChildren<Officer>(true, true))
+                    yield return officer;
+            }
+
+            foreach (Mission mission in snapshot.Missions ?? Enumerable.Empty<Mission>())
+            {
+                if (mission == null)
+                    continue;
+                foreach (Officer officer in mission.GetChildren<Officer>(true, true))
+                    yield return officer;
+            }
         }
 
         /// <summary>

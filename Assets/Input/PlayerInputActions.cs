@@ -509,6 +509,15 @@ namespace Rebellion.Input
                     ""initialStateCheck"": false
                 },
                 {
+                    ""name"": ""CloseAllWindows"",
+                    ""type"": ""Button"",
+                    ""id"": ""cd80355d-e18d-4b04-9087-99604339a3dc"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
                     ""name"": ""MultiSelectModifier"",
                     ""type"": ""Button"",
                     ""id"": ""00000000-0000-0000-0000-000000000013"",
@@ -1011,7 +1020,7 @@ namespace Rebellion.Input
                 {
                     ""name"": ""Modifier"",
                     ""id"": ""00000000-0000-0000-0000-000000000062"",
-                    ""path"": ""<Keyboard>/leftMeta"",
+                    ""path"": ""<Keyboard>/ctrl"",
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": ""Keyboard&Mouse"",
@@ -1022,7 +1031,7 @@ namespace Rebellion.Input
                 {
                     ""name"": ""Binding"",
                     ""id"": ""00000000-0000-0000-0000-000000000063"",
-                    ""path"": ""<Keyboard>/minus"",
+                    ""path"": ""<Mouse>/scroll/down"",
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": ""Keyboard&Mouse"",
@@ -1099,7 +1108,7 @@ namespace Rebellion.Input
                 {
                     ""name"": ""Modifier"",
                     ""id"": ""00000000-0000-0000-0000-000000000080"",
-                    ""path"": ""<Keyboard>/leftMeta"",
+                    ""path"": ""<Keyboard>/ctrl"",
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": ""Keyboard&Mouse"",
@@ -1110,11 +1119,99 @@ namespace Rebellion.Input
                 {
                     ""name"": ""Binding"",
                     ""id"": ""00000000-0000-0000-0000-000000000081"",
-                    ""path"": ""<Keyboard>/equals"",
+                    ""path"": ""<Mouse>/scroll/up"",
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": ""Keyboard&Mouse"",
                     ""action"": ""IncreaseGameSpeed"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": ""Primary"",
+                    ""id"": ""8f7ce59d-c09b-4c48-87c0-d68472949362"",
+                    ""path"": """",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""CloseAllWindows"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": ""PrimaryChord"",
+                    ""id"": ""0be29737-4e3c-45c0-ac9c-364af204c716"",
+                    ""path"": ""OneModifier(modifiersOrder=1)"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""CloseAllWindows"",
+                    ""isComposite"": true,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": ""Modifier"",
+                    ""id"": ""07a31a10-a40a-4187-91eb-42706129e012"",
+                    ""path"": ""<Keyboard>/ctrl"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""CloseAllWindows"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": ""Binding"",
+                    ""id"": ""8d49eff1-5ccd-4385-91bb-a1127ba3ca43"",
+                    ""path"": ""<Keyboard>/w"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""CloseAllWindows"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": ""Secondary"",
+                    ""id"": ""59855972-f4d1-4dc9-857c-570e96d5f6a5"",
+                    ""path"": """",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""CloseAllWindows"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": ""SecondaryChord"",
+                    ""id"": ""823145e0-9a42-497c-ad71-3f04cd8954db"",
+                    ""path"": ""OneModifier(modifiersOrder=1)"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""CloseAllWindows"",
+                    ""isComposite"": true,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": ""Modifier"",
+                    ""id"": ""edac20a1-d13f-4458-bcb2-ff5dbf069436"",
+                    ""path"": """",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""CloseAllWindows"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": ""Binding"",
+                    ""id"": ""948f035d-8624-4b5b-a564-b15b58119e52"",
+                    ""path"": """",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""CloseAllWindows"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": true
                 },
@@ -5750,6 +5847,7 @@ namespace Rebellion.Input
             m_Strategy = asset.FindActionMap("Strategy", throwIfNotFound: true);
             m_Strategy_DecreaseGameSpeed = m_Strategy.FindAction("DecreaseGameSpeed", throwIfNotFound: true);
             m_Strategy_IncreaseGameSpeed = m_Strategy.FindAction("IncreaseGameSpeed", throwIfNotFound: true);
+            m_Strategy_CloseAllWindows = m_Strategy.FindAction("CloseAllWindows", throwIfNotFound: true);
             m_Strategy_MultiSelectModifier = m_Strategy.FindAction("MultiSelectModifier", throwIfNotFound: true);
             m_Strategy_RangeSelectModifier = m_Strategy.FindAction("RangeSelectModifier", throwIfNotFound: true);
             m_Strategy_BookmarkSlot1 = m_Strategy.FindAction("BookmarkSlot1", throwIfNotFound: true);
@@ -6030,6 +6128,7 @@ namespace Rebellion.Input
         private List<IStrategyActions> m_StrategyActionsCallbackInterfaces = new List<IStrategyActions>();
         private readonly InputAction m_Strategy_DecreaseGameSpeed;
         private readonly InputAction m_Strategy_IncreaseGameSpeed;
+        private readonly InputAction m_Strategy_CloseAllWindows;
         private readonly InputAction m_Strategy_MultiSelectModifier;
         private readonly InputAction m_Strategy_RangeSelectModifier;
         private readonly InputAction m_Strategy_BookmarkSlot1;
@@ -6097,6 +6196,10 @@ namespace Rebellion.Input
             /// Provides access to the underlying input action "Strategy/IncreaseGameSpeed".
             /// </summary>
             public InputAction @IncreaseGameSpeed => m_Wrapper.m_Strategy_IncreaseGameSpeed;
+            /// <summary>
+            /// Provides access to the underlying input action "Strategy/CloseAllWindows".
+            /// </summary>
+            public InputAction @CloseAllWindows => m_Wrapper.m_Strategy_CloseAllWindows;
             /// <summary>
             /// Provides access to the underlying input action "Strategy/MultiSelectModifier".
             /// </summary>
@@ -6321,6 +6424,9 @@ namespace Rebellion.Input
                 @IncreaseGameSpeed.started += instance.OnIncreaseGameSpeed;
                 @IncreaseGameSpeed.performed += instance.OnIncreaseGameSpeed;
                 @IncreaseGameSpeed.canceled += instance.OnIncreaseGameSpeed;
+                @CloseAllWindows.started += instance.OnCloseAllWindows;
+                @CloseAllWindows.performed += instance.OnCloseAllWindows;
+                @CloseAllWindows.canceled += instance.OnCloseAllWindows;
                 @MultiSelectModifier.started += instance.OnMultiSelectModifier;
                 @MultiSelectModifier.performed += instance.OnMultiSelectModifier;
                 @MultiSelectModifier.canceled += instance.OnMultiSelectModifier;
@@ -6482,6 +6588,9 @@ namespace Rebellion.Input
                 @IncreaseGameSpeed.started -= instance.OnIncreaseGameSpeed;
                 @IncreaseGameSpeed.performed -= instance.OnIncreaseGameSpeed;
                 @IncreaseGameSpeed.canceled -= instance.OnIncreaseGameSpeed;
+                @CloseAllWindows.started -= instance.OnCloseAllWindows;
+                @CloseAllWindows.performed -= instance.OnCloseAllWindows;
+                @CloseAllWindows.canceled -= instance.OnCloseAllWindows;
                 @MultiSelectModifier.started -= instance.OnMultiSelectModifier;
                 @MultiSelectModifier.performed -= instance.OnMultiSelectModifier;
                 @MultiSelectModifier.canceled -= instance.OnMultiSelectModifier;
@@ -7105,6 +7214,13 @@ namespace Rebellion.Input
             /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
             /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
             void OnIncreaseGameSpeed(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "CloseAllWindows" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnCloseAllWindows(InputAction.CallbackContext context);
             /// <summary>
             /// Method invoked when associated input action "MultiSelectModifier" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
             /// </summary>

@@ -522,6 +522,32 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
+        public void Seed_MaximumRandomResourceBonus_DoesNotOverflowRandomBound()
+        {
+            Planet planet = new Planet { InstanceID = "p1" };
+            PlanetSector sector = new PlanetSector
+            {
+                InstanceID = "sector1",
+                SectorType = PlanetSectorType.Core,
+            };
+            sector.AddChild(planet);
+            GameGenerationConfig config = CreateRules();
+            PlanetResourceProfile profile = config.PlanetResources.Profiles[0];
+            profile.CoreEnergy.Random1 = int.MaxValue;
+            profile.EnergyMax = 15;
+
+            Configure(
+                new[] { sector },
+                new GalaxyClassificationResult(),
+                config,
+                _factionIds,
+                new SystemRandomProvider(12345)
+            );
+
+            Assert.That(planet.EnergyCapacity, Is.InRange(profile.EnergyMin, profile.EnergyMax));
+        }
+
+        [Test]
         public void Seed_AvailabilityHasNoProfile_FallsBackToNormalProfile()
         {
             Planet planet = new Planet { InstanceID = "p1" };

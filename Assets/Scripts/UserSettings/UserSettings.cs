@@ -26,6 +26,7 @@ public sealed class UserSettings
         Content ??= new UserContentSettings();
 
         Gameplay.Normalize();
+        UserInterface.Normalize();
         Audio.Normalize();
         Video.Normalize();
         Content.Normalize();
