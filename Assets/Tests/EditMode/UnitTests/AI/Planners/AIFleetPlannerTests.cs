@@ -21,6 +21,60 @@ namespace Rebellion.Tests.AI.Fleets
     [TestFixture]
     public class AIFleetPlannerTests
     {
+        [TestCase(false, 1, 0)]
+        [TestCase(false, 2, 1)]
+        [TestCase(true, 1, 1)]
+        [TestCase(true, 2, 2)]
+        public void Plan_WithStablePlanetGarrison_ReservesRegimentNeededForOwnership(
+            bool isColonized,
+            int regimentCount,
+            int expectedTransfers
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 1;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet source = AITestSceneBuilder.AddPlanet(game, sector, "source", empire.InstanceID);
+            source.IsColonized = isColonized;
+            source.SetPopularSupport(empire.InstanceID, 100);
+            Planet staging = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "staging",
+                empire.InstanceID
+            );
+            Planet target = AITestSceneBuilder.AddPlanet(game, sector, "target", rebels.InstanceID);
+            target.SetPopularSupport(empire.InstanceID, 100);
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+            for (int index = 0; index < regimentCount; index++)
+                game.AttachNode(
+                    AITestSceneBuilder.CreateRegiment("regiment-" + index, empire.InstanceID),
+                    source
+                );
+            Fleet fleet = AddBattleFleet(
+                game,
+                staging,
+                empire.InstanceID,
+                "fleet",
+                combatStrength: 2000
+            );
+            fleet.GetChildren<CapitalShip>().Single().RegimentCapacity = 2;
+            fleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                Status = FleetOrderStatus.Building,
+                TargetPlanetId = target.InstanceID,
+            };
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            int transfers = new AIFleetPlanner()
+                .Plan(context)
+                .OfType<AITransferUnitProposal>()
+                .Count(proposal => proposal.SourceContainer == source && proposal.Unit is Regiment);
+
+            Assert.AreEqual(expectedTransfers, transfers);
+        }
+
         [Test]
         public void Plan_CompletedCaptureWithReadyTarget_MovesFleetAndLeavesPlanetaryGarrison()
         {

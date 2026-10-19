@@ -1275,7 +1275,7 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns completed regiments a safe planet can release without compromising stability.
+        /// Returns completed regiments a safe planet can release while retaining ownership and stability.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="planet">The potential source planet.</param>
@@ -1301,6 +1301,8 @@ namespace Rebellion.AI.Planners
                 context.Faction,
                 context.Game.Config.AI.Garrison
             );
+            if (!planet.IsColonized)
+                requiredGarrison = Math.Max(1, requiredGarrison);
             return Math.Max(0, readyRegimentCount - requiredGarrison);
         }
 
