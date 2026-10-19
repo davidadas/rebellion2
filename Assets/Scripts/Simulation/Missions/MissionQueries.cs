@@ -78,7 +78,7 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="mission">The mission whose probability rules apply.</param>
         /// <param name="participants">The participants to evaluate.</param>
-        /// <returns>The chance that at least one participant succeeds if the objective is reached.</returns>
+        /// <returns>The percentage chance that the next execution reports objective success if reached.</returns>
         public double GetObjectiveSuccessProbability(
             Mission mission,
             IEnumerable<IMissionParticipant> participants
@@ -91,18 +91,20 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Estimates a mission's visible objective-roll and foiling chances without resolving an
-        /// outcome. Hidden betrayal and state changes produced during uprising resolution are
-        /// intentionally excluded. Foiling uses the caller's observed destination state.
+        /// Estimates objective success and encounter risks from the caller's observed state.
+        /// Success means the next execution reports a successful objective. Hidden betrayal and
+        /// changes from travel, hidden missions, or later ticks are excluded.
         /// </summary>
         /// <param name="context">The mission configuration to evaluate.</param>
         /// <param name="observedDetectors">
         /// Optional detector snapshot already filtered for the mission owner.
         /// </param>
+        /// <param name="includePersonnelLoss">Whether to calculate the additional personnel-loss risk.</param>
         /// <returns>The complete mission odds, or null when the request cannot create a mission.</returns>
         public MissionOdds GetMissionOdds(
             MissionContext context,
-            IReadOnlyList<ISceneNode> observedDetectors = null
+            IReadOnlyList<ISceneNode> observedDetectors = null,
+            bool includePersonnelLoss = true
         )
         {
             Planet target = context?.Location as Planet;
@@ -120,21 +122,8 @@ namespace Rebellion.Simulation
                                 observedDetectors
                             )
                             : Array.Empty<ISceneNode>(),
-                true
+                includePersonnelLoss
             );
-        }
-
-        /// <summary>
-        /// Estimates the objective and foiling chances used to compare mission alternatives.
-        /// </summary>
-        /// <param name="context">The mission configuration to evaluate.</param>
-        /// <returns>
-        /// The operational mission odds with personnel loss left at zero, or null when the request
-        /// cannot create a mission.
-        /// </returns>
-        internal MissionOdds GetOperationalMissionOdds(MissionContext context)
-        {
-            return GetMissionOddsCore(context, null, false);
         }
 
         /// <summary>
@@ -144,6 +133,8 @@ namespace Rebellion.Simulation
         /// <param name="observedDetectorSource">
         /// Supplies detector candidates from the caller's observed state for a planet.
         /// </param>
+        /// <param name="includePersonnelLoss">Whether to calculate the additional personnel-loss risk.</param>
+        /// <param name="evaluationState">The optional turn-scoped observed-planet assessment.</param>
         /// <returns>The complete mission odds, or null when the request cannot create a mission.</returns>
         internal MissionOdds GetMissionOdds(
             MissionContext context,
@@ -153,36 +144,20 @@ namespace Rebellion.Simulation
                 MissionEncounterPhase,
                 ISceneNode,
                 IReadOnlyList<ISceneNode>
-            > observedDetectorSource
+            > observedDetectorSource,
+            bool includePersonnelLoss = true,
+            Mission.MissionEvaluationState evaluationState = null
         )
         {
             if (observedDetectorSource == null)
                 throw new ArgumentNullException(nameof(observedDetectorSource));
 
-            return GetMissionOddsCore(context, observedDetectorSource, true);
-        }
-
-        /// <summary>
-        /// Estimates objective and foiling chances from detector snapshots for every encounter planet.
-        /// </summary>
-        /// <param name="context">The mission configuration to evaluate.</param>
-        /// <param name="observedDetectorSource">Supplies observed detector candidates by planet.</param>
-        /// <returns>The operational mission odds, or null when the request cannot create a mission.</returns>
-        internal MissionOdds GetOperationalMissionOdds(
-            MissionContext context,
-            Func<
-                Mission,
-                Planet,
-                MissionEncounterPhase,
-                ISceneNode,
-                IReadOnlyList<ISceneNode>
-            > observedDetectorSource
-        )
-        {
-            if (observedDetectorSource == null)
-                throw new ArgumentNullException(nameof(observedDetectorSource));
-
-            return GetMissionOddsCore(context, observedDetectorSource, false);
+            return GetMissionOddsCore(
+                context,
+                observedDetectorSource,
+                includePersonnelLoss,
+                evaluationState
+            );
         }
 
         /// <summary>
@@ -195,6 +170,7 @@ namespace Rebellion.Simulation
         /// <param name="includePersonnelLoss">
         /// Whether to retain the additional encounter history required for personnel-loss odds.
         /// </param>
+        /// <param name="evaluationState">The optional turn-scoped observed-planet assessment.</param>
         /// <returns>The complete mission odds, or null when the request cannot create a mission.</returns>
         private MissionOdds GetMissionOddsCore(
             MissionContext context,
@@ -205,7 +181,8 @@ namespace Rebellion.Simulation
                 ISceneNode,
                 IReadOnlyList<ISceneNode>
             > observedDetectorSource,
-            bool includePersonnelLoss
+            bool includePersonnelLoss,
+            Mission.MissionEvaluationState evaluationState = null
         )
         {
             if (!TryCreateMission(context, out Mission mission))
@@ -215,7 +192,8 @@ namespace Rebellion.Simulation
                 mission.GetMainParticipants(),
                 _game,
                 context.Location as Planet,
-                context.SelectedTarget
+                context.SelectedTarget,
+                evaluationState
             );
             double foilProbability;
             double personnelLossProbability;

@@ -9,6 +9,7 @@ using Rebellion.AI.Selectors;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Tests.AI.Helpers;
@@ -38,6 +39,32 @@ namespace Rebellion.Tests.AI
             );
 
             Assert.AreSame(factionView, context.FactionView);
+        }
+
+        [Test]
+        public void GetMissionOdds_ValidProposal_ReturnsObjectiveProbability()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, system, "origin", empire.InstanceID);
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
+            SpecialForces participant = AITestSceneBuilder.CreateSpecialForces(
+                "participant",
+                empire.InstanceID
+            );
+            participant.AllowedMissionTypeIDs.Add(MissionTypeIDs.Reconnaissance);
+            game.AttachNode(participant, origin);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIMissionProposal proposal = new AIMissionProposal(
+                new[] { participant },
+                MissionTypeIDs.Reconnaissance,
+                target
+            );
+
+            MissionOdds odds = context.GetMissionOdds(proposal);
+
+            Assert.IsNotNull(odds);
+            Assert.AreEqual(100, odds.ObjectiveSuccessProbability);
         }
 
         [Test]

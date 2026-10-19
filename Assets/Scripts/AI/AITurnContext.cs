@@ -68,6 +68,12 @@ namespace Rebellion.AI
         private readonly List<GameResult> _results = new List<GameResult>();
         private readonly Dictionary<SpecialForces, SpecialForcesIntent> _specialForcesIntents =
             new Dictionary<SpecialForces, SpecialForcesIntent>();
+        private readonly Dictionary<
+            string,
+            Mission.MissionEvaluationState
+        > _missionEvaluationStates = new Dictionary<string, Mission.MissionEvaluationState>(
+            StringComparer.Ordinal
+        );
         private readonly HashSet<SpecialForces> _headquartersEspionageAgents;
         private readonly HashSet<string> _unlockedSpecialForcesMissionTypes;
         private long _committedMaintenanceCost;
@@ -161,6 +167,40 @@ namespace Rebellion.AI
                 if (!string.IsNullOrEmpty(targetId))
                     _attackDemands[targetId] = demand;
             }
+        }
+
+        /// <summary>
+        /// Returns the observed mission odds for a proposal during this AI turn.
+        /// </summary>
+        /// <param name="proposal">The mission proposal to evaluate.</param>
+        /// <param name="includePersonnelLoss">Whether to calculate personnel-loss risk.</param>
+        /// <returns>The mission odds, or null when the proposal cannot create a mission.</returns>
+        internal MissionOdds GetMissionOdds(
+            AIMissionProposal proposal,
+            bool includePersonnelLoss = true
+        )
+        {
+            if (proposal?.TargetPlanet == null || MissionQueries == null || Assessment == null)
+                return null;
+
+            string planetId = proposal.TargetPlanet.InstanceID;
+            if (
+                !_missionEvaluationStates.TryGetValue(
+                    planetId,
+                    out Mission.MissionEvaluationState evaluationState
+                )
+            )
+            {
+                evaluationState = new Mission.MissionEvaluationState(Game, proposal.TargetPlanet);
+                _missionEvaluationStates.Add(planetId, evaluationState);
+            }
+
+            return MissionQueries.GetMissionOdds(
+                proposal.CreateContext(),
+                Assessment.GetMissionDetectors,
+                includePersonnelLoss,
+                evaluationState
+            );
         }
 
         /// <summary>

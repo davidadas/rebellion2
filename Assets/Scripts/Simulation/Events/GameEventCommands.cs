@@ -474,7 +474,6 @@ namespace Rebellion.Simulation
                 return false;
             }
 
-            GameLogger.Log($"Activating game event: {gameEvent.InstanceID}");
             GameActionContext actionContext = ExecuteActions(
                 gameEvent,
                 _game,

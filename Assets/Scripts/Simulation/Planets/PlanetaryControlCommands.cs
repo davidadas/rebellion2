@@ -8,7 +8,6 @@ using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Logging;
-using Rebellion.Util.Mathematics;
 
 namespace Rebellion.Simulation
 {
@@ -335,34 +334,7 @@ namespace Rebellion.Simulation
         /// <param name="shift">The signed support adjustment.</param>
         internal void ChangePopularSupport(Planet planet, Faction faction, int shift)
         {
-            if (planet == null || faction == null || shift == 0 || !planet.IsPopulated())
-                return;
-
-            int currentSupport = planet.GetPopularSupport(faction.InstanceID);
-            int newSupport = System.Math.Clamp(
-                IntegerMath.SaturatingAdd(currentSupport, shift),
-                0,
-                100
-            );
-            if (newSupport == currentSupport)
-                return;
-
-            if (shift > 0)
-            {
-                planet.SetPopularSupport(faction.InstanceID, newSupport);
-                return;
-            }
-
-            Faction opposingFaction = _game
-                .GetFactions()
-                .FirstOrDefault(candidate => candidate.InstanceID != faction.InstanceID);
-            if (opposingFaction == null)
-            {
-                planet.SetPopularSupport(faction.InstanceID, newSupport);
-                return;
-            }
-
-            planet.SetPopularSupport(opposingFaction.InstanceID, 100 - newSupport);
+            planet?.ChangePopularSupport(faction, shift, _game);
         }
 
         /// <summary>
