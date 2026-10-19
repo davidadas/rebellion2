@@ -586,8 +586,8 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
             2,
             contentOffset,
             "difficulty",
-            "Difficulty",
-            "Selects the authored AI difficulty profile.",
+            "Base Difficulty",
+            "Sets the starting values. You can change them afterward.",
             settingsSession.Draft.Difficulty.ToString(),
             CycleDifficulty
         );

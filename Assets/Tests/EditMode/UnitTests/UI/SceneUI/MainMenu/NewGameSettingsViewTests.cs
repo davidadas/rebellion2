@@ -7,6 +7,7 @@ using Rebellion.Game;
 using TMPro;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace Rebellion.Tests.UI.SceneUI.MainMenu
@@ -435,6 +436,47 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                 instance.transform.Find("ContentRoot/DifficultyPage/SettingsScrollArea");
             Assert.AreEqual(16f, -scrollRoot.anchoredPosition.y);
             Assert.AreEqual(310f, scrollRoot.sizeDelta.y);
+        }
+
+        [Test]
+        public void SelectCategory_GameSetup_ExplainsBaseDifficultyDefaults()
+        {
+            view.Initialize(TestContent.Pack, summary, optionsPrefab, null);
+
+            view.SelectCategory(NewGameSettingsCategory.GameSetup);
+
+            Transform row = instance
+                .GetComponentsInChildren<Transform>()
+                .Single(candidate => candidate.name == "Setup-difficulty");
+            Assert.AreEqual("Base Difficulty", row.Find("Label").GetComponent<TMP_Text>().text);
+            Assert.AreEqual(
+                "Sets the starting values. You can change them afterward.",
+                row.Find("Description").GetComponent<TMP_Text>().text
+            );
+        }
+
+        [Test]
+        public void SelectCategory_ClonedChoiceHover_ShowsClonedValueTooltip()
+        {
+            view.Initialize(TestContent.Pack, summary, optionsPrefab, null);
+            view.SelectCategory(NewGameSettingsCategory.GameSetup);
+            OptionsChoiceFieldView choice = instance
+                .GetComponentsInChildren<OptionsChoiceFieldView>()
+                .Single(candidate => candidate.name == "Choice-content-pack");
+            choice.Render("A CONTENT PACK NAME THAT CANNOT FIT IN THE SELECTOR");
+            OverflowTextTooltip tooltip = choice
+                .transform.Find("Value")
+                .GetComponent<OverflowTextTooltip>();
+            OverflowTextTooltipTrigger trigger = choice
+                .transform.Find("Next")
+                .GetComponent<OverflowTextTooltipTrigger>();
+
+            trigger.OnPointerEnter(new PointerEventData(null));
+            tooltip.AdvanceHover(float.PositiveInfinity);
+
+            Transform tooltipRoot = choice.transform.Find("ValueTooltip");
+            Assert.IsNotNull(tooltipRoot);
+            Assert.IsTrue(tooltipRoot.gameObject.activeSelf);
         }
 
         [Test]

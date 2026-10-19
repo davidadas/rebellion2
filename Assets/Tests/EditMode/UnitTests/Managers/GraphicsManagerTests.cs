@@ -54,7 +54,6 @@ namespace Rebellion.Tests.Managers
             {
                 QualityLevel = _originalQualityLevel,
                 AntiAliasingMode = (int)UserAntiAliasingMode.Smaa,
-                RenderScalePercent = 75,
                 VerticalSync = false,
                 FrameRateLimit = 120,
             };
@@ -66,7 +65,7 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(_originalQualityLevel, QualitySettings.GetQualityLevel());
             Assert.AreEqual(0, QualitySettings.vSyncCount);
             Assert.AreEqual(120, Application.targetFrameRate);
-            Assert.IsTrue(cameraData.allowDynamicResolution);
+            Assert.IsFalse(cameraData.allowDynamicResolution);
             Assert.AreEqual(
                 HDAdditionalCameraData.AntialiasingMode.SubpixelMorphologicalAntiAliasing,
                 cameraData.antialiasing
@@ -178,7 +177,7 @@ namespace Rebellion.Tests.Managers
         {
             _cameraObject.tag = "Untagged";
             Camera camera = _cameraObject.GetComponent<Camera>();
-            RenderTexture target = new RenderTexture(64, 64, 0) { useDynamicScale = true };
+            RenderTexture target = new RenderTexture(64, 64, 0);
             camera.targetTexture = target;
             HDAdditionalCameraData cameraData =
                 _cameraObject.AddComponent<HDAdditionalCameraData>();
@@ -190,14 +189,13 @@ namespace Rebellion.Tests.Managers
                     new UserVideoSettings
                     {
                         AntiAliasingMode = (int)UserAntiAliasingMode.Fxaa,
-                        RenderScalePercent = 75,
                         AmbientOcclusion = true,
                         Bloom = true,
                         MotionBlur = true,
                     }
                 );
 
-                Assert.IsTrue(cameraData.allowDynamicResolution);
+                Assert.IsFalse(cameraData.allowDynamicResolution);
                 Assert.AreEqual(
                     HDAdditionalCameraData.AntialiasingMode.FastApproximateAntialiasing,
                     cameraData.antialiasing

@@ -43,8 +43,9 @@ public static class MainMenuPrefabBuilder
     private const string _factionSelectSfxPath = "Application/MainMenu/Audio/faction-select";
     private const string _exitSelectSfxPath = _factionSelectSfxPath;
 
-    // Icon turntable speed: two-thirds of a revolution per second.
-    private const float _iconTurnDegreesPerSecond = 240f;
+    private const float _medallionTurnDegreesPerSecond = 240f;
+    private const float _difficultyTurnDegreesPerSecond = 180f;
+    private const float _secondaryIconTurnDegreesPerSecond = 120f;
 
     // Spinning-planet backdrop.
     private const string _starfieldAddress = "Application/MainMenu/UI/starfield";
@@ -96,7 +97,7 @@ public static class MainMenuPrefabBuilder
             "Assets/Art/Models/MainMenu/medallion_empire.fbx",
             "Assets/Art/Models/MainMenu/Medallion_Empire.renderTexture",
             "LeftFactionLaunchButton",
-            -1f,
+            -_medallionTurnDegreesPerSecond,
             Vector3.up,
             1f,
             new Vector3(90f, 0f, 0f)
@@ -108,21 +109,21 @@ public static class MainMenuPrefabBuilder
             "Assets/Art/Models/MainMenu/medallion_rebel.fbx",
             "Assets/Art/Models/MainMenu/Medallion_Rebel.renderTexture",
             "RightFactionLaunchButton",
-            1f,
+            _medallionTurnDegreesPerSecond,
             Vector3.up,
             1f,
             new Vector3(270f, 0f, 0f)
         ),
         // Easy difficulty toggle -> the 3D X-Wing, replacing its spinning flipbook icon.
         // Nose points left and slightly down; it barrel-rolls counter-clockwise on its long
-        // (nose-to-tail, X) axis, matching the original flipbook. RT is landscape to fit the
+        // (nose-to-tail, X) axis. RT is landscape to fit the
         // toggle without squashing.
         new Face(
             "EasyDifficulty",
             "Assets/Art/Models/MainMenu/xwing.fbx",
             "Assets/Art/Models/MainMenu/XWing.renderTexture",
             "EasyDifficultyToggle",
-            1f,
+            _difficultyTurnDegreesPerSecond,
             Vector3.up, // vertical-axis turntable (basketball-on-a-finger), CCW
             1.05f,
             new Vector3(90f, 180f, 0f), // upright, nose to screen-left at rest
@@ -137,12 +138,12 @@ public static class MainMenuPrefabBuilder
             "Assets/Art/Models/MainMenu/stardestroyer.fbx",
             "Assets/Art/Models/MainMenu/StarDestroyer.renderTexture",
             "MediumDifficultyToggle",
-            1f,
+            _difficultyTurnDegreesPerSecond,
             Vector3.up,
             1.55f,
             // The FBX imports tipped onto its back; -90 about X stands it deck-up and level.
             new Vector3(-90f, 0f, 0f),
-            // Negative pitch looks down on the deck (from above), matching the original flipbook;
+            // Negative pitch looks down on the deck (from above);
             // a positive pitch looked up at the belly (worm's-eye).
             new Vector3(-18f, 0f, 0f),
             512,
@@ -155,7 +156,7 @@ public static class MainMenuPrefabBuilder
             "Assets/Art/Models/MainMenu/deathstar.fbx",
             "Assets/Art/Models/MainMenu/DeathStar.renderTexture",
             "HardDifficultyToggle",
-            1f,
+            _difficultyTurnDegreesPerSecond,
             Vector3.up,
             1.167f,
             // Same tipped-on-its-back import; -90 about X brings a pole up so the trench sits
@@ -173,16 +174,16 @@ public static class MainMenuPrefabBuilder
             "Assets/Content/Application/MainMenu/Models/holocron.glb",
             "Assets/Art/Models/MainMenu/Holocron.renderTexture",
             "NewGameSettingsButton",
-            -0.5f,
+            -_secondaryIconTurnDegreesPerSecond,
             Vector3.up,
-            0.90f,
+            0.875f,
             Vector3.zero,
             new Vector3(-18f, 0f, 0f),
             256,
             256,
-            useStudioLighting: true,
             normalizeModel: true,
-            pivotPosition: new Vector3(0.13642858f, 0.049285717f, 0f)
+            pivotPosition: new Vector3(0.13642858f, 0.049285717f, 0f),
+            localFillIntensity: 0.75f
         ),
     };
 
@@ -2283,7 +2284,7 @@ public static class MainMenuPrefabBuilder
                 || existing.height != size
                 || existing.format != RenderTextureFormat.ARGBHalf
                 || existing.antiAliasing != 1
-                || !existing.useDynamicScale
+                || existing.useDynamicScale
             )
             {
                 existing.Release();
@@ -2291,7 +2292,7 @@ public static class MainMenuPrefabBuilder
                 existing.height = size;
                 existing.format = RenderTextureFormat.ARGBHalf;
                 existing.antiAliasing = 1;
-                existing.useDynamicScale = true;
+                existing.useDynamicScale = false;
                 EditorUtility.SetDirty(existing);
             }
             return existing;
@@ -2301,7 +2302,7 @@ public static class MainMenuPrefabBuilder
         {
             name = "Planet",
             antiAliasing = 1,
-            useDynamicScale = true,
+            useDynamicScale = false,
         };
         EnsureAssetFolder(Path.GetDirectoryName(_renderTexturePath));
         AssetDatabase.CreateAsset(created, _renderTexturePath);
@@ -2401,8 +2402,7 @@ public static class MainMenuPrefabBuilder
         public readonly string RenderTexturePath;
         public readonly string ButtonName;
 
-        // Sign applied to the spin speed: +1 turns one way, -1 the other.
-        public readonly float SpinDirection;
+        public readonly float SpinDegreesPerSecond;
 
         // Local axis the model spins around: Vector3.up for a coin turntable, Vector3.right for a
         // ship barrel-rolling on its long (nose-to-tail) axis.
@@ -2431,8 +2431,8 @@ public static class MainMenuPrefabBuilder
         // Adds a short-range point light beneath icons that need extra underside detail.
         public readonly float UnderLightIntensity;
 
-        // Adds a local key, fill, and rim treatment for reflective icons.
-        public readonly bool UseStudioLighting;
+        // Adds a restrained front fill to models whose material otherwise renders too dark.
+        public readonly float LocalFillIntensity;
 
         public readonly bool NormalizeModel;
 
@@ -2443,7 +2443,7 @@ public static class MainMenuPrefabBuilder
         /// <param name="modelPath">The model path.</param>
         /// <param name="renderTexturePath">The render texture path.</param>
         /// <param name="buttonName">The button name.</param>
-        /// <param name="spinDirection">The spin direction.</param>
+        /// <param name="spinDegreesPerSecond">The signed spin speed in degrees per second.</param>
         /// <param name="spinAxis">The spin axis.</param>
         /// <param name="modelScale">The model scale.</param>
         /// <param name="tilt">The tilt.</param>
@@ -2452,15 +2452,15 @@ public static class MainMenuPrefabBuilder
         /// <param name="rtHeight">The rt height.</param>
         /// <param name="isToggle">Whether is toggle.</param>
         /// <param name="underLightIntensity">The under light intensity.</param>
-        /// <param name="useStudioLighting">Whether to add local lighting for a reflective model.</param>
         /// <param name="normalizeModel">Whether to normalize the loaded model before applying its presentation scale.</param>
         /// <param name="pivotPosition">The icon center's offset in the rig's camera plane.</param>
+        /// <param name="localFillIntensity">The intensity of the model's local front fill.</param>
         public Face(
             string factionId,
             string modelPath,
             string renderTexturePath,
             string buttonName,
-            float spinDirection,
+            float spinDegreesPerSecond,
             Vector3 spinAxis,
             float modelScale,
             Vector3 tilt,
@@ -2469,16 +2469,16 @@ public static class MainMenuPrefabBuilder
             int rtHeight = 512,
             bool isToggle = false,
             float underLightIntensity = 0f,
-            bool useStudioLighting = false,
             bool normalizeModel = false,
-            Vector3 pivotPosition = default
+            Vector3 pivotPosition = default,
+            float localFillIntensity = 0f
         )
         {
             FactionId = factionId;
             ModelPath = modelPath;
             RenderTexturePath = renderTexturePath;
             ButtonName = buttonName;
-            SpinDirection = spinDirection;
+            SpinDegreesPerSecond = spinDegreesPerSecond;
             SpinAxis = spinAxis;
             ModelScale = modelScale;
             Tilt = tilt;
@@ -2488,7 +2488,7 @@ public static class MainMenuPrefabBuilder
             RtHeight = rtHeight;
             IsToggle = isToggle;
             UnderLightIntensity = underLightIntensity;
-            UseStudioLighting = useStudioLighting;
+            LocalFillIntensity = localFillIntensity;
             NormalizeModel = normalizeModel;
         }
     }
@@ -2647,7 +2647,7 @@ public static class MainMenuPrefabBuilder
         GameObject pivot = new GameObject("Pivot");
         pivot.transform.SetParent(rig.transform, false);
         AutoRotate spinner = pivot.AddComponent<AutoRotate>();
-        spinner.Configure(-_iconTurnDegreesPerSecond * 0.5f, Vector3.up);
+        spinner.Configure(-_secondaryIconTurnDegreesPerSecond, Vector3.up);
 
         // Normalize to a consistent size and center on the pivot, then offset down so the dome sits in
         // frame and the tall stem drops below the camera crop. Offset/scale/size are eyeball -- tune.
@@ -2655,7 +2655,7 @@ public static class MainMenuPrefabBuilder
         modelNode.transform.SetParent(pivot.transform, false);
         modelNode.transform.localPosition = new Vector3(0f, -0.4f, 0f);
         // The model's up axis is Z (bounding box: X~Y~1.6, Z~1.9); +90 X maps that to Unity's +Y,
-        // dome up, matching the original HQ icon.
+        // dome up for the HQ icon.
         modelNode
             .AddComponent<ContentModelBinding>()
             .SetModel(
@@ -2722,14 +2722,14 @@ public static class MainMenuPrefabBuilder
                 existing.width != width
                 || existing.height != height
                 || existing.antiAliasing != 1
-                || !existing.useDynamicScale
+                || existing.useDynamicScale
             )
             {
                 existing.Release();
                 existing.width = width;
                 existing.height = height;
                 existing.antiAliasing = 1;
-                existing.useDynamicScale = true;
+                existing.useDynamicScale = false;
                 EditorUtility.SetDirty(existing);
             }
             return existing;
@@ -2739,7 +2739,7 @@ public static class MainMenuPrefabBuilder
         {
             name = $"Icon_{factionId}",
             antiAliasing = 1,
-            useDynamicScale = true,
+            useDynamicScale = false,
         };
         EnsureAssetFolder(Path.GetDirectoryName(path));
         AssetDatabase.CreateAsset(created, path);
@@ -2789,9 +2789,7 @@ public static class MainMenuPrefabBuilder
         // then rolls around this tilted frame without wobbling.
         pivot.transform.localRotation = Quaternion.Euler(face.PivotTilt);
         pivot.transform.localPosition = face.PivotPosition;
-        pivot
-            .AddComponent<AutoRotate>()
-            .Configure(_iconTurnDegreesPerSecond * face.SpinDirection, face.SpinAxis);
+        pivot.AddComponent<AutoRotate>().Configure(face.SpinDegreesPerSecond, face.SpinAxis);
 
         // The icon ships as a pre-skinned GLB. Load it at runtime with its authored scale, tilt, and
         // centering. Rig spacing isolates each camera, so no dedicated render layer is needed.
@@ -2835,40 +2833,17 @@ public static class MainMenuPrefabBuilder
             );
         }
 
-        if (face.UseStudioLighting)
-            BuildStudioLighting(rig.transform);
-    }
-
-    /// <summary>
-    /// Builds a compact local key, fill, and rim arrangement for a reflective icon.
-    /// </summary>
-    /// <param name="parent">The icon rig that owns the lights.</param>
-    private static void BuildStudioLighting(Transform parent)
-    {
-        AddPointLight(
-            parent,
-            "StudioKey",
-            new Vector3(-1.1f, 1.05f, -1.35f),
-            4.5f,
-            5f,
-            new Color(1f, 0.9f, 0.72f)
-        );
-        AddPointLight(
-            parent,
-            "StudioFill",
-            new Vector3(1.05f, -0.25f, -1.2f),
-            3f,
-            5f,
-            new Color(0.42f, 0.72f, 1f)
-        );
-        AddPointLight(
-            parent,
-            "StudioRim",
-            new Vector3(0.85f, 0.75f, 1.1f),
-            3.5f,
-            4.5f,
-            new Color(0.2f, 0.85f, 1f)
-        );
+        if (face.LocalFillIntensity > 0f)
+        {
+            AddPointLight(
+                rig.transform,
+                "LocalFill",
+                new Vector3(-1.1f, 1.05f, -1.35f),
+                face.LocalFillIntensity,
+                5.5f,
+                new Color(0.9f, 0.94f, 1f)
+            );
+        }
     }
 
     /// <summary>

@@ -26,8 +26,6 @@ public enum UserGraphicsSetting
 
     AntiAliasing,
 
-    RenderScale,
-
     VerticalSync,
 
     FrameRateLimit,
@@ -64,15 +62,12 @@ public enum UserAntiAliasingMode
 public sealed class UserVideoSettings
 {
     public const int DefaultQualityLevel = 5;
-    public const int DefaultRenderScalePercent = 100;
-
     public int ResolutionWidth;
     public int ResolutionHeight;
     public int FullScreenMode = (int)UnityFullScreenMode.ExclusiveFullScreen;
     public int QualityLevel = DefaultQualityLevel;
     public bool GraphicsPresetCustomized;
     public int AntiAliasingMode = (int)UserAntiAliasingMode.Taa;
-    public int RenderScalePercent = DefaultRenderScalePercent;
     public int FrameRateLimit;
     public bool VerticalSync = true;
     public bool RayTracing;
@@ -104,7 +99,6 @@ public sealed class UserVideoSettings
         QualityLevel = Math.Clamp(QualityLevel, 0, DefaultQualityLevel);
         if (!Enum.IsDefined(typeof(UserAntiAliasingMode), AntiAliasingMode))
             AntiAliasingMode = (int)UserAntiAliasingMode.Off;
-        RenderScalePercent = Math.Clamp(RenderScalePercent, 50, 100);
         FrameRateLimit = NormalizeFrameRateLimit(FrameRateLimit);
         if (!AmbientOcclusion)
             RayTracing = false;
@@ -195,42 +189,36 @@ public sealed class UserVideoSettings
         {
             case 0:
                 AntiAliasingMode = (int)UserAntiAliasingMode.Off;
-                RenderScalePercent = 50;
                 AmbientOcclusion = false;
                 Bloom = false;
                 MotionBlur = false;
                 break;
             case 1:
                 AntiAliasingMode = (int)UserAntiAliasingMode.Fxaa;
-                RenderScalePercent = 67;
                 AmbientOcclusion = false;
                 Bloom = true;
                 MotionBlur = false;
                 break;
             case 2:
                 AntiAliasingMode = (int)UserAntiAliasingMode.Fxaa;
-                RenderScalePercent = 75;
                 AmbientOcclusion = true;
                 Bloom = true;
                 MotionBlur = false;
                 break;
             case 3:
                 AntiAliasingMode = (int)UserAntiAliasingMode.Smaa;
-                RenderScalePercent = 85;
                 AmbientOcclusion = true;
                 Bloom = true;
                 MotionBlur = false;
                 break;
             case 4:
                 AntiAliasingMode = (int)UserAntiAliasingMode.Taa;
-                RenderScalePercent = DefaultRenderScalePercent;
                 AmbientOcclusion = true;
                 Bloom = true;
                 MotionBlur = false;
                 break;
             default:
                 AntiAliasingMode = (int)UserAntiAliasingMode.Taa;
-                RenderScalePercent = DefaultRenderScalePercent;
                 AmbientOcclusion = true;
                 Bloom = true;
                 MotionBlur = true;

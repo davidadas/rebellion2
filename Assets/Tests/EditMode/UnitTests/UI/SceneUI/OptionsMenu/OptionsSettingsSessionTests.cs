@@ -129,7 +129,6 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
 
             Assert.AreEqual(4, _session.Video.QualityLevel);
             Assert.AreEqual((int)UserAntiAliasingMode.Taa, _session.Video.AntiAliasingMode);
-            Assert.AreEqual(100, _session.Video.RenderScalePercent);
             Assert.IsTrue(_session.Video.AmbientOcclusion);
             Assert.IsTrue(_session.Video.Bloom);
             Assert.IsFalse(_session.Video.MotionBlur);
@@ -142,7 +141,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         [Test]
         public void StepGraphics_PresetOwnedSetting_MarksPresetCustom()
         {
-            _session.StepGraphics(UserGraphicsSetting.RenderScale, -1);
+            _session.StepGraphics(UserGraphicsSetting.AntiAliasing, -1);
 
             Assert.IsTrue(_session.Video.GraphicsPresetCustomized);
             Assert.AreEqual(
@@ -219,17 +218,12 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         public void RestoreDefaults_GraphicsSelected_RestoresGraphicsDefaults()
         {
             _session.StepGraphics(UserGraphicsSetting.AntiAliasing, 1);
-            _session.StepGraphics(UserGraphicsSetting.RenderScale, -1);
             _session.StepGraphics(UserGraphicsSetting.VerticalSync, 1);
             _session.StepGraphics(UserGraphicsSetting.FrameRateLimit, 1);
 
             _session.RestoreDefaults(OptionsMenuTab.Graphics);
 
             Assert.AreEqual((int)UserAntiAliasingMode.Taa, _session.Video.AntiAliasingMode);
-            Assert.AreEqual(
-                UserVideoSettings.DefaultRenderScalePercent,
-                _session.Video.RenderScalePercent
-            );
             Assert.AreEqual(0, _session.Video.FrameRateLimit);
             Assert.IsTrue(_session.Video.VerticalSync);
         }
