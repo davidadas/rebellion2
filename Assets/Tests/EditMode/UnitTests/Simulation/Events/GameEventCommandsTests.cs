@@ -124,10 +124,19 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        [Test]
-        public void ProcessScheduledEvents_MessageBeforeRename_ResolvesTemplateAfterLaterAction()
+        /// <summary>
+        /// Verifies that categorized events retain their action order and message delivery.
+        /// </summary>
+        /// <param name="category">The classification that must not affect execution.</param>
+        [TestCase(GameEventCategory.None)]
+        [TestCase(GameEventCategory.Story)]
+        [TestCase(GameEventCategory.Disaster)]
+        public void ProcessScheduledEvents_MessageBeforeRename_ResolvesTemplateAfterLaterAction(
+            GameEventCategory category
+        )
         {
             (GameEvent gameEvent, Planet planet, Faction faction) = CreateMessageEvent();
+            gameEvent.Category = category;
             GameEventCommands system = new GameEventCommands(
                 _game,
                 _game.Random,
@@ -1206,12 +1215,21 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, _game.EventRuntime.GetVariable("arrival.triggered"));
         }
 
-        [Test]
-        public void ProcessTriggeredEvents_SecondUnitArrivedAlternativeMatches_ActivatesOnce()
+        /// <summary>
+        /// Verifies that categorized events retain their alternative arrival triggers.
+        /// </summary>
+        /// <param name="category">The classification that must not affect execution.</param>
+        [TestCase(GameEventCategory.None)]
+        [TestCase(GameEventCategory.Story)]
+        [TestCase(GameEventCategory.Disaster)]
+        public void ProcessTriggeredEvents_SecondUnitArrivedAlternativeMatches_ActivatesOnce(
+            GameEventCategory category
+        )
         {
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "ALTERNATE_ARRIVALS",
+                Category = category,
                 Triggers = new List<GameEventTrigger>
                 {
                     new UnitArrivedTrigger { UnitInstanceID = "first" },
