@@ -8,6 +8,7 @@ public enum UserInterfaceOption
     ShowIdleBar,
     KeepIdleBarOpen,
     ShowUnitCardStats,
+    ShowFrameRate,
 }
 
 /// <summary>
@@ -43,6 +44,7 @@ public sealed class UserInterfaceSettings
     public bool ShowIdleBar = true;
     public bool KeepIdleBarOpen;
     public bool ShowUnitCardStats;
+    public bool ShowFrameRate;
     public IdleBarLocation IdleBarLocation = global::IdleBarLocation.TopRight;
     public GameLaunchSpeed GameLaunchSpeed = global::GameLaunchSpeed.Unchanged;
 
@@ -69,6 +71,7 @@ public sealed class UserInterfaceSettings
             UserInterfaceOption.ShowIdleBar => ShowIdleBar,
             UserInterfaceOption.KeepIdleBarOpen => KeepIdleBarOpen,
             UserInterfaceOption.ShowUnitCardStats => ShowUnitCardStats,
+            UserInterfaceOption.ShowFrameRate => ShowFrameRate,
             _ => throw new ArgumentOutOfRangeException(nameof(option), option, null),
         };
     }
@@ -91,6 +94,9 @@ public sealed class UserInterfaceSettings
             case UserInterfaceOption.ShowUnitCardStats:
                 ShowUnitCardStats = enabled;
                 break;
+            case UserInterfaceOption.ShowFrameRate:
+                ShowFrameRate = enabled;
+                break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(option), option, null);
         }
@@ -104,6 +110,7 @@ public sealed class UserInterfaceSettings
         ShowIdleBar = true;
         KeepIdleBarOpen = false;
         ShowUnitCardStats = false;
+        ShowFrameRate = false;
         IdleBarLocation = global::IdleBarLocation.TopRight;
         GameLaunchSpeed = global::GameLaunchSpeed.Unchanged;
     }

@@ -128,6 +128,24 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     [SerializeField]
     private Button _fullScreenNextButton;
 
+    [SerializeField]
+    private TextMeshProUGUI[] _graphicsValueFields = Array.Empty<TextMeshProUGUI>();
+
+    [SerializeField]
+    private Button[] _graphicsPrevButtons = Array.Empty<Button>();
+
+    [SerializeField]
+    private Button[] _graphicsNextButtons = Array.Empty<Button>();
+
+    [SerializeField]
+    private ScrollAreaView _graphicsScrollArea;
+
+    [SerializeField]
+    private int _graphicsContentHeight;
+
+    [SerializeField]
+    private int _graphicsScrollStep;
+
     [Header("Gameplay page")]
     [SerializeField]
     private OptionsToggleRowView[] _gameplayRows = Array.Empty<OptionsToggleRowView>();
@@ -241,6 +259,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     public event Action<string> AutosavesToKeepChanged;
     public event Action<int> ResolutionStepRequested;
     public event Action<int> FullScreenStepRequested;
+    public event Action<UserGraphicsSetting, int> GraphicsStepRequested;
     public event Action<int, float> VolumeChanged;
     public event Action<OptionsMenuView> Destroyed;
 
@@ -296,6 +315,8 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
 
         bool resetSaveLoadScroll =
             data.ActiveTab == OptionsMenuTab.SaveLoad && _previousTab != OptionsMenuTab.SaveLoad;
+        bool resetGraphicsScroll =
+            data.ActiveTab == OptionsMenuTab.Graphics && _previousTab != OptionsMenuTab.Graphics;
         bool resetControlsScroll =
             data.ActiveTab == OptionsMenuTab.Controls && _previousTab != OptionsMenuTab.Controls;
         bool resetModsScroll =
@@ -318,7 +339,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
                 RenderUserInterfacePage(data);
                 break;
             case OptionsMenuTab.Graphics:
-                RenderGraphicsPage(data);
+                RenderGraphicsPage(data, resetGraphicsScroll);
                 break;
             case OptionsMenuTab.Audio:
                 RenderAudioPage(data);
@@ -490,8 +511,14 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     /// Applies detail-toggle and display values to the Graphics page.
     /// </summary>
     /// <param name="data">The Options menu data.</param>
-    private void RenderGraphicsPage(OptionsMenuRenderData data)
+    /// <param name="resetScroll">Whether the page was just entered.</param>
+    private void RenderGraphicsPage(OptionsMenuRenderData data, bool resetScroll)
     {
+        _graphicsScrollArea.SetContentHeight(
+            _graphicsContentHeight,
+            _graphicsScrollStep,
+            resetScroll
+        );
         foreach (OptionsToggleRowView row in _tacticalRows)
         {
             if (row == null)
@@ -504,6 +531,21 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
 
         _resolutionChoice.Render(data.ResolutionLabel);
         _fullScreenChoice.Render(data.FullScreenLabel);
+        for (int index = 0; index < _graphicsValueFields.Length; index++)
+        {
+            UserGraphicsSetting setting = (UserGraphicsSetting)index;
+            OptionsGraphicsValue value = data.GraphicsValues.TryGetValue(
+                setting,
+                out OptionsGraphicsValue configuredValue
+            )
+                ? configuredValue
+                : new OptionsGraphicsValue(string.Empty, false);
+            UILayout.SetTextContent(_graphicsValueFields[index], value.Label);
+            if (index < _graphicsPrevButtons.Length && _graphicsPrevButtons[index] != null)
+                _graphicsPrevButtons[index].interactable = value.Available;
+            if (index < _graphicsNextButtons.Length && _graphicsNextButtons[index] != null)
+                _graphicsNextButtons[index].interactable = value.Available;
+        }
     }
 
     /// <summary>
@@ -988,6 +1030,20 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
         _resolutionChoice.StepRequested += HandleResolutionStepRequested;
         _fullScreenChoice.StepRequested += HandleFullScreenStepRequested;
         _contentPackChoice.StepRequested += HandleContentPackStepRequested;
+        for (int index = 0; index < _graphicsValueFields.Length; index++)
+        {
+            UserGraphicsSetting setting = (UserGraphicsSetting)index;
+            if (index < _graphicsPrevButtons.Length && _graphicsPrevButtons[index] != null)
+            {
+                _graphicsPrevButtons[index]
+                    .onClick.AddListener(() => GraphicsStepRequested?.Invoke(setting, -1));
+            }
+            if (index < _graphicsNextButtons.Length && _graphicsNextButtons[index] != null)
+            {
+                _graphicsNextButtons[index]
+                    .onClick.AddListener(() => GraphicsStepRequested?.Invoke(setting, 1));
+            }
+        }
 
         for (int i = 0; i < _volumeSliders.Length; i++)
         {
@@ -1371,6 +1427,22 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             throw new MissingReferenceException($"{name} is missing the confirm dialog.");
         if (_resolutionValueField == null || _fullScreenValueField == null)
             throw new MissingReferenceException($"{name} is missing a Graphics value field.");
+        if (_graphicsScrollArea == null)
+            throw new MissingReferenceException($"{name} is missing its Graphics scroll area.");
+        if (_graphicsContentHeight <= 0 || _graphicsScrollStep <= 0)
+            throw new MissingReferenceException($"{name} has invalid Graphics layout metrics.");
+        int graphicsSettingCount = Enum.GetValues(typeof(UserGraphicsSetting)).Length;
+        if (
+            _graphicsValueFields.Length != graphicsSettingCount
+            || _graphicsPrevButtons.Length != graphicsSettingCount
+            || _graphicsNextButtons.Length != graphicsSettingCount
+            || Array.Exists(_graphicsValueFields, field => field == null)
+            || Array.Exists(_graphicsPrevButtons, button => button == null)
+            || Array.Exists(_graphicsNextButtons, button => button == null)
+        )
+            throw new MissingReferenceException(
+                $"{name} expects {graphicsSettingCount} Graphics controls."
+            );
         if (
             _resolutionPrevButton == null
             || _resolutionNextButton == null

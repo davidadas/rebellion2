@@ -7,7 +7,14 @@ Shader "Custom/LoadingShuttleExhaust"
 
     SubShader
     {
-        Tags { "Queue" = "Transparent" "RenderType" = "Transparent" "IgnoreProjector" = "True" }
+        Tags
+        {
+            "Queue" = "Transparent"
+            "RenderType" = "Transparent"
+            "RenderPipeline" = "HDRenderPipeline"
+            "IgnoreProjector" = "True"
+        }
+
         Blend SrcAlpha One
         Cull Off
         ZWrite Off
@@ -15,39 +22,46 @@ Shader "Custom/LoadingShuttleExhaust"
 
         Pass
         {
-            CGPROGRAM
-            #pragma target 2.0
-            #pragma vertex vert
-            #pragma fragment frag
-            #include "UnityCG.cginc"
+            Name "ForwardOnly"
+            Tags { "LightMode" = "ForwardOnly" }
 
-            struct appdata
+            HLSLPROGRAM
+            #pragma target 4.5
+            #pragma vertex Vert
+            #pragma fragment Frag
+
+            #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
+            #include "Packages/com.unity.render-pipelines.high-definition/Runtime/ShaderLibrary/ShaderVariables.hlsl"
+
+            struct Attributes
             {
-                float4 vertex : POSITION;
-                fixed4 color : COLOR;
+                float4 positionOS : POSITION;
+                half4 color : COLOR;
             };
 
-            struct v2f
+            struct Varyings
             {
-                float4 position : SV_POSITION;
-                fixed4 color : COLOR;
+                float4 positionHCS : SV_POSITION;
+                half4 color : COLOR;
             };
 
-            fixed4 _Color;
+            CBUFFER_START(UnityPerMaterial)
+                half4 _Color;
+            CBUFFER_END
 
-            v2f vert(appdata input)
+            Varyings Vert(Attributes input)
             {
-                v2f output;
-                output.position = UnityObjectToClipPos(input.vertex);
+                Varyings output;
+                output.positionHCS = TransformObjectToHClip(input.positionOS.xyz);
                 output.color = input.color * _Color;
                 return output;
             }
 
-            fixed4 frag(v2f input) : SV_Target
+            half4 Frag(Varyings input) : SV_Target
             {
                 return input.color;
             }
-            ENDCG
+            ENDHLSL
         }
     }
 }

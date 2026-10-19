@@ -60,6 +60,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             game.GetFactions().Add(owner);
             ServiceContainer container = new ServiceContainer();
             container.AddSingletonInstance(game);
+            container.AddSingletonInstance(new ManufacturingQueries(game));
             ConstructionOrderController controller = new ConstructionOrderController(
                 container.BuildServiceLocator()
             );

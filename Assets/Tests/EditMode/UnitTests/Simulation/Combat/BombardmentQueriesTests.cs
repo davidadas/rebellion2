@@ -118,6 +118,21 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void CanExecute_NullFleetList_ReturnsFalse()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "target", "empire", energy: 1);
+
+            bool accepted = new BombardmentQueries(game).CanExecute(
+                null,
+                planet,
+                BombardmentType.General
+            );
+
+            Assert.IsFalse(accepted);
+        }
+
+        [Test]
         public void CanExecute_NoPlanetDestroyingShip_ReturnsFalse()
         {
             GameRoot game = CreateGame();

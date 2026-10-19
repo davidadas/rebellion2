@@ -115,49 +115,58 @@ namespace Rebellion.Tests.App
         [UnityTest]
         public IEnumerator StartCustomGame_ReplacedContent_PreparesStrategyBeforePlayingIntro()
         {
-            AppBootstrap previous = AppBootstrap.EnsureExists();
-            ContentPack active = previous.GetContentPack();
-            ContentPack selected = ContentPackLoader.OpenExact(
-                active.ContentRootPath,
-                active.Definition.ID,
-                active.Scenario.ID,
-                previous.GetUserSettingsManager().Settings.Content.DisabledModIDs
-            );
-            GameSummary summary = GameLaunchContext.CreateDefaultSummary(selected);
-            summary.GalaxySize = GameSize.Small;
-            summary.Difficulty = GameDifficulty.Hard;
-
-            LoadingScreenController.StartCustomGame(previous, selected, summary);
-
-            LoadingScreenController loading = Object.FindAnyObjectByType<LoadingScreenController>();
-            if (SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Null)
+            SceneManager.sceneLoaded += DisableSceneRendering;
+            try
             {
-                foreach (Camera camera in loading.GetComponentsInChildren<Camera>(true))
-                    camera.enabled = false;
-            }
-            Button continueButton = loading
-                .GetComponentsInChildren<Button>(true)
-                .Single(button => button.name == "ContinueButton");
-            float deadline = Time.realtimeSinceStartup + 60f;
-            while (
-                !continueButton.gameObject.activeInHierarchy && Time.realtimeSinceStartup < deadline
-            )
-                yield return null;
+                AppBootstrap previous = AppBootstrap.EnsureExists();
+                ContentPack active = previous.GetContentPack();
+                ContentPack selected = ContentPackLoader.OpenExact(
+                    active.ContentRootPath,
+                    active.Definition.ID,
+                    active.Scenario.ID,
+                    previous.GetUserSettingsManager().Settings.Content.DisabledModIDs
+                );
+                GameSummary summary = GameLaunchContext.CreateDefaultSummary(selected);
+                summary.GalaxySize = GameSize.Small;
+                summary.Difficulty = GameDifficulty.Hard;
 
-            Assert.IsTrue(
-                continueButton.gameObject.activeInHierarchy,
-                "The custom game never became ready."
-            );
-            Assert.AreSame(selected, AppBootstrap.Instance.GetContentPack());
-            Assert.IsTrue(AppBootstrap.Instance.GetRuntime().HasActiveGame);
-            Assert.AreEqual(
-                GameDifficulty.Hard,
-                AppBootstrap.Instance.GetRuntime().GetActiveGameSession().Game.Summary.Difficulty
-            );
-            Assert.IsNull(
-                Object.FindAnyObjectByType<CutscenePlayer>(),
-                "The intro must wait until Continue releases the loading overlay."
-            );
+                LoadingScreenController.StartCustomGame(previous, selected, summary);
+
+                LoadingScreenController loading =
+                    Object.FindAnyObjectByType<LoadingScreenController>();
+                DisableRendering(loading.gameObject);
+                Button continueButton = loading
+                    .GetComponentsInChildren<Button>(true)
+                    .Single(button => button.name == "ContinueButton");
+                float deadline = Time.realtimeSinceStartup + 60f;
+                while (
+                    !continueButton.gameObject.activeInHierarchy
+                    && Time.realtimeSinceStartup < deadline
+                )
+                    yield return null;
+
+                Assert.IsTrue(
+                    continueButton.gameObject.activeInHierarchy,
+                    "The custom game never became ready."
+                );
+                Assert.AreSame(selected, AppBootstrap.Instance.GetContentPack());
+                Assert.IsTrue(AppBootstrap.Instance.GetRuntime().HasActiveGame);
+                Assert.AreEqual(
+                    GameDifficulty.Hard,
+                    AppBootstrap
+                        .Instance.GetRuntime()
+                        .GetActiveGameSession()
+                        .Game.Summary.Difficulty
+                );
+                Assert.IsNull(
+                    Object.FindAnyObjectByType<CutscenePlayer>(),
+                    "The intro must wait until Continue releases the loading overlay."
+                );
+            }
+            finally
+            {
+                SceneManager.sceneLoaded -= DisableSceneRendering;
+            }
         }
 
         [UnityTest]
@@ -186,6 +195,29 @@ namespace Rebellion.Tests.App
             yield return null;
             AppBootstrap restored = AppBootstrap.EnsureExists(operation.Pack);
             AssertCutscenePlayback(restored);
+        }
+
+        /// <summary>
+        /// Prevents scene rendering from adding GPU work to a load-lifecycle integration test.
+        /// </summary>
+        /// <param name="scene">The scene whose game objects were initialized.</param>
+        /// <param name="mode">The scene-loading mode.</param>
+        private static void DisableSceneRendering(Scene scene, LoadSceneMode mode)
+        {
+            foreach (GameObject root in scene.GetRootGameObjects())
+                DisableRendering(root);
+        }
+
+        /// <summary>
+        /// Disables GPU rendering on every graphics backend without changing object lifecycle state.
+        /// </summary>
+        /// <param name="root">The loading presentation or scene root under test.</param>
+        private static void DisableRendering(GameObject root)
+        {
+            foreach (Camera camera in root.GetComponentsInChildren<Camera>(true))
+                camera.enabled = false;
+            foreach (Canvas canvas in root.GetComponentsInChildren<Canvas>(true))
+                canvas.enabled = false;
         }
 
         /// <summary>

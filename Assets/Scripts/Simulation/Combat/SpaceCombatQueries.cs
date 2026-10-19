@@ -52,17 +52,13 @@ namespace Rebellion.Simulation
         {
             List<Fleet> attackerFleets = GetFleets(decision.AttackerFleetInstanceIDs);
             List<Fleet> defenderFleets = GetFleets(decision.DefenderFleetInstanceIDs);
-            Fleet attacker = GetRepresentativeFleet(attackerFleets);
-            Fleet defender = GetRepresentativeFleet(defenderFleets);
             Planet planet = ResolveCombatPlanet(decision);
 
             return new PendingCombatResult
             {
-                AttackerFleet = attacker,
-                DefenderFleet = defender,
                 AttackerOwnerInstanceID = decision.AttackerOwnerInstanceID,
                 DefenderOwnerInstanceID = decision.DefenderOwnerInstanceID,
-                Planet = planet,
+                PlanetInstanceID = planet?.InstanceID,
                 AttackerCanRetreat = CanRetreatForces(
                     attackerFleets,
                     defenderFleets,

@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.UIState;
 using Rebellion.Game.Units;
@@ -130,7 +129,8 @@ public sealed class IdleBarController
         ManufacturingType.Building,
     };
 
-    private readonly Func<Faction> getFaction;
+    private readonly Func<GalaxyMap> getFactionView;
+    private readonly Func<string> getPlayerFactionId;
     private List<IgnoredItem> ignoredItems;
     private readonly ContextMenuController contextMenuController;
     private readonly Func<UIContext> getUIContext;
@@ -154,7 +154,8 @@ public sealed class IdleBarController
     /// <summary>
     /// Creates an idle-bar controller backed by current strategy state.
     /// </summary>
-    /// <param name="getFaction">Returns the faction represented by the idle bar.</param>
+    /// <param name="getFactionView">Returns the faction-filtered galaxy view.</param>
+    /// <param name="getPlayerFactionId">Returns the represented faction identifier.</param>
     /// <param name="ignoredItems">The durable idle-bar exclusions to read and update.</param>
     /// <param name="contextMenuController">Owns the shared context-menu lifecycle.</param>
     /// <param name="getUIContext">Returns the current strategy UI context.</param>
@@ -163,7 +164,8 @@ public sealed class IdleBarController
     /// <param name="getAlwaysOpen">Returns whether the idle bar remains expanded.</param>
     /// <param name="getLocation">Returns the strategy-desktop corner occupied by the idle bar.</param>
     public IdleBarController(
-        Func<Faction> getFaction,
+        Func<GalaxyMap> getFactionView,
+        Func<string> getPlayerFactionId,
         List<IgnoredItem> ignoredItems,
         ContextMenuController contextMenuController,
         Func<UIContext> getUIContext,
@@ -173,7 +175,10 @@ public sealed class IdleBarController
         Func<IdleBarLocation> getLocation = null
     )
     {
-        this.getFaction = getFaction ?? throw new ArgumentNullException(nameof(getFaction));
+        this.getFactionView =
+            getFactionView ?? throw new ArgumentNullException(nameof(getFactionView));
+        this.getPlayerFactionId =
+            getPlayerFactionId ?? throw new ArgumentNullException(nameof(getPlayerFactionId));
         this.ignoredItems = ignoredItems ?? throw new ArgumentNullException(nameof(ignoredItems));
         this.contextMenuController =
             contextMenuController ?? throw new ArgumentNullException(nameof(contextMenuController));
@@ -239,7 +244,11 @@ public sealed class IdleBarController
         }
 
         RectInt desktopBounds = GetDesktopBounds();
-        IdleBarRenderData projected = projector.Project(getFaction(), desktopBounds);
+        IdleBarRenderData projected = projector.Project(
+            getFactionView(),
+            getPlayerFactionId(),
+            desktopBounds
+        );
         List<IdleBarEntry> entries = projected
             .Entries.Where(entry => IsIdleBarEntryTracked(entry.Entity))
             .ToList();

@@ -1,10 +1,11 @@
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
-using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using UnityEngine;
+using GalaxyMapModel = Rebellion.Game.Galaxy.GalaxyMap;
+using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
 {
@@ -13,7 +14,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
     {
         private const string _playerFactionId = "player";
 
-        private Faction _playerFaction;
+        private GalaxyMapModel _factionView;
+        private GalaxyPlanetSector _sector;
+        private Planet _unitPlanet;
 
         /// <summary>
         /// Sets up.
@@ -21,7 +24,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         [SetUp]
         public void SetUp()
         {
-            _playerFaction = new Faction { InstanceID = _playerFactionId };
+            _factionView = new GalaxyMapModel();
+            _sector = new GalaxyPlanetSector();
+            _unitPlanet = new Planet { OwnerInstanceID = _playerFactionId };
+            _factionView.AddChild(_sector);
+            _sector.SetParent(_factionView);
+            _sector.AddChild(_unitPlanet);
+            _unitPlanet.SetParent(_sector);
         }
 
         [Test]
@@ -44,7 +53,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Planet firstPlanet = CreateManufacturingPlanet("A Planet");
 
             IdleBarRenderData result = new IdleBarProjector(() => null).Project(
-                _playerFaction,
+                _factionView,
+                _playerFactionId,
                 new RectInt(10, 20, 300, 200)
             );
 
@@ -68,7 +78,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         public void Project_NoAvailableEntities_ReturnsEmptyStrip()
         {
             IdleBarRenderData result = new IdleBarProjector(() => null).Project(
-                _playerFaction,
+                _factionView,
+                _playerFactionId,
                 new RectInt()
             );
 
@@ -83,7 +94,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             mainCharacter.IsMain = true;
 
             IdleBarRenderData result = new IdleBarProjector(() => null).Project(
-                _playerFaction,
+                _factionView,
+                _playerFactionId,
                 new RectInt()
             );
 
@@ -104,7 +116,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             retiredSpecialForces.IsRetired = true;
 
             IdleBarRenderData result = new IdleBarProjector(() => null).Project(
-                _playerFaction,
+                _factionView,
+                _playerFactionId,
                 new RectInt()
             );
 
@@ -118,9 +131,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             officer.CurrentRank = OfficerRank.Commander;
             IdleBarProjector projector = new IdleBarProjector(() => null);
 
-            IdleBarRenderData commanding = projector.Project(_playerFaction, new RectInt());
+            IdleBarRenderData commanding = projector.Project(
+                _factionView,
+                _playerFactionId,
+                new RectInt()
+            );
             officer.CurrentRank = OfficerRank.None;
-            IdleBarRenderData resigned = projector.Project(_playerFaction, new RectInt());
+            IdleBarRenderData resigned = projector.Project(
+                _factionView,
+                _playerFactionId,
+                new RectInt()
+            );
 
             Assert.IsFalse(commanding.Entries.Any(entry => entry.Entity == officer));
             Assert.IsTrue(resigned.Entries.Any(entry => entry.Entity == officer));
@@ -139,7 +160,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
                 DisplayName = displayName,
                 OwnerInstanceID = _playerFactionId,
             };
-            _playerFaction.AddOwnedUnit(officer);
+            _unitPlanet.AddChild(officer);
+            officer.SetParent(_unitPlanet);
             return officer;
         }
 
@@ -158,7 +180,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             specialForces.AllowedMissionTypeIDs.Add("mission");
-            _playerFaction.AddOwnedUnit(specialForces);
+            _unitPlanet.AddChild(specialForces);
+            specialForces.SetParent(_unitPlanet);
             return specialForces;
         }
 
@@ -183,7 +206,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
                     ManufacturingStatus = ManufacturingStatus.Complete,
                 }
             );
-            _playerFaction.AddOwnedUnit(planet);
+            _sector.AddChild(planet);
+            planet.SetParent(_sector);
             return planet;
         }
     }

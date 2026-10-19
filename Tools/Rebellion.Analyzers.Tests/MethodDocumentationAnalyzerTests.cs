@@ -161,8 +161,11 @@ class Example
             Assert.IsEmpty(diagnostics);
         }
 
+        /// <summary>
+        /// Verifies that XML documentation is permitted on a test method.
+        /// </summary>
         [Test]
-        public async Task Method_DocumentedNUnitTest_ReportsTestCommentAsync()
+        public async Task Method_DocumentedNUnitTest_DoesNotReportDiagnosticAsync()
         {
             const string source =
                 @"
@@ -177,7 +180,7 @@ class Example
 
             ImmutableArray<Diagnostic> diagnostics = await AnalyzeAsync(source);
 
-            AssertDiagnostic(diagnostics, MethodDocumentationAnalyzer.TestCommentDiagnosticId);
+            Assert.IsEmpty(diagnostics);
         }
 
         [Test]

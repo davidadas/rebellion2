@@ -453,6 +453,24 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void TryEstimateManufacturedTransitTicks_ViewOriginAndDestinationAtSamePlanet_ReturnsZero()
+        {
+            (GameRoot game, Planet origin, Planet _, Officer officer, MovementQueries movement) =
+                BuildScene();
+            Planet viewOrigin = new Planet { InstanceID = origin.InstanceID };
+
+            bool result = movement.TryEstimateManufacturedTransitTicks(
+                officer,
+                viewOrigin,
+                viewOrigin,
+                out int transitTicks
+            );
+
+            Assert.IsTrue(result);
+            Assert.AreEqual(0, transitTicks);
+        }
+
+        [Test]
         public void TryEstimateManufacturedTransitTicks_HostilePlanetDestination_ReturnsFalse()
         {
             (

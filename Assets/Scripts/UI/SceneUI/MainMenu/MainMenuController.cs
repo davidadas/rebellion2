@@ -106,13 +106,16 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
                     .Select(binding => binding.Ready)
             );
             await Task.WhenAll(contentTask, modelTask);
+            if (this == null || view == null || mainMenuCanvas == null)
+                return;
+
             ContentPack contentPack = bootstrap.GetContentPack();
-            view?.InitializeContent(bootstrap.GetContentAssets());
-            view?.RenderVictoryCondition(currentVictoryCondition);
-            view?.RenderFactions(contentPack.Scenario.PlayableFactionIDs);
-            view?.ResetNewGameSettingsPresentation();
+            view.InitializeContent(bootstrap.GetContentAssets());
+            view.RenderVictoryCondition(currentVictoryCondition);
+            view.RenderFactions(contentPack.Scenario.PlayableFactionIDs);
+            view.ResetNewGameSettingsPresentation();
             AudioManager audioManager = bootstrap.GetAudioManager();
-            audioManager.PreloadSfx(view?.GetAudioCuePaths());
+            audioManager.PreloadSfx(view.GetAudioCuePaths());
             if (LoadingScreenController.IsLoadInProgress)
             {
                 if (

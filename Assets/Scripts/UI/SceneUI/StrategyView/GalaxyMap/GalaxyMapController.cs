@@ -195,6 +195,7 @@ public sealed class GalaxyMapController
         GetRequiredView()
             .RenderWaypointRoutes(
                 projector.ProjectWaypointRoutes(
+                    sectors,
                     playerFactionId,
                     waypointPlan,
                     selectedFleetInstanceIds,

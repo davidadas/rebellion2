@@ -3,11 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Rebellion.Game;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using UnityEngine;
-using Faction = Rebellion.Game.Factions.Faction;
 
 /// <summary>
 /// Sequences faction briefings and projects each segment onto the strategy map.
@@ -16,7 +15,7 @@ public sealed class StrategyBriefingController
 {
     private readonly Func<string, float> getAudioDuration;
     private readonly Func<string, Texture2D> getTexture;
-    private readonly GameRoot game;
+    private readonly Func<UIContext> getUIContext;
     private readonly GalaxyMapController galaxyMapController;
     private readonly Action playPresentationSfx;
     private readonly Func<ContentPreloadManifest, Task> preloadContent;
@@ -31,7 +30,7 @@ public sealed class StrategyBriefingController
     /// <summary>
     /// Creates a briefing coordinator from its direct playback and map dependencies.
     /// </summary>
-    /// <param name="game">The active game.</param>
+    /// <param name="getUIContext">Returns presentation-safe faction identity metadata.</param>
     /// <param name="getTexture">Resolves a preloaded briefing frame.</param>
     /// <param name="getAudioDuration">Resolves the duration of a preloaded voice clip.</param>
     /// <param name="preloadContent">Makes a declared content manifest resident.</param>
@@ -40,7 +39,7 @@ public sealed class StrategyBriefingController
     /// <param name="galaxyMapController">Presents briefing map cues.</param>
     /// <param name="playPresentationSfx">Plays the map-presentation transition sound.</param>
     public StrategyBriefingController(
-        GameRoot game,
+        Func<UIContext> getUIContext,
         Func<string, Texture2D> getTexture,
         Func<string, float> getAudioDuration,
         Func<ContentPreloadManifest, Task> preloadContent,
@@ -50,7 +49,7 @@ public sealed class StrategyBriefingController
         Action playPresentationSfx
     )
     {
-        this.game = game ?? throw new ArgumentNullException(nameof(game));
+        this.getUIContext = getUIContext ?? throw new ArgumentNullException(nameof(getUIContext));
         this.getTexture = getTexture ?? throw new ArgumentNullException(nameof(getTexture));
         this.getAudioDuration =
             getAudioDuration ?? throw new ArgumentNullException(nameof(getAudioDuration));
@@ -86,17 +85,20 @@ public sealed class StrategyBriefingController
         briefingCancellation = new CancellationTokenSource();
         completed = onCompleted;
         segmentIndex = 0;
-        Faction playerFaction = game.GetPlayerFaction();
-        Faction opponentFaction = game.GetFactions()
-            .FirstOrDefault(faction => faction != playerFaction);
+        UIContext uiContext = getUIContext();
+        string playerFactionId = uiContext?.GetPlayerFactionInstanceID();
+        string opponentFactionId = uiContext
+            ?.GetFactionPresentations()
+            .FirstOrDefault(faction => faction.InstanceID != playerFactionId)
+            ?.InstanceID;
         galaxyMapController.SetBriefingPresentation(
             new StrategyBriefingMapPresentation(
                 StrategyBriefingMapMode.Default,
                 "Briefing",
                 null,
                 null,
-                playerFaction?.InstanceID,
-                opponentFaction?.InstanceID
+                playerFactionId,
+                opponentFactionId
             )
         );
         BeginSegmentPlayback(activeBriefing.Segments[0]);
@@ -270,9 +272,10 @@ public sealed class StrategyBriefingController
     private void PresentSegment(StrategyBriefingSegmentTheme segment)
     {
         StrategyBriefingMapPresentation presentation = CreateMapPresentation(
-            game,
-            segment,
-            galaxyMapController.VisibleGalaxyMap
+            galaxyMapController.VisibleGalaxyMap,
+            getUIContext()?.GetPlayerFactionInstanceID(),
+            GetOpponentFactionId(),
+            segment
         );
         if (presentation.DimBackground)
             playPresentationSfx();
@@ -283,52 +286,34 @@ public sealed class StrategyBriefingController
     /// <summary>
     /// Resolves one semantic focus into a transient galaxy-map presentation.
     /// </summary>
-    /// <param name="game">The active game.</param>
-    /// <param name="segment">The segment whose playback is starting.</param>
     /// <param name="factionView">The player's fog-of-war-filtered galaxy view.</param>
+    /// <param name="playerFactionId">The player faction identifier.</param>
+    /// <param name="opponentFactionId">The opposing faction identifier.</param>
+    /// <param name="segment">The segment whose playback is starting.</param>
     /// <returns>The resolved map presentation.</returns>
     internal static StrategyBriefingMapPresentation CreateMapPresentation(
-        GameRoot game,
-        StrategyBriefingSegmentTheme segment,
-        GalaxyMap factionView = null
+        GalaxyMap factionView,
+        string playerFactionId,
+        string opponentFactionId,
+        StrategyBriefingSegmentTheme segment
     )
     {
-        if (game == null)
-            throw new ArgumentNullException(nameof(game));
         if (segment == null)
             throw new ArgumentNullException(nameof(segment));
 
         string targetID = segment.TargetInstanceID;
-        Faction playerFaction = game.GetPlayerFaction();
-        Faction opponentFaction = game.GetFactions().Single(faction => faction != playerFaction);
         bool opponentHeadquartersFocus =
             segment.Focus == StrategyBriefingFocus.OpponentHeadquarters;
-        Planet knownOpponentHeadquarters = null;
         if (segment.Focus == StrategyBriefingFocus.PlayerHeadquarters)
-            targetID = playerFaction?.HQInstanceID;
+            targetID = FindVisibleHeadquarters(factionView, playerFactionId)?.InstanceID;
         else if (opponentHeadquartersFocus)
-        {
-            targetID = opponentFaction?.HQInstanceID;
-            if (!string.IsNullOrEmpty(targetID))
-            {
-                knownOpponentHeadquarters = factionView
-                    ?.GetChildren<Planet>(recursive: true)
-                    .FirstOrDefault(planet => planet.InstanceID == targetID);
-            }
-            if (
-                knownOpponentHeadquarters?.IsUnexploredView == true
-                || knownOpponentHeadquarters?.IsHeadquarters != true
-            )
-            {
-                targetID = null;
-            }
-        }
+            targetID = FindVisibleHeadquarters(factionView, opponentFactionId)?.InstanceID;
 
         bool requiresTarget =
             segment.Focus == StrategyBriefingFocus.Target
             || segment.Focus == StrategyBriefingFocus.PlayerHeadquarters
             || segment.Focus == StrategyBriefingFocus.OpponentHeadquarters;
-        if (opponentHeadquartersFocus && !string.IsNullOrEmpty(opponentFaction?.HQInstanceID))
+        if (opponentHeadquartersFocus)
             requiresTarget = !string.IsNullOrEmpty(targetID);
         if (requiresTarget && string.IsNullOrEmpty(targetID))
         {
@@ -337,10 +322,7 @@ public sealed class StrategyBriefingController
             );
         }
 
-        ISceneNode target =
-            opponentHeadquartersFocus && !string.IsNullOrEmpty(targetID)
-                ? knownOpponentHeadquarters
-                : game.GetSceneNodeByInstanceID<ISceneNode>(targetID);
+        ISceneNode target = FindVisibleNode(factionView, targetID);
         if (requiresTarget && target == null)
             throw new InvalidOperationException($"Briefing target '{targetID}' was not found.");
 
@@ -369,10 +351,66 @@ public sealed class StrategyBriefingController
             label,
             targetSector?.InstanceID,
             targetPlanet?.InstanceID,
-            playerFaction?.InstanceID,
-            opponentFaction?.InstanceID,
+            playerFactionId,
+            opponentFactionId,
             presentsMap
         );
+    }
+
+    /// <summary>
+    /// Gets the opposing faction identifier from presentation-safe faction metadata.
+    /// </summary>
+    /// <returns>The opposing faction identifier, or null.</returns>
+    private string GetOpponentFactionId()
+    {
+        UIContext uiContext = getUIContext();
+        string playerFactionId = uiContext?.GetPlayerFactionInstanceID();
+        return uiContext
+            ?.GetFactionPresentations()
+            .FirstOrDefault(faction => faction.InstanceID != playerFactionId)
+            ?.InstanceID;
+    }
+
+    /// <summary>
+    /// Finds a headquarters planet revealed by the faction-filtered galaxy view.
+    /// </summary>
+    /// <param name="factionView">The visible galaxy.</param>
+    /// <param name="factionId">The headquarters owner.</param>
+    /// <returns>The visible headquarters planet, or null.</returns>
+    private static Planet FindVisibleHeadquarters(GalaxyMap factionView, string factionId)
+    {
+        if (factionView == null || string.IsNullOrEmpty(factionId))
+            return null;
+
+        return factionView
+            .GetChildren<Planet>(recursive: true)
+            .FirstOrDefault(planet =>
+                planet.IsUnexploredView == false
+                && (
+                    planet.IsHeadquarters && planet.OwnerInstanceID == factionId
+                    || planet
+                        .GetChildren<Building>()
+                        .Any(building =>
+                            building.BuildingType == BuildingType.Headquarters
+                            && building.OwnerInstanceID == factionId
+                        )
+                )
+            );
+    }
+
+    /// <summary>
+    /// Finds a node revealed by the faction-filtered galaxy view.
+    /// </summary>
+    /// <param name="factionView">The visible galaxy.</param>
+    /// <param name="instanceId">The requested node identifier.</param>
+    /// <returns>The visible node, or null.</returns>
+    private static ISceneNode FindVisibleNode(GalaxyMap factionView, string instanceId)
+    {
+        return factionView == null || string.IsNullOrEmpty(instanceId)
+            ? null
+            : factionView
+                .GetChildren<ISceneNode>(recursive: true, includeDisabled: true)
+                .FirstOrDefault(node => node.InstanceID == instanceId);
     }
 
     /// <summary>
