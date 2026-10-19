@@ -730,6 +730,19 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void ProcessTick_MaximumManufacturingSpeed_StopsAfterQueuedWorkCompletes()
+        {
+            ConfigureManufacturingSpeed(int.MaxValue);
+            Building mine = CreateManufacturingSpeedTestItem();
+            _manager.Enqueue(_coruscant, mine, _coruscant);
+
+            CreateTickProcessor(_manager).ProcessTick(_game);
+
+            Assert.AreEqual(ManufacturingStatus.Complete, mine.ManufacturingStatus);
+            Assert.AreEqual(mine.ConstructionCost, mine.ManufacturingProgress);
+        }
+
+        [Test]
         public void ProcessTick_WithNoRefinedMaterials_ContinuesProduction()
         {
             _empire.RefinedMaterialStockpile = 0;

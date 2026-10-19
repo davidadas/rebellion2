@@ -416,6 +416,20 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
+        public void HandleBackToGame_UnavailableSavedPack_ClosesWindow()
+        {
+            _bootstrap.GetUserSettingsManager().Settings.Content.ActivePackID = "missing-pack";
+            _controller.Dispose();
+            _controller = CreateController(GetPrefab());
+            _bootstrap.GetRuntime().StartGame(CreateGame());
+            OptionsMenuView view = OpenAndRender();
+
+            GetField<Button>(view, "_backToGameButton").onClick.Invoke();
+
+            Assert.IsFalse(_controller.IsOpen);
+        }
+
+        [Test]
         public void HandleMainMenuRequested_ActiveGame_WarnsAboutUnsavedProgress()
         {
             _bootstrap.GetRuntime().StartGame(CreateGame());

@@ -135,7 +135,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.IsNotNull(viewport.Find("SpaceBackdrop/Planet"));
             Assert.IsNotNull(viewport.Find("Cockpit"));
             Assert.AreSame(viewport, viewport.Find("MainMenuControls").parent);
-            Assert.AreEqual(6, _prefabRoot.GetComponentsInChildren<AutoRotate>(true).Length);
+            Assert.AreEqual(7, _prefabRoot.GetComponentsInChildren<AutoRotate>(true).Length);
         }
 
         [Test]
@@ -147,7 +147,20 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                 .OrderBy(speed => speed)
                 .ToArray();
 
-            CollectionAssert.AreEqual(new[] { 120f, 240f, 240f, 240f, 240f, 240f }, speeds);
+            CollectionAssert.AreEqual(new[] { 120f, 120f, 240f, 240f, 240f, 240f, 240f }, speeds);
+        }
+
+        [Test]
+        public void ResetNewGameSettingsPresentation_RotatedHolocron_RestoresAuthoredAngle()
+        {
+            AutoRotate spinner = GetField<AutoRotate>("newGameSettingsSpinner");
+            UIComponentTestHelper.InvokeLifecycle(spinner, "Awake");
+            Quaternion authoredRotation = spinner.transform.localRotation;
+            spinner.transform.Rotate(Vector3.up, 90f, Space.Self);
+
+            _view.ResetNewGameSettingsPresentation();
+
+            Assert.AreEqual(authoredRotation, spinner.transform.localRotation);
         }
 
         [Test]
@@ -428,6 +441,20 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                 );
 
             Assert.IsFalse(hasLoadBinding);
+        }
+
+        [Test]
+        public void NewGameSettingsButton_PointerUp_RaisesSelectionCue()
+        {
+            EventTrigger trigger = _prefabRoot
+                .transform.Find("UI/Canvas/Viewport/MainMenuControls/NewGameSettingsButton")
+                .GetComponent<EventTrigger>();
+            string cue = null;
+            _view.AudioCueRequested += path => cue = path;
+
+            InvokeTrigger(trigger, EventTriggerType.PointerUp);
+
+            Assert.AreEqual("Application/MainMenu/Audio/select", cue);
         }
 
         [Test]

@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
-using Rebellion.Generation;
+using Rebellion.Game;
 using TMPro;
 using UnityEditor;
 using UnityEngine;

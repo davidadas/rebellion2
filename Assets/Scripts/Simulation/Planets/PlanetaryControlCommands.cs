@@ -8,6 +8,7 @@ using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Logging;
+using Rebellion.Util.Mathematics;
 
 namespace Rebellion.Simulation
 {
@@ -338,7 +339,11 @@ namespace Rebellion.Simulation
                 return;
 
             int currentSupport = planet.GetPopularSupport(faction.InstanceID);
-            int newSupport = System.Math.Clamp(currentSupport + shift, 0, 100);
+            int newSupport = System.Math.Clamp(
+                IntegerMath.SaturatingAdd(currentSupport, shift),
+                0,
+                100
+            );
             if (newSupport == currentSupport)
                 return;
 

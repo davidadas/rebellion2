@@ -907,8 +907,8 @@ namespace Rebellion.Simulation
             if (increasePercent <= 0 || rolledTicks <= 0)
                 return rolledTicks;
 
-            return (int)
-                Math.Ceiling(rolledTicks * _percentScale / (_percentScale + increasePercent));
+            long denominator = (long)_percentScale + increasePercent;
+            return (int)Math.Ceiling(rolledTicks * (double)_percentScale / denominator);
         }
     }
 }

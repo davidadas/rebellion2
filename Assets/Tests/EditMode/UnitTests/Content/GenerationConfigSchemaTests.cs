@@ -152,11 +152,6 @@ namespace Rebellion.Tests.Content
             return $@"
 <GameGenerationConfig>
   <Officers>
-    <NumStartingOfficers>
-      <Small>0</Small>
-      <Medium>0</Medium>
-      <Large>0</Large>
-    </NumStartingOfficers>
     <StartingOfficers>{startingOfficerRules}
     </StartingOfficers>
   </Officers>
@@ -164,6 +159,12 @@ namespace Rebellion.Tests.Content
     <FactionSetups>
       <FactionSetup>
         <FactionID>FACTION</FactionID>
+        <StartingResearchLevel>0</StartingResearchLevel>
+        <NumStartingOfficers>
+          <Small>0</Small>
+          <Medium>0</Medium>
+          <Large>0</Large>
+        </NumStartingOfficers>
         <StartingPlanets>
           <StartingPlanet>
             <PlanetTypeID>PLANET_TYPE</PlanetTypeID>

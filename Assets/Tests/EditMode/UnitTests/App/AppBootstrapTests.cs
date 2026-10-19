@@ -4,7 +4,9 @@ using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Simulation;
+using UnityEditor;
 using UnityEngine;
+using UnityEngine.Video;
 
 namespace Rebellion.Tests.App
 {
@@ -75,6 +77,28 @@ namespace Rebellion.Tests.App
             Assert.AreEqual("campaign", GameLaunchContext.SaveFileName);
             Assert.IsTrue(GameLaunchContext.IsLoadGame);
             Assert.AreSame(TestContent.Pack, _bootstrap.GetContentPack());
+        }
+
+        [Test]
+        public void InitializeRuntimeCore_RecreatedBootstrap_RetainsCutscenePlayerPrefab()
+        {
+            GameObject cutscenePrefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+                "Assets/Prefabs/UI/Cutscenes/CutscenePlayer.prefab"
+            );
+            VideoClip clip = AssetDatabase.LoadAssetAtPath<VideoClip>(
+                "Assets/Tests/EditMode/UnitTests/UI/SceneUI/Cutscenes/CutsceneTestClip.webm"
+            );
+            UIComponentTestHelper.InvokeLifecycle(_bootstrap, "InitializeRuntimeCore");
+            _bootstrap.InitializeCutsceneManager(cutscenePrefab);
+            Object.DestroyImmediate(AudioManager.Instance.gameObject);
+            Object.DestroyImmediate(_gameObject);
+
+            _gameObject = new GameObject("ReplacementAppBootstrapUnderTest");
+            _gameObject.SetActive(false);
+            _bootstrap = _gameObject.AddComponent<AppBootstrap>();
+            UIComponentTestHelper.InvokeLifecycle(_bootstrap, "InitializeRuntimeCore");
+
+            Assert.DoesNotThrow(() => _bootstrap.GetCutsceneManager().Play(clip, null));
         }
 
         [Test]

@@ -19,6 +19,8 @@ public sealed class AppBootstrap : MonoBehaviour
     private const string _mainMenuPreloadID = "main-menu";
     private const string _strategyPreloadID = "strategy";
 
+    private static GameObject _cutscenePlayerPrefab;
+
 #if UNITY_EDITOR
     private const string _editorCutscenePrefabPath =
         "Assets/Prefabs/UI/Cutscenes/CutscenePlayer.prefab";
@@ -157,6 +159,7 @@ public sealed class AppBootstrap : MonoBehaviour
         _contentModelCache = new ContentModelCache(_contentAssets);
         GameLaunchContext.Reset(_contentPack);
         GameLaunchContext.RestoreSaveLoadAfterContentRestart();
+        GameLaunchContext.RestoreCustomGameAfterContentRestart();
         audioManager = AudioManager.EnsureExists(transform);
         audioManager.InitializeContent(_contentAssets);
 
@@ -166,11 +169,17 @@ public sealed class AppBootstrap : MonoBehaviour
         _cutsceneManager.InitializeContent(_contentAssets);
         _cutsceneManager.InitializeAudio(audioManager);
 
+        if (_cutscenePlayerPrefab != null)
+            _cutsceneManager.Initialize(_cutscenePlayerPrefab);
+
 #if UNITY_EDITOR
-        GameObject cutscenePrefab = AssetDatabase.LoadAssetAtPath<GameObject>(
-            _editorCutscenePrefabPath
-        );
-        _cutsceneManager.Initialize(cutscenePrefab);
+        if (_cutscenePlayerPrefab == null)
+        {
+            GameObject cutscenePrefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+                _editorCutscenePrefabPath
+            );
+            InitializeCutsceneManager(cutscenePrefab);
+        }
 #endif
 
         if (inputManager == null)
@@ -307,6 +316,31 @@ public sealed class AppBootstrap : MonoBehaviour
     }
 
     /// <summary>
+    /// Persists and queues a custom game that requires replacement content services.
+    /// </summary>
+    /// <param name="contentPack">The selected and validated content pack.</param>
+    /// <param name="summary">The complete custom-game configuration.</param>
+    internal void PrepareCustomGameContentRestart(ContentPack contentPack, GameSummary summary)
+    {
+        if (contentPack == null)
+            throw new ArgumentNullException(nameof(contentPack));
+        if (summary == null)
+            throw new ArgumentNullException(nameof(summary));
+        if (!contentPack.MatchesContentIdentity(summary))
+            throw new InvalidOperationException(
+                "The custom-game configuration does not match its selected content pack."
+            );
+
+        string[] enabledModIDs = contentPack.FileResolver.Mods.Select(mod => mod.ID).ToArray();
+        string[] disabledModIDs = contentPack
+            .FileResolver.AvailableMods.Select(mod => mod.ID)
+            .Except(enabledModIDs, StringComparer.Ordinal)
+            .ToArray();
+        PersistContentSelection(contentPack, disabledModIDs);
+        GameLaunchContext.PrepareCustomGameAfterContentRestart(summary, contentPack);
+    }
+
+    /// <summary>
     /// Stops the outgoing scene and runtime after the persistent loading presentation is visible.
     /// </summary>
     internal void SuspendForSaveLoad()
@@ -338,6 +372,12 @@ public sealed class AppBootstrap : MonoBehaviour
     /// <param name="cutscenePrefab">The cutscene player prefab.</param>
     internal void InitializeCutsceneManager(GameObject cutscenePrefab)
     {
+        _cutscenePlayerPrefab =
+            cutscenePrefab
+            ?? throw new ArgumentNullException(
+                nameof(cutscenePrefab),
+                "Cutscene player prefab is missing."
+            );
         _cutsceneManager.Initialize(cutscenePrefab);
     }
 

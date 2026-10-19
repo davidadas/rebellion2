@@ -227,6 +227,9 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     [SerializeField]
     private Button _contentPackNextButton;
 
+    private OptionsChoiceFieldView _resolutionChoice;
+    private OptionsChoiceFieldView _fullScreenChoice;
+    private OptionsChoiceFieldView _contentPackChoice;
     private bool _bound;
     private IContentAssetSource _contentAssets;
     private OptionsMenuTab? _previousTab;
@@ -290,6 +293,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     private void Awake()
     {
         VerifyReferences();
+        EnsureChoiceFields();
         CaptureTabSourceRects();
         BindControls();
     }
@@ -528,8 +532,8 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             row.Render(enabled);
         }
 
-        UILayout.SetTextContent(_resolutionValueField, data.ResolutionLabel);
-        UILayout.SetTextContent(_fullScreenValueField, data.FullScreenLabel);
+        _resolutionChoice.Render(data.ResolutionLabel);
+        _fullScreenChoice.Render(data.FullScreenLabel);
         for (int index = 0; index < _graphicsValueFields.Length; index++)
         {
             UserGraphicsSetting setting = (UserGraphicsSetting)index;
@@ -584,7 +588,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     {
         bool restartRequired =
             data.ContentRestartRequired || data.Mods.Any(mod => mod.Enabled != mod.Loaded);
-        UILayout.SetTextContent(_contentPackValueField, data.ContentPackLabel);
+        _contentPackChoice.Render(data.ContentPackLabel);
         int loadedCount = data.Mods.Count(mod => mod.Loaded);
         string status =
             data.Mods.Count == 0
@@ -1029,10 +1033,9 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
         _autosavesToKeepInputField.onSelect.AddListener(_ => TextEditingChanged?.Invoke(true));
         _autosavesToKeepInputField.onDeselect.AddListener(_ => TextEditingChanged?.Invoke(false));
 
-        _resolutionPrevButton.onClick.AddListener(() => ResolutionStepRequested?.Invoke(-1));
-        _resolutionNextButton.onClick.AddListener(() => ResolutionStepRequested?.Invoke(1));
-        _fullScreenPrevButton.onClick.AddListener(() => FullScreenStepRequested?.Invoke(-1));
-        _fullScreenNextButton.onClick.AddListener(() => FullScreenStepRequested?.Invoke(1));
+        _resolutionChoice.StepRequested += HandleResolutionStepRequested;
+        _fullScreenChoice.StepRequested += HandleFullScreenStepRequested;
+        _contentPackChoice.StepRequested += HandleContentPackStepRequested;
         for (int index = 0; index < _graphicsValueFields.Length; index++)
         {
             UserGraphicsSetting setting = (UserGraphicsSetting)index;
@@ -1047,8 +1050,6 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
                     .onClick.AddListener(() => GraphicsStepRequested?.Invoke(setting, 1));
             }
         }
-        _contentPackPrevButton.onClick.AddListener(() => ContentPackStepRequested?.Invoke(-1));
-        _contentPackNextButton.onClick.AddListener(() => ContentPackStepRequested?.Invoke(1));
 
         for (int i = 0; i < _volumeSliders.Length; i++)
         {
@@ -1090,6 +1091,12 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
         _saveListView.SlotRenamed -= HandleSlotRenamed;
         _saveListView.SlotDeleteRequested -= HandleSlotDeleteRequested;
         _saveListView.RenameEditingChanged -= HandleTextEditingChanged;
+        if (_resolutionChoice != null)
+            _resolutionChoice.StepRequested -= HandleResolutionStepRequested;
+        if (_fullScreenChoice != null)
+            _fullScreenChoice.StepRequested -= HandleFullScreenStepRequested;
+        if (_contentPackChoice != null)
+            _contentPackChoice.StepRequested -= HandleContentPackStepRequested;
 
         foreach (OptionsToggleRowView row in _tacticalRows)
         {
@@ -1114,6 +1121,99 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
                 row.ToggleRequested -= HandleModToggle;
         }
     }
+
+    /// <summary>
+    /// Clones the established content-pack selector into another Options-style page.
+    /// </summary>
+    /// <param name="parent">The destination settings row.</param>
+    /// <param name="name">The cloned selector name.</param>
+    /// <param name="x">The destination left coordinate.</param>
+    /// <param name="y">The destination top coordinate.</param>
+    /// <returns>The reusable cloned choice field.</returns>
+    internal OptionsChoiceFieldView CloneContentPackChoice(
+        Transform parent,
+        string name,
+        int x,
+        int y
+    )
+    {
+        Transform sourceParent = _contentPackValueField.transform.parent;
+        Image badge = sourceParent.Find("ContentPackBadge")?.GetComponent<Image>();
+        if (badge == null)
+            throw new MissingReferenceException("ContentPackBadge is missing.");
+
+        return OptionsChoiceFieldView.Clone(
+            parent,
+            name,
+            badge,
+            _contentPackValueField,
+            _contentPackPrevButton,
+            _contentPackNextButton,
+            x,
+            y
+        );
+    }
+
+    /// <summary>
+    /// Composes reusable choice fields over the authored Options controls.
+    /// </summary>
+    private void EnsureChoiceFields()
+    {
+        _resolutionChoice = GetOrCreateChoiceField(
+            _resolutionValueField,
+            _resolutionPrevButton,
+            _resolutionNextButton
+        );
+        _fullScreenChoice = GetOrCreateChoiceField(
+            _fullScreenValueField,
+            _fullScreenPrevButton,
+            _fullScreenNextButton
+        );
+        _contentPackChoice = GetOrCreateChoiceField(
+            _contentPackValueField,
+            _contentPackPrevButton,
+            _contentPackNextButton
+        );
+    }
+
+    /// <summary>
+    /// Returns a reusable choice field for one set of authored controls.
+    /// </summary>
+    /// <param name="value">The selected-value label.</param>
+    /// <param name="previous">The previous-value button.</param>
+    /// <param name="next">The next-value button.</param>
+    /// <returns>The configured choice field.</returns>
+    private static OptionsChoiceFieldView GetOrCreateChoiceField(
+        TextMeshProUGUI value,
+        Button previous,
+        Button next
+    )
+    {
+        OptionsChoiceFieldView choice =
+            value.GetComponent<OptionsChoiceFieldView>()
+            ?? value.gameObject.AddComponent<OptionsChoiceFieldView>();
+        choice.Configure(value, previous, next);
+        return choice;
+    }
+
+    /// <summary>
+    /// Forwards a resolution step from the reusable choice field.
+    /// </summary>
+    /// <param name="delta">The requested step direction.</param>
+    private void HandleResolutionStepRequested(int delta) => ResolutionStepRequested?.Invoke(delta);
+
+    /// <summary>
+    /// Forwards a display-mode step from the reusable choice field.
+    /// </summary>
+    /// <param name="delta">The requested step direction.</param>
+    private void HandleFullScreenStepRequested(int delta) => FullScreenStepRequested?.Invoke(delta);
+
+    /// <summary>
+    /// Forwards a content-pack step from the reusable choice field.
+    /// </summary>
+    /// <param name="delta">The requested step direction.</param>
+    private void HandleContentPackStepRequested(int delta) =>
+        ContentPackStepRequested?.Invoke(delta);
 
     /// <summary>
     /// Forwards a Save command from the save-list subview.

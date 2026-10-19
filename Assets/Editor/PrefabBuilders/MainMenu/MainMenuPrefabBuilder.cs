@@ -168,6 +168,22 @@ public static class MainMenuPrefabBuilder
             true,
             underLightIntensity: 2.5f
         ),
+        new Face(
+            "GameSetup",
+            "Assets/Content/Application/MainMenu/Models/holocron.glb",
+            "Assets/Art/Models/MainMenu/Holocron.renderTexture",
+            "NewGameSettingsButton",
+            -0.5f,
+            Vector3.up,
+            0.90f,
+            Vector3.zero,
+            new Vector3(-18f, 0f, 0f),
+            256,
+            256,
+            useStudioLighting: true,
+            normalizeModel: true,
+            pivotPosition: new Vector3(0.13642858f, 0.049285717f, 0f)
+        ),
     };
 
     /// <summary>
@@ -266,6 +282,8 @@ public static class MainMenuPrefabBuilder
             CollectAudioCueBindings(root);
 
         SerializedObject serializedView = new SerializedObject(view);
+        serializedView.FindProperty("newGameSettingsButton").objectReferenceValue =
+            FindRequiredComponent<Button>(root, "NewGameSettingsButton");
         serializedView.FindProperty("loadGameButton").objectReferenceValue =
             FindRequiredComponent<Button>(root, "LoadGameButton");
         serializedView.FindProperty("exitButton").objectReferenceValue =
@@ -330,6 +348,7 @@ public static class MainMenuPrefabBuilder
             ("RightFactionLaunchButton", EventTriggerType.PointerUp, _factionSelectSfxPath),
             ("VictoryConditionButton", EventTriggerType.PointerUp, _selectSfxPath),
             ("VictoryConditionIcon", EventTriggerType.PointerUp, _selectSfxPath),
+            ("NewGameSettingsButton", EventTriggerType.PointerUp, _selectSfxPath),
         };
 
         List<(EventTrigger Trigger, EventTriggerType EventType, string ResourcePath)> bindings =
@@ -397,6 +416,13 @@ public static class MainMenuPrefabBuilder
             AssetDatabase.LoadAssetAtPath<OptionsMenuView>(_optionsMenuPrefabPath)
         );
         AssignFloat(controller, "creditsMusicFadeDuration", 0.5f);
+        AssignReference(
+            controller,
+            "_newGameSettingsPrefab",
+            AssetDatabase.LoadAssetAtPath<NewGameSettingsView>(
+                NewGameSettingsPrefabBuilder.PrefabPath
+            )
+        );
         return controller;
     }
 
@@ -521,6 +547,7 @@ public static class MainMenuPrefabBuilder
         BuildGalaxySizeGroup(controls.transform);
         BuildExitButton(controls.transform);
         BuildCreditsButton(controls.transform);
+        BuildNewGameSettingsButton(controls.transform);
         BuildLoadGameButton(controls.transform);
         BuildFactionLaunchButton(
             controls.transform,
@@ -536,6 +563,33 @@ public static class MainMenuPrefabBuilder
         );
         BuildVictoryConditionGroup(controls.transform);
         BuildExitConfirmationDialog(controls.transform);
+    }
+
+    /// <summary>
+    /// Authors the campaign-settings hit area in the upper-right monitor.
+    /// </summary>
+    /// <param name="parent">The main-menu controls layer.</param>
+    private static void BuildNewGameSettingsButton(Transform parent)
+    {
+        GameObject obj = NewChild(
+            "NewGameSettingsButton",
+            parent,
+            typeof(RectTransform),
+            typeof(Image),
+            typeof(Button),
+            typeof(EventTrigger)
+        );
+        SetAnchoredRect(
+            (RectTransform)obj.transform,
+            new Vector2(0.775f, 0.877f),
+            new Vector2(0.831f, 0.954f)
+        );
+        Image face = obj.GetComponent<Image>();
+        face.color = Color.clear;
+        Button button = obj.GetComponent<Button>();
+        button.targetGraphic = face;
+        button.transition = Selectable.Transition.None;
+        AddPointerUpTrigger(obj.GetComponent<EventTrigger>());
     }
 
     /// <summary>
@@ -2363,6 +2417,8 @@ public static class MainMenuPrefabBuilder
         // attitude on a barrel-rolling ship — without making the roll wobble.
         public readonly Vector3 PivotTilt;
 
+        public readonly Vector3 PivotPosition;
+
         // Target aspect of the RenderTexture. Coins are square; the ship icon matches the flipbook
         // it replaces (255x180 landscape) so it is not squashed when it fills the toggle.
         public readonly int RtWidth;
@@ -2374,6 +2430,11 @@ public static class MainMenuPrefabBuilder
 
         // Adds a short-range point light beneath icons that need extra underside detail.
         public readonly float UnderLightIntensity;
+
+        // Adds a local key, fill, and rim treatment for reflective icons.
+        public readonly bool UseStudioLighting;
+
+        public readonly bool NormalizeModel;
 
         /// <summary>
         /// Initializes a new instance of the Face class.
@@ -2391,6 +2452,9 @@ public static class MainMenuPrefabBuilder
         /// <param name="rtHeight">The rt height.</param>
         /// <param name="isToggle">Whether is toggle.</param>
         /// <param name="underLightIntensity">The under light intensity.</param>
+        /// <param name="useStudioLighting">Whether to add local lighting for a reflective model.</param>
+        /// <param name="normalizeModel">Whether to normalize the loaded model before applying its presentation scale.</param>
+        /// <param name="pivotPosition">The icon center's offset in the rig's camera plane.</param>
         public Face(
             string factionId,
             string modelPath,
@@ -2404,7 +2468,10 @@ public static class MainMenuPrefabBuilder
             int rtWidth = 512,
             int rtHeight = 512,
             bool isToggle = false,
-            float underLightIntensity = 0f
+            float underLightIntensity = 0f,
+            bool useStudioLighting = false,
+            bool normalizeModel = false,
+            Vector3 pivotPosition = default
         )
         {
             FactionId = factionId;
@@ -2416,10 +2483,13 @@ public static class MainMenuPrefabBuilder
             ModelScale = modelScale;
             Tilt = tilt;
             PivotTilt = pivotTilt;
+            PivotPosition = pivotPosition;
             RtWidth = rtWidth;
             RtHeight = rtHeight;
             IsToggle = isToggle;
             UnderLightIntensity = underLightIntensity;
+            UseStudioLighting = useStudioLighting;
+            NormalizeModel = normalizeModel;
         }
     }
 
@@ -2467,6 +2537,15 @@ public static class MainMenuPrefabBuilder
             leftIconRect.offsetMin = new Vector2(9f, leftIconRect.offsetMin.y);
             leftIconRect.offsetMax = new Vector2(9f, leftIconRect.offsetMax.y);
         }
+
+        MainMenuView view = FindRequiredComponent<MainMenuView>(root);
+        SerializedObject serializedView = new SerializedObject(view);
+        serializedView.FindProperty("newGameSettingsSpinner").objectReferenceValue = FindDeep(
+                root.transform,
+                "IconRig_GameSetup"
+            )
+            .GetComponentInChildren<AutoRotate>(true);
+        serializedView.ApplyModifiedPropertiesWithoutUndo();
     }
 
     /// <summary>
@@ -2709,6 +2788,7 @@ public static class MainMenuPrefabBuilder
         // Static presentation tilt on the pivot (e.g. nose-down); the incremental local-space spin
         // then rolls around this tilted frame without wobbling.
         pivot.transform.localRotation = Quaternion.Euler(face.PivotTilt);
+        pivot.transform.localPosition = face.PivotPosition;
         pivot
             .AddComponent<AutoRotate>()
             .Configure(_iconTurnDegreesPerSecond * face.SpinDirection, face.SpinAxis);
@@ -2724,7 +2804,7 @@ public static class MainMenuPrefabBuilder
                 face.ModelScale,
                 face.Tilt,
                 overwrite: true,
-                normalize: false,
+                normalize: face.NormalizeModel,
                 center: true,
                 layer: -1
             );
@@ -2745,15 +2825,79 @@ public static class MainMenuPrefabBuilder
 
         if (face.UnderLightIntensity > 0f)
         {
-            GameObject underLightObject = new GameObject("UnderLight", typeof(Light));
-            underLightObject.transform.SetParent(rig.transform, false);
-            underLightObject.transform.localPosition = new Vector3(0f, -2.5f, -1.5f);
-            Light underLight = underLightObject.GetComponent<Light>();
-            underLight.type = LightType.Point;
-            HdrpRenderTargetBuilder.ConfigureLight(underLight, face.UnderLightIntensity);
-            underLight.range = 8f;
-            underLight.color = Color.white;
+            AddPointLight(
+                rig.transform,
+                "UnderLight",
+                new Vector3(0f, -2.5f, -1.5f),
+                face.UnderLightIntensity,
+                8f,
+                Color.white
+            );
         }
+
+        if (face.UseStudioLighting)
+            BuildStudioLighting(rig.transform);
+    }
+
+    /// <summary>
+    /// Builds a compact local key, fill, and rim arrangement for a reflective icon.
+    /// </summary>
+    /// <param name="parent">The icon rig that owns the lights.</param>
+    private static void BuildStudioLighting(Transform parent)
+    {
+        AddPointLight(
+            parent,
+            "StudioKey",
+            new Vector3(-1.1f, 1.05f, -1.35f),
+            4.5f,
+            5f,
+            new Color(1f, 0.9f, 0.72f)
+        );
+        AddPointLight(
+            parent,
+            "StudioFill",
+            new Vector3(1.05f, -0.25f, -1.2f),
+            3f,
+            5f,
+            new Color(0.42f, 0.72f, 1f)
+        );
+        AddPointLight(
+            parent,
+            "StudioRim",
+            new Vector3(0.85f, 0.75f, 1.1f),
+            3.5f,
+            4.5f,
+            new Color(0.2f, 0.85f, 1f)
+        );
+    }
+
+    /// <summary>
+    /// Adds a shadowless point light to an icon rig.
+    /// </summary>
+    /// <param name="parent">The icon rig that owns the light.</param>
+    /// <param name="name">The light name.</param>
+    /// <param name="position">The position relative to the icon rig.</param>
+    /// <param name="intensity">The light intensity.</param>
+    /// <param name="range">The light range.</param>
+    /// <param name="color">The light color.</param>
+    private static void AddPointLight(
+        Transform parent,
+        string name,
+        Vector3 position,
+        float intensity,
+        float range,
+        Color color
+    )
+    {
+        GameObject lightObject = new GameObject(name, typeof(Light));
+        lightObject.transform.SetParent(parent, false);
+        lightObject.transform.localPosition = position;
+        Light light = lightObject.GetComponent<Light>();
+        light.type = LightType.Point;
+        light.range = range;
+        light.intensity = intensity;
+        light.color = color;
+        light.shadows = LightShadows.None;
     }
 
     /// <summary>

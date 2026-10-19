@@ -154,6 +154,49 @@ namespace Rebellion.Tests.UI.Components
         }
 
         [Test]
+        public void ConfigureCenteredNumericInput_Field_AppliesStableInsetGeometryAndTypography()
+        {
+            GameObject inputObject = new GameObject(
+                "Input",
+                typeof(RectTransform),
+                typeof(Image),
+                typeof(TMP_InputField)
+            );
+            RectTransform inputRect = inputObject.GetComponent<RectTransform>();
+            UILayout.SetSourceRect(inputRect, 0, 0, 47, 16);
+            GameObject viewportObject = new GameObject("Viewport", typeof(RectTransform));
+            viewportObject.transform.SetParent(inputObject.transform, false);
+            GameObject valueObject = CreateTextObject("Value", out TextMeshProUGUI value);
+            valueObject.transform.SetParent(viewportObject.transform, false);
+            GameObject placeholderObject = CreateTextObject(
+                "Placeholder",
+                out TextMeshProUGUI placeholder
+            );
+            placeholderObject.transform.SetParent(viewportObject.transform, false);
+            TMP_InputField input = inputObject.GetComponent<TMP_InputField>();
+            input.textViewport = viewportObject.GetComponent<RectTransform>();
+            input.textComponent = value;
+            input.placeholder = placeholder;
+            Color color = new Color(0.875f, 0.910f, 0.941f);
+
+            UILayout.ConfigureCenteredNumericInput(input, color, 10f, 4, 1);
+
+            Assert.AreEqual(Vector2.zero, input.textViewport.anchorMin);
+            Assert.AreEqual(Vector2.one, input.textViewport.anchorMax);
+            Assert.AreEqual(new Vector2(4f, 1f), input.textViewport.offsetMin);
+            Assert.AreEqual(new Vector2(-4f, -1f), input.textViewport.offsetMax);
+            Assert.AreEqual(Vector2.zero, value.rectTransform.anchorMin);
+            Assert.AreEqual(Vector2.one, value.rectTransform.anchorMax);
+            Assert.AreEqual(Vector2.zero, value.rectTransform.offsetMin);
+            Assert.AreEqual(Vector2.zero, value.rectTransform.offsetMax);
+            Assert.AreEqual(TextAlignmentOptions.Center, value.alignment);
+            Assert.AreEqual(color, value.color);
+            Assert.AreEqual(value.alignment, placeholder.alignment);
+            Assert.AreEqual(value.color, placeholder.color);
+            UnityEngine.Object.DestroyImmediate(inputObject);
+        }
+
+        [Test]
         public void SetTemplateText_ExplicitRectangle_CopiesTypographyAndAppliesBounds()
         {
             GameObject templateObject = CreateTextObject("Template", out TextMeshProUGUI template);
