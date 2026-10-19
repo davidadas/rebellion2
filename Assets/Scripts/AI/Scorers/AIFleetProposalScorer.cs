@@ -88,7 +88,7 @@ namespace Rebellion.AI.Scorers
             };
         }
 
-        /// <summary>Scores an officer's contribution to unmet attack requirements using ready fleet units.</summary>
+        /// <summary>Scores proportional command strength and attack readiness using ready fleet units.</summary>
         /// <param name="context">The current faction turn.</param>
         /// <param name="proposal">The command assignment being considered.</param>
         /// <returns>The command utility on the shared proposal ranking scale.</returns>
@@ -174,20 +174,25 @@ namespace Rebellion.AI.Scorers
                     ? demand.RegimentStrength
                     : 0;
             double improvement =
-                Math.Max(
-                    0,
-                    AIUtility.Fulfillment(afterSpace, demand.CombatStrength)
-                        - AIUtility.Fulfillment(beforeSpace, demand.CombatStrength)
+                AIUtility.Fulfillment(
+                    Math.Max(0, afterSpace - beforeSpace),
+                    Math.Max(1, Math.Max(beforeSpace, demand.CombatStrength))
                 )
-                + Math.Max(
-                    0,
-                    AIUtility.Fulfillment(afterGround, groundRequirement)
-                        - AIUtility.Fulfillment(beforeGround, groundRequirement)
+                + (
+                    groundRequirement > 0
+                        ? AIUtility.Fulfillment(
+                            Math.Max(0, afterGround - beforeGround),
+                            Math.Max(1, Math.Max(beforeGround, groundRequirement))
+                        )
+                        : 0
                 )
-                + Math.Max(
-                    0,
-                    AIUtility.Fulfillment(afterBombardment, demand.BombardmentStrength)
-                        - AIUtility.Fulfillment(beforeBombardment, demand.BombardmentStrength)
+                + (
+                    demand.BombardmentStrength > 0
+                        ? AIUtility.Fulfillment(
+                            Math.Max(0, afterBombardment - beforeBombardment),
+                            Math.Max(1, Math.Max(beforeBombardment, demand.BombardmentStrength))
+                        )
+                        : 0
                 );
             double beforeReadiness = GetCommandReadiness(
                 context,
