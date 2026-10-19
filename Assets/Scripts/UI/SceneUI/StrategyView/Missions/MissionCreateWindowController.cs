@@ -93,7 +93,9 @@ public sealed class MissionCreateWindowController
         this.setShowMissionOdds = setShowMissionOdds ?? (_ => { });
         projector = new MissionCreateWindowProjector(
             getUIContext,
-            request => this.services.GetService<MissionQueries>().GetMissionOdds(request),
+            request =>
+                this.services.GetService<MissionQueries>()
+                    .GetMissionOdds(request, includePersonnelLoss: false),
             getObservedPlanet
         );
     }
