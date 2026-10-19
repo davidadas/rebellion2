@@ -6,6 +6,7 @@ using Rebellion.AI.Proposals;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
+using Rebellion.Simulation;
 
 namespace Rebellion.AI.Scorers
 {
@@ -31,7 +32,8 @@ namespace Rebellion.AI.Scorers
                     or AIClearFleetOrderProposal
                     or AIFleetDefenseProposal
                     or AIFleetRoleProposal
-                    or AITransferUnitProposal;
+                    or AITransferUnitProposal
+                    or AIOfficerCommandProposal;
         }
 
         /// <summary>
@@ -78,8 +80,198 @@ namespace Rebellion.AI.Scorers
                     context,
                     transferProposal
                 ),
+                AIOfficerCommandProposal commandProposal => ScoreOfficerCommand(
+                    context,
+                    commandProposal
+                ),
                 _ => 0,
             };
+        }
+
+        /// <summary>Scores an officer's contribution to unmet attack requirements using ready fleet units.</summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="proposal">The command assignment being considered.</param>
+        /// <returns>The command utility on the shared proposal ranking scale.</returns>
+        private static double ScoreOfficerCommand(
+            AITurnContext context,
+            AIOfficerCommandProposal proposal
+        )
+        {
+            AIAttackDemand demand = context.GetAttackDemand(proposal.TargetPlanet);
+            if (demand == null)
+                return 0;
+            Fleet fleet = proposal.Fleet;
+            Officer officer = proposal.Officer;
+            GameConfig config = context.Game.Config;
+            GameConfig.AIOfficerCommandUtilityConfig utility = config
+                .AI
+                .FleetDeployment
+                .OfficerCommandUtility;
+            SpaceCombatCommandModifiers command = SpaceCombatCommands.GetCommandModifiers(
+                new[] { fleet },
+                null,
+                context.Faction.InstanceID
+            );
+            int leadership = officer.GetEffectiveRating(SkillRating.Leadership);
+            SpaceCombatCommandModifiers beforeCommand = new(
+                proposal.Rank == OfficerRank.Admiral ? 0 : command.AdmiralLeadership,
+                proposal.Rank == OfficerRank.Commander ? 0 : command.CommanderCombat
+            );
+            SpaceCombatCommandModifiers afterCommand = new(
+                proposal.Rank == OfficerRank.Admiral ? leadership : command.AdmiralLeadership,
+                proposal.Rank == OfficerRank.Commander
+                    ? officer.GetEffectiveRating(SkillRating.Combat)
+                    : command.CommanderCombat
+            );
+            double beforeSpace =
+                SpaceCombatStrengthCalculator.GetFleetCombatValueAgainstCapitalShips(
+                    fleet,
+                    config.Combat.SpaceCombat,
+                    beforeCommand
+                );
+            double afterSpace =
+                SpaceCombatStrengthCalculator.GetFleetCombatValueAgainstCapitalShips(
+                    fleet,
+                    config.Combat.SpaceCombat,
+                    afterCommand
+                );
+            int generalDivisor = config.Combat.PlanetaryAssault.GeneralLeadershipDivisor;
+            int generalBonus = generalDivisor > 0 ? leadership / generalDivisor : 0;
+            double currentGround = context.Assessment.GetReadyFleetRegimentAttackStrength(fleet);
+            int regimentCount = context.Assessment.GetReadyFleetRegimentCount(fleet);
+            int currentGeneralBonus = PlanetaryAssaultResolver.GetLeadershipBonus(
+                fleet.GetOfficers(),
+                OfficerRank.General,
+                context.Faction.InstanceID,
+                config.Combat.PlanetaryAssault
+            );
+            double baseGround = currentGround - currentGeneralBonus * regimentCount;
+            double afterGround =
+                proposal.Rank == OfficerRank.General
+                    ? baseGround + generalBonus * regimentCount
+                    : currentGround;
+            double beforeGround = proposal.Rank == OfficerRank.General ? baseGround : currentGround;
+            int bombardmentDivisor = config.Combat.Bombardment.AttackerLeadershipDivisor;
+            int currentAdmiral = BombardmentQueries.GetBombardmentLeadership(
+                fleet.GetOfficers(),
+                OfficerRank.Admiral,
+                context.Faction.InstanceID
+            );
+            double currentBombardment = context.Assessment.GetFleetBombardmentStrength(fleet);
+            double beforeBombardment = currentBombardment;
+            double afterBombardment = currentBombardment;
+            if (proposal.Rank == OfficerRank.Admiral && bombardmentDivisor > 0)
+            {
+                beforeBombardment = currentBombardment / (1 + currentAdmiral / bombardmentDivisor);
+                afterBombardment = beforeBombardment * (1 + leadership / bombardmentDivisor);
+            }
+            bool hasGroundDefenders =
+                context.Assessment.GetDefendingRegimentCount(proposal.TargetPlanet) > 0;
+            double groundRequirement =
+                hasGroundDefenders
+                && beforeBombardment
+                    <= context.Assessment.GetBombardmentShieldStrength(proposal.TargetPlanet)
+                    ? demand.RegimentStrength
+                    : 0;
+            double improvement =
+                Math.Max(
+                    0,
+                    AIUtility.Fulfillment(afterSpace, demand.CombatStrength)
+                        - AIUtility.Fulfillment(beforeSpace, demand.CombatStrength)
+                )
+                + Math.Max(
+                    0,
+                    AIUtility.Fulfillment(afterGround, groundRequirement)
+                        - AIUtility.Fulfillment(beforeGround, groundRequirement)
+                )
+                + Math.Max(
+                    0,
+                    AIUtility.Fulfillment(afterBombardment, demand.BombardmentStrength)
+                        - AIUtility.Fulfillment(beforeBombardment, demand.BombardmentStrength)
+                );
+            double beforeReadiness = GetCommandReadiness(
+                context,
+                fleet,
+                demand,
+                beforeSpace,
+                beforeGround,
+                beforeBombardment
+            );
+            double afterReadiness = GetCommandReadiness(
+                context,
+                fleet,
+                demand,
+                afterSpace,
+                afterGround,
+                afterBombardment
+            );
+            double readinessGain = Math.Max(0, afterReadiness - beforeReadiness);
+            if (improvement <= 0 && readinessGain <= 0)
+                return 0;
+            AIUtilityScore score = new();
+            score.Add(Math.Min(1, improvement), utility.ForceImprovement);
+            score.Add(readinessGain, utility.ReadinessGain);
+            score.Add(beforeReadiness < 1 && afterReadiness >= 1 ? 1 : 0, utility.Ready);
+            score.Add(
+                AIUtility.Fulfillment(
+                    context.Assessment.GetPlanetValue(proposal.TargetPlanet),
+                    context.Assessment.GetHighestEnemyPlanetValue()
+                ),
+                utility.StrategicValue
+            );
+            Planet origin = officer.GetParentOfType<Planet>();
+            Planet destination = context.Assessment.GetFleetPlanet(fleet);
+            if (origin == null || destination == null)
+                return 0;
+            int travel =
+                origin == destination
+                    ? 0
+                    : context.MovementQueries.CalculateTransitTicks(officer, origin, destination);
+            score.AddCost(AIUtility.Fulfillment(travel, utility.TravelCost), utility.TravelCost);
+            return score.RankValue;
+        }
+
+        /// <summary>Returns the weakest ready-unit attack requirement after a command alternative.</summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="fleet">The attack fleet.</param>
+        /// <param name="demand">The target's required capabilities.</param>
+        /// <param name="space">The estimated capital-target strength.</param>
+        /// <param name="ground">The estimated loaded ground strength.</param>
+        /// <param name="bombardment">The estimated bombardment strength.</param>
+        /// <returns>The normalized readiness of the least fulfilled requirement.</returns>
+        private static double GetCommandReadiness(
+            AITurnContext context,
+            Fleet fleet,
+            AIAttackDemand demand,
+            double space,
+            double ground,
+            double bombardment
+        )
+        {
+            bool hasGroundDefenders =
+                context.Assessment.GetDefendingRegimentCount(demand.TargetPlanet) > 0;
+            bool canBombard =
+                hasGroundDefenders
+                && bombardment
+                    > context.Assessment.GetBombardmentShieldStrength(demand.TargetPlanet);
+            int requiredCount = canBombard ? demand.OccupationRegimentCount : demand.RegimentCount;
+            return new[]
+            {
+                AIUtility.Fulfillment(space, demand.CombatStrength),
+                AIUtility.Fulfillment(
+                    context.Assessment.GetReadyFleetRegimentCount(fleet),
+                    requiredCount
+                ),
+                AIUtility.Fulfillment(
+                    context.Assessment.GetReadyFleetRegimentCapacity(fleet),
+                    requiredCount
+                ),
+                AIUtility.Fulfillment(
+                    ground,
+                    hasGroundDefenders && !canBombard ? demand.RegimentStrength : 0
+                ),
+                AIUtility.Fulfillment(bombardment, demand.BombardmentStrength),
+            }.Min();
         }
 
         /// <summary>

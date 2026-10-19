@@ -25,6 +25,7 @@ namespace Rebellion.AI
         private readonly MissionQueries _missionQueries;
         private readonly MovementCommands _movement;
         private readonly HeadquartersCommands _headquarters;
+        private readonly OfficerCommandCommands _officerCommands;
         private readonly ManufacturingCommands _manufacturing;
         private readonly MaintenanceCommands _maintenance;
         private readonly BombardmentCommands _bombardment;
@@ -65,6 +66,7 @@ namespace Rebellion.AI
         /// <param name="random">RNG provider used by probabilistic AI decisions.</param>
         /// <param name="maintenance">Maintenance system used to project production capacity.</param>
         /// <param name="headquarters">Headquarters system used by relocation proposals.</param>
+        /// <param name="officerCommands">Officer command appointment operations.</param>
         public AIDirector(
             GameRoot game,
             MissionCommands missions,
@@ -74,7 +76,8 @@ namespace Rebellion.AI
             PlanetaryAssaultCommands planetaryAssault,
             IRandomNumberProvider random,
             MaintenanceCommands maintenance = null,
-            HeadquartersCommands headquarters = null
+            HeadquartersCommands headquarters = null,
+            OfficerCommandCommands officerCommands = null
         )
         {
             _game = game;
@@ -84,6 +87,7 @@ namespace Rebellion.AI
             _missionQueries = game == null ? null : new MissionQueries(game);
             _movement = movement;
             _headquarters = headquarters;
+            _officerCommands = officerCommands;
             _manufacturing = manufacturing;
             _maintenance = maintenance;
             _bombardment = bombardment;
@@ -197,7 +201,8 @@ namespace Rebellion.AI
                     strategicPlan,
                     factionView,
                     _maintenance,
-                    _headquarters
+                    _headquarters,
+                    _officerCommands
                 );
             }
             finally

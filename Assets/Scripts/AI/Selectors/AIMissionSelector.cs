@@ -152,6 +152,9 @@ namespace Rebellion.AI.Selectors
                 .OfType<AIMissionProposal>()
                 .SelectMany(proposal => proposal.Participants)
                 .ToHashSet();
+            claimedParticipants.UnionWith(
+                selected.OfType<AIOfficerCommandProposal>().Select(proposal => proposal.Officer)
+            );
             List<IMissionParticipant> decoys = context
                 .Assessment.AvailableMissionParticipants.Where(participant =>
                     !claimedParticipants.Contains(participant)

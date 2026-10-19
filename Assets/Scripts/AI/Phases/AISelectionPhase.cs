@@ -124,7 +124,8 @@ namespace Rebellion.AI.Phases
                     or AIColonizationCampaignProposal
                     or AIOrbitalEngagementProposal
                     or AIFleetRoleProposal
-                    or AITransferUnitProposal;
+                    or AITransferUnitProposal
+                    or AIOfficerCommandProposal;
         }
 
         /// <summary>

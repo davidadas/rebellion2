@@ -55,6 +55,24 @@ namespace Rebellion.AI.Selectors
             List<AISelectionReservation> reservations = new();
             switch (proposal)
             {
+                case AIOfficerCommandProposal command:
+                    Add(
+                        reservations,
+                        AISelectionReservationKind.MissionActor,
+                        command.Officer.InstanceID
+                    );
+                    Add(
+                        reservations,
+                        AISelectionReservationKind.UnitTransfer,
+                        command.Officer.InstanceID
+                    );
+                    Add(
+                        reservations,
+                        AISelectionReservationKind.FleetCommand,
+                        command.Fleet.InstanceID,
+                        command.Rank.ToString()
+                    );
+                    break;
                 case AIClearFleetOrderProposal clear:
                     Add(
                         reservations,

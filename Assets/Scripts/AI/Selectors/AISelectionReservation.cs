@@ -73,6 +73,7 @@ namespace Rebellion.AI.Selectors
         FleetAttack,
         FleetAttackTarget,
         FleetRole,
+        FleetCommand,
         FleetColonization,
         FleetEngagementTarget,
         FleetTransferTarget,

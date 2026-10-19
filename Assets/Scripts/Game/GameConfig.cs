@@ -372,6 +372,9 @@ namespace Rebellion.Game
 
             public AIAttackUtilityConfig AttackUtility { get; set; } = new AIAttackUtilityConfig();
 
+            public AIOfficerCommandUtilityConfig OfficerCommandUtility { get; set; } =
+                new AIOfficerCommandUtilityConfig();
+
             public int ExposedSectorMinimumOwnedPresencePercent { get; set; }
 
             public AIDefenseUtilityConfig DefenseUtility { get; set; } =
@@ -391,6 +394,20 @@ namespace Rebellion.Game
             public int ColonizationFleetMinimumRegimentCount { get; set; }
 
             public int ColonizationFleetMaximumRegimentCount { get; set; }
+        }
+
+        /// <summary>
+        /// Utility considerations used to allocate officers to attack fleets.
+        /// </summary>
+        [PersistableObject]
+        public class AIOfficerCommandUtilityConfig
+        {
+            public AIConsiderationConfig ForceImprovement { get; set; } =
+                new AIConsiderationConfig();
+            public AIConsiderationConfig ReadinessGain { get; set; } = new AIConsiderationConfig();
+            public AIConsiderationConfig Ready { get; set; } = new AIConsiderationConfig();
+            public AIConsiderationConfig StrategicValue { get; set; } = new AIConsiderationConfig();
+            public AIConsiderationConfig TravelCost { get; set; } = new AIConsiderationConfig();
         }
 
         /// <summary>

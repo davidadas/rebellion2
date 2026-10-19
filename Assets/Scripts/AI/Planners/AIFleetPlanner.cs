@@ -78,8 +78,38 @@ namespace Rebellion.AI.Planners
 
             AddCapitalShipTransferProposals(context, proposals);
             AddPlanetRegimentTransferProposals(context, proposals);
+            AddOfficerCommandProposals(context, proposals);
 
             return proposals;
+        }
+
+        /// <summary>Offers available officers for attack-fleet command without reserving them during planning.</summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="proposals">The proposals receiving legal command alternatives.</param>
+        private static void AddOfficerCommandProposals(
+            AITurnContext context,
+            List<AIProposal> proposals
+        )
+        {
+            if (context.OfficerCommands == null)
+                return;
+            foreach (Fleet fleet in context.Assessment.AttackOrderedFleets)
+            {
+                Planet target = context.Assessment.GetKnownPlanet(fleet.Order.TargetPlanetId);
+                if (context.GetAttackDemand(target) == null)
+                    continue;
+                foreach (
+                    Officer officer in context.Assessment.AvailableMissionParticipants.OfType<Officer>()
+                )
+                foreach (
+                    OfficerRank rank in officer.AllowedRanks ?? Enumerable.Empty<OfficerRank>()
+                )
+                {
+                    AIOfficerCommandProposal proposal = new(officer, fleet, target, rank);
+                    if (proposal.CanSelect(context))
+                        proposals.Add(proposal);
+                }
+            }
         }
 
         /// <summary>
