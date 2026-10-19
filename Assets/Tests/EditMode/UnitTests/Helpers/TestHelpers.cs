@@ -749,7 +749,7 @@ public static class MissionTickTestExtensions
     /// <returns>The mission results produced during the tick.</returns>
     public static List<GameResult> ProcessMissionTick(this MissionCommands commands, GameRoot game)
     {
-        return new MissionTickProcessor(commands, TestSystems.GetMissionResolver(commands))
+        return new MissionTickProcessor(TestSystems.GetMissionResolver(commands))
             .ProcessTick(game)
             .ToList();
     }

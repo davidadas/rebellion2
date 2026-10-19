@@ -20,7 +20,11 @@ namespace Rebellion.Simulation
         private readonly MissionQueries _queries;
         private readonly MissionResolver _resolver;
         private readonly OfficerCommandCommands _officerCommands;
-        private readonly List<GameResult> _pendingResults = new List<GameResult>();
+
+        /// <summary>
+        /// Raised when an immediate mission operation produces results.
+        /// </summary>
+        public event Action<IReadOnlyList<GameResult>> ResultsProduced;
 
         /// <summary>
         /// Creates mission commands with their creation and resolution dependencies.
@@ -83,17 +87,6 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Returns and clears results queued by immediate mission operations.
-        /// </summary>
-        /// <returns>The pending mission results.</returns>
-        internal List<GameResult> TakePendingResults()
-        {
-            List<GameResult> results = new List<GameResult>(_pendingResults);
-            _pendingResults.Clear();
-            return results;
-        }
-
-        /// <summary>
         /// Creates, attaches, and starts a mission from the supplied context.
         /// </summary>
         /// <param name="context">The mission context to resolve and start.</param>
@@ -116,7 +109,8 @@ namespace Rebellion.Simulation
                     OfficerRank.None,
                     officer.GetOwnerInstanceID()
                 );
-            _pendingResults.Add(
+            List<GameResult> results = new List<GameResult>();
+            results.Add(
                 new MissionStartedResult
                 {
                     Mission = mission,
@@ -128,7 +122,8 @@ namespace Rebellion.Simulation
                 }
             );
 
-            _resolver.BeginMission(mission, startingParticipants, _pendingResults);
+            _resolver.BeginMission(mission, startingParticipants, results);
+            ResultsProduced?.Invoke(results);
             return true;
         }
 
@@ -146,7 +141,9 @@ namespace Rebellion.Simulation
             if (mission == null)
                 return false;
 
-            _resolver.InterruptMission(mission, _pendingResults);
+            List<GameResult> results = new List<GameResult>();
+            _resolver.InterruptMission(mission, results);
+            ResultsProduced?.Invoke(results);
             return true;
         }
     }
