@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
@@ -41,6 +40,7 @@ public sealed class BattleAlertWindowController
 {
     private readonly Action<UIWindow> closeWindow;
     private readonly Func<PendingCombatResult> getPendingCombat;
+    private readonly Func<string, Planet> findVisiblePlanet;
     private readonly Func<SpaceCombatResult> resolveRetreat;
     private readonly Func<SpaceCombatResult> autoResolve;
     private readonly Func<UIContext> getUIContext;
@@ -63,6 +63,7 @@ public sealed class BattleAlertWindowController
     /// <param name="resolveRetreat">Resolves a player retreat.</param>
     /// <param name="autoResolve">Automatically resolves the pending encounter.</param>
     /// <param name="getUIContext">Returns the current strategy UI context.</param>
+    /// <param name="findVisiblePlanet">Finds a planet in the current faction-visible snapshot.</param>
     /// <param name="playSfx">Plays a strategy sound-effect path.</param>
     /// <param name="playTrack">Plays a music-track path.</param>
     /// <param name="stopMusic">Stops the current music track.</param>
@@ -76,6 +77,7 @@ public sealed class BattleAlertWindowController
         Func<SpaceCombatResult> resolveRetreat,
         Func<SpaceCombatResult> autoResolve,
         Func<UIContext> getUIContext,
+        Func<string, Planet> findVisiblePlanet,
         Action<string> playSfx,
         Action<string> playTrack,
         Action stopMusic,
@@ -92,6 +94,8 @@ public sealed class BattleAlertWindowController
             resolveRetreat ?? throw new ArgumentNullException(nameof(resolveRetreat));
         this.autoResolve = autoResolve ?? throw new ArgumentNullException(nameof(autoResolve));
         this.getUIContext = getUIContext ?? throw new ArgumentNullException(nameof(getUIContext));
+        this.findVisiblePlanet =
+            findVisiblePlanet ?? throw new ArgumentNullException(nameof(findVisiblePlanet));
         this.playSfx = playSfx ?? throw new ArgumentNullException(nameof(playSfx));
         this.playTrack = playTrack ?? throw new ArgumentNullException(nameof(playTrack));
         this.stopMusic = stopMusic ?? throw new ArgumentNullException(nameof(stopMusic));
@@ -312,6 +316,7 @@ public sealed class BattleAlertWindowController
             playerFactionId = GetPlayerFactionID();
 
         PendingCombatResult pending = getPendingCombat();
+        Planet pendingPlanet = pending == null ? null : findVisiblePlanet(pending.PlanetInstanceID);
 
         return projector.Project(
             session.Mode,
@@ -323,7 +328,8 @@ public sealed class BattleAlertWindowController
             playerFactionId,
             x,
             y,
-            getUIContext()
+            getUIContext(),
+            pendingPlanet
         );
     }
 
@@ -428,7 +434,7 @@ public sealed class BattleAlertWindowController
     {
         if (TryGetResultSession(view, out BattleAlertWindowSession session))
         {
-            Planet planet = session.Result.GetPlanet(getUIContext());
+            Planet planet = findVisiblePlanet(session.Result.PlanetInstanceID);
             if (planet == null)
             {
                 CloseWindow(view);
@@ -449,7 +455,7 @@ public sealed class BattleAlertWindowController
     {
         if (TryGetResultSession(view, out BattleAlertWindowSession session))
         {
-            Planet planet = session.Result.GetPlanet(getUIContext());
+            Planet planet = findVisiblePlanet(session.Result.PlanetInstanceID);
             if (planet?.GetParent() is not PlanetSector sector)
             {
                 CloseWindow(view);
@@ -669,10 +675,7 @@ public sealed class BattleAlertWindowController
     /// <returns>The current player faction identifier.</returns>
     private string GetPlayerFactionID()
     {
-        return getUIContext()
-            ?.Game?.GetPlayers()
-            ?.FirstOrDefault(player => player.ControllerType == PlayerControllerType.Human)
-            ?.FactionID;
+        return getUIContext()?.GetPlayerFactionInstanceID();
     }
 
     /// <summary>

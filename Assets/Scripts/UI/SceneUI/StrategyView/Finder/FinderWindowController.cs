@@ -15,6 +15,7 @@ public sealed class FinderWindowController
         new Dictionary<FinderWindowView, FinderWindowSession>();
     private readonly Func<Vector2Int> getWindowPosition;
     private readonly Func<UIContext> getUIContext;
+    private readonly Func<IReadOnlyList<Officer>> getKnownOfficers;
     private readonly Action markDirty;
     private readonly Func<FinderMode, FinderWindowRow, bool> openTarget;
     private readonly Action<string> playSfx;
@@ -33,6 +34,7 @@ public sealed class FinderWindowController
     /// <param name="openTarget">Opens the destination represented by a Finder result.</param>
     /// <param name="closeWindow">Closes a registered strategy window.</param>
     /// <param name="markDirty">Invalidates strategy presentation after window changes.</param>
+    /// <param name="getKnownOfficers">Returns the faction-visible officer roster.</param>
     public FinderWindowController(
         Func<UIContext> getUIContext,
         Action<string> playSfx,
@@ -42,7 +44,8 @@ public sealed class FinderWindowController
         Func<Vector2Int> getWindowPosition,
         Func<FinderMode, FinderWindowRow, bool> openTarget,
         Action<UIWindow> closeWindow,
-        Action markDirty
+        Action markDirty,
+        Func<IReadOnlyList<Officer>> getKnownOfficers = null
     )
     {
         this.getUIContext = getUIContext ?? throw new ArgumentNullException(nameof(getUIContext));
@@ -56,6 +59,7 @@ public sealed class FinderWindowController
         this.openTarget = openTarget ?? throw new ArgumentNullException(nameof(openTarget));
         this.closeWindow = closeWindow ?? throw new ArgumentNullException(nameof(closeWindow));
         this.markDirty = markDirty ?? throw new ArgumentNullException(nameof(markDirty));
+        this.getKnownOfficers = getKnownOfficers ?? (() => Array.Empty<Officer>());
     }
 
     /// <summary>
@@ -329,12 +333,12 @@ public sealed class FinderWindowController
             getSectors() ?? throw new InvalidOperationException("Finder sectors are unavailable.");
         FinderWindowRowBuilder builder = new FinderWindowRowBuilder(
             sectors,
-            uiContext.Game?.GetFactions(),
+            uiContext.GetFactionPresentations(),
             uiContext.GetPlayerFactionInstanceID(),
             factionId => uiContext.GetTheme(factionId)?.StrategyWindows?.Finder?.TroopColumnTypeIDs,
             factionId =>
                 uiContext.GetTheme(factionId)?.StrategyWindows?.Finder?.SpecialForcesColumnTypeIDs,
-            uiContext.Game?.GetRegisteredSceneNodesByType<Officer>(includeDisabled: true)
+            getKnownOfficers()
         );
         List<FinderWindowTab> tabs = builder.GetTabs(session.Mode);
         session.ReconcileTabCount(tabs.Count);

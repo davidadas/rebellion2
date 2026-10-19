@@ -36,6 +36,15 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void CanExecute_NullFleetList_ReturnsFalse()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "alliance");
+
+            Assert.IsFalse(new PlanetaryAssaultQueries(game).CanExecute(null, planet));
+        }
+
+        [Test]
         public void CanExecute_TwoReadyAndSixMovingRegiments_UsesReadyRegiments()
         {
             GameRoot game = CreateGame();

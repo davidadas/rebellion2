@@ -94,7 +94,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
                     _windowLayer,
                     _windowManager,
                     (_, _) => Vector2Int.zero,
-                    () => { }
+                    () => { },
+                    _ => null
                 )
             );
         }
@@ -465,7 +466,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
                 _windowLayer,
                 _windowManager,
                 (x, y) => new Vector2Int(x + 17, y + 19),
-                () => _dirtyCount++
+                () => _dirtyCount++,
+                instanceId => _game.GetSceneNodeByInstanceID<ISceneNode>(instanceId)
             );
         }
 
@@ -483,7 +485,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
                 (_, _) => Vector2Int.zero,
                 () => Vector2Int.zero,
                 _ => { },
-                () => { }
+                () => { },
+                instanceId => _game.GetSceneNodeByInstanceID<ISceneNode>(instanceId)
             );
         }
 
