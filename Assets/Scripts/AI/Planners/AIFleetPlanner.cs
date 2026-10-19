@@ -1203,7 +1203,7 @@ namespace Rebellion.AI.Planners
                     CanReceivePlanetRegimentTransfer(context, fleet)
                 )
                 .OrderByDescending(fleet =>
-                    CountTargetCapabilitiesMet(
+                    AIFleetProposalScorer.CountCurrentAttackCapabilities(
                         context,
                         fleet,
                         GetReinforcementTargetPlanet(context, fleet)
@@ -1526,7 +1526,11 @@ namespace Rebellion.AI.Planners
                     CanReceiveCapitalShipTransfer(context, candidate.Fleet, candidate.TargetPlanet)
                 )
                 .OrderByDescending(candidate =>
-                    CountTargetCapabilitiesMet(context, candidate.Fleet, candidate.TargetPlanet)
+                    AIFleetProposalScorer.CountCurrentAttackCapabilities(
+                        context,
+                        candidate.Fleet,
+                        candidate.TargetPlanet
+                    )
                 )
                 .ThenByDescending(candidate =>
                     context.Assessment.GetPlanetValue(candidate.TargetPlanet)
@@ -1632,8 +1636,12 @@ namespace Rebellion.AI.Planners
 
             AIAttackDemand attackDemand = context.GetAttackDemand(targetPlanet);
             int requiredCombat = attackDemand?.CombatStrength ?? 0;
-            int requiredRegiments = attackDemand?.RegimentCount ?? 0;
-            int requiredRegimentStrength = attackDemand?.RegimentStrength ?? 0;
+            int requiredRegiments = GetProjectedRegimentCount(context, targetFleet, targetPlanet);
+            int requiredRegimentStrength = GetProjectedRegimentStrength(
+                context,
+                targetFleet,
+                targetPlanet
+            );
             int requiredBombardment = attackDemand?.BombardmentStrength ?? 0;
 
             int currentRegimentCapacity = context.Assessment.GetFleetRegimentCapacity(targetFleet);
@@ -1753,43 +1761,6 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Counts the target attack capabilities currently satisfied by a fleet.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="fleet">The fleet to inspect.</param>
-        /// <param name="targetPlanet">The target planet.</param>
-        /// <returns>The number of satisfied capabilities.</returns>
-        private static int CountTargetCapabilitiesMet(
-            AITurnContext context,
-            Fleet fleet,
-            Planet targetPlanet
-        )
-        {
-            AIAttackDemand demand = context.GetAttackDemand(targetPlanet);
-            if (demand == null)
-                return 0;
-
-            int count = 0;
-            if (fleet?.HasOperationalCapitalShips() == true)
-                count++;
-            int combat = context.Assessment.GetReadyFleetCombatValueAgainstCapitalShips(fleet);
-            if (combat > 0 && combat >= demand.CombatStrength)
-                count++;
-            if (context.Assessment.GetReadyFleetRegimentCount(fleet) >= demand.RegimentCount)
-                count++;
-            if (context.Assessment.GetReadyFleetRegimentCapacity(fleet) >= demand.RegimentCount)
-                count++;
-            if (
-                context.Assessment.GetReadyFleetRegimentAttackStrength(fleet)
-                >= demand.RegimentStrength
-            )
-                count++;
-            if (context.Assessment.GetFleetBombardmentStrength(fleet) >= demand.BombardmentStrength)
-                count++;
-            return count;
-        }
-
-        /// <summary>
         /// Returns whether projected fleet capability satisfies the complete target demand.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
@@ -1803,15 +1774,17 @@ namespace Rebellion.AI.Planners
         )
         {
             AIAttackDemand demand = context.GetAttackDemand(targetPlanet);
+            int requiredCount = GetProjectedRegimentCount(context, fleet, targetPlanet);
+            int requiredStrength = GetProjectedRegimentStrength(context, fleet, targetPlanet);
             return demand != null
                 && fleet?.GetChildren<CapitalShip>().Any(capitalShip => capitalShip != null) == true
                 && context.Assessment.GetProjectedFleetCombatValueAgainstCapitalShips(fleet) > 0
                 && context.Assessment.GetProjectedFleetCombatValueAgainstCapitalShips(fleet)
                     >= demand.CombatStrength
-                && context.Assessment.GetFleetLoadedRegimentCount(fleet) >= demand.RegimentCount
-                && context.Assessment.GetFleetRegimentCapacity(fleet) >= demand.RegimentCount
+                && context.Assessment.GetFleetLoadedRegimentCount(fleet) >= requiredCount
+                && context.Assessment.GetFleetRegimentCapacity(fleet) >= requiredCount
                 && context.Assessment.GetProjectedFleetRegimentAttackStrength(fleet)
-                    >= demand.RegimentStrength
+                    >= requiredStrength
                 && context.Assessment.GetProjectedFleetBombardmentStrength(fleet)
                     >= demand.BombardmentStrength;
         }

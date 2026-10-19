@@ -21,6 +21,111 @@ namespace Rebellion.Tests.AI.Fleets
     [TestFixture]
     public class AIFleetPlannerTests
     {
+        [Test]
+        public void Plan_BombardingFleetHasOccupation_DoesNotRequestUnneededTroopCapacity()
+        {
+            AITurnContext context = AITestSceneBuilder.CreateBombardmentReinforcementContext(
+                false,
+                true,
+                out Fleet bombardFleet,
+                out Fleet otherFleet,
+                out _
+            );
+            context.Game.DeleteNode(otherFleet);
+            context = AITestSceneBuilder.AddReinforcementDonor(context, false, out _);
+            Assert.IsTrue(
+                new AIFleetAttackProposal(
+                    bombardFleet,
+                    FleetOrderType.Attack,
+                    FleetOrderStatus.Building,
+                    context.Assessment.GetKnownPlanet(bombardFleet.Order.TargetPlanetId)
+                ).CanLaunch(context)
+            );
+
+            var transfers = new AIFleetPlanner()
+                .Plan(context)
+                .OfType<AITransferUnitProposal>()
+                .Where(proposal =>
+                    proposal.Unit is CapitalShip && proposal.TargetFleet == bombardFleet
+                )
+                .ToList();
+
+            Assert.IsEmpty(transfers);
+        }
+
+        [Test]
+        public void Plan_BombardingFleetNeedsOccupation_PrioritizesLoadedReinforcement()
+        {
+            AITurnContext context = AITestSceneBuilder.CreateBombardmentReinforcementContext(
+                false,
+                false,
+                out Fleet bombardFleet,
+                out _,
+                out _
+            );
+            context = AITestSceneBuilder.AddReinforcementDonor(context, true, out CapitalShip ship);
+
+            var transfers = new AIFleetPlanner()
+                .Plan(context)
+                .OfType<AITransferUnitProposal>()
+                .Where(proposal => proposal.Unit == ship)
+                .ToList();
+
+            Assert.IsNotEmpty(transfers);
+            Assert.IsTrue(transfers.All(proposal => proposal.TargetFleet == bombardFleet));
+        }
+
+        [TestCase(false, false, true)]
+        [TestCase(true, false, false)]
+        [TestCase(false, true, false)]
+        public void Plan_BombardingFleetNeedsOccupation_PrioritizesItsRemainingGroundRequirement(
+            bool shielded,
+            bool occupied,
+            bool expectsBombardFleet
+        )
+        {
+            AITurnContext context = AITestSceneBuilder.CreateBombardmentReinforcementContext(
+                shielded,
+                occupied,
+                out Fleet bombardFleet,
+                out Fleet otherFleet,
+                out _
+            );
+            AIAttackDemand demand = context.GetAttackDemand(
+                context.Assessment.GetKnownPlanet(bombardFleet.Order.TargetPlanetId)
+            );
+            Assert.AreEqual(3, demand.RegimentCount);
+            Assert.AreEqual(1, demand.OccupationRegimentCount);
+            if (!shielded && !occupied)
+                Assert.Greater(
+                    AIFleetProductionAllocationScorer.ScoreAttack(
+                        context,
+                        bombardFleet,
+                        context.Assessment.GetKnownPlanet(bombardFleet.Order.TargetPlanetId),
+                        0
+                    ),
+                    AIFleetProductionAllocationScorer.ScoreAttack(
+                        context,
+                        otherFleet,
+                        context.Assessment.GetKnownPlanet(otherFleet.Order.TargetPlanetId),
+                        0
+                    )
+                );
+
+            var transfers = new AIFleetPlanner()
+                .Plan(context)
+                .OfType<AITransferUnitProposal>()
+                .Where(proposal => proposal.Unit is Regiment)
+                .ToList();
+
+            Assert.IsNotEmpty(transfers);
+            Assert.IsTrue(
+                transfers.All(proposal =>
+                    proposal.TargetFleet == (expectsBombardFleet ? bombardFleet : otherFleet)
+                )
+            );
+        }
+
         [TestCase(false, 1, 0)]
         [TestCase(false, 2, 1)]
         [TestCase(true, 1, 1)]

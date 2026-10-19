@@ -23,6 +23,89 @@ namespace Rebellion.Tests.AI.Phases
     [TestFixture]
     public class AISelectionPhaseTests
     {
+        [TestCase(false, false, 1)]
+        [TestCase(true, false, 1)]
+        [TestCase(false, true, 0)]
+        [TestCase(true, true, 1)]
+        public void Select_PlannedLoadedReinforcements_ReservesOnlyRemainingGroundRequirement(
+            bool shielded,
+            bool occupied,
+            int expectedTransfers
+        )
+        {
+            AITurnContext context = AITestSceneBuilder.CreateBombardmentReinforcementContext(
+                shielded,
+                occupied,
+                out Fleet receiver,
+                out Fleet other,
+                out Planet source
+            );
+            GameRoot game = context.Game;
+            game.DeleteNode(other);
+            var transfers = new List<AITransferUnitProposal>();
+            Planet target = context.Assessment.GetKnownPlanet(receiver.Order.TargetPlanetId);
+            for (int index = 0; index < 2; index++)
+            {
+                Fleet donor = EntityFactory.CreateFleet(
+                    "donor-" + index,
+                    context.Faction.InstanceID
+                );
+                donor.RoleType = FleetRoleType.Battle;
+                game.AttachNode(donor, source);
+                game.AttachNode(
+                    AITestSceneBuilder.CreateCapitalShip(
+                        "anchor-" + index,
+                        context.Faction.InstanceID,
+                        100,
+                        0,
+                        0
+                    ),
+                    donor
+                );
+                CapitalShip loaded = AITestSceneBuilder.CreateCapitalShip(
+                    "loaded-" + index,
+                    context.Faction.InstanceID,
+                    100,
+                    1,
+                    0
+                );
+                game.AttachNode(loaded, donor);
+                game.AttachNode(
+                    AITestSceneBuilder.CreateRegiment(
+                        "carried-" + index,
+                        context.Faction.InstanceID
+                    ),
+                    loaded
+                );
+                transfers.Add(
+                    new AITransferUnitProposal(donor, receiver, loaded, receiver, target)
+                );
+            }
+            context = AITestSceneBuilder.CreateContext(game, context.Faction);
+            new AIProductionDemandGenerator().Generate(context);
+            Assert.AreEqual(3, context.GetAttackDemand(target).RegimentCount);
+            Assert.AreEqual(1, context.GetAttackDemand(target).OccupationRegimentCount);
+            foreach (AITransferUnitProposal transfer in transfers)
+                Assert.IsTrue(transfer.CanSelect(context));
+            List<AITransferUnitProposal> planned = new AIFleetPlanner()
+                .Plan(context)
+                .OfType<AITransferUnitProposal>()
+                .Where(proposal =>
+                    proposal.TargetFleet == receiver
+                    && transfers.Any(transfer => transfer.Unit == proposal.Unit)
+                )
+                .ToList();
+            for (int index = 0; index < planned.Count; index++)
+            {
+                planned[index].SetScore(2 - index);
+                context.AddProposal(planned[index]);
+            }
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+
+            Assert.AreEqual(expectedTransfers, selected.OfType<AITransferUnitProposal>().Count());
+        }
+
         [Test]
         public void Select_LoadedShipWithoutHullShortage_ReinforcesMissingRegiments()
         {

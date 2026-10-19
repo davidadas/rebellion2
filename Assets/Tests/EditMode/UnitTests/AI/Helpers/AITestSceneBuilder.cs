@@ -18,6 +18,121 @@ namespace Rebellion.Tests.AI.Helpers
 {
     public static class AITestSceneBuilder
     {
+        public static AITurnContext AddReinforcementDonor(
+            AITurnContext context,
+            bool carriesRegiment,
+            out CapitalShip ship
+        )
+        {
+            var demands = new List<AIAttackDemand>(context.AttackDemands);
+            Planet source = context.Assessment.OwnedPlanets[0];
+            Fleet donor = EntityFactory.CreateFleet("donor", context.Faction.InstanceID);
+            context.Game.AttachNode(donor, source);
+            CapitalShip anchor = CreateCapitalShip("donor-anchor", context.Faction.InstanceID, 100);
+            anchor.RegimentCapacity = 0;
+            context.Game.AttachNode(anchor, donor);
+            ship = CreateCapitalShip("donor-ship", context.Faction.InstanceID, 100);
+            ship.RegimentCapacity = carriesRegiment ? 1 : 6;
+            context.Game.AttachNode(ship, donor);
+            if (carriesRegiment)
+                context.Game.AttachNode(
+                    CreateRegiment("carried", context.Faction.InstanceID),
+                    ship
+                );
+            AITurnContext updated = CreateContext(context.Game, context.Faction);
+            updated.SetAttackDemands(demands);
+            return updated;
+        }
+
+        public static AITurnContext CreateBombardmentReinforcementContext(
+            bool shielded,
+            bool occupied,
+            out Fleet bombardFleet,
+            out Fleet otherFleet,
+            out Planet source
+        )
+        {
+            GameRoot game = CreateGame(out Faction faction, out Faction enemy);
+            game.Config.AI.FleetDeployment.MinimumAttackStrength = 1;
+            game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 1;
+            game.Config.AI.FleetDeployment.AttackStrengthPercentOfDefense = 100;
+            game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultSuccessPercent = 0;
+            game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount = 1;
+            game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit = 2;
+            game.Config.AI.Infrastructure.FleetAllocationUtility =
+                new GameConfig.AIFleetProductionAllocationUtilityConfig
+                {
+                    AttackRequirements = new GameConfig.AIConsiderationConfig
+                    {
+                        Weight = 1,
+                        SaturationValue = 6,
+                    },
+                };
+            PlanetSector sector = AddSector(game, "sector");
+            source = AddPlanet(game, sector, "source", faction.InstanceID);
+            source.IsColonized = false;
+            source.SetPopularSupport(faction.InstanceID, 100);
+            for (int index = 0; index < 3; index++)
+                game.AttachNode(CreateRegiment("spare-" + index, faction.InstanceID), source);
+            Planet bombardTarget = AddPlanet(
+                game,
+                sector,
+                "bombard-target",
+                enemy.InstanceID,
+                positionX: 100
+            );
+            Planet otherTarget = AddPlanet(
+                game,
+                sector,
+                "other-target",
+                enemy.InstanceID,
+                positionX: 100
+            );
+            foreach (Planet target in new[] { bombardTarget, otherTarget })
+            {
+                Regiment defender = CreateRegiment(
+                    target.InstanceID + "-defender",
+                    enemy.InstanceID
+                );
+                defender.DefenseRating = 100;
+                game.AttachNode(defender, target);
+            }
+            if (shielded)
+            {
+                Building shield = CreateBuildingTemplate("shield", BuildingType.Defense);
+                shield.OwnerInstanceID = enemy.InstanceID;
+                shield.ShieldStrength = 2;
+                game.AttachNode(shield, bombardTarget);
+            }
+            RevealPlanet(game, faction, bombardTarget);
+            RevealPlanet(game, faction, otherTarget);
+            bombardFleet = EntityFactory.CreateFleet("bombard-fleet", faction.InstanceID);
+            otherFleet = EntityFactory.CreateFleet("other-fleet", faction.InstanceID);
+            foreach (Fleet fleet in new[] { bombardFleet, otherFleet })
+            {
+                fleet.RoleType = FleetRoleType.Battle;
+                game.AttachNode(fleet, source);
+                CapitalShip ship = CreateCapitalShip(
+                    fleet.InstanceID + "-ship",
+                    faction.InstanceID,
+                    100
+                );
+                ship.Bombardment = fleet == bombardFleet ? 1 : 0;
+                ship.RegimentCapacity = fleet == bombardFleet ? 1 : 3;
+                game.AttachNode(ship, fleet);
+                if (occupied && fleet == bombardFleet)
+                    game.AttachNode(CreateRegiment("occupation", faction.InstanceID), ship);
+                fleet.Order = new FleetOrder
+                {
+                    OrderType = FleetOrderType.Attack,
+                    Status = FleetOrderStatus.Building,
+                    TargetPlanetId =
+                        fleet == bombardFleet ? bombardTarget.InstanceID : otherTarget.InstanceID,
+                };
+            }
+            return CreateContext(game, faction);
+        }
+
         /// <summary>
         /// Creates a known empty destination and a separately observed defended reference world.
         /// </summary>

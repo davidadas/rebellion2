@@ -21,6 +21,38 @@ namespace Rebellion.Tests.AI.Phases
     [TestFixture]
     public class AIExecutionPhaseTests
     {
+        [Test]
+        public void Execute_BombardingFleetNeedsOccupation_LoadsItsRegimentAndEnablesLaunch()
+        {
+            AITurnContext context = AITestSceneBuilder.CreateBombardmentReinforcementContext(
+                false,
+                false,
+                out Fleet bombardFleet,
+                out Fleet otherFleet,
+                out _
+            );
+            AIAttackDemand[] demands = context.AttackDemands.ToArray();
+            context.AddProposals(new AIFleetPlanner().Plan(context));
+            new AIProductionDemandGenerator().Generate(context);
+            new AIScoringPhase().Execute(context);
+            new AISelectionPhase().Execute(context);
+
+            new AIExecutionPhase().Execute(context);
+
+            Assert.AreEqual(1, bombardFleet.GetChildren<Regiment>(recursive: true).Count());
+            Assert.AreEqual(0, otherFleet.GetChildren<Regiment>(recursive: true).Count());
+            context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+            context.SetAttackDemands(demands);
+            Planet target = context.Assessment.GetKnownPlanet(bombardFleet.Order.TargetPlanetId);
+            new AIFleetAttackProposal(
+                bombardFleet,
+                FleetOrderType.Attack,
+                FleetOrderStatus.Building,
+                target
+            ).Execute(context);
+            Assert.IsNotNull(bombardFleet.Movement);
+        }
+
         [TestCase(
             ResearchDiscipline.ShipDesign,
             BuildingType.Shipyard,

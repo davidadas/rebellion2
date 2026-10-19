@@ -18,6 +18,37 @@ namespace Rebellion.Tests.AI.Fleets
     [TestFixture]
     public class AIFleetProposalScorerTests
     {
+        [Test]
+        public void Score_OccupationReinforcementCompletesBombardingFleet_UsesRemainingGroundRequirement()
+        {
+            AITurnContext context = AITestSceneBuilder.CreateBombardmentReinforcementContext(
+                false,
+                false,
+                out Fleet bombardFleet,
+                out _,
+                out _
+            );
+            context = AITestSceneBuilder.AddReinforcementDonor(context, true, out CapitalShip ship);
+            context.Game.Config.AI.FleetDeployment.AttackUtility =
+                new GameConfig.AIAttackUtilityConfig
+                {
+                    Readiness = new GameConfig.AIConsiderationConfig { Weight = 1 },
+                };
+
+            double score = new AIFleetProposalScorer().Score(
+                context,
+                new AITransferUnitProposal(
+                    ship.GetParentOfType<Fleet>(),
+                    bombardFleet,
+                    ship,
+                    bombardFleet,
+                    context.Assessment.GetKnownPlanet(bombardFleet.Order.TargetPlanetId)
+                )
+            );
+
+            Assert.AreEqual(0.2, score, 0.000001);
+        }
+
         [TestCase(false, false)]
         [TestCase(true, true)]
         public void Score_FleetHasNoTroops_ValuesImmediateCombatOverDistantPreparation(

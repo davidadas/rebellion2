@@ -1055,7 +1055,18 @@ namespace Rebellion.AI.Scorers
         {
             AIAssessment assessment = context.Assessment;
             AIAttackDemand demand = context.GetAttackDemand(targetPlanet);
-            int requiredRegimentCount = demand?.RegimentCount ?? 0;
+            int requiredRegimentCount = GetRequiredRegimentCount(
+                context,
+                targetFleet,
+                targetPlanet,
+                true
+            );
+            int requiredRegimentStrength = GetRequiredRegimentStrength(
+                context,
+                targetFleet,
+                targetPlanet,
+                true
+            );
             double combatReadiness = GetFulfillmentRatio(
                 assessment.GetProjectedFleetCombatValueAgainstCapitalShips(targetFleet)
                     + assessment.GetProjectedCapitalShipCombatValueAgainstCapitalShips(capitalShip),
@@ -1077,7 +1088,7 @@ namespace Rebellion.AI.Scorers
                         targetFleet,
                         capitalShip
                     ),
-                demand?.RegimentStrength ?? 0
+                requiredRegimentStrength
             );
             List<double> readiness = new List<double>
             {
