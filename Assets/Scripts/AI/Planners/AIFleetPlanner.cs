@@ -511,7 +511,11 @@ namespace Rebellion.AI.Planners
                 return;
             }
 
-            if (targetPlanet == null || string.IsNullOrEmpty(targetOwnerId))
+            if (
+                targetPlanet == null
+                || string.IsNullOrEmpty(targetOwnerId)
+                    && !context.StrategicPlan.CanCompleteOccupation(fleet, targetPlanet)
+            )
             {
                 proposals.Add(new AIClearFleetOrderProposal(fleet, order));
                 return;

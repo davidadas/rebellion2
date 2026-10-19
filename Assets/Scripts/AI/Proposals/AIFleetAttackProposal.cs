@@ -158,7 +158,7 @@ namespace Rebellion.AI.Proposals
                 return;
             }
 
-            if (!IsLiveTargetHostile(context, liveTarget))
+            if (!CanEngageLiveTarget(context, liveTarget))
             {
                 ClearOrder();
                 return;
@@ -205,7 +205,7 @@ namespace Rebellion.AI.Proposals
 
             if (!TryCompleteAttackOrder(context, liveTarget))
             {
-                if (!IsLiveTargetHostile(context, liveTarget))
+                if (!CanEngageLiveTarget(context, liveTarget))
                     ClearOrder();
             }
         }
@@ -459,7 +459,11 @@ namespace Rebellion.AI.Proposals
         private bool IsValidAttackOrder(AITurnContext context)
         {
             string targetOwnerId = TargetPlanet.GetOwnerInstanceID();
-            if (string.IsNullOrEmpty(targetOwnerId) || targetOwnerId == context.Faction.InstanceID)
+            if (
+                targetOwnerId == context.Faction.InstanceID
+                || string.IsNullOrEmpty(targetOwnerId)
+                    && !context.StrategicPlan.CanCompleteOccupation(Fleet, TargetPlanet)
+            )
                 return false;
 
             FleetOrder order = Fleet.Order;
@@ -488,15 +492,16 @@ namespace Rebellion.AI.Proposals
         }
 
         /// <summary>
-        /// Returns whether the live target remains hostile to the acting faction.
+        /// Returns whether the live target permits continuing the assigned attack or occupation.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="liveTarget">The current scene-graph target.</param>
-        /// <returns>True when the target has a different owner.</returns>
-        private bool IsLiveTargetHostile(AITurnContext context, Planet liveTarget)
+        /// <returns>True for an enemy target or a neutral target awaiting this fleet's occupation.</returns>
+        private bool CanEngageLiveTarget(AITurnContext context, Planet liveTarget)
         {
             string ownerId = liveTarget?.GetOwnerInstanceID();
-            return !string.IsNullOrEmpty(ownerId) && ownerId != context.Faction.InstanceID;
+            return !string.IsNullOrEmpty(ownerId) && ownerId != context.Faction.InstanceID
+                || context.StrategicPlan.CanCompleteOccupation(Fleet, liveTarget);
         }
 
         /// <summary>

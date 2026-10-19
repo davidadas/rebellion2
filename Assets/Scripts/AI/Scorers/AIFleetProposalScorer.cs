@@ -1336,7 +1336,8 @@ namespace Rebellion.AI.Scorers
 
             string targetOwnerId = targetPlanet.GetOwnerInstanceID();
             return !string.IsNullOrEmpty(targetOwnerId)
-                && targetOwnerId != context.Faction.InstanceID;
+                    && targetOwnerId != context.Faction.InstanceID
+                || context.StrategicPlan.CanCompleteOccupation(fleet, targetPlanet);
         }
 
         /// <summary>

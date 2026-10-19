@@ -583,6 +583,26 @@ namespace Rebellion.AI
                 && _assessment.GetReadyFleetCombatValue(fleet) >= required;
         }
 
+        /// <summary>Returns whether an assigned attack can occupy its now-neutral destination.</summary>
+        /// <param name="fleet">The stationary fleet carrying occupation troops.</param>
+        /// <param name="planet">The existing attack destination.</param>
+        /// <returns>True only for an existing local attack with ready troops at a neutral colony.</returns>
+        public bool CanCompleteOccupation(Fleet fleet, Planet planet)
+        {
+            return planet?.IsDestroyed == false
+                && planet.IsColonized
+                && string.IsNullOrEmpty(planet.GetOwnerInstanceID())
+                && fleet?.RoleType == FleetRoleType.Battle
+                && _assessment.OwnedFleets.Contains(fleet)
+                && fleet.Order?.OrderType == FleetOrderType.Attack
+                && fleet.Order.TargetPlanetId == planet.InstanceID
+                && fleet.Order.Status != FleetOrderStatus.Returning
+                && fleet.GetParentOfType<Planet>()?.InstanceID == planet.InstanceID
+                && fleet.Movement == null
+                && !fleet.IsInCombat
+                && PlanetaryAssaultResolver.HasReadyAttackers(new[] { fleet });
+        }
+
         /// <summary>
         /// Returns whether a stationary fleet can receive additional units at its current
         /// location without feeding an opposing fleet at an owned planet.
