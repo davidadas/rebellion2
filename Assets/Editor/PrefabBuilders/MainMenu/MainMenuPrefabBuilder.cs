@@ -9,6 +9,8 @@ using UnityEditor.Events;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.EventSystems;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.HighDefinition;
 using UnityEngine.UI;
 using Object = UnityEngine.Object;
 
@@ -52,6 +54,17 @@ public static class MainMenuPrefabBuilder
     private const string _planetCompositeMaterialPath =
         _planetAssetRoot + "/Generated/PlanetComposite.mat";
     private const string _planetPrefabPath = _planetAssetRoot + "/Planet.prefab";
+    private const string _terrestrialSurfaceMaterialPath =
+        _planetAssetRoot + "/Materials/TerrestrialSurface.mat";
+    private const string _terrestrialAtmosphereMaterialPath =
+        _planetAssetRoot + "/Materials/TerrestrialAtmosphere.mat";
+    private const string _thunderstormSurfaceMaterialPath =
+        _planetAssetRoot + "/Materials/PlanetSurface.mat";
+    private const string _thunderstormAtmosphereMaterialPath =
+        _planetAssetRoot + "/Materials/PlanetAtmosphere.mat";
+    private const string _stellarFlareMeshPath = _planetAssetRoot + "/Flare/PurpleFlareMesh.asset";
+    private const string _stellarFlareMaterialPath =
+        _planetAssetRoot + "/Flare/PurpleFlareMaterial.mat";
     private const string _citadelModelAddress = "Application/MainMenu/Models/citadel";
     private const string _citadelRenderTexturePath =
         "Assets/Art/Models/MainMenu/HqCitadel.renderTexture";
@@ -68,6 +81,9 @@ public static class MainMenuPrefabBuilder
     // other's model (camera far clip is 20, so 1000 units of separation is comfortably isolated).
     private const float _rigSpacing = 1000f;
     private const string _lightsName = "SharedLights";
+    private static readonly Color _iconAmbientColor = new Color(0.212f, 0.227f, 0.259f).linear;
+    private const float _builtInDirectionalLightIntensityToHdrp = Mathf.PI;
+    private const float _hqUnderLightIntensity = 60f;
 
     // The five icon slots -- two faction coins and three difficulty ships/sphere -- each carrying
     // its model + RenderTexture paths and the orientation its rig applies. (Face is defined below.)
@@ -152,6 +168,22 @@ public static class MainMenuPrefabBuilder
             true,
             underLightIntensity: 2.5f
         ),
+        new Face(
+            "GameSetup",
+            "Assets/Content/Application/MainMenu/Models/holocron.glb",
+            "Assets/Art/Models/MainMenu/Holocron.renderTexture",
+            "NewGameSettingsButton",
+            -0.5f,
+            Vector3.up,
+            0.90f,
+            Vector3.zero,
+            new Vector3(-18f, 0f, 0f),
+            256,
+            256,
+            useStudioLighting: true,
+            normalizeModel: true,
+            pivotPosition: new Vector3(0.13642858f, 0.049285717f, 0f)
+        ),
     };
 
     /// <summary>
@@ -163,6 +195,9 @@ public static class MainMenuPrefabBuilder
         GameObject root = new GameObject("MainMenuRoot");
         try
         {
+            HdrpRenderTargetBuilder.AddIsolatedVolume(root.transform);
+            HdrpRenderTargetBuilder.AddFlatAmbientVolume(root.transform, _iconAmbientColor);
+            HdrpRenderTargetBuilder.AddPlanetPostProcessingVolume(root.transform);
             BuildBaseHierarchy(root);
             RebuildViewBindings(root);
             InstallPlanet(root);
@@ -247,6 +282,8 @@ public static class MainMenuPrefabBuilder
             CollectAudioCueBindings(root);
 
         SerializedObject serializedView = new SerializedObject(view);
+        serializedView.FindProperty("newGameSettingsButton").objectReferenceValue =
+            FindRequiredComponent<Button>(root, "NewGameSettingsButton");
         serializedView.FindProperty("loadGameButton").objectReferenceValue =
             FindRequiredComponent<Button>(root, "LoadGameButton");
         serializedView.FindProperty("exitButton").objectReferenceValue =
@@ -311,6 +348,7 @@ public static class MainMenuPrefabBuilder
             ("RightFactionLaunchButton", EventTriggerType.PointerUp, _factionSelectSfxPath),
             ("VictoryConditionButton", EventTriggerType.PointerUp, _selectSfxPath),
             ("VictoryConditionIcon", EventTriggerType.PointerUp, _selectSfxPath),
+            ("NewGameSettingsButton", EventTriggerType.PointerUp, _selectSfxPath),
         };
 
         List<(EventTrigger Trigger, EventTriggerType EventType, string ResourcePath)> bindings =
@@ -378,6 +416,13 @@ public static class MainMenuPrefabBuilder
             AssetDatabase.LoadAssetAtPath<OptionsMenuView>(_optionsMenuPrefabPath)
         );
         AssignFloat(controller, "creditsMusicFadeDuration", 0.5f);
+        AssignReference(
+            controller,
+            "_newGameSettingsPrefab",
+            AssetDatabase.LoadAssetAtPath<NewGameSettingsView>(
+                NewGameSettingsPrefabBuilder.PrefabPath
+            )
+        );
         return controller;
     }
 
@@ -502,6 +547,7 @@ public static class MainMenuPrefabBuilder
         BuildGalaxySizeGroup(controls.transform);
         BuildExitButton(controls.transform);
         BuildCreditsButton(controls.transform);
+        BuildNewGameSettingsButton(controls.transform);
         BuildLoadGameButton(controls.transform);
         BuildFactionLaunchButton(
             controls.transform,
@@ -517,6 +563,33 @@ public static class MainMenuPrefabBuilder
         );
         BuildVictoryConditionGroup(controls.transform);
         BuildExitConfirmationDialog(controls.transform);
+    }
+
+    /// <summary>
+    /// Authors the campaign-settings hit area in the upper-right monitor.
+    /// </summary>
+    /// <param name="parent">The main-menu controls layer.</param>
+    private static void BuildNewGameSettingsButton(Transform parent)
+    {
+        GameObject obj = NewChild(
+            "NewGameSettingsButton",
+            parent,
+            typeof(RectTransform),
+            typeof(Image),
+            typeof(Button),
+            typeof(EventTrigger)
+        );
+        SetAnchoredRect(
+            (RectTransform)obj.transform,
+            new Vector2(0.775f, 0.877f),
+            new Vector2(0.831f, 0.954f)
+        );
+        Image face = obj.GetComponent<Image>();
+        face.color = Color.clear;
+        Button button = obj.GetComponent<Button>();
+        button.targetGraphic = face;
+        button.transition = Selectable.Transition.None;
+        AddPointerUpTrigger(obj.GetComponent<EventTrigger>());
     }
 
     /// <summary>
@@ -2034,11 +2107,11 @@ public static class MainMenuPrefabBuilder
     /// <param name="rect">The RectTransform to place.</param>
     private static void ApplyPlanetBackdropRect(RectTransform rect)
     {
-        rect.anchorMin = new Vector2(0.5f, 0.63f);
-        rect.anchorMax = new Vector2(0.5f, 0.63f);
+        rect.anchorMin = new Vector2(0.5f, 0.5f);
+        rect.anchorMax = new Vector2(0.5f, 0.5f);
         rect.pivot = new Vector2(0.5f, 0.5f);
-        rect.sizeDelta = new Vector2(2400f, 2280f);
-        rect.anchoredPosition = new Vector2(60f, -135f);
+        rect.sizeDelta = new Vector2(3770.957f, 3526.246f);
+        rect.anchoredPosition = Vector2.zero;
         rect.localRotation = Quaternion.identity;
     }
 
@@ -2057,25 +2130,28 @@ public static class MainMenuPrefabBuilder
         pivot.transform.SetParent(rig.transform, false);
 
         const int planetLayer = 31;
-        GameObject planetPrefab = LoadRequiredAsset<GameObject>(_planetPrefabPath);
-        GameObject planet = (GameObject)
-            PrefabUtility.InstantiatePrefab(planetPrefab, pivot.transform);
-        planet.name = "Planet";
-        planet.transform.localPosition = Vector3.zero;
-        planet.transform.localRotation = Quaternion.identity;
-        planet.transform.localScale = Vector3.one * 2f;
-        foreach (Transform child in planet.GetComponentsInChildren<Transform>(true))
-            child.gameObject.layer = planetLayer;
-
-        GameObject sunObject = new GameObject("PlanetSun", typeof(Light));
-        sunObject.transform.SetParent(rig.transform, false);
-        sunObject.transform.localRotation = Quaternion.Euler(23.84f, -35f, 0f);
-        Light sun = sunObject.GetComponent<Light>();
-        sun.type = LightType.Directional;
-        sun.color = new Color(1f, 0.98389596f, 0.8726415f, 1f);
-        sun.intensity = 1f;
-        sun.cullingMask = 1 << planetLayer;
-        sun.shadows = LightShadows.Soft;
+        BuildStellarFlare(pivot.transform, planetLayer);
+        BuildPlanet(
+            pivot.transform,
+            "Terrestrial 02",
+            Vector3.zero,
+            Quaternion.identity,
+            2f,
+            _terrestrialSurfaceMaterialPath,
+            _terrestrialAtmosphereMaterialPath,
+            planetLayer
+        );
+        BuildPlanet(
+            pivot.transform,
+            "Thunderstorm Moon",
+            new Vector3(0.86f, 0.88f, 0.3f),
+            Quaternion.Euler(0f, -35f, 0f),
+            0.48f,
+            _thunderstormSurfaceMaterialPath,
+            _thunderstormAtmosphereMaterialPath,
+            planetLayer
+        );
+        BuildPlanetSun(pivot.transform, planetLayer);
 
         GameObject cameraObject = new GameObject("Camera", typeof(Camera));
         cameraObject.transform.SetParent(rig.transform, false);
@@ -2084,13 +2160,112 @@ public static class MainMenuPrefabBuilder
         camera.clearFlags = CameraClearFlags.SolidColor;
         camera.backgroundColor = new Color(0f, 0f, 0f, 0f);
         camera.orthographic = true;
-        camera.orthographicSize = 1.75f;
+        camera.orthographicSize = 3.25f;
         camera.nearClipPlane = 0.1f;
         camera.farClipPlane = 50f;
         camera.cullingMask = 1 << planetLayer;
-        camera.allowHDR = true;
+        camera.allowMSAA = false;
         camera.targetTexture = renderTexture;
-        cameraObject.AddComponent<UnityEngine.Rendering.Universal.UniversalAdditionalCameraData>();
+        HdrpRenderTargetBuilder.ConfigureCamera(
+            camera,
+            includePlanetPostProcessing: true,
+            antialiasing: HDAdditionalCameraData.AntialiasingMode.SubpixelMorphologicalAntiAliasing
+        );
+    }
+
+    /// <summary>
+    /// Builds the package-authored stellar flare that peeks over the primary planet.
+    /// </summary>
+    /// <param name="parent">The planetary-system pivot that owns the flare.</param>
+    /// <param name="layer">The isolated render layer used by the planet camera.</param>
+    private static void BuildStellarFlare(Transform parent, int layer)
+    {
+        GameObject flare = new GameObject(
+            "Stellar Flare",
+            typeof(MeshFilter),
+            typeof(MeshRenderer)
+        );
+        flare.layer = layer;
+        flare.transform.SetParent(parent, false);
+        flare.transform.localPosition = new Vector3(-1.55f, 0.95f, 0.75f);
+        flare.transform.localRotation = Quaternion.identity;
+        flare.transform.localScale = Vector3.one * 0.11f;
+
+        flare.GetComponent<MeshFilter>().sharedMesh = LoadRequiredAsset<Mesh>(
+            _stellarFlareMeshPath
+        );
+        MeshRenderer renderer = flare.GetComponent<MeshRenderer>();
+        renderer.sharedMaterial = LoadRequiredAsset<Material>(_stellarFlareMaterialPath);
+        renderer.shadowCastingMode = ShadowCastingMode.Off;
+        renderer.receiveShadows = false;
+    }
+
+    /// <summary>
+    /// Instantiates one authored planet body and applies its surface and atmosphere materials.
+    /// </summary>
+    /// <param name="parent">The planetary-system pivot that owns the body.</param>
+    /// <param name="name">The generated body's scene name.</param>
+    /// <param name="position">The body's local position within the planetary system.</param>
+    /// <param name="rotation">The body's local rotation.</param>
+    /// <param name="scale">The body's uniform local scale.</param>
+    /// <param name="surfaceMaterialPath">The authored surface-material asset path.</param>
+    /// <param name="atmosphereMaterialPath">The authored atmosphere-material asset path.</param>
+    /// <param name="layer">The isolated render layer used by the planet camera.</param>
+    private static void BuildPlanet(
+        Transform parent,
+        string name,
+        Vector3 position,
+        Quaternion rotation,
+        float scale,
+        string surfaceMaterialPath,
+        string atmosphereMaterialPath,
+        int layer
+    )
+    {
+        GameObject prefab = LoadRequiredAsset<GameObject>(_planetPrefabPath);
+        GameObject planet = (GameObject)PrefabUtility.InstantiatePrefab(prefab, parent);
+        planet.name = name;
+        planet.transform.localPosition = position;
+        planet.transform.localRotation = rotation;
+        planet.transform.localScale = Vector3.one * scale;
+
+        MeshRenderer surfaceRenderer = planet.GetComponent<MeshRenderer>();
+        if (surfaceRenderer == null)
+            throw new InvalidOperationException($"{_planetPrefabPath} has no surface renderer.");
+        surfaceRenderer.sharedMaterial = LoadRequiredAsset<Material>(surfaceMaterialPath);
+
+        Transform atmosphere = planet.transform.Find("Atmosphere");
+        MeshRenderer atmosphereRenderer = atmosphere?.GetComponent<MeshRenderer>();
+        if (atmosphereRenderer == null)
+            throw new InvalidOperationException($"{_planetPrefabPath} has no atmosphere renderer.");
+        atmosphereRenderer.sharedMaterial = LoadRequiredAsset<Material>(atmosphereMaterialPath);
+
+        foreach (Transform child in planet.GetComponentsInChildren<Transform>(true))
+            child.gameObject.layer = layer;
+    }
+
+    /// <summary>
+    /// Builds the shared stellar light used by every body in the planet rig.
+    /// </summary>
+    /// <param name="parent">The planetary-system pivot that owns the light.</param>
+    /// <param name="layer">The isolated render layer used by the planet camera.</param>
+    private static void BuildPlanetSun(Transform parent, int layer)
+    {
+        GameObject lightObject = new GameObject("Planet Sun", typeof(Light));
+        lightObject.layer = layer;
+        lightObject.transform.SetParent(parent, false);
+        lightObject.transform.localRotation = new Quaternion(
+            0.47797772f,
+            0.5164945f,
+            -0.088936515f,
+            0.7048837f
+        );
+        Light light = lightObject.GetComponent<Light>();
+        light.type = LightType.Directional;
+        HdrpRenderTargetBuilder.ConfigureLight(light, 1f);
+        light.color = Color.white;
+        light.cullingMask = 1 << layer;
+        light.shadows = LightShadows.Soft;
     }
 
     /// <summary>
@@ -2107,12 +2282,16 @@ public static class MainMenuPrefabBuilder
                 existing.width != size
                 || existing.height != size
                 || existing.format != RenderTextureFormat.ARGBHalf
+                || existing.antiAliasing != 1
+                || !existing.useDynamicScale
             )
             {
                 existing.Release();
                 existing.width = size;
                 existing.height = size;
                 existing.format = RenderTextureFormat.ARGBHalf;
+                existing.antiAliasing = 1;
+                existing.useDynamicScale = true;
                 EditorUtility.SetDirty(existing);
             }
             return existing;
@@ -2121,7 +2300,8 @@ public static class MainMenuPrefabBuilder
         RenderTexture created = new RenderTexture(size, size, 16, RenderTextureFormat.ARGBHalf)
         {
             name = "Planet",
-            antiAliasing = 4,
+            antiAliasing = 1,
+            useDynamicScale = true,
         };
         EnsureAssetFolder(Path.GetDirectoryName(_renderTexturePath));
         AssetDatabase.CreateAsset(created, _renderTexturePath);
@@ -2237,6 +2417,8 @@ public static class MainMenuPrefabBuilder
         // attitude on a barrel-rolling ship — without making the roll wobble.
         public readonly Vector3 PivotTilt;
 
+        public readonly Vector3 PivotPosition;
+
         // Target aspect of the RenderTexture. Coins are square; the ship icon matches the flipbook
         // it replaces (255x180 landscape) so it is not squashed when it fills the toggle.
         public readonly int RtWidth;
@@ -2248,6 +2430,11 @@ public static class MainMenuPrefabBuilder
 
         // Adds a short-range point light beneath icons that need extra underside detail.
         public readonly float UnderLightIntensity;
+
+        // Adds a local key, fill, and rim treatment for reflective icons.
+        public readonly bool UseStudioLighting;
+
+        public readonly bool NormalizeModel;
 
         /// <summary>
         /// Initializes a new instance of the Face class.
@@ -2265,6 +2452,9 @@ public static class MainMenuPrefabBuilder
         /// <param name="rtHeight">The rt height.</param>
         /// <param name="isToggle">Whether is toggle.</param>
         /// <param name="underLightIntensity">The under light intensity.</param>
+        /// <param name="useStudioLighting">Whether to add local lighting for a reflective model.</param>
+        /// <param name="normalizeModel">Whether to normalize the loaded model before applying its presentation scale.</param>
+        /// <param name="pivotPosition">The icon center's offset in the rig's camera plane.</param>
         public Face(
             string factionId,
             string modelPath,
@@ -2278,7 +2468,10 @@ public static class MainMenuPrefabBuilder
             int rtWidth = 512,
             int rtHeight = 512,
             bool isToggle = false,
-            float underLightIntensity = 0f
+            float underLightIntensity = 0f,
+            bool useStudioLighting = false,
+            bool normalizeModel = false,
+            Vector3 pivotPosition = default
         )
         {
             FactionId = factionId;
@@ -2290,10 +2483,13 @@ public static class MainMenuPrefabBuilder
             ModelScale = modelScale;
             Tilt = tilt;
             PivotTilt = pivotTilt;
+            PivotPosition = pivotPosition;
             RtWidth = rtWidth;
             RtHeight = rtHeight;
             IsToggle = isToggle;
             UnderLightIntensity = underLightIntensity;
+            UseStudioLighting = useStudioLighting;
+            NormalizeModel = normalizeModel;
         }
     }
 
@@ -2341,6 +2537,15 @@ public static class MainMenuPrefabBuilder
             leftIconRect.offsetMin = new Vector2(9f, leftIconRect.offsetMin.y);
             leftIconRect.offsetMax = new Vector2(9f, leftIconRect.offsetMax.y);
         }
+
+        MainMenuView view = FindRequiredComponent<MainMenuView>(root);
+        SerializedObject serializedView = new SerializedObject(view);
+        serializedView.FindProperty("newGameSettingsSpinner").objectReferenceValue = FindDeep(
+                root.transform,
+                "IconRig_GameSetup"
+            )
+            .GetComponentInChildren<AutoRotate>(true);
+        serializedView.ApplyModifiedPropertiesWithoutUndo();
     }
 
     /// <summary>
@@ -2475,16 +2680,21 @@ public static class MainMenuPrefabBuilder
         camera.orthographicSize = 0.7f;
         camera.nearClipPlane = 0.1f;
         camera.farClipPlane = 20f;
+        camera.allowMSAA = false;
         camera.targetTexture = renderTexture;
+        HdrpRenderTargetBuilder.ConfigureCamera(camera, includeFlatAmbientLighting: true);
 
         GameObject underLightObject = new GameObject("UnderLight", typeof(Light));
         underLightObject.transform.SetParent(rig.transform, false);
-        underLightObject.transform.localPosition = new Vector3(0f, -2.5f, -1.5f);
+        underLightObject.transform.localPosition = new Vector3(0f, -0.55f, -2.5f);
         Light underLight = underLightObject.GetComponent<Light>();
-        underLight.type = LightType.Point;
-        underLight.range = 8f;
-        underLight.intensity = 2f;
+        underLight.type = LightType.Spot;
+        HdrpRenderTargetBuilder.ConfigureLight(underLight, _hqUnderLightIntensity);
+        underLight.range = 6f;
+        underLight.spotAngle = 18f;
+        underLight.innerSpotAngle = 12f;
         underLight.color = Color.white;
+        underLight.shadows = LightShadows.None;
 
         return spinner;
     }
@@ -2508,11 +2718,18 @@ public static class MainMenuPrefabBuilder
         if (existing != null)
         {
             // Re-assert the intended dimensions in case an older square asset is on disk.
-            if (existing.width != width || existing.height != height)
+            if (
+                existing.width != width
+                || existing.height != height
+                || existing.antiAliasing != 1
+                || !existing.useDynamicScale
+            )
             {
                 existing.Release();
                 existing.width = width;
                 existing.height = height;
+                existing.antiAliasing = 1;
+                existing.useDynamicScale = true;
                 EditorUtility.SetDirty(existing);
             }
             return existing;
@@ -2521,7 +2738,8 @@ public static class MainMenuPrefabBuilder
         RenderTexture created = new RenderTexture(width, height, 16, RenderTextureFormat.ARGB32)
         {
             name = $"Icon_{factionId}",
-            antiAliasing = 4,
+            antiAliasing = 1,
+            useDynamicScale = true,
         };
         EnsureAssetFolder(Path.GetDirectoryName(path));
         AssetDatabase.CreateAsset(created, path);
@@ -2570,6 +2788,7 @@ public static class MainMenuPrefabBuilder
         // Static presentation tilt on the pivot (e.g. nose-down); the incremental local-space spin
         // then rolls around this tilted frame without wobbling.
         pivot.transform.localRotation = Quaternion.Euler(face.PivotTilt);
+        pivot.transform.localPosition = face.PivotPosition;
         pivot
             .AddComponent<AutoRotate>()
             .Configure(_iconTurnDegreesPerSecond * face.SpinDirection, face.SpinAxis);
@@ -2585,7 +2804,7 @@ public static class MainMenuPrefabBuilder
                 face.ModelScale,
                 face.Tilt,
                 overwrite: true,
-                normalize: false,
+                normalize: face.NormalizeModel,
                 center: true,
                 layer: -1
             );
@@ -2600,19 +2819,85 @@ public static class MainMenuPrefabBuilder
         camera.orthographicSize = 1.3f;
         camera.nearClipPlane = 0.1f;
         camera.farClipPlane = 20f;
+        camera.allowMSAA = false;
         camera.targetTexture = renderTexture;
+        HdrpRenderTargetBuilder.ConfigureCamera(camera, includeFlatAmbientLighting: true);
 
         if (face.UnderLightIntensity > 0f)
         {
-            GameObject underLightObject = new GameObject("UnderLight", typeof(Light));
-            underLightObject.transform.SetParent(rig.transform, false);
-            underLightObject.transform.localPosition = new Vector3(0f, -2.5f, -1.5f);
-            Light underLight = underLightObject.GetComponent<Light>();
-            underLight.type = LightType.Point;
-            underLight.range = 8f;
-            underLight.intensity = face.UnderLightIntensity;
-            underLight.color = Color.white;
+            AddPointLight(
+                rig.transform,
+                "UnderLight",
+                new Vector3(0f, -2.5f, -1.5f),
+                face.UnderLightIntensity,
+                8f,
+                Color.white
+            );
         }
+
+        if (face.UseStudioLighting)
+            BuildStudioLighting(rig.transform);
+    }
+
+    /// <summary>
+    /// Builds a compact local key, fill, and rim arrangement for a reflective icon.
+    /// </summary>
+    /// <param name="parent">The icon rig that owns the lights.</param>
+    private static void BuildStudioLighting(Transform parent)
+    {
+        AddPointLight(
+            parent,
+            "StudioKey",
+            new Vector3(-1.1f, 1.05f, -1.35f),
+            4.5f,
+            5f,
+            new Color(1f, 0.9f, 0.72f)
+        );
+        AddPointLight(
+            parent,
+            "StudioFill",
+            new Vector3(1.05f, -0.25f, -1.2f),
+            3f,
+            5f,
+            new Color(0.42f, 0.72f, 1f)
+        );
+        AddPointLight(
+            parent,
+            "StudioRim",
+            new Vector3(0.85f, 0.75f, 1.1f),
+            3.5f,
+            4.5f,
+            new Color(0.2f, 0.85f, 1f)
+        );
+    }
+
+    /// <summary>
+    /// Adds a shadowless point light to an icon rig.
+    /// </summary>
+    /// <param name="parent">The icon rig that owns the light.</param>
+    /// <param name="name">The light name.</param>
+    /// <param name="position">The position relative to the icon rig.</param>
+    /// <param name="intensity">The light intensity.</param>
+    /// <param name="range">The light range.</param>
+    /// <param name="color">The light color.</param>
+    private static void AddPointLight(
+        Transform parent,
+        string name,
+        Vector3 position,
+        float intensity,
+        float range,
+        Color color
+    )
+    {
+        GameObject lightObject = new GameObject(name, typeof(Light));
+        lightObject.transform.SetParent(parent, false);
+        lightObject.transform.localPosition = position;
+        Light light = lightObject.GetComponent<Light>();
+        light.type = LightType.Point;
+        light.range = range;
+        light.intensity = intensity;
+        light.color = color;
+        light.shadows = LightShadows.None;
     }
 
     /// <summary>
@@ -2674,7 +2959,10 @@ public static class MainMenuPrefabBuilder
         lightObject.transform.localRotation = rotation;
         Light light = lightObject.GetComponent<Light>();
         light.type = LightType.Directional;
-        light.intensity = intensity;
+        HdrpRenderTargetBuilder.ConfigureLight(
+            light,
+            intensity * _builtInDirectionalLightIntensityToHdrp
+        );
         light.color = color;
         light.shadows = shadows;
         light.cullingMask = ~(1 << 31);

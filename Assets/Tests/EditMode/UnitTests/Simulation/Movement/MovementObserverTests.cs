@@ -28,7 +28,7 @@ namespace Rebellion.Tests.Simulation
                 Planet blockadedDestination,
                 Planet nearestSafeDestination,
                 Planet fartherSafeDestination,
-                BlockadeTracker blockade,
+                Planet blockade,
                 MovementCommands movement,
                 GameResultBus resultBus
             ) scene = BuildBlockadeRetargetingScene();
@@ -99,7 +99,7 @@ namespace Rebellion.Tests.Simulation
                 Planet blockadedDestination,
                 Planet nearestSafeDestination,
                 Planet fartherSafeDestination,
-                BlockadeTracker blockade,
+                Planet blockade,
                 MovementCommands movement,
                 GameResultBus resultBus
             ) scene = BuildBlockadeRetargetingScene();
@@ -139,7 +139,7 @@ namespace Rebellion.Tests.Simulation
                 Planet blockadedDestination,
                 Planet nearestSafeDestination,
                 Planet fartherSafeDestination,
-                BlockadeTracker blockade,
+                Planet blockade,
                 MovementCommands movement,
                 GameResultBus resultBus
             ) scene = BuildBlockadeRetargetingScene();
@@ -237,7 +237,7 @@ namespace Rebellion.Tests.Simulation
                 Planet blockadedDestination,
                 Planet nearestSafeDestination,
                 Planet fartherSafeDestination,
-                BlockadeTracker blockade,
+                Planet blockade,
                 MovementCommands movement,
                 GameResultBus resultBus
             ) scene = BuildBlockadeRetargetingScene();
@@ -270,7 +270,7 @@ namespace Rebellion.Tests.Simulation
                 Planet blockadedDestination,
                 Planet nearestSafeDestination,
                 Planet fartherSafeDestination,
-                BlockadeTracker blockade,
+                Planet blockade,
                 MovementCommands movement,
                 GameResultBus resultBus
             ) scene = BuildBlockadeRetargetingScene();
@@ -306,7 +306,7 @@ namespace Rebellion.Tests.Simulation
                 Planet blockadedDestination,
                 Planet nearestSafeDestination,
                 Planet fartherSafeDestination,
-                BlockadeTracker blockade,
+                Planet blockade,
                 MovementCommands movement,
                 GameResultBus resultBus
             ) scene = BuildBlockadeRetargetingScene();
@@ -351,7 +351,7 @@ namespace Rebellion.Tests.Simulation
                 Planet blockadedDestination,
                 Planet nearestSafeDestination,
                 Planet fartherSafeDestination,
-                BlockadeTracker blockade,
+                Planet blockade,
                 MovementCommands movement,
                 GameResultBus resultBus
             ) scene = BuildBlockadeRetargetingScene();
@@ -397,7 +397,7 @@ namespace Rebellion.Tests.Simulation
                 Planet blockadedDestination,
                 Planet nearestSafeDestination,
                 Planet fartherSafeDestination,
-                BlockadeTracker blockade,
+                Planet blockade,
                 MovementCommands movement,
                 GameResultBus resultBus
             ) scene = BuildBlockadeRetargetingScene();
@@ -984,7 +984,7 @@ namespace Rebellion.Tests.Simulation
             Planet blockadedDestination,
             Planet nearestSafeDestination,
             Planet fartherSafeDestination,
-            BlockadeTracker blockade,
+            Planet blockade,
             MovementCommands movement,
             GameResultBus resultBus
         ) BuildBlockadeRetargetingScene()
@@ -1039,7 +1039,7 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(nearestSafeDestination, sector);
             game.AttachNode(fartherSafeDestination, sector);
 
-            BlockadeTracker blockade = new BlockadeTracker(game);
+            Planet blockade = blockadedDestination;
             MovementCommands movement = new MovementCommands(
                 game,
                 new FogOfWarCommands(game),
@@ -1093,16 +1093,31 @@ namespace Rebellion.Tests.Simulation
         /// Processes blockade start.
         /// </summary>
         /// <param name="game">The game being processed.</param>
-        /// <param name="blockade">The blockade.</param>
+        /// <param name="blockade">The blockaded planet.</param>
         /// <param name="resultBus">The bus that delivers blockade reactions.</param>
         /// <returns>The result of process blockade start.</returns>
         private static List<GameResult> ProcessBlockadeStart(
             GameRoot game,
-            BlockadeTracker blockade,
+            Planet blockade,
             GameResultBus resultBus
         )
         {
-            return resultBus.Publish(new BlockadeTickProcessor(blockade).ProcessTick(game));
+            Fleet blockadingFleet = blockade
+                .GetChildren<Fleet>()
+                .First(fleet =>
+                    fleet.Movement == null
+                    && fleet.OwnerInstanceID != blockade.OwnerInstanceID
+                    && fleet.HasOperationalCapitalShips()
+                );
+            return resultBus.Publish(
+                new BlockadeChangedResult
+                {
+                    Planet = blockade,
+                    BlockadingFleet = blockadingFleet,
+                    Blockaded = true,
+                    Tick = game.CurrentTick,
+                }
+            );
         }
     }
 }

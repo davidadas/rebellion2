@@ -162,9 +162,8 @@ class Example
         }
 
         /// <summary>
-        /// Checks test declarations can retain XML documentation.
+        /// Verifies that XML documentation is permitted on a test method.
         /// </summary>
-        /// <returns>The asynchronous analyzer verification.</returns>
         [Test]
         public async Task Method_DocumentedNUnitTest_DoesNotReportDiagnosticAsync()
         {
@@ -173,7 +172,7 @@ class Example
 class Example
 {
     /// <summary>
-    /// Documents the test contract.
+    /// Redundantly explains the test.
     /// </summary>
     [NUnit.Framework.Test]
     public void I_Am_ATest() { }

@@ -27,6 +27,8 @@ public sealed class AutoRotate : MonoBehaviour
     [SerializeField]
     private bool randomizeStartAngle;
 
+    private Quaternion initialLocalRotation;
+
     /// <summary>
     /// Gets the configured spin speed in degrees per second.
     /// </summary>
@@ -38,6 +40,14 @@ public sealed class AutoRotate : MonoBehaviour
     public Vector3 Axis => axis;
 
     /// <summary>
+    /// Captures the authored rotation before the turntable begins moving.
+    /// </summary>
+    private void Awake()
+    {
+        initialLocalRotation = transform.localRotation;
+    }
+
+    /// <summary>
     /// Sets the spin speed and axis.
     /// </summary>
     /// <param name="speed">The spin speed in degrees per second (negative reverses direction).</param>
@@ -46,6 +56,14 @@ public sealed class AutoRotate : MonoBehaviour
     {
         degreesPerSecond = speed;
         axis = spinAxis;
+    }
+
+    /// <summary>
+    /// Restores the transform to the rotation it had when the component awakened.
+    /// </summary>
+    public void ResetToInitialRotation()
+    {
+        transform.localRotation = initialLocalRotation;
     }
 
     /// <summary>

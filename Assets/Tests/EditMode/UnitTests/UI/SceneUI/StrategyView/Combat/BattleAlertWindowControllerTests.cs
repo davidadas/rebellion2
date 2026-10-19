@@ -34,6 +34,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         private GameObject _rootObject;
         private int _stopMusicCount;
         private UIContext _uiContext;
+        private Planet _visiblePlanet;
         private StrategyWindowLayerView _windowLayer;
         private UIWindowManager _windowManager;
         private readonly List<string> _playedSfx = new List<string>();
@@ -63,11 +64,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             );
             _pending = new PendingCombatResult
             {
-                Planet = planet,
-                AttackerFleet = playerFleet,
-                DefenderFleet = opponentFleet,
+                PlanetInstanceID = planet.InstanceID,
+                AttackerOwnerInstanceID = _playerFactionId,
+                DefenderOwnerInstanceID = _opponentFactionId,
                 AttackerCanRetreat = true,
             };
+            _visiblePlanet = planet;
             _resolveResult = new SpaceCombatResult
             {
                 Planet = planet,
@@ -105,6 +107,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                     () => _resolveResult,
                     () => _resolveResult,
                     () => _uiContext,
+                    _ => _visiblePlanet,
                     _ => { },
                     _ => { },
                     () => { },
@@ -199,6 +202,51 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsFalse(changed);
             Assert.AreSame(view, _controller.FindWindow());
             Assert.IsTrue(_controller.HasCombatResult(view));
+        }
+
+        [Test]
+        public void CreateRenderData_PendingCombat_UsesVisiblePlanetProjection()
+        {
+            _resolveResult.Planet.EnergyCapacity = 10;
+            Building hiddenBuilding = new Building
+            {
+                InstanceID = "hidden-building",
+                DisplayName = "Hidden shipyard",
+                OwnerInstanceID = _opponentFactionId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(hiddenBuilding, _resolveResult.Planet);
+            _visiblePlanet = new Planet
+            {
+                InstanceID = _resolveResult.Planet.InstanceID,
+                DisplayName = _resolveResult.Planet.DisplayName,
+                OwnerInstanceID = _opponentFactionId,
+                IsColonized = true,
+                EnergyCapacity = 10,
+            };
+            Building visibleBuilding = new Building
+            {
+                InstanceID = "visible-building",
+                DisplayName = "Visible mine",
+                OwnerInstanceID = _opponentFactionId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _visiblePlanet.AddChild(visibleBuilding);
+            visibleBuilding.SetParent(_visiblePlanet);
+            BattleAlertWindowView view = OpenWindow(out UIWindow _);
+            view.RequestPrimaryPanel(BattleAlertPanel.SystemAssets);
+
+            BattleAlertWindowRenderData data = _controller.CreateRenderData(
+                view,
+                _playerFactionId,
+                141,
+                73
+            );
+
+            CollectionAssert.AreEqual(
+                new[] { "Visible mine" },
+                data.Pending.Rows.Select(row => row.Text)
+            );
         }
 
         [Test]
@@ -338,6 +386,79 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         }
 
         [Test]
+        public void OpenFleet_ResultPlanetVisible_OpensVisiblePlanet()
+        {
+            _pending = null;
+            _controller.OpenResult(_resolveResult);
+            BattleAlertWindowView view = _controller.FindWindow();
+
+            view.RequestOpenFleet();
+
+            Assert.AreSame(_visiblePlanet, _actions.OpenedFleet);
+        }
+
+        [Test]
+        public void OpenFleet_ResultPlanetHidden_DoesNotOpenPlanet()
+        {
+            _pending = null;
+            _visiblePlanet = null;
+            _controller.OpenResult(_resolveResult);
+            BattleAlertWindowView view = _controller.FindWindow();
+
+            view.RequestOpenFleet();
+
+            Assert.IsNull(_actions.OpenedFleet);
+        }
+
+        [Test]
+        public void CloseRequested_ReportWithContinuation_ClosesWindowAndInvokesContinuation()
+        {
+            _pending = null;
+            int continuationCount = 0;
+            CombatReport report = new CombatReport
+            {
+                CombatType = CombatReportType.SpaceBattle,
+                PerspectiveOwnerInstanceID = _playerFactionId,
+                AttackerOwnerInstanceID = _playerFactionId,
+                DefenderOwnerInstanceID = _opponentFactionId,
+                Title = "Battle at Corellia",
+                Body = "The defending fleet was victorious.",
+            };
+            _controller.OpenReport(report, () => continuationCount++);
+            BattleAlertWindowView view = _controller.FindWindow();
+
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            view.RequestClose();
+
+            Assert.IsNull(_controller.FindWindow());
+            Assert.AreEqual(1, continuationCount);
+        }
+
+        [Test]
+        public void TryCloseWindow_ReportWithContinuation_ClosesWindowAndInvokesContinuation()
+        {
+            _pending = null;
+            int continuationCount = 0;
+            CombatReport report = new CombatReport
+            {
+                CombatType = CombatReportType.SpaceBattle,
+                PerspectiveOwnerInstanceID = _playerFactionId,
+                AttackerOwnerInstanceID = _playerFactionId,
+                DefenderOwnerInstanceID = _opponentFactionId,
+                Title = "Battle at Corellia",
+                Body = "The defending fleet was victorious.",
+            };
+            _controller.OpenReport(report, () => continuationCount++);
+            UIWindow window = _windowManager.Windows.Single();
+
+            bool handled = _controller.TryCloseWindow(window);
+
+            Assert.IsTrue(handled);
+            Assert.IsNull(_controller.FindWindow());
+            Assert.AreEqual(1, continuationCount);
+        }
+
+        [Test]
         public void ControlButton_PointerDown_PlaysSharedControlSoundBeforeClick()
         {
             BattleAlertWindowView view = OpenWindow(out UIWindow window);
@@ -377,6 +498,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 () => _resolveResult,
                 () => _resolveResult,
                 () => _uiContext,
+                instanceId => _visiblePlanet?.InstanceID == instanceId ? _visiblePlanet : null,
                 path => _playedSfx.Add(path),
                 path => _playedTracks.Add(path),
                 () => _stopMusicCount++,
@@ -472,6 +594,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
 
         private sealed class TestActions : IBattleAlertWindowActions
         {
+            public Planet OpenedFleet { get; private set; }
+
             public int RebuildCount { get; private set; }
 
             /// <summary>
@@ -480,7 +604,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             /// <param name="planet">The planet.</param>
             /// <param name="sourceX">The source x.</param>
             /// <param name="sourceY">The source y.</param>
-            public void OpenBattleResultFleet(Planet planet, int sourceX, int sourceY) { }
+            public void OpenBattleResultFleet(Planet planet, int sourceX, int sourceY)
+            {
+                OpenedFleet = planet;
+            }
 
             /// <summary>
             /// Opens battle result sector.

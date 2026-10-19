@@ -1,13 +1,14 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
-using Rebellion.Game;
-using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
 
 internal sealed class StrategyMusicController
 {
-    private readonly Func<GameRoot> getGame;
+    private readonly Func<string> getPlayerFactionId;
     private readonly Func<int, int, int> getRandomIndex;
     private readonly Func<StrategyMusicTheme> getTheme;
+    private readonly Func<IReadOnlyList<Planet>> getVisiblePlanets;
     private readonly Action<Func<string>> playDynamicPlaylist;
     private readonly Action stopMusic;
     private int neutralTracksRemaining;
@@ -15,20 +16,25 @@ internal sealed class StrategyMusicController
     /// <summary>
     /// Initializes a new instance of the StrategyMusicController class.
     /// </summary>
-    /// <param name="getGame">The get game.</param>
+    /// <param name="getVisiblePlanets">Returns planets from the current faction-visible snapshot.</param>
+    /// <param name="getPlayerFactionId">Returns the viewing player's faction identifier.</param>
     /// <param name="getTheme">The get theme.</param>
     /// <param name="getRandomIndex">The get random index.</param>
     /// <param name="playDynamicPlaylist">The play dynamic playlist.</param>
     /// <param name="stopMusic">The stop music.</param>
     internal StrategyMusicController(
-        Func<GameRoot> getGame,
+        Func<IReadOnlyList<Planet>> getVisiblePlanets,
+        Func<string> getPlayerFactionId,
         Func<StrategyMusicTheme> getTheme,
         Func<int, int, int> getRandomIndex,
         Action<Func<string>> playDynamicPlaylist,
         Action stopMusic
     )
     {
-        this.getGame = getGame ?? throw new ArgumentNullException(nameof(getGame));
+        this.getVisiblePlanets =
+            getVisiblePlanets ?? throw new ArgumentNullException(nameof(getVisiblePlanets));
+        this.getPlayerFactionId =
+            getPlayerFactionId ?? throw new ArgumentNullException(nameof(getPlayerFactionId));
         this.getTheme = getTheme ?? throw new ArgumentNullException(nameof(getTheme));
         this.getRandomIndex =
             getRandomIndex ?? throw new ArgumentNullException(nameof(getRandomIndex));
@@ -108,12 +114,20 @@ internal sealed class StrategyMusicController
     /// <returns>The requested planet ratio.</returns>
     private int GetPlanetRatio(StrategyMusicTheme theme)
     {
-        GameRoot game =
-            getGame() ?? throw new InvalidOperationException("Strategy music has no active game.");
-        Faction playerFaction = game.GetPlayerFaction();
-        Faction opponentFaction = game.GetFactions().Single(faction => faction != playerFaction);
-        int playerPlanetCount = playerFaction.GetOwnedColonizedPlanets().Count;
-        int opponentPlanetCount = opponentFaction.GetOwnedColonizedPlanets().Count;
+        IReadOnlyList<Planet> planets =
+            getVisiblePlanets()
+            ?? throw new InvalidOperationException(
+                "Strategy music has no faction-visible galaxy snapshot."
+            );
+        string playerFactionId = getPlayerFactionId();
+        int playerPlanetCount = planets.Count(planet =>
+            planet?.IsColonized == true && planet.OwnerInstanceID == playerFactionId
+        );
+        int opponentPlanetCount = planets.Count(planet =>
+            planet?.IsColonized == true
+            && !string.IsNullOrEmpty(planet.OwnerInstanceID)
+            && planet.OwnerInstanceID != playerFactionId
+        );
 
         return opponentPlanetCount == 0
             ? playerPlanetCount * theme.NoOpponentPlanetMultiplier

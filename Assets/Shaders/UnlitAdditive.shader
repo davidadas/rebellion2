@@ -12,22 +12,27 @@ Shader "Rebellion/Unlit Additive"
         {
             "Queue" = "Transparent"
             "RenderType" = "Transparent"
-            "RenderPipeline" = "UniversalPipeline"
+            "RenderPipeline" = "HDRenderPipeline"
+            "IgnoreProjector" = "True"
         }
         Blend SrcAlpha One
         ZWrite Off
+        ZTest LEqual
         Cull Off
 
         Pass
         {
-            Name "Unlit Additive"
-            Tags { "LightMode" = "UniversalForward" }
+            Name "ForwardOnly"
+            Tags { "LightMode" = "ForwardOnly" }
 
             HLSLPROGRAM
+            #pragma target 4.5
+            #pragma require cubearray
             #pragma vertex Vert
             #pragma fragment Frag
 
-            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
+            #include "Packages/com.unity.render-pipelines.high-definition/Runtime/ShaderLibrary/ShaderVariables.hlsl"
 
             struct Attributes
             {
@@ -38,7 +43,7 @@ Shader "Rebellion/Unlit Additive"
 
             struct Varyings
             {
-                float4 positionCS : SV_POSITION;
+                float4 positionHCS : SV_POSITION;
                 float2 uv : TEXCOORD0;
                 half4 color : COLOR;
             };
@@ -54,7 +59,7 @@ Shader "Rebellion/Unlit Additive"
             Varyings Vert(Attributes input)
             {
                 Varyings output;
-                output.positionCS = TransformObjectToHClip(input.positionOS.xyz);
+                output.positionHCS = TransformObjectToHClip(input.positionOS.xyz);
                 output.uv = input.uv * _MainTex_ST.xy + _MainTex_ST.zw;
                 output.color = input.color * _Color;
                 return output;

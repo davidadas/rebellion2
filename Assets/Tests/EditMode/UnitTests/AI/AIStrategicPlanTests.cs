@@ -114,5 +114,29 @@ namespace Rebellion.Tests.AI
             Assert.AreEqual(1, plan.GetInfrastructureCount(BuildingType.TrainingFacility));
             Assert.AreEqual(0, plan.GetInfrastructureDeficit(BuildingType.TrainingFacility));
         }
+
+        [Test]
+        public void CanReinforce_FriendlyShipUnderOpposingFleet_ReturnsFalse()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet planet = AITestSceneBuilder.AddPlanet(game, sector, "planet", empire.InstanceID);
+            Fleet receivingFleet = EntityFactory.CreateFleet("receiving-fleet", empire.InstanceID);
+            game.AttachNode(receivingFleet, planet);
+            game.AttachNode(
+                AITestSceneBuilder.CreateCapitalShip("receiving-ship", empire.InstanceID),
+                receivingFleet
+            );
+            Fleet opposingFleet = EntityFactory.CreateFleet("opposing-fleet", rebels.InstanceID);
+            game.AttachNode(opposingFleet, planet);
+            game.AttachNode(
+                AITestSceneBuilder.CreateCapitalShip("opposing-ship", rebels.InstanceID),
+                opposingFleet
+            );
+            AITestSceneBuilder.RevealPlanet(game, empire, planet);
+            AIStrategicPlan plan = AITestSceneBuilder.CreateContext(game, empire).StrategicPlan;
+
+            Assert.IsFalse(plan.CanReinforce(receivingFleet));
+        }
     }
 }

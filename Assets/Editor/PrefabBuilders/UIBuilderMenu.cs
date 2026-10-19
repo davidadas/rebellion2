@@ -22,7 +22,9 @@ public static class UIBuilderMenu
         RunInAuthoringScene(() =>
         {
             BootPrefabBuilder.Rebuild();
+            LoadingScreenPrefabBuilder.Rebuild();
             RebuildOptionsMenuAndDependencies();
+            NewGameSettingsPrefabBuilder.Rebuild();
             MainMenuPrefabBuilder.Rebuild();
             StrategyViewPrefabBuilder.Rebuild();
             TacticalViewPrefabBuilder.Rebuild();
@@ -68,6 +70,7 @@ public static class UIBuilderMenu
         RunInAuthoringScene(() =>
         {
             RebuildOptionsMenuAndDependencies();
+            NewGameSettingsPrefabBuilder.Rebuild();
             MainMenuPrefabBuilder.Rebuild();
         });
         SaveAndRefresh();
@@ -84,9 +87,19 @@ public static class UIBuilderMenu
     }
 
     /// <summary>
+    /// Rebuilds the generated loading-screen UI.
+    /// </summary>
+    [MenuItem("Rebellion/Build/Build Loading Screen UI", false, 22)]
+    public static void BuildLoadingScreen()
+    {
+        RunInAuthoringScene(LoadingScreenPrefabBuilder.Rebuild);
+        SaveAndRefresh();
+    }
+
+    /// <summary>
     /// Rebuilds the generated strategy UI.
     /// </summary>
-    [MenuItem("Rebellion/Build/Build Strategy UI", false, 22)]
+    [MenuItem("Rebellion/Build/Build Strategy UI", false, 23)]
     public static void BuildStrategy()
     {
         RunInAuthoringScene(() =>

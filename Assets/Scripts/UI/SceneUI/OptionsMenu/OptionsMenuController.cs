@@ -22,6 +22,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     private readonly IContentAssetSource _contentAssets;
     private readonly FactionThemeLibrary _factionThemeLibrary;
     private readonly IReadOnlyList<ContentPackDefinition> _availablePacks;
+    private readonly bool _showModsTab;
 
     private readonly OptionsSettingsSession _settingsSession;
     private readonly OptionsBindingSession _bindingSession;
@@ -40,6 +41,9 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     private bool _disposed;
     private string _selectedPackID;
     private ContentFileResolver _selectedModResolver;
+    private readonly HashSet<string> _selectedDisabledModIDs = new HashSet<string>(
+        StringComparer.Ordinal
+    );
 
     /// <summary>
     /// Returns whether the Options menu is open.
@@ -59,6 +63,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     /// <param name="loadSave">Loads a save through the owning scene's hot- or cold-load flow.</param>
     /// <param name="markDirty">Marks the menu data as changed.</param>
     /// <param name="saveGameManager">The save-game persistence service.</param>
+    /// <param name="showModsTab">Whether the owning scene exposes content management.</param>
     public OptionsMenuController(
         OptionsMenuView prefab,
         Transform windowParent,
@@ -69,7 +74,8 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         Func<string, string, bool> saveGame,
         Func<string, bool> loadSave,
         Action markDirty,
-        SaveGameManager saveGameManager
+        SaveGameManager saveGameManager,
+        bool showModsTab = true
     )
     {
         _prefab = prefab;
@@ -84,20 +90,21 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         _loadSave = loadSave ?? throw new ArgumentNullException(nameof(loadSave));
         _saveGameManager =
             saveGameManager ?? throw new ArgumentNullException(nameof(saveGameManager));
+        _showModsTab = showModsTab;
         _contentAssets = _bootstrap.GetContentAssets();
         _factionThemeLibrary = new FactionThemeLibrary(
             _bootstrap.GetContentPack().GameData.FactionThemes
         );
         ContentPack contentPack = _bootstrap.GetContentPack();
         _availablePacks = ContentPackLoader.DiscoverPacks(contentPack.ContentRootPath);
-        _selectedPackID = contentPack.Definition.ID;
-        RefreshSelectedModResolver();
+        ResetContentSelection();
         InputManager bindings = _bootstrap.GetInputManager();
         _settingsSession = new OptionsSettingsSession(
             _bootstrap.GetUserSettingsManager(),
             _bootstrap.GetDisplayManager(),
             _bootstrap.GetAudioManager(),
-            bindings
+            bindings,
+            _bootstrap.GetGraphicsManager()
         );
         _bindingSession = new OptionsBindingSession(bindings);
         _bindingSession.Changed += _settingsSession.MarkInputChanged;
@@ -128,8 +135,9 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         }
 
         _settingsSession.Begin();
+        ResetContentSelection();
         _bindingSession.Rebuild();
-        _activeTab = initialTab;
+        _activeTab = IsTabAvailable(initialTab) ? initialTab : OptionsMenuTab.Gameplay;
         _selectedSlot = -1;
         _saveSlotsLoaded = false;
         if (_activeTab == OptionsMenuTab.SaveLoad)
@@ -227,13 +235,17 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
                 _settingsSession.Gameplay.AutosaveIntervalTicks,
                 _settingsSession.Gameplay.AutosavesToKeep,
                 _settingsSession.GetUserInterfaceStates(),
+                _settingsSession.UserInterface.IdleBarLocation,
+                _settingsSession.UserInterface.GameLaunchSpeed,
                 BuildModRows().ToArray(),
                 GetSelectedPack()?.DisplayName ?? _selectedPackID,
                 !string.Equals(
                     _selectedPackID,
                     _bootstrap.GetContentPack().Definition.ID,
                     StringComparison.Ordinal
-                )
+                ),
+                _showModsTab,
+                _settingsSession.GetGraphicsValues()
             )
         );
     }
@@ -246,7 +258,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     {
         ContentFileResolver resolver = _selectedModResolver;
         HashSet<string> disabledIDs = new HashSet<string>(
-            _bootstrap.GetUserSettingsManager().Settings.Content.DisabledModIDs,
+            _selectedDisabledModIDs,
             StringComparer.Ordinal
         );
         HashSet<string> loadedIDs = new HashSet<string>(
@@ -263,7 +275,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     }
 
     /// <summary>
-    /// Toggles one compatible mod and persists its pending restart state.
+    /// Toggles one compatible mod in the pending content selection.
     /// </summary>
     /// <param name="index">The compatible mod's displayed index.</param>
     private void HandleModToggle(int index)
@@ -272,18 +284,9 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         if (index < 0 || index >= resolver.AvailableMods.Count)
             return;
 
-        UserSettingsManager settingsManager = _bootstrap.GetUserSettingsManager();
-        HashSet<string> disabledIDs = new HashSet<string>(
-            settingsManager.Settings.Content.DisabledModIDs,
-            StringComparer.Ordinal
-        );
         string id = resolver.AvailableMods[index].ID;
-        if (!disabledIDs.Add(id))
-            disabledIDs.Remove(id);
-        settingsManager.Settings.Content.DisabledModIDs = disabledIDs
-            .OrderBy(disabledID => disabledID, StringComparer.Ordinal)
-            .ToArray();
-        settingsManager.Save();
+        if (!_selectedDisabledModIDs.Add(id))
+            _selectedDisabledModIDs.Remove(id);
         _markDirty();
     }
 
@@ -319,10 +322,6 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         int nextIndex =
             (currentIndex + Math.Sign(delta) + _availablePacks.Count) % _availablePacks.Count;
         _selectedPackID = _availablePacks[nextIndex].ID;
-        UserSettingsManager settingsManager = _bootstrap.GetUserSettingsManager();
-        settingsManager.Settings.Content.ActivePackID = _selectedPackID;
-        settingsManager.Settings.Content.ActiveScenarioID = string.Empty;
-        settingsManager.Save();
         RefreshSelectedModResolver();
         _markDirty();
     }
@@ -332,12 +331,66 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     /// </summary>
     private void RefreshSelectedModResolver()
     {
-        UserSettingsManager settingsManager = _bootstrap.GetUserSettingsManager();
         _selectedModResolver = ContentPackLoader.DiscoverModResolver(
             _bootstrap.GetContentPack().ContentRootPath,
             _selectedPackID,
-            settingsManager.Settings.Content.DisabledModIDs
+            _selectedDisabledModIDs
         );
+    }
+
+    /// <summary>
+    /// Restores the pending content selection from persisted settings.
+    /// </summary>
+    private void ResetContentSelection()
+    {
+        UserContentSettings content = _bootstrap.GetUserSettingsManager().Settings.Content;
+        _selectedPackID = ResolveSavedPackID(content);
+        _selectedDisabledModIDs.Clear();
+        foreach (string disabledModID in content.DisabledModIDs ?? Array.Empty<string>())
+            _selectedDisabledModIDs.Add(disabledModID);
+        RefreshSelectedModResolver();
+    }
+
+    /// <summary>
+    /// Resolves the persisted pack selection to an available pack.
+    /// </summary>
+    /// <param name="content">The persisted content settings.</param>
+    /// <returns>The persisted pack ID when available; otherwise the loaded pack ID.</returns>
+    private string ResolveSavedPackID(UserContentSettings content)
+    {
+        string savedPackID = content.ActivePackID;
+        return _availablePacks.Any(pack =>
+            string.Equals(pack.ID, savedPackID, StringComparison.Ordinal)
+        )
+            ? savedPackID
+            : _bootstrap.GetContentPack().Definition.ID;
+    }
+
+    /// <summary>
+    /// Checks whether the pending content selection differs from persisted settings.
+    /// </summary>
+    /// <returns>True when the pack or mod selection has unapplied changes.</returns>
+    private bool IsContentSelectionDirty()
+    {
+        UserContentSettings content = _bootstrap.GetUserSettingsManager().Settings.Content;
+        string savedPackID = ResolveSavedPackID(content);
+        return !string.Equals(_selectedPackID, savedPackID, StringComparison.Ordinal)
+            || !_selectedDisabledModIDs.SetEquals(content.DisabledModIDs ?? Array.Empty<string>());
+    }
+
+    /// <summary>
+    /// Persists the pending content selection for the next application start.
+    /// </summary>
+    private void ApplyContentSelection()
+    {
+        UserSettingsManager settingsManager = _bootstrap.GetUserSettingsManager();
+        settingsManager.Settings.Content.ActivePackID = _selectedPackID;
+        settingsManager.Settings.Content.ActiveScenarioID = string.Empty;
+        settingsManager.Settings.Content.DisabledModIDs = _selectedDisabledModIDs
+            .OrderBy(disabledModID => disabledModID, StringComparer.Ordinal)
+            .ToArray();
+        settingsManager.Save();
+        _markDirty();
     }
 
     /// <summary>
@@ -390,12 +443,15 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         target.TacticalToggleRequested += HandleTacticalToggle;
         target.GameplayToggleRequested += HandleGameplayToggle;
         target.UserInterfaceToggleRequested += HandleUserInterfaceToggle;
+        target.IdleBarLocationRequested += HandleIdleBarLocationRequested;
+        target.GameLaunchSpeedRequested += HandleGameLaunchSpeedRequested;
         target.ModToggleRequested += HandleModToggle;
         target.ContentPackStepRequested += HandleContentPackStep;
         target.AutosaveIntervalChanged += HandleAutosaveIntervalChanged;
         target.AutosavesToKeepChanged += HandleAutosavesToKeepChanged;
         target.ResolutionStepRequested += HandleResolutionStep;
         target.FullScreenStepRequested += HandleFullScreenStep;
+        target.GraphicsStepRequested += HandleGraphicsStep;
         target.VolumeChanged += HandleVolumeChanged;
         target.Destroyed += HandleViewDestroyed;
     }
@@ -406,16 +462,20 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     /// <param name="tab">The selected page.</param>
     private void HandleTabSelected(OptionsMenuTab tab)
     {
+        if (!IsTabAvailable(tab))
+            return;
+
         if (tab == _activeTab)
             return;
 
-        if (_settingsSession.IsDirty)
+        if (_settingsSession.IsDirty || IsContentSelectionDirty())
         {
             RequestConfirm(
                 "Discard unsaved changes?",
                 () =>
                 {
                     _settingsSession.Revert();
+                    ResetContentSelection();
                     _bindingSession.Rebuild();
                     SwitchTab(tab);
                 }
@@ -424,6 +484,16 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         }
 
         SwitchTab(tab);
+    }
+
+    /// <summary>
+    /// Checks whether the owning scene exposes a requested Options page.
+    /// </summary>
+    /// <param name="tab">The requested page.</param>
+    /// <returns>True when the page is available.</returns>
+    private bool IsTabAvailable(OptionsMenuTab tab)
+    {
+        return tab != OptionsMenuTab.Mods || _showModsTab;
     }
 
     /// <summary>
@@ -530,15 +600,17 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     }
 
     /// <summary>
-    /// Loads the selected existing save, then closes the overlay on success.
+    /// Closes the overlay before loading the selected existing save.
     /// </summary>
     private void HandleLoadRequested()
     {
         if (!IsSelectedExistingSave())
             return;
 
-        if (_loadSave(_saveSlots[_selectedSlot].FileName))
-            Close();
+        string fileName = _saveSlots[_selectedSlot].FileName;
+        Close();
+        if (!_loadSave(fileName))
+            Open(OptionsMenuTab.SaveLoad);
     }
 
     /// <summary>
@@ -660,6 +732,12 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     /// </summary>
     private void HandleApply()
     {
+        if (_activeTab == OptionsMenuTab.Mods)
+        {
+            ApplyContentSelection();
+            return;
+        }
+
         _settingsSession.Commit();
         _markDirty();
     }
@@ -674,6 +752,9 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
             case OptionsMenuTab.Gameplay:
                 RequestConfirm("Reset gameplay settings to their defaults?", ApplyActiveDefaults);
                 break;
+            case OptionsMenuTab.UserInterface:
+                RequestConfirm("Reset interface settings to their defaults?", ApplyActiveDefaults);
+                break;
             case OptionsMenuTab.Graphics:
                 RequestConfirm("Reset display settings to their defaults?", ApplyActiveDefaults);
                 break;
@@ -682,6 +763,12 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
                 break;
             case OptionsMenuTab.Controls:
                 RequestConfirm("Reset all key bindings to their defaults?", ApplyActiveDefaults);
+                break;
+            case OptionsMenuTab.Mods:
+                RequestConfirm(
+                    "Reset the content pack and mods to their defaults?",
+                    ApplyActiveDefaults
+                );
                 break;
         }
     }
@@ -697,7 +784,31 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
             return;
         }
 
+        if (_activeTab == OptionsMenuTab.Mods)
+        {
+            RestoreContentDefaults();
+            return;
+        }
+
         _settingsSession.RestoreDefaults(_activeTab);
+        _markDirty();
+    }
+
+    /// <summary>
+    /// Restores the catalog-selected pack with every compatible mod enabled.
+    /// </summary>
+    private void RestoreContentDefaults()
+    {
+        string defaultPackID = ContentPackLoader.GetDefaultPackID(
+            _bootstrap.GetContentPack().ContentRootPath
+        );
+        _selectedPackID = _availablePacks.Any(pack =>
+            string.Equals(pack.ID, defaultPackID, StringComparison.Ordinal)
+        )
+            ? defaultPackID
+            : _bootstrap.GetContentPack().Definition.ID;
+        _selectedDisabledModIDs.Clear();
+        RefreshSelectedModResolver();
         _markDirty();
     }
 
@@ -706,7 +817,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     /// </summary>
     private void HandleBackToGame()
     {
-        if (!_settingsSession.IsDirty)
+        if (!_settingsSession.IsDirty && !IsContentSelectionDirty())
         {
             Close();
             return;
@@ -718,6 +829,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
             () =>
             {
                 _settingsSession.Revert();
+                ResetContentSelection();
                 _bindingSession.Rebuild();
                 Close();
             }
@@ -763,6 +875,8 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     {
         if (_settingsSession.IsDirty)
             _settingsSession.Revert();
+        if (IsContentSelectionDirty())
+            ResetContentSelection();
         exit?.Invoke();
     }
 
@@ -879,6 +993,26 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     }
 
     /// <summary>
+    /// Stages an idle-bar corner selection and refreshes the Options presentation.
+    /// </summary>
+    /// <param name="location">The selected idle-bar corner.</param>
+    private void HandleIdleBarLocationRequested(IdleBarLocation location)
+    {
+        _settingsSession.SetIdleBarLocation(location);
+        _markDirty();
+    }
+
+    /// <summary>
+    /// Stages the selected galaxy-view launch speed and refreshes the Options presentation.
+    /// </summary>
+    /// <param name="speed">The selected launch-speed behavior.</param>
+    private void HandleGameLaunchSpeedRequested(GameLaunchSpeed speed)
+    {
+        _settingsSession.SetGameLaunchSpeed(speed);
+        _markDirty();
+    }
+
+    /// <summary>
     /// Applies a directly entered autosave interval.
     /// </summary>
     /// <param name="value">The entered interval text.</param>
@@ -921,6 +1055,17 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     }
 
     /// <summary>
+    /// Steps one staged HDRP graphics setting.
+    /// </summary>
+    /// <param name="setting">The graphics setting to change.</param>
+    /// <param name="delta">The step direction.</param>
+    private void HandleGraphicsStep(UserGraphicsSetting setting, int delta)
+    {
+        _settingsSession.StepGraphics(setting, delta);
+        _markDirty();
+    }
+
+    /// <summary>
     /// Applies a live volume change for one channel.
     /// </summary>
     /// <param name="channel">The channel index (0..4).</param>
@@ -959,12 +1104,15 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         destroyed.TacticalToggleRequested -= HandleTacticalToggle;
         destroyed.GameplayToggleRequested -= HandleGameplayToggle;
         destroyed.UserInterfaceToggleRequested -= HandleUserInterfaceToggle;
+        destroyed.IdleBarLocationRequested -= HandleIdleBarLocationRequested;
+        destroyed.GameLaunchSpeedRequested -= HandleGameLaunchSpeedRequested;
         destroyed.ModToggleRequested -= HandleModToggle;
         destroyed.ContentPackStepRequested -= HandleContentPackStep;
         destroyed.AutosaveIntervalChanged -= HandleAutosaveIntervalChanged;
         destroyed.AutosavesToKeepChanged -= HandleAutosavesToKeepChanged;
         destroyed.ResolutionStepRequested -= HandleResolutionStep;
         destroyed.FullScreenStepRequested -= HandleFullScreenStep;
+        destroyed.GraphicsStepRequested -= HandleGraphicsStep;
         destroyed.VolumeChanged -= HandleVolumeChanged;
         destroyed.Destroyed -= HandleViewDestroyed;
         if (ReferenceEquals(destroyed, _view))

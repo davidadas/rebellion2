@@ -11,6 +11,7 @@ public sealed class UserSettingsManager
 
     private readonly AudioManager _audioManager;
     private readonly DisplayManager _displayManager;
+    private readonly GraphicsManager _graphicsManager;
     private readonly InputManager _inputManager;
     private readonly string _settingsFilePathOverride;
 
@@ -30,7 +31,22 @@ public sealed class UserSettingsManager
         DisplayManager displayManager,
         InputManager inputManager
     )
-        : this(audioManager, displayManager, inputManager, null) { }
+        : this(audioManager, displayManager, null, inputManager, null) { }
+
+    /// <summary>
+    /// Creates a user settings manager for the supplied runtime systems.
+    /// </summary>
+    /// <param name="audioManager">The audio manager that receives audio settings.</param>
+    /// <param name="displayManager">The display manager that receives display settings.</param>
+    /// <param name="graphicsManager">The graphics manager that receives HDRP settings.</param>
+    /// <param name="inputManager">The input manager that receives binding overrides.</param>
+    public UserSettingsManager(
+        AudioManager audioManager,
+        DisplayManager displayManager,
+        GraphicsManager graphicsManager,
+        InputManager inputManager
+    )
+        : this(audioManager, displayManager, graphicsManager, inputManager, null) { }
 
     /// <summary>
     /// Creates a user settings manager that uses the given file path.
@@ -45,9 +61,27 @@ public sealed class UserSettingsManager
         InputManager inputManager,
         string settingsFilePath
     )
+        : this(audioManager, displayManager, null, inputManager, settingsFilePath) { }
+
+    /// <summary>
+    /// Creates a user settings manager that uses the given file path and graphics owner.
+    /// </summary>
+    /// <param name="audioManager">The audio manager that receives audio settings.</param>
+    /// <param name="displayManager">The display manager that receives display settings.</param>
+    /// <param name="graphicsManager">The graphics manager that receives HDRP settings.</param>
+    /// <param name="inputManager">The input manager that receives binding overrides.</param>
+    /// <param name="settingsFilePath">The exact settings file path.</param>
+    internal UserSettingsManager(
+        AudioManager audioManager,
+        DisplayManager displayManager,
+        GraphicsManager graphicsManager,
+        InputManager inputManager,
+        string settingsFilePath
+    )
     {
         _audioManager = audioManager;
         _displayManager = displayManager ?? throw new ArgumentNullException(nameof(displayManager));
+        _graphicsManager = graphicsManager;
         _inputManager = inputManager;
         _settingsFilePathOverride = settingsFilePath;
     }
@@ -122,6 +156,7 @@ public sealed class UserSettingsManager
         _audioManager?.ApplySettings(Settings.Audio);
         _inputManager?.LoadBindingOverrides(Settings.Input.BindingOverridesJson);
         _displayManager.Apply(Settings.Video);
+        _graphicsManager?.Apply(Settings.Video);
     }
 
     /// <summary>

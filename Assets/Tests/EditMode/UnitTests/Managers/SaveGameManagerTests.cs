@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Events;
@@ -110,6 +111,22 @@ namespace Rebellion.Tests.Managers
             Player player = loadedGame.GetFactionPlayer("FNALL1");
             Assert.AreEqual("PLAYER1", player.PlayerID);
             Assert.AreEqual(PlayerControllerType.Human, player.ControllerType);
+        }
+
+        [Test]
+        public async Task LoadGameDataAsync_SavedGame_RestoresGameAsync()
+        {
+            GameRoot game = new GameRoot
+            {
+                CurrentTick = 73,
+                Summary = new GameSummary(),
+                Galaxy = new GalaxyMap(),
+            };
+            _saveGameManager.SaveGameData(game, _saveFileName);
+
+            GameRoot loadedGame = await _saveGameManager.LoadGameDataAsync(_saveFileName);
+
+            Assert.AreEqual(73, loadedGame.CurrentTick);
         }
 
         [Test]
@@ -397,6 +414,32 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual("FNALL1", entry.Metadata.PlayerFactionID);
             Assert.AreEqual(GameDifficulty.Hard, entry.Metadata.Difficulty);
             Assert.AreEqual(42, entry.Metadata.CurrentTick);
+        }
+
+        [Test]
+        public void GetSaveMetadata_SavedContentIdentity_ReturnsContentIdentity()
+        {
+            GameRoot game = new GameRoot
+            {
+                Summary = new GameSummary
+                {
+                    PackID = "pack",
+                    PackVersion = "2.0.0",
+                    ScenarioID = "scenario",
+                    ModIDs = new[] { "mod" },
+                    ModVersions = new[] { "3.0.0" },
+                },
+                Galaxy = new GalaxyMap(),
+            };
+            _saveGameManager.SaveGameData(game, _saveFileName);
+
+            GameMetadata metadata = _saveGameManager.GetSaveMetadata(_saveFileName);
+
+            Assert.AreEqual("pack", metadata.PackID);
+            Assert.AreEqual("2.0.0", metadata.PackVersion);
+            Assert.AreEqual("scenario", metadata.ScenarioID);
+            CollectionAssert.AreEqual(new[] { "mod" }, metadata.ModIDs);
+            CollectionAssert.AreEqual(new[] { "3.0.0" }, metadata.ModVersions);
         }
 
         [Test]
@@ -695,6 +738,26 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
+        public async Task LoadGameDataAsync_UnknownElement_SkipsElementWithoutWarningAsync()
+        {
+            GameRoot game = new GameRoot
+            {
+                Summary = new GameSummary(),
+                Galaxy = new GalaxyMap(),
+                CurrentTick = 20,
+            };
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            string savePath = _saveGameManager.GetSaveFilePath(_saveFileName);
+            string xml = File.ReadAllText(savePath)
+                .Replace("<GameRoot>", "<GameRoot><FutureField/>");
+            File.WriteAllText(savePath, xml);
+
+            GameRoot loadedGame = await _saveGameManager.LoadGameDataAsync(_saveFileName);
+
+            Assert.AreEqual(20, loadedGame.CurrentTick);
+        }
+
+        [Test]
         public void SaveAndLoadGame_GameWithFactionAndPlanet_PreservesGameState()
         {
             GameSummary summary = new GameSummary
@@ -984,7 +1047,6 @@ namespace Rebellion.Tests.Managers
                 ResourceAvailability = GameResourceAvailability.Limited,
                 PlayerFactionID = "FNEMP1",
                 StartingFactionIDs = new string[] { "FNALL1", "FNEMP1" },
-                StartingResearchLevel = 3,
             };
 
             GameRoot game = new GameRoot { Summary = summary, Galaxy = new GalaxyMap() };
@@ -1003,7 +1065,6 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(2, loadedGame.Summary.StartingFactionIDs.Length);
             Assert.AreEqual("FNALL1", loadedGame.Summary.StartingFactionIDs[0]);
             Assert.AreEqual("FNEMP1", loadedGame.Summary.StartingFactionIDs[1]);
-            Assert.AreEqual(3, loadedGame.Summary.StartingResearchLevel);
         }
 
         [Test]

@@ -138,6 +138,14 @@ do_lint() {
     # Full compilation check — only runs locally where Unity has generated the project files.
     # In CI the Unity test runner already proves compilation, so this is skipped.
     if [ -f GameAssembly.csproj ]; then
+        # Unity-generated projects reference package assemblies through Temp/bin. Populate that
+        # directory from Unity's successful compilation before asking dotnet to compile only the
+        # repository-owned assemblies; some Unity packages require Unity's compiler toolchain.
+        if [ -d Library/ScriptAssemblies ]; then
+            mkdir -p Temp/bin/Debug
+            cp Library/ScriptAssemblies/*.dll Temp/bin/Debug/
+        fi
+
         echo "=== GameAssembly ==="
         # Unity-generated projects share output/intermediate directories, so parallel MSBuild can
         # race dependencies and report missing metadata from another project still being compiled.
@@ -158,6 +166,7 @@ do_lint() {
 
             echo "=== ${test_project%.csproj} ==="
             dotnet build "$test_project" \
+                --no-dependencies \
                 -maxcpucount:1 \
                 -verbosity:normal \
                 -p:CustomAfterMicrosoftCommonTargets="$UNITY_TEST_REFERENCES" \
@@ -166,10 +175,26 @@ do_lint() {
         done
 
         echo "=== Architecture Tests ==="
-        dotnet test "$ARCHITECTURE_TEST_PROJECT" \
+        architecture_output="$(dirname "$ARCHITECTURE_TEST_PROJECT")/bin/Debug/net8.0"
+        case "$(uname -s)" in
+            Darwin)
+                unity_engine_assemblies="$(dirname "$UNITY")/../Managed/UnityEngine"
+                ;;
+            *)
+                unity_engine_assemblies="$(dirname "$UNITY")/Data/Managed/UnityEngine"
+                ;;
+        esac
+        dotnet build "$ARCHITECTURE_TEST_PROJECT" \
             --configuration Debug \
             --verbosity quiet \
             -p:BuildProjectReferences=false
+        if [ -d "$unity_engine_assemblies" ]; then
+            cp "$unity_engine_assemblies"/*.dll "$architecture_output"/
+        fi
+        dotnet test "$ARCHITECTURE_TEST_PROJECT" \
+            --configuration Debug \
+            --verbosity quiet \
+            --no-build
         echo ""
     fi
 

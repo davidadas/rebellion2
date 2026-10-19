@@ -11,6 +11,7 @@ using Rebellion.SceneGraph;
 using Rebellion.Simulation;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
@@ -79,7 +80,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
                     (_, _) => Vector2Int.zero,
                     () => Vector2Int.zero,
                     _ => { },
-                    () => { }
+                    () => { },
+                    _ => null
                 )
             );
         }
@@ -280,6 +282,213 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Assert.AreEqual(2, _dirtyCount);
         }
 
+        [Test]
+        public void OpenFromAdvisor_AfterSuccessfulOrder_RemembersProductAcrossPlanets()
+        {
+            CapitalShip[] templates = SetBuildTemplates();
+            OrderSecondTemplate();
+            _planet = CreateIdlePlanet();
+
+            ConstructionWindowView view = OpenAdvisorWindow(out UIWindow window);
+
+            Assert.AreSame(templates[1], _controller.GetStatusTarget(view).Item);
+            _controller.RenderWindow(view, window, true);
+            Assert.AreEqual("1", view.GetComponentInChildren<TMP_InputField>(true).text);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void OpenFromAdvisor_CancelledOrFailedOrder_DoesNotReplaceLastOrder(bool start)
+        {
+            CapitalShip[] templates = SetBuildTemplates();
+            OrderSecondTemplate();
+            _planet = CreateIdlePlanet();
+            ConstructionWindowView view = OpenAdvisorWindow(out UIWindow window);
+            SelectTemplate(view, window, 0);
+            if (start)
+                view.RequestStart();
+            else
+                view.RequestCancel();
+            Assert.IsNull(
+                ManufacturingQueries.GetManufacturingOrder(_planet.Planet, ManufacturingType.Ship)
+            );
+            _windowManager.DestroyWindow(window);
+
+            view = OpenAdvisorWindow(out UIWindow _);
+
+            Assert.AreSame(templates[1], _controller.GetStatusTarget(view).Item);
+        }
+
+        [Test]
+        public void OpenFromAdvisor_ActiveOrder_TakesPriorityOverRememberedProduct()
+        {
+            CapitalShip[] templates = SetBuildTemplates();
+            OrderSecondTemplate();
+            Assert.IsTrue(
+                _session
+                    .GetService<ManufacturingCommands>()
+                    .SetManufacturingOrder(
+                        _planet.Planet,
+                        templates[0],
+                        _planet.Planet,
+                        3,
+                        _playerFactionId
+                    )
+            );
+
+            ConstructionWindowView view = OpenAdvisorWindow(out UIWindow window);
+
+            Assert.AreSame(templates[0], _controller.GetStatusTarget(view).Item);
+            _controller.RenderWindow(view, window, true);
+            Assert.AreEqual("3", view.GetComponentInChildren<TMP_InputField>(true).text);
+        }
+
+        [Test]
+        public void OpenFromAdvisor_UnavailableRememberedProduct_FallsBackToFirstTemplate()
+        {
+            CapitalShip[] templates = SetBuildTemplates();
+            OrderSecondTemplate();
+            _planet = CreateIdlePlanet();
+            Faction faction = _session.Game.GetFactions().Single();
+            faction.RebuildResearchCatalog(new IManufacturable[] { templates[0] });
+            ConstructionWindowView view = OpenAdvisorWindow(out UIWindow window);
+            Assert.AreSame(templates[0], _controller.GetStatusTarget(view).Item);
+            _windowManager.DestroyWindow(window);
+            faction.RebuildResearchCatalog(templates);
+
+            view = OpenAdvisorWindow(out UIWindow _);
+
+            Assert.AreSame(templates[1], _controller.GetStatusTarget(view).Item);
+        }
+
+        [Test]
+        public void OpenFromAdvisor_NewController_DoesNotRetainRememberedProduct()
+        {
+            CapitalShip[] templates = SetBuildTemplates();
+            OrderSecondTemplate();
+            _planet = CreateIdlePlanet();
+            _controller = CreateController();
+            _controller.Initialize(_actions);
+
+            ConstructionWindowView view = OpenAdvisorWindow(out UIWindow _);
+
+            Assert.AreSame(templates[0], _controller.GetStatusTarget(view).Item);
+        }
+
+        [Test]
+        public void OpenFromAdvisor_DifferentManufacturingTab_DoesNotReuseOtherTabsProduct()
+        {
+            CapitalShip[] ships = SetBuildTemplates();
+            OrderSecondTemplate();
+            _planet = CreateIdlePlanet();
+            Regiment[] troops =
+            {
+                new Regiment { TypeID = "alpha", DisplayName = "Alpha" },
+                new Regiment { TypeID = "beta", DisplayName = "Beta" },
+            };
+            foreach (Regiment troop in troops)
+                troop.ManufacturingFactionInstanceIDs = new List<string> { _playerFactionId };
+            _session
+                .Game.GetFactions()
+                .Single()
+                .RebuildResearchCatalog(ships.Cast<IManufacturable>().Concat(troops).ToArray());
+            _controller.OpenFromAdvisor(_planet, _planet, FacilityWindowTab.Training);
+            UIWindow window = _windowManager.Windows.Single();
+            _windowManager.TryGetWindowView(window, out ConstructionWindowView view);
+            Assert.AreSame(troops[0], _controller.GetStatusTarget(view).Item);
+            _windowManager.DestroyWindow(window);
+
+            view = OpenAdvisorWindow(out UIWindow _);
+
+            Assert.AreSame(ships[1], _controller.GetStatusTarget(view).Item);
+        }
+
+        /// <summary>
+        /// Supplies two zero-maintenance templates and a working shipyard.
+        /// </summary>
+        /// <returns>The templates in alphabetical order.</returns>
+        private CapitalShip[] SetBuildTemplates()
+        {
+            CapitalShip[] templates =
+            {
+                new CapitalShip { TypeID = "alpha", DisplayName = "Alpha" },
+                new CapitalShip { TypeID = "beta", DisplayName = "Beta" },
+            };
+            foreach (CapitalShip template in templates)
+                template.ManufacturingFactionInstanceIDs = new List<string> { _playerFactionId };
+            _session.Game.GetFactions().Single().RebuildResearchCatalog(templates);
+            _session.Game.AttachNode(
+                new Building
+                {
+                    InstanceID = "shipyard",
+                    OwnerInstanceID = _playerFactionId,
+                    BuildingType = BuildingType.Shipyard,
+                    ProductionType = ManufacturingType.Ship,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                    ProcessRate = 1,
+                },
+                _planet.Planet
+            );
+            return templates;
+        }
+
+        /// <summary>
+        /// Orders the second template and destroys its construction window.
+        /// </summary>
+        private void OrderSecondTemplate()
+        {
+            ConstructionWindowView view = OpenAdvisorWindow(out UIWindow window);
+            SelectTemplate(view, window, 1);
+            view.RequestBuildCount("2");
+            view.RequestStart();
+            ManufacturingOrder order = ManufacturingQueries.GetManufacturingOrder(
+                _planet.Planet,
+                ManufacturingType.Ship
+            );
+            Assert.IsNotNull(order);
+            Assert.AreEqual("beta", order.ProductTypeID);
+            _windowManager.DestroyWindow(window);
+        }
+
+        /// <summary>
+        /// Creates another owned planet without an active manufacturing order.
+        /// </summary>
+        /// <returns>The idle strategy planet.</returns>
+        private GalaxyMapPlanet CreateIdlePlanet()
+        {
+            Planet planet = new Planet
+            {
+                InstanceID = "idle-producer",
+                DisplayName = "Idle Producer",
+                OwnerInstanceID = _playerFactionId,
+                IsColonized = true,
+            };
+            GalaxyPlanetSector sector = _session
+                .Game.GetGalaxyMap()
+                .GetChildren<GalaxyPlanetSector>()
+                .Single();
+            _session.Game.AttachNode(planet, sector);
+            return new GalaxyMapPlanet(sector, planet, _playerFactionId);
+        }
+
+        /// <summary>
+        /// Selects a template through its authored dropdown button.
+        /// </summary>
+        /// <param name="view">The construction view.</param>
+        /// <param name="window">The owning window.</param>
+        /// <param name="index">The requested template index.</param>
+        private void SelectTemplate(ConstructionWindowView view, UIWindow window, int index)
+        {
+            view.RequestToggleDropdown();
+            _controller.RenderWindow(view, window, true);
+            StrategyDropdownItemView row = view.GetComponentsInChildren<StrategyDropdownItemView>(
+                    true
+                )
+                .Single(item => item.name == $"DropdownItemRow{index}");
+            UIComponentTestHelper.InvokeLifecycle(row, "Awake");
+            row.GetComponentInChildren<Button>(true).onClick.Invoke();
+        }
+
         /// <summary>
         /// Creates controller.
         /// </summary>
@@ -294,7 +503,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
                 (x, y) => new Vector2Int(x + 17, y + 19),
                 () => new Vector2Int(141, 73),
                 _ => { },
-                () => _dirtyCount++
+                () => _dirtyCount++,
+                instanceId => _session.Game.GetSceneNodeByInstanceID<ISceneNode>(instanceId)
             );
         }
 
@@ -330,6 +540,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
                 DisplayName = "Corellia",
                 OwnerInstanceID = _playerFactionId,
                 IsColonized = true,
+                EnergyCapacity = 1,
             };
             game.AttachNode(planet, planetSector);
             return new GalaxyMapPlanet(planetSector, planet, _playerFactionId);

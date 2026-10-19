@@ -11,6 +11,8 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.LowLevel;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.HighDefinition;
 using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 
@@ -401,8 +403,26 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             Assert.IsNotNull(stars?.GetComponent<ParticleSystem>());
             Assert.AreEqual(4, stars.GetComponent<ParticleSystem>().particleCount);
             Assert.IsNotNull(starlight);
-            Assert.AreEqual(1.15f, starlight.intensity);
+            Assert.That(starlight.intensity, Is.EqualTo(1.15f * Mathf.PI).Within(0.0001f));
+            Assert.AreEqual(LightUnit.Lux, starlight.lightUnit);
+            Assert.IsNotNull(starlight.GetComponent<HDAdditionalLightData>());
             Assert.AreSame(starlight, RenderSettings.sun);
+            Volume environmentVolume = controller
+                .MapRoot.Find("Tactical Environment")
+                ?.GetComponent<Volume>();
+            Assert.IsNotNull(environmentVolume);
+            Assert.IsTrue(environmentVolume.sharedProfile.TryGet(out GradientSky gradientSky));
+            Assert.AreEqual(0.05f, gradientSky.top.value.r);
+            Assert.AreEqual(0.065f, gradientSky.top.value.g);
+            Assert.AreEqual(0.11f, gradientSky.top.value.b);
+            HDAdditionalCameraData cameraData =
+                controller.BattleCamera.GetComponent<HDAdditionalCameraData>();
+            Assert.IsNotNull(cameraData);
+            Assert.AreEqual(HDAdditionalCameraData.ClearColorMode.Color, cameraData.clearColorMode);
+            Assert.AreEqual(
+                controller.BattleCamera.backgroundColor.linear,
+                cameraData.backgroundColorHDR
+            );
         }
 
         [Test]

@@ -77,7 +77,6 @@ namespace Rebellion.Simulation
                 locator.GetService<FogOfWarRecorder>()
             ));
             services.AddSingleton<FogOfWarQueries>();
-            services.AddSingleton<BlockadeTracker>();
             services.AddSingleton<FleetCommands>();
             services.AddSingleton<PersonnelQueries>();
             services.AddSingleton<PersonnelCommands>();

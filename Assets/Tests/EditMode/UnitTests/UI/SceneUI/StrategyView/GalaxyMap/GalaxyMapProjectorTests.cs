@@ -74,6 +74,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             _game.AttachNode(opposingFleet, origin);
 
             List<GalaxyMapWaypointRouteRenderData> routes = _projector.ProjectWaypointRoutes(
+                GetVisibleSectors(),
                 _playerFactionId,
                 selectedFleetInstanceIds: new[] { playerFleet.InstanceID, opposingFleet.InstanceID }
             );
@@ -100,9 +101,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             _game.AttachNode(fleet, origin);
 
             List<GalaxyMapWaypointRouteRenderData> defaultRoutes = _projector.ProjectWaypointRoutes(
+                GetVisibleSectors(),
                 _playerFactionId
             );
             List<GalaxyMapWaypointRouteRenderData> allRoutes = _projector.ProjectWaypointRoutes(
+                GetVisibleSectors(),
                 _playerFactionId,
                 showAllRoutes: true
             );
@@ -133,6 +136,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             plan.TryAppendWaypoint(destination.InstanceID);
 
             List<GalaxyMapWaypointRouteRenderData> routes = _projector.ProjectWaypointRoutes(
+                GetVisibleSectors(),
                 _playerFactionId,
                 plan
             );
@@ -172,6 +176,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             plan.TryAppendWaypoint(destination.InstanceID);
 
             List<GalaxyMapWaypointRouteRenderData> routes = _projector.ProjectWaypointRoutes(
+                GetVisibleSectors(),
                 _playerFactionId,
                 plan
             );
@@ -182,6 +187,34 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(new Vector2Int(48, 58), routes[0].Waypoints[0].Position);
             Assert.AreSame(fleet, ship.GetParent());
             Assert.IsEmpty(fleet.Waypoints);
+        }
+
+        [Test]
+        public void ProjectWaypointRoutes_HiddenDestination_DoesNotRevealRoute()
+        {
+            GalaxyPlanetSector sector = CreateSector("sector", "Sector", 0, 0);
+            Planet origin = CreatePlanet("origin", _playerFactionId, 10, 20);
+            Planet hiddenDestination = CreatePlanet(
+                "hidden-destination",
+                _opposingFactionId,
+                40,
+                50
+            );
+            _game.AttachNode(sector, _game.GetGalaxyMap());
+            _game.AttachNode(origin, sector);
+            _game.AttachNode(hiddenDestination, sector);
+            GameFleet fleet = new GameFleet(_playerFactionId, "Player Fleet");
+            fleet.Waypoints.Add(hiddenDestination.InstanceID);
+            _game.AttachNode(fleet, origin);
+            IReadOnlyList<GalaxyMapSector> visibleSectors = new[] { CreateSector(sector, origin) };
+
+            List<GalaxyMapWaypointRouteRenderData> routes = _projector.ProjectWaypointRoutes(
+                visibleSectors,
+                _playerFactionId,
+                selectedFleetInstanceIds: new[] { fleet.InstanceID }
+            );
+
+            Assert.IsEmpty(routes);
         }
 
         [Test]
@@ -325,7 +358,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         [Test]
         public void Project_CorellianPlanets_ReturnsCorrectedSeloniaAndDurosOffsets()
         {
-            GalaxyPlanetSector planetSector = TestContent.Data.PlanetSectors.Single(candidate =>
+            ContentPack classicPack = ContentPackLoader.OpenActive(
+                "classic-galactic-civil-war",
+                "standard"
+            );
+            GalaxyPlanetSector planetSector = classicPack.GameData.PlanetSectors.Single(candidate =>
                 candidate.TypeID == "PSCOR"
             );
             Planet selonia = planetSector
@@ -559,6 +596,47 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         }
 
         [Test]
+        public void Project_AllDefensesBriefing_ExcludesUnitsNotInFactionView()
+        {
+            GalaxyPlanetSector planetSector = CreateSector("sector", "Corellia", 0, 0);
+            Planet livePlanet = CreatePlanet("planet", _opposingFactionId, 1, 2);
+            Regiment hiddenRegiment = new Regiment
+            {
+                InstanceID = "hidden-regiment",
+                OwnerInstanceID = _opposingFactionId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(planetSector, _game.GetGalaxyMap());
+            _game.AttachNode(livePlanet, planetSector);
+            _game.AttachNode(hiddenRegiment, livePlanet);
+
+            Planet factionViewPlanet = CreatePlanet("planet", _opposingFactionId, 1, 2);
+            GalaxyMapSector sector = CreateSector(planetSector, factionViewPlanet);
+            FactionTheme opposingTheme = _uiContext.GetTheme(_opposingFactionId);
+            StrategyBriefingMapPresentation briefing = new StrategyBriefingMapPresentation(
+                StrategyBriefingMapMode.AllDefenses,
+                "Defenses",
+                null,
+                null,
+                _playerFactionId,
+                _opposingFactionId
+            );
+
+            GalaxyMapRenderData data = _projector.Project(
+                new[] { sector },
+                _playerFactionId,
+                GalacticInformationFilterMode.DisplayOff,
+                null,
+                briefing
+            );
+
+            Assert.AreSame(
+                _uiContext.GetTexture(opposingTheme.GalaxyBackground.PlanetIcons.Small),
+                data.Clusters[0].Stars[0].StarTexture
+            );
+        }
+
+        [Test]
         public void Project_DimmedBriefing_DimsOnlyGalaxyBackground()
         {
             GalaxyPlanetSector planetSector = CreateSector("sector", "Corellia", 0, 0);
@@ -784,6 +862,25 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual("small", large);
             Assert.AreEqual("small", extraLarge);
             Assert.IsNull(GalaxyMapProjector.GetPlanetIconPath(null, 0));
+        }
+
+        /// <summary>
+        /// Creates strategy sector projections from the current test galaxy.
+        /// </summary>
+        /// <returns>The visible strategy sectors.</returns>
+        private IReadOnlyList<GalaxyMapSector> GetVisibleSectors()
+        {
+            return _game
+                .GetGalaxyMap()
+                .GetChildren<GalaxyPlanetSector>()
+                .Select(sector => new GalaxyMapSector(
+                    sector,
+                    sector
+                        .GetChildren<Planet>()
+                        .Select(planet => new GalaxyMapPlanet(sector, planet, string.Empty))
+                        .ToArray()
+                ))
+                .ToArray();
         }
 
         /// <summary>

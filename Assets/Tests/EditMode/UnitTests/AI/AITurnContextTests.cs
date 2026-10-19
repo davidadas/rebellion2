@@ -135,7 +135,7 @@ namespace Rebellion.Tests.AI
         }
 
         [Test]
-        public void CommitManufacturingMaintenance_WithPositiveCost_ReducesAvailableHeadroom()
+        public void CommitMaintenanceCost_WithPositiveCost_ReducesAvailableHeadroom()
         {
             AITurnContext context = new AITurnContext(
                 null,
@@ -152,7 +152,7 @@ namespace Rebellion.Tests.AI
             );
             int initialHeadroom = context.AvailableProjectedMaintenanceHeadroom;
 
-            context.CommitManufacturingMaintenance(7);
+            context.CommitMaintenanceCost(7);
 
             Assert.AreEqual(initialHeadroom - 7, context.AvailableProjectedMaintenanceHeadroom);
         }

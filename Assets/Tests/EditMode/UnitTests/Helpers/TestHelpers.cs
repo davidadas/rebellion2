@@ -508,13 +508,15 @@ public static class TestGameData
     /// <param name="planetSectors">The planet-sector templates.</param>
     /// <param name="battleMaps">The battle-map definitions.</param>
     /// <param name="defaultSpaceBattleMapInstanceIDs">The default space-map identifiers.</param>
+    /// <param name="officerTraits">The officer trait definitions.</param>
     /// <returns>The created value.</returns>
     public static GameDataCatalog Create(
         GameConfig config = null,
         MessageDefinition[] messageDefinitions = null,
         PlanetSector[] planetSectors = null,
         BattleMap[] battleMaps = null,
-        IEnumerable<string> defaultSpaceBattleMapInstanceIDs = null
+        IEnumerable<string> defaultSpaceBattleMapInstanceIDs = null,
+        OfficerTraitDefinition[] officerTraits = null
     )
     {
         return new GameDataCatalog(
@@ -533,6 +535,7 @@ public static class TestGameData
             messageDefinitions ?? Array.Empty<MessageDefinition>(),
             new EncyclopediaEntries(),
             new FactionThemes(),
+            officerTraits,
             defaultSpaceBattleMapInstanceIDs
         );
     }

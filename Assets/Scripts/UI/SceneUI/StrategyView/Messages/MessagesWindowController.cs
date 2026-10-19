@@ -15,7 +15,8 @@ public interface IMessagesWindowActions
     /// Opens a combat report in the battle-result view.
     /// </summary>
     /// <param name="report">The durable combat report.</param>
-    void OpenCombatReport(CombatReport report);
+    /// <param name="returnTab">The Messages tab to restore when the report is closed.</param>
+    void OpenCombatReport(CombatReport report, MessagesTab returnTab);
 
     /// <summary>
     /// Opens the strategy location represented by a message target.
@@ -93,6 +94,7 @@ public sealed class MessagesWindowController
         this.markDirty = markDirty ?? throw new ArgumentNullException(nameof(markDirty));
         this.getSelectionModifiers =
             getSelectionModifiers ?? throw new ArgumentNullException(nameof(getSelectionModifiers));
+        this.windowManager.WindowClosed += HandleWindowClosed;
     }
 
     /// <summary>
@@ -151,8 +153,16 @@ public sealed class MessagesWindowController
     {
         StopMessageDetailAudio();
         MessagesWindowSession session = GetSession(view);
-        session.SelectTab(MessagesTabCatalog.Clamp((int)tab));
+        MessagesTab requestedTab = MessagesTabCatalog.Clamp((int)tab);
+        if (session.HasPresentedTab && session.ActiveTab != requestedTab)
+        {
+            if (AcknowledgeMessages(session.Messages))
+                markDirty();
+        }
+
+        session.SelectTab(requestedTab);
         RefreshSession(session);
+        session.MarkTabPresented();
     }
 
     /// <summary>
@@ -373,6 +383,46 @@ public sealed class MessagesWindowController
     }
 
     /// <summary>
+    /// Acknowledges notifications for the supplied messages without changing their read state.
+    /// </summary>
+    /// <param name="messages">The messages whose notifications were presented.</param>
+    /// <returns>True when at least one notification changed.</returns>
+    internal static bool AcknowledgeMessages(IEnumerable<Message> messages)
+    {
+        if (messages == null)
+            return false;
+
+        bool changed = false;
+
+        foreach (Message message in messages)
+        {
+            if (message?.NotificationAcknowledged == false)
+            {
+                message.NotificationAcknowledged = true;
+                changed = true;
+            }
+        }
+
+        return changed;
+    }
+
+    /// <summary>
+    /// Acknowledges notifications presented by one Messages window before it closes.
+    /// </summary>
+    /// <param name="window">The Messages window being closed.</param>
+    private void AcknowledgeWindow(UIWindow window)
+    {
+        if (window == null)
+            return;
+
+        MessagesWindowSession session = sessions.Values.FirstOrDefault(candidate =>
+            candidate.Window == window
+        );
+        if (session?.HasPresentedTab == true && AcknowledgeMessages(session.Messages))
+            markDirty();
+    }
+
+    /// <summary>
     /// Plays the detail audio assigned to a message.
     /// </summary>
     /// <param name="message">The message whose detail was presented.</param>
@@ -528,6 +578,7 @@ public sealed class MessagesWindowController
         if (TryGetSession(view, out MessagesWindowSession session))
         {
             StopMessageDetailAudio();
+            AcknowledgeWindow(session.Window);
             closeWindow(session.Window);
         }
     }
@@ -692,7 +743,7 @@ public sealed class MessagesWindowController
 
         StopMessageDetailAudio();
         closeWindow(session.Window);
-        actions.OpenCombatReport(report);
+        actions.OpenCombatReport(report, session.ActiveTab);
         markDirty();
         return true;
     }
@@ -763,8 +814,13 @@ public sealed class MessagesWindowController
     /// <param name="view">The destroyed Messages view.</param>
     private void HandleViewDestroyed(MessagesWindowView view)
     {
-        if (ReferenceEquals(view, null) || !sessions.Remove(view))
+        if (
+            ReferenceEquals(view, null)
+            || !sessions.TryGetValue(view, out MessagesWindowSession session)
+        )
             return;
+
+        sessions.Remove(view);
 
         StopMessageDetailAudio();
         view.ChatRequested -= HandleChatRequested;
@@ -783,6 +839,15 @@ public sealed class MessagesWindowController
         view.MessageTargetRequested -= HandleMessageTargetRequested;
         view.NotificationToggleRequested -= HandleNotificationToggleRequested;
         view.TabRequested -= HandleTabRequested;
+    }
+
+    /// <summary>
+    /// Acknowledges notifications after a Messages window leaves the window registry.
+    /// </summary>
+    /// <param name="window">The window that closed.</param>
+    private void HandleWindowClosed(UIWindow window)
+    {
+        AcknowledgeWindow(window);
     }
 
     /// <summary>

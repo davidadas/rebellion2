@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
-using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 
@@ -69,14 +68,14 @@ internal static class FleetWaypointRouteResolver
     /// <summary>
     /// Resolves the routes visible through fleet selection, display mode, or an active plan.
     /// </summary>
-    /// <param name="game">The authoritative active game.</param>
+    /// <param name="sectors">The faction-filtered strategy sectors.</param>
     /// <param name="playerFactionId">The viewing player's faction identifier.</param>
     /// <param name="waypointPlan">The active uncommitted waypoint plan, or null.</param>
     /// <param name="selectedFleetInstanceIds">The fleet routes visible through selection.</param>
     /// <param name="showAllRoutes">Whether every player waypoint route is visible.</param>
     /// <returns>The resolved routes in their display order.</returns>
     internal static List<FleetWaypointRoute> Resolve(
-        GameRoot game,
+        IReadOnlyList<GalaxyMapSector> sectors,
         string playerFactionId,
         StrategyWindowTargetingSource waypointPlan = null,
         IReadOnlyCollection<string> selectedFleetInstanceIds = null,
@@ -84,11 +83,11 @@ internal static class FleetWaypointRouteResolver
     )
     {
         List<FleetWaypointRoute> routes = new List<FleetWaypointRoute>();
-        if (game == null || string.IsNullOrEmpty(playerFactionId))
+        if (sectors == null || string.IsNullOrEmpty(playerFactionId))
             return routes;
 
         IEnumerable<Fleet> fleets = ResolveVisibleFleets(
-            game,
+            sectors,
             playerFactionId,
             selectedFleetInstanceIds,
             showAllRoutes
@@ -99,23 +98,23 @@ internal static class FleetWaypointRouteResolver
             if (!resolvedFleetIds.Add(fleet.InstanceID))
                 continue;
 
-            AddRoute(routes, game, fleet, fleet.Waypoints);
+            AddRoute(routes, sectors, fleet, fleet.Waypoints);
         }
 
-        AddPreviewRoutes(routes, resolvedFleetIds, game, playerFactionId, waypointPlan);
+        AddPreviewRoutes(routes, resolvedFleetIds, sectors, playerFactionId, waypointPlan);
         return routes;
     }
 
     /// <summary>
     /// Resolves player fleets whose committed routes should be displayed.
     /// </summary>
-    /// <param name="game">The authoritative active game.</param>
+    /// <param name="sectors">The faction-filtered strategy sectors.</param>
     /// <param name="playerFactionId">The viewing player's faction identifier.</param>
     /// <param name="selectedFleetInstanceIds">The fleet routes visible through selection.</param>
     /// <param name="showAllRoutes">Whether every player waypoint route is visible.</param>
     /// <returns>The visible fleets.</returns>
     private static IEnumerable<Fleet> ResolveVisibleFleets(
-        GameRoot game,
+        IReadOnlyList<GalaxyMapSector> sectors,
         string playerFactionId,
         IReadOnlyCollection<string> selectedFleetInstanceIds,
         bool showAllRoutes
@@ -123,14 +122,17 @@ internal static class FleetWaypointRouteResolver
     {
         if (showAllRoutes)
         {
-            return game.GetSceneNodesByType<Fleet>(fleet =>
-                string.Equals(fleet.OwnerInstanceID, playerFactionId, StringComparison.Ordinal)
-                && fleet.HasWaypoints()
-            );
+            return sectors
+                .SelectMany(sector => sector.Planets)
+                .SelectMany(planet => planet.Planet.GetChildren<Fleet>())
+                .Where(fleet =>
+                    string.Equals(fleet.OwnerInstanceID, playerFactionId, StringComparison.Ordinal)
+                    && fleet.HasWaypoints()
+                );
         }
 
         return (selectedFleetInstanceIds ?? Array.Empty<string>())
-            .Select(fleetId => game.GetSceneNodeByInstanceID<Fleet>(fleetId))
+            .Select(fleetId => FindVisibleNode<Fleet>(sectors, fleetId))
             .Where(fleet =>
                 fleet != null
                 && string.Equals(fleet.OwnerInstanceID, playerFactionId, StringComparison.Ordinal)
@@ -143,13 +145,13 @@ internal static class FleetWaypointRouteResolver
     /// </summary>
     /// <param name="routes">The resolved route collection.</param>
     /// <param name="resolvedFleetIds">The fleet identifiers already represented.</param>
-    /// <param name="game">The authoritative active game.</param>
+    /// <param name="sectors">The faction-filtered strategy sectors.</param>
     /// <param name="playerFactionId">The viewing player's faction identifier.</param>
     /// <param name="waypointPlan">The active uncommitted waypoint plan, or null.</param>
     private static void AddPreviewRoutes(
         ICollection<FleetWaypointRoute> routes,
         ISet<string> resolvedFleetIds,
-        GameRoot game,
+        IReadOnlyList<GalaxyMapSector> sectors,
         string playerFactionId,
         StrategyWindowTargetingSource waypointPlan
     )
@@ -165,7 +167,7 @@ internal static class FleetWaypointRouteResolver
         {
             selectedFleets = waypointPlan
                 .Items.OfType<CapitalShip>()
-                .Select(ship => game.GetSceneNodeByInstanceID<CapitalShip>(ship.InstanceID))
+                .Select(ship => FindVisibleNode<CapitalShip>(sectors, ship.InstanceID))
                 .Where(ship => ship != null)
                 .Select(ship => ship.GetParentOfType<Fleet>());
         }
@@ -174,7 +176,7 @@ internal static class FleetWaypointRouteResolver
         {
             Fleet fleet = string.IsNullOrEmpty(selectedFleet?.InstanceID)
                 ? null
-                : game.GetSceneNodeByInstanceID<Fleet>(selectedFleet.InstanceID);
+                : FindVisibleNode<Fleet>(sectors, selectedFleet.InstanceID);
             if (
                 fleet == null
                 || !string.Equals(fleet.OwnerInstanceID, playerFactionId, StringComparison.Ordinal)
@@ -191,7 +193,7 @@ internal static class FleetWaypointRouteResolver
             }
 
             previewWaypointIds.AddRange(waypointPlan.WaypointPlanetIds);
-            AddRoute(routes, game, fleet, previewWaypointIds);
+            AddRoute(routes, sectors, fleet, previewWaypointIds);
         }
     }
 
@@ -199,23 +201,23 @@ internal static class FleetWaypointRouteResolver
     /// Resolves and adds one route from its ordered planet identifiers.
     /// </summary>
     /// <param name="routes">The resolved route collection.</param>
-    /// <param name="game">The authoritative active game.</param>
+    /// <param name="sectors">The faction-filtered strategy sectors.</param>
     /// <param name="fleet">The fleet represented by the route.</param>
     /// <param name="waypointPlanetIds">The ordered waypoint planet identifiers.</param>
     private static void AddRoute(
         ICollection<FleetWaypointRoute> routes,
-        GameRoot game,
+        IReadOnlyList<GalaxyMapSector> sectors,
         Fleet fleet,
         IReadOnlyList<string> waypointPlanetIds
     )
     {
-        if (routes == null || game == null || fleet == null || waypointPlanetIds == null)
+        if (routes == null || sectors == null || fleet == null || waypointPlanetIds == null)
             return;
 
         List<FleetWaypointRouteStop> stops = new List<FleetWaypointRouteStop>();
         for (int index = 0; index < waypointPlanetIds.Count; index++)
         {
-            Planet waypoint = game.GetSceneNodeByInstanceID<Planet>(waypointPlanetIds[index]);
+            Planet waypoint = FindVisiblePlanet(sectors, waypointPlanetIds[index]);
             if (waypoint != null)
                 stops.Add(new FleetWaypointRouteStop(index + 1, waypoint));
         }
@@ -223,7 +225,7 @@ internal static class FleetWaypointRouteResolver
         if (stops.Count == 0)
             return;
 
-        Planet originPlanet = ResolveOriginPlanet(game, fleet);
+        Planet originPlanet = ResolveOriginPlanet(sectors, fleet);
         Point originPosition =
             fleet.Movement?.OriginPosition
             ?? originPlanet?.GetPosition()
@@ -234,16 +236,71 @@ internal static class FleetWaypointRouteResolver
     /// <summary>
     /// Resolves the planet from which a fleet's displayed route begins.
     /// </summary>
-    /// <param name="game">The authoritative active game.</param>
+    /// <param name="sectors">The faction-filtered strategy sectors.</param>
     /// <param name="fleet">The fleet represented by the route.</param>
     /// <returns>The route's origin planet, or null when it cannot be resolved.</returns>
-    private static Planet ResolveOriginPlanet(GameRoot game, Fleet fleet)
+    private static Planet ResolveOriginPlanet(IReadOnlyList<GalaxyMapSector> sectors, Fleet fleet)
     {
         if (fleet?.Movement == null)
-            return fleet?.GetParentOfType<Planet>();
+        {
+            return FindVisiblePlanet(sectors, fleet?.GetParentOfType<Planet>()?.InstanceID);
+        }
 
         Point originPosition = fleet.Movement.OriginPosition;
-        return game.GetSceneNodesByType<Planet>()
+        return sectors
+            .SelectMany(sector => sector.Planets)
+            .Select(planet => planet.Planet)
             .FirstOrDefault(planet => planet.GetPosition() == originPosition);
+    }
+
+    /// <summary>
+    /// Finds a visible planet by stable identifier.
+    /// </summary>
+    /// <param name="sectors">The faction-filtered strategy sectors.</param>
+    /// <param name="instanceId">The planet identifier.</param>
+    /// <returns>The visible planet, or null.</returns>
+    private static Planet FindVisiblePlanet(
+        IReadOnlyList<GalaxyMapSector> sectors,
+        string instanceId
+    )
+    {
+        return string.IsNullOrEmpty(instanceId)
+            ? null
+            : sectors
+                .SelectMany(sector => sector.Planets)
+                .Select(planet => planet.Planet)
+                .FirstOrDefault(planet => planet.InstanceID == instanceId);
+    }
+
+    /// <summary>
+    /// Finds a visible scene node by stable identifier.
+    /// </summary>
+    /// <typeparam name="T">The requested scene-node type.</typeparam>
+    /// <param name="sectors">The faction-filtered strategy sectors.</param>
+    /// <param name="instanceId">The node identifier.</param>
+    /// <returns>The visible node, or null.</returns>
+    private static T FindVisibleNode<T>(IReadOnlyList<GalaxyMapSector> sectors, string instanceId)
+        where T : class, Rebellion.SceneGraph.ISceneNode
+    {
+        if (string.IsNullOrEmpty(instanceId))
+            return null;
+
+        foreach (
+            Planet planet in sectors
+                .SelectMany(sector => sector.Planets)
+                .Select(item => item.Planet)
+        )
+        {
+            if (planet is T matchingPlanet && matchingPlanet.InstanceID == instanceId)
+                return matchingPlanet;
+
+            T match = planet
+                .GetChildren<T>(recursive: true, includeDisabled: true)
+                .FirstOrDefault(node => node.InstanceID == instanceId);
+            if (match != null)
+                return match;
+        }
+
+        return null;
     }
 }

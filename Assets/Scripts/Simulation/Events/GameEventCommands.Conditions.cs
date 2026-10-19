@@ -47,6 +47,7 @@ namespace Rebellion.Simulation
                 IsActiveConditional value => IsMet(value, context),
                 IsInTransitConditional value => IsMet(value, context),
                 IsAtLocationConditional value => IsMet(value, context),
+                HasParentConditional value => IsMet(value, context),
                 null => throw new NullReferenceException(),
                 _ => throw new InvalidOperationException(
                     $"Unsupported condition '{definition.GetType().Name}'."
@@ -689,6 +690,26 @@ namespace Rebellion.Simulation
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// Checks whether the configured node has the configured immediate parent.
+        /// </summary>
+        /// <param name="definition">The authored condition being evaluated.</param>
+        /// <param name="context">The context providing the current game state.</param>
+        /// <returns>True when the node's immediate parent matches.</returns>
+        private static bool IsMet(HasParentConditional definition, GameConditionContext context)
+        {
+            GameRoot game = context.Game;
+            ISceneNode node = game.GetSceneNodeByInstanceID<ISceneNode>(
+                definition.UnitInstanceID,
+                includeDisabled: true
+            );
+            ISceneNode parent = game.GetSceneNodeByInstanceID<ISceneNode>(
+                definition.ParentInstanceID,
+                includeDisabled: true
+            );
+            return node != null && parent != null && ReferenceEquals(node.GetParent(), parent);
         }
     }
 

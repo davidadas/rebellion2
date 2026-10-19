@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Rebellion.Game;
 using Rebellion.Util.Logging;
 using Rebellion.Util.Serialization;
@@ -425,10 +426,58 @@ public class SaveGameManager
     public GameRoot LoadGameData(string fileName)
     {
         string saveFilePath = GetSaveFilePath(fileName);
+        return DeserializeGame(saveFilePath);
+    }
 
-        GameSerializer serializer = CreateSaveDeserializer(typeof(GameRoot));
+    /// <summary>
+    /// Reads and deserializes a saved game without blocking the caller's synchronization context.
+    /// </summary>
+    /// <param name="fileName">The name of the save file.</param>
+    /// <returns>A task containing the loaded game data.</returns>
+    public async Task<GameRoot> LoadGameDataAsync(string fileName)
+    {
+        string saveFilePath = GetSaveFilePath(fileName);
+        List<(Type ObjectType, string ElementName)> skippedElements = new();
+        GameRoot loadedGame = await Task.Run(() =>
+            DeserializeGame(
+                saveFilePath,
+                (objectType, elementName) => skippedElements.Add((objectType, elementName))
+            )
+        );
+        foreach (
+            IGrouping<
+                (Type ObjectType, string ElementName),
+                (Type ObjectType, string ElementName)
+            > group in skippedElements.GroupBy(item => item)
+        )
+        {
+            LogUnknownSaveElement(group.Key.ObjectType, group.Key.ElementName, group.Count());
+        }
+        return loadedGame;
+    }
 
-        using FileStream fileStream = new FileStream(saveFilePath, FileMode.Open);
+    /// <summary>
+    /// Reads and deserializes one game save from an absolute path.
+    /// </summary>
+    /// <param name="saveFilePath">The absolute save path.</param>
+    /// <param name="unknownElementSkipped">Receives elements omitted for compatibility.</param>
+    /// <returns>The deserialized game data.</returns>
+    private static GameRoot DeserializeGame(
+        string saveFilePath,
+        Action<Type, string> unknownElementSkipped = null
+    )
+    {
+        GameSerializer serializer = CreateSaveDeserializer(
+            typeof(GameRoot),
+            unknownElementSkipped: unknownElementSkipped
+        );
+
+        using FileStream fileStream = new FileStream(
+            saveFilePath,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.Read
+        );
         return (GameRoot)serializer.Deserialize(fileStream);
     }
 
@@ -441,7 +490,7 @@ public class SaveGameManager
     {
         try
         {
-            GameMetadata metadata = ReadSaveMetadata(fileName);
+            GameMetadata metadata = GetSaveMetadata(fileName);
             return new SaveGameEntry(fileName, metadata);
         }
         catch (Exception ex)
@@ -458,9 +507,18 @@ public class SaveGameManager
     /// </summary>
     /// <param name="fileName">The save file name without its extension.</param>
     /// <returns>The deserialized save metadata.</returns>
-    private GameMetadata ReadSaveMetadata(string fileName)
+    public GameMetadata GetSaveMetadata(string fileName)
     {
+        if (string.IsNullOrWhiteSpace(fileName))
+            throw new ArgumentException("A save file name is required.", nameof(fileName));
+
         string saveFilePath = GetSaveFilePath(fileName);
+        if (!File.Exists(saveFilePath))
+            throw new FileNotFoundException(
+                "The requested save file does not exist.",
+                saveFilePath
+            );
+
         string metadataFilePath = GetSaveMetadataFilePath(fileName);
         if (
             File.Exists(metadataFilePath)
@@ -564,8 +622,13 @@ public class SaveGameManager
     /// </summary>
     /// <param name="type">The root type to deserialize.</param>
     /// <param name="rootName">The optional serialized root element name.</param>
+    /// <param name="unknownElementSkipped">Receives elements omitted for compatibility.</param>
     /// <returns>The configured save-game deserializer.</returns>
-    private static GameSerializer CreateSaveDeserializer(Type type, string rootName = null)
+    private static GameSerializer CreateSaveDeserializer(
+        Type type,
+        string rootName = null,
+        Action<Type, string> unknownElementSkipped = null
+    )
     {
         return new GameSerializer(
             type,
@@ -573,20 +636,36 @@ public class SaveGameManager
             {
                 RootName = rootName,
                 IgnoreUnknownElements = true,
-                UnknownElementSkipped = WarnUnknownSaveElement,
+                UnknownElementSkipped = unknownElementSkipped ?? LogUnknownSaveElement,
             }
         );
     }
 
     /// <summary>
-    /// Warns that a save contained an element unknown to the current game version.
+    /// Logs that a save contained an element unknown to the current game version.
     /// </summary>
     /// <param name="objectType">The object type that did not recognize the element.</param>
     /// <param name="elementName">The skipped XML element name.</param>
-    private static void WarnUnknownSaveElement(Type objectType, string elementName)
+    private static void LogUnknownSaveElement(Type objectType, string elementName)
     {
-        GameLogger.Warning(
-            $"Ignored unknown element '{elementName}' while loading {objectType.Name}."
+        LogUnknownSaveElement(objectType, elementName, 1);
+    }
+
+    /// <summary>
+    /// Logs a counted group of matching unknown save elements at verbose level.
+    /// </summary>
+    /// <param name="objectType">The object type that did not recognize the element.</param>
+    /// <param name="elementName">The skipped XML element name.</param>
+    /// <param name="occurrenceCount">The number of matching skipped elements.</param>
+    private static void LogUnknownSaveElement(
+        Type objectType,
+        string elementName,
+        int occurrenceCount
+    )
+    {
+        string occurrenceSuffix = occurrenceCount > 1 ? $" ({occurrenceCount} occurrences)" : "";
+        GameLogger.Debug(
+            $"Ignored unknown element '{elementName}' while loading {objectType.Name}{occurrenceSuffix}."
         );
     }
 }

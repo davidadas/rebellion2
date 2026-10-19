@@ -9,6 +9,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Simulation;
+using Rebellion.Util.Mathematics;
 
 namespace Rebellion.AI
 {
@@ -96,6 +97,16 @@ namespace Rebellion.AI
             string,
             List<Fleet>
         >(StringComparer.Ordinal);
+        private readonly HashSet<string> _knownHostileFleetPlanetIds = new HashSet<string>(
+            StringComparer.Ordinal
+        );
+        private readonly Dictionary<string, int> _knownIncomingHostileFleetStrengths =
+            new Dictionary<string, int>(StringComparer.Ordinal);
+        private readonly Dictionary<
+            (string PlanetId, string OwnerId),
+            int
+        > _knownIncomingHostileFleetStrengthsByOwner =
+            new Dictionary<(string PlanetId, string OwnerId), int>();
         private readonly Dictionary<string, Planet> _fleetPlanets = new Dictionary<string, Planet>(
             StringComparer.Ordinal
         );
@@ -143,6 +154,7 @@ namespace Rebellion.AI
             new Dictionary<ManufacturingType, int>();
         private readonly Dictionary<ManufacturingType, double> _queuedProductionClearTicks =
             new Dictionary<ManufacturingType, double>();
+        private HashSet<string> _queuedManufacturableIds;
         private int? _productionFacilityMaintenance;
         private readonly Dictionary<
             (string PlanetId, ManufacturingType ManufacturingType),
@@ -197,14 +209,34 @@ namespace Rebellion.AI
 
         public IReadOnlyList<Planet> OwnedPlanets { get; }
 
+        public Planet FactionHeadquarters { get; }
+
         public IReadOnlyList<Planet> EnemyPlanets { get; }
 
         public IReadOnlyList<Planet> NeutralPlanets { get; }
 
         // Economy.
+        public int MaintenanceCapacityPerResourcePair { get; }
+
         public int MaintenanceCapacity { get; }
 
         public int ProjectedMaintenanceHeadroom { get; }
+
+        public int AvailableResourceNodeCapacity { get; }
+
+        public int AvailableMinedResourceCapacity { get; }
+
+        public int AvailableRefinementCapacity { get; }
+
+        public int AvailableMaterialCapacity { get; }
+
+        public int ProjectedResourceNodeCapacity { get; }
+
+        public int ProjectedMinedResourceCapacity { get; }
+
+        public int ProjectedRefinementCapacity { get; }
+
+        public int ProjectedMaterialCapacity { get; }
 
         public int ProjectedEconomyMaintenanceHeadroom { get; }
 
@@ -214,12 +246,16 @@ namespace Rebellion.AI
 
         public int NearTermRefinedMaterialCommitment { get; }
 
+        public int ProjectedRefinedMaterialPercent { get; }
+
         public int PendingRawMaterialRequestCount { get; }
 
         public int PendingRefinedMaterialRequestCount { get; }
 
         // Missions.
         public IReadOnlyList<IMissionParticipant> AvailableMissionParticipants { get; }
+
+        public IReadOnlyList<SpecialForces> OwnedSpecialForces { get; }
 
         internal IReadOnlyList<Mission> ActiveMissions { get; }
 
@@ -256,24 +292,38 @@ namespace Rebellion.AI
                     .Select(candidate => candidate.InstanceID)
                     .ToList()
                 ?? new List<string>();
-            int availableMaterials = faction?.GetTotalAvailableMaterialsRaw() ?? 0;
-            int maintenanceCapacityPerFacility =
-                ResourceProductionQueries.CalculateMaintenanceCapacityPerFacility(game, faction);
-            MaintenanceCapacity = availableMaterials * maintenanceCapacityPerFacility;
-            ProjectedMaintenanceHeadroom =
-                MaintenanceCapacity - (faction?.GetTotalProjectedMaintenanceCost() ?? 0);
-            int projectedMaterials = Math.Min(
-                faction?.GetTotalRawResourceNodes() ?? 0,
-                Math.Min(
-                    faction?.GetTotalRawMinedResources() ?? 0,
-                    faction?.GetTotalRawRefinementCapacity() ?? 0
-                )
+            AvailableResourceNodeCapacity = faction?.GetTotalAvailableResourceNodes() ?? 0;
+            AvailableMinedResourceCapacity = faction?.GetTotalAvailableMinedResources() ?? 0;
+            AvailableRefinementCapacity = faction?.GetTotalAvailableRefinementCapacity() ?? 0;
+            AvailableMaterialCapacity = Math.Min(
+                AvailableResourceNodeCapacity,
+                Math.Min(AvailableMinedResourceCapacity, AvailableRefinementCapacity)
             );
-            ProjectedEconomyMaintenanceHeadroom =
-                projectedMaterials * maintenanceCapacityPerFacility
-                - (faction?.GetTotalProjectedMaintenanceCost() ?? 0);
-            RefinedMaterialSupply =
-                availableMaterials * (faction?.Settings?.RefinementMultiplier ?? 0);
+            MaintenanceCapacityPerResourcePair =
+                ResourceProductionQueries.CalculateMaintenanceCapacityPerFacility(game, faction);
+            MaintenanceCapacity = IntegerMath.SaturatingMultiply(
+                AvailableMaterialCapacity,
+                MaintenanceCapacityPerResourcePair
+            );
+            ProjectedMaintenanceHeadroom = IntegerMath.SaturateToInt(
+                (long)AvailableMaterialCapacity * MaintenanceCapacityPerResourcePair
+                    - (faction?.GetTotalProjectedMaintenanceCost() ?? 0)
+            );
+            ProjectedResourceNodeCapacity = faction?.GetTotalRawResourceNodes() ?? 0;
+            ProjectedMinedResourceCapacity = faction?.GetTotalRawMinedResources() ?? 0;
+            ProjectedRefinementCapacity = faction?.GetTotalRawRefinementCapacity() ?? 0;
+            ProjectedMaterialCapacity = Math.Min(
+                ProjectedResourceNodeCapacity,
+                Math.Min(ProjectedMinedResourceCapacity, ProjectedRefinementCapacity)
+            );
+            ProjectedEconomyMaintenanceHeadroom = IntegerMath.SaturateToInt(
+                (long)ProjectedMaterialCapacity * MaintenanceCapacityPerResourcePair
+                    - (faction?.GetTotalProjectedMaintenanceCost() ?? 0)
+            );
+            RefinedMaterialSupply = IntegerMath.SaturatingMultiply(
+                AvailableMaterialCapacity,
+                faction?.Settings?.RefinementMultiplier ?? 0
+            );
             RefinedMaterialStockpile = faction?.RefinedMaterialStockpile ?? 0;
             PendingRawMaterialRequestCount = faction?.PendingRawMaterialFacilityIDs?.Count ?? 0;
             PendingRefinedMaterialRequestCount =
@@ -326,12 +376,24 @@ namespace Rebellion.AI
             }
             BuildMissionDetectorIndex();
             OwnedPlanets = BuildOwnedPlanets();
+            FactionHeadquarters = OwnedPlanets.FirstOrDefault(IsFactionHeadquarters);
+            OwnedSpecialForces = BuildOwnedSpecialForces();
             UnfinishedPlanetStarfighterCount = OwnedPlanets
                 .SelectMany(GetPlanetStarfighters)
                 .Count(starfighter =>
                     starfighter.ManufacturingStatus != ManufacturingStatus.Complete
                 );
             NearTermRefinedMaterialCommitment = GetNearTermRefinedMaterialCommitment();
+            long projectedRefinedMaterials = Math.Max(
+                0,
+                (long)RefinedMaterialStockpile - NearTermRefinedMaterialCommitment
+            );
+            ProjectedRefinedMaterialPercent =
+                RefinedMaterialSupply <= 0
+                    ? projectedRefinedMaterials > 0
+                        ? 100
+                        : 0
+                    : (int)Math.Min(100, projectedRefinedMaterials * 100 / RefinedMaterialSupply);
             EnemyPlanets = BuildEnemyPlanets();
             NeutralPlanets = BuildNeutralPlanets();
             AvailableMissionParticipants = BuildAvailableMissionParticipants();
@@ -924,6 +986,42 @@ namespace Rebellion.AI
         }
 
         /// <summary>
+        /// Returns whether an owned manufacturable is present in a planetary production queue.
+        /// </summary>
+        /// <param name="manufacturable">The manufacturable to inspect.</param>
+        /// <returns>True when the manufacturable is currently queued.</returns>
+        public bool IsQueuedForManufacturing(IManufacturable manufacturable)
+        {
+            if (manufacturable == null || string.IsNullOrEmpty(manufacturable.InstanceID))
+                return false;
+
+            _queuedManufacturableIds ??= BuildQueuedManufacturableIds();
+            return _queuedManufacturableIds.Contains(manufacturable.InstanceID);
+        }
+
+        /// <summary>
+        /// Builds the turn-scoped index of owned queued manufacturables.
+        /// </summary>
+        /// <returns>The queued manufacturable identifiers.</returns>
+        private HashSet<string> BuildQueuedManufacturableIds()
+        {
+            HashSet<string> queuedIds = new(StringComparer.Ordinal);
+            foreach (Planet planet in OwnedPlanets)
+            {
+                foreach (List<IManufacturable> queue in planet.GetManufacturingQueue().Values)
+                {
+                    foreach (IManufacturable item in queue)
+                    {
+                        if (!string.IsNullOrEmpty(item?.InstanceID))
+                            queuedIds.Add(item.InstanceID);
+                    }
+                }
+            }
+
+            return queuedIds;
+        }
+
+        /// <summary>
         /// Returns the regiments attached to a planet during this AI turn.
         /// </summary>
         /// <param name="planet">The planet to inspect.</param>
@@ -1408,6 +1506,32 @@ namespace Rebellion.AI
             )
             {
                 AddIndexedValue(_hostileFleetsByPlanetId, planet.InstanceID, fleet);
+                _knownHostileFleetPlanetIds.Add(planet.InstanceID);
+                if (fleet.Movement != null)
+                {
+                    (string PlanetId, string OwnerId) key = (
+                        planet.InstanceID,
+                        fleet.GetOwnerInstanceID()
+                    );
+                    _knownIncomingHostileFleetStrengthsByOwner.TryGetValue(
+                        key,
+                        out int currentOwnerStrength
+                    );
+                    int strength = (int)
+                        Math.Min(
+                            int.MaxValue,
+                            (long)currentOwnerStrength + Math.Max(0, fleet.GetCombatValue())
+                        );
+                    _knownIncomingHostileFleetStrengthsByOwner[key] = strength;
+                    if (
+                        !_knownIncomingHostileFleetStrengths.TryGetValue(
+                            planet.InstanceID,
+                            out int currentStrength
+                        )
+                        || strength > currentStrength
+                    )
+                        _knownIncomingHostileFleetStrengths[planet.InstanceID] = strength;
+                }
                 if (fleet.Movement == null)
                     _missionHostileFleetPlanetIds.Add(planet.InstanceID);
             }
@@ -1719,6 +1843,58 @@ namespace Rebellion.AI
             return _hostileFleetsByPlanetId.TryGetValue(planet.InstanceID, out List<Fleet> fleets)
                 ? fleets
                 : Array.Empty<Fleet>();
+        }
+
+        /// <summary>
+        /// Returns whether the faction's current intelligence contains a hostile fleet at a
+        /// planet.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <returns>True when a hostile fleet is known at the planet.</returns>
+        public bool HasKnownHostileFleet(Planet planet)
+        {
+            return planet != null && _knownHostileFleetPlanetIds.Contains(planet.InstanceID);
+        }
+
+        /// <summary>
+        /// Returns the strongest known hostile fleet approaching a planet.
+        /// </summary>
+        /// <param name="planet">The destination planet to inspect.</param>
+        /// <returns>The strongest known incoming fleet combat value.</returns>
+        public int GetKnownIncomingHostileFleetStrength(Planet planet)
+        {
+            return
+                planet != null
+                && _knownIncomingHostileFleetStrengths.TryGetValue(
+                    planet.InstanceID,
+                    out int strength
+                )
+                ? strength
+                : 0;
+        }
+
+        /// <summary>
+        /// Returns the ready orbital strength currently stationed at a faction headquarters.
+        /// </summary>
+        /// <param name="planet">The headquarters planet to inspect.</param>
+        /// <returns>The combined ready fleet and planetary-fighter combat value.</returns>
+        public int GetHeadquartersOrbitalDefenseStrength(Planet planet)
+        {
+            if (!IsFactionHeadquarters(planet))
+                return 0;
+
+            int fleetStrength = GetFriendlyFleets(planet)
+                .Where(fleet => fleet.Movement == null)
+                .Sum(GetReadyFleetCombatValue);
+            int planetaryFighterStrength = GetPlanetStarfighters(planet)
+                .Where(starfighter =>
+                    starfighter.GetOwnerInstanceID() == _faction.InstanceID
+                    && starfighter.ManufacturingStatus == ManufacturingStatus.Complete
+                    && starfighter.Movement == null
+                    && starfighter.CurrentSquadronSize > 0
+                )
+                .Sum(starfighter => starfighter.GetCombatValue());
+            return fleetStrength + planetaryFighterStrength;
         }
 
         /// <summary>
@@ -2604,6 +2780,15 @@ namespace Rebellion.AI
                 .OrderBy(GetPlanetSystemPositionX)
                 .ThenBy(planet => planet.InstanceID)
                 .ToList();
+        }
+
+        /// <summary>
+        /// Builds the faction's owned special-forces list from its ownership index.
+        /// </summary>
+        /// <returns>Owned special-forces units.</returns>
+        private List<SpecialForces> BuildOwnedSpecialForces()
+        {
+            return _faction?.GetOwnedUnitsByType<SpecialForces>() ?? new List<SpecialForces>();
         }
 
         /// <summary>

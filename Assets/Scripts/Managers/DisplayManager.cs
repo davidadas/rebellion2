@@ -236,14 +236,13 @@ public sealed class DisplayManager
     }
 
     /// <summary>
-    /// Applies a display mode through Unity outside the editor.
+    /// Applies a display mode through Unity.
     /// </summary>
     /// <param name="width">The width.</param>
     /// <param name="height">The height.</param>
     /// <param name="mode">The mode.</param>
     private static void ApplyUnityResolution(int width, int height, FullScreenMode mode)
     {
-        if (!Application.isEditor)
-            Screen.SetResolution(width, height, mode);
+        Screen.SetResolution(width, height, mode);
     }
 }

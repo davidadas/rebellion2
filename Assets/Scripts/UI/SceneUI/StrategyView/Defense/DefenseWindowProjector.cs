@@ -15,14 +15,20 @@ internal sealed class DefenseWindowProjector
     private static readonly Color32 _white = Color.white;
 
     private readonly Func<UIContext> getUIContext;
+    private readonly Func<bool> getStatsOverlayEnabled;
 
     /// <summary>
     /// Creates the Defense presentation projector.
     /// </summary>
     /// <param name="getUIContext">Returns the current strategy presentation context.</param>
-    public DefenseWindowProjector(Func<UIContext> getUIContext)
+    /// <param name="getStatsOverlayEnabled">Returns whether unit-card stat overlays are enabled.</param>
+    public DefenseWindowProjector(
+        Func<UIContext> getUIContext,
+        Func<bool> getStatsOverlayEnabled = null
+    )
     {
         this.getUIContext = getUIContext ?? throw new ArgumentNullException(nameof(getUIContext));
+        this.getStatsOverlayEnabled = getStatsOverlayEnabled ?? (() => false);
     }
 
     /// <summary>
@@ -74,7 +80,8 @@ internal sealed class DefenseWindowProjector
                     ownerFactionId,
                     item,
                     items.Count,
-                    session.SelectedItemIndexes
+                    session.SelectedItemIndexes,
+                    getStatsOverlayEnabled()
                 )
             );
         }
@@ -277,6 +284,7 @@ internal sealed class DefenseWindowProjector
     /// <param name="item">The represented scene node.</param>
     /// <param name="index">The card index.</param>
     /// <param name="selectedItems">The current selected indices.</param>
+    /// <param name="showStatsOverlay">Whether to project unit-card stat overlays.</param>
     /// <returns>The immutable unit-card presentation.</returns>
     private static StrategyUnitCardRenderData CreateItemRenderData(
         UIContext uiContext,
@@ -284,7 +292,8 @@ internal sealed class DefenseWindowProjector
         string ownerFactionId,
         ISceneNode item,
         int index,
-        IReadOnlyCollection<int> selectedItems
+        IReadOnlyCollection<int> selectedItems,
+        bool showStatsOverlay
     )
     {
         bool selected = selectedItems?.Contains(index) == true;
@@ -303,7 +312,8 @@ internal sealed class DefenseWindowProjector
             starfighterBadgeTexture: null,
             troopBadgeTexture: null,
             personnelBadgeTexture: null,
-            canDrag: DefenseWindowSession.CanDragItem(item)
+            canDrag: DefenseWindowSession.CanDragItem(item),
+            statsOverlay: showStatsOverlay ? StrategyUnitCardStatsOverlayBuilder.Build(item) : null
         );
     }
 

@@ -224,6 +224,36 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         }
 
         [Test]
+        public void ApplyGameLaunchSpeed_Unchanged_PreservesGameSpeed()
+        {
+            GameRoot game = TestGame.Create(new GameConfig());
+            GameManager manager = CreateGameManager(game);
+            manager.SetGameSpeed(TickSpeed.Fast);
+
+            GameFlowController.ApplyGameLaunchSpeed(manager, GameLaunchSpeed.Unchanged);
+
+            Assert.AreEqual(TickSpeed.Fast, manager.GetGameSpeed());
+        }
+
+        [TestCase(GameLaunchSpeed.Paused, TickSpeed.Paused)]
+        [TestCase(GameLaunchSpeed.VerySlow, TickSpeed.VerySlow)]
+        [TestCase(GameLaunchSpeed.Slow, TickSpeed.Slow)]
+        [TestCase(GameLaunchSpeed.Medium, TickSpeed.Medium)]
+        [TestCase(GameLaunchSpeed.Fast, TickSpeed.Fast)]
+        public void ApplyGameLaunchSpeed_SelectedSpeed_SetsGameSpeed(
+            GameLaunchSpeed launchSpeed,
+            TickSpeed expected
+        )
+        {
+            GameRoot game = TestGame.Create(new GameConfig());
+            GameManager manager = CreateGameManager(game);
+
+            GameFlowController.ApplyGameLaunchSpeed(manager, launchSpeed);
+
+            Assert.AreEqual(expected, manager.GetGameSpeed());
+        }
+
+        [Test]
         public void StartNewGameAsync_MissingSummary_ThrowsInvalidOperationException()
         {
             FieldInfo summaryField = typeof(GameLaunchContext).GetField(
@@ -246,18 +276,16 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         }
 
         [Test]
-        public void LoadGame_MissingFileName_ThrowsInvalidOperationException()
+        public void LoadGameAsync_MissingFileName_ThrowsInvalidOperationException()
         {
             string originalFileName = GameLaunchContext.SaveFileName;
             try
             {
                 GameLaunchContext.SaveFileName = null;
 
-                TargetInvocationException exception = Assert.Throws<TargetInvocationException>(() =>
-                    InvokePrivate("LoadGame")
-                );
+                Task load = (Task)InvokePrivate("LoadGameAsync", new object[] { null });
 
-                Assert.IsInstanceOf<InvalidOperationException>(exception.InnerException);
+                Assert.ThrowsAsync<InvalidOperationException>(async () => await load);
             }
             finally
             {
@@ -346,6 +374,19 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         {
             return new FactionThemeLibrary(
                 new FactionThemes { new FactionTheme { FactionInstanceID = "DEFAULT" } }
+            );
+        }
+
+        /// <summary>
+        /// Creates a game clock without composing an entire simulation session.
+        /// </summary>
+        /// <param name="game">The game graph controlled by the clock.</param>
+        /// <returns>A game manager connected to a lightweight tick processor.</returns>
+        private static GameManager CreateGameManager(GameRoot game)
+        {
+            return new GameManager(
+                () => game,
+                new GameTickProcessor((results, _) => new List<GameResult>(results), _ => { })
             );
         }
     }

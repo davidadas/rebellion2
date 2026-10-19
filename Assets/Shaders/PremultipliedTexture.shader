@@ -12,7 +12,7 @@ Shader "Custom/PremultipliedTexture"
         {
             "Queue" = "Transparent"
             "RenderType" = "Transparent"
-            "RenderPipeline" = "UniversalPipeline"
+            "RenderPipeline" = "HDRenderPipeline"
             "IgnoreProjector" = "True"
             "CanUseSpriteAtlas" = "True"
         }
@@ -26,13 +26,14 @@ Shader "Custom/PremultipliedTexture"
         Pass
         {
             Name "UI"
+            Tags { "LightMode" = "SRPDefaultUnlit" }
 
             HLSLPROGRAM
-            #pragma target 2.0
+            #pragma target 3.0
             #pragma vertex Vert
             #pragma fragment Frag
 
-            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            #include "UnityCG.cginc"
 
             struct Attributes
             {
@@ -48,17 +49,13 @@ Shader "Custom/PremultipliedTexture"
                 float2 uv : TEXCOORD0;
             };
 
-            TEXTURE2D(_MainTex);
-            SAMPLER(sampler_MainTex);
-
-            CBUFFER_START(UnityPerMaterial)
-                half4 _Color;
-            CBUFFER_END
+            sampler2D _MainTex;
+            half4 _Color;
 
             Varyings Vert(Attributes input)
             {
                 Varyings output;
-                output.positionHCS = TransformObjectToHClip(input.positionOS.xyz);
+                output.positionHCS = UnityObjectToClipPos(input.positionOS);
                 output.color = input.color * _Color;
                 output.uv = input.uv;
                 return output;
@@ -66,7 +63,7 @@ Shader "Custom/PremultipliedTexture"
 
             half4 Frag(Varyings input) : SV_Target
             {
-                half4 sampleColor = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, input.uv);
+                half4 sampleColor = tex2D(_MainTex, input.uv);
                 return half4(
                     sampleColor.rgb * input.color.rgb * input.color.a,
                     sampleColor.a * input.color.a

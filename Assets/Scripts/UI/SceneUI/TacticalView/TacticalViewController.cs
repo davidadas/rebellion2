@@ -8,6 +8,7 @@ using Rebellion.Game.Combat;
 using Rebellion.SceneGraph;
 using Rebellion.Simulation.Tactical;
 using UnityEngine;
+using UnityEngine.Rendering.HighDefinition;
 
 /// <summary>
 /// Composes the Unity tactical scene with the active battle and its authored map definition.
@@ -445,6 +446,11 @@ public sealed class TacticalViewController : MonoBehaviour
         battleCamera.clearFlags = CameraClearFlags.SolidColor;
         battleCamera.backgroundColor = ToUnityColor(BattleMap.Environment.BackgroundColor);
         battleCamera.allowHDR = true;
+        HDAdditionalCameraData cameraData =
+            battleCamera.GetComponent<HDAdditionalCameraData>()
+            ?? battleCamera.gameObject.AddComponent<HDAdditionalCameraData>();
+        cameraData.clearColorMode = HDAdditionalCameraData.ClearColorMode.Color;
+        cameraData.backgroundColorHDR = battleCamera.backgroundColor.linear;
         TacticalViewCameraController cameraController =
             battleCamera.GetComponent<TacticalViewCameraController>();
         if (cameraController == null)

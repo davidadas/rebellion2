@@ -21,6 +21,7 @@ Shader "Custom/PlanetSurface"
         _CityLightIntensity ("City Light Intensity", Range(0.0, 4.0)) = 1.4
         _NightLightColor ("Night Light Color", Color) = (0.55, 0.68, 1.0, 1.0)
         _NightLightStrength ("Night Light Strength", Range(0.0, 0.25)) = 0.10
+        _SunColor ("Sun Color", Color) = (1.0, 0.98389596, 0.8726415, 1.0)
         _SunDirection ("Sun Direction", Vector) = (0.80, 0.46, -0.38, 0.0)
     }
 
@@ -28,7 +29,7 @@ Shader "Custom/PlanetSurface"
     {
         Tags
         {
-            "RenderPipeline" = "UniversalPipeline"
+            "RenderPipeline" = "HDRenderPipeline"
             "Queue" = "Geometry"
             "RenderType" = "Opaque"
         }
@@ -37,17 +38,16 @@ Shader "Custom/PlanetSurface"
 
         Pass
         {
-            Name "UniversalForward"
-            Tags { "LightMode" = "UniversalForward" }
+            Name "ForwardOnly"
+            Tags { "LightMode" = "ForwardOnly" }
 
             HLSLPROGRAM
-            #pragma target 3.0
+            #pragma target 4.5
+            #pragma require cubearray
             #pragma vertex Vert
             #pragma fragment Frag
-            #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE _MAIN_LIGHT_SHADOWS_SCREEN
-
-            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
-            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+            #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
+            #include "Packages/com.unity.render-pipelines.high-definition/Runtime/ShaderLibrary/ShaderVariables.hlsl"
 
             struct Attributes
             {
@@ -91,6 +91,7 @@ Shader "Custom/PlanetSurface"
                 float _CityLightIntensity;
                 half4 _NightLightColor;
                 float _NightLightStrength;
+                half4 _SunColor;
                 float4 _SunDirection;
             CBUFFER_END
 
@@ -238,7 +239,7 @@ Shader "Custom/PlanetSurface"
                 float3 surfaceNormalWS = ResolveSurfaceNormalWS(input, ocean);
                 float3 viewDirectionWS = GetWorldSpaceNormalizeViewDir(input.positionWS);
                 float3 sunDirectionWS = normalize(_SunDirection.xyz);
-                Light mainLight = GetMainLight(TransformWorldToShadowCoord(input.positionWS));
+                half3 sunColor = _SunColor.rgb;
                 half3 nightLight = _NightLightColor.rgb * _NightLightStrength;
 
                 float angle = radians(
@@ -292,7 +293,7 @@ Shader "Custom/PlanetSurface"
                 half3 litSurface = surface.rgb
                     * (
                         nightLight
-                        + mainLight.color
+                        + sunColor
                             * surfaceSunlight
                             * surfaceShadow
                     );
@@ -308,10 +309,10 @@ Shader "Custom/PlanetSurface"
                 half3 cloudLighting = _CloudColor.rgb
                     * (
                         nightLight * 1.35
-                        + mainLight.color * cloudSunlight * cloudSelfShadow
+                        + sunColor * cloudSunlight * cloudSelfShadow
                     );
                 cloudLighting += _CloudColor.rgb
-                    * mainLight.color
+                    * sunColor
                     * cloudEdge
                     * cloudRim
                     * cloudSunlight

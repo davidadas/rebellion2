@@ -262,9 +262,106 @@ namespace Rebellion.Tests.Util.Serialization
         public ItemWithInclude() { }
     }
 
+    [PersistableObject]
+    public sealed class ItemWithIncludedRuntimeValue
+    {
+        [PersistableInclude(typeof(SimpleItem))]
+        [PersistableInclude(typeof(NestedItem))]
+        public object Value { get; set; }
+
+        /// <summary>
+        /// Creates an item whose value can use either configured runtime type.
+        /// </summary>
+        public ItemWithIncludedRuntimeValue() { }
+    }
+
+    [PersistableObject]
+    public sealed class ItemWithRuntimeTypeName
+    {
+        [PersistableMember(UseTypeName = true)]
+        public object Value { get; set; }
+
+        /// <summary>
+        /// Creates an item whose value uses its runtime type as its XML name.
+        /// </summary>
+        public ItemWithRuntimeTypeName() { }
+    }
+
     [TestFixture]
     public class GameSerializerTests
     {
+        [Test]
+        public void Serialize_IncludedRuntimeTypeChanges_UsesCurrentElementName()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(ItemWithIncludedRuntimeValue));
+            ItemWithIncludedRuntimeValue item = new ItemWithIncludedRuntimeValue
+            {
+                Value = new SimpleItem { Name = "First" },
+            };
+            SerializeToString(serializer, item);
+            item.Value = new NestedItem { Identifier = "Second" };
+
+            XmlDocument document = LoadDocument(SerializeToString(serializer, item));
+
+            Assert.AreEqual(nameof(NestedItem), document.DocumentElement.FirstChild.Name);
+        }
+
+        [Test]
+        public void Serialize_RuntimeTypeNameChanges_UsesCurrentElementName()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(ItemWithRuntimeTypeName));
+            ItemWithRuntimeTypeName item = new ItemWithRuntimeTypeName { Value = "First" };
+            SerializeToString(serializer, item);
+            item.Value = 42;
+
+            XmlDocument document = LoadDocument(SerializeToString(serializer, item));
+
+            Assert.AreEqual(nameof(Int32), document.DocumentElement.FirstChild.Name);
+        }
+
+        [Test]
+        public void Serialize_NamedValuesChange_WritesCurrentPropertyAndAttributeValues()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(ItemWithCustomName));
+            ItemWithCustomName item = new ItemWithCustomName
+            {
+                Property = "First property",
+                Attribute = "First attribute",
+            };
+            SerializeToString(serializer, item);
+            item.Property = "Second property";
+            item.Attribute = "Second attribute";
+
+            XmlDocument document = LoadDocument(SerializeToString(serializer, item));
+
+            Assert.AreEqual(
+                "Second property",
+                document.DocumentElement["CustomNamedProperty"].InnerText
+            );
+            Assert.AreEqual(
+                "Second attribute",
+                document.DocumentElement.GetAttribute("CustomNamedAttribute")
+            );
+        }
+
+        [Test]
+        public void Serialize_NamedCollectionChanges_RoundTripsCurrentItems()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(ItemWithNamedCollectionItems));
+            ItemWithNamedCollectionItems item = new ItemWithNamedCollectionItems
+            {
+                Paths = new List<string> { "First" },
+            };
+            SerializeToString(serializer, item);
+            item.Paths = new List<string> { "Second", "Third" };
+
+            string xml = SerializeToString(serializer, item);
+            ItemWithNamedCollectionItems restored =
+                (ItemWithNamedCollectionItems)DeserializeFromString(serializer, xml);
+
+            CollectionAssert.AreEqual(item.Paths, restored.Paths);
+        }
+
         [Test]
         public void GetPersistableTypes_RepeatedLookup_ReturnsCachedTypes()
         {

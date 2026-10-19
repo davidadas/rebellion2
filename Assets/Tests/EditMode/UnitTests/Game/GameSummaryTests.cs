@@ -1,5 +1,6 @@
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Util.Reflection;
 
 namespace Rebellion.Tests.Game
 {
@@ -35,7 +36,6 @@ namespace Rebellion.Tests.Game
                 summary.StartingFactionIDs,
                 "StartingFactionIDs should be empty by default"
             );
-            Assert.AreEqual(0, summary.StartingResearchLevel, "StartingResearchLevel should be 0");
         }
 
         [Test]
@@ -52,6 +52,8 @@ namespace Rebellion.Tests.Game
         [Test]
         public void SerializeAndDeserialize_PopulatedSummary_MaintainsState()
         {
+            GameGenerationConfig generationConfig = TestContent.Data.GenerationConfig.GetDeepCopy();
+            generationConfig.FacilityGeneration.CoreMineMultiplier = 17;
             GameSummary summary = new GameSummary
             {
                 GalaxySize = GameSize.Medium,
@@ -59,8 +61,20 @@ namespace Rebellion.Tests.Game
                 VictoryCondition = GameVictoryCondition.Headquarters,
                 ResourceAvailability = GameResourceAvailability.Abundant,
                 StartingFactionIDs = new string[] { "FACTION1", "FACTION2" },
-                StartingResearchLevel = 3,
                 PlayerFactionID = "FACTION1",
+                PlayerDifficultyModifiers = new DifficultyModifiers
+                {
+                    MineOutputPercent = 125,
+                    MissionSuccessChancePoints = 10,
+                    DetectionRatingMultiplier = 1.1,
+                },
+                AIDifficultyModifiers = new DifficultyModifiers
+                {
+                    ManufacturingSpeedPercent = 150,
+                    MissionFoilChancePoints = 20,
+                    DetectionRatingMultiplier = 1.25,
+                },
+                GenerationConfigOverride = generationConfig,
             };
 
             string serialized = SerializationHelper.Serialize(summary);
@@ -92,14 +106,44 @@ namespace Rebellion.Tests.Game
                 "StartingFactionIDs length should be correctly deserialized."
             );
             Assert.AreEqual(
-                summary.StartingResearchLevel,
-                deserialized.StartingResearchLevel,
-                "StartingResearchLevel should be correctly deserialized."
-            );
-            Assert.AreEqual(
                 summary.PlayerFactionID,
                 deserialized.PlayerFactionID,
                 "PlayerFactionID should be correctly deserialized."
+            );
+            Assert.AreEqual(
+                125,
+                deserialized.PlayerDifficultyModifiers.MineOutputPercent,
+                "Player modifiers should be correctly deserialized."
+            );
+            Assert.AreEqual(
+                10,
+                deserialized.PlayerDifficultyModifiers.MissionSuccessChancePoints,
+                "Player mission modifiers should be correctly deserialized."
+            );
+            Assert.AreEqual(
+                1.1,
+                deserialized.PlayerDifficultyModifiers.DetectionRatingMultiplier,
+                "Player detection modifiers should be correctly deserialized."
+            );
+            Assert.AreEqual(
+                150,
+                deserialized.AIDifficultyModifiers.ManufacturingSpeedPercent,
+                "AI modifiers should be correctly deserialized."
+            );
+            Assert.AreEqual(
+                20,
+                deserialized.AIDifficultyModifiers.MissionFoilChancePoints,
+                "AI mission modifiers should be correctly deserialized."
+            );
+            Assert.AreEqual(
+                1.25,
+                deserialized.AIDifficultyModifiers.DetectionRatingMultiplier,
+                "AI detection modifiers should be correctly deserialized."
+            );
+            Assert.AreEqual(
+                17,
+                deserialized.GenerationConfigOverride.FacilityGeneration.CoreMineMultiplier,
+                "Generation overrides should be correctly deserialized."
             );
         }
     }

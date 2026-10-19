@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
@@ -126,6 +127,24 @@ namespace Rebellion.Simulation
             }
 
             return factionView;
+        }
+
+        /// <summary>
+        /// Builds the officer roster the faction is entitled to inspect, without exposing officer
+        /// locations that are absent from its galaxy view.
+        /// </summary>
+        /// <param name="factionInstanceId">The faction whose known officer roster is requested.</param>
+        /// <returns>Detached copies of every officer owned by the faction.</returns>
+        public IReadOnlyList<Officer> BuildKnownOfficerRoster(string factionInstanceId)
+        {
+            Faction faction = _game.GetFactionByOwnerInstanceID(factionInstanceId);
+            if (faction == null)
+                return Array.Empty<Officer>();
+
+            return faction
+                .GetOwnedUnitsByType<Officer>(includeDisabled: true)
+                .Select(FogOfWarRecorder.CopyOfficerForSnapshot)
+                .ToArray();
         }
 
         /// <summary>
@@ -552,6 +571,7 @@ namespace Rebellion.Simulation
         {
             Planet viewPlanet = new Planet
             {
+                TypeID = masterPlanet.TypeID,
                 InstanceID = masterPlanet.InstanceID,
                 DisplayName = masterPlanet.DisplayName,
                 PlanetDataId = masterPlanet.PlanetDataId,

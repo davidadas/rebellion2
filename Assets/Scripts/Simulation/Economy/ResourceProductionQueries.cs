@@ -313,14 +313,17 @@ namespace Rebellion.Simulation
             int facilityCapacity = CalculateMaintenanceCapacityPerFacility(game, faction);
             int scaledCapacity = Math.Max(
                 1,
-                facilityCapacity * config.ResourceMaintenanceLoadPercent / _percentScale
+                IntegerMath.ScaleByPercent(facilityCapacity, config.ResourceMaintenanceLoadPercent)
             );
             int maintenancePenalty = DivideRoundingUp(maintenanceAllocation, scaledCapacity);
-            int baseDuration = Math.Max(1, facility.ProcessRate + maintenancePenalty);
+            int baseDuration = Math.Max(
+                1,
+                IntegerMath.SaturatingAdd(facility.ProcessRate, maintenancePenalty)
+            );
             Planet planet = facility.GetParentOfType<Planet>();
             int support = Math.Max(1, planet?.GetPopularSupport(faction.InstanceID) ?? 0);
             int supportModifier = config.ResourceCollectionBasePercent * _percentScale / support;
-            return Math.Max(1, baseDuration * supportModifier / _percentScale);
+            return Math.Max(1, IntegerMath.ScaleByPercent(baseDuration, supportModifier));
         }
 
         /// <summary>
@@ -458,9 +461,11 @@ namespace Rebellion.Simulation
                     Math.Clamp(facility.ResourceMaintenanceAllocation, 0, facilityCapacity)
                 )
                 .ToList();
-            int totalCapacity = allocations.Count * facilityCapacity;
+            int totalCapacity = IntegerMath.SaturatingMultiply(allocations.Count, facilityCapacity);
             int targetAllocation = Math.Min(Math.Max(0, maintenanceDemand), totalCapacity);
-            int currentAllocation = allocations.Sum();
+            int currentAllocation = IntegerMath.SaturateToInt(
+                allocations.Sum(allocation => (long)allocation)
+            );
             if (currentAllocation < targetAllocation)
             {
                 IncreaseMaintenanceAllocations(
@@ -497,14 +502,18 @@ namespace Rebellion.Simulation
             int totalCapacity
         )
         {
-            int currentAllocation = allocations.Sum();
+            int currentAllocation = IntegerMath.SaturateToInt(
+                allocations.Sum(allocation => (long)allocation)
+            );
             bool changed;
             do
             {
                 changed = false;
                 for (int index = 0; index < allocations.Count; index++)
                 {
-                    int idealAllocation = currentAllocation * facilityCapacity / totalCapacity;
+                    int idealAllocation = (int)(
+                        (long)currentAllocation * facilityCapacity / totalCapacity
+                    );
                     int added = Math.Clamp(
                         idealAllocation - allocations[index] + 1,
                         0,
@@ -543,7 +552,9 @@ namespace Rebellion.Simulation
                 changed = false;
                 for (int index = 0; index < allocations.Count; index++)
                 {
-                    int idealAllocation = (remaining - 1) * facilityCapacity / totalCapacity;
+                    int idealAllocation = (int)(
+                        (long)(remaining - 1) * facilityCapacity / totalCapacity
+                    );
                     int removed = Math.Clamp(
                         allocations[index] - idealAllocation,
                         0,
@@ -578,7 +589,10 @@ namespace Rebellion.Simulation
                 faction.GetTotalAvailableResourceNodes(),
                 Math.Min(mineCount, refineryCount)
             );
-            return materialCapacity * CalculateMaintenanceCapacityPerFacility(_game, faction);
+            return IntegerMath.SaturatingMultiply(
+                materialCapacity,
+                CalculateMaintenanceCapacityPerFacility(_game, faction)
+            );
         }
 
         /// <summary>
@@ -592,8 +606,10 @@ namespace Rebellion.Simulation
             if (game == null || faction == null)
                 return 0;
 
-            return faction.GetTotalAvailableMaterialsRaw()
-                * CalculateMaintenanceCapacityPerFacility(game, faction);
+            return IntegerMath.SaturatingMultiply(
+                faction.GetTotalAvailableMaterialsRaw(),
+                CalculateMaintenanceCapacityPerFacility(game, faction)
+            );
         }
 
         /// <summary>
@@ -623,7 +639,7 @@ namespace Rebellion.Simulation
         /// <returns>The rounded-up quotient.</returns>
         private static int DivideRoundingUp(int dividend, int divisor)
         {
-            return (dividend + divisor - 1) / divisor;
+            return IntegerMath.DivideRoundedUp(dividend, divisor);
         }
     }
 

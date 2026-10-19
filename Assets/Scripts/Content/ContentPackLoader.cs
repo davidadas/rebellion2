@@ -11,7 +11,6 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Units;
-using Rebellion.Generation;
 using Rebellion.Util.Serialization;
 using UnityEngine;
 
@@ -67,6 +66,22 @@ public static class ContentPackLoader
     }
 
     /// <summary>
+    /// Gets the pack identifier selected by the content catalog.
+    /// </summary>
+    /// <param name="contentRootPath">The external content root to inspect.</param>
+    /// <returns>The catalog's default pack identifier.</returns>
+    internal static string GetDefaultPackID(string contentRootPath)
+    {
+        string absoluteContentRoot = Path.GetFullPath(
+            contentRootPath ?? throw new ArgumentNullException(nameof(contentRootPath))
+        );
+        ContentCatalogDefinition catalog = DeserializeXml<ContentCatalogDefinition>(
+            Path.Combine(absoluteContentRoot, _catalogFileName)
+        );
+        return catalog.ActivePackID;
+    }
+
+    /// <summary>
     /// Discovers compatible mods for a selected content pack without loading the pack data.
     /// </summary>
     /// <param name="contentRootPath">The external content root to inspect.</param>
@@ -79,11 +94,21 @@ public static class ContentPackLoader
         IEnumerable<string> disabledModIDs
     )
     {
-        string packRoot = ResolvePackRoot(
+        IReadOnlyList<string> packRoots = ResolvePackRoots(
             Path.Combine(Path.GetFullPath(contentRootPath), _packsDirectoryName),
             packID
         );
-        return ContentFileResolver.Discover(contentRootPath, packRoot, packID, disabledModIDs);
+        ContentPackDefinition pack = DeserializeXml<ContentPackDefinition>(
+            Path.Combine(packRoots[0], _packFileName)
+        );
+        return ContentFileResolver.Discover(
+            contentRootPath,
+            packRoots[0],
+            pack.ID,
+            pack.Version,
+            disabledModIDs,
+            packRoots.Skip(1)
+        );
     }
 
     /// <summary>
@@ -182,6 +207,32 @@ public static class ContentPackLoader
     }
 
     /// <summary>
+    /// Opens one exact pack and scenario without falling back to the catalog selection.
+    /// </summary>
+    /// <param name="contentRootPath">The external content root to inspect.</param>
+    /// <param name="packID">The required pack identifier.</param>
+    /// <param name="scenarioID">The required scenario identifier.</param>
+    /// <param name="disabledModIDs">Mod identifiers that must remain disabled.</param>
+    /// <returns>The exact loaded content pack.</returns>
+    internal static ContentPack OpenExact(
+        string contentRootPath,
+        string packID,
+        string scenarioID,
+        IEnumerable<string> disabledModIDs
+    )
+    {
+        if (string.IsNullOrWhiteSpace(packID))
+            throw new InvalidDataException("The save does not identify a content pack.");
+        if (string.IsNullOrWhiteSpace(scenarioID))
+            throw new InvalidDataException("The save does not identify a content scenario.");
+
+        string absoluteContentRoot = Path.GetFullPath(
+            contentRootPath ?? throw new ArgumentNullException(nameof(contentRootPath))
+        );
+        return OpenPack(absoluteContentRoot, packID, scenarioID, disabledModIDs);
+    }
+
+    /// <summary>
     /// Loads and validates a specific pack + scenario from a resolved content root.
     /// </summary>
     /// <param name="absoluteContentRoot">The resolved external content root.</param>
@@ -196,10 +247,11 @@ public static class ContentPackLoader
         IEnumerable<string> disabledModIDs
     )
     {
-        string packRoot = ResolvePackRoot(
+        IReadOnlyList<string> packRoots = ResolvePackRoots(
             Path.Combine(absoluteContentRoot, _packsDirectoryName),
             packID
         );
+        string packRoot = packRoots[0];
         ContentPackDefinition pack = DeserializeXml<ContentPackDefinition>(
             Path.Combine(packRoot, _packFileName)
         );
@@ -214,7 +266,9 @@ public static class ContentPackLoader
             absoluteContentRoot,
             packRoot,
             pack.ID,
-            disabledModIDs
+            pack.Version,
+            disabledModIDs,
+            packRoots.Skip(1)
         );
 
         List<ContentFactionDefinition> factions = LoadDefinitions<ContentFactionDefinition>(
@@ -369,6 +423,13 @@ public static class ContentPackLoader
             pack.BuildingsPath,
             "Buildings"
         );
+        OfficerTraitDefinition[] officerTraits = string.IsNullOrWhiteSpace(pack.OfficerTraitsPath)
+            ? Array.Empty<OfficerTraitDefinition>()
+            : DeserializeGameData<OfficerTraitDefinition[]>(
+                fileResolver,
+                pack.OfficerTraitsPath,
+                "OfficerTraits"
+            );
         GameEvent[] gameEvents = DeserializeGameData<GameEvent[]>(
             fileResolver,
             pack.GameEventsPath,
@@ -464,6 +525,7 @@ public static class ContentPackLoader
             messageDefinitions,
             encyclopediaEntries,
             themes,
+            officerTraits,
             pack.DefaultSpaceBattleMapInstanceIDs
         );
     }
@@ -748,6 +810,8 @@ public static class ContentPackLoader
             throw new InvalidDataException("ContentPack.ID is required.");
         if (string.IsNullOrWhiteSpace(pack.Version))
             throw new InvalidDataException("ContentPack.Version is required.");
+        if (string.IsNullOrWhiteSpace(pack.MainMenuMusicPath))
+            throw new InvalidDataException("ContentPack.MainMenuMusicPath is required.");
         EnsureUniqueIDs(factions.Select(faction => faction.ID), "faction");
         EnsureUniqueIDs(scenarios.Select(scenario => scenario.ID), "scenario");
 
@@ -822,19 +886,22 @@ public static class ContentPackLoader
     }
 
     /// <summary>
-    /// Finds the pack directory whose definition declares the requested ID.
+    /// Resolves the selected pack and its inherited packs in fallback order.
     /// </summary>
     /// <param name="packsRootPath">The directory containing installed packs.</param>
     /// <param name="packID">The stable pack ID selected by the catalog.</param>
-    /// <returns>The absolute root of the selected pack.</returns>
-    private static string ResolvePackRoot(string packsRootPath, string packID)
+    /// <returns>The absolute pack roots from the selected pack through its furthest ancestor.</returns>
+    private static IReadOnlyList<string> ResolvePackRoots(string packsRootPath, string packID)
     {
         if (!Directory.Exists(packsRootPath))
             throw new DirectoryNotFoundException(
                 $"Content packs directory not found: {packsRootPath}"
             );
 
-        string selectedRoot = null;
+        Dictionary<string, List<(string Root, ContentPackDefinition Definition)>> packs =
+            new Dictionary<string, List<(string Root, ContentPackDefinition Definition)>>(
+                StringComparer.Ordinal
+            );
         foreach (string candidateRoot in Directory.EnumerateDirectories(packsRootPath))
         {
             string definitionPath = Path.Combine(candidateRoot, _packFileName);
@@ -842,16 +909,52 @@ public static class ContentPackLoader
                 continue;
 
             ContentPackDefinition candidate = DeserializeXml<ContentPackDefinition>(definitionPath);
-            if (!string.Equals(candidate.ID, packID, StringComparison.Ordinal))
+            if (string.IsNullOrWhiteSpace(candidate.ID))
                 continue;
-            if (selectedRoot != null)
-                throw new InvalidDataException($"Multiple content packs declare ID '{packID}'.");
-
-            selectedRoot = candidateRoot;
+            if (!packs.TryGetValue(candidate.ID, out var matches))
+            {
+                matches = new List<(string Root, ContentPackDefinition Definition)>();
+                packs.Add(candidate.ID, matches);
+            }
+            matches.Add((candidateRoot, candidate));
         }
 
-        return selectedRoot
-            ?? throw new InvalidDataException($"No installed content pack declares ID '{packID}'.");
+        List<string> roots = new List<string>();
+        HashSet<string> visited = new HashSet<string>(StringComparer.Ordinal);
+        string currentPackID = packID;
+        while (!string.IsNullOrWhiteSpace(currentPackID))
+        {
+            if (!visited.Add(currentPackID))
+            {
+                throw new InvalidDataException(
+                    $"Content pack inheritance contains a cycle at '{currentPackID}'."
+                );
+            }
+            if (!packs.TryGetValue(currentPackID, out var matches))
+            {
+                throw new InvalidDataException(
+                    $"No installed content pack declares ID '{currentPackID}'."
+                );
+            }
+            if (matches.Count > 1)
+            {
+                throw new InvalidDataException(
+                    $"Multiple content packs declare ID '{currentPackID}'."
+                );
+            }
+
+            var currentPack = matches[0];
+            if (string.IsNullOrWhiteSpace(currentPack.Definition.Version))
+            {
+                throw new InvalidDataException(
+                    $"Content pack '{currentPackID}' must declare Version."
+                );
+            }
+            roots.Add(currentPack.Root);
+            currentPackID = currentPack.Definition.BasePackID;
+        }
+
+        return roots;
     }
 
     /// <summary>

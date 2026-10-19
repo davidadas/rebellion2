@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.Rendering.HighDefinition;
 using Random = UnityEngine.Random;
 
 /// <summary>
@@ -14,6 +15,7 @@ public sealed class TacticalMapRenderer : MonoBehaviour
     private const string _starShaderName = "Rebellion/Unlit Additive";
     private const string _planetSurfaceShaderName = "Custom/PlanetSurface";
     private const string _planetAtmosphereShaderName = "Custom/PlanetAtmosphere";
+    private const float _builtInDirectionalLightIntensityToHdrp = Mathf.PI;
 
     private readonly List<Transform> cameraRelativeRoots = new List<Transform>();
     private readonly List<ContentModelInstance> embeddedModelInstances =
@@ -23,6 +25,7 @@ public sealed class TacticalMapRenderer : MonoBehaviour
     private readonly List<Texture2D> embeddedTextures = new List<Texture2D>();
     private Camera battleCamera;
     private CancellationTokenSource cancellation;
+    private VolumeProfile environmentVolumeProfile;
     private Task ready = Task.CompletedTask;
     private Material starMaterial;
     private Texture2D starTexture;
@@ -84,27 +87,53 @@ public sealed class TacticalMapRenderer : MonoBehaviour
         DisposeEmbeddedTextures();
         DestroyOwnedAsset(starMaterial);
         DestroyOwnedAsset(starTexture);
+        DestroyOwnedAsset(environmentVolumeProfile);
         starMaterial = null;
         starTexture = null;
+        environmentVolumeProfile = null;
     }
 
     /// <summary>
     /// Applies scene-wide rendering settings authored by the map.
     /// </summary>
     /// <param name="environment">The map environment.</param>
-    private static void ConfigureEnvironment(BattleMapEnvironment environment)
+    private void ConfigureEnvironment(BattleMapEnvironment environment)
     {
         if (environment == null)
             throw new InvalidOperationException("The battle map has no environment settings.");
 
-        RenderSettings.ambientMode = AmbientMode.Trilight;
-        RenderSettings.ambientSkyColor = ToUnityColor(environment.AmbientSkyColor);
-        RenderSettings.ambientEquatorColor = ToUnityColor(environment.AmbientEquatorColor);
-        RenderSettings.ambientGroundColor = ToUnityColor(environment.AmbientGroundColor);
         RenderSettings.reflectionIntensity = 0f;
         RenderSettings.fog = false;
         RenderSettings.skybox = null;
         RenderSettings.sun = null;
+
+        GameObject volumeObject = new GameObject("Tactical Environment", typeof(Volume));
+        volumeObject.transform.SetParent(transform, false);
+        Volume volume = volumeObject.GetComponent<Volume>();
+        volume.isGlobal = true;
+        volume.priority = 1000f;
+
+        environmentVolumeProfile = ScriptableObject.CreateInstance<VolumeProfile>();
+        environmentVolumeProfile.name = "Tactical Environment";
+        environmentVolumeProfile.hideFlags = HideFlags.DontSave;
+        volume.sharedProfile = environmentVolumeProfile;
+
+        VisualEnvironment visualEnvironment = environmentVolumeProfile.Add<VisualEnvironment>();
+        visualEnvironment.skyType.Override((int)SkyType.Gradient);
+        visualEnvironment.skyAmbientMode.Override(SkyAmbientMode.Dynamic);
+
+        GradientSky gradientSky = environmentVolumeProfile.Add<GradientSky>();
+        gradientSky.top.Override(ToUnityColor(environment.AmbientSkyColor));
+        gradientSky.middle.Override(ToUnityColor(environment.AmbientEquatorColor));
+        gradientSky.bottom.Override(ToUnityColor(environment.AmbientGroundColor));
+        gradientSky.skyIntensityMode.Override(SkyIntensityMode.Multiplier);
+        gradientSky.multiplier.Override(1f);
+
+        IndirectLightingController indirectLighting =
+            environmentVolumeProfile.Add<IndirectLightingController>();
+        indirectLighting.indirectDiffuseLightingMultiplier.Override(1f);
+        indirectLighting.reflectionLightingMultiplier.Override(0f);
+        indirectLighting.reflectionProbeIntensityMultiplier.Override(0f);
     }
 
     /// <summary>
@@ -118,8 +147,13 @@ public sealed class TacticalMapRenderer : MonoBehaviour
         lightObject.transform.localRotation = Quaternion.Euler(ToUnityVector(definition.Rotation));
         Light light = lightObject.GetComponent<Light>();
         light.type = LightType.Directional;
+        HDAdditionalLightData lightData = lightObject.AddComponent<HDAdditionalLightData>();
+        HDAdditionalLightData.InitDefaultHDAdditionalLightData(lightData);
+        light.lightUnit = LightUnit.Lux;
+        light.lightShadowCasterMode = LightShadowCasterMode.Default;
+        light.useColorTemperature = false;
         light.color = ToUnityColor(definition.Color);
-        light.intensity = definition.Intensity;
+        light.intensity = definition.Intensity * _builtInDirectionalLightIntensityToHdrp;
         light.shadows = definition.CastShadows ? LightShadows.Soft : LightShadows.None;
         if (definition.IsSun)
             RenderSettings.sun = light;
@@ -472,8 +506,10 @@ public sealed class TacticalMapRenderer : MonoBehaviour
             DestroySceneObject(transform.GetChild(childIndex).gameObject);
         DestroyOwnedAsset(starMaterial);
         DestroyOwnedAsset(starTexture);
+        DestroyOwnedAsset(environmentVolumeProfile);
         starMaterial = null;
         starTexture = null;
+        environmentVolumeProfile = null;
         ready = Task.CompletedTask;
     }
 

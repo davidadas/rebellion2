@@ -13,6 +13,9 @@ using UnityEngine;
 internal static class GameRecordingSession
 {
     private const string _recordingDirectoryName = "_recordings";
+    private const int _recordingWidth = 1920;
+    private const int _recordingHeight = 1080;
+    private const float _recordingFrameRate = 60.0f;
 
     private static RecorderController _recorderController;
     private static RecorderControllerSettings _recorderControllerSettings;
@@ -96,25 +99,16 @@ internal static class GameRecordingSession
     }
 
     /// <summary>
-    /// Configures capture using the resolution selected by the editor's Game view.
+    /// Configures capture at the game's native 16:9 resolution.
     /// </summary>
     /// <returns>The created game view input settings.</returns>
     private static GameViewInputSettings CreateGameViewInputSettings()
     {
-        GameViewInputSettings settings = new GameViewInputSettings();
-        settings.OutputWidth = GetEncoderDimension(settings.OutputWidth);
-        settings.OutputHeight = GetEncoderDimension(settings.OutputHeight);
-        return settings;
-    }
-
-    /// <summary>
-    /// Rounds a positive odd dimension up to the next MP4-compatible even value.
-    /// </summary>
-    /// <param name="dimension">The Game view dimension.</param>
-    /// <returns>The original dimension when compatible; otherwise the next even value.</returns>
-    private static int GetEncoderDimension(int dimension)
-    {
-        return dimension > 0 && dimension % 2 != 0 ? dimension + 1 : dimension;
+        return new GameViewInputSettings
+        {
+            OutputWidth = _recordingWidth,
+            OutputHeight = _recordingHeight,
+        };
     }
 
     /// <summary>
@@ -144,7 +138,7 @@ internal static class GameRecordingSession
     }
 
     /// <summary>
-    /// Creates a manually controlled, variable-frame-rate Recorder session.
+    /// Creates a manually controlled, constant-frame-rate Recorder session.
     /// </summary>
     /// <param name="movieRecorderSettings">The movie recorder settings.</param>
     /// <returns>The created recorder controller settings.</returns>
@@ -156,9 +150,9 @@ internal static class GameRecordingSession
             ScriptableObject.CreateInstance<RecorderControllerSettings>();
         settings.AddRecorderSettings(movieRecorderSettings);
         settings.SetRecordModeToManual();
-        settings.FrameRatePlayback = FrameRatePlayback.Variable;
-        settings.FrameRate = 30.0f;
-        settings.CapFrameRate = false;
+        settings.FrameRatePlayback = FrameRatePlayback.Constant;
+        settings.FrameRate = _recordingFrameRate;
+        settings.CapFrameRate = true;
         return settings;
     }
 

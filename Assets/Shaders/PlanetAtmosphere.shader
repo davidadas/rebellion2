@@ -19,7 +19,7 @@ Shader "Custom/PlanetAtmosphere"
     {
         Tags
         {
-            "RenderPipeline" = "UniversalPipeline"
+            "RenderPipeline" = "HDRenderPipeline"
             "Queue" = "Transparent+10"
             "RenderType" = "Transparent"
             "IgnoreProjector" = "True"
@@ -32,15 +32,17 @@ Shader "Custom/PlanetAtmosphere"
 
         Pass
         {
-            Name "UniversalForward"
-            Tags { "LightMode" = "UniversalForward" }
+            Name "ForwardOnly"
+            Tags { "LightMode" = "ForwardOnly" }
 
             HLSLPROGRAM
-            #pragma target 3.5
+            #pragma target 4.5
+            #pragma require cubearray
             #pragma vertex Vert
             #pragma fragment Frag
 
-            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
+            #include "Packages/com.unity.render-pipelines.high-definition/Runtime/ShaderLibrary/ShaderVariables.hlsl"
 
             #define VIEW_STEP_COUNT 12
             #define LIGHT_STEP_COUNT 6
@@ -151,7 +153,10 @@ Shader "Custom/PlanetAtmosphere"
                 Varyings output;
                 output.positionHCS = TransformObjectToHClip(input.positionOS.xyz);
                 output.positionOS = input.positionOS.xyz * 2.0;
-                output.rayDirectionOS = -GetObjectSpaceNormalizeViewDir(input.positionOS.xyz);
+                float3 positionWS = TransformObjectToWorld(input.positionOS.xyz);
+                output.rayDirectionOS = -normalize(
+                    TransformWorldToObjectDir(GetWorldSpaceNormalizeViewDir(positionWS))
+                );
                 return output;
             }
 

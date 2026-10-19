@@ -686,6 +686,69 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
+        public void Plan_WithMobileHeadquartersEspionageAgent_RetainsHeadquartersAgentAsPrimary()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet remoteOrigin = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "a-remote-origin",
+                empire.InstanceID
+            );
+            Planet headquarters = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "z-headquarters",
+                empire.InstanceID
+            );
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
+            headquarters.AddVisitor(empire.InstanceID);
+            headquarters.IsHeadquarters = true;
+            empire.HQInstanceID = headquarters.InstanceID;
+            empire.Settings.Headquarters.IsMobile = true;
+            SpecialForces remoteAgent = CreateSpecialForces(
+                "remote-agent",
+                empire.InstanceID,
+                EspionageMission.MissionTypeID
+            );
+            SpecialForces headquartersAgent = CreateSpecialForces(
+                "headquarters-agent",
+                empire.InstanceID,
+                EspionageMission.MissionTypeID
+            );
+            remoteAgent.Ratings[SkillRating.Espionage] = 90;
+            headquartersAgent.Ratings[SkillRating.Espionage] = 90;
+            Officer officerDecoy = EntityFactory.CreateOfficer("officer-decoy", empire.InstanceID);
+            officerDecoy.Ratings[SkillRating.Espionage] = 100;
+            game.AttachNode(remoteAgent, remoteOrigin);
+            game.AttachNode(headquartersAgent, headquarters);
+            game.AttachNode(officerDecoy, remoteOrigin);
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+            game.CurrentTick = game.Config.AI.MissionPlanning.EspionageRefreshIntervalTicks;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIMissionProposal[] proposals = new AIMissionPlanner()
+                .Plan(context)
+                .OfType<AIMissionProposal>()
+                .Where(candidate => candidate.MissionTypeID == EspionageMission.MissionTypeID)
+                .ToArray();
+
+            Assert.AreEqual(
+                SpecialForcesIntent.PrimaryAgent,
+                context.GetSpecialForcesIntent(headquartersAgent)
+            );
+            Assert.AreEqual(SpecialForcesIntent.Decoy, context.GetSpecialForcesIntent(remoteAgent));
+            Assert.IsTrue(
+                proposals.Any(proposal =>
+                    proposal.Participant == headquartersAgent
+                    && proposal.TargetPlanet == headquarters
+                )
+            );
+            Assert.IsFalse(proposals.Any(proposal => proposal.Participant == remoteAgent));
+        }
+
+        [Test]
         public void Plan_WithoutQualifiedSpecialForces_DoesNotAssignOfficerDecoy()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);

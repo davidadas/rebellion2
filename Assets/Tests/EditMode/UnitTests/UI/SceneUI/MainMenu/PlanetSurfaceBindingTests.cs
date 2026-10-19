@@ -66,6 +66,32 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         /// <summary>
+        /// Checks packaged map textures and authored sun directions reach the HDRP planet material.
+        /// </summary>
+        [Test]
+        public void InitializeContent_SuppliedCloudTexture_AssignsTextureAndSunDirection()
+        {
+            Texture2D albedo = CreateTexture("Albedo");
+            Texture2D clouds = CreateTexture("Clouds");
+            Material importedMaterial = CreateMaterial(albedo);
+            GameObject root = CreateGameObject("Planet");
+            MeshRenderer renderer = root.AddComponent<MeshRenderer>();
+            renderer.sharedMaterial = importedMaterial;
+            PlanetSurfaceBinding binding = root.AddComponent<PlanetSurfaceBinding>();
+            Vector3 sunDirection = new Vector3(0.8f, 0.46f, -0.38f).normalized;
+            binding.Configure("Custom/PlanetSurface", clouds, 0.75f, sunDirection);
+
+            binding.InitializeContent(new FakeContentAssetSource("unused", clouds));
+
+            Material runtimeMaterial = renderer.sharedMaterial;
+            Assert.AreSame(clouds, runtimeMaterial.GetTexture("_CloudMap"));
+            Assert.AreEqual(
+                new Vector4(sunDirection.x, sunDirection.y, sunDirection.z, 0f),
+                runtimeMaterial.GetVector("_SunDirection")
+            );
+        }
+
+        /// <summary>
         /// Creates and tracks a one-pixel texture.
         /// </summary>
         /// <param name="name">The texture name.</param>
@@ -84,7 +110,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         /// <returns>The created material.</returns>
         private Material CreateMaterial(Texture baseTexture)
         {
-            Shader shader = Shader.Find("Universal Render Pipeline/Lit");
+            Shader shader = Shader.Find("HDRP/Lit");
             Assert.IsNotNull(shader);
             Material material = new Material(shader) { mainTexture = baseTexture };
             _createdObjects.Add(material);

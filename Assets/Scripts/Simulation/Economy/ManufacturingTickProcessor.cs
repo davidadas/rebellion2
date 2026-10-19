@@ -105,7 +105,7 @@ namespace Rebellion.Simulation
                 List<Building> readyFacilities = AdvanceProductionFacilities(
                     planet,
                     type,
-                    hasQueuedItems,
+                    items,
                     cycleIncrement
                 );
                 if (!hasQueuedItems)
@@ -252,13 +252,13 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="planet">The production planet.</param>
         /// <param name="type">The manufacturing type being processed.</param>
-        /// <param name="hasQueuedItems">Whether the facility type currently has work.</param>
+        /// <param name="items">The active manufacturing queue.</param>
         /// <param name="cycleIncrement">The production progress available this tick.</param>
         /// <returns>Facilities with a ready production point.</returns>
         private List<Building> AdvanceProductionFacilities(
             Planet planet,
             ManufacturingType type,
-            bool hasQueuedItems,
+            IReadOnlyList<IManufacturable> items,
             double cycleIncrement
         )
         {
@@ -272,15 +272,21 @@ namespace Rebellion.Simulation
                 )
                 .ToList();
 
+            long usefulPointCount =
+                items?.Sum(item => (long)Math.Max(0, GetRemainingProgress(item))) ?? 0;
             List<Building> readyFacilities = new List<Building>();
             foreach (Building facility in productionFacilities)
             {
                 int readyPointCount = AdvanceProductionFacility(
                     facility,
-                    hasQueuedItems,
+                    items?.Count > 0,
                     cycleIncrement
                 );
-                for (int pointIndex = 0; pointIndex < readyPointCount; pointIndex++)
+                int pointsToApply = (int)Math.Min(readyPointCount, usefulPointCount);
+                usefulPointCount -= pointsToApply;
+                if (readyPointCount > pointsToApply)
+                    facility.ProductionPointReady = false;
+                for (int pointIndex = 0; pointIndex < pointsToApply; pointIndex++)
                     readyFacilities.Add(facility);
             }
 
@@ -341,11 +347,13 @@ namespace Rebellion.Simulation
             }
 
             facility.ProductionCycleProgress += cycleIncrement;
-            int readyPointCount = (int)(facility.ProductionCycleProgress / processRate);
+            double readyPointValue = facility.ProductionCycleProgress / processRate;
+            int readyPointCount =
+                readyPointValue >= int.MaxValue ? int.MaxValue : (int)readyPointValue;
             if (readyPointCount <= 0)
                 return 0;
 
-            facility.ProductionCycleProgress -= readyPointCount * processRate;
+            facility.ProductionCycleProgress -= (double)readyPointCount * processRate;
             facility.ProductionPointReady = true;
             return readyPointCount;
         }

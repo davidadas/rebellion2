@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Results;
@@ -151,6 +152,132 @@ namespace Rebellion.Game.Messages
             report.Title = title;
             report.Body = summary;
             return report;
+        }
+
+        /// <summary>
+        /// Captures a completed result while retaining only units visible to one faction.
+        /// </summary>
+        /// <param name="result">The completed authoritative result.</param>
+        /// <param name="perspectiveOwnerInstanceID">The faction receiving the report.</param>
+        /// <param name="visibleUnitInstanceIDs">The opposing units visible before execution.</param>
+        /// <returns>The detached faction-visible report, or null for an unsupported result.</returns>
+        public static CombatReport CaptureVisible(
+            GameResult result,
+            string perspectiveOwnerInstanceID,
+            IEnumerable<string> visibleUnitInstanceIDs
+        )
+        {
+            CombatReport report = Capture(result, perspectiveOwnerInstanceID, null, null);
+            if (report == null || string.IsNullOrEmpty(perspectiveOwnerInstanceID))
+                return null;
+
+            HashSet<string> visibleIds = new HashSet<string>(
+                (visibleUnitInstanceIDs ?? Enumerable.Empty<string>()).Where(id =>
+                    !string.IsNullOrEmpty(id)
+                ),
+                StringComparer.Ordinal
+            );
+            report.AttackingUnits = FilterVisibleUnits(
+                report.AttackingUnits,
+                perspectiveOwnerInstanceID,
+                visibleIds
+            );
+            report.DefendingUnits = FilterVisibleUnits(
+                report.DefendingUnits,
+                perspectiveOwnerInstanceID,
+                visibleIds
+            );
+
+            HashSet<string> retainedUnitIds = report
+                .AttackingUnits.Concat(report.DefendingUnits)
+                .Select(unit => unit.InstanceID)
+                .Where(id => !string.IsNullOrEmpty(id))
+                .ToHashSet(StringComparer.Ordinal);
+            report.ShipDamage = report
+                .ShipDamage.Where(damage =>
+                    damage != null && retainedUnitIds.Contains(damage.UnitInstanceID)
+                )
+                .ToList();
+            report.FighterLosses = report
+                .FighterLosses.Where(loss =>
+                    loss != null && retainedUnitIds.Contains(loss.UnitInstanceID)
+                )
+                .ToList();
+
+            if (
+                report.CombatType == CombatReportType.PlanetaryAssault
+                && report.DefenderOwnerInstanceID != perspectiveOwnerInstanceID
+            )
+            {
+                report.InitialDefenderRegimentCount = CountOperationalRegiments(
+                    report.DefendingUnits,
+                    includeDestroyed: true
+                );
+                report.RemainingDefenderRegimentCount = CountOperationalRegiments(
+                    report.DefendingUnits,
+                    includeDestroyed: false
+                );
+            }
+
+            return report;
+        }
+
+        /// <summary>
+        /// Captures descendant unit identifiers from detached faction-visible roots.
+        /// </summary>
+        /// <param name="roots">The visible scene roots.</param>
+        /// <returns>The visible descendant identifiers.</returns>
+        internal static HashSet<string> CaptureVisibleUnitInstanceIDs(IEnumerable<ISceneNode> roots)
+        {
+            return (roots ?? Enumerable.Empty<ISceneNode>())
+                .Where(root => root != null)
+                .SelectMany(root => root.GetChildren<ISceneNode>(recursive: true))
+                .Where(unit => unit != null && !string.IsNullOrEmpty(unit.InstanceID))
+                .Select(unit => unit.InstanceID)
+                .ToHashSet(StringComparer.Ordinal);
+        }
+
+        /// <summary>
+        /// Retains report units owned by the viewer or present in the supplied visible set.
+        /// </summary>
+        /// <param name="units">The captured report units.</param>
+        /// <param name="perspectiveOwnerInstanceID">The viewing faction identifier.</param>
+        /// <param name="visibleIds">The visible unit identifiers.</param>
+        /// <returns>The permitted report units.</returns>
+        private static List<CombatReportUnit> FilterVisibleUnits(
+            IEnumerable<CombatReportUnit> units,
+            string perspectiveOwnerInstanceID,
+            ISet<string> visibleIds
+        )
+        {
+            return (units ?? Enumerable.Empty<CombatReportUnit>())
+                .Where(unit =>
+                    unit != null
+                    && (
+                        unit.OwnerInstanceID == perspectiveOwnerInstanceID
+                        || visibleIds.Contains(unit.InstanceID)
+                    )
+                )
+                .ToList();
+        }
+
+        /// <summary>
+        /// Counts visible operational regiments before or after recorded destruction.
+        /// </summary>
+        /// <param name="units">The visible report units.</param>
+        /// <param name="includeDestroyed">Whether destroyed regiments remain in the count.</param>
+        /// <returns>The visible regiment count.</returns>
+        private static int CountOperationalRegiments(
+            IEnumerable<CombatReportUnit> units,
+            bool includeDestroyed
+        )
+        {
+            return (units ?? Enumerable.Empty<CombatReportUnit>()).Count(unit =>
+                unit != null
+                && unit.Category == CombatReportUnitCategory.Troops
+                && unit.WasOperational
+                && (includeDestroyed || !unit.Destroyed)
+            );
         }
 
         /// <summary>

@@ -125,6 +125,50 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             Assert.AreEqual(new Color(0.08f, 0.09f, 0.11f, 0.9f), hitArea.color);
         }
 
+        [TestCase(IdleBarLocation.TopRight, 409, 34)]
+        [TestCase(IdleBarLocation.TopLeft, 55, 34)]
+        [TestCase(IdleBarLocation.BottomRight, 409, 342)]
+        [TestCase(IdleBarLocation.BottomLeft, 55, 342)]
+        public void Render_ConfiguredLocation_AnchorsShelfToRequestedCorner(
+            IdleBarLocation location,
+            int expectedX,
+            int expectedY
+        )
+        {
+            _view.Render(
+                new IdleBarRenderData(
+                    true,
+                    new[] { new IdleBarEntry(CreateOfficer("Officer"), null) },
+                    new RectInt(50, 30, 400, 350),
+                    location: location
+                )
+            );
+
+            RectTransform shelf = GetField<Image>("shelfHitArea").rectTransform;
+            Assert.AreEqual(expectedX, shelf.anchoredPosition.x);
+            Assert.AreEqual(-expectedY, shelf.anchoredPosition.y);
+        }
+
+        [Test]
+        public void PointerHover_BottomLocation_ExpandsUpwardWithoutMovingAnchoredEdge()
+        {
+            _view.Render(
+                new IdleBarRenderData(
+                    true,
+                    CreateEntries(20),
+                    new RectInt(50, 30, 400, 350),
+                    location: IdleBarLocation.BottomLeft
+                )
+            );
+            RectTransform shelf = GetField<Image>("shelfHitArea").rectTransform;
+            float collapsedBottom = -shelf.anchoredPosition.y + shelf.sizeDelta.y;
+
+            _view.OnPointerEnter(null);
+
+            Assert.AreEqual(55f, shelf.anchoredPosition.x);
+            Assert.AreEqual(collapsedBottom, -shelf.anchoredPosition.y + shelf.sizeDelta.y);
+        }
+
         [Test]
         public void PointerHover_Default_ExpandsPortraitWithinFixedSlot()
         {
@@ -290,7 +334,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
         }
 
         [Test]
-        public void Scroll_OverflowingEntries_MovesSharedScrollAreaByOneRow()
+        public void Scroll_OverflowingEntries_EasesSharedScrollAreaByHalfRow()
         {
             _view.Render(
                 new IdleBarRenderData(true, CreateEntries(29), new RectInt(50, 30, 400, 350))
@@ -305,8 +349,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.IdleBar
             };
             ScrollAreaView scrollArea = GetField<ScrollAreaView>("entriesScrollArea");
             scrollArea.RelayScroll(scroll);
+            Assert.AreEqual(0f, scrollArea.ContentRoot.anchoredPosition.y, 0.001f);
+            for (int frame = 0; frame < 30; frame++)
+                scrollArea.AdvanceScroll(0.04f);
 
-            Assert.AreEqual(29f, scrollArea.ContentRoot.anchoredPosition.y, 0.001f);
+            Assert.AreEqual(14.5f, scrollArea.ContentRoot.anchoredPosition.y, 0.001f);
             Scrollbar scrollbar = scrollArea.GetComponentInChildren<Scrollbar>(true);
             Assert.IsTrue(scrollbar.gameObject.activeSelf);
             Assert.Greater(

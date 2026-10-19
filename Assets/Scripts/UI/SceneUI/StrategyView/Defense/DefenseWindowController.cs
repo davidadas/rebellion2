@@ -77,7 +77,14 @@ public sealed class DefenseWindowController
     )
     {
         this.getUIContext = getUIContext ?? throw new ArgumentNullException(nameof(getUIContext));
-        projector = new DefenseWindowProjector(getUIContext);
+        projector = new DefenseWindowProjector(
+            getUIContext,
+            () =>
+                AppBootstrap
+                    .Instance?.GetUserSettingsManager()
+                    ?.Settings?.UserInterface?.ShowUnitCardStats
+                ?? false
+        );
         this.targetingController =
             targetingController ?? throw new ArgumentNullException(nameof(targetingController));
         this.windowLayer = windowLayer ?? throw new ArgumentNullException(nameof(windowLayer));

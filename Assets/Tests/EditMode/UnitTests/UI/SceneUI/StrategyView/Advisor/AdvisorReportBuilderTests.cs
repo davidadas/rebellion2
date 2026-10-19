@@ -5,6 +5,10 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
+using Rebellion.Simulation;
+using GalaxyMapModel = Rebellion.Game.Galaxy.GalaxyMap;
+using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 using GameFleet = Rebellion.Game.Units.Fleet;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
@@ -74,7 +78,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
             );
 
             IReadOnlyList<AdvisorReportRow> rows = AdvisorReportBuilder.BuildGalaxyOverview(
-                faction
+                CreateFactionView(faction),
+                faction.InstanceID
             );
 
             Assert.AreEqual(5, rows.Count);
@@ -89,7 +94,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
         [Test]
         public void BuildGalaxyOverview_NullFaction_ReturnsEmpty()
         {
-            IReadOnlyList<AdvisorReportRow> rows = AdvisorReportBuilder.BuildGalaxyOverview(null);
+            IReadOnlyList<AdvisorReportRow> rows = AdvisorReportBuilder.BuildGalaxyOverview(
+                null,
+                "faction"
+            );
 
             Assert.IsEmpty(rows);
         }
@@ -110,7 +118,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
             faction.AddOwnedUnit(regiment);
 
             IReadOnlyList<AdvisorReportRow> rows = AdvisorReportBuilder.BuildGalaxyOverview(
-                faction
+                CreateFactionView(faction),
+                faction.InstanceID
             );
 
             Assert.IsEmpty(rows);
@@ -158,7 +167,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
             };
 
             IReadOnlyList<AdvisorReportRow> rows = AdvisorReportBuilder.BuildObjectives(
-                game,
+                new VictoryQueries(game),
                 theme
             );
 
@@ -177,7 +186,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
             );
             IReadOnlyList<AdvisorReportRow> missingObjectives =
                 AdvisorReportBuilder.BuildObjectives(
-                    new GameRoot(),
+                    new VictoryQueries(new GameRoot()),
                     new AdvisorReportWindowTheme()
                 );
 
@@ -230,7 +239,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
             };
 
             IReadOnlyList<AdvisorReportRow> rows = AdvisorReportBuilder.BuildObjectives(
-                game,
+                new VictoryQueries(game),
                 theme
             );
 
@@ -238,6 +247,47 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
                 new[] { "Headquarters Held", "Officer Captured", "Unsupported" },
                 rows.Select(row => row.PrimaryText)
             );
+        }
+
+        /// <summary>
+        /// Creates a minimal faction-filtered galaxy containing the faction's unparented units.
+        /// </summary>
+        /// <param name="faction">The faction supplying visible units.</param>
+        /// <returns>The faction-filtered galaxy.</returns>
+        private static GalaxyMapModel CreateFactionView(Faction faction)
+        {
+            GalaxyMapModel map = new GalaxyMapModel();
+            GalaxyPlanetSector sector = new GalaxyPlanetSector();
+            Planet planet = new Planet
+            {
+                OwnerInstanceID = faction.InstanceID,
+                IsColonized = true,
+                EnergyCapacity = 100,
+                NumRawResourceNodes = 100,
+            };
+            map.AddChild(sector);
+            sector.SetParent(map);
+            sector.AddChild(planet);
+            planet.SetParent(sector);
+
+            GameFleet fleet = new GameFleet { OwnerInstanceID = faction.InstanceID };
+            planet.AddChild(fleet);
+            fleet.SetParent(planet);
+
+            foreach (
+                ISceneNode unit in faction
+                    .GetAllOwnedManufacturables()
+                    .OfType<ISceneNode>()
+                    .Where(unit => unit.GetParent() == null)
+            )
+            {
+                unit.OwnerInstanceID = faction.InstanceID;
+                ISceneNode parent = unit is CapitalShip ? fleet : planet;
+                parent.AddChild(unit);
+                unit.SetParent(parent);
+            }
+
+            return map;
         }
     }
 }

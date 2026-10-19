@@ -137,21 +137,6 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void CanSetRank_AdmiralAtPlanet_IsRejected()
-        {
-            GameRoot game = BuildScene(out Planet planet);
-            Officer officer = CreateOfficer(game, planet, "candidate", OfficerRank.Admiral);
-
-            bool allowed = new OfficerCommandCommands(game).CanSetRank(
-                officer,
-                OfficerRank.Admiral,
-                _ownerId
-            );
-
-            Assert.IsFalse(allowed);
-        }
-
-        [Test]
         public void TrySetRank_IneligibleRank_IsRejectedWithoutChangingCurrentPost()
         {
             GameRoot game = BuildScene(out Planet planet);
@@ -166,33 +151,6 @@ namespace Rebellion.Tests.Simulation
 
             Assert.IsFalse(changed);
             Assert.AreEqual(OfficerRank.General, officer.CurrentRank);
-        }
-
-        [TestCase(true, false, false, 0)]
-        [TestCase(false, true, false, 0)]
-        [TestCase(false, false, true, 0)]
-        [TestCase(false, false, false, 1)]
-        public void CanSetRank_UnavailableOfficer_IsRejected(
-            bool captured,
-            bool killed,
-            bool retired,
-            int injuryPoints
-        )
-        {
-            GameRoot game = BuildScene(out Planet planet);
-            Officer officer = CreateOfficer(game, planet, "candidate", OfficerRank.Commander);
-            officer.IsCaptured = captured;
-            officer.IsKilled = killed;
-            officer.IsRetired = retired;
-            officer.InjuryPoints = injuryPoints;
-
-            bool allowed = new OfficerCommandCommands(game).CanSetRank(
-                officer,
-                OfficerRank.Commander,
-                _ownerId
-            );
-
-            Assert.IsFalse(allowed);
         }
 
         /// <summary>

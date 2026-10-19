@@ -61,10 +61,6 @@ namespace Rebellion.Generation
                 allOfficers,
                 rng
             );
-            int recruitableLimit = ResolveOfficerCount(
-                rules.Officers.NumStartingOfficers,
-                summary.GalaxySize
-            );
             HashSet<string> guaranteedOfficerIDs = new HashSet<string>(
                 startingOfficerRules.Select(rule => rule.OfficerInstanceID),
                 StringComparer.Ordinal
@@ -73,6 +69,13 @@ namespace Rebellion.Generation
             List<Officer> selected = new List<Officer>();
             foreach ((string factionId, List<Officer> officers) in officersByFaction)
             {
+                FactionSetup factionSetup = rules.GalaxyClassification.FactionSetups.Single(setup =>
+                    setup.FactionID == factionId
+                );
+                int recruitableLimit = ResolveOfficerCount(
+                    factionSetup.NumStartingOfficers,
+                    summary.GalaxySize
+                );
                 selected.AddRange(
                     PickFactionRoster(officers, factionId, recruitableLimit, guaranteedOfficerIDs)
                 );

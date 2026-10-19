@@ -1,4 +1,7 @@
+using System;
+using System.Linq;
 using System.Threading.Tasks;
+using Rebellion.Game;
 using UnityEngine;
 #if UNITY_EDITOR
 using UnityEditor;
@@ -15,6 +18,8 @@ public sealed class AppBootstrap : MonoBehaviour
         "Application/Common/UI/ui_common_cursor_default_outlined";
     private const string _mainMenuPreloadID = "main-menu";
     private const string _strategyPreloadID = "strategy";
+
+    private static GameObject _cutscenePlayerPrefab;
 
 #if UNITY_EDITOR
     private const string _editorCutscenePrefabPath =
@@ -42,12 +47,24 @@ public sealed class AppBootstrap : MonoBehaviour
     private ContentPack _contentPack;
     private CutsceneManager _cutsceneManager;
     private DisplayManager _displayManager;
+    private GraphicsManager _graphicsManager;
     private Task _mainMenuContentTask;
     private Task _strategyContentTask;
     private GameRuntime _runtime;
     private SceneLoader _sceneLoader;
     private ContentPreloadManifest _strategyApplicationPreload;
     private UserSettingsManager _userSettingsManager;
+
+    /// <summary>
+    /// Raised immediately before a saved-game transition begins.
+    /// Scene presentations use this boundary to stop rendering the outgoing game.
+    /// </summary>
+    internal event Action SaveLoadStarting;
+
+    /// <summary>
+    /// Gets whether the application scene loader is still completing a transition.
+    /// </summary>
+    internal bool IsSceneTransitionInProgress => _sceneLoader?.IsLoading == true;
 
     /// <summary>
     /// Ensures AppBootstrap exists. Creates minimal bootstrap if missing (for scene testing).
@@ -109,17 +126,21 @@ public sealed class AppBootstrap : MonoBehaviour
         _sceneLoader = GetComponent<SceneLoader>();
         if (_sceneLoader == null)
             _sceneLoader = gameObject.AddComponent<SceneLoader>();
-        // Read the saved selection directly; the settings system loads after content.
-        UserSettingsManager.TryReadContentSelection(
-            out string selectedPackID,
-            out string selectedScenarioID,
-            out string[] disabledModIDs
-        );
-        _contentPack = ContentPackLoader.OpenActive(
-            selectedPackID,
-            selectedScenarioID,
-            disabledModIDs
-        );
+        _contentPack = GameLaunchContext.ConsumeContentPackAfterRestart();
+        if (_contentPack == null)
+        {
+            // Read the saved selection directly; the settings system loads after content.
+            UserSettingsManager.TryReadContentSelection(
+                out string selectedPackID,
+                out string selectedScenarioID,
+                out string[] disabledModIDs
+            );
+            _contentPack = ContentPackLoader.OpenActive(
+                selectedPackID,
+                selectedScenarioID,
+                disabledModIDs
+            );
+        }
         _mainMenuApplicationPreload = ContentPackLoader.LoadApplicationPreloadManifest(
             _contentPack.FileResolver,
             _mainMenuPreloadID
@@ -138,6 +159,8 @@ public sealed class AppBootstrap : MonoBehaviour
         _contentModelCache = new ContentModelCache(_contentAssets);
         GameLaunchContext.Reset(_contentPack);
         TacticalBattleLaunchContext.Reset(_contentPack);
+        GameLaunchContext.RestoreSaveLoadAfterContentRestart();
+        GameLaunchContext.RestoreCustomGameAfterContentRestart();
         audioManager = AudioManager.EnsureExists(transform);
         audioManager.InitializeContent(_contentAssets);
 
@@ -147,19 +170,35 @@ public sealed class AppBootstrap : MonoBehaviour
         _cutsceneManager.InitializeContent(_contentAssets);
         _cutsceneManager.InitializeAudio(audioManager);
 
+        if (_cutscenePlayerPrefab != null)
+            _cutsceneManager.Initialize(_cutscenePlayerPrefab);
+
 #if UNITY_EDITOR
-        GameObject cutscenePrefab = AssetDatabase.LoadAssetAtPath<GameObject>(
-            _editorCutscenePrefabPath
-        );
-        _cutsceneManager.Initialize(cutscenePrefab);
+        if (_cutscenePlayerPrefab == null)
+        {
+            GameObject cutscenePrefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+                _editorCutscenePrefabPath
+            );
+            InitializeCutsceneManager(cutscenePrefab);
+        }
 #endif
 
         if (inputManager == null)
             inputManager = CreateInputManager();
 
         _displayManager = new DisplayManager();
-        _userSettingsManager = new UserSettingsManager(audioManager, _displayManager, inputManager);
+        _graphicsManager = new GraphicsManager(transform);
+        _userSettingsManager = new UserSettingsManager(
+            audioManager,
+            _displayManager,
+            _graphicsManager,
+            inputManager
+        );
         _userSettingsManager.Load();
+        FrameRateMonitor.EnsureExists(
+            transform,
+            () => _userSettingsManager?.Settings?.UserInterface?.ShowFrameRate == true
+        );
         _runtime = new GameRuntime(
             _contentPack,
             getGameplaySettings: () => _userSettingsManager.Settings.Gameplay
@@ -167,7 +206,8 @@ public sealed class AppBootstrap : MonoBehaviour
         if (inputController == null)
             inputController = CreateInputController();
 
-        inputController?.Initialize(inputManager, _cancelStack, _runtime);
+        inputController?.Initialize(inputManager, _cancelStack, _runtime, LoadSave);
+        LoadingScreenController.Prepare(this);
     }
 
     /// <summary>
@@ -214,9 +254,127 @@ public sealed class AppBootstrap : MonoBehaviour
     /// Transitions to another application scene.
     /// </summary>
     /// <param name="sceneAddress">The Unity scene name to load.</param>
-    internal void LoadScene(string sceneAddress)
+    /// <param name="loadFailed">The optional action invoked when scene loading fails.</param>
+    /// <returns>True when the transition was accepted.</returns>
+    internal bool LoadScene(string sceneAddress, Action<Exception> loadFailed = null)
     {
-        _sceneLoader.Load(sceneAddress);
+        return _sceneLoader.Load(sceneAddress, loadFailed);
+    }
+
+    /// <summary>
+    /// Loads a save under the exact content identity recorded in its metadata.
+    /// </summary>
+    /// <param name="fileName">The save identifier to load.</param>
+    /// <returns>True when loading or content reconstruction was started.</returns>
+    internal bool LoadSave(string fileName)
+    {
+        if (string.IsNullOrWhiteSpace(fileName))
+            return false;
+
+        SaveGameManager saveGameManager = SaveGameManager.Instance;
+        if (!System.IO.File.Exists(saveGameManager.GetSaveFilePath(fileName)))
+            return false;
+
+        if (LoadingScreenController.IsLoadInProgress)
+            return false;
+
+        LoadingScreenController.LoadSave(this, fileName);
+        return true;
+    }
+
+    /// <summary>
+    /// Reads save metadata and verifies any required replacement content away from the main thread.
+    /// </summary>
+    /// <param name="fileName">The save identifier to prepare.</param>
+    /// <returns>The verified loading preparation.</returns>
+    internal Task<SaveLoadPreparation> PrepareSaveLoadAsync(string fileName)
+    {
+        if (string.IsNullOrWhiteSpace(fileName))
+            throw new ArgumentException("A save file name is required.", nameof(fileName));
+
+        SaveGameManager saveGameManager = SaveGameManager.Instance;
+        ContentPack activePack = _contentPack;
+        return Task.Run(() =>
+        {
+            GameMetadata metadata = saveGameManager.GetSaveMetadata(fileName);
+            SaveContentSelection selection = activePack.MatchesContentIdentity(metadata)
+                ? null
+                : SaveContentResolver.Resolve(activePack, metadata);
+            return new SaveLoadPreparation(fileName, selection);
+        });
+    }
+
+    /// <summary>
+    /// Applies a verified loading preparation on the Unity thread.
+    /// </summary>
+    /// <param name="preparation">The verified save and content selection.</param>
+    /// <returns>True when application content must be reconstructed.</returns>
+    internal bool ApplySaveLoadPreparation(SaveLoadPreparation preparation)
+    {
+        if (preparation == null)
+            throw new ArgumentNullException(nameof(preparation));
+
+        if (!preparation.RequiresContentRestart)
+        {
+            GameLaunchContext.PrepareSaveLoad(preparation.FileName);
+            return false;
+        }
+
+        SaveContentSelection selection = preparation.ContentSelection;
+        PersistContentSelection(selection.Pack, selection.DisabledModIDs);
+        GameLaunchContext.PrepareSaveLoadAfterContentRestart(preparation.FileName, selection.Pack);
+        return true;
+    }
+
+    /// <summary>
+    /// Persists and queues a custom game that requires replacement content services.
+    /// </summary>
+    /// <param name="contentPack">The selected and validated content pack.</param>
+    /// <param name="summary">The complete custom-game configuration.</param>
+    internal void PrepareCustomGameContentRestart(ContentPack contentPack, GameSummary summary)
+    {
+        if (contentPack == null)
+            throw new ArgumentNullException(nameof(contentPack));
+        if (summary == null)
+            throw new ArgumentNullException(nameof(summary));
+        if (!contentPack.MatchesContentIdentity(summary))
+            throw new InvalidOperationException(
+                "The custom-game configuration does not match its selected content pack."
+            );
+
+        string[] enabledModIDs = contentPack.FileResolver.Mods.Select(mod => mod.ID).ToArray();
+        string[] disabledModIDs = contentPack
+            .FileResolver.AvailableMods.Select(mod => mod.ID)
+            .Except(enabledModIDs, StringComparer.Ordinal)
+            .ToArray();
+        PersistContentSelection(contentPack, disabledModIDs);
+        GameLaunchContext.PrepareCustomGameAfterContentRestart(summary, contentPack);
+    }
+
+    /// <summary>
+    /// Stops the outgoing scene and runtime after the persistent loading presentation is visible.
+    /// </summary>
+    internal void SuspendForSaveLoad()
+    {
+        SaveLoadStarting?.Invoke();
+        _runtime.EndGame();
+    }
+
+    /// <summary>
+    /// Persists a verified save-content selection for the replacement bootstrap.
+    /// </summary>
+    /// <param name="contentPack">The verified pack and scenario.</param>
+    /// <param name="disabledModIDs">Compatible mods excluded by the save.</param>
+    private void PersistContentSelection(ContentPack contentPack, string[] disabledModIDs)
+    {
+        UserContentSettings content = _userSettingsManager.Settings.Content;
+        content.ActivePackID = contentPack.Definition.ID;
+        content.ActiveScenarioID = contentPack.Scenario.ID;
+        content.SetDisabledModsForPack(
+            contentPack.FileResolver.AvailableMods.Select(mod => mod.ID),
+            disabledModIDs
+        );
+        _userSettingsManager.Save();
     }
 
     /// <summary>
@@ -225,6 +383,12 @@ public sealed class AppBootstrap : MonoBehaviour
     /// <param name="cutscenePrefab">The cutscene player prefab.</param>
     internal void InitializeCutsceneManager(GameObject cutscenePrefab)
     {
+        _cutscenePlayerPrefab =
+            cutscenePrefab
+            ?? throw new ArgumentNullException(
+                nameof(cutscenePrefab),
+                "Cutscene player prefab is missing."
+            );
         _cutsceneManager.Initialize(cutscenePrefab);
     }
 
@@ -292,11 +456,13 @@ public sealed class AppBootstrap : MonoBehaviour
     /// </summary>
     private void ReleaseRuntimeServices()
     {
+        _graphicsManager?.Dispose();
         _contentModelCache?.Dispose();
         _contentAssets?.Dispose();
         _contentModelCache = null;
         _contentAssets = null;
         _contentPack = null;
+        _graphicsManager = null;
         _mainMenuApplicationPreload = null;
         _strategyApplicationPreload = null;
         _runtime = null;
@@ -372,6 +538,15 @@ public sealed class AppBootstrap : MonoBehaviour
     public DisplayManager GetDisplayManager()
     {
         return _displayManager;
+    }
+
+    /// <summary>
+    /// Returns the application graphics manager.
+    /// </summary>
+    /// <returns>The active graphics manager.</returns>
+    public GraphicsManager GetGraphicsManager()
+    {
+        return _graphicsManager;
     }
 
     /// <summary>
