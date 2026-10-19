@@ -316,6 +316,21 @@ jobs:
             Library-test-
             Library-
 
+      - name: Prepare Vulkan-enabled Unity test image
+        run: |
+          BASE_IMAGE="unityci/editor:ubuntu-${{ env.UNITY_VERSION }}-linux-il2cpp-${{ env.UNITY_IMAGE_VERSION }}"
+          docker pull "$BASE_IMAGE"
+          docker build \
+            --build-arg BASE_IMAGE="$BASE_IMAGE" \
+            --tag rebellion2-unity-test:vulkan \
+            - <<'EOF'
+          ARG BASE_IMAGE
+          FROM ${BASE_IMAGE}
+          RUN apt-get update \
+              && apt-get install --yes --no-install-recommends libvulkan1 mesa-vulkan-drivers \
+              && rm -rf /var/lib/apt/lists/*
+          EOF
+
       - name: Run Unity Tests
         uses: game-ci/unity-test-runner@v4
         env:
@@ -328,6 +343,7 @@ jobs:
           githubToken: ${{ secrets.GITHUB_TOKEN }}
           dockerCpuLimit: 2
           dockerMemoryLimit: 8g
+          customImage: rebellion2-unity-test:vulkan
           customParameters: -force-vulkan -executeMethod UIBuilderMenu.BuildAll
           coverageOptions: "generateAdditionalMetrics;generateHtmlReport;assemblyFilters:+GameAssembly"
           cliVersion: v0.1.65
