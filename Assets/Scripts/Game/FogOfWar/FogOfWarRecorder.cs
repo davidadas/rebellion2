@@ -139,36 +139,50 @@ namespace Rebellion.Game.FogOfWar
             switch (observation)
             {
                 case Officer officer:
-                    RecordCarriedUnitSnapshot(snapshot, officer, CopyOfficerForSnapshot(officer));
+                    RecordCarriedUnitSnapshot(
+                        snapshot,
+                        officer,
+                        CopyEntityForObservation(officer, snapshot.TickCaptured)
+                    );
                     break;
                 case Fleet fleet:
-                    Upsert(snapshot.Fleets, CopyFleetForSnapshot(fleet));
+                    Upsert(snapshot.Fleets, CopyFleetForObservation(fleet, snapshot.TickCaptured));
                     break;
                 case CapitalShip capitalShip:
                     AddCapitalShipObservation(snapshot, capitalShip);
                     break;
                 case Regiment regiment:
-                    RecordCarriedUnitSnapshot(snapshot, regiment, CopyEntityForSnapshot(regiment));
+                    RecordCarriedUnitSnapshot(
+                        snapshot,
+                        regiment,
+                        CopyEntityForObservation(regiment, snapshot.TickCaptured)
+                    );
                     break;
                 case SpecialForces specialForces:
                     RecordCarriedUnitSnapshot(
                         snapshot,
                         specialForces,
-                        CopyEntityForSnapshot(specialForces)
+                        CopyEntityForObservation(specialForces, snapshot.TickCaptured)
                     );
                     break;
                 case Starfighter starfighter:
                     RecordCarriedUnitSnapshot(
                         snapshot,
                         starfighter,
-                        CopyEntityForSnapshot(starfighter)
+                        CopyEntityForObservation(starfighter, snapshot.TickCaptured)
                     );
                     break;
                 case Building building:
-                    Upsert(snapshot.Buildings, CopyEntityForSnapshot(building));
+                    Upsert(
+                        snapshot.Buildings,
+                        CopyEntityForObservation(building, snapshot.TickCaptured)
+                    );
                     break;
                 case Mission mission:
-                    Upsert(snapshot.Missions, CopyEntityForSnapshot(mission));
+                    Upsert(
+                        snapshot.Missions,
+                        CopyEntityForObservation(mission, snapshot.TickCaptured)
+                    );
                     break;
             }
         }
@@ -222,7 +236,10 @@ namespace Rebellion.Game.FogOfWar
                 return false;
 
             snapshot.HasManufacturingIntelligence = true;
-            Upsert(snapshot.ManufacturingQueueItems, CopyManufacturableForSnapshot(queuedItem));
+            Upsert(
+                snapshot.ManufacturingQueueItems,
+                CopyEntityForObservation(queuedItem, snapshot.TickCaptured)
+            );
             return true;
         }
 
@@ -263,7 +280,7 @@ namespace Rebellion.Game.FogOfWar
                 return;
 
             Fleet fleet = GetOrCreatePartialFleetSnapshot(snapshot, sourceFleet);
-            CapitalShip copy = CopyCapitalShipForSnapshot(capitalShip);
+            CapitalShip copy = CopyEntityForObservation(capitalShip, snapshot.TickCaptured);
             RemoveUnobservedCargo(copy);
             UpsertChild(fleet, copy);
             copy.SetParent(fleet);
@@ -287,7 +304,11 @@ namespace Rebellion.Game.FogOfWar
                     return;
 
                 Fleet fleet = GetOrCreatePartialFleetSnapshot(snapshot, sourceFleet);
-                CapitalShip ship = GetOrCreatePartialCapitalShipSnapshot(fleet, sourceShip);
+                CapitalShip ship = GetOrCreatePartialCapitalShipSnapshot(
+                    fleet,
+                    sourceShip,
+                    snapshot.TickCaptured
+                );
                 RemoveAbsentCapacityCargo(ship, sourceShip, copy);
                 AddCapitalShipChild(ship, copy);
                 return;
@@ -354,7 +375,7 @@ namespace Rebellion.Game.FogOfWar
             if (existing != null)
                 return existing;
 
-            Fleet partialSnapshot = CopyFleetForSnapshot(source);
+            Fleet partialSnapshot = CopyFleetForObservation(source, snapshot.TickCaptured);
             partialSnapshot.RemoveAllChildren();
             snapshot.Fleets.Add(partialSnapshot);
             return partialSnapshot;
@@ -365,10 +386,12 @@ namespace Rebellion.Game.FogOfWar
         /// </summary>
         /// <param name="fleet">The fleet.</param>
         /// <param name="source">The source.</param>
+        /// <param name="observedAtTick">The tick when the state was observed.</param>
         /// <returns>The requested or create partial capital ship snapshot.</returns>
         private static CapitalShip GetOrCreatePartialCapitalShipSnapshot(
             Fleet fleet,
-            CapitalShip source
+            CapitalShip source,
+            int observedAtTick
         )
         {
             CapitalShip existing = fleet
@@ -377,7 +400,7 @@ namespace Rebellion.Game.FogOfWar
             if (existing != null)
                 return existing;
 
-            CapitalShip partialSnapshot = CopyCapitalShipForSnapshot(source);
+            CapitalShip partialSnapshot = CopyEntityForObservation(source, observedAtTick);
             RemoveUnobservedCargo(partialSnapshot);
             fleet.AddChild(partialSnapshot);
             partialSnapshot.SetParent(fleet);
@@ -554,7 +577,7 @@ namespace Rebellion.Game.FogOfWar
                     .Where(officer =>
                         officer.OwnerInstanceID != faction.InstanceID || officer.IsCaptured
                     )
-                    .Select(CopyOfficerForSnapshot)
+                    .Select(officer => CopyEntityForObservation(officer, snapshot.TickCaptured))
             );
         }
 
@@ -612,13 +635,15 @@ namespace Rebellion.Game.FogOfWar
             AddIntelligenceEntityCopies(
                 planet.GetChildren<Regiment>(recursive: true),
                 snapshot.Regiments,
-                faction
+                faction,
+                snapshot.TickCaptured
             );
             AddEntityCopiesToSnapshot(
                 planet.GetChildren<SpecialForces>(recursive: true),
                 snapshot.SpecialForces,
                 faction,
-                true
+                true,
+                snapshot.TickCaptured
             );
         }
 
@@ -643,7 +668,8 @@ namespace Rebellion.Game.FogOfWar
             AddIntelligenceEntityCopies(
                 planet.GetChildren<Starfighter>(recursive: true),
                 snapshot.Starfighters,
-                faction
+                faction,
+                snapshot.TickCaptured
             );
         }
 
@@ -669,7 +695,8 @@ namespace Rebellion.Game.FogOfWar
                 planet.GetChildren<Building>(),
                 snapshot.Buildings,
                 faction,
-                true
+                true,
+                snapshot.TickCaptured
             );
         }
 
@@ -701,14 +728,16 @@ namespace Rebellion.Game.FogOfWar
         /// <param name="source">The live entities.</param>
         /// <param name="destination">The snapshot collection.</param>
         /// <param name="faction">The observing faction.</param>
+        /// <param name="observedAtTick">The tick when the state was observed.</param>
         private void AddIntelligenceEntityCopies<T>(
             IEnumerable<T> source,
             List<T> destination,
-            Faction faction
+            Faction faction,
+            int observedAtTick
         )
             where T : class, ISceneNode
         {
-            AddEntityCopiesToSnapshot(source, destination, faction, true);
+            AddEntityCopiesToSnapshot(source, destination, faction, true, observedAtTick);
         }
 
         /// <summary>
@@ -872,25 +901,29 @@ namespace Rebellion.Game.FogOfWar
                 planet.GetChildren<Regiment>(),
                 planetSnapshot.Regiments,
                 faction,
-                includeEspionageIntelligence
+                includeEspionageIntelligence,
+                currentTick
             );
             AddEntityCopiesToSnapshot(
                 planet.GetChildren<SpecialForces>(),
                 planetSnapshot.SpecialForces,
                 faction,
-                includeEspionageIntelligence
+                includeEspionageIntelligence,
+                currentTick
             );
             AddEntityCopiesToSnapshot(
                 planet.GetChildren<Building>(),
                 planetSnapshot.Buildings,
                 faction,
-                includeEspionageIntelligence
+                includeEspionageIntelligence,
+                currentTick
             );
             AddEntityCopiesToSnapshot(
                 planet.GetChildren<Starfighter>(),
                 planetSnapshot.Starfighters,
                 faction,
-                includeEspionageIntelligence
+                includeEspionageIntelligence,
+                currentTick
             );
 
             if (includeEspionageIntelligence)
@@ -928,7 +961,7 @@ namespace Rebellion.Game.FogOfWar
                 planet
                     .GetChildren<Mission>()
                     .Where(mission => mission.GetOwnerInstanceID() != faction.InstanceID)
-                    .Select(mission => CopyEntityForSnapshot(mission))
+                    .Select(mission => CopyEntityForObservation(mission, snapshot.TickCaptured))
             );
         }
 
@@ -1312,7 +1345,7 @@ namespace Rebellion.Game.FogOfWar
                 if (!includeInTransit && !IsObservableAtPlanet(officer, faction.InstanceID))
                     continue;
 
-                snapshot.Officers.Add(CopyOfficerForSnapshot(officer));
+                snapshot.Officers.Add(CopyEntityForObservation(officer, snapshot.TickCaptured));
             }
         }
 
@@ -1350,7 +1383,8 @@ namespace Rebellion.Game.FogOfWar
                     fleet,
                     faction.InstanceID,
                     includeEspionageIntelligence,
-                    includeEspionageIntelligence
+                    includeEspionageIntelligence,
+                    snapshot.TickCaptured
                 );
                 if (fleetCopy == null)
                     continue;
@@ -1367,11 +1401,13 @@ namespace Rebellion.Game.FogOfWar
         /// <param name="destination">The snapshot list to populate.</param>
         /// <param name="faction">The faction receiving the snapshot.</param>
         /// <param name="includeEspionageIntelligence">Whether hidden intelligence should be included.</param>
+        /// <param name="observedAtTick">The tick when the state was observed.</param>
         private void AddEntityCopiesToSnapshot<T>(
             IEnumerable<T> source,
             List<T> destination,
             Faction faction,
-            bool includeEspionageIntelligence
+            bool includeEspionageIntelligence,
+            int observedAtTick
         )
             where T : class, ISceneNode
         {
@@ -1396,7 +1432,7 @@ namespace Rebellion.Game.FogOfWar
                 )
                     continue;
 
-                destination.Add(CopyEntityForSnapshot(entity));
+                destination.Add(CopyEntityForObservation(entity, observedAtTick));
             }
         }
 
@@ -1411,7 +1447,9 @@ namespace Rebellion.Game.FogOfWar
             foreach (List<IManufacturable> queue in planet.ManufacturingQueue.Values)
             {
                 foreach (IManufacturable item in queue)
-                    snapshot.ManufacturingQueueItems.Add(CopyManufacturableForSnapshot(item));
+                    snapshot.ManufacturingQueueItems.Add(
+                        CopyEntityForObservation(item, snapshot.TickCaptured)
+                    );
             }
         }
 
@@ -1674,6 +1712,75 @@ namespace Rebellion.Game.FogOfWar
         }
 
         /// <summary>
+        /// Copies newly observed state and records movement timing during the existing copy traversal.
+        /// </summary>
+        /// <typeparam name="T">The scene-node type to copy.</typeparam>
+        /// <param name="entity">The currently observed entity.</param>
+        /// <param name="observedAtTick">The tick when this state was observed.</param>
+        /// <returns>The detached observation with independently timed movement state.</returns>
+        private static T CopyEntityForObservation<T>(T entity, int observedAtTick)
+            where T : class, ISceneNode
+        {
+            if (entity is LeafNode && entity is not IMovable { Movement: not null })
+                return CopyEntityForSnapshot(entity);
+
+            return entity?.CreateCopy(
+                    recursive: true,
+                    includeDisabled: entity is Mission,
+                    configureCopy: copy =>
+                    {
+                        if (copy is IMovable { Movement: { } movement })
+                        {
+                            movement.IsObservation = true;
+                            movement.ObservedAtTick = observedAtTick;
+                        }
+                    }
+                ) as T;
+        }
+
+        /// <summary>
+        /// Copies a newly observed fleet without retaining orders or waypoints.
+        /// </summary>
+        /// <param name="fleet">The currently observed fleet.</param>
+        /// <param name="observedAtTick">The tick when this state was observed.</param>
+        /// <returns>The detached fleet observation.</returns>
+        private static Fleet CopyFleetForObservation(Fleet fleet, int observedAtTick)
+        {
+            Fleet copy = CopyEntityForObservation(fleet, observedAtTick);
+            if (copy != null)
+            {
+                copy.Order = null;
+                copy.Waypoints.Clear();
+            }
+            return copy;
+        }
+
+        /// <summary>
+        /// Copies stored intelligence for display while preserving known and unknown observation times.
+        /// </summary>
+        /// <typeparam name="T">The stored scene-node type.</typeparam>
+        /// <param name="entity">The stored intelligence to display.</param>
+        /// <returns>The detached observation view.</returns>
+        internal static T CopySnapshotForView<T>(T entity)
+            where T : class, ISceneNode
+        {
+            return entity?.CreateCopy(
+                    recursive: true,
+                    includeDisabled: entity is Mission,
+                    configureCopy: copy =>
+                    {
+                        if (copy is IMovable { Movement: { } movement })
+                            movement.IsObservation = true;
+                        if (copy is Fleet fleet)
+                        {
+                            fleet.Order = null;
+                            fleet.Waypoints.Clear();
+                        }
+                    }
+                ) as T;
+        }
+
+        /// <summary>
         /// Copies a visible scene node without retaining mutable runtime or parent state.
         /// </summary>
         /// <typeparam name="T">The scene-node type to copy.</typeparam>
@@ -1718,18 +1825,22 @@ namespace Rebellion.Game.FogOfWar
         /// <param name="observerFactionInstanceID">The faction receiving the observation.</param>
         /// <param name="includeManufacturing">Whether unfinished units should be retained.</param>
         /// <param name="includeInTransit">Whether moving fleets and their contents should be retained.</param>
+        /// <param name="observedAtTick">The tick when the state was observed.</param>
         /// <returns>The detached fleet copy, or null when no completed ships remain.</returns>
         internal static Fleet CopyObservedFleetForSnapshot(
             Fleet fleet,
             string observerFactionInstanceID,
             bool includeManufacturing = false,
-            bool includeInTransit = false
+            bool includeInTransit = false,
+            int? observedAtTick = null
         )
         {
             if (!includeInTransit && !IsObservableAtPlanet(fleet, observerFactionInstanceID))
                 return null;
 
-            Fleet copy = CopyFleetForSnapshot(fleet);
+            Fleet copy = observedAtTick.HasValue
+                ? CopyFleetForObservation(fleet, observedAtTick.Value)
+                : CopySnapshotForView(fleet);
             if (copy == null)
                 return null;
 
@@ -1820,16 +1931,6 @@ namespace Rebellion.Game.FogOfWar
             foreach (CapitalShip ship in copy.GetChildren<CapitalShip>())
                 RemoveAbsentShipChildren(ship, liveEntityIds);
             return copy.GetChildren<CapitalShip>().Count > 0 ? copy : null;
-        }
-
-        /// <summary>
-        /// Copies a capital ship and its passengers for storage in fog state.
-        /// </summary>
-        /// <param name="capitalShip">The capital ship to copy.</param>
-        /// <returns>The detached capital-ship snapshot.</returns>
-        private static CapitalShip CopyCapitalShipForSnapshot(CapitalShip capitalShip)
-        {
-            return capitalShip?.CreateCopy(recursive: true) as CapitalShip;
         }
 
         /// <summary>

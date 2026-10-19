@@ -16,6 +16,16 @@ namespace Rebellion.Game.Units
 
         public int TicksElapsed { get; set; }
 
+        /// <summary>
+        /// Gets or sets the tick when this movement state was observed, when that time is known.
+        /// </summary>
+        public int? ObservedAtTick { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether this movement state represents frozen intelligence rather than live movement.
+        /// </summary>
+        public bool IsObservation { get; set; }
+
         public string MovementGroupID { get; set; }
 
         public string SourceEventInstanceID { get; set; }
@@ -64,6 +74,8 @@ namespace Rebellion.Game.Units
             {
                 TransitTicks = TransitTicks,
                 TicksElapsed = TicksElapsed,
+                ObservedAtTick = ObservedAtTick,
+                IsObservation = IsObservation,
                 MovementGroupID = MovementGroupID,
                 SourceEventInstanceID = SourceEventInstanceID,
                 ResolveEncounterOnArrival = ResolveEncounterOnArrival,
