@@ -8,10 +8,6 @@ using Rebellion.Util.Reflection;
 /// </summary>
 public static class GameLaunchContext
 {
-    private static ContentPack _contentPackAfterRestart;
-    private static GameSummary _customGameSummaryAfterContentRestart;
-    private static string _saveFileNameAfterContentRestart;
-
     /// <summary>
     /// Gets the launch settings for a new game.
     /// </summary>
@@ -35,80 +31,6 @@ public static class GameLaunchContext
         SaveFileName = fileName;
         IsLoadGame = true;
         PlayIntroCutscene = false;
-    }
-
-    /// <summary>
-    /// Preserves a save request while application content is reconstructed.
-    /// </summary>
-    /// <param name="fileName">The save identifier to restore after reconstruction.</param>
-    /// <param name="contentPack">The verified content pack to transfer to the replacement bootstrap.</param>
-    internal static void PrepareSaveLoadAfterContentRestart(
-        string fileName,
-        ContentPack contentPack = null
-    )
-    {
-        if (string.IsNullOrWhiteSpace(fileName))
-            throw new ArgumentException("A save file name is required.", nameof(fileName));
-
-        _saveFileNameAfterContentRestart = fileName;
-        _customGameSummaryAfterContentRestart = null;
-        _contentPackAfterRestart = contentPack;
-    }
-
-    /// <summary>
-    /// Preserves a custom-game launch while application content is reconstructed.
-    /// </summary>
-    /// <param name="summary">The complete custom-game configuration.</param>
-    /// <param name="contentPack">The selected content pack.</param>
-    internal static void PrepareCustomGameAfterContentRestart(
-        GameSummary summary,
-        ContentPack contentPack
-    )
-    {
-        _customGameSummaryAfterContentRestart = (
-            summary ?? throw new ArgumentNullException(nameof(summary))
-        ).GetDeepCopy();
-        _saveFileNameAfterContentRestart = null;
-        _contentPackAfterRestart =
-            contentPack ?? throw new ArgumentNullException(nameof(contentPack));
-    }
-
-    /// <summary>
-    /// Returns and consumes the verified content pack prepared for bootstrap reconstruction.
-    /// </summary>
-    /// <returns>The prepared content pack, or null when normal content selection should be loaded.</returns>
-    internal static ContentPack ConsumeContentPackAfterRestart()
-    {
-        ContentPack contentPack = _contentPackAfterRestart;
-        _contentPackAfterRestart = null;
-        return contentPack;
-    }
-
-    /// <summary>
-    /// Restores and consumes a save request preserved across content reconstruction.
-    /// </summary>
-    internal static void RestoreSaveLoadAfterContentRestart()
-    {
-        if (string.IsNullOrWhiteSpace(_saveFileNameAfterContentRestart))
-            return;
-
-        string fileName = _saveFileNameAfterContentRestart;
-        _saveFileNameAfterContentRestart = null;
-        _contentPackAfterRestart = null;
-        PrepareSaveLoad(fileName);
-    }
-
-    /// <summary>
-    /// Restores and consumes a custom-game launch preserved across content reconstruction.
-    /// </summary>
-    internal static void RestoreCustomGameAfterContentRestart()
-    {
-        if (_customGameSummaryAfterContentRestart == null)
-            return;
-
-        GameSummary summary = _customGameSummaryAfterContentRestart;
-        _customGameSummaryAfterContentRestart = null;
-        ApplyCustomGameSummary(summary);
     }
 
     /// <summary>

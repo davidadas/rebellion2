@@ -16,7 +16,7 @@ internal sealed class SaveContentSelection
     /// <summary>
     /// Gets compatible mods excluded by the saved game.
     /// </summary>
-    internal string[] DisabledModIDs { get; }
+    internal IReadOnlyList<string> DisabledModIDs { get; }
 
     /// <summary>
     /// Creates a verified saved-game content selection.
@@ -26,41 +26,7 @@ internal sealed class SaveContentSelection
     internal SaveContentSelection(ContentPack pack, string[] disabledModIDs)
     {
         Pack = pack ?? throw new ArgumentNullException(nameof(pack));
-        DisabledModIDs = disabledModIDs ?? Array.Empty<string>();
-    }
-}
-
-/// <summary>
-/// Describes the content work required before a saved game can enter the strategy scene.
-/// </summary>
-internal sealed class SaveLoadPreparation
-{
-    /// <summary>
-    /// Gets the save identifier that will be loaded.
-    /// </summary>
-    internal string FileName { get; }
-
-    /// <summary>
-    /// Gets a replacement content selection when the active content does not match the save.
-    /// </summary>
-    internal SaveContentSelection ContentSelection { get; }
-
-    /// <summary>
-    /// Gets whether application content must be reconstructed before loading the save.
-    /// </summary>
-    internal bool RequiresContentRestart => ContentSelection != null;
-
-    /// <summary>
-    /// Creates a verified saved-game loading preparation.
-    /// </summary>
-    /// <param name="fileName">The save identifier to load.</param>
-    /// <param name="contentSelection">The optional replacement content selection.</param>
-    internal SaveLoadPreparation(string fileName, SaveContentSelection contentSelection)
-    {
-        FileName = string.IsNullOrWhiteSpace(fileName)
-            ? throw new ArgumentException("A save file name is required.", nameof(fileName))
-            : fileName;
-        ContentSelection = contentSelection;
+        DisabledModIDs = Array.AsReadOnly((disabledModIDs ?? Array.Empty<string>()).ToArray());
     }
 }
 

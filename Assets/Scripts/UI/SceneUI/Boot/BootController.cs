@@ -13,9 +13,6 @@ public sealed class BootController : MonoBehaviour
         "Application/Boot/Videos/opening-crawl",
     };
 
-    [SerializeField]
-    private GameObject cutscenePlayerPrefab;
-
     private int currentVideoIndex;
 
     /// <summary>
@@ -26,7 +23,6 @@ public sealed class BootController : MonoBehaviour
         try
         {
             AppBootstrap bootstrap = AppBootstrap.EnsureExists();
-            bootstrap.InitializeCutsceneManager(cutscenePlayerPrefab);
             await bootstrap.InitializeMainMenuContentAsync();
             PlayNext();
         }

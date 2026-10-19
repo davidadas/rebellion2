@@ -10,7 +10,7 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
     [TestFixture]
     public class CutsceneManagerTests
     {
-        private const string _prefabPath = "Assets/Prefabs/UI/Cutscenes/CutscenePlayer.prefab";
+        private const string _prefabPath = "Assets/Resources/UI/CutscenePlayer.prefab";
         private const string _clipPath =
             "Assets/Tests/EditMode/UnitTests/UI/SceneUI/Cutscenes/CutsceneTestClip.webm";
 

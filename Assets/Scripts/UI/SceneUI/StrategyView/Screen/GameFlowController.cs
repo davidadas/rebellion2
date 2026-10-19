@@ -175,7 +175,11 @@ public sealed class GameFlowController : MonoBehaviour
             .Instance.GetUserSettingsManager()
             .Settings.Gameplay.DisableBriefings;
         bool playBriefing = GameLaunchContext.PlayIntroCutscene && !briefingsDisabled;
-        Task intro = PlayFactionIntroAsync(game.GetPlayerFaction());
+        bool deferIntro =
+            GameLaunchContext.PlayIntroCutscene && LoadingScreenController.IsLoadInProgress;
+        Task intro = deferIntro
+            ? Task.CompletedTask
+            : PlayFactionIntroAsync(game.GetPlayerFaction());
         GameSession session = StartGameSession(loadedGame: false);
         InitializeStrategy(session);
         Task briefingReady = playBriefing
@@ -183,7 +187,7 @@ public sealed class GameFlowController : MonoBehaviour
             : Task.CompletedTask;
         Task initialContentReady = strategyController.PrepareInitialContentAsync();
         await Task.WhenAll(intro, briefingReady, initialContentReady);
-        await ActivateGameplayAsync(session, playBriefing);
+        await ActivateGameplayAsync(session, playBriefing, deferIntro);
     }
 
     /// <summary>
@@ -219,16 +223,26 @@ public sealed class GameFlowController : MonoBehaviour
         if (!GameLaunchContext.PlayIntroCutscene)
             return Task.CompletedTask;
 
+        TaskCompletionSource<bool> completion = new TaskCompletionSource<bool>();
+        PlayFactionIntro(faction, () => completion.TrySetResult(true));
+        return completion.Task;
+    }
+
+    /// <summary>
+    /// Plays an introduction after the loading overlay has released the screen, when deferred.
+    /// </summary>
+    /// <param name="faction">The faction whose introduction should play.</param>
+    /// <param name="completed">The gameplay activation to resume after playback.</param>
+    private void PlayFactionIntro(Faction faction, Action completed)
+    {
         FactionTheme theme = themeLibrary.GetTheme(faction.InstanceID);
         if (string.IsNullOrEmpty(theme.IntroCutscenePath))
-            return Task.CompletedTask;
+        {
+            completed();
+            return;
+        }
 
-        TaskCompletionSource<bool> completion = new TaskCompletionSource<bool>();
-        AppBootstrap
-            .EnsureExists()
-            .GetCutsceneManager()
-            .Play(theme.IntroCutscenePath, () => completion.TrySetResult(true));
-        return completion.Task;
+        AppBootstrap.EnsureExists().GetCutsceneManager().Play(theme.IntroCutscenePath, completed);
     }
 
     /// <summary>
@@ -334,8 +348,13 @@ public sealed class GameFlowController : MonoBehaviour
     /// </summary>
     /// <param name="session">The active game session.</param>
     /// <param name="requestBriefing">Whether launch state requested the opening briefing.</param>
+    /// <param name="deferIntro">Whether to play the faction introduction after the loading overlay exits.</param>
     /// <returns>A task that completes after gameplay is active.</returns>
-    private async Task ActivateGameplayAsync(GameSession session, bool requestBriefing)
+    private async Task ActivateGameplayAsync(
+        GameSession session,
+        bool requestBriefing,
+        bool deferIntro = false
+    )
     {
         bool loadingTransitionActive = LoadingScreenController.IsLoadInProgress;
         await strategyController.ActivatePresentationAsync(startMusic: !loadingTransitionActive);
@@ -355,10 +374,18 @@ public sealed class GameFlowController : MonoBehaviour
         if (loadingTransitionActive)
         {
             LoadingScreenController.CompletePendingLoad(
+                AppBootstrap.Instance,
                 () =>
                 {
-                    strategyController.ResumeMusic();
-                    FinishGameplayActivation(session, clock, metadata, playBriefing);
+                    Action activate = () =>
+                    {
+                        strategyController.ResumeMusic();
+                        FinishGameplayActivation(session, clock, metadata, playBriefing);
+                    };
+                    if (deferIntro)
+                        PlayFactionIntro(session.Game.GetPlayerFaction(), activate);
+                    else
+                        activate();
                 },
                 StrategyController.PlayStrategyReadySound,
                 () => AudioManager.EnsureExists().PlaySfx(StrategyUISoundPaths.ControlPress)
