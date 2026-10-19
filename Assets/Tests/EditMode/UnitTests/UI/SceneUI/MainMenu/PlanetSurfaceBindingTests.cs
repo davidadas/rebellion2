@@ -37,7 +37,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             MeshRenderer renderer = root.AddComponent<MeshRenderer>();
             renderer.sharedMaterial = importedMaterial;
             PlanetSurfaceBinding binding = root.AddComponent<PlanetSurfaceBinding>();
-            binding.Configure("Custom/PlanetSurface", "planet/clouds", 0.75f);
+            binding.Configure("Hidden/Tests/PlanetSurfaceBinding", "planet/clouds", 0.75f);
             FakeContentAssetSource contentAssets = new FakeContentAssetSource(
                 "planet/clouds",
                 clouds
@@ -46,7 +46,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             binding.InitializeContent(contentAssets);
 
             Material runtimeMaterial = renderer.sharedMaterial;
-            Assert.AreEqual("Custom/PlanetSurface", runtimeMaterial.shader.name);
+            Assert.AreEqual("Hidden/Tests/PlanetSurfaceBinding", runtimeMaterial.shader.name);
             Assert.AreSame(albedo, runtimeMaterial.GetTexture("_BaseMap"));
             Assert.AreSame(clouds, runtimeMaterial.GetTexture("_CloudMap"));
             Assert.AreEqual(0.75f, runtimeMaterial.GetFloat("_CloudRotationSpeed"));
@@ -88,6 +88,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.IsNotNull(shader);
             Material material = new Material(shader) { mainTexture = baseTexture };
             _createdObjects.Add(material);
+            Assert.AreSame(baseTexture, material.mainTexture);
             return material;
         }
 
