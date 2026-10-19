@@ -5074,6 +5074,41 @@ namespace Rebellion.Tests.Simulation
             Assert.IsFalse(planet.GetManufacturingQueue().ContainsKey(ManufacturingType.Ship));
         }
 
+        /// <summary>
+        /// Verifies that maintenance is approved for the complete batch before any item is queued.
+        /// </summary>
+        [Test]
+        public void StartManufacturing_OrderExceedsMaintenanceHeadroom_DoesNotQueuePartialOrder()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Faction faction = game.GetFactions().Single();
+            faction.Settings.ResourceProcessingPointsPerFacility = 1;
+            Planet planet = CreateOrderTestShipyardPlanet(game, "p1", faction.InstanceID);
+            AddResourceSupply(game, planet, faction.InstanceID, 1);
+            ManufacturingCommands manager = new ManufacturingCommands(
+                game,
+                new FleetCommands(game),
+                new ManufacturingQueries(game)
+            );
+            CapitalShip template = CreateOrderTestCapitalShipTemplate(
+                "dreadnaught",
+                "Dreadnaught",
+                1
+            );
+
+            bool started = manager.StartManufacturing(
+                planet,
+                template,
+                planet,
+                2,
+                faction.InstanceID
+            );
+
+            Assert.IsFalse(started);
+            Assert.IsEmpty(planet.GetChildren<Fleet>());
+            Assert.IsFalse(planet.GetManufacturingQueue().ContainsKey(ManufacturingType.Ship));
+        }
+
         [Test]
         public void StartManufacturing_OrderExceedsDestinationCapacity_DoesNotQueuePartialOrder()
         {
