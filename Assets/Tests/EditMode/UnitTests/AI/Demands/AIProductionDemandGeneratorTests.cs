@@ -1893,6 +1893,100 @@ namespace Rebellion.Tests.AI.Demands
             );
         }
 
+        [TestCase(1, 0, ManufacturingStatus.Complete, 2)]
+        [TestCase(1, 1, ManufacturingStatus.Complete, 1)]
+        [TestCase(1, 2, ManufacturingStatus.Complete, 0)]
+        [TestCase(1, 5, ManufacturingStatus.Complete, 0)]
+        [TestCase(1, 2, ManufacturingStatus.Building, 0)]
+        [TestCase(1, 2, ManufacturingStatus.Delivering, 0)]
+        [TestCase(50, 2, ManufacturingStatus.Complete, 3)]
+        [TestCase(100, 2, ManufacturingStatus.Complete, 8)]
+        public void BuildDemands_AssignedAttackRegiments_RespectsTargetAndConfiguredReserve(
+            int loadPercent,
+            int committedCount,
+            ManufacturingStatus status,
+            int expectedDeficit
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction enemy);
+            game.Config.AI.Infrastructure.AssaultRegimentLoadPercent = loadPercent;
+            game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 2;
+            game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount = 2;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet source = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "source",
+                faction.InstanceID
+            );
+            Planet target = AITestSceneBuilder.AddPlanet(game, sector, "target", enemy.InstanceID);
+            target.SetPopularSupport(faction.InstanceID, 100);
+            target.SetPopularSupport(enemy.InstanceID, 0);
+            AITestSceneBuilder.RevealPlanet(game, faction, target);
+            Fleet fleet = AddAttackFleet(
+                game,
+                source,
+                target,
+                faction.InstanceID,
+                regimentCapacity: 10
+            );
+            CapitalShip carrier = fleet.GetChildren<CapitalShip>().Single();
+            for (int index = 0; index < committedCount; index++)
+            {
+                Regiment regiment = AITestSceneBuilder.CreateRegiment(
+                    "regiment-" + index,
+                    faction.InstanceID
+                );
+                regiment.ManufacturingStatus = status;
+                if (status == ManufacturingStatus.Delivering)
+                    regiment.Movement = new MovementState { TransitTicks = 10 };
+                game.AttachNode(regiment, carrier);
+            }
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
+
+            AIProductionDemand demand = new AIProductionDemandGenerator()
+                .BuildDemands(context)
+                .SingleOrDefault(item =>
+                    item.Kind == AIProductionDemandKind.FleetRegiment
+                    && item.DestinationFleet == fleet
+                );
+
+            Assert.AreEqual(expectedDeficit, demand?.QuantityNeeded ?? 0);
+        }
+
+        [Test]
+        public void BuildDemands_UnassignedBattleFleet_PreservesConfiguredRegimentReserve()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction enemy);
+            game.Config.AI.Infrastructure.AssaultRegimentLoadPercent = 50;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet source = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "source",
+                faction.InstanceID
+            );
+            Planet target = AITestSceneBuilder.AddPlanet(game, sector, "target", enemy.InstanceID);
+            Fleet fleet = AddAttackFleet(
+                game,
+                source,
+                target,
+                faction.InstanceID,
+                regimentCapacity: 10
+            );
+            fleet.Order = null;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
+
+            AIProductionDemand demand = new AIProductionDemandGenerator()
+                .BuildDemands(context)
+                .Single(item =>
+                    item.Kind == AIProductionDemandKind.FleetRegiment
+                    && item.DestinationFleet == fleet
+                );
+
+            Assert.AreEqual(5, demand.QuantityNeeded);
+        }
+
         [Test]
         public void BuildDemands_WithFleetCapacityGaps_AddsFleetReinforcementDemands()
         {
@@ -2324,14 +2418,19 @@ namespace Rebellion.Tests.AI.Demands
             );
         }
 
-        [Test]
-        public void BuildDemands_WithAttackRegimentStrengthGap_AddsDemandForEntireDeficit()
+        [TestCase(0, 3)]
+        [TestCase(1, 3)]
+        [TestCase(100, 4)]
+        public void BuildDemands_WithAttackRegimentStrengthGap_AddsDemandForEntireDeficit(
+            int loadPercent,
+            int expectedDeficit
+        )
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 0;
             game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 1;
             game.Config.AI.FleetDeployment.AttackStrengthPercentOfDefense = 100;
-            game.Config.AI.Infrastructure.AssaultRegimentLoadPercent = 0;
+            game.Config.AI.Infrastructure.AssaultRegimentLoadPercent = loadPercent;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
             Planet enemy = AITestSceneBuilder.AddPlanet(game, system, "enemy", rebels.InstanceID);
@@ -2361,7 +2460,7 @@ namespace Rebellion.Tests.AI.Demands
                     && item.DestinationFleet == fleet
                 );
 
-            Assert.AreEqual(3, demand.QuantityNeeded);
+            Assert.AreEqual(expectedDeficit, demand.QuantityNeeded);
         }
 
         [Test]

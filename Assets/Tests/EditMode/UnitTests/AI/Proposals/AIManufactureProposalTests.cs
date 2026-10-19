@@ -112,9 +112,12 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.AreEqual(1, planet.GetManufacturingQueue()[ManufacturingType.Building].Count);
         }
 
-        [TestCase(100, true)]
-        [TestCase(101, false)]
+        [TestCase(AIProductionDemandKind.Shipyard, 100, true)]
+        [TestCase(AIProductionDemandKind.Shipyard, 101, false)]
+        [TestCase(AIProductionDemandKind.PlanetaryDefense, 100, true)]
+        [TestCase(AIProductionDemandKind.PlanetaryDefense, 101, false)]
         public void Execute_HeadroomBelowEconomyTarget_RespectsManufacturingReserve(
+            AIProductionDemandKind kind,
             int maintenanceCost,
             bool expectedQueued
         )
@@ -156,23 +159,31 @@ namespace Rebellion.Tests.AI.Proposals
                     ManufacturingType.None
                 );
             }
-            Building yard = AITestSceneBuilder.CreateBuildingTemplate(
-                "yard",
-                BuildingType.Shipyard,
-                ManufacturingType.Ship
+            BuildingType buildingType =
+                kind == AIProductionDemandKind.PlanetaryDefense
+                    ? BuildingType.Defense
+                    : BuildingType.Shipyard;
+            Building building = AITestSceneBuilder.CreateBuildingTemplate(
+                "building",
+                buildingType,
+                buildingType == BuildingType.Shipyard
+                    ? ManufacturingType.Ship
+                    : ManufacturingType.None
             );
-            yard.MaintenanceCost = maintenanceCost;
+            building.MaintenanceCost = maintenanceCost;
+            if (buildingType == BuildingType.Defense)
+                building.ShieldStrength = 80;
             AIManufactureProposal proposal = new(
                 new AIProductionDemand(
-                    "shipyard",
-                    AIProductionDemandKind.Shipyard,
+                    "production",
+                    kind,
                     ManufacturingType.Building,
-                    BuildingType.Shipyard,
+                    buildingType,
                     producer,
                     1
                 ),
                 producer,
-                new Technology(yard),
+                new Technology(building),
                 false
             );
 
