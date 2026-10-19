@@ -18,6 +18,206 @@ namespace Rebellion.Tests.AI.Fleets
     [TestFixture]
     public class AIFleetProposalScorerTests
     {
+        [TestCase(false, false)]
+        [TestCase(true, true)]
+        public void Score_FleetHasNoTroops_ValuesImmediateCombatOverDistantPreparation(
+            bool atTarget,
+            bool hasValue
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.FleetDeployment.MinimumAttackStrength = 1;
+            game.Config.Combat.SpaceCombat.AdmiralLeadershipDivisor = 100;
+            game.Config.AI.FleetDeployment.OfficerCommandUtility =
+                new GameConfig.AIOfficerCommandUtilityConfig
+                {
+                    ForceImprovement = new GameConfig.AIConsiderationConfig { Weight = 1 },
+                };
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, sector, "origin", empire.InstanceID);
+            Planet target = AITestSceneBuilder.AddPlanet(game, sector, "target", rebels.InstanceID);
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+            Fleet fleet = AddBattleFleet(
+                game,
+                atTarget ? target : origin,
+                "fleet",
+                empire.InstanceID,
+                100
+            );
+            fleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                Status = FleetOrderStatus.Building,
+                TargetPlanetId = target.InstanceID,
+            };
+            Officer officer = EntityFactory.CreateOfficer("officer", empire.InstanceID);
+            officer.AllowedRanks = new[] { OfficerRank.Admiral };
+            officer.SetBaseRating(SkillRating.Leadership, 100);
+            game.AttachNode(officer, fleet.GetChildren<CapitalShip>().Single());
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            double score = new AIFleetProposalScorer().Score(
+                context,
+                new AIOfficerCommandProposal(officer, fleet, target, OfficerRank.Admiral)
+            );
+
+            Assert.AreEqual(hasValue, score > 0);
+        }
+
+        [TestCase(false, false)]
+        [TestCase(true, true)]
+        public void Score_OnlyBombardmentImproves_RequiresGroundOpposition(
+            bool hasDefenders,
+            bool hasValue
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.FleetDeployment.MinimumAttackStrength = 1;
+            game.Config.Combat.SpaceCombat.AdmiralLeadershipDivisor = 0;
+            game.Config.Combat.Bombardment.AttackerLeadershipDivisor = 10;
+            game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount = 1;
+            game.Config.AI.FleetDeployment.OfficerCommandUtility =
+                new GameConfig.AIOfficerCommandUtilityConfig
+                {
+                    ForceImprovement = new GameConfig.AIConsiderationConfig { Weight = 1 },
+                };
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, sector, "origin", empire.InstanceID);
+            Planet target = AITestSceneBuilder.AddPlanet(game, sector, "target", rebels.InstanceID);
+            if (hasDefenders)
+                game.AttachNode(
+                    AITestSceneBuilder.CreateRegiment("defender", rebels.InstanceID),
+                    target
+                );
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+            Fleet fleet = AddBattleFleet(game, origin, "fleet", empire.InstanceID, 100);
+            CapitalShip ship = fleet.GetChildren<CapitalShip>().Single();
+            ship.Bombardment = 100;
+            game.AttachNode(AITestSceneBuilder.CreateRegiment("regiment", empire.InstanceID), ship);
+            fleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                Status = FleetOrderStatus.Building,
+                TargetPlanetId = target.InstanceID,
+            };
+            Officer officer = EntityFactory.CreateOfficer("officer", empire.InstanceID);
+            officer.AllowedRanks = new[] { OfficerRank.Admiral };
+            officer.SetBaseRating(SkillRating.Leadership, 100);
+            game.AttachNode(officer, ship);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            double score = new AIFleetProposalScorer().Score(
+                context,
+                new AIOfficerCommandProposal(officer, fleet, target, OfficerRank.Admiral)
+            );
+
+            Assert.AreEqual(hasValue, score > 0);
+        }
+
+        [TestCase(0, false, false)]
+        [TestCase(100, false, true)]
+        [TestCase(100, true, true)]
+        public void Score_FleetExceedsAttackDemand_ValuesEffectiveCommand(
+            int leadership,
+            bool alreadyAssigned,
+            bool hasValue
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.FleetDeployment.MinimumAttackStrength = 1;
+            game.Config.Combat.SpaceCombat.AdmiralLeadershipDivisor = 100;
+            game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount = 1;
+            game.Config.AI.FleetDeployment.OfficerCommandUtility =
+                new GameConfig.AIOfficerCommandUtilityConfig
+                {
+                    ForceImprovement = new GameConfig.AIConsiderationConfig { Weight = 1 },
+                };
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, sector, "origin", empire.InstanceID);
+            Planet target = AITestSceneBuilder.AddPlanet(game, sector, "target", rebels.InstanceID);
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+            Fleet fleet = AddBattleFleet(game, origin, "fleet", empire.InstanceID, 100);
+            game.AttachNode(
+                AITestSceneBuilder.CreateRegiment("regiment", empire.InstanceID),
+                fleet.GetChildren<CapitalShip>().Single()
+            );
+            fleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                Status = FleetOrderStatus.Ready,
+                TargetPlanetId = target.InstanceID,
+            };
+            Officer officer = EntityFactory.CreateOfficer("officer", empire.InstanceID);
+            officer.AllowedRanks = new[] { OfficerRank.Admiral };
+            officer.SetBaseRating(SkillRating.Leadership, leadership);
+            officer.CurrentRank = alreadyAssigned ? OfficerRank.Admiral : OfficerRank.None;
+            game.AttachNode(officer, fleet.GetChildren<CapitalShip>().Single());
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIOfficerCommandProposal proposal = new(officer, fleet, target, OfficerRank.Admiral);
+
+            double score = new AIFleetProposalScorer().Score(context, proposal);
+
+            Assert.AreEqual(hasValue, score > 0);
+        }
+
+        [TestCase(OfficerRank.Commander, false)]
+        [TestCase(OfficerRank.Commander, true)]
+        [TestCase(OfficerRank.General, false)]
+        [TestCase(OfficerRank.General, true)]
+        public void Score_FleetExceedsPersonnelStrengthDemand_ValuesEffectiveCommand(
+            OfficerRank rank,
+            bool alreadyAssigned
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.FleetDeployment.MinimumAttackStrength = 1;
+            game.Config.Combat.SpaceCombat.CommanderCombatDivisor = 20;
+            game.Config.Combat.PlanetaryAssault.GeneralLeadershipDivisor = 30;
+            game.Config.AI.FleetDeployment.OfficerCommandUtility =
+                new GameConfig.AIOfficerCommandUtilityConfig
+                {
+                    ForceImprovement = new GameConfig.AIConsiderationConfig { Weight = 1 },
+                };
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, sector, "origin", empire.InstanceID);
+            Planet target = AITestSceneBuilder.AddPlanet(game, sector, "target", rebels.InstanceID);
+            game.AttachNode(
+                AITestSceneBuilder.CreateRegiment("defender", rebels.InstanceID),
+                target
+            );
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+            Fleet fleet = AddBattleFleet(game, origin, "fleet", empire.InstanceID, 100);
+            CapitalShip ship = fleet.GetChildren<CapitalShip>().Single();
+            game.AttachNode(
+                AITestSceneBuilder.CreateRegiment("regiment", empire.InstanceID, 100),
+                ship
+            );
+            game.AttachNode(
+                AITestSceneBuilder.CreateStarfighter("fighter", empire.InstanceID),
+                ship
+            );
+            fleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                Status = FleetOrderStatus.Building,
+                TargetPlanetId = target.InstanceID,
+            };
+            Officer officer = EntityFactory.CreateOfficer("officer", empire.InstanceID);
+            officer.AllowedRanks = new[] { rank };
+            officer.SetBaseRating(SkillRating.Leadership, 100);
+            officer.SetBaseRating(SkillRating.Combat, 100);
+            officer.CurrentRank = alreadyAssigned ? rank : OfficerRank.None;
+            game.AttachNode(officer, ship);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            double score = new AIFleetProposalScorer().Score(
+                context,
+                new AIOfficerCommandProposal(officer, fleet, target, rank)
+            );
+
+            Assert.Greater(score, 0);
+        }
+
         [TestCase(0.03, false)]
         [TestCase(0.15, true)]
         public void Score_StrongerSectorOwnershipPreference_FavorsConsolidationOverShorterTravel(
