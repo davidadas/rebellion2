@@ -27,7 +27,6 @@ Shader "Custom/LoadingShuttleExhaust"
 
             HLSLPROGRAM
             #pragma target 4.5
-            #pragma require cubearray
             #pragma vertex Vert
             #pragma fragment Frag
 

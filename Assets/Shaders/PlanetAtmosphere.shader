@@ -37,7 +37,6 @@ Shader "Custom/PlanetAtmosphere"
 
             HLSLPROGRAM
             #pragma target 4.5
-            #pragma require cubearray
             #pragma vertex Vert
             #pragma fragment Frag
 
