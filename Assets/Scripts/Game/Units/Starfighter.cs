@@ -296,7 +296,7 @@ namespace Rebellion.Game.Units
         /// </summary>
         /// <param name="squadronSize">The number of fighters contributing weapon strength.</param>
         /// <returns>The squadron combat value.</returns>
-        internal int CalculateCombatValue(int squadronSize)
+        public int CalculateCombatValue(int squadronSize)
         {
             int weaponStrength = GetWeaponStrength();
             return MaxSquadronSize > 0

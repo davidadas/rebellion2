@@ -551,6 +551,28 @@ namespace Rebellion.Tests.Game.Units
             Assert.Greater(starDestroyer.GetCombatValue(), corvette.GetCombatValue() * 2);
         }
 
+        [TestCase(0)]
+        [TestCase(100)]
+        public void CalculateCombatValue_WithNoRemainingHull_ReturnsZero(int shieldStrength)
+        {
+            CapitalShip ship = CreateCombatShip(100, 100, shieldStrength);
+
+            int value = ship.CalculateCombatValue(0);
+
+            Assert.Zero(value);
+        }
+
+        [Test]
+        public void CalculateCombatValue_WithRequestedHull_PreservesCurrentHull()
+        {
+            CapitalShip ship = CreateCombatShip(100, 100, 100);
+
+            int value = ship.CalculateCombatValue(25);
+
+            Assert.AreEqual(111, value);
+            Assert.AreEqual(100, ship.CurrentHullStrength);
+        }
+
         [Test]
         public void GetCombatValue_WithShieldStrength_IncreasesValue()
         {
