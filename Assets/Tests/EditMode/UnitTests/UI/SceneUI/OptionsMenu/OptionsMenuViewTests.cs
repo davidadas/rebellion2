@@ -694,20 +694,13 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 "2 MODS LOADED",
                 GetField<TextMeshProUGUI>("_modsStatusTextField").text
             );
-            TextMeshProUGUI restart = GetField<TextMeshProUGUI>("_modsRestartTextField");
-            Assert.IsTrue(restart.gameObject.activeSelf);
-            Assert.AreEqual("A RESTART MAY BE REQUIRED", restart.text);
-            Assert.AreEqual(FontStyles.Bold, restart.fontStyle);
-            Assert.AreEqual(TextAlignmentOptions.Center, restart.alignment);
             RectInt statusRect = UILayout.GetSourceRect(
                 GetField<TextMeshProUGUI>("_modsStatusTextField").rectTransform
             );
-            RectInt restartRect = UILayout.GetSourceRect(restart.rectTransform);
             RectInt scrollRect = UILayout.GetSourceRect(
                 GetField<ScrollAreaView>("_modsScrollArea").transform as RectTransform
             );
             Assert.GreaterOrEqual(scrollRect.y, statusRect.yMax);
-            Assert.GreaterOrEqual(restartRect.y, scrollRect.yMax);
             Assert.AreEqual(
                 "Classic Galactic Civil War",
                 GetField<TextMeshProUGUI>("_contentPackValueField").text
@@ -746,12 +739,49 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.IsTrue(GetField<GameObject>("_settingsActions").activeSelf);
             Assert.IsTrue(GetField<Button>("_applyButton").gameObject.activeSelf);
             Assert.IsTrue(GetField<Button>("_defaultsButton").gameObject.activeSelf);
-            Assert.AreEqual(
-                313,
-                UILayout
-                    .GetSourceRect(GetField<TextMeshProUGUI>("_modsRestartTextField").rectTransform)
-                    .y
+        }
+
+        [Test]
+        public void HandleApplyClicked_ListenerDestroysView_DoesNotAccessDestroyedControls()
+        {
+            Button applyButton = GetField<Button>("_applyButton");
+            _view.ApplyRequested += () => UnityEngine.Object.DestroyImmediate(_root);
+
+            Assert.DoesNotThrow(() => applyButton.onClick.Invoke());
+
+            Assert.IsFalse(_root);
+        }
+
+        [Test]
+        public void Render_LongContentPackName_KeepsTextWithinWideSelector()
+        {
+            _view.Render(
+                CreateRenderDataForTab(
+                    OptionsMenuTab.Mods,
+                    contentPackLabel: "25th Anniversary (by Metasharp) with an unusually long name"
+                )
             );
+            TextMeshProUGUI value = GetField<TextMeshProUGUI>("_contentPackValueField");
+            RectInt valueRect = UILayout.GetSourceRect(value.rectTransform);
+            TextMeshProUGUI previousGlyph = GetField<Button>("_contentPackPrevButton")
+                .GetComponentInChildren<TextMeshProUGUI>();
+            TextMeshProUGUI nextGlyph = GetField<Button>("_contentPackNextButton")
+                .GetComponentInChildren<TextMeshProUGUI>();
+            RectInt previousButtonRect = UILayout.GetSourceRect(
+                previousGlyph.transform.parent as RectTransform
+            );
+            RectInt nextButtonRect = UILayout.GetSourceRect(
+                nextGlyph.transform.parent as RectTransform
+            );
+            RectInt previousGlyphRect = UILayout.GetSourceRect(previousGlyph.rectTransform);
+            RectInt nextGlyphRect = UILayout.GetSourceRect(nextGlyph.rectTransform);
+
+            Assert.GreaterOrEqual(valueRect.width, 270);
+            Assert.GreaterOrEqual(valueRect.x, previousButtonRect.x + previousGlyphRect.xMax);
+            Assert.LessOrEqual(valueRect.xMax, nextButtonRect.x + nextGlyphRect.x);
+            Assert.AreEqual(TextOverflowModes.Ellipsis, value.overflowMode);
+            Assert.AreEqual(TextWrappingModes.NoWrap, value.textWrappingMode);
+            Assert.IsFalse(value.raycastTarget);
         }
 
         [Test]

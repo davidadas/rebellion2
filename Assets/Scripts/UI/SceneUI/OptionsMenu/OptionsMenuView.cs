@@ -216,9 +216,6 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     private TextMeshProUGUI _modsStatusTextField;
 
     [SerializeField]
-    private TextMeshProUGUI _modsRestartTextField;
-
-    [SerializeField]
     private TextMeshProUGUI _contentPackValueField;
 
     [SerializeField]
@@ -586,8 +583,6 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     /// <param name="resetScroll">Whether the page was just entered.</param>
     private void RenderModsPage(OptionsMenuRenderData data, bool resetScroll)
     {
-        bool restartRequired =
-            data.ContentRestartRequired || data.Mods.Any(mod => mod.Enabled != mod.Loaded);
         _contentPackChoice.Render(data.ContentPackLabel);
         int loadedCount = data.Mods.Count(mod => mod.Loaded);
         string status =
@@ -595,7 +590,6 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
                 ? "NO COMPATIBLE MODS FOUND"
                 : $"{loadedCount} {(loadedCount == 1 ? "MOD" : "MODS")} LOADED";
         UILayout.SetTextContent(_modsStatusTextField, status);
-        _modsRestartTextField.gameObject.SetActive(restartRequired);
 
         for (int index = 0; index < data.Mods.Count; index++)
         {
@@ -1070,14 +1064,14 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     }
 
     /// <summary>
-    /// Applies the settings and releases pointer focus so hover feedback resumes immediately.
+    /// Releases pointer focus before notifying an owner that may close the Options window.
     /// </summary>
     private void HandleApplyClicked()
     {
-        ApplyRequested?.Invoke();
         EventSystem eventSystem = EventSystem.current;
         if (eventSystem?.currentSelectedGameObject == _applyButton.gameObject)
             eventSystem.SetSelectedGameObject(null);
+        ApplyRequested?.Invoke();
     }
 
     /// <summary>
@@ -1411,7 +1405,6 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             );
         if (
             _modsStatusTextField == null
-            || _modsRestartTextField == null
             || _contentPackValueField == null
             || _contentPackPrevButton == null
             || _contentPackNextButton == null
