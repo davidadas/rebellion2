@@ -18,6 +18,43 @@ namespace Rebellion.Tests.AI.Helpers
 {
     public static class AITestSceneBuilder
     {
+        public static AITurnContext CreateBombardmentDonorContext(
+            bool assaultBlocked,
+            int donorBombardment,
+            out Fleet receiver,
+            out CapitalShip donor
+        )
+        {
+            AITurnContext context = CreateBombardmentReinforcementContext(
+                true,
+                true,
+                out receiver,
+                out Fleet other,
+                out _
+            );
+            context.Game.DeleteNode(other);
+            Planet otherTarget = context.Game.GetSceneNodeByInstanceID<Planet>("other-target");
+            otherTarget.OwnerInstanceID = context.Faction.InstanceID;
+            RevealPlanet(context.Game, context.Faction, otherTarget);
+            context = AddReinforcementDonor(context, false, out donor);
+            donor.GetParentOfType<Fleet>().RoleType = FleetRoleType.Battle;
+            donor.RegimentCapacity = 0;
+            donor.StarfighterCapacity = 0;
+            donor.Bombardment = donorBombardment;
+            Planet target = context.Game.GetSceneNodeByInstanceID<Planet>(
+                receiver.Order.TargetPlanetId
+            );
+            if (assaultBlocked)
+            {
+                Building shield = CreateBuildingTemplate("extra-shield", BuildingType.Defense);
+                shield.OwnerInstanceID = target.GetOwnerInstanceID();
+                shield.ShieldStrength = 2;
+                context.Game.AttachNode(shield, target);
+            }
+            RevealPlanet(context.Game, context.Faction, target);
+            return CreateContext(context.Game, context.Faction);
+        }
+
         public static AITurnContext AddReinforcementDonor(
             AITurnContext context,
             bool carriesRegiment,

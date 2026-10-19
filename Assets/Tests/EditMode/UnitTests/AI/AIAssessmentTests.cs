@@ -21,6 +21,70 @@ namespace Rebellion.Tests.AI
     [TestFixture]
     public class AIAssessmentTests
     {
+        [TestCase(0, true, false)]
+        [TestCase(1, true, false)]
+        [TestCase(5, true, true)]
+        [TestCase(5, false, false)]
+        public void CanBombardDefenders_AdditionalBombardment_ReportsCapabilityWithoutChangingFleet(
+            int contribution,
+            bool hasDefenders,
+            bool expected
+        )
+        {
+            AITurnContext context = AITestSceneBuilder.CreateBombardmentDonorContext(
+                false,
+                0,
+                out Fleet receiver,
+                out _
+            );
+            Planet target = context.Game.GetSceneNodeByInstanceID<Planet>(
+                receiver.Order.TargetPlanetId
+            );
+            if (!hasDefenders)
+            {
+                foreach (Regiment regiment in target.GetAllRegiments().ToList())
+                    context.Game.DeleteNode(regiment);
+                AITestSceneBuilder.RevealPlanet(context.Game, context.Faction, target);
+                context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+            }
+
+            bool actual = context.Assessment.CanBombardDefenders(
+                receiver,
+                context.Assessment.GetKnownPlanet(target.InstanceID),
+                true,
+                contribution
+            );
+
+            Assert.AreEqual(expected, actual);
+            Assert.AreEqual(1, context.Assessment.GetProjectedFleetBombardmentStrength(receiver));
+        }
+
+        [TestCase(false, false)]
+        [TestCase(true, true)]
+        public void CanBombardDefenders_UnfinishedShip_UsesOnlyRequestedReadiness(
+            bool projected,
+            bool expected
+        )
+        {
+            AITurnContext context = AITestSceneBuilder.CreateBombardmentDonorContext(
+                false,
+                5,
+                out Fleet receiver,
+                out CapitalShip ship
+            );
+            context.Game.MoveNode(ship, receiver);
+            ship.ManufacturingStatus = ManufacturingStatus.Building;
+            context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+
+            bool actual = context.Assessment.CanBombardDefenders(
+                receiver,
+                context.Assessment.GetKnownPlanet(receiver.Order.TargetPlanetId),
+                projected
+            );
+
+            Assert.AreEqual(expected, actual);
+        }
+
         [TestCase(1, 90, true, "active", false, 90)]
         [TestCase(3, 90, true, "active", false, 270)]
         [TestCase(3, 30, true, "active", false, 90)]

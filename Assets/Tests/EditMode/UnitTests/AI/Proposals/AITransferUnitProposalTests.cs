@@ -18,6 +18,27 @@ namespace Rebellion.Tests.AI.Fleets
     public class AITransferUnitProposalTests
     {
         [Test]
+        public void Execute_ReceivingFleetChangesTarget_KeepsDonorInOriginalFleet()
+        {
+            AITurnContext context = AITestSceneBuilder.CreateBombardmentDonorContext(
+                false,
+                5,
+                out Fleet receiver,
+                out CapitalShip donor
+            );
+            Fleet source = donor.GetParentOfType<Fleet>();
+            Planet target = context.Assessment.GetKnownPlanet(receiver.Order.TargetPlanetId);
+            AITransferUnitProposal proposal = new(source, receiver, donor, receiver, target);
+            Assert.IsTrue(proposal.CanExecute(context));
+            receiver.Order.TargetPlanetId = "other-target";
+
+            proposal.Execute(context);
+
+            Assert.AreSame(source, donor.GetParentOfType<Fleet>());
+            Assert.IsNull(donor.Movement);
+        }
+
+        [Test]
         public void Execute_WithSpareHeadquartersDefender_PreservesDefenseOrder()
         {
             AITransferUnitProposal proposal = CreateDefenseTransfer(out AITurnContext context);

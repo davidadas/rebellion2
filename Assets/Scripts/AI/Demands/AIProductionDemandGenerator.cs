@@ -1833,7 +1833,7 @@ namespace Rebellion.AI.Demands
             AIAttackDemand demand = context.GetAttackDemand(targetPlanet);
             if (demand == null)
                 return 0;
-            return CanBombardDefenders(context, fleet, targetPlanet)
+            return context.Assessment.CanBombardDefenders(fleet, targetPlanet, true)
                 ? demand.OccupationRegimentCount
                 : demand.RegimentCount;
         }
@@ -1851,29 +1851,9 @@ namespace Rebellion.AI.Demands
             Planet targetPlanet
         )
         {
-            return CanBombardDefenders(context, fleet, targetPlanet)
+            return context.Assessment.CanBombardDefenders(fleet, targetPlanet, true)
                 ? 0
                 : context.GetAttackDemand(targetPlanet)?.RegimentStrength ?? 0;
-        }
-
-        /// <summary>
-        /// Returns whether projected bombardment can remove defending regiments.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="fleet">The fleet to inspect.</param>
-        /// <param name="targetPlanet">The attack target.</param>
-        /// <returns>True when projected bombardment penetrates the target's shields.</returns>
-        private static bool CanBombardDefenders(
-            AITurnContext context,
-            Fleet fleet,
-            Planet targetPlanet
-        )
-        {
-            return fleet != null
-                && targetPlanet != null
-                && context.Assessment.GetDefendingRegimentCount(targetPlanet) > 0
-                && context.Assessment.GetProjectedFleetBombardmentStrength(fleet)
-                    > context.Assessment.GetBombardmentShieldStrength(targetPlanet);
         }
 
         /// <summary>

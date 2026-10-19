@@ -3201,6 +3201,32 @@ namespace Rebellion.AI
             );
         }
 
+        /// <summary>Returns whether the fleet can remove known ground defenders by bombardment.</summary>
+        /// <param name="fleet">The fleet being assessed.</param>
+        /// <param name="targetPlanet">The known target planet.</param>
+        /// <param name="projected">Whether to include units already committed to the fleet.</param>
+        /// <param name="additionalBombardmentStrength">The contribution from proposed additional ships.</param>
+        /// <returns>True when defenders are present and bombardment exceeds their shields.</returns>
+        public bool CanBombardDefenders(
+            Fleet fleet,
+            Planet targetPlanet,
+            bool projected,
+            int additionalBombardmentStrength = 0
+        )
+        {
+            if (
+                fleet == null
+                || targetPlanet == null
+                || GetDefendingRegimentCount(targetPlanet) == 0
+            )
+                return false;
+            int current = projected
+                ? GetProjectedFleetBombardmentStrength(fleet)
+                : GetFleetBombardmentStrength(fleet);
+            long total = (long)current + Math.Max(0, additionalBombardmentStrength);
+            return total > GetBombardmentShieldStrength(targetPlanet);
+        }
+
         /// <summary>
         /// Returns loaded regiment count for a fleet.
         /// </summary>

@@ -85,6 +85,38 @@ namespace Rebellion.AI.Selectors
                     proposal.TargetFleet.InstanceID,
                     out List<CapitalShip> selected
                 );
+                int selectedBombardment =
+                    selected?.Sum(hull =>
+                        context.Assessment.GetProjectedCapitalShipBombardmentStrength(
+                            proposal.TargetFleet,
+                            hull
+                        )
+                    )
+                    ?? 0;
+                int additionalBombardment =
+                    context.Assessment.GetProjectedCapitalShipBombardmentStrength(
+                        proposal.TargetFleet,
+                        ship
+                    );
+                if (
+                    (
+                        attack.RegimentCount > attack.OccupationRegimentCount
+                        || attack.RegimentStrength > 0
+                    )
+                    && !context.Assessment.CanBombardDefenders(
+                        proposal.TargetFleet,
+                        proposal.TargetPlanet,
+                        true,
+                        selectedBombardment
+                    )
+                    && context.Assessment.CanBombardDefenders(
+                        proposal.TargetFleet,
+                        proposal.TargetPlanet,
+                        true,
+                        selectedBombardment + additionalBombardment
+                    )
+                )
+                    return true;
                 int committedRegiments =
                     selected?.Sum(context.Assessment.GetReadyCapitalShipRegimentCount) ?? 0;
                 int committedStrength =

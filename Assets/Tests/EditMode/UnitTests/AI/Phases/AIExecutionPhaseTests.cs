@@ -22,6 +22,55 @@ namespace Rebellion.Tests.AI.Phases
     public class AIExecutionPhaseTests
     {
         [Test]
+        public void Execute_BombardmentDonorOvercomesShields_LoadsItAndEnablesLaunch()
+        {
+            AITurnContext context = AITestSceneBuilder.CreateBombardmentDonorContext(
+                false,
+                5,
+                out Fleet receiver,
+                out CapitalShip donor
+            );
+            context.AddProposals(new AIFleetPlanner().Plan(context));
+            new AIProductionDemandGenerator().Generate(context);
+            new AIScoringPhase().Execute(context);
+            context.SetSelectedProposals(new AISelectionPhase().Select(context));
+            Assert.IsTrue(
+                context
+                    .SelectedProposals.OfType<AITransferUnitProposal>()
+                    .Any(proposal => proposal.Unit == donor),
+                string.Join(
+                    ", ",
+                    context.SelectedProposals.Select(proposal => proposal.GetSortKey())
+                )
+            );
+
+            new AIExecutionPhase().Execute(context);
+
+            Assert.AreSame(
+                receiver,
+                donor.GetParentOfType<Fleet>(),
+                "Chosen actions: "
+                    + string.Join(
+                        ", ",
+                        context.SelectedProposals.Select(proposal => proposal.GetSortKey())
+                    )
+                    + "; current target: "
+                    + receiver.Order?.TargetPlanetId
+            );
+            context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+            context.AddProposals(new AIFleetPlanner().Plan(context));
+            new AIProductionDemandGenerator().Generate(context);
+            new AIScoringPhase().Execute(context);
+            context.SetSelectedProposals(new AISelectionPhase().Select(context));
+            new AIExecutionPhase().Execute(context);
+            Assert.IsNotNull(receiver.Movement);
+            Assert.AreEqual(
+                receiver.Order.TargetPlanetId,
+                receiver.GetParentOfType<Planet>().InstanceID
+            );
+        }
+
+        [Test]
         public void Execute_BombardingFleetNeedsOccupation_LoadsItsRegimentAndEnablesLaunch()
         {
             AITurnContext context = AITestSceneBuilder.CreateBombardmentReinforcementContext(

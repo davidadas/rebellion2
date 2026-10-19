@@ -1011,7 +1011,7 @@ namespace Rebellion.AI.Scorers
         /// <param name="targetPlanet">The fleet attack target.</param>
         /// <param name="capitalShip">The capital ship to score.</param>
         /// <returns>The readiness gain.</returns>
-        private double ScoreTransferReadinessGain(
+        internal double ScoreTransferReadinessGain(
             AITurnContext context,
             Fleet targetFleet,
             Planet targetPlanet,
@@ -1055,17 +1055,23 @@ namespace Rebellion.AI.Scorers
         {
             AIAssessment assessment = context.Assessment;
             AIAttackDemand demand = context.GetAttackDemand(targetPlanet);
+            int additionalBombardment = assessment.GetProjectedCapitalShipBombardmentStrength(
+                targetFleet,
+                capitalShip
+            );
             int requiredRegimentCount = GetRequiredRegimentCount(
                 context,
                 targetFleet,
                 targetPlanet,
-                true
+                true,
+                additionalBombardment
             );
             int requiredRegimentStrength = GetRequiredRegimentStrength(
                 context,
                 targetFleet,
                 targetPlanet,
-                true
+                true,
+                additionalBombardment
             );
             double combatReadiness = GetFulfillmentRatio(
                 assessment.GetProjectedFleetCombatValueAgainstCapitalShips(targetFleet)
@@ -1520,18 +1526,25 @@ namespace Rebellion.AI.Scorers
         /// <param name="fleet">The fleet to inspect.</param>
         /// <param name="targetPlanet">The target planet.</param>
         /// <param name="projected">Whether projected bombardment strength is used.</param>
+        /// <param name="additionalBombardmentStrength">The proposed ships' additional bombardment contribution.</param>
         /// <returns>The required regiment count.</returns>
         private static int GetRequiredRegimentCount(
             AITurnContext context,
             Fleet fleet,
             Planet targetPlanet,
-            bool projected
+            bool projected,
+            int additionalBombardmentStrength = 0
         )
         {
             AIAttackDemand demand = context?.GetAttackDemand(targetPlanet);
             if (demand == null)
                 return 0;
-            return CanBombardDefenders(context, fleet, targetPlanet, projected)
+            return context.Assessment.CanBombardDefenders(
+                fleet,
+                targetPlanet,
+                projected,
+                additionalBombardmentStrength
+            )
                 ? demand.OccupationRegimentCount
                 : demand.RegimentCount;
         }
@@ -1543,47 +1556,25 @@ namespace Rebellion.AI.Scorers
         /// <param name="fleet">The fleet to inspect.</param>
         /// <param name="targetPlanet">The target planet.</param>
         /// <param name="projected">Whether projected bombardment strength is used.</param>
+        /// <param name="additionalBombardmentStrength">The proposed ships' additional bombardment contribution.</param>
         /// <returns>The required regiment attack strength.</returns>
         private static int GetRequiredRegimentStrength(
             AITurnContext context,
             Fleet fleet,
             Planet targetPlanet,
-            bool projected
+            bool projected,
+            int additionalBombardmentStrength = 0
         )
         {
             AIAttackDemand demand = context?.GetAttackDemand(targetPlanet);
-            return CanBombardDefenders(context, fleet, targetPlanet, projected)
+            return context.Assessment.CanBombardDefenders(
+                fleet,
+                targetPlanet,
+                projected,
+                additionalBombardmentStrength
+            )
                 ? 0
                 : demand?.RegimentStrength ?? 0;
-        }
-
-        /// <summary>
-        /// Returns whether fleet bombardment can remove defending regiments.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="fleet">The fleet to inspect.</param>
-        /// <param name="targetPlanet">The target planet.</param>
-        /// <param name="projected">Whether projected bombardment strength is used.</param>
-        /// <returns>True when bombardment can reach defending regiments.</returns>
-        private static bool CanBombardDefenders(
-            AITurnContext context,
-            Fleet fleet,
-            Planet targetPlanet,
-            bool projected
-        )
-        {
-            if (
-                context == null
-                || fleet == null
-                || targetPlanet == null
-                || context.Assessment.GetDefendingRegimentCount(targetPlanet) == 0
-            )
-                return false;
-
-            int bombardment = projected
-                ? context.Assessment.GetProjectedFleetBombardmentStrength(fleet)
-                : context.Assessment.GetFleetBombardmentStrength(fleet);
-            return bombardment > context.Assessment.GetBombardmentShieldStrength(targetPlanet);
         }
 
         /// <summary>

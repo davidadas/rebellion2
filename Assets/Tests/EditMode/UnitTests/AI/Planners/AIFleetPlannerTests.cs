@@ -21,6 +21,37 @@ namespace Rebellion.Tests.AI.Fleets
     [TestFixture]
     public class AIFleetPlannerTests
     {
+        [TestCase(false, 0, false)]
+        [TestCase(false, 1, false)]
+        [TestCase(false, 5, true)]
+        [TestCase(true, 3, false)]
+        [TestCase(true, 5, true)]
+        public void Plan_BombardmentDonorOvercomesShields_OffersItsTransfer(
+            bool assaultBlocked,
+            int donorBombardment,
+            bool expectedTransfer
+        )
+        {
+            AITurnContext context = AITestSceneBuilder.CreateBombardmentDonorContext(
+                assaultBlocked,
+                donorBombardment,
+                out Fleet receiver,
+                out CapitalShip donor
+            );
+            Planet target = context.Assessment.GetKnownPlanet(receiver.Order.TargetPlanetId);
+            Assert.AreEqual(3, context.GetAttackDemand(target).RegimentCount);
+            Assert.AreEqual(1, context.GetAttackDemand(target).OccupationRegimentCount);
+
+            List<AIProposal> proposals = new AIFleetPlanner().Plan(context);
+
+            Assert.AreEqual(
+                expectedTransfer,
+                proposals
+                    .OfType<AITransferUnitProposal>()
+                    .Any(proposal => proposal.Unit == donor && proposal.TargetFleet == receiver)
+            );
+        }
+
         [Test]
         public void Plan_BombardingFleetHasOccupation_DoesNotRequestUnneededTroopCapacity()
         {

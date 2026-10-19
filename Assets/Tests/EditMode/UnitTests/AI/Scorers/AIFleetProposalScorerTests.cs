@@ -18,6 +18,58 @@ namespace Rebellion.Tests.AI.Fleets
     [TestFixture]
     public class AIFleetProposalScorerTests
     {
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Score_BombardmentDonorOvercomesShields_ValuesCompletedGroundRequirements(
+            bool assaultBlocked
+        )
+        {
+            AITurnContext context = AITestSceneBuilder.CreateBombardmentDonorContext(
+                assaultBlocked,
+                5,
+                out Fleet receiver,
+                out CapitalShip donor
+            );
+            context.Game.Config.AI.FleetDeployment.AttackUtility =
+                new GameConfig.AIAttackUtilityConfig
+                {
+                    Readiness = new GameConfig.AIConsiderationConfig { Weight = 1 },
+                };
+            Planet target = context.Assessment.GetKnownPlanet(receiver.Order.TargetPlanetId);
+            var demand = context.GetAttackDemand(target);
+            double before =
+                (
+                    1d
+                    + (double)context.Assessment.GetFleetLoadedRegimentCount(receiver)
+                        / demand.RegimentCount
+                    + (double)context.Assessment.GetFleetRegimentCapacity(receiver)
+                        / demand.RegimentCount
+                    + (double)context.Assessment.GetProjectedFleetRegimentAttackStrength(receiver)
+                        / demand.RegimentStrength
+                    + (
+                        assaultBlocked
+                            ? (double)
+                                context.Assessment.GetProjectedFleetBombardmentStrength(receiver)
+                                / demand.BombardmentStrength
+                            : 0
+                    )
+                ) / (assaultBlocked ? 5 : 4);
+            double expected = (1 - before) / (2 - before);
+
+            double score = new AIFleetProposalScorer().Score(
+                context,
+                new AITransferUnitProposal(
+                    donor.GetParentOfType<Fleet>(),
+                    receiver,
+                    donor,
+                    receiver,
+                    target
+                )
+            );
+
+            Assert.AreEqual(expected, score, 0.000001);
+        }
+
         [Test]
         public void Score_OccupationReinforcementCompletesBombardingFleet_UsesRemainingGroundRequirement()
         {
