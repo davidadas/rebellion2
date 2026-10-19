@@ -23,12 +23,6 @@ namespace Rebellion.AI
         private readonly GalaxyMap _factionView;
 
         // Cached Assessments.
-        private readonly Dictionary<
-            string,
-            Mission.MissionEvaluationState
-        > _missionEvaluationStates = new Dictionary<string, Mission.MissionEvaluationState>(
-            StringComparer.Ordinal
-        );
         private readonly Dictionary<string, double> _planetValues = new Dictionary<string, double>(
             StringComparer.Ordinal
         );
@@ -1121,26 +1115,6 @@ namespace Rebellion.AI
                 planet.InstanceID,
                 () => planet.GetAllStarfighters().ToList()
             );
-        }
-
-        /// <summary>
-        /// Returns the shared observed-planet assessment used by mission alternatives during this turn.
-        /// </summary>
-        /// <param name="planet">The observed mission destination.</param>
-        /// <returns>The turn-scoped mission assessment for the destination.</returns>
-        internal Mission.MissionEvaluationState GetMissionEvaluationState(Planet planet)
-        {
-            if (
-                !_missionEvaluationStates.TryGetValue(
-                    planet.InstanceID,
-                    out Mission.MissionEvaluationState state
-                )
-            )
-            {
-                state = new Mission.MissionEvaluationState(_game, planet);
-                _missionEvaluationStates.Add(planet.InstanceID, state);
-            }
-            return state;
         }
 
         /// <summary>

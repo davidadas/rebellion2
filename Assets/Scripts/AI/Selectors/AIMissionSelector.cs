@@ -258,13 +258,7 @@ namespace Rebellion.AI.Selectors
                 )
                     continue;
 
-                MissionOdds odds = context.MissionQueries.GetMissionOdds(
-                    mission.CreateContext(),
-                    context.Assessment.GetMissionDetectors,
-                    evaluationState: context.Assessment.GetMissionEvaluationState(
-                        mission.TargetPlanet
-                    )
-                );
+                MissionOdds odds = context.GetMissionOdds(mission);
                 double? personnelLossProbability = odds?.PersonnelLossProbability;
                 if (
                     personnelLossProbability
