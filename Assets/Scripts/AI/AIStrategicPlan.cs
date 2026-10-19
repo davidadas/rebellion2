@@ -313,6 +313,15 @@ namespace Rebellion.AI
                 _assessment.IsPriorityDefensePlanet(planet)
                 || _assessment.IsPlanetThreatened(planet)
                 || _assessment.GetHostileFleets(planet).Any()
+                || GetDefenseCommitment(planet).HoldAllLocalFleets
+                    && _assessment
+                        .GetFriendlyFleets(planet)
+                        .Any(fleet =>
+                            fleet.RoleType == FleetRoleType.Battle
+                            && fleet.Movement == null
+                            && !fleet.IsInCombat
+                            && fleet.HasOperationalCapitalShips()
+                        )
             )
                 return limit;
             bool hasInfrastructure =

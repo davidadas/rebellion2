@@ -651,6 +651,86 @@ namespace Rebellion.Tests.AI
             Assert.IsFalse(plan.CanReinforce(receivingFleet));
         }
 
+        [TestCase(FleetRoleType.Battle, ManufacturingStatus.Complete, 2)]
+        [TestCase(FleetRoleType.Battle, ManufacturingStatus.Building, 1)]
+        [TestCase(FleetRoleType.Colonization, ManufacturingStatus.Complete, 1)]
+        public void GetPlanetaryShieldTarget_PoliticalFleetHold_MatchesOperationalBattleCommitment(
+            FleetRoleType role,
+            ManufacturingStatus status,
+            int expectedTarget
+        )
+        {
+            AITurnContext context = CreatePoliticalFleetHoldContext(out Fleet fleet);
+            fleet.RoleType = role;
+            fleet.GetChildren<CapitalShip>()[0].ManufacturingStatus = status;
+
+            Assert.AreEqual(
+                expectedTarget,
+                context.StrategicPlan.GetPlanetaryShieldTarget(fleet.GetParentOfType<Planet>())
+            );
+        }
+
+        [Test]
+        public void CanFleetDepart_BuildingRequestedShields_ReleasesPoliticallyHeldFleet()
+        {
+            AITurnContext context = CreatePoliticalFleetHoldContext(out Fleet fleet);
+            Planet planet = fleet.GetParentOfType<Planet>();
+            Assert.IsFalse(context.StrategicPlan.CanFleetDepart(fleet));
+            int target = context.StrategicPlan.GetPlanetaryShieldTarget(planet);
+            for (int index = 0; index < target; index++)
+            {
+                Building shield = AITestSceneBuilder.AddProductionFacility(
+                    context.Game,
+                    planet,
+                    "shield-" + index,
+                    BuildingType.Defense,
+                    ManufacturingType.None
+                );
+                shield.ShieldStrength = 80;
+            }
+            AITurnContext completed = AITestSceneBuilder.CreateContext(
+                context.Game,
+                context.Faction
+            );
+
+            Assert.IsTrue(completed.StrategicPlan.CanFleetDepart(fleet));
+        }
+
+        /// <summary>Creates a low-support planet whose loss exposes neighboring neutral worlds.</summary>
+        /// <param name="fleet">Receives the stationary operational battle fleet.</param>
+        /// <returns>The faction turn containing the political defense commitment.</returns>
+        private static AITurnContext CreatePoliticalFleetHoldContext(out Fleet fleet)
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction enemy);
+            game.Config.AI.Garrison.SupportThreshold = 50;
+            game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit = 2;
+            game.Config.SupportShift.OwnershipTransferThreshold = 50;
+            game.Config.SupportShift.GarrisonRemovalSupportShift = 10;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet planet = AITestSceneBuilder.AddPlanet(game, sector, "held", faction.InstanceID);
+            planet.SetPopularSupport(faction.InstanceID, 30);
+            planet.SetPopularSupport(enemy.InstanceID, 70);
+            for (int index = 0; index < 2; index++)
+            {
+                Planet neighbor = AITestSceneBuilder.AddPlanet(
+                    game,
+                    sector,
+                    "neutral-" + index,
+                    null
+                );
+                neighbor.SetPopularSupport(enemy.InstanceID, 45);
+                AITestSceneBuilder.RevealPlanet(game, faction, neighbor);
+            }
+            fleet = EntityFactory.CreateFleet("fleet", faction.InstanceID);
+            fleet.RoleType = FleetRoleType.Battle;
+            game.AttachNode(fleet, planet);
+            game.AttachNode(
+                AITestSceneBuilder.CreateCapitalShip("ship", faction.InstanceID),
+                fleet
+            );
+            return AITestSceneBuilder.CreateContext(game, faction);
+        }
+
         /// <summary>Creates a sector with a construction-hub shortage and a known neutral candidate.</summary>
         /// <param name="ownedSpace">The owned planet's building capacity.</param>
         /// <param name="candidateSpace">The neutral planet's building capacity.</param>
