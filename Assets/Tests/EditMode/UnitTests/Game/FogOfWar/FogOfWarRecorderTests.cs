@@ -11,6 +11,30 @@ namespace Rebellion.Tests.Game.FogOfWar
     public class FogOfWarRecorderTests : FogOfWarTestBase
     {
         [Test]
+        public void RecordSelectedObservations_LaterUnrelatedObservation_PreservesMovementObservationTime()
+        {
+            Officer officer = CreateOfficer("traveller", _empire);
+            officer.Movement = new MovementState { TransitTicks = 20, TicksElapsed = 10 };
+            _game.AttachNode(officer, _coruscant);
+            Officer another = CreateOfficer("another", _empire);
+            _game.AttachNode(another, _coruscant);
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordSelectedObservations(_game, _alliance, new[] { officer }, 100);
+
+            recorder.RecordSelectedObservations(_game, _alliance, new[] { another }, 110);
+
+            MovementState observed = _alliance
+                .Fog.Snapshots[_coreSector.InstanceID]
+                .Planets[_coruscant.InstanceID]
+                .Officers.Single(item => item.InstanceID == officer.InstanceID)
+                .Movement;
+            Assert.AreEqual(100, observed.ObservedAtTick);
+            Assert.IsTrue(observed.IsObservation);
+            Assert.IsNull(officer.Movement.ObservedAtTick);
+            Assert.IsFalse(officer.Movement.IsObservation);
+        }
+
+        [Test]
         public void RecordIntelligenceSnapshot_CapitalShips_DoesNotLeakShipCargo()
         {
             Fleet fleet = CreateFleet("IMPERIAL_FLEET", _empire);

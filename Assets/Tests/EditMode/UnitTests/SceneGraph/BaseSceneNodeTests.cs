@@ -316,6 +316,29 @@ namespace Rebellion.Tests.SceneGraph
         }
 
         [Test]
+        public void CreateCopy_RecursiveConfiguration_ConfiguresEachCopyWithoutChangingSources()
+        {
+            _rootNode.AddChild(_childNode1);
+            _childNode1.SetParent(_rootNode);
+            List<ISceneNode> configured = new List<ISceneNode>();
+
+            ISceneNode copy = _rootNode.CreateCopy(
+                recursive: true,
+                configureCopy: node =>
+                {
+                    configured.Add(node);
+                    node.DisplayName = "Configured";
+                }
+            );
+
+            Assert.AreEqual(2, configured.Count);
+            Assert.AreEqual("Configured", copy.GetDisplayName());
+            Assert.AreEqual("Configured", copy.GetChildren().Single().GetDisplayName());
+            Assert.AreNotEqual("Configured", _rootNode.GetDisplayName());
+            Assert.AreNotEqual("Configured", _childNode1.GetDisplayName());
+        }
+
+        [Test]
         public void CreateCopy_RecursiveByDefault_ExcludesDisabledBranches()
         {
             MockSceneNode grandchild = new MockSceneNode
