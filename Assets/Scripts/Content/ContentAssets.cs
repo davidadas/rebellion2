@@ -449,6 +449,7 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
         await Task.Yield();
         try
         {
+            ThrowIfDisposed();
             string filePath = ResolveAssetFile(path, ".wav");
             using UnityWebRequest request = UnityWebRequestMultimedia.GetAudioClip(
                 new Uri(filePath).AbsoluteUri,
@@ -456,7 +457,10 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
             );
             UnityWebRequestAsyncOperation operation = request.SendWebRequest();
             while (!operation.isDone)
+            {
+                ThrowIfDisposed();
                 await Task.Yield();
+            }
 
             if (request.result != UnityWebRequest.Result.Success)
                 throw new IOException(
@@ -466,6 +470,12 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
             AudioClip clip = DownloadHandlerAudioClip.GetContent(request);
             if (clip == null)
                 throw new IOException($"Audio could not be decoded at '{filePath}'.");
+
+            if (disposed)
+            {
+                DestroyAsset(clip);
+                throw new ObjectDisposedException(nameof(ContentAssets));
+            }
 
             clip.name = Path.GetFileNameWithoutExtension(filePath);
             audioClips[path] = clip;

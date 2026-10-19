@@ -69,6 +69,150 @@ namespace Rebellion.Tests.UserSettings
             Assert.AreEqual(0, settings.ResolutionHeight);
         }
 
+        /// <summary>
+        /// Verifies unsupported persisted graphics values normalize to supported values.
+        /// </summary>
+        [Test]
+        public void Normalize_InvalidGraphicsValues_RestoresSupportedValues()
+        {
+            UserVideoSettings settings = new UserVideoSettings
+            {
+                QualityLevel = -3,
+                AntiAliasingMode = 99,
+                RenderScalePercent = 27,
+                FrameRateLimit = 75,
+            };
+
+            settings.Normalize();
+
+            Assert.AreEqual(0, settings.QualityLevel);
+            Assert.AreEqual((int)UserAntiAliasingMode.Off, settings.AntiAliasingMode);
+            Assert.AreEqual(50, settings.RenderScalePercent);
+            Assert.AreEqual(0, settings.FrameRateLimit);
+        }
+
+        /// <summary>
+        /// Verifies a persisted quality tier above the configured project range clamps to the
+        /// highest supported tier.
+        /// </summary>
+        [Test]
+        public void Normalize_QualityLevelAboveMaximum_ClampsToHighestTier()
+        {
+            UserVideoSettings settings = new UserVideoSettings
+            {
+                QualityLevel = UserVideoSettings.DefaultQualityLevel + 20,
+            };
+
+            settings.Normalize();
+
+            Assert.AreEqual(UserVideoSettings.DefaultQualityLevel, settings.QualityLevel);
+        }
+
+        /// <summary>
+        /// Verifies settings files written before graphics fields existed receive the declared
+        /// graphics defaults during Unity JSON deserialization.
+        /// </summary>
+        [Test]
+        public void JsonUtility_OmittedGraphicsValues_UsesDeclaredDefaults()
+        {
+            UserVideoSettings settings = JsonUtility.FromJson<UserVideoSettings>("{}");
+
+            Assert.AreEqual(UserVideoSettings.DefaultQualityLevel, settings.QualityLevel);
+            Assert.AreEqual((int)UserAntiAliasingMode.Taa, settings.AntiAliasingMode);
+            Assert.AreEqual(
+                UserVideoSettings.DefaultRenderScalePercent,
+                settings.RenderScalePercent
+            );
+            Assert.IsTrue(settings.VerticalSync);
+            Assert.IsTrue(settings.AmbientOcclusion);
+            Assert.IsTrue(settings.Bloom);
+            Assert.IsTrue(settings.MotionBlur);
+        }
+
+        /// <summary>
+        /// Verifies ray-traced ambient occlusion cannot remain enabled while ambient occlusion is
+        /// disabled.
+        /// </summary>
+        [Test]
+        public void Normalize_AmbientOcclusionDisabled_DisablesRayTracing()
+        {
+            UserVideoSettings settings = new UserVideoSettings
+            {
+                AmbientOcclusion = false,
+                RayTracing = true,
+            };
+
+            settings.Normalize();
+
+            Assert.IsFalse(settings.RayTracing);
+        }
+
+        /// <summary>
+        /// Verifies restoring graphics defaults resets every graphics setting.
+        /// </summary>
+        [Test]
+        public void RestoreGraphicsDefaults_ChangedGraphicsValues_RestoresDefaults()
+        {
+            UserVideoSettings settings = new UserVideoSettings
+            {
+                QualityLevel = 1,
+                AntiAliasingMode = (int)UserAntiAliasingMode.Taa,
+                RenderScalePercent = 50,
+                FrameRateLimit = 60,
+                VerticalSync = false,
+                RayTracing = true,
+                AmbientOcclusion = false,
+                Bloom = false,
+                MotionBlur = false,
+                HdrOutput = true,
+            };
+
+            settings.RestoreGraphicsDefaults();
+
+            Assert.AreEqual(UserVideoSettings.DefaultQualityLevel, settings.QualityLevel);
+            Assert.AreEqual((int)UserAntiAliasingMode.Taa, settings.AntiAliasingMode);
+            Assert.AreEqual(
+                UserVideoSettings.DefaultRenderScalePercent,
+                settings.RenderScalePercent
+            );
+            Assert.AreEqual(0, settings.FrameRateLimit);
+            Assert.IsTrue(settings.VerticalSync);
+            Assert.IsFalse(settings.RayTracing);
+            Assert.IsTrue(settings.AmbientOcclusion);
+            Assert.IsTrue(settings.Bloom);
+            Assert.IsTrue(settings.MotionBlur);
+            Assert.IsFalse(settings.HdrOutput);
+        }
+
+        /// <summary>
+        /// Verifies a quality preset applies all rendering settings owned by that preset.
+        /// </summary>
+        [Test]
+        public void ApplyGraphicsPreset_LowTier_UpdatesOwnedRenderingSettings()
+        {
+            UserVideoSettings settings = new UserVideoSettings
+            {
+                AntiAliasingMode = (int)UserAntiAliasingMode.Taa,
+                RenderScalePercent = 100,
+                AmbientOcclusion = true,
+                Bloom = false,
+                MotionBlur = true,
+                RayTracing = true,
+                GraphicsPresetCustomized = true,
+            };
+
+            settings.ApplyGraphicsPreset(1);
+
+            Assert.AreEqual(1, settings.QualityLevel);
+            Assert.AreEqual((int)UserAntiAliasingMode.Fxaa, settings.AntiAliasingMode);
+            Assert.AreEqual(67, settings.RenderScalePercent);
+            Assert.IsFalse(settings.AmbientOcclusion);
+            Assert.IsTrue(settings.Bloom);
+            Assert.IsFalse(settings.MotionBlur);
+            Assert.IsFalse(settings.RayTracing);
+            Assert.IsFalse(settings.GraphicsPresetCustomized);
+        }
+
         [Test]
         public void Resolve_UltrawideTarget_SelectsLargestFittingSixteenByNineMode()
         {

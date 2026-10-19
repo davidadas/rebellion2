@@ -69,6 +69,12 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         public void TearDown()
         {
             _controller?.Dispose();
+            LoadingScreenController loadingController =
+                UnityEngine.Object.FindAnyObjectByType<LoadingScreenController>(
+                    FindObjectsInactive.Include
+                );
+            if (loadingController != null)
+                UnityEngine.Object.DestroyImmediate(loadingController.gameObject);
             if (_windowRoot != null)
                 UnityEngine.Object.DestroyImmediate(_windowRoot);
             if (_bootstrapObject != null)
@@ -217,8 +223,10 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             );
             GetField<Button>(view, "_applyButton").onClick.Invoke();
 
+            Assert.IsFalse(_controller.IsOpen);
+            Assert.IsTrue(LoadingScreenController.IsLoadInProgress);
             CollectionAssert.AreEqual(
-                new[] { compatibleModID, otherPackModID },
+                new[] { otherPackModID },
                 _bootstrap.GetUserSettingsManager().Settings.Content.DisabledModIDs
             );
         }
@@ -306,6 +314,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             bool initiallyShowingStats = _bootstrap
                 .GetUserSettingsManager()
                 .Settings.UserInterface.ShowUnitCardStats;
+            bool initiallyShowingFrameRate = _bootstrap
+                .GetUserSettingsManager()
+                .Settings.UserInterface.ShowFrameRate;
             OptionsToggleRowView[] rows = GetField<OptionsToggleRowView[]>(
                 view,
                 "_userInterfaceRows"
@@ -318,6 +329,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             );
             OptionsToggleRowView statsRow = rows.Single(row =>
                 row.OptionIndex == (int)UserInterfaceOption.ShowUnitCardStats
+            );
+            OptionsToggleRowView frameRateRow = rows.Single(row =>
+                row.OptionIndex == (int)UserInterfaceOption.ShowFrameRate
             );
 
             GetField<Button>(showRow, "_button").onClick.Invoke();
@@ -336,6 +350,12 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.AreEqual(
                 !initiallyShowingStats,
                 _bootstrap.GetUserSettingsManager().Settings.UserInterface.ShowUnitCardStats
+            );
+
+            GetField<Button>(frameRateRow, "_button").onClick.Invoke();
+            Assert.AreEqual(
+                !initiallyShowingFrameRate,
+                _bootstrap.GetUserSettingsManager().Settings.UserInterface.ShowFrameRate
             );
         }
 

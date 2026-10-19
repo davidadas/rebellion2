@@ -83,6 +83,36 @@ namespace Rebellion.Tests.UI.Runtime
         }
 
         [Test]
+        public void GetPlayerFactionInstanceID_SummaryDisagreesWithHumanController_ReturnsHumanFaction()
+        {
+            _game.Summary.PlayerFactionID = "FNEMP1";
+
+            UIContext context = new UIContext(
+                _game,
+                _themeLibrary,
+                _encyclopediaCatalog,
+                TestContent.Assets.GetTexture
+            );
+
+            Assert.AreEqual(_playerFactionId, context.GetPlayerFactionInstanceID());
+        }
+
+        [Test]
+        public void GetPlayerFactionInstanceID_NoHumanController_ReturnsSummaryFaction()
+        {
+            _game.GetPlayers().Clear();
+
+            UIContext context = new UIContext(
+                _game,
+                _themeLibrary,
+                _encyclopediaCatalog,
+                TestContent.Assets.GetTexture
+            );
+
+            Assert.AreEqual(_playerFactionId, context.GetPlayerFactionInstanceID());
+        }
+
+        [Test]
         public void ReplaceGame_NullGame_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _context.ReplaceGame(null));

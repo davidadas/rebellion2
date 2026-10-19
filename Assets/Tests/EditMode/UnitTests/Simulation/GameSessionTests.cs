@@ -1967,11 +1967,9 @@ namespace Rebellion.Tests.Simulation
                     .GetService<SpaceCombatCommands>()
                     .TryGetPendingCombat(out PendingCombatResult pending)
             );
-            Assert.AreSame(arrivingFleet, pending.AttackerFleet);
-            Assert.IsNull(pending.DefenderFleet);
             Assert.AreEqual(alliance.InstanceID, pending.AttackerOwnerInstanceID);
             Assert.AreEqual(empire.InstanceID, pending.DefenderOwnerInstanceID);
-            Assert.AreSame(destination, pending.Planet);
+            Assert.AreEqual(destination.InstanceID, pending.PlanetInstanceID);
         }
 
         [Test]

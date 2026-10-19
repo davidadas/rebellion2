@@ -13,23 +13,22 @@ public static class BootPrefabBuilder
 {
     private const string _bootPrefabPath = "Assets/Prefabs/UI/Boot/BootRoot.prefab";
     private const string _bootScenePath = "Assets/Scenes/BootScene.unity";
-    private const string _cutscenePrefabPath = "Assets/Prefabs/UI/Cutscenes/CutscenePlayer.prefab";
+    private const string _cutscenePrefabPath = "Assets/Resources/UI/CutscenePlayer.prefab";
 
     /// <summary>
     /// Rebuilds the complete boot asset graph from code.
     /// </summary>
     public static void Rebuild()
     {
-        GameObject cutscenePrefab = BuildCutscenePrefab();
-        BuildBootPrefab(cutscenePrefab);
+        BuildCutscenePrefab();
+        BuildBootPrefab();
         SceneBuilder.Build(_bootScenePath, _bootPrefabPath, "BootRoot");
     }
 
     /// <summary>
     /// Authors the self-contained overlay used for one cutscene playback request.
     /// </summary>
-    /// <returns>The constructed cutscene prefab.</returns>
-    private static GameObject BuildCutscenePrefab()
+    private static void BuildCutscenePrefab()
     {
         GameObject root = new GameObject(
             "CutscenePlayer",
@@ -86,7 +85,7 @@ public static class BootPrefabBuilder
             AssignReference(player, "videoPlayer", videoPlayer);
             AssignReference(player, "audioSource", audioSource);
 
-            return SavePrefab(root, _cutscenePrefabPath);
+            SavePrefab(root, _cutscenePrefabPath);
         }
         finally
         {
@@ -97,16 +96,14 @@ public static class BootPrefabBuilder
     /// <summary>
     /// Authors the complete root used by the generated boot scene.
     /// </summary>
-    /// <param name="cutscenePrefab">The cutscene prefab.</param>
-    private static void BuildBootPrefab(GameObject cutscenePrefab)
+    private static void BuildBootPrefab()
     {
         GameObject root = new GameObject("BootRoot");
         try
         {
             GameObject controllers = new GameObject("Controllers");
             controllers.transform.SetParent(root.transform, false);
-            BootController bootController = controllers.AddComponent<BootController>();
-            AssignReference(bootController, "cutscenePlayerPrefab", cutscenePrefab);
+            controllers.AddComponent<BootController>();
 
             GameObject cameraObject = new GameObject(
                 "Main Camera",

@@ -1805,5 +1805,30 @@ namespace Rebellion.Tests.Simulation
             );
             Assert.IsNotNull(viewCoruscant.GetChildren<Fleet>()[0].Movement);
         }
+
+        [Test]
+        public void BuildKnownOfficerRoster_OwnOfficer_ReturnsDetachedOfficerWithoutLocation()
+        {
+            Officer leia = CreateOfficer("LEIA", _alliance);
+            _game.AttachNode(leia, _hoth);
+
+            IReadOnlyList<Officer> roster = _queries.BuildKnownOfficerRoster(_alliance.InstanceID);
+
+            Assert.AreEqual(1, roster.Count);
+            Assert.AreEqual(leia.InstanceID, roster[0].InstanceID);
+            Assert.AreNotSame(leia, roster[0]);
+            Assert.IsNull(roster[0].GetParent());
+        }
+
+        [Test]
+        public void BuildKnownOfficerRoster_OpposingOfficer_DoesNotRevealOfficer()
+        {
+            Officer vader = CreateOfficer("VADER", _empire);
+            _game.AttachNode(vader, _coruscant);
+
+            IReadOnlyList<Officer> roster = _queries.BuildKnownOfficerRoster(_alliance.InstanceID);
+
+            Assert.IsEmpty(roster);
+        }
     }
 }

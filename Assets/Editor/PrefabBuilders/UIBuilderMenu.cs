@@ -47,7 +47,7 @@ public static class UIBuilderMenu
             {
                 "Assets/Prefabs/UI/Boot",
                 "Assets/Prefabs/UI/Common",
-                "Assets/Prefabs/UI/Cutscenes",
+                "Assets/Resources/UI",
                 "Assets/Prefabs/UI/MainMenu",
                 "Assets/Prefabs/UI/OptionsMenu",
                 "Assets/Prefabs/UI/StrategyView",
@@ -126,6 +126,8 @@ public static class UIBuilderMenu
     {
         if (build == null)
             throw new ArgumentNullException(nameof(build));
+        if (EditorApplication.isPlayingOrWillChangePlaymode)
+            throw new InvalidOperationException("Generated UI cannot be rebuilt in Play Mode.");
 
         if (
             !Application.isBatchMode && !EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()
@@ -271,7 +273,7 @@ public static class UIBuilderMenu
     /// Determines whether an object reference points into development-only installation content.
     /// </summary>
     /// <param name="value">The serialized object reference.</param>
-    /// <returns>True when the object is imported from Assets/Content.</returns>
+    /// <returns>True when the object is imported from external runtime content.</returns>
     private static bool IsDevelopmentContentReference(UnityEngine.Object value)
     {
         return value != null

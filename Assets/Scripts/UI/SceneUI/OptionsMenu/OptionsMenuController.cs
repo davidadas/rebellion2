@@ -103,7 +103,8 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
             _bootstrap.GetUserSettingsManager(),
             _bootstrap.GetDisplayManager(),
             _bootstrap.GetAudioManager(),
-            bindings
+            bindings,
+            _bootstrap.GetGraphicsManager()
         );
         _bindingSession = new OptionsBindingSession(bindings);
         _bindingSession.Changed += _settingsSession.MarkInputChanged;
@@ -238,12 +239,8 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
                 _settingsSession.UserInterface.GameLaunchSpeed,
                 BuildModRows().ToArray(),
                 GetSelectedPack()?.DisplayName ?? _selectedPackID,
-                !string.Equals(
-                    _selectedPackID,
-                    _bootstrap.GetContentPack().Definition.ID,
-                    StringComparison.Ordinal
-                ),
-                _showModsTab
+                _showModsTab,
+                _settingsSession.GetGraphicsValues()
             )
         );
     }
@@ -377,18 +374,12 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     }
 
     /// <summary>
-    /// Persists the pending content selection for the next application start.
+    /// Reloads the pending content selection through the persistent loading presentation.
     /// </summary>
     private void ApplyContentSelection()
     {
-        UserSettingsManager settingsManager = _bootstrap.GetUserSettingsManager();
-        settingsManager.Settings.Content.ActivePackID = _selectedPackID;
-        settingsManager.Settings.Content.ActiveScenarioID = string.Empty;
-        settingsManager.Settings.Content.DisabledModIDs = _selectedDisabledModIDs
-            .OrderBy(disabledModID => disabledModID, StringComparer.Ordinal)
-            .ToArray();
-        settingsManager.Save();
-        _markDirty();
+        if (_bootstrap.ReloadContent(_selectedPackID, _selectedDisabledModIDs.ToArray()))
+            Close();
     }
 
     /// <summary>
@@ -449,6 +440,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         target.AutosavesToKeepChanged += HandleAutosavesToKeepChanged;
         target.ResolutionStepRequested += HandleResolutionStep;
         target.FullScreenStepRequested += HandleFullScreenStep;
+        target.GraphicsStepRequested += HandleGraphicsStep;
         target.VolumeChanged += HandleVolumeChanged;
         target.Destroyed += HandleViewDestroyed;
     }
@@ -1052,6 +1044,17 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     }
 
     /// <summary>
+    /// Steps one staged HDRP graphics setting.
+    /// </summary>
+    /// <param name="setting">The graphics setting to change.</param>
+    /// <param name="delta">The step direction.</param>
+    private void HandleGraphicsStep(UserGraphicsSetting setting, int delta)
+    {
+        _settingsSession.StepGraphics(setting, delta);
+        _markDirty();
+    }
+
+    /// <summary>
     /// Applies a live volume change for one channel.
     /// </summary>
     /// <param name="channel">The channel index (0..4).</param>
@@ -1098,6 +1101,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         destroyed.AutosavesToKeepChanged -= HandleAutosavesToKeepChanged;
         destroyed.ResolutionStepRequested -= HandleResolutionStep;
         destroyed.FullScreenStepRequested -= HandleFullScreenStep;
+        destroyed.GraphicsStepRequested -= HandleGraphicsStep;
         destroyed.VolumeChanged -= HandleVolumeChanged;
         destroyed.Destroyed -= HandleViewDestroyed;
         if (ReferenceEquals(destroyed, _view))

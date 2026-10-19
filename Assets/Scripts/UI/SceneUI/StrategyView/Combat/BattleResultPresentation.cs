@@ -1,5 +1,4 @@
 using System;
-using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
 
@@ -33,11 +32,9 @@ internal abstract class BattleResultPresentation
     internal abstract bool UsesPlanetaryLayout { get; }
 
     /// <summary>
-    /// Resolves the live planet represented by this result when it remains available.
+    /// Gets the identifier of the planet represented by this result.
     /// </summary>
-    /// <param name="uiContext">The current strategy UI context.</param>
-    /// <returns>The live planet, or null when it no longer exists.</returns>
-    internal abstract Planet GetPlanet(UIContext uiContext);
+    internal abstract string PlanetInstanceID { get; }
 
     /// <summary>
     /// Creates a presentation adapter for a supported combat result.
@@ -284,6 +281,8 @@ internal abstract class BattleResultPresentation
 
         internal override bool UsesPlanetaryLayout => false;
 
+        internal override string PlanetInstanceID => result.Planet?.InstanceID;
+
         /// <summary>
         /// Creates a space-combat presentation adapter.
         /// </summary>
@@ -292,13 +291,6 @@ internal abstract class BattleResultPresentation
         {
             this.result = result ?? throw new ArgumentNullException(nameof(result));
         }
-
-        /// <summary>
-        /// Gets planet.
-        /// </summary>
-        /// <param name="uiContext">The ui context.</param>
-        /// <returns>The requested planet.</returns>
-        internal override Planet GetPlanet(UIContext uiContext) => result.Planet;
 
         /// <summary>
         /// Returns completed space-combat music from the player's perspective.
@@ -386,6 +378,8 @@ internal abstract class BattleResultPresentation
 
         internal override bool UsesPlanetaryLayout => true;
 
+        internal override string PlanetInstanceID => result.Planet?.InstanceID;
+
         /// <summary>
         /// Creates an orbital-bombardment presentation adapter.
         /// </summary>
@@ -394,13 +388,6 @@ internal abstract class BattleResultPresentation
         {
             this.result = result ?? throw new ArgumentNullException(nameof(result));
         }
-
-        /// <summary>
-        /// Gets planet.
-        /// </summary>
-        /// <param name="uiContext">The ui context.</param>
-        /// <returns>The requested planet.</returns>
-        internal override Planet GetPlanet(UIContext uiContext) => result.Planet;
 
         /// <summary>
         /// Builds the completed orbital-bombardment summary.
@@ -466,6 +453,8 @@ internal abstract class BattleResultPresentation
 
         internal override bool UsesPlanetaryLayout => true;
 
+        internal override string PlanetInstanceID => result.Planet?.InstanceID;
+
         /// <summary>
         /// Creates a planetary-assault presentation adapter.
         /// </summary>
@@ -474,13 +463,6 @@ internal abstract class BattleResultPresentation
         {
             this.result = result ?? throw new ArgumentNullException(nameof(result));
         }
-
-        /// <summary>
-        /// Gets planet.
-        /// </summary>
-        /// <param name="uiContext">The ui context.</param>
-        /// <returns>The requested planet.</returns>
-        internal override Planet GetPlanet(UIContext uiContext) => result.Planet;
 
         /// <summary>
         /// Builds the completed planetary-assault summary.
@@ -553,10 +535,21 @@ internal abstract class BattleResultPresentation
                 ? StrategyUISoundPaths.PlanetaryAssault
                 : null;
 
-        internal override string Title => report.Title;
+        internal override string Title =>
+            !string.IsNullOrEmpty(report.Title)
+                ? report.Title
+                : report.CombatType switch
+                {
+                    CombatReportType.SpaceBattle => $"Battle at {GetPlanetName()}",
+                    CombatReportType.Bombardment => $"Orbital bombardment of {GetPlanetName()}",
+                    CombatReportType.PlanetaryAssault => $"Assault on {GetPlanetName()}",
+                    _ => string.Empty,
+                };
 
         internal override bool UsesPlanetaryLayout =>
             report.CombatType != CombatReportType.SpaceBattle;
+
+        internal override string PlanetInstanceID => report.PlanetInstanceID;
 
         /// <summary>
         /// Creates presentation for one durable combat report.
@@ -568,18 +561,6 @@ internal abstract class BattleResultPresentation
         }
 
         /// <summary>
-        /// Resolves the report location against current game state without making the report depend on it.
-        /// </summary>
-        /// <param name="uiContext">The ui context.</param>
-        /// <returns>The requested planet.</returns>
-        internal override Planet GetPlanet(UIContext uiContext)
-        {
-            return string.IsNullOrEmpty(report.PlanetInstanceID)
-                ? null
-                : uiContext?.Game?.GetSceneNodeByInstanceID<Planet>(report.PlanetInstanceID);
-        }
-
-        /// <summary>
         /// Returns the outcome summary frozen into the delivered message.
         /// </summary>
         /// <param name="uiContext">The ui context.</param>
@@ -587,7 +568,36 @@ internal abstract class BattleResultPresentation
         /// <returns>The requested summary.</returns>
         internal override string GetSummary(UIContext uiContext, string playerFactionId)
         {
-            return report.Body ?? string.Empty;
+            if (!string.IsNullOrEmpty(report.Body))
+                return report.Body;
+
+            return report.CombatType switch
+            {
+                CombatReportType.Bombardment => BattleAlertWindowProjector.GetBombardmentSummary(
+                    uiContext,
+                    report.AttackerOwnerInstanceID,
+                    report.DefenderOwnerInstanceID,
+                    report.PlanetName
+                ),
+                CombatReportType.PlanetaryAssault =>
+                    BattleAlertWindowProjector.GetPlanetaryAssaultSummary(
+                        uiContext,
+                        report.AttackerOwnerInstanceID,
+                        report.DefenderOwnerInstanceID,
+                        report.PlanetName,
+                        report.Success
+                    ),
+                _ => string.Empty,
+            };
+        }
+
+        /// <summary>
+        /// Returns the detached report planet name with the standard fallback.
+        /// </summary>
+        /// <returns>The report planet name.</returns>
+        private string GetPlanetName()
+        {
+            return string.IsNullOrEmpty(report.PlanetName) ? "Unknown Planet" : report.PlanetName;
         }
 
         /// <summary>

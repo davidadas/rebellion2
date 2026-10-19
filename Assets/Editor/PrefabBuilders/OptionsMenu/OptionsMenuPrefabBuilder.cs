@@ -17,6 +17,17 @@ public static class OptionsMenuPrefabBuilder
     private const int _navigationRowStride = _navigationRowHeight + _navigationRowSpacing;
     private const int _footerNavigationHeight =
         3 * _navigationRowHeight + 2 * _navigationRowSpacing;
+    private const int _optionsPageTopInset = 16;
+    private const int _optionsPageBottomInset = 10;
+    private const int _optionsContentInset = 20;
+    private const int _optionsSectionHeaderHeight = 16;
+    private const int _optionsSectionHeaderSpacing = 12;
+    private const int _optionsSectionSpacing = 10;
+    private const int _optionsFieldRowHeight = 18;
+    private const int _optionsFieldRowSpacing = 8;
+    private const int _optionsSectionHeaderStride =
+        _optionsSectionHeaderHeight + _optionsSectionHeaderSpacing;
+    private const int _optionsFieldRowStride = _optionsFieldRowHeight + _optionsFieldRowSpacing;
     private const int _tabNavigationStartY = 82;
     private const int _footerNavigationStartY = 318;
     private const string _optionsMenuWindowPrefabPath =
@@ -207,11 +218,15 @@ public static class OptionsMenuPrefabBuilder
         TextMeshProUGUI packValue = CreateOptionsFieldRow(
             modsPage,
             "ContentPack",
-            "Active Pack",
+            string.Empty,
             41,
             out Button packPrev,
-            out Button packNext
+            out Button packNext,
+            fieldX: 20,
+            fieldWidth: 329,
+            textInset: 28
         );
+        packValue.overflowMode = TextOverflowModes.Ellipsis;
         CreateOptionsSectionHeader(modsPage, "LoadedModsHeader", "MODS", 74, accent);
 
         TextMeshProUGUI status = CreateTextLabel("ModsStatusTextField", modsPage);
@@ -220,15 +235,6 @@ public static class OptionsMenuPrefabBuilder
         status.fontSize = 11;
         status.alignment = TextAlignmentOptions.TopLeft;
         SetSourceRect(status.rectTransform, 20, 101, 348, 18);
-
-        TextMeshProUGUI restart = CreateTextLabel("ModsRestartTextField", modsPage);
-        restart.text = "A RESTART MAY BE REQUIRED";
-        restart.color = new Color(0.95f, 0.25f, 0.25f);
-        restart.fontSize = 11;
-        restart.fontStyle = FontStyles.Bold;
-        restart.alignment = TextAlignmentOptions.Center;
-        SetSourceRect(restart.rectTransform, 20, 313, 348, 18);
-        restart.gameObject.SetActive(false);
 
         ScrollAreaView modsScrollArea = CreateScrollAreaView(
             modsPage,
@@ -258,7 +264,6 @@ public static class OptionsMenuPrefabBuilder
         rowTemplate.gameObject.SetActive(false);
 
         AssignReference(view, "_modsStatusTextField", status);
-        AssignReference(view, "_modsRestartTextField", restart);
         AssignReference(view, "_contentPackValueField", packValue);
         AssignReference(view, "_contentPackPrevButton", packPrev);
         AssignReference(view, "_contentPackNextButton", packNext);
@@ -351,30 +356,185 @@ public static class OptionsMenuPrefabBuilder
         Color accent
     )
     {
-        CreateOptionsSectionHeader(graphicsPage, "DisplayHeader", "DISPLAY", 16, accent);
-        TextMeshProUGUI resolutionValue = CreateOptionsFieldRow(
+        ScrollAreaView graphicsScrollArea = CreateScrollAreaView(
             graphicsPage,
+            "GraphicsScrollArea",
+            0,
+            0,
+            374,
+            328,
+            0,
+            0,
+            356,
+            328,
+            362,
+            0,
+            12,
+            328,
+            out RectTransform graphicsContent
+        );
+        int nextRowY = _optionsPageTopInset;
+        AppendOptionsSectionHeader(
+            graphicsContent,
+            "DisplayHeader",
+            "DISPLAY",
+            accent,
+            ref nextRowY
+        );
+        TextMeshProUGUI resolutionValue = AppendOptionsFieldRow(
+            graphicsContent,
             "Resolution",
             "Resolution",
-            41,
+            ref nextRowY,
             out Button resolutionPrev,
             out Button resolutionNext
         );
-        TextMeshProUGUI fullScreenValue = CreateOptionsFieldRow(
-            graphicsPage,
+        TextMeshProUGUI fullScreenValue = AppendOptionsFieldRow(
+            graphicsContent,
             "Display",
             "Display Mode",
-            68,
+            ref nextRowY,
             out Button fullScreenPrev,
             out Button fullScreenNext
         );
+
+        int graphicsSettingCount = Enum.GetValues(typeof(UserGraphicsSetting)).Length;
+        TextMeshProUGUI[] valueFields = new TextMeshProUGUI[graphicsSettingCount];
+        Button[] previousButtons = new Button[graphicsSettingCount];
+        Button[] nextButtons = new Button[graphicsSettingCount];
+
+        AppendGraphicsFieldRow(
+            graphicsContent,
+            UserGraphicsSetting.VerticalSync,
+            "VSync",
+            ref nextRowY,
+            valueFields,
+            previousButtons,
+            nextButtons
+        );
+        AppendGraphicsFieldRow(
+            graphicsContent,
+            UserGraphicsSetting.FrameRateLimit,
+            "Frame Rate Limit",
+            ref nextRowY,
+            valueFields,
+            previousButtons,
+            nextButtons
+        );
+        AppendGraphicsFieldRow(
+            graphicsContent,
+            UserGraphicsSetting.HdrOutput,
+            "HDR Output",
+            ref nextRowY,
+            valueFields,
+            previousButtons,
+            nextButtons
+        );
+
+        AppendOptionsSectionHeader(
+            graphicsContent,
+            "RenderingHeader",
+            "RENDERING",
+            accent,
+            ref nextRowY
+        );
+        AppendGraphicsFieldRow(
+            graphicsContent,
+            UserGraphicsSetting.QualityPreset,
+            "Quality Preset",
+            ref nextRowY,
+            valueFields,
+            previousButtons,
+            nextButtons
+        );
+        AppendGraphicsFieldRow(
+            graphicsContent,
+            UserGraphicsSetting.AntiAliasing,
+            "Anti-Aliasing",
+            ref nextRowY,
+            valueFields,
+            previousButtons,
+            nextButtons
+        );
+        AppendGraphicsFieldRow(
+            graphicsContent,
+            UserGraphicsSetting.RenderScale,
+            "Render Scale",
+            ref nextRowY,
+            valueFields,
+            previousButtons,
+            nextButtons
+        );
+
+        AppendOptionsSectionHeader(
+            graphicsContent,
+            "RayTracingHeader",
+            "RAY TRACING",
+            accent,
+            ref nextRowY
+        );
+        AppendGraphicsFieldRow(
+            graphicsContent,
+            UserGraphicsSetting.RayTracing,
+            "Ray-Traced AO (RTX)",
+            ref nextRowY,
+            valueFields,
+            previousButtons,
+            nextButtons
+        );
+
+        AppendOptionsSectionHeader(
+            graphicsContent,
+            "EffectsHeader",
+            "EFFECTS",
+            accent,
+            ref nextRowY
+        );
+        AppendGraphicsFieldRow(
+            graphicsContent,
+            UserGraphicsSetting.AmbientOcclusion,
+            "Ambient Occlusion",
+            ref nextRowY,
+            valueFields,
+            previousButtons,
+            nextButtons
+        );
+        AppendGraphicsFieldRow(
+            graphicsContent,
+            UserGraphicsSetting.Bloom,
+            "Bloom",
+            ref nextRowY,
+            valueFields,
+            previousButtons,
+            nextButtons
+        );
+        AppendGraphicsFieldRow(
+            graphicsContent,
+            UserGraphicsSetting.MotionBlur,
+            "Motion Blur",
+            ref nextRowY,
+            valueFields,
+            previousButtons,
+            nextButtons
+        );
+
         AssignReferenceArray(view, "_tacticalRows", Array.Empty<OptionsToggleRowView>());
+        AssignReference(view, "_graphicsScrollArea", graphicsScrollArea);
+        AssignInt(
+            view,
+            "_graphicsContentHeight",
+            nextRowY - _optionsFieldRowSpacing + _optionsPageBottomInset
+        );
+        AssignInt(view, "_graphicsScrollStep", _optionsFieldRowStride);
         AssignReference(view, "_resolutionValueField", resolutionValue);
         AssignReference(view, "_resolutionPrevButton", resolutionPrev);
         AssignReference(view, "_resolutionNextButton", resolutionNext);
         AssignReference(view, "_fullScreenValueField", fullScreenValue);
         AssignReference(view, "_fullScreenPrevButton", fullScreenPrev);
         AssignReference(view, "_fullScreenNextButton", fullScreenNext);
+        AssignReferenceArray(view, "_graphicsValueFields", valueFields);
+        AssignReferenceArray(view, "_graphicsPrevButtons", previousButtons);
+        AssignReferenceArray(view, "_graphicsNextButtons", nextButtons);
     }
 
     /// <summary>
@@ -417,8 +577,17 @@ public static class OptionsMenuPrefabBuilder
             UserInterfaceOption.ShowIdleBar,
             UserInterfaceOption.KeepIdleBarOpen,
             UserInterfaceOption.ShowUnitCardStats,
+            UserInterfaceOption.ShowFrameRate,
         };
-        string[] labels = { "Show Idle Bar", "Keep Idle Bar Open", "Show Unit Card Stats" };
+        string[] labels =
+        {
+            "Show Idle Bar",
+            "Keep Idle Bar Open",
+            "Show Unit Card Stats",
+            "Show FPS Counter",
+        };
+        int[] yPositions = { 96, 122, 148, 206 };
+        CreateOptionsSectionHeader(userInterfacePage, "OverlayHeader", "OVERLAY", 184, accent);
         OptionsToggleRowView[] rows = new OptionsToggleRowView[options.Length];
         for (int i = 0; i < options.Length; i++)
         {
@@ -428,7 +597,7 @@ public static class OptionsMenuPrefabBuilder
                 (int)options[i],
                 labels[i],
                 20,
-                96 + i * 26
+                yPositions[i]
             );
         }
 
@@ -1133,8 +1302,45 @@ public static class OptionsMenuPrefabBuilder
     {
         TextMeshProUGUI headerField = CreateTextLabel(name, parent);
         UILayout.ConfigureMenuSectionHeading(headerField, caption, accent);
-        SetSourceRect(headerField.rectTransform, 20, y, 200, 16);
+        SetSourceRect(
+            headerField.rectTransform,
+            _optionsContentInset,
+            y,
+            200,
+            _optionsSectionHeaderHeight
+        );
         return headerField;
+    }
+
+    /// <summary>
+    /// Appends a section header using the shared Options-page vertical rhythm.
+    /// </summary>
+    /// <param name="parent">The page container.</param>
+    /// <param name="name">The header object name.</param>
+    /// <param name="caption">The header caption.</param>
+    /// <param name="accent">The accent color.</param>
+    /// <param name="nextRowY">The shared page-layout cursor.</param>
+    /// <returns>The header text field.</returns>
+    private static TextMeshProUGUI AppendOptionsSectionHeader(
+        RectTransform parent,
+        string name,
+        string caption,
+        Color accent,
+        ref int nextRowY
+    )
+    {
+        if (nextRowY != _optionsPageTopInset)
+            nextRowY += _optionsSectionSpacing;
+
+        TextMeshProUGUI header = CreateOptionsSectionHeader(
+            parent,
+            name,
+            caption,
+            nextRowY,
+            accent
+        );
+        nextRowY += _optionsSectionHeaderStride;
+        return header;
     }
 
     /// <summary>
@@ -1180,12 +1386,15 @@ public static class OptionsMenuPrefabBuilder
     /// <summary>
     /// Creates a display setting row.
     /// </summary>
-    /// <param name="parent">The Graphics-page container.</param>
+    /// <param name="parent">The Options-page container.</param>
     /// <param name="name">The row object-name prefix.</param>
     /// <param name="caption">The row caption.</param>
     /// <param name="y">The source-space row top.</param>
     /// <param name="prevButton">Receives the previous-step button.</param>
     /// <param name="nextButton">Receives the next-step button.</param>
+    /// <param name="fieldX">The selector's source-space left edge.</param>
+    /// <param name="fieldWidth">The selector's source-space width, including arrow buttons.</param>
+    /// <param name="textInset">The text's inset from each selector edge.</param>
     /// <returns>The value text field.</returns>
     private static TextMeshProUGUI CreateOptionsFieldRow(
         RectTransform parent,
@@ -1193,7 +1402,10 @@ public static class OptionsMenuPrefabBuilder
         string caption,
         int y,
         out Button prevButton,
-        out Button nextButton
+        out Button nextButton,
+        int fieldX = 194,
+        int fieldWidth = 155,
+        int textInset = 24
     )
     {
         TextMeshProUGUI labelField = CreateTextLabel($"{name}Label", parent);
@@ -1201,20 +1413,30 @@ public static class OptionsMenuPrefabBuilder
         labelField.color = new Color(0.875f, 0.910f, 0.941f);
         labelField.fontSize = 11;
         labelField.alignment = TextAlignmentOptions.MidlineLeft;
-        SetSourceRect(labelField.rectTransform, 20, y + 2, 150, 14);
+        SetSourceRect(labelField.rectTransform, _optionsContentInset, y + 2, 150, 14);
 
         CreateSlicedImage(
             $"{name}Badge",
             parent,
             _menuBadgeAddress,
             _badgeBorder,
-            194,
+            fieldX,
             y,
-            155,
-            18,
+            fieldWidth,
+            _optionsFieldRowHeight,
             Color.white
         );
-        prevButton = CreateOptionsStepperButton(parent, $"{name}Prev", "<", 194, y, 78, 0);
+        int previousWidth = (fieldWidth + 1) / 2;
+        int nextWidth = fieldWidth - previousWidth;
+        prevButton = CreateOptionsStepperButton(
+            parent,
+            $"{name}Prev",
+            "<",
+            fieldX,
+            y,
+            previousWidth,
+            0
+        );
         TextMeshProUGUI valueField = CreateTextLabel($"{name}Value", parent);
         valueField.text = "-";
         valueField.color = new Color(0.875f, 0.910f, 0.941f);
@@ -1222,13 +1444,89 @@ public static class OptionsMenuPrefabBuilder
         valueField.alignment = TextAlignmentOptions.Midline;
         valueField.overflowMode = TextOverflowModes.Ellipsis;
         valueField.raycastTarget = false;
-        SetSourceRect(valueField.rectTransform, 218, y, 107, 18);
-        nextButton = CreateOptionsStepperButton(parent, $"{name}Next", ">", 272, y, 77, 51);
+        SetSourceRect(
+            valueField.rectTransform,
+            fieldX + textInset,
+            y,
+            fieldWidth - textInset * 2,
+            _optionsFieldRowHeight
+        );
+        nextButton = CreateOptionsStepperButton(
+            parent,
+            $"{name}Next",
+            ">",
+            fieldX + previousWidth,
+            y,
+            nextWidth,
+            nextWidth - 26
+        );
         OverflowTextTooltip tooltip = valueField.gameObject.AddComponent<OverflowTextTooltip>();
         tooltip.Configure(valueField);
         prevButton.gameObject.AddComponent<OverflowTextTooltipTrigger>().Configure(tooltip);
         nextButton.gameObject.AddComponent<OverflowTextTooltipTrigger>().Configure(tooltip);
         return valueField;
+    }
+
+    /// <summary>
+    /// Appends a stepped field using the shared Options-page vertical rhythm.
+    /// </summary>
+    /// <param name="parent">The page container.</param>
+    /// <param name="name">The row object-name prefix.</param>
+    /// <param name="caption">The row caption.</param>
+    /// <param name="nextRowY">The shared page-layout cursor.</param>
+    /// <param name="prevButton">Receives the previous-step button.</param>
+    /// <param name="nextButton">Receives the next-step button.</param>
+    /// <returns>The value text field.</returns>
+    private static TextMeshProUGUI AppendOptionsFieldRow(
+        RectTransform parent,
+        string name,
+        string caption,
+        ref int nextRowY,
+        out Button prevButton,
+        out Button nextButton
+    )
+    {
+        TextMeshProUGUI value = CreateOptionsFieldRow(
+            parent,
+            name,
+            caption,
+            nextRowY,
+            out prevButton,
+            out nextButton
+        );
+        nextRowY += _optionsFieldRowStride;
+        return value;
+    }
+
+    /// <summary>
+    /// Appends and indexes one Graphics setting using the shared stepped-field component.
+    /// </summary>
+    /// <param name="parent">The Graphics-page content container.</param>
+    /// <param name="setting">The setting represented by the row.</param>
+    /// <param name="caption">The displayed row caption.</param>
+    /// <param name="nextRowY">The shared page-layout cursor.</param>
+    /// <param name="valueFields">The setting-indexed value fields.</param>
+    /// <param name="previousButtons">The setting-indexed previous-step buttons.</param>
+    /// <param name="nextButtons">The setting-indexed next-step buttons.</param>
+    private static void AppendGraphicsFieldRow(
+        RectTransform parent,
+        UserGraphicsSetting setting,
+        string caption,
+        ref int nextRowY,
+        TextMeshProUGUI[] valueFields,
+        Button[] previousButtons,
+        Button[] nextButtons
+    )
+    {
+        int index = (int)setting;
+        valueFields[index] = AppendOptionsFieldRow(
+            parent,
+            setting.ToString(),
+            caption,
+            ref nextRowY,
+            out previousButtons[index],
+            out nextButtons[index]
+        );
     }
 
     /// <summary>
@@ -1316,7 +1614,13 @@ public static class OptionsMenuPrefabBuilder
         Image hitArea = hotspot.GetComponent<Image>();
         hitArea.color = Color.clear;
         hitArea.raycastTarget = true;
-        SetSourceRect(hotspot.GetComponent<RectTransform>(), x, y, hitWidth, 18);
+        SetSourceRect(
+            hotspot.GetComponent<RectTransform>(),
+            x,
+            y,
+            hitWidth,
+            _optionsFieldRowHeight
+        );
         Button button = hotspot.AddComponent<Button>();
         button.targetGraphic = hitArea;
         button.transition = Selectable.Transition.None;
@@ -1325,7 +1629,7 @@ public static class OptionsMenuPrefabBuilder
         glyphText.color = new Color(0.373f, 0.659f, 0.925f);
         glyphText.fontSize = 10;
         glyphText.alignment = TextAlignmentOptions.Midline;
-        SetSourceRect(glyphText.rectTransform, glyphX, 0, 26, 18);
+        SetSourceRect(glyphText.rectTransform, glyphX, 0, 26, _optionsFieldRowHeight);
         ApplyOptionsButtonFeedback(button, glyphText);
         return button;
     }
