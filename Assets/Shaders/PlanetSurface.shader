@@ -43,6 +43,7 @@ Shader "Custom/PlanetSurface"
 
             HLSLPROGRAM
             #pragma target 4.5
+            #pragma only_renderers d3d11 playstation xboxone xboxseries vulkan metal switch switch2
             #pragma vertex Vert
             #pragma fragment Frag
             #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
