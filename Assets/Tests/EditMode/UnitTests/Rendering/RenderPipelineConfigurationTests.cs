@@ -65,6 +65,18 @@ public sealed class RenderPipelineConfigurationTests
     }
 
     /// <summary>
+    /// Verifies that Linux uses the graphics API supported by HDRP.
+    /// </summary>
+    [Test]
+    public void LinuxGraphicsApi_ProjectConfiguration_UsesVulkan()
+    {
+        CollectionAssert.AreEqual(
+            new[] { GraphicsDeviceType.Vulkan },
+            PlayerSettings.GetGraphicsAPIs(BuildTarget.StandaloneLinux64)
+        );
+    }
+
+    /// <summary>
     /// Verifies that the project performs lighting calculations in linear color space.
     /// </summary>
     [Test]

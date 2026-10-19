@@ -328,7 +328,7 @@ jobs:
           githubToken: ${{ secrets.GITHUB_TOKEN }}
           dockerCpuLimit: 2
           dockerMemoryLimit: 8g
-          customParameters: -executeMethod UIBuilderMenu.BuildAll
+          customParameters: -force-vulkan -executeMethod UIBuilderMenu.BuildAll
           coverageOptions: "generateAdditionalMetrics;generateHtmlReport;assemblyFilters:+GameAssembly"
           cliVersion: v0.1.65
 
