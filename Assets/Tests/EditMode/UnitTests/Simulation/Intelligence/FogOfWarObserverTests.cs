@@ -3,6 +3,7 @@ using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
@@ -810,7 +811,62 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ObserveOwnershipChange_BeforeAssaultLanding_PreservesCarrierContents()
+        public void ObserveOwnershipChange_PreviousOwnerLosesVisibility_PreservesPlanetAndBuildingsWithoutOpposingUnits()
+        {
+            _coruscant.EnergyCapacity = 4;
+            _coruscant.AllocatedEnergy = 1;
+            _coruscant.NumRawResourceNodes = 3;
+            Building facility = CreateBuilding("KNOWN_FACILITY", _empire);
+            _game.AttachNode(facility, _coruscant);
+
+            Fleet fleet = CreateFleet("OPPOSING_FLEET", _alliance);
+            _game.AttachNode(fleet, _coruscant);
+            AddCapitalShip(fleet, _alliance, "OPPOSING_SHIP");
+            _coruscant.SetOwnerInstanceID(null);
+
+            _observer.ObserveOwnershipChange(
+                new PlanetOwnershipChangedResult
+                {
+                    Planet = _coruscant,
+                    PreviousOwner = _empire,
+                    NewOwner = null,
+                    Tick = 42,
+                }
+            );
+
+            PlanetSnapshot snapshot = _empire.Fog.Snapshots[_coreSector.InstanceID].Planets[
+                _coruscant.InstanceID
+            ];
+            Assert.AreEqual(42, snapshot.TickCaptured);
+            Assert.IsNull(snapshot.OwnerInstanceID);
+            Assert.AreEqual(4, snapshot.EnergyCapacity);
+            Assert.AreEqual(1, snapshot.AllocatedEnergy);
+            Assert.AreEqual(3, snapshot.NumRawResourceNodes);
+            Assert.AreEqual(facility.InstanceID, snapshot.Buildings.Single().InstanceID);
+            Assert.IsEmpty(snapshot.Officers);
+            Assert.IsEmpty(snapshot.Fleets);
+            Assert.IsEmpty(snapshot.Regiments);
+            Assert.IsEmpty(snapshot.SpecialForces);
+            Assert.IsEmpty(snapshot.Starfighters);
+
+            Planet viewPlanet = new FogOfWarQueries(_game)
+                .BuildFactionView(_empire)
+                .GetChildren<PlanetSector>()
+                .Single(sector => sector.InstanceID == _coreSector.InstanceID)
+                .GetChildren<Planet>()
+                .Single(planet => planet.InstanceID == _coruscant.InstanceID);
+            Assert.AreEqual(4, viewPlanet.EnergyCapacity);
+            Assert.AreEqual(1, viewPlanet.AllocatedEnergy);
+            Assert.AreEqual(3, viewPlanet.NumRawResourceNodes);
+            Assert.AreEqual(
+                facility.InstanceID,
+                viewPlanet.GetChildren<Building>().Single().InstanceID
+            );
+            Assert.IsEmpty(viewPlanet.GetChildren<Fleet>());
+        }
+
+        [Test]
+        public void ObserveOwnershipChange_OpposingCarrier_ForgetsFleetAndCargo()
         {
             Fleet fleet = CreateFleet("ATTACKERS", _alliance);
             _game.AttachNode(fleet, _coruscant);
@@ -840,15 +896,7 @@ namespace Rebellion.Tests.Simulation
                 _coruscant.InstanceID
             ];
             Assert.IsEmpty(snapshot.Regiments);
-            CollectionAssert.AreEqual(
-                new[] { first.InstanceID, retained.InstanceID, second.InstanceID },
-                snapshot
-                    .Fleets.Single(candidate => candidate.InstanceID == fleet.InstanceID)
-                    .GetChildren<CapitalShip>()
-                    .Single(candidate => candidate.InstanceID == ship.InstanceID)
-                    .GetChildren<Regiment>()
-                    .Select(regiment => regiment.InstanceID)
-            );
+            Assert.IsEmpty(snapshot.Fleets);
         }
 
         [Test]

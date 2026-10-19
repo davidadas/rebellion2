@@ -801,6 +801,46 @@ namespace Rebellion.Game.FogOfWar
         }
 
         /// <summary>
+        /// Records the durable planet knowledge retained by a faction that just lost control.
+        /// </summary>
+        /// <param name="faction">The faction that lost control.</param>
+        /// <param name="planet">The planet whose control changed.</param>
+        /// <param name="sector">The sector containing the planet.</param>
+        /// <param name="currentTick">The tick when control changed.</param>
+        public void RecordPlanetLossSnapshot(
+            Faction faction,
+            Planet planet,
+            PlanetSector sector,
+            int currentTick
+        )
+        {
+            if (faction == null || planet == null || sector == null)
+                return;
+
+            planet.AddVisitor(faction.InstanceID);
+            PlanetSectorSnapshot sectorSnapshot = GetOrCreatePlanetSectorSnapshot(faction, sector);
+            faction.Fog.PlanetToSector[planet.InstanceID] = sector.InstanceID;
+            sectorSnapshot.Planets.TryGetValue(
+                planet.InstanceID,
+                out PlanetSnapshot previousSnapshot
+            );
+
+            PlanetSnapshot snapshot = CreatePlanetSnapshot(planet, currentTick);
+            snapshot.RevealedCategories =
+                previousSnapshot?.RevealedCategories ?? PlanetIntelligenceCategory.None;
+            snapshot.Buildings.AddRange(
+                planet
+                    .GetChildren<Building>(includeDisabled: true)
+                    .Where(building => building.ManufacturingStatus == ManufacturingStatus.Complete)
+                    .Select(building => CopyEntityForObservation(building, currentTick))
+            );
+            CarryForwardRevealedMissions(previousSnapshot, snapshot);
+
+            ReconcileEntityLocations(faction, planet.InstanceID, snapshot);
+            sectorSnapshot.Planets[planet.InstanceID] = snapshot;
+        }
+
+        /// <summary>
         /// Updates ownership in an existing planet snapshot without creating new intelligence.
         /// </summary>
         /// <param name="faction">The faction whose existing snapshot is updated.</param>
