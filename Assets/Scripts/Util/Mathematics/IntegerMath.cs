@@ -15,7 +15,7 @@ namespace Rebellion.Util.Mathematics
         /// <returns>The scaled value.</returns>
         public static int ScaleByPercent(int value, int percent)
         {
-            return (int)((long)value * percent / _percentageScale);
+            return SaturateToInt((long)value * percent / _percentageScale);
         }
 
         /// <summary>
@@ -26,7 +26,7 @@ namespace Rebellion.Util.Mathematics
         /// <returns>The scaled value.</returns>
         public static int ScaleByPercentRoundedUp(int value, int percent)
         {
-            return (int)(((long)value * percent + _percentageScale - 1) / _percentageScale);
+            return SaturateToInt(((long)value * percent + _percentageScale - 1) / _percentageScale);
         }
 
         /// <summary>
@@ -55,6 +55,42 @@ namespace Rebellion.Util.Mathematics
                 return 0;
 
             return (value + divisor - 1) / divisor;
+        }
+
+        /// <summary>
+        /// Adds two integers and saturates the result to the representable integer range.
+        /// </summary>
+        /// <param name="left">The first value.</param>
+        /// <param name="right">The second value.</param>
+        /// <returns>The sum, saturated to an integer.</returns>
+        public static int SaturatingAdd(int left, int right)
+        {
+            return SaturateToInt((long)left + right);
+        }
+
+        /// <summary>
+        /// Multiplies two integers and saturates the result to the representable integer range.
+        /// </summary>
+        /// <param name="left">The first value.</param>
+        /// <param name="right">The second value.</param>
+        /// <returns>The product, saturated to an integer.</returns>
+        public static int SaturatingMultiply(int left, int right)
+        {
+            return SaturateToInt((long)left * right);
+        }
+
+        /// <summary>
+        /// Narrows a long value while saturating at the representable integer bounds.
+        /// </summary>
+        /// <param name="value">The value to narrow.</param>
+        /// <returns>The value as an integer, or the nearest integer bound.</returns>
+        public static int SaturateToInt(long value)
+        {
+            if (value > int.MaxValue)
+                return int.MaxValue;
+            if (value < int.MinValue)
+                return int.MinValue;
+            return (int)value;
         }
     }
 }

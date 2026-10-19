@@ -386,6 +386,41 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(0, suppliedTeamOdds);
         }
 
+        [Test]
+        public void GetObjectiveSuccessProbability_ExtremeCoreResistance_MatchesResolvedFailure()
+        {
+            GameConfig config = CreateCompletionConfig();
+            config.Uprising.DiceRange = 1;
+            config.Uprising.DiceAddend = 0;
+            config.Uprising.MissionLeadershipDivisor = 10;
+            config.Uprising.InciteMissionSupportShift = -10;
+            config.Uprising.PrimaryConsequenceTable = new Dictionary<int, int> { { 10, 2 } };
+            config.Uprising.SecondaryConsequenceTable = new Dictionary<int, int> { { 10, 2 } };
+            config.AI.Garrison.SupportThreshold = 60;
+            config.SupportShift.OwnershipTransferThreshold = 60;
+            (GameRoot game, Planet planet, Mission mission) = BuildCompletionScene(
+                config,
+                2,
+                60,
+                core: true
+            );
+            game.GetFactionByOwnerInstanceID("empire").Settings.UprisingResistance = int.MaxValue;
+
+            double probability = mission.GetObjectiveSuccessProbability(
+                mission.GetMainParticipants(),
+                game,
+                planet
+            );
+            UprisingResolver resolver = CreateCompletionResolver(game, new QueueRNG(0));
+            resolver.TryExecuteMission(mission, out List<GameResult> results);
+
+            Assert.Zero(probability);
+            Assert.AreEqual(
+                MissionOutcome.Failed,
+                results.OfType<MissionCompletedResult>().Single().Outcome
+            );
+        }
+
         /// <summary>
         /// Creates incite uprising mission.
         /// </summary>

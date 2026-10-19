@@ -8,6 +8,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Mathematics;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Simulation
@@ -768,16 +769,17 @@ namespace Rebellion.Simulation
 
             int missionAdjustment = CalculateUprisingMissionAdjustment(planet, config);
 
-            int combinedScore =
-                rollA
-                + rollB
-                + planet.GetUprisingIncidentBaseScore(
-                    faction,
-                    _game.Config.AI.Garrison,
-                    supportForController,
-                    controllerTroopCount,
-                    missionAdjustment
-                );
+            int combinedScore = IntegerMath.SaturateToInt(
+                (long)rollA
+                    + rollB
+                    + planet.GetUprisingIncidentBaseScore(
+                        faction,
+                        _game.Config.AI.Garrison,
+                        supportForController,
+                        controllerTroopCount,
+                        missionAdjustment
+                    )
+            );
 
             uprisingEffect = GameConfig.UprisingConfig.GetConsequence(
                 config.PrimaryConsequenceTable,

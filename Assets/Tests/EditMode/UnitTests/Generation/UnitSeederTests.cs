@@ -58,6 +58,47 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
+        public void Seed_MaximumSupportDeficitDivisor_AddsOneGarrisonTroop()
+        {
+            Planet planet = OwnedPlanet("p1", "FNEMP1", ownerSupport: 30);
+            Faction[] factions =
+            {
+                new Faction { InstanceID = "FNEMP1", GarrisonTroopTypeID = "REEM002" },
+            };
+            Regiment[] regimentTemplates =
+            {
+                new Regiment { TypeID = "REEM002", MaintenanceCost = 1 },
+            };
+            GameGenerationConfig config = new GameGenerationConfig
+            {
+                GalaxyClassification = new GalaxyClassificationSection
+                {
+                    FactionSetups = new List<FactionSetup>(),
+                },
+                UnitDeployment = new UnitDeploymentSection
+                {
+                    UprisingPreventionThreshold = 60,
+                    SupportDeficitPerGarrisonTroop = int.MaxValue,
+                    FixedGarrisons = new List<FixedGarrison>(),
+                    FixedFleets = new List<FixedFleet>(),
+                    FactionBudgets = new List<FactionBudget>(),
+                },
+            };
+
+            new UnitSeeder().Seed(
+                BuildContext(
+                    new[] { WrapSector(planet) },
+                    factions,
+                    config,
+                    new GalaxyClassificationResult(),
+                    regimentTemplates: regimentTemplates
+                )
+            );
+
+            Assert.AreEqual(1, planet.GetRegimentCount());
+        }
+
+        [Test]
         public void Seed_OwnerSupportAtThreshold_NoGarrisonTroops()
         {
             Planet planet = OwnedPlanet("p1", "FNEMP1", ownerSupport: 60);

@@ -4414,6 +4414,7 @@ namespace Rebellion.Tests.Simulation
         [TestCase(GameDifficulty.Easy, 0, 5)]
         [TestCase(GameDifficulty.Medium, 0, 5)]
         [TestCase(GameDifficulty.Hard, 50, 4)]
+        [TestCase(GameDifficulty.Hard, int.MaxValue, 1)]
         public void InitiateMission_AIFaction_AppliesExecutionSpeedIncrease(
             GameDifficulty difficulty,
             int increasePercent,

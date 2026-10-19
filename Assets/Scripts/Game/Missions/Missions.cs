@@ -9,6 +9,7 @@ using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Logging;
+using Rebellion.Util.Mathematics;
 using Rebellion.Util.Random;
 using Rebellion.Util.Serialization;
 
@@ -1306,7 +1307,7 @@ namespace Rebellion.Game.Missions
                 )
                     completionMask |= 1 << losses;
             }
-            int baseScore = planet.GetUprisingIncidentBaseScore(
+            long baseScore = planet.GetUprisingIncidentBaseScore(
                 controller,
                 game.Config.AI.Garrison,
                 planet.GetPopularSupport(controller.InstanceID),
@@ -1316,7 +1317,7 @@ namespace Rebellion.Game.Missions
             double successes = 0;
             for (int sum = 0; sum <= 2 * config.DiceRange; sum++)
             {
-                int score = sum + 2 * config.DiceAddend + baseScore;
+                int score = IntegerMath.SaturateToInt(sum + 2L * config.DiceAddend + baseScore);
                 int effect = GameConfig.UprisingConfig.GetConsequence(
                     config.PrimaryConsequenceTable,
                     score
