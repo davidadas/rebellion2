@@ -136,6 +136,7 @@ public sealed class RenderPipelineConfigurationTests
     [TestCase("_BaseColor", ShaderPropertyType.Color)]
     [TestCase("_CloudMap", ShaderPropertyType.Texture)]
     [TestCase("_CloudRotationSpeed", ShaderPropertyType.Float)]
+    [TestCase("_SunDirection", ShaderPropertyType.Vector)]
     public void PlanetSurfaceShader_BindingProperties_MatchesFixtureContract(
         string property,
         ShaderPropertyType expectedType
