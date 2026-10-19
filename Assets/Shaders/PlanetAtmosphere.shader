@@ -37,7 +37,7 @@ Shader "Custom/PlanetAtmosphere"
 
             HLSLPROGRAM
             #pragma target 4.5
-            #pragma only_renderers d3d11 playstation xboxone xboxseries vulkan metal switch switch2
+            #pragma require cubearray
             #pragma vertex Vert
             #pragma fragment Frag
 
