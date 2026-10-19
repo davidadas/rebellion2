@@ -100,23 +100,62 @@ public sealed class RenderPipelineConfigurationTests
     }
 
     /// <summary>
-    /// Verifies that each project shader compiles for the active high-definition pipeline.
+    /// Verifies shader support for the active backend without compiling HDRP code for OpenGL.
     /// </summary>
     /// <param name="shaderName">The shader name to resolve.</param>
-    [TestCase("Custom/PlanetAtmosphere")]
-    [TestCase("Custom/LoadingShuttleExhaust")]
-    [TestCase("Custom/PlanetClouds")]
-    [TestCase("Custom/PlanetDayNightShade")]
-    [TestCase("Custom/PlanetSurface")]
-    [TestCase("Custom/PremultipliedTexture")]
-    [TestCase("Rebellion/Unlit Additive")]
-    public void ProjectShader_HighDefinitionPipeline_IsSupported(string shaderName)
+    /// <param name="requiresHdrpBackend">Whether the shader uses HDRP-specific shader libraries.</param>
+    [TestCase("Custom/PlanetAtmosphere", true)]
+    [TestCase("Custom/LoadingShuttleExhaust", true)]
+    [TestCase("Custom/PlanetClouds", true)]
+    [TestCase("Custom/PlanetDayNightShade", true)]
+    [TestCase("Custom/PlanetSurface", true)]
+    [TestCase("Custom/PremultipliedTexture", false)]
+    [TestCase("Rebellion/Unlit Additive", true)]
+    public void ProjectShader_ActiveBackend_HasExpectedSupport(
+        string shaderName,
+        bool requiresHdrpBackend
+    )
     {
         Shader shader = Shader.Find(shaderName);
 
         Assert.IsNotNull(shader, shaderName);
-        Assert.IsTrue(shader.isSupported, shaderName);
+        bool isOpenGl =
+            SystemInfo.graphicsDeviceType
+            is GraphicsDeviceType.OpenGLCore
+                or GraphicsDeviceType.OpenGLES3;
+        Assert.AreEqual(!requiresHdrpBackend || !isOpenGl, shader.isSupported, shaderName);
         AssertShaderHasNoCompilerErrors(shaderName, shader);
+    }
+
+    /// <summary>
+    /// Verifies that the surface shader and the binding fixture expose the same typed contract.
+    /// </summary>
+    /// <param name="property">The material property consumed by the binding.</param>
+    /// <param name="expectedType">The required shader-property type.</param>
+    [TestCase("_BaseMap", ShaderPropertyType.Texture)]
+    [TestCase("_BaseColor", ShaderPropertyType.Color)]
+    [TestCase("_CloudMap", ShaderPropertyType.Texture)]
+    [TestCase("_CloudRotationSpeed", ShaderPropertyType.Float)]
+    public void PlanetSurfaceShader_BindingProperties_MatchesFixtureContract(
+        string property,
+        ShaderPropertyType expectedType
+    )
+    {
+        foreach (
+            string shaderName in new[]
+            {
+                "Custom/PlanetSurface",
+                "Hidden/Tests/PlanetSurfaceBinding",
+            }
+        )
+        {
+            Shader shader = Shader.Find(shaderName);
+            Assert.IsNotNull(shader, shaderName);
+            int propertyIndex = shader.FindPropertyIndex(property);
+            Assert.GreaterOrEqual(propertyIndex, 0, $"{shaderName}: {property}");
+            Assert.AreEqual(expectedType, shader.GetPropertyType(propertyIndex), shaderName);
+            AssertShaderHasNoCompilerErrors(shaderName, shader);
+        }
     }
 
     /// <summary>
