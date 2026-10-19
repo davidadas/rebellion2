@@ -295,6 +295,46 @@ namespace Rebellion.AI
         }
 
         /// <summary>
+        /// Returns the ground reserve sufficient to release fleets from a political hold.
+        /// </summary>
+        /// <param name="planet">The owned planet.</param>
+        /// <returns>The stability requirement with a reserve against garrison losses.</returns>
+        public int GetPlanetaryGarrisonReserve(Planet planet)
+        {
+            if (!_assessment.IsOwnedPlanet(planet))
+                return 0;
+
+            int stabilityTarget = UprisingQueries.CalculateGarrisonRequirement(
+                planet,
+                _game.GetFactionByOwnerInstanceID(planet.GetOwnerInstanceID()),
+                _game.Config.AI.Garrison
+            );
+            int reserve = stabilityTarget > 0 ? stabilityTarget + 1 : 0;
+            if (_assessment.HasEnemyControlSupport(planet))
+                reserve = Math.Max(reserve, 2);
+            return planet.IsColonized ? reserve : Math.Max(1, reserve);
+        }
+
+        /// <summary>
+        /// Returns the preferred garrison size for planetary troop production.
+        /// </summary>
+        /// <param name="planet">The owned planet.</param>
+        /// <returns>The production target, including the ground reserve and capture allocation.</returns>
+        public int GetPlanetaryGarrisonTarget(Planet planet)
+        {
+            if (!_assessment.IsOwnedPlanet(planet))
+                return 0;
+
+            int captureFloor = _game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount;
+            if (!planet.IsHeadquarters && !_assessment.IsPlanetThreatened(planet))
+                captureFloor = IntegerMath.ScaleByPercent(
+                    captureFloor,
+                    _game.Config.AI.Garrison.InteriorCaptureFloorPercent
+                );
+            return Math.Max(GetPlanetaryGarrisonReserve(planet), captureFloor);
+        }
+
+        /// <summary>
         /// Returns the shield target for a planet's current or planned strategic role.
         /// </summary>
         /// <param name="planet">The owned planet.</param>
@@ -841,7 +881,12 @@ namespace Rebellion.AI
                 && _assessment.GetFactionPopularSupport(planet)
                     < _game.Config.AI.Garrison.SupportThreshold
                 && !_assessment.HasFullShields(planet)
-                && _assessment.GetDefensiveSupportRisk(planet) > 1;
+                && _assessment.GetDefensiveSupportRisk(planet) > 1
+                && (
+                    planet.IsInUprising
+                    || _assessment.GetActiveGarrisonCount(planet, planet.GetOwnerInstanceID())
+                        < GetPlanetaryGarrisonReserve(planet)
+                );
             int requiredStrength = GetHeadquartersDefenseStrength(planet);
             commitment = new AIPlanetDefenseCommitment(holdAllLocalFleets, requiredStrength);
             _defenseByPlanetId[planet.InstanceID] = commitment;

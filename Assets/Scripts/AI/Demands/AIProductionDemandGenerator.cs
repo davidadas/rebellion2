@@ -415,7 +415,7 @@ namespace Rebellion.AI.Demands
         {
             foreach (Planet planet in context.Assessment.OwnedPlanets.Where(IsUsablePlanet))
             {
-                int targetCount = GetGarrisonCount(context, planet);
+                int targetCount = context.StrategicPlan.GetPlanetaryGarrisonTarget(planet);
                 int currentCount = context
                     .Assessment.GetPlanetRegiments(planet)
                     .Count(regiment => regiment.GetOwnerInstanceID() == context.Faction.InstanceID);
@@ -444,33 +444,6 @@ namespace Rebellion.AI.Demands
                     )
                 );
             }
-        }
-
-        /// <summary>
-        /// Returns the garrison reserve required for one planet.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="planet">The planet to inspect.</param>
-        /// <returns>The target regiment count.</returns>
-        private static int GetGarrisonCount(AITurnContext context, Planet planet)
-        {
-            int stabilityTarget = UprisingQueries.CalculateGarrisonRequirement(
-                planet,
-                context.Faction,
-                context.Game.Config.AI.Garrison
-            );
-            int sabotageTarget = stabilityTarget > 0 ? stabilityTarget + 1 : 0;
-            if (context.Assessment.HasEnemyControlSupport(planet))
-                sabotageTarget = Math.Max(sabotageTarget, 2);
-            int captureFloor = context.Game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount;
-            if (!planet.IsHeadquarters && !context.Assessment.IsPlanetThreatened(planet))
-            {
-                captureFloor = IntegerMath.ScaleByPercent(
-                    captureFloor,
-                    context.Game.Config.AI.Garrison.InteriorCaptureFloorPercent
-                );
-            }
-            return Math.Max(sabotageTarget, Math.Max(captureFloor, stabilityTarget));
         }
 
         /// <summary>

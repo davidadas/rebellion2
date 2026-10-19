@@ -696,6 +696,137 @@ namespace Rebellion.Tests.AI
             Assert.IsTrue(completed.StrategicPlan.CanFleetDepart(fleet));
         }
 
+        [TestCase(0, ManufacturingStatus.Complete, false, false)]
+        [TestCase(1, ManufacturingStatus.Complete, false, false)]
+        [TestCase(2, ManufacturingStatus.Complete, false, true)]
+        [TestCase(2, ManufacturingStatus.Building, false, false)]
+        [TestCase(2, ManufacturingStatus.Delivering, false, false)]
+        [TestCase(2, ManufacturingStatus.Complete, true, false)]
+        public void CanFleetDepart_PoliticalRisk_RequiresStationaryCompletedGarrisonReserve(
+            int count,
+            ManufacturingStatus status,
+            bool inTransit,
+            bool expected
+        )
+        {
+            AITurnContext initial = CreatePoliticalFleetHoldContext(out Fleet fleet);
+            Planet planet = fleet.GetParentOfType<Planet>();
+            initial.Game.Config.AI.Garrison.GarrisonDivisor = 20;
+            initial.Faction.Settings.GarrisonEfficiency = 1;
+            for (int index = 0; index < count; index++)
+            {
+                Regiment regiment = AITestSceneBuilder.CreateRegiment(
+                    "garrison-" + index,
+                    initial.Faction.InstanceID
+                );
+                regiment.ManufacturingStatus = status;
+                if (inTransit)
+                    regiment.Movement = new MovementState { TransitTicks = 10 };
+                initial.Game.AttachNode(regiment, planet);
+            }
+            AITurnContext context = AITestSceneBuilder.CreateContext(initial.Game, initial.Faction);
+
+            Assert.AreEqual(expected, context.StrategicPlan.CanFleetDepart(fleet));
+        }
+
+        [Test]
+        public void CanFleetDepart_EmbarkedGarrison_DoesNotReleasePoliticalHold()
+        {
+            AITurnContext initial = CreatePoliticalFleetHoldContext(out Fleet fleet);
+            initial.Game.Config.AI.Garrison.GarrisonDivisor = 20;
+            CapitalShip carrier = fleet.GetChildren<CapitalShip>()[0];
+            carrier.RegimentCapacity = 3;
+            for (int index = 0; index < 3; index++)
+                initial.Game.AttachNode(
+                    AITestSceneBuilder.CreateRegiment(
+                        "embarked-" + index,
+                        initial.Faction.InstanceID
+                    ),
+                    carrier
+                );
+            AITurnContext context = AITestSceneBuilder.CreateContext(initial.Game, initial.Faction);
+
+            Assert.IsFalse(context.StrategicPlan.CanFleetDepart(fleet));
+        }
+
+        [Test]
+        public void GetPlanetaryGarrisonTarget_ThreatenedPlanet_PreservesPreferredCaptureGarrison()
+        {
+            AITurnContext initial = CreatePoliticalFleetHoldContext(out Fleet fleet);
+            Planet planet = fleet.GetParentOfType<Planet>();
+            initial.Game.Config.AI.Garrison.GarrisonDivisor = 20;
+            initial.Game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount = 6;
+            Planet enemy = AITestSceneBuilder.AddPlanet(
+                initial.Game,
+                planet.GetParentOfType<PlanetSector>(),
+                "enemy-world",
+                "rebels"
+            );
+            AITestSceneBuilder.RevealPlanet(initial.Game, initial.Faction, enemy);
+            AITurnContext context = AITestSceneBuilder.CreateContext(initial.Game, initial.Faction);
+
+            Assert.AreEqual(6, context.StrategicPlan.GetPlanetaryGarrisonTarget(planet));
+        }
+
+        [TestCase(true, 0)]
+        [TestCase(false, 1)]
+        public void GetPlanetaryGarrisonReserve_HighSupport_PreservesUncolonizedOwnership(
+            bool colonized,
+            int expected
+        )
+        {
+            AITurnContext initial = CreatePoliticalFleetHoldContext(out Fleet fleet);
+            Planet planet = fleet.GetParentOfType<Planet>();
+            planet.IsColonized = colonized;
+            planet.SetPopularSupport(initial.Faction.InstanceID, 100);
+            planet.SetPopularSupport("rebels", 0);
+            AITurnContext context = AITestSceneBuilder.CreateContext(initial.Game, initial.Faction);
+
+            Assert.AreEqual(expected, context.StrategicPlan.GetPlanetaryGarrisonReserve(planet));
+        }
+
+        [Test]
+        public void CanFleetDepart_ActiveUprising_DoesNotReleasePoliticalHold()
+        {
+            AITurnContext initial = CreatePoliticalFleetHoldContext(out Fleet fleet);
+            Planet planet = fleet.GetParentOfType<Planet>();
+            initial.Game.Config.AI.Garrison.GarrisonDivisor = 20;
+            planet.BeginUprising();
+            for (int index = 0; index < 10; index++)
+                initial.Game.AttachNode(
+                    AITestSceneBuilder.CreateRegiment(
+                        "garrison-" + index,
+                        initial.Faction.InstanceID
+                    ),
+                    planet
+                );
+            AITurnContext context = AITestSceneBuilder.CreateContext(initial.Game, initial.Faction);
+
+            Assert.IsFalse(context.StrategicPlan.CanFleetDepart(fleet));
+        }
+
+        [Test]
+        public void CanFleetDepart_StableHeadquartersGarrison_PreservesSpaceDefense()
+        {
+            AITurnContext initial = CreatePoliticalFleetHoldContext(out Fleet fleet);
+            Planet planet = fleet.GetParentOfType<Planet>();
+            planet.IsHeadquarters = true;
+            initial.Faction.HQInstanceID = planet.InstanceID;
+            initial.Game.Config.AI.Garrison.GarrisonDivisor = 20;
+            initial.Game.Config.AI.FleetDeployment.MinimumDefenseStrength = 1000;
+            for (int index = 0; index < 3; index++)
+                initial.Game.AttachNode(
+                    AITestSceneBuilder.CreateRegiment(
+                        "garrison-" + index,
+                        initial.Faction.InstanceID
+                    ),
+                    planet
+                );
+            AITurnContext context = AITestSceneBuilder.CreateContext(initial.Game, initial.Faction);
+
+            Assert.IsFalse(context.StrategicPlan.CanFleetDepart(fleet));
+        }
+
         /// <summary>Creates a low-support planet whose loss exposes neighboring neutral worlds.</summary>
         /// <param name="fleet">Receives the stationary operational battle fleet.</param>
         /// <returns>The faction turn containing the political defense commitment.</returns>
