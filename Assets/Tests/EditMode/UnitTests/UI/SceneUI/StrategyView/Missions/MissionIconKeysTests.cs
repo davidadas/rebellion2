@@ -7,16 +7,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
     [TestFixture]
     public class MissionIconKeysTests
     {
-        /// <summary>
-        /// Maps each supported mission to an existing theme icon.
-        /// </summary>
-        /// <param name="missionTypeId">The mission type being displayed.</param>
-        /// <param name="expected">The expected theme icon key.</param>
         [TestCase(DiplomacyMission.MissionTypeID, MissionIconKeys.Diplomacy)]
         [TestCase(RescueMission.MissionTypeID, MissionIconKeys.Rescue)]
         [TestCase(SabotageMission.MissionTypeID, MissionIconKeys.Sabotage)]
         [TestCase(EspionageMission.MissionTypeID, MissionIconKeys.Espionage)]
-        [TestCase(SurveillanceMission.MissionTypeID, MissionIconKeys.Espionage)]
         [TestCase(ReconnaissanceMission.MissionTypeID, MissionIconKeys.Reconnaissance)]
         [TestCase(RecruitmentMission.MissionTypeID, MissionIconKeys.Recruitment)]
         [TestCase(AbductionMission.MissionTypeID, MissionIconKeys.Abduction)]

@@ -800,7 +800,6 @@ public static class MissionTestFactory
             AssassinationMission.MissionTypeID => AssassinationMission.TryCreate(context),
             DiplomacyMission.MissionTypeID => DiplomacyMission.TryCreate(context),
             EspionageMission.MissionTypeID => EspionageMission.TryCreate(context),
-            SurveillanceMission.MissionTypeID => SurveillanceMission.TryCreate(context),
             InciteUprisingMission.MissionTypeID => InciteUprisingMission.TryCreate(context),
             JediTrainingMission.MissionTypeID => JediTrainingMission.TryCreate(context),
             ReconnaissanceMission.MissionTypeID => ReconnaissanceMission.TryCreate(context),

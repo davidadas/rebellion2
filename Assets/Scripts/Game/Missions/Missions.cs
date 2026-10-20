@@ -916,17 +916,24 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Initializes a mission using the shared espionage objective and participant rules.
+        /// Initializes an espionage mission for the selected planet.
         /// </summary>
-        /// <param name="missionTypeID">The concrete mission's identity and display name.</param>
-        /// <param name="context">The selected planet, owner, and mission participants.</param>
-        protected EspionageMission(string missionTypeID, MissionContext context)
+        /// <param name="ownerInstanceId">Faction that owns the mission.</param>
+        /// <param name="target">Planet where the mission occurs.</param>
+        /// <param name="mainParticipants">Primary mission participants.</param>
+        /// <param name="decoyParticipants">Decoy mission participants.</param>
+        private EspionageMission(
+            string ownerInstanceId,
+            ISceneNode target,
+            List<IMissionParticipant> mainParticipants,
+            List<IMissionParticipant> decoyParticipants
+        )
             : base(
-                missionTypeID,
-                context.OwnerInstanceId,
-                RequirePlanetTarget(context.Location, missionTypeID).GetInstanceID(),
-                context.MainParticipants,
-                context.DecoyParticipants,
+                MissionTypeID,
+                ownerInstanceId,
+                RequirePlanetTarget(target, "Espionage").GetInstanceID(),
+                mainParticipants,
+                decoyParticipants,
                 SkillRating.Espionage
             ) { }
 
@@ -937,18 +944,18 @@ namespace Rebellion.Game.Missions
         /// <returns>A configured mission, or null if the planet has not been visited.</returns>
         public static EspionageMission TryCreate(MissionContext ctx)
         {
-            return HasVisitedTarget(ctx) ? new EspionageMission(MissionTypeID, ctx) : null;
-        }
+            if (!(ctx.Location is Planet planet))
+                return null;
 
-        /// <summary>
-        /// Validates the planet-visit requirement shared by espionage mission variants.
-        /// </summary>
-        /// <param name="context">The requested mission assignment.</param>
-        /// <returns>True when the owner has visited the selected planet.</returns>
-        protected static bool HasVisitedTarget(MissionContext context)
-        {
-            return context?.Location is Planet planet
-                && planet.WasVisitedBy(context.OwnerInstanceId);
+            if (!planet.WasVisitedBy(ctx.OwnerInstanceId))
+                return null;
+
+            return new EspionageMission(
+                ctx.OwnerInstanceId,
+                ctx.Location,
+                ctx.MainParticipants,
+                ctx.DecoyParticipants
+            );
         }
 
         /// <summary>

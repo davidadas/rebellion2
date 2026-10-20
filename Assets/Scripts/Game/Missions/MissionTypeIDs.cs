@@ -9,7 +9,6 @@ namespace Rebellion.Game.Missions
         public const string Assassination = AssassinationMission.MissionTypeID;
         public const string Diplomacy = DiplomacyMission.MissionTypeID;
         public const string Espionage = EspionageMission.MissionTypeID;
-        public const string Surveillance = SurveillanceMission.MissionTypeID;
         public const string InciteUprising = InciteUprisingMission.MissionTypeID;
         public const string JediTraining = JediTrainingMission.MissionTypeID;
         public const string Reconnaissance = ReconnaissanceMission.MissionTypeID;

@@ -904,7 +904,7 @@ namespace Rebellion.Simulation
         {
             GameConfig.MissionTickConfig tickConfig =
                 _game.Config?.ProbabilityTables?.Mission?.TickRanges?.GetTickConfig(
-                    mission.RulesKey
+                    mission.ConfigKey
                 );
             int baseTicks = tickConfig?.Base ?? 0;
             int spreadTicks = tickConfig?.Spread ?? 0;
