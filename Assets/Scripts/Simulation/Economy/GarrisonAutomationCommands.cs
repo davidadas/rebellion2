@@ -13,6 +13,8 @@ namespace Rebellion.Simulation
     /// </summary>
     public sealed class GarrisonAutomationCommands
     {
+        private const int _automatedOrderQuantity = 1;
+
         private readonly GameRoot _game;
         private readonly GameDataCatalog _gameData;
         private readonly ManufacturingCommands _manufacturing;
@@ -65,7 +67,7 @@ namespace Rebellion.Simulation
                 producer,
                 template,
                 destination,
-                _game.Config.AI.Garrison.AutomatedOrderQuantity,
+                _automatedOrderQuantity,
                 faction.InstanceID
             );
         }
