@@ -313,7 +313,8 @@ namespace Rebellion.Simulation
                 MessageResultType.MissionReport,
                 outcome,
                 GetMissionTypeID(result),
-                completionReason
+                completionReason,
+                fallbackMissionTypeID: result.Mission?.RulesKey
             );
             string missionDetails = BuildMissionDetailList(
                 definition,
@@ -481,7 +482,8 @@ namespace Rebellion.Simulation
                         MessageResultType.EnemyMissionFoiled,
                         MessageResultOutcome.Foiled,
                         GetMissionTypeID(result),
-                        MissionCompletionReason.Foiled
+                        MissionCompletionReason.Foiled,
+                        fallbackMissionTypeID: result.Mission?.RulesKey
                     ),
                     faction,
                     new Dictionary<string, string>
@@ -1212,12 +1214,14 @@ namespace Rebellion.Simulation
         /// <param name="outcome">The mission outcome selector to match.</param>
         /// <param name="missionTypeID">The mission type selector to match.</param>
         /// <param name="completionReason">The completion reason selector to match.</param>
+        /// <param name="fallbackMissionTypeID">The underlying mission type whose reports may be reused.</param>
         /// <returns>The matching mission definition, or null when none exists.</returns>
         private MessageDefinition GetMissionDefinition(
             MessageResultType resultType,
             MessageResultOutcome outcome,
             string missionTypeID,
-            MissionCompletionReason completionReason = MissionCompletionReason.None
+            MissionCompletionReason completionReason = MissionCompletionReason.None,
+            string fallbackMissionTypeID = null
         )
         {
             MessageDefinition definition = FindMissionDefinition(
@@ -1241,6 +1245,21 @@ namespace Rebellion.Simulation
             }
             if (definition != null || string.IsNullOrEmpty(missionTypeID))
                 return definition;
+
+            if (
+                !string.IsNullOrEmpty(fallbackMissionTypeID)
+                && fallbackMissionTypeID != missionTypeID
+            )
+            {
+                definition = GetMissionDefinition(
+                    resultType,
+                    outcome,
+                    fallbackMissionTypeID,
+                    completionReason
+                );
+                if (definition != null)
+                    return definition;
+            }
 
             definition = FindMissionDefinition(resultType, outcome, null, completionReason);
             if (definition != null || completionReason == MissionCompletionReason.None)

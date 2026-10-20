@@ -252,6 +252,12 @@ namespace Rebellion.Game.Missions
         public string LocationInstanceID { get; set; }
 
         /// <summary>
+        /// Gets the mission type supplying shared odds, timing, and fallback reports.
+        /// </summary>
+        [PersistableIgnore]
+        internal virtual string RulesKey => ConfigKey;
+
+        /// <summary>
         /// Gets or sets the content event that authored this mission, when applicable.
         /// Results inherit this identity so data-defined reactions can replace or extend
         /// default presentation without coupling systems to particular event IDs.
@@ -709,7 +715,7 @@ namespace Rebellion.Game.Missions
         /// <returns>The configured success probability.</returns>
         protected double LookupSuccessProbability(GameRoot game, int score)
         {
-            return LookupSuccessProbability(game, score, ConfigKey);
+            return LookupSuccessProbability(game, score, RulesKey);
         }
 
         /// <summary>

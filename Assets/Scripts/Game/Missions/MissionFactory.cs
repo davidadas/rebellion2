@@ -28,6 +28,7 @@ namespace Rebellion.Game.Missions
         public SkillRating DecoyParticipantRating { get; }
         public ResearchDiscipline? Discipline { get; }
         public MissionTargetKind TargetKind { get; }
+        public string RequiredMissionTypeID { get; }
 
         /// <summary>
         /// Creates a selectable mission option.
@@ -38,13 +39,15 @@ namespace Rebellion.Game.Missions
         /// <param name="targetKind">The kind of target accepted by the mission.</param>
         /// <param name="decoyParticipantRating">The rating decoy participants use for the mission.</param>
         /// <param name="discipline">The research discipline used by research options.</param>
+        /// <param name="requiredMissionTypeID">The underlying mission capability required of participants and factions.</param>
         public MissionOption(
             string missionTypeID,
             string displayName,
             SkillRating participantRating,
             MissionTargetKind targetKind,
             SkillRating decoyParticipantRating = SkillRating.None,
-            ResearchDiscipline? discipline = null
+            ResearchDiscipline? discipline = null,
+            string requiredMissionTypeID = null
         )
         {
             if (string.IsNullOrEmpty(missionTypeID))
@@ -56,6 +59,7 @@ namespace Rebellion.Game.Missions
             TargetKind = targetKind;
             DecoyParticipantRating = decoyParticipantRating;
             Discipline = discipline;
+            RequiredMissionTypeID = requiredMissionTypeID ?? missionTypeID;
         }
     }
 
@@ -156,6 +160,14 @@ namespace Rebellion.Game.Missions
                 MissionTargetKind.Planet
             ),
             new MissionOption(
+                SurveillanceMission.MissionTypeID,
+                "Surveillance",
+                SkillRating.Espionage,
+                MissionTargetKind.Planet,
+                SkillRating.Espionage,
+                requiredMissionTypeID: EspionageMission.MissionTypeID
+            ),
+            new MissionOption(
                 EspionageMission.MissionTypeID,
                 "Espionage",
                 SkillRating.Espionage,
@@ -240,7 +252,11 @@ namespace Rebellion.Game.Missions
             if (faction == null)
                 return false;
 
-            if (faction.DisallowedMissionTypeIDs.Contains(resolvedContext.MissionTypeID))
+            if (
+                faction.DisallowedMissionTypeIDs.Contains(resolvedContext.MissionTypeID)
+                || option.RequiredMissionTypeID != resolvedContext.MissionTypeID
+                    && faction.DisallowedMissionTypeIDs.Contains(option.RequiredMissionTypeID)
+            )
                 return false;
 
             foreach (
@@ -256,7 +272,7 @@ namespace Rebellion.Game.Missions
                     || missionParticipant.IsOnMission()
                     || !missionParticipant.IsMovable()
                     || missionParticipant.GetTransitMovement() != null
-                    || missionParticipant.CanPerformMission(resolvedContext.MissionTypeID) != true
+                    || missionParticipant.CanPerformMission(option.RequiredMissionTypeID) != true
                 )
                     return false;
             }
@@ -343,6 +359,7 @@ namespace Rebellion.Game.Missions
                 AbductionMission.MissionTypeID => AbductionMission.TryCreate(ctx),
                 AssassinationMission.MissionTypeID => AssassinationMission.TryCreate(ctx),
                 EspionageMission.MissionTypeID => EspionageMission.TryCreate(ctx),
+                SurveillanceMission.MissionTypeID => SurveillanceMission.TryCreate(ctx),
                 SabotageMission.MissionTypeID => SabotageMission.TryCreate(ctx),
                 InciteUprisingMission.MissionTypeID => InciteUprisingMission.TryCreate(ctx),
                 RescueMission.MissionTypeID => RescueMission.TryCreate(ctx),

@@ -38,6 +38,7 @@ public static class MissionIconKeys
             RescueMission.MissionTypeID => Rescue,
             SabotageMission.MissionTypeID => Sabotage,
             EspionageMission.MissionTypeID => Espionage,
+            SurveillanceMission.MissionTypeID => Espionage,
             ReconnaissanceMission.MissionTypeID => Reconnaissance,
             RecruitmentMission.MissionTypeID => Recruitment,
             AbductionMission.MissionTypeID => Abduction,

@@ -1838,8 +1838,15 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(spy.GetParentOfType<CapitalShip>());
         }
 
-        [Test]
-        public void ProcessTick_EspionageDetected_AppliesFoiledParticipantConsequences()
+        /// <summary>
+        /// Applies the shared terminal capture consequences to both espionage variants.
+        /// </summary>
+        /// <param name="missionTypeID">The espionage variant being detected.</param>
+        [TestCase(EspionageMission.MissionTypeID)]
+        [TestCase(SurveillanceMission.MissionTypeID)]
+        public void ProcessTick_EspionageDetected_AppliesFoiledParticipantConsequences(
+            string missionTypeID
+        )
         {
             (
                 GameRoot game,
@@ -1851,7 +1858,7 @@ namespace Rebellion.Tests.Simulation
 
             planet.VisitingFactionIDs.Add("empire");
             Mission mission = MissionTestFactory.TryCreate(
-                EspionageMission.MissionTypeID,
+                missionTypeID,
                 game,
                 "empire",
                 planet,

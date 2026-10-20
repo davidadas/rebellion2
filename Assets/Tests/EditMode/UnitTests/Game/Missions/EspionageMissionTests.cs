@@ -12,9 +12,21 @@ using Rebellion.Simulation;
 
 namespace Rebellion.Tests.Game.Missions
 {
-    [TestFixture]
+    [TestFixture(EspionageMission.MissionTypeID)]
+    [TestFixture(SurveillanceMission.MissionTypeID)]
     public class EspionageMissionTests
     {
+        private readonly string _missionTypeID;
+
+        /// <summary>
+        /// Runs the shared intelligence-gathering contract against each espionage variant.
+        /// </summary>
+        /// <param name="missionTypeID">The concrete mission variant to create.</param>
+        public EspionageMissionTests(string missionTypeID)
+        {
+            _missionTypeID = missionTypeID;
+        }
+
         [Test]
         public void ResolveObjective_EnemyPlanetTarget_CapturesSnapshotForFaction()
         {
@@ -718,7 +730,7 @@ namespace Rebellion.Tests.Game.Missions
         /// <param name="main">The main.</param>
         /// <param name="decoy">The decoy.</param>
         /// <returns>The created mission.</returns>
-        private static Mission CreateMission(
+        private Mission CreateMission(
             GameRoot game,
             string owner,
             Planet target,
@@ -726,14 +738,7 @@ namespace Rebellion.Tests.Game.Missions
             List<IMissionParticipant> decoy
         )
         {
-            return MissionTestFactory.TryCreate(
-                EspionageMission.MissionTypeID,
-                game,
-                owner,
-                target,
-                main,
-                decoy
-            );
+            return MissionTestFactory.TryCreate(_missionTypeID, game, owner, target, main, decoy);
         }
 
         /// <summary>
