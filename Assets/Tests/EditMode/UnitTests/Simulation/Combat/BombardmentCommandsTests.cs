@@ -818,6 +818,10 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(20, secondPlanet.GetPopularSupport("alliance"));
             Assert.AreEqual(1, result.Events.OfType<OfficerInjuredResult>().Count());
             Assert.AreEqual(1, result.Events.OfType<OfficerKilledResult>().Count());
+            Assert.AreSame(
+                planet,
+                result.Events.OfType<OfficerKilledResult>().Single().ParentAtDeath
+            );
             Assert.IsEmpty(result.Events.OfType<OfficerAssassinatedResult>());
         }
 

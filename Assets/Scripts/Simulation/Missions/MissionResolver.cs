@@ -181,6 +181,35 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
+        /// Removes killed officers from an attached mission and reevaluates the remaining team.
+        /// </summary>
+        /// <param name="mission">The mission that contained the officers when they died.</param>
+        /// <param name="officers">The killed officers to remove from the mission.</param>
+        /// <param name="results">The batch receiving relocation or interruption results.</param>
+        internal void RemoveKilledParticipants(
+            Mission mission,
+            IReadOnlyCollection<Officer> officers,
+            List<GameResult> results
+        )
+        {
+            if (mission?.GetParent() is not Planet missionPlanet || officers == null)
+                return;
+            if (results == null)
+                throw new ArgumentNullException(nameof(results));
+
+            List<IMissionParticipant> attachedOfficers = officers
+                .Where(officer => officer?.IsKilled == true && officer.GetParent() == mission)
+                .Distinct()
+                .Cast<IMissionParticipant>()
+                .ToList();
+            _movementManager.CompleteMissionAtLocation(attachedOfficers, missionPlanet, results);
+
+            mission.AcceptCurrentParticipantRoster();
+            if (mission.GetAbortReason(_game).HasValue)
+                InterruptMission(mission, results);
+        }
+
+        /// <summary>
         /// Immediately interrupts missions containing newly captured officers.
         /// </summary>
         /// <param name="officers">The newly captured officers.</param>
@@ -336,14 +365,17 @@ namespace Rebellion.Simulation
         /// <param name="results">The mission results to apply.</param>
         private void ApplyOfficerDeaths(IEnumerable<GameResult> results)
         {
-            foreach (
-                Officer officer in results
-                    .OfType<OfficerKilledResult>()
-                    .Select(result => result.TargetOfficer)
-                    .Where(officer => officer?.IsKilled == false)
-                    .Distinct()
-            )
-                _personnelCommands.KillOfficer(officer);
+            HashSet<Officer> handledOfficers = new HashSet<Officer>();
+            foreach (OfficerKilledResult result in results.OfType<OfficerKilledResult>())
+            {
+                Officer officer = result.TargetOfficer;
+                if (officer == null)
+                    continue;
+
+                result.ParentAtDeath ??= officer.GetParent();
+                if (!officer.IsKilled && handledOfficers.Add(officer))
+                    _personnelCommands.KillOfficer(officer);
+            }
         }
 
         /// <summary>

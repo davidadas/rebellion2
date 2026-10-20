@@ -60,6 +60,10 @@ namespace Rebellion.Tests.Simulation
                 encountered,
                 results.OfType<OfficerKilledResult>().Single().TargetOfficer
             );
+            Assert.AreSame(
+                encountered.GetParent(),
+                results.OfType<OfficerKilledResult>().Single().ParentAtDeath
+            );
             Assert.IsFalse(results.OfType<DuelResult>().Single().EncounteredOfficerCaptured);
         }
 
