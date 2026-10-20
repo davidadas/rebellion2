@@ -44,42 +44,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             UnityEngine.Object.DestroyImmediate(_viewObject);
         }
 
-        /// <summary>
-        /// Leaves space for both checkboxes and keeps controls inside the enlarged panel.
-        /// </summary>
-        [Test]
-        public void Render_ExpandedPanel_SeparatesOptionsFromTargetAndActions()
-        {
-            _view.Render(
-                CreateRenderData(
-                    MissionCreateWindowTab.Mission,
-                    false,
-                    Array.Empty<StrategyDropdownItemRenderData>(),
-                    Array.Empty<MissionParticipantRowRenderData>(),
-                    Array.Empty<MissionParticipantRowRenderData>()
-                )
-            );
-            RectInt panel = UILayout.GetSourceRect((RectTransform)_view.transform);
-            RectInt odds = UILayout.GetSourceRect(
-                FindComponent<UICheckboxView>("MissionOddsCheckbox").transform as RectTransform
-            );
-            RectInt repeat = UILayout.GetSourceRect(
-                FindComponent<UICheckboxView>("RepeatCheckbox").transform as RectTransform
-            );
-            RectInt target = UILayout.GetSourceRect(
-                FindComponent<TextMeshProUGUI>("TargetLabelTextField").rectTransform
-            );
-            RectInt actions = UILayout.GetSourceRect(
-                FindComponent<RawImage>("OkButtonImage").rectTransform
-            );
-
-            Assert.AreEqual(383, panel.height);
-            Assert.AreEqual(odds.x, repeat.x);
-            Assert.Less(odds.yMax, repeat.yMin);
-            Assert.Less(repeat.yMax, target.yMin);
-            Assert.Less(actions.yMax, panel.height);
-        }
-
         [Test]
         public void Render_NullData_ThrowsArgumentNullException()
         {
@@ -242,39 +206,25 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             UICheckboxView checkbox = FindComponent<UICheckboxView>("MissionOddsCheckbox");
             Image background = checkbox.GetComponent<Image>();
             Assert.IsFalse(checkbox.IsChecked);
-            Assert.AreSame(
-                _texture,
-                FindComponent<RawImage>("CheckboxFrameImage", checkbox.transform).texture
-            );
-            Assert.AreSame(
-                _texture,
-                FindComponent<RawImage>("CheckMark", checkbox.transform).texture
-            );
+            Assert.AreSame(_texture, FindComponent<RawImage>("CheckboxFrameImage").texture);
+            Assert.AreSame(_texture, FindComponent<RawImage>("CheckMark").texture);
             Assert.AreEqual(
                 new RectInt(3, 2, 12, 12),
-                UILayout.GetSourceRect(
-                    FindComponent<RectMask2D>("CheckMarkClip", checkbox.transform).rectTransform
-                )
+                UILayout.GetSourceRect(FindComponent<RectMask2D>("CheckMarkClip").rectTransform)
             );
             Assert.AreEqual(
                 new RectInt(-1, 1, 14, 14),
-                UILayout.GetSourceRect(
-                    FindComponent<RawImage>("CheckMark", checkbox.transform).rectTransform
-                )
+                UILayout.GetSourceRect(FindComponent<RawImage>("CheckMark").rectTransform)
             );
             Assert.Less(background.color.r, 0.1f);
             Assert.Less(background.color.a, 1f);
-            Assert.IsFalse(
-                FindComponent<Transform>("CheckMarkClip", checkbox.transform).gameObject.activeSelf
-            );
+            Assert.IsFalse(FindObject("CheckMarkClip").activeSelf);
 
             checkbox.GetComponent<Toggle>().isOn = true;
 
             Assert.AreSame(_view, changedView);
             Assert.IsTrue(requestedVisibility);
-            Assert.IsTrue(
-                FindComponent<Transform>("CheckMarkClip", checkbox.transform).gameObject.activeSelf
-            );
+            Assert.IsTrue(FindObject("CheckMarkClip").activeSelf);
         }
 
         [Test]
@@ -320,7 +270,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 _view.Render(data);
 
                 Assert.AreEqual(
-                    new RectInt(115, 260, 37, 37),
+                    new RectInt(115, 232, 37, 37),
                     UILayout.GetSourceRect(
                         FindComponent<RawImage>("TargetPreviewImage").rectTransform
                     )
@@ -351,7 +301,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 _view.Render(data);
 
                 Assert.AreEqual(
-                    new RectInt(94, 239, 79, 79),
+                    new RectInt(94, 211, 79, 79),
                     UILayout.GetSourceRect(
                         FindComponent<RawImage>("TargetPreviewImage").rectTransform
                     )
@@ -953,13 +903,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         /// Finds component.
         /// </summary>
         /// <param name="objectName">The object name.</param>
-        /// <param name="root">The optional subtree to search.</param>
         /// <typeparam name="T">The t type.</typeparam>
         /// <returns>The matching component.</returns>
-        private T FindComponent<T>(string objectName, Transform root = null)
+        private T FindComponent<T>(string objectName)
             where T : Component
         {
-            return (root ?? _viewObject.transform)
+            return _viewObject
                 .GetComponentsInChildren<T>(true)
                 .Single(component => component.name == objectName);
         }

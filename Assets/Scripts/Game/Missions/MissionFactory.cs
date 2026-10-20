@@ -30,6 +30,11 @@ namespace Rebellion.Game.Missions
         public MissionTargetKind TargetKind { get; }
 
         /// <summary>
+        /// Whether the picker offers a repeat variant for this single-attempt mission.
+        /// </summary>
+        public bool CanRepeat { get; }
+
+        /// <summary>
         /// Creates a selectable mission option.
         /// </summary>
         /// <param name="missionTypeID">The mission type ID used to start the mission.</param>
@@ -38,13 +43,15 @@ namespace Rebellion.Game.Missions
         /// <param name="targetKind">The kind of target accepted by the mission.</param>
         /// <param name="decoyParticipantRating">The rating decoy participants use for the mission.</param>
         /// <param name="discipline">The research discipline used by research options.</param>
+        /// <param name="canRepeat">Whether to offer a repeat variant in the picker.</param>
         public MissionOption(
             string missionTypeID,
             string displayName,
             SkillRating participantRating,
             MissionTargetKind targetKind,
             SkillRating decoyParticipantRating = SkillRating.None,
-            ResearchDiscipline? discipline = null
+            ResearchDiscipline? discipline = null,
+            bool canRepeat = false
         )
         {
             if (string.IsNullOrEmpty(missionTypeID))
@@ -56,6 +63,7 @@ namespace Rebellion.Game.Missions
             TargetKind = targetKind;
             DecoyParticipantRating = decoyParticipantRating;
             Discipline = discipline;
+            CanRepeat = canRepeat;
         }
     }
 
@@ -106,21 +114,24 @@ namespace Rebellion.Game.Missions
                 "Rescue",
                 SkillRating.Combat,
                 MissionTargetKind.Officer,
-                SkillRating.Espionage
+                SkillRating.Espionage,
+                canRepeat: true
             ),
             new MissionOption(
                 SabotageMission.MissionTypeID,
                 "Sabotage",
                 SkillRating.Combat,
                 MissionTargetKind.Manufacturable,
-                SkillRating.Espionage
+                SkillRating.Espionage,
+                canRepeat: true
             ),
             new MissionOption(
                 AbductionMission.MissionTypeID,
                 "Abduction",
                 SkillRating.Combat,
                 MissionTargetKind.Officer,
-                SkillRating.Espionage
+                SkillRating.Espionage,
+                canRepeat: true
             ),
             new MissionOption(
                 SubdueUprisingMission.MissionTypeID,
@@ -133,34 +144,39 @@ namespace Rebellion.Game.Missions
                 "Assassination",
                 SkillRating.Combat,
                 MissionTargetKind.Officer,
-                SkillRating.Espionage
+                SkillRating.Espionage,
+                canRepeat: true
             ),
             new MissionOption(
                 InciteUprisingMission.MissionTypeID,
                 "Incite Uprising",
                 SkillRating.Leadership,
                 MissionTargetKind.Planet,
-                SkillRating.Espionage
+                SkillRating.Espionage,
+                canRepeat: true
             ),
             new MissionOption(
                 ReconnaissanceMission.MissionTypeID,
                 "Reconnaissance",
                 SkillRating.Espionage,
                 MissionTargetKind.Planet,
-                SkillRating.Espionage
+                SkillRating.Espionage,
+                canRepeat: true
             ),
             new MissionOption(
                 JediTrainingMission.MissionTypeID,
                 "Jedi Training",
                 SkillRating.Diplomacy,
-                MissionTargetKind.Planet
+                MissionTargetKind.Planet,
+                canRepeat: true
             ),
             new MissionOption(
                 EspionageMission.MissionTypeID,
                 "Espionage",
                 SkillRating.Espionage,
                 MissionTargetKind.Planet,
-                SkillRating.Espionage
+                SkillRating.Espionage,
+                canRepeat: true
             ),
         };
 
@@ -226,6 +242,7 @@ namespace Rebellion.Game.Missions
                 MainParticipants = context.MainParticipants ?? new List<IMissionParticipant>(),
                 DecoyParticipants = context.DecoyParticipants ?? new List<IMissionParticipant>(),
                 Discipline = context.Discipline,
+                Repeat = context.Repeat,
             };
 
             if (resolvedContext.MainParticipants.Count == 0)

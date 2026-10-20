@@ -29,7 +29,7 @@ public sealed class MissionCreateWindowView
 
     [Header("Window")]
     [SerializeField]
-    private RawImage[] backgroundImages = Array.Empty<RawImage>();
+    private RawImage backgroundImage;
 
     [SerializeField]
     private TextMeshProUGUI titleTextField;
@@ -84,9 +84,6 @@ public sealed class MissionCreateWindowView
 
     [SerializeField]
     private UICheckboxView missionOddsCheckbox;
-
-    [SerializeField]
-    private UICheckboxView repeatCheckbox;
 
     [SerializeField]
     private RawImage targetPreviewImage;
@@ -213,11 +210,6 @@ public sealed class MissionCreateWindowView
     internal event Action<MissionCreateWindowView, bool> MissionOddsVisibilityChanged;
 
     /// <summary>
-    /// Occurs when the user changes this assignment's repeat selection.
-    /// </summary>
-    internal event Action<MissionCreateWindowView, bool> RepeatChanged;
-
-    /// <summary>
     /// Occurs when a move participants request is raised.
     /// </summary>
     internal event Action<
@@ -337,13 +329,12 @@ public sealed class MissionCreateWindowView
         VerifyContentReferences();
         dropdownOpen = data.DropdownOpen;
         UILayout.SetSourcePosition(transform as RectTransform, data.X, data.Y);
-        foreach (RawImage background in backgroundImages)
-            UILayout.SetInteractiveImageTexture(
-                background,
-                data.ActiveTab == MissionCreateWindowTab.Mission
-                    ? missionBackgroundTexture
-                    : personnelBackgroundTexture
-            );
+        UILayout.SetInteractiveImageTexture(
+            backgroundImage,
+            data.ActiveTab == MissionCreateWindowTab.Mission
+                ? missionBackgroundTexture
+                : personnelBackgroundTexture
+        );
         RenderTitle(data.TitleTexture, data.ActiveTab);
         RenderTabs(data.Tabs);
         okButtonPressVisual.SetInteractiveTextures(
@@ -434,7 +425,6 @@ public sealed class MissionCreateWindowView
         okButton.onClick.AddListener(okListener);
         cancelButton.onClick.AddListener(cancelListener);
         missionOddsCheckbox.ValueChanged += HandleMissionOddsVisibilityChanged;
-        repeatCheckbox.ValueChanged += HandleRepeatChanged;
     }
 
     /// <summary>
@@ -462,8 +452,6 @@ public sealed class MissionCreateWindowView
             cancelButton.onClick.RemoveListener(cancelListener);
         if (missionOddsCheckbox != null)
             missionOddsCheckbox.ValueChanged -= HandleMissionOddsVisibilityChanged;
-        if (repeatCheckbox != null)
-            repeatCheckbox.ValueChanged -= HandleRepeatChanged;
     }
 
     /// <summary>
@@ -520,8 +508,6 @@ public sealed class MissionCreateWindowView
             UILayout.SetImageTexture(selectedMissionImage, data.SelectedMissionTexture);
         missionOddsCheckbox.SetTextures(data.CheckboxFrameTexture, data.CheckboxCheckMarkTexture);
         missionOddsCheckbox.SetIsCheckedWithoutNotify(data.ShowMissionOdds);
-        repeatCheckbox.SetTextures(data.CheckboxFrameTexture, data.CheckboxCheckMarkTexture);
-        repeatCheckbox.SetIsCheckedWithoutNotify(data.Repeat);
         RenderSelectedMissionOdds(data.SelectedMissionOdds);
 
         selectedMissionNameTextField.gameObject.SetActive(!string.IsNullOrEmpty(data.MissionName));
@@ -570,15 +556,6 @@ public sealed class MissionCreateWindowView
     private void HandleMissionOddsVisibilityChanged(bool visible)
     {
         MissionOddsVisibilityChanged?.Invoke(this, visible);
-    }
-
-    /// <summary>
-    /// Emits the repeat selection without owning mission state.
-    /// </summary>
-    /// <param name="repeat">Whether the user selected repeat.</param>
-    private void HandleRepeatChanged(bool repeat)
-    {
-        RepeatChanged?.Invoke(this, repeat);
     }
 
     /// <summary>
@@ -991,7 +968,8 @@ public sealed class MissionCreateWindowView
     /// </summary>
     private void VerifyReferences()
     {
-        VerifyReferenceArray(backgroundImages, 3, "BackgroundImages");
+        if (backgroundImage == null)
+            throw new MissingReferenceException($"{name}/BackgroundImage is missing.");
         if (titleTextField == null)
             throw new MissingReferenceException($"{name}/TitleTextField is missing.");
         VerifyReferenceArray(titleImages, _titleImageCount, "TitleImages");
@@ -1026,8 +1004,6 @@ public sealed class MissionCreateWindowView
             throw new MissingReferenceException($"{name}/SelectedMissionOddsOverlay is missing.");
         if (missionOddsCheckbox == null)
             throw new MissingReferenceException($"{name}/MissionOddsCheckbox is missing.");
-        if (repeatCheckbox == null)
-            throw new MissingReferenceException($"{name}/RepeatCheckbox is missing.");
         if (targetPreviewImage == null)
             throw new MissingReferenceException($"{name}/TargetPreviewImage is missing.");
         if (targetPreviewNameTextField == null)

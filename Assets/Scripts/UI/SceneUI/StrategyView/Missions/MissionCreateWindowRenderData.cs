@@ -110,8 +110,6 @@ public sealed class MissionCreateWindowRenderData
 
     public bool ShowMissionOdds { get; }
 
-    public bool Repeat { get; }
-
     public Texture CheckboxFrameTexture { get; }
 
     public Texture CheckboxCheckMarkTexture { get; }
@@ -158,7 +156,6 @@ public sealed class MissionCreateWindowRenderData
     /// <param name="showMissionOdds">Whether the mission-odds overlays are enabled.</param>
     /// <param name="checkboxFrameTexture">The theme-owned checkbox frame.</param>
     /// <param name="checkboxCheckMarkTexture">The theme-owned checkbox check mark.</param>
-    /// <param name="repeat">Whether repeat is selected for this assignment.</param>
     public MissionCreateWindowRenderData(
         int x,
         int y,
@@ -180,8 +177,7 @@ public sealed class MissionCreateWindowRenderData
         MissionOddsRenderData selectedMissionOdds = null,
         bool showMissionOdds = true,
         Texture checkboxFrameTexture = null,
-        Texture checkboxCheckMarkTexture = null,
-        bool repeat = false
+        Texture checkboxCheckMarkTexture = null
     )
     {
         X = x;
@@ -194,7 +190,6 @@ public sealed class MissionCreateWindowRenderData
         SelectedMissionTexture = selectedMissionTexture;
         SelectedMissionOdds = selectedMissionOdds;
         ShowMissionOdds = showMissionOdds;
-        Repeat = repeat;
         CheckboxFrameTexture = checkboxFrameTexture;
         CheckboxCheckMarkTexture = checkboxCheckMarkTexture;
         TargetName = targetName ?? string.Empty;

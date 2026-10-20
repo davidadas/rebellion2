@@ -3105,59 +3105,6 @@ public static class StrategyViewPrefabBuilder
     }
 
     /// <summary>
-    /// Extends a background at one horizontal strip while preserving the artwork above and below it.
-    /// </summary>
-    /// <param name="parent">The window receiving the background.</param>
-    /// <param name="texturePath">The background's content address.</param>
-    /// <param name="width">The authored source-space width.</param>
-    /// <param name="height">The authored source-space height.</param>
-    /// <param name="splitY">The source-space row at which to insert space.</param>
-    /// <param name="extensionHeight">The additional source-space height.</param>
-    /// <returns>The top, extended strip, and bottom background images.</returns>
-    private static RawImage[] CreateVerticallyExtendedBackground(
-        Transform parent,
-        string texturePath,
-        int width,
-        int height,
-        int splitY,
-        int extensionHeight
-    )
-    {
-        int bottomHeight = height - splitY;
-        RawImage top = CreateRawImage(
-            "BackgroundTopImage",
-            parent,
-            texturePath,
-            0,
-            0,
-            width,
-            splitY
-        );
-        top.uvRect = new Rect(0, (float)bottomHeight / height, 1, (float)splitY / height);
-        RawImage extension = CreateRawImage(
-            "BackgroundExtensionImage",
-            parent,
-            texturePath,
-            0,
-            splitY,
-            width,
-            extensionHeight
-        );
-        extension.uvRect = new Rect(0, (float)(bottomHeight - 1) / height, 1, 1f / height);
-        RawImage bottom = CreateRawImage(
-            "BackgroundBottomImage",
-            parent,
-            texturePath,
-            0,
-            splitY + extensionHeight,
-            width,
-            bottomHeight
-        );
-        bottom.uvRect = new Rect(0, 0, 1, (float)bottomHeight / height);
-        return new[] { top, extension, bottom };
-    }
-
-    /// <summary>
     /// Authors the Mission Create window prefab.
     /// </summary>
     /// <returns>The generated Mission Create window view.</returns>
@@ -3166,8 +3113,7 @@ public static class StrategyViewPrefabBuilder
         Directory.CreateDirectory(Path.GetDirectoryName(_missionCreateWindowPrefabPath));
         MissionParticipantRowView participantRowPrefab = BuildMissionCreateParticipantRowPrefab();
         const int windowWidth = 259;
-        const int extraHeight = 28;
-        const int windowHeight = 355 + extraHeight;
+        const int windowHeight = 355;
 
         GameObject window = new GameObject(
             "MissionCreateWindow",
@@ -3178,16 +3124,18 @@ public static class StrategyViewPrefabBuilder
         UIWindow windowShell = window.GetComponent<UIWindow>();
         SetSourceRect(window.GetComponent<RectTransform>(), 0, 0, windowWidth, windowHeight);
 
-        RawImage[] backgrounds = CreateVerticallyExtendedBackground(
+        RawImage background = CreateRawImage(
+            "BackgroundImage",
             window.transform,
             _missionCreateMissionBackgroundPreviewPath,
+            0,
+            0,
             windowWidth,
-            355,
-            183,
-            extraHeight
+            windowHeight
         );
         const int titleWidth = 240;
         const int titleHeight = 17;
+        background.raycastTarget = true;
 
         List<RawImage> titleImages = new List<RawImage>
         {
@@ -3282,7 +3230,7 @@ public static class StrategyViewPrefabBuilder
             window.transform,
             _constructionInfoButtonPreviewPath,
             33,
-            320 + extraHeight,
+            320,
             _constructionActionButtonWidth,
             _constructionActionButtonHeight
         );
@@ -3299,7 +3247,7 @@ public static class StrategyViewPrefabBuilder
             window.transform,
             _constructionOkButtonPreviewPath,
             102,
-            320 + extraHeight,
+            320,
             _constructionActionButtonWidth,
             _constructionActionButtonHeight
         );
@@ -3316,7 +3264,7 @@ public static class StrategyViewPrefabBuilder
             window.transform,
             _constructionCancelButtonPreviewPath,
             170,
-            320 + extraHeight,
+            320,
             _constructionActionButtonWidth,
             _constructionActionButtonHeight
         );
@@ -3330,7 +3278,7 @@ public static class StrategyViewPrefabBuilder
         SetPressedBindingAddress(cancelButton, _constructionCancelButtonDownPreviewPath);
 
         RectTransform missionSelection = CreateChildLayer("MissionSelection", window.transform);
-        SetSourceRect(missionSelection, 0, 0, windowWidth, windowHeight);
+        SetSourceRect(missionSelection, 0, 0, 259, 355);
         RawImage dropdownButton = CreateRawImage(
             "DropdownButtonImage",
             missionSelection,
@@ -3353,7 +3301,7 @@ public static class StrategyViewPrefabBuilder
         targetLabel.color = Color.white;
         targetLabel.fontSize = 13;
         targetLabel.alignment = TextAlignmentOptions.TopLeft;
-        SetSourceRect(targetLabel.rectTransform, 36, 197 + extraHeight, 80, 16);
+        SetSourceRect(targetLabel.rectTransform, 36, 197, 80, 16);
         RawImage selectedMission = CreateRawImage(
             "SelectedMissionImage",
             missionSelection,
@@ -3385,24 +3333,14 @@ public static class StrategyViewPrefabBuilder
             16,
             true
         );
-        UICheckboxView repeatCheckbox = CreateCheckbox(
-            missionSelection,
-            "RepeatCheckbox",
-            "Repeat",
-            80,
-            205,
-            130,
-            16,
-            false
-        );
         RawImage targetPreview = CreateRawImage(
             "TargetPreviewImage",
             missionSelection,
             _planetPreviewPath,
             51,
-            211 + extraHeight
+            211
         );
-        SetSourceRect(targetPreview.rectTransform, 51, 211 + extraHeight, 165, 79);
+        SetSourceRect(targetPreview.rectTransform, 51, 211, 165, 79);
         TextMeshProUGUI targetPreviewName = CreateTextLabel(
             "TargetPreviewNameTextField",
             missionSelection
@@ -3411,7 +3349,7 @@ public static class StrategyViewPrefabBuilder
         targetPreviewName.color = Color.white;
         targetPreviewName.fontSize = 13;
         targetPreviewName.alignment = TextAlignmentOptions.Top;
-        SetSourceRect(targetPreviewName.rectTransform, 50, 296 + extraHeight, 166, 16);
+        SetSourceRect(targetPreviewName.rectTransform, 50, 296, 166, 16);
 
         RectTransform dropdown = CreateChildLayer("Dropdown", missionSelection);
         SetSourceRect(dropdown, 36, 176, 197, 114);
@@ -3467,7 +3405,7 @@ public static class StrategyViewPrefabBuilder
         );
         ConfigureVerticalContent(dropdownContent);
         RectTransform personnel = CreateChildLayer("Personnel", window.transform);
-        SetSourceRect(personnel, 0, 0, windowWidth, windowHeight);
+        SetSourceRect(personnel, 0, 0, 259, 355);
         RawImage agentsHeader = CreateRawImage(
             "AgentsHeaderImage",
             personnel,
@@ -3491,7 +3429,7 @@ public static class StrategyViewPrefabBuilder
             personnel,
             _missionCreateMoveRightButtonPreviewPath,
             120,
-            136 + extraHeight / 2,
+            136,
             _missionCreateMoveButtonWidth,
             _missionCreateMoveButtonHeight
         );
@@ -3508,7 +3446,7 @@ public static class StrategyViewPrefabBuilder
             personnel,
             _missionCreateMoveLeftButtonPreviewPath,
             120,
-            221 + extraHeight / 2,
+            221,
             _missionCreateMoveButtonWidth,
             _missionCreateMoveButtonHeight
         );
@@ -3527,15 +3465,15 @@ public static class StrategyViewPrefabBuilder
             9,
             93,
             108,
-            214 + extraHeight,
+            214,
             0,
             0,
             107,
-            214 + extraHeight,
+            214,
             95,
             0,
             13,
-            214 + extraHeight,
+            214,
             out RectTransform agentsContent
         );
         ConfigureVerticalContent(agentsContent);
@@ -3574,15 +3512,15 @@ public static class StrategyViewPrefabBuilder
             137,
             93,
             108,
-            214 + extraHeight,
+            214,
             0,
             0,
             107,
-            214 + extraHeight,
+            214,
             95,
             0,
             13,
-            214 + extraHeight,
+            214,
             out RectTransform decoysContent
         );
         ConfigureVerticalContent(decoysContent);
@@ -3595,7 +3533,7 @@ public static class StrategyViewPrefabBuilder
         MissionCreateWindowView view = EnableRuntimeComponent(
             window.AddComponent<MissionCreateWindowView>()
         );
-        AssignReferenceArray(view, "backgroundImages", backgrounds);
+        AssignReference(view, "backgroundImage", background);
         AssignReference(view, "titleTextField", title);
         AssignReferenceArray(view, "titleImages", titleImages);
         AssignReferenceArray(view, "tabImages", tabImages);
@@ -3613,7 +3551,6 @@ public static class StrategyViewPrefabBuilder
         AssignReference(view, "selectedMissionNameTextField", selectedMissionName);
         AssignReference(view, "selectedMissionOddsOverlay", selectedMissionOddsOverlay);
         AssignReference(view, "missionOddsCheckbox", missionOddsCheckbox);
-        AssignReference(view, "repeatCheckbox", repeatCheckbox);
         AssignReference(view, "targetPreviewImage", targetPreview);
         AssignReference(view, "targetPreviewNameTextField", targetPreviewName);
         AssignReference(view, "dropdownRoot", dropdown);

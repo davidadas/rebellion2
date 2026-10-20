@@ -180,6 +180,35 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreSame(window, _windowManager.ActiveWindow);
         }
 
+        /// <summary>
+        /// Offers adjacent normal and repeat entries in the existing dropdown and panel.
+        /// </summary>
+        [Test]
+        public void DropdownButton_SingleAttemptMission_OffersNormalAndRepeatChoices()
+        {
+            MissionCreateWindowView view = OpenWindow(out UIWindow window);
+            FindButton(view, "DropdownButtonImage").onClick.Invoke();
+            _controller.RenderWindow(view, window);
+            StrategyDropdownItemView[] rows =
+                view.GetComponentsInChildren<StrategyDropdownItemView>(true)
+                    .Where(row => row.gameObject.activeSelf)
+                    .OrderBy(row => row.Index)
+                    .ToArray();
+            string[] labels = rows.Select(row =>
+                    row.GetComponentsInChildren<TMPro.TextMeshProUGUI>(true)
+                        .Single(text => text.name == "ItemTextField")
+                        .text
+                )
+                .ToArray();
+
+            CollectionAssert.AreEqual(
+                new[] { "Reconnaissance", "Reconnaissance (Repeat)" },
+                labels
+            );
+            Assert.AreEqual(355, UILayout.GetSourceRect((RectTransform)view.transform).height);
+            Assert.AreEqual(1, view.GetComponentsInChildren<UICheckboxView>(true).Length);
+        }
+
         [Test]
         public void MissionOddsCheckbox_InitializedSession_ChangesVisibilityAndInvalidates()
         {
@@ -210,37 +239,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
 
             Assert.IsFalse(checkbox.IsChecked);
             Assert.AreEqual(0, _showMissionOddsSaveCount);
-        }
-
-        /// <summary>
-        /// Retains repeat through rendering without changing odds preferences or later assignments.
-        /// </summary>
-        [Test]
-        public void RepeatCheckbox_Toggled_PersistsOnlyInCurrentSession()
-        {
-            MissionCreateWindowView view = OpenWindow(out UIWindow window);
-            UICheckboxView repeat = view.GetComponentsInChildren<UICheckboxView>(true)
-                .Single(checkbox => checkbox.name == "RepeatCheckbox");
-            UIComponentTestHelper.InvokeLifecycle(repeat, "Awake");
-            _controller.RenderWindow(view, window);
-            Assert.IsFalse(repeat.IsChecked);
-
-            repeat.GetComponent<Toggle>().isOn = true;
-            _controller.RenderWindow(view, window);
-
-            Assert.IsTrue(repeat.IsChecked);
-            Assert.IsTrue(_showMissionOdds);
-            Assert.AreEqual(0, _showMissionOddsSaveCount);
-            Assert.AreEqual(2, _dirtyCount);
-
-            FindButton(view, "CancelButtonImage").onClick.Invoke();
-            MissionCreateWindowView next = OpenWindow(out UIWindow nextWindow);
-            _controller.RenderWindow(next, nextWindow);
-            Assert.IsFalse(
-                next.GetComponentsInChildren<UICheckboxView>(true)
-                    .Single(checkbox => checkbox.name == "RepeatCheckbox")
-                    .IsChecked
-            );
         }
 
         [Test]

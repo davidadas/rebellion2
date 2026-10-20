@@ -21,6 +21,11 @@ namespace Rebellion.Game.Missions
         public string MissionTypeID { get; set; }
 
         /// <summary>
+        /// Whether the selected picker entry requests repeated attempts; defaults to false.
+        /// </summary>
+        public bool Repeat { get; set; }
+
+        /// <summary>
         /// Instance ID of the faction that will own the mission.
         /// </summary>
         public string OwnerInstanceId { get; set; }

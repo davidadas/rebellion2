@@ -480,6 +480,7 @@ namespace Rebellion.Simulation
                 MainParticipants = mainParticipants,
                 DecoyParticipants = decoyParticipants,
                 Discipline = context.Discipline,
+                Repeat = context.Repeat,
             };
         }
 
