@@ -27,7 +27,7 @@ namespace Rebellion.AI.Selectors
         }
 
         /// <summary>
-        /// Attempts to select a mission-domain proposal and reserve its resources.
+        /// Checks fixed officer teams before reserving mission resources.
         /// </summary>
         /// <param name="context">Current AI turn context.</param>
         /// <param name="proposal">Proposal to select.</param>
@@ -46,8 +46,13 @@ namespace Rebellion.AI.Selectors
                 return false;
 
             if (
-                proposal is AIMissionProposal { IsTeamFinal: true } mission
+                proposal is AIMissionProposal mission
                 && mission.Participants.OfType<Officer>().Any()
+                && (
+                    mission.IsTeamFinal
+                    || mission.Participant is Officer
+                        && !context.Assessment.IsEnemyPlanet(mission.TargetPlanet)
+                )
             )
             {
                 MissionOdds odds = context.Assessment.GetMissionOdds(

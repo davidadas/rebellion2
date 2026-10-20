@@ -151,6 +151,73 @@ namespace Rebellion.Tests.AI.Selectors
 
         [TestCase(true)]
         [TestCase(false)]
+        public void TrySelect_UnsafeDiplomacy_DoesNotReserveDestination(bool ownedDestination)
+        {
+            AITurnContext context = CreateDiplomacyBlockadeContext(
+                ownedDestination,
+                out Officer blockedOfficer,
+                out Officer safeOfficer,
+                out Planet destination
+            );
+            AIMissionProposal unsafeMission = new(
+                new[] { blockedOfficer },
+                MissionTypeIDs.Diplomacy,
+                destination
+            );
+            AIMissionProposal safeMission = new(
+                new[] { safeOfficer },
+                MissionTypeIDs.Diplomacy,
+                destination
+            );
+            Assert.Greater(
+                context
+                    .Assessment.GetMissionOdds(
+                        context.MissionQueries,
+                        unsafeMission.CreateContext()
+                    )
+                    .PersonnelLossProbability,
+                context.Game.Config.AI.MissionPlanning.MaximumOfficerMissionLossProbability
+            );
+            AIMissionSelector selector = new(new AISelectionState());
+
+            Assert.IsFalse(selector.TrySelect(context, unsafeMission));
+            Assert.IsTrue(selector.TrySelect(context, safeMission));
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void TrySelect_UnsafeDiplomacy_DoesNotReserveOfficer(bool ownedDestination)
+        {
+            AITurnContext context = CreateDiplomacyBlockadeContext(
+                ownedDestination,
+                out Officer blockedOfficer,
+                out _,
+                out Planet destination
+            );
+            AIMissionProposal unsafeMission = new(
+                new[] { blockedOfficer },
+                MissionTypeIDs.Diplomacy,
+                destination
+            );
+            AISelectionState state = new();
+
+            new AIMissionSelector(state).TrySelect(context, unsafeMission);
+
+            Assert.IsTrue(
+                state.CanReserve(
+                    new[]
+                    {
+                        new AISelectionReservation(
+                            AISelectionReservationKind.MissionActor,
+                            blockedOfficer.InstanceID
+                        ),
+                    }
+                )
+            );
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
         public void TrySelect_OfficerDecoyExceedsLossLimit_RejectsOnlyUnsafeTeam(bool safeDecoy)
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
@@ -263,6 +330,8 @@ namespace Rebellion.Tests.AI.Selectors
             Planet secondPlanet = samePlanet
                 ? firstPlanet
                 : AITestSceneBuilder.AddPlanet(game, sector, "second-planet", faction.InstanceID);
+            foreach (Planet planet in new[] { firstPlanet, secondPlanet }.Distinct())
+                AddResearchFacility(game, planet, discipline);
             Officer firstOfficer = EntityFactory.CreateOfficer("first-officer", faction.InstanceID);
             Officer secondOfficer = EntityFactory.CreateOfficer(
                 "second-officer",
@@ -306,6 +375,8 @@ namespace Rebellion.Tests.AI.Selectors
             officer.ShipResearch = 60;
             officer.FacilityResearch = 60;
             game.AttachNode(officer, planet);
+            AddResearchFacility(game, planet, ResearchDiscipline.ShipDesign);
+            AddResearchFacility(game, planet, ResearchDiscipline.FacilityDesign);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
             AIMissionProposal first = new(
                 new[] { officer },
@@ -336,6 +407,7 @@ namespace Rebellion.Tests.AI.Selectors
                 "planet",
                 faction.InstanceID
             );
+            planet.AddVisitor(faction.InstanceID);
             Officer firstOfficer = EntityFactory.CreateOfficer("first-officer", faction.InstanceID);
             Officer secondOfficer = EntityFactory.CreateOfficer(
                 "second-officer",
@@ -923,6 +995,81 @@ namespace Rebellion.Tests.AI.Selectors
                 new[] { decoy },
                 selected.Single(proposal => proposal.TargetPlanet == secondTarget).DecoyParticipants
             );
+        }
+
+        private static void AddResearchFacility(
+            GameRoot game,
+            Planet planet,
+            ResearchDiscipline discipline
+        )
+        {
+            BuildingType type = discipline switch
+            {
+                ResearchDiscipline.ShipDesign => BuildingType.Shipyard,
+                ResearchDiscipline.TroopTraining => BuildingType.TrainingFacility,
+                _ => BuildingType.ConstructionFacility,
+            };
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                planet.InstanceID + "-" + discipline,
+                type,
+                discipline.ToManufacturingType()
+            );
+        }
+
+        private static AITurnContext CreateDiplomacyBlockadeContext(
+            bool ownedDestination,
+            out Officer blockedOfficer,
+            out Officer safeOfficer,
+            out Planet destination
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction enemy);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet blockedOrigin = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "blocked-origin",
+                faction.InstanceID
+            );
+            Planet safeOrigin = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "safe-origin",
+                faction.InstanceID
+            );
+            destination = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "destination",
+                ownedDestination ? faction.InstanceID : null
+            );
+            destination.AddVisitor(faction.InstanceID);
+            Fleet blockade = new() { InstanceID = "blockade", OwnerInstanceID = enemy.InstanceID };
+            game.AttachNode(blockade, blockedOrigin);
+            CapitalShip detector = AITestSceneBuilder.CreateCapitalShip(
+                "detector",
+                enemy.InstanceID
+            );
+            detector.DetectionRating = 100;
+            game.AttachNode(detector, blockade);
+            blockedOfficer = EntityFactory.CreateOfficer("blocked-officer", faction.InstanceID);
+            safeOfficer = EntityFactory.CreateOfficer("safe-officer", faction.InstanceID);
+            game.AttachNode(blockedOfficer, blockedOrigin);
+            game.AttachNode(safeOfficer, safeOrigin);
+            game.Config.ProbabilityTables.Mission.Foil = new Dictionary<int, int>
+            {
+                { -1000, 100 },
+            };
+            game.Config.ProbabilityTables.Mission.Evasion = new Dictionary<int, int>
+            {
+                { -1000, 0 },
+            };
+            game.Config.AI.MissionPlanning.MaximumOfficerMissionLossProbability = 20;
+            AITestSceneBuilder.RevealPlanet(game, faction, blockedOrigin);
+            AITestSceneBuilder.RevealPlanet(game, faction, destination);
+            return AITestSceneBuilder.CreateContext(game, faction);
         }
 
         /// <summary>
