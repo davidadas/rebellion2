@@ -1274,6 +1274,111 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(observed.Movement);
         }
 
+        /// <summary>
+        /// Verifies departure capture finishes before a paused game can be saved or displayed.
+        /// </summary>
+        /// <param name="reload">Whether to replace the session with a serialized copy.</param>
+        [TestCase(false)]
+        [TestCase(true)]
+        public void MissionCommands_DepartureCaptureWhilePaused_EstablishesEnemyCustody(bool reload)
+        {
+            (GameRoot game, Planet planet, CapitalShip ship, Officer officer, Regiment target) =
+                CreateFleetMissionCaptureScene();
+            game.Config.ProbabilityTables.Mission.Foil = new Dictionary<int, int>
+            {
+                { -1000, 100 },
+            };
+            using GameSession session = TestContent.CreateGameSession(game);
+            List<GameResult> resolved = new List<GameResult>();
+            session.Pipeline.ResultsResolved += resolved.AddRange;
+            int tick = game.CurrentTick;
+
+            Assert.IsTrue(
+                session
+                    .GetService<MissionCommands>()
+                    .InitiateMission(CreateFleetMissionContext(game, planet, officer, target))
+            );
+
+            Assert.IsTrue(officer.IsCaptured);
+            Assert.AreEqual("rebels", officer.CaptorInstanceID);
+            Assert.AreSame(planet, officer.GetParent());
+            Assert.IsFalse(ship.GetChildren<Officer>().Contains(officer));
+            Assert.IsNull(officer.Movement);
+            Assert.Greater(officer.NextEscapeAttemptTick, tick);
+            Assert.AreEqual(1, resolved.OfType<OfficerCaptureStateResult>().Count());
+            Assert.AreEqual(
+                MissionOutcome.Foiled,
+                resolved.OfType<MissionCompletedResult>().Single().Outcome
+            );
+            Assert.IsEmpty(game.GetSceneNodesByType<Mission>());
+
+            if (reload)
+            {
+                GameRoot restored = SerializationHelper.Deserialize<GameRoot>(
+                    SerializationHelper.Serialize(game)
+                );
+                session.ReplaceGame(restored);
+                officer = restored.GetSceneNodeByInstanceID<Officer>(officer.InstanceID);
+                Assert.IsTrue(officer.IsCaptured);
+                Assert.AreEqual("rebels", officer.CaptorInstanceID);
+                Assert.AreEqual(planet.InstanceID, officer.GetParent().InstanceID);
+            }
+
+            session.Tick.ProcessTick();
+            Assert.AreEqual(tick, session.Game.CurrentTick);
+            Assert.AreEqual(1, resolved.OfType<OfficerCaptureStateResult>().Count());
+        }
+
+        /// <summary>
+        /// Verifies an encounter during an immediate mission return settles in the abort operation.
+        /// </summary>
+        [Test]
+        public void MissionCommands_AbortReturnCapturedInOrbit_EstablishesEnemyCustodyImmediately()
+        {
+            (GameRoot game, Planet planet, CapitalShip ship, Officer officer, Regiment target) =
+                CreateFleetMissionCaptureScene();
+            game.Config.ProbabilityTables.Mission.Foil = new Dictionary<int, int> { { -1000, 0 } };
+            using GameSession session = TestContent.CreateGameSession(game);
+            Assert.IsTrue(
+                session
+                    .GetService<MissionCommands>()
+                    .InitiateMission(CreateFleetMissionContext(game, planet, officer, target))
+            );
+            Mission mission = game.GetSceneNodesByType<Mission>().Single();
+            officer.Movement = null;
+            Fleet enemyFleet = new Fleet { InstanceID = "enemy-fleet", OwnerInstanceID = "rebels" };
+            CapitalShip enemyShip = new CapitalShip
+            {
+                InstanceID = "enemy-ship",
+                OwnerInstanceID = "rebels",
+                DetectionRating = 100,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(enemyFleet, planet);
+            game.AttachNode(enemyShip, enemyFleet);
+            game.Config.ProbabilityTables.Mission.Foil = new Dictionary<int, int>
+            {
+                { -1000, 100 },
+            };
+            List<GameResult> resolved = new List<GameResult>();
+            session.Pipeline.ResultsResolved += resolved.AddRange;
+
+            Assert.IsTrue(session.GetService<MissionCommands>().AbortMission(mission.InstanceID));
+
+            Assert.IsTrue(officer.IsCaptured);
+            Assert.AreEqual("rebels", officer.CaptorInstanceID);
+            Assert.AreSame(planet, officer.GetParent());
+            Assert.IsFalse(ship.GetChildren<Officer>().Contains(officer));
+            Assert.AreEqual(1, resolved.OfType<OfficerCaptureStateResult>().Count());
+            Assert.IsEmpty(
+                session
+                    .GetService<MovementCommands>()
+                    .TakePendingResults()
+                    .OfType<OfficerCaptureStateResult>()
+            );
+            Assert.IsEmpty(game.GetSceneNodesByType<Mission>());
+        }
+
         [Test]
         public void CaptiveCommands_TryCaptureOfficer_CompletesCustodyLifecycle()
         {
@@ -2292,7 +2397,6 @@ namespace Rebellion.Tests.Simulation
 
             diplomat.Movement = null;
             IReadOnlyList<GameResult> missionResults = new MissionTickProcessor(
-                manager.GetService<MissionCommands>(),
                 manager.GetService<MissionResolver>()
             ).ProcessTick(game);
 
@@ -2705,6 +2809,82 @@ namespace Rebellion.Tests.Simulation
                 MessageType = messageType,
                 Subject = resultType.ToString(),
                 Body = resultType.ToString(),
+            };
+        }
+
+        /// <summary>
+        /// Creates a paused officer mission originating aboard a friendly ship over an enemy planet.
+        /// </summary>
+        /// <returns>The game, target planet, friendly ship, officer, and sabotage target.</returns>
+        private static (
+            GameRoot game,
+            Planet planet,
+            CapitalShip ship,
+            Officer officer,
+            Regiment target
+        ) CreateFleetMissionCaptureScene()
+        {
+            GameRoot game = TestGame.Create(TestConfig.Create());
+            game.SetGameSpeed(TickSpeed.Paused);
+            game.Random = new FixedRNG(0.01);
+            game.GetFactions().Add(new Faction { InstanceID = "empire" });
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
+            PlanetSector sector = new PlanetSector { InstanceID = "capture-sector" };
+            game.AttachNode(sector, game.Galaxy);
+            Planet planet = CreatePlanet("enemy-planet", "rebels", 0);
+            game.AttachNode(planet, sector);
+            Fleet fleet = new Fleet { InstanceID = "own-fleet", OwnerInstanceID = "empire" };
+            game.AttachNode(fleet, planet);
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "own-ship",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(ship, fleet);
+            Officer officer = EntityFactory.CreateOfficer("Needa", "empire");
+            game.AttachNode(officer, ship);
+            Regiment target = new Regiment
+            {
+                InstanceID = "enemy-regiment",
+                OwnerInstanceID = "rebels",
+                DetectionRating = 100,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(target, planet);
+            game.Config.ProbabilityTables.Mission.Evasion = new Dictionary<int, int>
+            {
+                { -1000, 0 },
+            };
+            game.Config.DuelResolution.MinimumInjuryChance = 0;
+            game.Config.DuelResolution.CaptureEvasionInjuryBaseChance = 0;
+            return (game, planet, ship, officer, target);
+        }
+
+        /// <summary>
+        /// Describes a sabotage mission for one officer against an enemy regiment.
+        /// </summary>
+        /// <param name="game">The active game.</param>
+        /// <param name="planet">The target planet.</param>
+        /// <param name="officer">The assigned officer.</param>
+        /// <param name="target">The target regiment.</param>
+        /// <returns>The mission request.</returns>
+        private static MissionContext CreateFleetMissionContext(
+            GameRoot game,
+            Planet planet,
+            Officer officer,
+            Regiment target
+        )
+        {
+            return new MissionContext
+            {
+                Game = game,
+                MissionTypeID = SabotageMission.MissionTypeID,
+                OwnerInstanceId = officer.OwnerInstanceID,
+                Location = planet,
+                SelectedTarget = target,
+                MainParticipants = new List<IMissionParticipant> { officer },
+                DecoyParticipants = new List<IMissionParticipant>(),
             };
         }
 

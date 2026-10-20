@@ -412,17 +412,21 @@ namespace Rebellion.Simulation
         /// <param name="participants">The mission participants that are free to return.</param>
         /// <param name="additionalPassengers">Additional units that must travel with the first return group.</param>
         /// <param name="returnLocation">Receives the planet paired with the first accepted return destination.</param>
+        /// <param name="results">The owning operation's movement and encounter results.</param>
         /// <returns>Units that could not be assigned to a return destination.</returns>
         internal List<IMovable> ReturnFromMission(
             IReadOnlyList<IMissionParticipant> participants,
             IReadOnlyList<IMovable> additionalPassengers,
-            out Planet returnLocation
+            out Planet returnLocation,
+            ICollection<GameResult> results
         )
         {
             if (participants == null)
                 throw new ArgumentNullException(nameof(participants));
             if (additionalPassengers == null)
                 throw new ArgumentNullException(nameof(additionalPassengers));
+            if (results == null)
+                throw new ArgumentNullException(nameof(results));
 
             returnLocation = null;
 
@@ -507,7 +511,7 @@ namespace Rebellion.Simulation
                     bool accepted = ExecuteReturnMove(
                         unit,
                         returnGroup.Key,
-                        _pendingResults,
+                        results,
                         movementGroupID,
                         groupTransitTicks
                     );
@@ -525,7 +529,7 @@ namespace Rebellion.Simulation
                     ResolvePersonnelEncounters(
                         immediatePersonnel,
                         MovementQueries.RequireDestinationPlanet(returnGroup.Key),
-                        _pendingResults
+                        results
                     );
             }
 
@@ -537,14 +541,18 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="participants">The participants remaining at the mission location.</param>
         /// <param name="missionPlanet">The planet where the mission ended.</param>
+        /// <param name="results">The owning operation's movement results.</param>
         /// <returns>Participants that could not be placed at the mission planet.</returns>
         internal List<IMovable> CompleteMissionAtLocation(
             IReadOnlyList<IMissionParticipant> participants,
-            Planet missionPlanet
+            Planet missionPlanet,
+            ICollection<GameResult> results
         )
         {
             if (participants == null)
                 throw new ArgumentNullException(nameof(participants));
+            if (results == null)
+                throw new ArgumentNullException(nameof(results));
 
             List<IMovable> strandedUnits = new List<IMovable>();
             foreach (IMissionParticipant participant in participants)
@@ -560,7 +568,7 @@ namespace Rebellion.Simulation
                     continue;
                 }
 
-                MoveNode(participant, missionPlanet, _pendingResults);
+                MoveNode(participant, missionPlanet, results);
                 participant.Movement = null;
             }
 

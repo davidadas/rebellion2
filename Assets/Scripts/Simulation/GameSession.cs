@@ -171,6 +171,9 @@ namespace Rebellion.Simulation
             MovementCommands movementSystem = GetService<MovementCommands>();
             movementSystem.ResultsProduced += ProcessImmediateResults;
             _disconnect.Add(() => movementSystem.ResultsProduced -= ProcessImmediateResults);
+            MissionCommands missionSystem = GetService<MissionCommands>();
+            missionSystem.ResultsProduced += ProcessImmediateResults;
+            _disconnect.Add(() => missionSystem.ResultsProduced -= ProcessImmediateResults);
             MaintenanceCommands maintenanceSystem = GetService<MaintenanceCommands>();
             maintenanceSystem.ResultsProduced += ProcessImmediateResults;
             _disconnect.Add(() => maintenanceSystem.ResultsProduced -= ProcessImmediateResults);

@@ -118,10 +118,7 @@ namespace Rebellion.Simulation
             _captive = new CaptiveTickProcessor(services.GetService<CaptiveCommands>());
             _movement = new MovementTickProcessor(_movementCommands);
             _spaceCombat = new SpaceCombatTickProcessor(_spaceCombatCommands);
-            _missions = new MissionTickProcessor(
-                services.GetService<MissionCommands>(),
-                services.GetService<MissionResolver>()
-            );
+            _missions = new MissionTickProcessor(services.GetService<MissionResolver>());
             _gameEvents = new GameEventTickProcessor(services.GetService<GameEventCommands>());
             _naming = new NamingTickProcessor(services.GetService<NamingCommands>());
             _aiDirector = services.GetService<AIDirector>();

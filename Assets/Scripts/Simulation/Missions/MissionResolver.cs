@@ -405,15 +405,17 @@ namespace Rebellion.Simulation
                 .Except(localParticipants)
                 .ToList();
 
-            MoveNonReturningParticipantsToPlanet(mission, missionPlanet);
+            MoveNonReturningParticipantsToPlanet(mission, missionPlanet, results);
             List<IMovable> strandedUnits = _movementManager.CompleteMissionAtLocation(
                 localParticipants,
-                missionPlanet
+                missionPlanet,
+                results
             );
             List<IMovable> failedReturns = _movementManager.ReturnFromMission(
                 returnParticipants,
                 additionalPassengers,
-                out Planet returnLocation
+                out Planet returnLocation,
+                results
             );
             strandedUnits.AddRange(failedReturns);
             if (completedResult != null)
@@ -488,7 +490,12 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="mission">The mission being torn down.</param>
         /// <param name="missionPlanet">The planet that hosts the mission.</param>
-        private void MoveNonReturningParticipantsToPlanet(Mission mission, Planet missionPlanet)
+        /// <param name="results">The mission results receiving placement changes.</param>
+        private void MoveNonReturningParticipantsToPlanet(
+            Mission mission,
+            Planet missionPlanet,
+            List<GameResult> results
+        )
         {
             if (missionPlanet == null)
                 return;
@@ -501,7 +508,7 @@ namespace Rebellion.Simulation
                 )
                 .ToList();
 
-            _movementManager.CompleteMissionAtLocation(participants, missionPlanet);
+            _movementManager.CompleteMissionAtLocation(participants, missionPlanet, results);
         }
 
         /// <summary>
@@ -809,7 +816,8 @@ namespace Rebellion.Simulation
             List<IMovable> stranded = _movementManager.ReturnFromMission(
                 new[] { decoy },
                 Array.Empty<IMovable>(),
-                out _
+                out _,
+                results
             );
             ResolveStrandedMissionUnits(stranded, planet, results);
         }
