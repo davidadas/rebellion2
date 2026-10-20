@@ -79,7 +79,6 @@ namespace Rebellion.Tests.UserSettings
             {
                 QualityLevel = -3,
                 AntiAliasingMode = 99,
-                RenderScalePercent = 27,
                 FrameRateLimit = 75,
             };
 
@@ -87,7 +86,6 @@ namespace Rebellion.Tests.UserSettings
 
             Assert.AreEqual(0, settings.QualityLevel);
             Assert.AreEqual((int)UserAntiAliasingMode.Off, settings.AntiAliasingMode);
-            Assert.AreEqual(50, settings.RenderScalePercent);
             Assert.AreEqual(0, settings.FrameRateLimit);
         }
 
@@ -119,10 +117,6 @@ namespace Rebellion.Tests.UserSettings
 
             Assert.AreEqual(UserVideoSettings.DefaultQualityLevel, settings.QualityLevel);
             Assert.AreEqual((int)UserAntiAliasingMode.Taa, settings.AntiAliasingMode);
-            Assert.AreEqual(
-                UserVideoSettings.DefaultRenderScalePercent,
-                settings.RenderScalePercent
-            );
             Assert.IsTrue(settings.VerticalSync);
             Assert.IsTrue(settings.AmbientOcclusion);
             Assert.IsTrue(settings.Bloom);
@@ -157,7 +151,6 @@ namespace Rebellion.Tests.UserSettings
             {
                 QualityLevel = 1,
                 AntiAliasingMode = (int)UserAntiAliasingMode.Taa,
-                RenderScalePercent = 50,
                 FrameRateLimit = 60,
                 VerticalSync = false,
                 RayTracing = true,
@@ -171,10 +164,6 @@ namespace Rebellion.Tests.UserSettings
 
             Assert.AreEqual(UserVideoSettings.DefaultQualityLevel, settings.QualityLevel);
             Assert.AreEqual((int)UserAntiAliasingMode.Taa, settings.AntiAliasingMode);
-            Assert.AreEqual(
-                UserVideoSettings.DefaultRenderScalePercent,
-                settings.RenderScalePercent
-            );
             Assert.AreEqual(0, settings.FrameRateLimit);
             Assert.IsTrue(settings.VerticalSync);
             Assert.IsFalse(settings.RayTracing);
@@ -193,7 +182,6 @@ namespace Rebellion.Tests.UserSettings
             UserVideoSettings settings = new UserVideoSettings
             {
                 AntiAliasingMode = (int)UserAntiAliasingMode.Taa,
-                RenderScalePercent = 100,
                 AmbientOcclusion = true,
                 Bloom = false,
                 MotionBlur = true,
@@ -205,7 +193,6 @@ namespace Rebellion.Tests.UserSettings
 
             Assert.AreEqual(1, settings.QualityLevel);
             Assert.AreEqual((int)UserAntiAliasingMode.Fxaa, settings.AntiAliasingMode);
-            Assert.AreEqual(67, settings.RenderScalePercent);
             Assert.IsFalse(settings.AmbientOcclusion);
             Assert.IsTrue(settings.Bloom);
             Assert.IsFalse(settings.MotionBlur);

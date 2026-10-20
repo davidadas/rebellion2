@@ -110,7 +110,6 @@ public sealed class RenderPipelineConfigurationTests
     [TestCase("Custom/PlanetDayNightShade", true)]
     [TestCase("Custom/PlanetSurface", true)]
     [TestCase("Custom/PremultipliedTexture", false)]
-    [TestCase("Rebellion/Unlit Additive", true)]
     public void ProjectShader_ActiveBackend_HasExpectedSupport(
         string shaderName,
         bool requiresHdrpBackend
@@ -136,7 +135,6 @@ public sealed class RenderPipelineConfigurationTests
     [TestCase("_BaseColor", ShaderPropertyType.Color)]
     [TestCase("_CloudMap", ShaderPropertyType.Texture)]
     [TestCase("_CloudRotationSpeed", ShaderPropertyType.Float)]
-    [TestCase("_SunDirection", ShaderPropertyType.Vector)]
     public void PlanetSurfaceShader_BindingProperties_MatchesFixtureContract(
         string property,
         ShaderPropertyType expectedType

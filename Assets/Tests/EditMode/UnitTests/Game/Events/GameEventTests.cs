@@ -9,6 +9,46 @@ namespace Rebellion.Tests.Game.Events
     [TestFixture]
     public sealed class GameEventTests
     {
+        /// <summary>
+        /// Verifies that uncategorized in-memory events default to None.
+        /// </summary>
+        [Test]
+        public void Category_NewEvent_DefaultsToNone()
+        {
+            Assert.AreEqual(GameEventCategory.None, new GameEvent().Category);
+        }
+
+        /// <summary>
+        /// Verifies that definitions without a category remain valid.
+        /// </summary>
+        [Test]
+        public void Category_OmittedAttribute_DefaultsToNone()
+        {
+            GameEvent gameEvent = SerializationHelper.Deserialize<GameEvent>(
+                "<GameEvent><InstanceID>EVENT</InstanceID></GameEvent>"
+            );
+
+            Assert.AreEqual(GameEventCategory.None, gameEvent.Category);
+        }
+
+        /// <summary>
+        /// Verifies that each supported category is preserved as an XML attribute.
+        /// </summary>
+        /// <param name="category">The category to persist.</param>
+        [TestCase(GameEventCategory.None)]
+        [TestCase(GameEventCategory.Story)]
+        [TestCase(GameEventCategory.Disaster)]
+        public void Category_AuthoredValue_RoundTripsAttribute(GameEventCategory category)
+        {
+            GameEvent gameEvent = new GameEvent { InstanceID = "EVENT", Category = category };
+
+            string xml = SerializationHelper.Serialize(gameEvent);
+            GameEvent restored = SerializationHelper.Deserialize<GameEvent>(xml);
+
+            Assert.AreEqual(category.ToString(), XElement.Parse(xml).Attribute("Category")?.Value);
+            Assert.AreEqual(category, restored.Category);
+        }
+
         [Test]
         public void Conditionals_AuthoredAliases_RoundTripConcreteTypes()
         {

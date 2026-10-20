@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
@@ -381,6 +382,77 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(2, deserialized.CurrentProgress);
         }
 
+        [TestCase(0, 20, false)]
+        [TestCase(1, 20, false)]
+        [TestCase(2, 40, false)]
+        [TestCase(2, 40, true)]
+        [TestCase(1, 55, false)]
+        public void GetObjectiveSuccessProbability_SubdueSupportOutcomes_MatchesResolvedSuccessFrequency(
+            int troops,
+            int support,
+            bool core
+        )
+        {
+            GameConfig config = CreateCompletionConfig();
+            (GameRoot game, Planet planet, Mission mission) = BuildCompletionScene(
+                config,
+                troops,
+                support,
+                core,
+                subdue: true
+            );
+            double probability =
+                mission.GetObjectiveSuccessProbability(mission.GetMainParticipants(), game, planet)
+                / 100d;
+            int successes = 0;
+            for (int roll = 0; roll <= config.Uprising.SubdueOwnedSupportRange; roll++)
+            {
+                (GameRoot outcomeGame, Planet _, Mission outcomeMission) = BuildCompletionScene(
+                    config,
+                    troops,
+                    support,
+                    core,
+                    subdue: true
+                );
+                UprisingResolver resolver = CreateCompletionResolver(
+                    outcomeGame,
+                    new QueueRNG(0, (roll + 0.5) / (config.Uprising.SubdueOwnedSupportRange + 1))
+                );
+                resolver.TryExecuteMission(outcomeMission, out List<GameResult> results);
+                if (
+                    results.OfType<MissionCompletedResult>().Single().Outcome
+                    == MissionOutcome.Success
+                )
+                    successes++;
+            }
+            Assert.AreEqual(
+                successes / (config.Uprising.SubdueOwnedSupportRange + 1d),
+                probability,
+                0.000001
+            );
+        }
+
+        [Test]
+        public void GetObjectiveSuccessProbability_UprisingEnded_ReturnsZero()
+        {
+            (GameRoot game, Planet planet, Mission mission) = BuildCompletionScene(
+                CreateCompletionConfig(),
+                2,
+                40,
+                false,
+                subdue: true
+            );
+            planet.EndUprising();
+
+            double probability = mission.GetObjectiveSuccessProbability(
+                mission.GetMainParticipants(),
+                game,
+                planet
+            );
+
+            Assert.Zero(probability);
+        }
+
         /// <summary>
         /// Creates subdue uprising mission.
         /// </summary>
@@ -440,6 +512,115 @@ namespace Rebellion.Tests.Game.Missions
             );
             UprisingResolver uprising = new UprisingResolver(game, rng, control);
             return TestSystems.CreateMissionCommands(game, rng, movement, uprising);
+        }
+
+        /// <summary>
+        /// Loads configured uprising rules and guarantees the isolated participant skill roll.
+        /// </summary>
+        /// <returns>The scenario configuration.</returns>
+        private static GameConfig CreateCompletionConfig()
+        {
+            GameConfig config = TestConfig.Create();
+            config.ProbabilityTables.Mission.InciteUprising = new Dictionary<int, int>
+            {
+                { -1000, 100 },
+            };
+            config.ProbabilityTables.Mission.SubdueUprising = new Dictionary<int, int>
+            {
+                { -1000, 100 },
+            };
+            return config;
+        }
+
+        /// <summary>
+        /// Builds an initiated mission with stationary personnel and a configured garrison.
+        /// </summary>
+        /// <param name="config">The shared immutable scenario configuration.</param>
+        /// <param name="troops">The controller's stationary regiment count.</param>
+        /// <param name="support">Popular support for the controller.</param>
+        /// <param name="core">Whether the destination is in a core sector.</param>
+        /// <param name="subdue">Whether to create a subdue mission instead of an incite mission.</param>
+        /// <returns>The game, destination, and active mission.</returns>
+        private static (GameRoot game, Planet planet, Mission mission) BuildCompletionScene(
+            GameConfig config,
+            int troops,
+            int support,
+            bool core = false,
+            bool subdue = false
+        )
+        {
+            GameRoot game = TestGame.Create(config);
+            Faction empire = new Faction { InstanceID = "empire" };
+            empire.Settings.UprisingResistance = 2;
+            empire.Settings.GarrisonEfficiency = 2;
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(new Faction { InstanceID = "rebels" });
+            PlanetSector sector = new PlanetSector
+            {
+                InstanceID = "sector",
+                SectorType = core ? PlanetSectorType.Core : PlanetSectorType.OuterRim,
+            };
+            game.AttachNode(sector, game.Galaxy);
+            Planet planet = new Planet
+            {
+                InstanceID = "target",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PopularSupport = new Dictionary<string, int>
+                {
+                    { "empire", support },
+                    { "rebels", 100 - support },
+                },
+            };
+            game.AttachNode(planet, sector);
+            for (int index = 0; index < troops; index++)
+                game.AttachNode(
+                    new Regiment
+                    {
+                        InstanceID = $"regiment-{index}",
+                        OwnerInstanceID = "empire",
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                    },
+                    planet
+                );
+            Officer officer = EntityFactory.CreateOfficer(
+                "participant",
+                subdue ? "empire" : "rebels"
+            );
+            officer.SetBaseRating(SkillRating.Leadership, 100);
+            if (subdue)
+                planet.BeginUprising();
+            Mission mission = MissionTestFactory.TryCreate(
+                subdue ? SubdueUprisingMission.MissionTypeID : InciteUprisingMission.MissionTypeID,
+                game,
+                officer.OwnerInstanceID,
+                planet,
+                new List<IMissionParticipant> { officer }
+            );
+            Assert.IsNotNull(mission);
+            game.AttachNode(mission, planet);
+            game.AttachNode(officer, mission);
+            mission.Initiate(1);
+            return (game, planet, mission);
+        }
+
+        /// <summary>
+        /// Creates the mission resolver without ticking unrelated systems.
+        /// </summary>
+        /// <param name="game">The isolated scenario game.</param>
+        /// <param name="rng">The controlled participant and consequence rolls.</param>
+        /// <returns>The uprising resolver.</returns>
+        private static UprisingResolver CreateCompletionResolver(GameRoot game, QueueRNG rng)
+        {
+            return new UprisingResolver(
+                game,
+                rng,
+                new PlanetaryControlCommands(
+                    game,
+                    new PlanetaryControlQueries(game),
+                    new FogOfWarQueries(game)
+                )
+            );
         }
     }
 }

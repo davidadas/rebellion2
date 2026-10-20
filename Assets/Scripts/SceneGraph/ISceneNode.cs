@@ -154,8 +154,13 @@ namespace Rebellion.SceneGraph
         /// </summary>
         /// <param name="recursive">Whether to copy descendants at every depth.</param>
         /// <param name="includeDisabled">Whether disabled descendants may be copied.</param>
+        /// <param name="configureCopy">Optional configuration applied to each detached node copy.</param>
         /// <returns>A detached copy of this node.</returns>
-        ISceneNode CreateCopy(bool recursive = false, bool includeDisabled = false);
+        ISceneNode CreateCopy(
+            bool recursive = false,
+            bool includeDisabled = false,
+            Action<ISceneNode> configureCopy = null
+        );
 
         /// <summary>
         /// Visits this node and all descendants, invoking the given action on each.

@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 using UnityEngine;
 
 /// <summary>
-/// Presents saved-game loading and reconstructs application content only when required.
+/// Presents saved-game and main-menu content transitions independently from the outgoing scene.
 /// </summary>
 internal sealed class LoadingScreenController : MonoBehaviour
 {
@@ -23,14 +23,13 @@ internal sealed class LoadingScreenController : MonoBehaviour
     private Coroutine _finishRoutine;
     private Coroutine _prepareRoutine;
     private Coroutine _recoveryRoutine;
-    private string _saveFileName;
-    private bool _reconstructContent;
+    private Task _preparationTask;
+    private ContentLoadOperation _operation;
     private bool _loadInProgress;
-    private bool _recoveringFromFailure;
     private bool _quitOnContinue;
 
     /// <summary>
-    /// Gets whether a saved-game loading transition is currently active.
+    /// Gets whether a saved-game or content loading transition is currently active.
     /// </summary>
     internal static bool IsLoadInProgress => _activeController && _activeController._loadInProgress;
 
@@ -64,16 +63,82 @@ internal sealed class LoadingScreenController : MonoBehaviour
         if (string.IsNullOrWhiteSpace(fileName))
             throw new ArgumentException("A save file name is required.", nameof(fileName));
 
+        if (IsLoadInProgress)
+            return;
+        ContentLoadOperation operation = bootstrap.CreateContentLoadOperation();
+        BeginLoad(
+            bootstrap,
+            operation,
+            operation.PrepareSavedGameAsync(SaveGameManager.Instance, fileName)
+        );
+    }
+
+    /// <summary>
+    /// Reloads verified content and returns to the main menu within the running application.
+    /// </summary>
+    /// <param name="bootstrap">The bootstrap that owns the outgoing content.</param>
+    /// <param name="packID">The installed content pack to select.</param>
+    /// <param name="disabledModIDs">The complete pending disabled-mod preferences.</param>
+    internal static void ReloadContent(
+        AppBootstrap bootstrap,
+        string packID,
+        string[] disabledModIDs
+    )
+    {
+        if (bootstrap == null)
+            throw new ArgumentNullException(nameof(bootstrap));
+        if (IsLoadInProgress)
+            return;
+        ContentLoadOperation operation = bootstrap.CreateContentLoadOperation();
+        BeginLoad(
+            bootstrap,
+            operation,
+            operation.PrepareContentReloadAsync(packID, disabledModIDs)
+        );
+    }
+
+    /// <summary>
+    /// Starts a custom game through the shared content-reconstruction and recovery lifecycle.
+    /// </summary>
+    /// <param name="bootstrap">The bootstrap that owns the outgoing content.</param>
+    /// <param name="contentPack">The selected custom-game content.</param>
+    /// <param name="summary">The complete custom-game configuration.</param>
+    internal static void StartCustomGame(
+        AppBootstrap bootstrap,
+        ContentPack contentPack,
+        Rebellion.Game.GameSummary summary
+    )
+    {
+        if (bootstrap == null)
+            throw new ArgumentNullException(nameof(bootstrap));
+        if (IsLoadInProgress)
+            return;
+        ContentLoadOperation operation = bootstrap.CreateContentLoadOperation();
+        operation.PrepareCustomGame(contentPack, summary);
+        BeginLoad(bootstrap, operation, Task.CompletedTask);
+    }
+
+    /// <summary>
+    /// Initializes the shared persistent presentation for a scene or content transition.
+    /// </summary>
+    /// <param name="bootstrap">The bootstrap that owns the outgoing content.</param>
+    /// <param name="operation">The application operation that owns this load's decisions.</param>
+    /// <param name="preparation">The operation's pending preparation.</param>
+    private static void BeginLoad(
+        AppBootstrap bootstrap,
+        ContentLoadOperation operation,
+        Task preparation
+    )
+    {
         LoadingScreenController controller = GetOrCreateController();
         if (controller._loadInProgress)
             return;
 
         controller._bootstrap = bootstrap;
-        controller._saveFileName = fileName;
+        controller._operation = operation;
+        controller._preparationTask = preparation;
         controller._transitionCompleted = null;
         controller._continueAccepted = null;
-        controller._reconstructContent = false;
-        controller._recoveringFromFailure = false;
         controller._quitOnContinue = false;
         controller.EnsurePresentation();
         controller._loadInProgress = true;
@@ -82,18 +147,15 @@ internal sealed class LoadingScreenController : MonoBehaviour
         {
             AudioManager.Instance?.StopMusic();
             controller._view.SetVisible(true);
-            SaveLoadPreparation preparation = bootstrap
-                .PrepareSaveLoadAsync(fileName)
-                .GetAwaiter()
-                .GetResult();
-            controller._reconstructContent = bootstrap.ApplySaveLoadPreparation(preparation);
-            bootstrap.SuspendForSaveLoad();
+            preparation.GetAwaiter().GetResult();
+            controller.PrepareDestinationLaunch();
+            bootstrap.SuspendForLoad();
             return;
         }
 
         AudioManager.Instance?.FadeOutMusic(_fadeToBlackDuration);
         controller._view.PrepareEntrance();
-        controller.StartCoroutine(controller.LoadStrategy());
+        controller.StartCoroutine(controller.LoadContent());
     }
 
     /// <summary>
@@ -137,31 +199,49 @@ internal sealed class LoadingScreenController : MonoBehaviour
     /// <summary>
     /// Removes the persistent loading presentation after replacement gameplay is visible.
     /// </summary>
+    /// <param name="bootstrap">The application whose scene completed initialization.</param>
     /// <param name="transitionCompleted">The action to run after the loading view is gone.</param>
     /// <param name="presentationReady">The action to run when the loading view becomes ready.</param>
     /// <param name="continueAccepted">The action to run when the player accepts the ready state.</param>
-    internal static void CompletePendingLoad(
+    /// <returns>True when completion was accepted for the current application services.</returns>
+    internal static bool CompletePendingLoad(
+        AppBootstrap bootstrap,
         Action transitionCompleted = null,
         Action presentationReady = null,
         Action continueAccepted = null
     )
     {
-        if (_activeController == null)
-            return;
+        if (
+            !_activeController
+            || !_activeController._loadInProgress
+            || _activeController._bootstrap != bootstrap
+        )
+            return false;
+
+        LoadingScreenController controller = _activeController;
+        try
+        {
+            controller._operation.Complete(
+                bootstrap.GetContentPack(),
+                bootstrap.GetUserSettingsManager()
+            );
+        }
+        catch (Exception exception)
+        {
+            RecoverFromLoadFailure(exception);
+            return false;
+        }
 
         if (!Application.isPlaying)
         {
             DestroyImmediate(_activeController.gameObject);
-            return;
+            return true;
         }
-
-        if (!_activeController._loadInProgress)
-            return;
 
         _activeController._transitionCompleted = transitionCompleted;
         _activeController._continueAccepted = continueAccepted;
 
-        if (_activeController._recoveringFromFailure)
+        if (controller._operation.DestinationScene == "MainMenu")
         {
             _activeController.BeginFinishTransition();
         }
@@ -178,73 +258,44 @@ internal sealed class LoadingScreenController : MonoBehaviour
             _activeController._transitionCompleted = null;
             completed?.Invoke();
         }
+        return true;
     }
 
     /// <summary>
-    /// Keeps the loading presentation active while a failed save load returns to the main menu.
+    /// Keeps the loading presentation active while a failed load returns to the main menu.
     /// </summary>
     /// <param name="exception">The optional failure shown and logged during recovery.</param>
-    /// <returns>True when an active saved-game transition began recovery.</returns>
+    /// <returns>True when an active loading transition began recovery.</returns>
     internal static bool RecoverFromLoadFailure(Exception exception = null)
     {
         if (!_activeController || !_activeController._loadInProgress)
             return false;
 
         LoadingScreenController controller = _activeController;
-        controller._transitionCompleted = null;
-        controller._continueAccepted = null;
-        controller._reconstructContent = false;
-        controller._recoveringFromFailure = true;
-        controller._quitOnContinue = false;
-        controller._view?.ShowLoadFailure(exception?.Message);
-
         if (exception != null)
             Debug.LogException(exception);
-
-        if (!Application.isPlaying)
-        {
-            controller._loadInProgress = false;
-            DestroyImmediate(controller.gameObject);
-            return true;
-        }
-
-        AppBootstrap bootstrap = controller._bootstrap;
-        if (!bootstrap)
-            bootstrap = AppBootstrap.Instance;
-        if (bootstrap == null)
+        if (!controller._operation.BeginRecovery())
         {
             controller.EnterTerminalFailure(exception);
             return true;
         }
 
-        bootstrap.GetRuntime()?.EndGame();
-        if (controller._recoveryRoutine == null)
-        {
-            controller._recoveryRoutine = controller.StartCoroutine(
-                controller.ReturnToMainMenu(bootstrap)
-            );
-        }
-        return true;
-    }
-
-    /// <summary>
-    /// Releases a failed recovery transition after the main-menu scene is available.
-    /// </summary>
-    /// <param name="exception">The main-menu initialization failure.</param>
-    /// <returns>True when an active loading transition was released.</returns>
-    internal static bool CompleteFailedRecovery(Exception exception)
-    {
-        if (!_activeController || !_activeController._loadInProgress)
-            return false;
-
-        if (exception != null)
-            Debug.LogException(exception);
-
-        LoadingScreenController controller = _activeController;
         controller._transitionCompleted = null;
         controller._continueAccepted = null;
-        controller._recoveringFromFailure = false;
         controller._quitOnContinue = false;
+        controller._view?.ShowLoadFailure(exception?.Message);
+
+        try
+        {
+            controller._bootstrap?.GetRuntime()?.EndGame();
+        }
+        catch (Exception cleanupFailure)
+        {
+            Debug.LogException(cleanupFailure);
+            controller.EnterTerminalFailure(cleanupFailure);
+            return true;
+        }
+
         if (!Application.isPlaying)
         {
             controller._loadInProgress = false;
@@ -252,42 +303,79 @@ internal sealed class LoadingScreenController : MonoBehaviour
             return true;
         }
 
-        if (controller._view == null)
+        if (controller._recoveryRoutine == null)
         {
-            controller._loadInProgress = false;
-            return true;
+            controller._recoveryRoutine = controller.StartCoroutine(controller.ReturnToMainMenu());
         }
-
-        controller.BeginFinishTransition();
         return true;
+    }
+
+    /// <summary>
+    /// Routes main-menu initialization failures through the active transition's recovery policy.
+    /// </summary>
+    /// <param name="bootstrap">The application whose menu failed initialization.</param>
+    /// <param name="exception">The main-menu initialization failure.</param>
+    /// <returns>True when the active transition handled the failure.</returns>
+    internal static bool CompleteFailedRecovery(AppBootstrap bootstrap, Exception exception)
+    {
+        if (!_activeController || _activeController._bootstrap != bootstrap)
+            return false;
+
+        return RecoverFromLoadFailure(exception);
     }
 
     /// <summary>
     /// Waits for the incoming strategy scene transition to release the shared scene loader before
     /// starting recovery navigation.
     /// </summary>
-    /// <param name="bootstrap">The active application bootstrap.</param>
     /// <returns>The recovery-navigation coroutine.</returns>
-    private IEnumerator ReturnToMainMenu(AppBootstrap bootstrap)
+    private IEnumerator ReturnToMainMenu()
     {
         yield return new WaitForSecondsRealtime(_failureDisplayDuration);
 
-        while (bootstrap.IsSceneTransitionInProgress)
-            yield return null;
+        if (_operation.RequiresContentRestart)
+        {
+            Exception reconstructionFailure = null;
+            yield return ReconstructBootstrap(exception => reconstructionFailure = exception);
+            if (reconstructionFailure != null)
+            {
+                HandleRecoverySceneFailure(reconstructionFailure);
+                yield break;
+            }
+        }
 
-        if (!bootstrap.LoadScene("MainMenu", HandleRecoverySceneFailure))
+        if (!_bootstrap)
+            _bootstrap = AppBootstrap.Instance;
+        if (!_bootstrap)
         {
             HandleRecoverySceneFailure(
                 new InvalidOperationException(
-                    "The main-menu recovery scene could not start loading."
+                    "Application services are unavailable during recovery."
                 )
             );
+            yield break;
         }
+
+        try
+        {
+            _bootstrap.GetRuntime()?.EndGame();
+        }
+        catch (Exception exception)
+        {
+            HandleRecoverySceneFailure(exception);
+            yield break;
+        }
+
+        while (_bootstrap.IsSceneTransitionInProgress)
+            yield return null;
+
+        PrepareDestinationLaunch();
+        LoadDestinationScene(_operation.DestinationScene, HandleRecoverySceneFailure);
         _recoveryRoutine = null;
     }
 
     /// <summary>
-    /// Hides a failed recovery presentation when the main menu cannot be loaded.
+    /// Keeps an exit action available when returning to the main menu fails.
     /// </summary>
     /// <param name="exception">The recovery-scene failure.</param>
     private void HandleRecoverySceneFailure(Exception exception)
@@ -304,10 +392,15 @@ internal sealed class LoadingScreenController : MonoBehaviour
     {
         _transitionCompleted = null;
         _continueAccepted = null;
-        _recoveringFromFailure = true;
+        _operation.Fail();
         _quitOnContinue = true;
         _loadInProgress = true;
-        _view?.ShowTerminalFailure(exception?.Message);
+        _view?.ShowTerminalFailure(
+            _operation.RequiresContentRestart
+                ? "Couldn't load the required content or restore your previous setup. "
+                    + "Please restart the game and try again."
+                : exception?.Message
+        );
     }
 
     /// <summary>
@@ -338,42 +431,33 @@ internal sealed class LoadingScreenController : MonoBehaviour
     }
 
     /// <summary>
-    /// Gives the loading presentation a frame, optionally replaces content services, and opens the
-    /// strategy scene for the pending save.
+    /// Validates content, optionally replaces application services, and opens the destination scene.
     /// </summary>
-    /// <returns>The saved-game transition coroutine.</returns>
-    private IEnumerator LoadStrategy()
+    /// <returns>The content transition coroutine.</returns>
+    private IEnumerator LoadContent()
     {
         yield return FadeBlack(0f, 1f, _fadeToBlackDuration);
         _view.SetPresentationVisible(true);
         yield return FadeBlack(1f, 0f, _fadeFromBlackDuration);
 
-        Task<SaveLoadPreparation> preparationTask;
-        try
-        {
-            preparationTask = _bootstrap.PrepareSaveLoadAsync(_saveFileName);
-        }
-        catch (Exception exception)
-        {
-            RecoverFromLoadFailure(exception);
-            yield break;
-        }
-
-        while (!preparationTask.IsCompleted)
+        while (!_preparationTask.IsCompleted)
             yield return null;
 
-        if (preparationTask.IsCanceled || preparationTask.IsFaulted)
+        if (_operation.IsRecovering)
+            yield break;
+
+        if (_preparationTask.IsCanceled || _preparationTask.IsFaulted)
         {
             RecoverFromLoadFailure(
-                preparationTask.Exception?.GetBaseException()
-                    ?? new InvalidOperationException("Saved-game preparation was canceled.")
+                _preparationTask.Exception?.GetBaseException()
+                    ?? new InvalidOperationException("Content preparation was canceled.")
             );
             yield break;
         }
 
         try
         {
-            _reconstructContent = _bootstrap.ApplySaveLoadPreparation(preparationTask.Result);
+            _bootstrap.SuspendForLoad();
         }
         catch (Exception exception)
         {
@@ -381,24 +465,10 @@ internal sealed class LoadingScreenController : MonoBehaviour
             yield break;
         }
 
-        _bootstrap.SuspendForSaveLoad();
-
-        if (_reconstructContent)
+        if (_operation.RequiresContentRestart)
         {
-            if (AudioManager.Instance != null)
-                Destroy(AudioManager.Instance.gameObject);
-            Destroy(_bootstrap.gameObject);
-            yield return null;
-
             Exception reconstructionFailure = null;
-            try
-            {
-                _bootstrap = AppBootstrap.EnsureExists();
-            }
-            catch (Exception exception)
-            {
-                reconstructionFailure = exception;
-            }
+            yield return ReconstructBootstrap(exception => reconstructionFailure = exception);
 
             if (reconstructionFailure != null)
             {
@@ -407,19 +477,88 @@ internal sealed class LoadingScreenController : MonoBehaviour
             }
         }
 
-        if (!_bootstrap.LoadScene("StrategyView", HandleStrategySceneFailure))
+        PrepareDestinationLaunch();
+        LoadDestinationScene(_operation.DestinationScene, HandleSceneLoadFailure);
+    }
+
+    /// <summary>
+    /// Supplies scene launch data after application services have been initialized.
+    /// </summary>
+    private void PrepareDestinationLaunch()
+    {
+        GameLaunchContext.Reset(_operation.Pack);
+        if (_operation.SaveFileName != null)
+            GameLaunchContext.PrepareSaveLoad(_operation.SaveFileName);
+        else if (_operation.CustomGameSummary is Rebellion.Game.GameSummary summary)
         {
-            HandleStrategySceneFailure(
-                new InvalidOperationException("The strategy scene could not start loading.")
-            );
+            GameLaunchContext.ApplyCustomGameSummary(summary);
+            GameLaunchContext.PlayIntroCutscene = true;
         }
     }
 
     /// <summary>
-    /// Returns a failed strategy-scene transition to the application recovery path.
+    /// Releases outgoing or partially initialized services before creating the staged bootstrap.
+    /// </summary>
+    /// <param name="completed">Receives the initialization failure, or null after success.</param>
+    /// <returns>The service-reconstruction coroutine.</returns>
+    private IEnumerator ReconstructBootstrap(Action<Exception> completed)
+    {
+        Exception failure = null;
+        try
+        {
+            _bootstrap?.GetRuntime()?.EndGame();
+        }
+        catch (Exception exception)
+        {
+            failure = exception;
+        }
+
+        if (AudioManager.Instance != null)
+            Destroy(AudioManager.Instance.gameObject);
+        if (_bootstrap != null)
+            Destroy(_bootstrap.gameObject);
+        _bootstrap = null;
+        yield return null;
+
+        if (failure == null)
+        {
+            try
+            {
+                _bootstrap = AppBootstrap.EnsureExists(_operation.Pack);
+            }
+            catch (Exception exception)
+            {
+                failure = exception;
+            }
+        }
+        completed(failure);
+    }
+
+    /// <summary>
+    /// Routes rejected scene transitions and synchronous initialization failures to their owner.
+    /// </summary>
+    /// <param name="sceneName">The destination scene.</param>
+    /// <param name="failed">The transition's failure handler.</param>
+    private void LoadDestinationScene(string sceneName, Action<Exception> failed)
+    {
+        try
+        {
+            if (!_bootstrap.LoadScene(sceneName, failed))
+                failed(
+                    new InvalidOperationException($"The {sceneName} scene could not start loading.")
+                );
+        }
+        catch (Exception exception)
+        {
+            failed(exception);
+        }
+    }
+
+    /// <summary>
+    /// Returns a failed scene transition to the application recovery path.
     /// </summary>
     /// <param name="exception">The scene-transition failure.</param>
-    private void HandleStrategySceneFailure(Exception exception)
+    private void HandleSceneLoadFailure(Exception exception)
     {
         RecoverFromLoadFailure(exception);
     }
@@ -438,7 +577,7 @@ internal sealed class LoadingScreenController : MonoBehaviour
             return;
         }
 
-        if (_recoveringFromFailure)
+        if (_operation.IsRecovering)
             return;
 
         _continueAccepted?.Invoke();
@@ -464,13 +603,22 @@ internal sealed class LoadingScreenController : MonoBehaviour
     /// <returns>The exit-transition coroutine.</returns>
     private IEnumerator FinishTransition()
     {
+        if (_operation.IsRecovering && _operation.RequiresContentRestart)
+        {
+            _view.ShowLoadFailure(
+                "Couldn't load the required content. Your previous setup has been restored. "
+                    + "Returning to the main menu."
+            );
+            yield return new WaitForSecondsRealtime(_failureDisplayDuration);
+        }
+
         yield return FadeBlack(0f, 1f, _fadeToBlackDuration);
         _view.SetPresentationVisible(false);
         yield return FadeBlack(1f, 0f, _fadeFromBlackDuration);
         _view.SetVisible(false);
         _loadInProgress = false;
-        _recoveringFromFailure = false;
-        _saveFileName = null;
+        _preparationTask = null;
+        _operation = null;
         _finishRoutine = null;
         Action transitionCompleted = _transitionCompleted;
         _transitionCompleted = null;

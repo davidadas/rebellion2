@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using Rebellion.Game.Encyclopedia;
+using Rebellion.Game.Factions;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Mathematics;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Galaxy
@@ -474,6 +476,142 @@ namespace Rebellion.Game.Galaxy
         public int GetOpposingPopularSupport(string factionInstanceId)
         {
             return _maximumPopularSupport - GetPopularSupport(factionInstanceId);
+        }
+
+        /// <summary>
+        /// Resolves control from stationary regiment owners before falling back to popular support.
+        /// </summary>
+        /// <param name="game">The game supplying faction identities and the control threshold.</param>
+        /// <param name="regimentOwners">The distinct owners of completed stationary regiments.</param>
+        /// <returns>The controlling faction, or null when control is contested or unsupported.</returns>
+        internal Faction ResolveController(GameRoot game, IReadOnlyList<string> regimentOwners)
+        {
+            return ResolveController(
+                game,
+                regimentOwners.Count,
+                regimentOwners.Count == 1 ? regimentOwners[0] : null
+            );
+        }
+
+        /// <summary>
+        /// Resolves control from an assessed regiment-owner count without allocating owner lists.
+        /// </summary>
+        /// <param name="game">The game supplying factions and the control threshold.</param>
+        /// <param name="regimentOwnerCount">The number of distinct active regiment owners.</param>
+        /// <param name="soleRegimentOwner">The regiment owner when exactly one is present.</param>
+        /// <returns>The controlling faction, or null when control is contested or unsupported.</returns>
+        internal Faction ResolveController(
+            GameRoot game,
+            int regimentOwnerCount,
+            string soleRegimentOwner
+        )
+        {
+            if (regimentOwnerCount == 1)
+                return game.GetFactionByOwnerInstanceID(soleRegimentOwner);
+            if (regimentOwnerCount > 1)
+                return null;
+
+            int threshold = game.Config.SupportShift.OwnershipTransferThreshold;
+            Faction controller = null;
+            int highestSupport = threshold;
+            foreach (Faction faction in game.GetFactions())
+            {
+                int support = GetPopularSupport(faction.InstanceID);
+                if (support >= threshold && (controller == null || support > highestSupport))
+                {
+                    controller = faction;
+                    highestSupport = support;
+                }
+            }
+            return controller;
+        }
+
+        /// <summary>
+        /// Applies a signed support shift, transferring lost support to the opposing faction.
+        /// </summary>
+        /// <param name="faction">The faction whose support changes.</param>
+        /// <param name="shift">The signed support adjustment.</param>
+        /// <param name="game">The game supplying factions in their established order.</param>
+        internal void ChangePopularSupport(Faction faction, int shift, GameRoot game)
+        {
+            if (faction == null || shift == 0 || !IsPopulated())
+                return;
+            int currentSupport = GetPopularSupport(faction.InstanceID);
+            int newSupport = Math.Clamp(IntegerMath.SaturatingAdd(currentSupport, shift), 0, 100);
+            if (newSupport == currentSupport)
+                return;
+            if (shift > 0)
+            {
+                SetPopularSupport(faction.InstanceID, newSupport);
+                return;
+            }
+            Faction opposingFaction = game.GetFactions()
+                .FirstOrDefault(candidate => candidate.InstanceID != faction.InstanceID);
+            if (opposingFaction == null)
+            {
+                SetPopularSupport(faction.InstanceID, newSupport);
+                return;
+            }
+            SetPopularSupport(opposingFaction.InstanceID, 100 - newSupport);
+        }
+
+        /// <summary>
+        /// Calculates the controlling faction's required stationary garrison from support and uprising state.
+        /// </summary>
+        /// <param name="faction">The faction whose garrison requirement is evaluated.</param>
+        /// <param name="config">The configured support threshold, divisor, and uprising multiplier.</param>
+        /// <returns>The required regiment count.</returns>
+        internal int GetGarrisonRequirement(Faction faction, GameConfig.GarrisonConfig config)
+        {
+            int popularSupport = GetPopularSupport(faction.InstanceID);
+            if (popularSupport >= config.SupportThreshold)
+                return 0;
+            int garrison = (int)
+                Math.Ceiling(
+                    (config.SupportThreshold - popularSupport) / (double)config.GarrisonDivisor
+                );
+            PlanetSector sector = GetParentOfType<PlanetSector>();
+            if (
+                sector != null
+                && sector.SectorType == PlanetSectorType.Core
+                && faction.Settings.GarrisonEfficiency > 1
+            )
+                garrison = Math.Max(1, garrison / faction.Settings.GarrisonEfficiency);
+            if (IsInUprising)
+                garrison *= config.UprisingMultiplier;
+            return garrison;
+        }
+
+        /// <summary>
+        /// Calculates the deterministic incident-score contribution from support, garrison, and missions.
+        /// </summary>
+        /// <param name="faction">The controlling faction.</param>
+        /// <param name="config">The configured support threshold and garrison divisor.</param>
+        /// <param name="support">The controlling faction's support before the incident.</param>
+        /// <param name="troops">The controlling faction's active regiment count.</param>
+        /// <param name="missionAdjustment">The signed adjustment from active mission teams.</param>
+        /// <returns>The incident score before dice are added.</returns>
+        internal long GetUprisingIncidentBaseScore(
+            Faction faction,
+            GameConfig.GarrisonConfig config,
+            int support,
+            int troops,
+            int missionAdjustment
+        )
+        {
+            int threshold =
+                support >= config.SupportThreshold
+                    ? 0
+                    : (int)
+                        Math.Ceiling(
+                            (config.SupportThreshold - support) / (double)config.GarrisonDivisor
+                        );
+            int multiplier =
+                GetParentOfType<PlanetSector>()?.SectorType == PlanetSectorType.Core
+                && faction.Settings.UprisingResistance > 1
+                    ? faction.Settings.UprisingResistance
+                    : 1;
+            return (long)threshold - (long)multiplier * troops + missionAdjustment;
         }
 
         /// <summary>

@@ -1727,6 +1727,7 @@ namespace Rebellion.Simulation
             internal readonly Starfighter Fighter;
             internal readonly int InitialSquadronSize;
             private readonly double _durabilityPerFighter;
+            private readonly double _laserCannonCapitalDamageMultiplier;
             private readonly double _commandBonus;
             private readonly double _maximumWeaponCharge;
             private readonly double[] _weaponTargetDamage = new double[3];
@@ -1772,6 +1773,10 @@ namespace Rebellion.Simulation
                 InitialSquadronSize = Math.Max(fighter.CurrentSquadronSize, 0);
                 _commandBonus = Math.Max(commandBonus, 0);
                 _durabilityPerFighter = Math.Max(fighter.ShieldStrength, 1);
+                _laserCannonCapitalDamageMultiplier = Math.Max(
+                    config.LaserCannonCapitalDamageMultiplier,
+                    0
+                );
                 _currentDurability = InitialSquadronSize * _durabilityPerFighter;
                 _maximumWeaponCharge =
                     Math.Max(fighter.LaserCannon, 0)
@@ -1814,7 +1819,11 @@ namespace Rebellion.Simulation
                         requireRange: true
                     );
                     double damage =
-                        GetEffectiveWeaponStrength(weaponStrength)
+                        GetEffectiveWeaponStrength(
+                            weaponStrength,
+                            weaponIndex,
+                            target.IsStarfighter
+                        )
                         * GetManeuverMultiplier(target)
                         * squadronStrength;
                     if (damage > 0)
@@ -1856,7 +1865,9 @@ namespace Rebellion.Simulation
 
                         double candidateDamage =
                             GetEffectiveWeaponStrength(
-                                GetWeaponStrength(weaponIndex, engagementRange, requireRange: true)
+                                GetWeaponStrength(weaponIndex, engagementRange, requireRange: true),
+                                weaponIndex,
+                                candidate.IsStarfighter
                             )
                             * maneuverMultiplier
                             * squadronStrength;
@@ -1958,29 +1969,43 @@ namespace Rebellion.Simulation
             {
                 double strength =
                     GetEffectiveWeaponStrength(
-                        GetWeaponStrength(0, engagementDistance, requireRange)
+                        GetWeaponStrength(0, engagementDistance, requireRange),
+                        0,
+                        targetsFighters
                     )
                     + GetEffectiveWeaponStrength(
-                        GetWeaponStrength(1, engagementDistance, requireRange)
+                        GetWeaponStrength(1, engagementDistance, requireRange),
+                        1,
+                        targetsFighters
                     );
                 if (!targetsFighters)
                 {
                     strength += GetEffectiveWeaponStrength(
-                        GetWeaponStrength(2, engagementDistance, requireRange)
+                        GetWeaponStrength(2, engagementDistance, requireRange),
+                        2,
+                        targetsFighters
                     );
                 }
                 return strength;
             }
 
             /// <summary>
-            /// Applies the Commander's Combat-derived effectiveness bonus to a usable fighter
-            /// weapon lane without changing the weapon charge it consumes.
+            /// Applies command and target-type damage modifiers to a usable fighter weapon lane
+            /// without changing the weapon charge it consumes.
             /// </summary>
             /// <param name="weaponStrength">The usable raw weapon strength.</param>
-            /// <returns>The command-adjusted weapon strength.</returns>
-            private double GetEffectiveWeaponStrength(int weaponStrength)
+            /// <param name="weaponIndex">The zero-based weapon lane.</param>
+            /// <param name="targetsFighters">Whether the target is a fighter squadron.</param>
+            /// <returns>The command- and target-adjusted weapon strength.</returns>
+            private double GetEffectiveWeaponStrength(
+                int weaponStrength,
+                int weaponIndex,
+                bool targetsFighters
+            )
             {
-                return weaponStrength > 0 ? weaponStrength + _commandBonus : 0;
+                double multiplier =
+                    weaponIndex == 0 && !targetsFighters ? _laserCannonCapitalDamageMultiplier : 1;
+                return weaponStrength > 0 ? (weaponStrength + _commandBonus) * multiplier : 0;
             }
 
             /// <summary>

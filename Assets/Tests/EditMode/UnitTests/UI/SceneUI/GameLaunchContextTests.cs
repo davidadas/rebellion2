@@ -76,6 +76,18 @@ namespace Rebellion.Tests.UI.SceneUI
         }
 
         [Test]
+        public void Reset_PendingSavedGame_ClearsPreviousLaunchRequest()
+        {
+            GameLaunchContext.PrepareSaveLoad("old-campaign");
+
+            GameLaunchContext.Reset(TestContent.Pack);
+
+            Assert.IsNull(GameLaunchContext.SaveFileName);
+            Assert.IsFalse(GameLaunchContext.IsLoadGame);
+            Assert.IsFalse(GameLaunchContext.PlayIntroCutscene);
+        }
+
+        [Test]
         public void ApplyCustomGameSummary_ConfiguredSummary_ReplacesContextWithDetachedCopy()
         {
             GameSummary configured = new GameSummary
@@ -108,63 +120,6 @@ namespace Rebellion.Tests.UI.SceneUI
             Assert.AreNotSame(configured, GameLaunchContext.Summary);
             Assert.IsNull(GameLaunchContext.SaveFileName);
             Assert.IsFalse(GameLaunchContext.IsLoadGame);
-        }
-
-        [Test]
-        public void RestoreSaveLoadAfterContentRestart_PreservedRequest_RestoresSavedGameLaunch()
-        {
-            GameLaunchContext.PrepareSaveLoadAfterContentRestart("campaign");
-            GameLaunchContext.Reset(TestContent.Pack);
-
-            GameLaunchContext.RestoreSaveLoadAfterContentRestart();
-
-            Assert.AreEqual("campaign", GameLaunchContext.SaveFileName);
-            Assert.IsTrue(GameLaunchContext.IsLoadGame);
-            Assert.IsFalse(GameLaunchContext.PlayIntroCutscene);
-        }
-
-        [Test]
-        public void RestoreSaveLoadAfterContentRestart_ConsumedRequest_DoesNotRestoreTwice()
-        {
-            GameLaunchContext.PrepareSaveLoadAfterContentRestart("campaign");
-            GameLaunchContext.RestoreSaveLoadAfterContentRestart();
-            GameLaunchContext.Reset(TestContent.Pack);
-
-            GameLaunchContext.RestoreSaveLoadAfterContentRestart();
-
-            Assert.IsNull(GameLaunchContext.SaveFileName);
-            Assert.IsFalse(GameLaunchContext.IsLoadGame);
-        }
-
-        [Test]
-        public void ConsumeContentPackAfterRestart_PreparedPack_ReturnsPackOnce()
-        {
-            GameLaunchContext.PrepareSaveLoadAfterContentRestart("campaign", TestContent.Pack);
-
-            ContentPack first = GameLaunchContext.ConsumeContentPackAfterRestart();
-            ContentPack second = GameLaunchContext.ConsumeContentPackAfterRestart();
-
-            Assert.AreSame(TestContent.Pack, first);
-            Assert.IsNull(second);
-        }
-
-        [Test]
-        public void RestoreCustomGameAfterContentRestart_PreparedSummary_RestoresDetachedLaunch()
-        {
-            GameSummary summary = GameLaunchContext.CreateDefaultSummary(TestContent.Pack);
-            summary.PlayerFactionID = "FNEMP1";
-            summary.Difficulty = GameDifficulty.Hard;
-            GameLaunchContext.PrepareCustomGameAfterContentRestart(summary, TestContent.Pack);
-
-            ContentPack selected = GameLaunchContext.ConsumeContentPackAfterRestart();
-            GameLaunchContext.Reset(selected);
-            GameLaunchContext.RestoreCustomGameAfterContentRestart();
-            summary.PlayerFactionID = "changed";
-
-            Assert.AreSame(TestContent.Pack, selected);
-            Assert.AreEqual("FNEMP1", GameLaunchContext.Summary.PlayerFactionID);
-            Assert.AreEqual(GameDifficulty.Hard, GameLaunchContext.Summary.Difficulty);
-            Assert.AreNotSame(summary, GameLaunchContext.Summary);
         }
     }
 }

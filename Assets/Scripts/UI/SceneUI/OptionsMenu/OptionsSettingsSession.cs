@@ -14,7 +14,6 @@ internal sealed class OptionsSettingsSession
         (int)FullScreenMode.Windowed,
     };
 
-    private static readonly int[] _renderScalePercentages = { 50, 67, 75, 85, 100 };
     private static readonly int[] _frameRateLimits = { 0, 30, 60, 120, 144, 165, 240 };
 
     private readonly UserSettingsManager _userSettings;
@@ -40,7 +39,6 @@ internal sealed class OptionsSettingsSession
     private int _snapshotQualityLevel;
     private bool _snapshotGraphicsPresetCustomized;
     private int _snapshotAntiAliasingMode;
-    private int _snapshotRenderScalePercent;
     private int _snapshotFrameRateLimit;
     private bool _snapshotVerticalSync;
     private bool _snapshotRayTracing;
@@ -128,7 +126,6 @@ internal sealed class OptionsSettingsSession
         Video.QualityLevel = _snapshotQualityLevel;
         Video.GraphicsPresetCustomized = _snapshotGraphicsPresetCustomized;
         Video.AntiAliasingMode = _snapshotAntiAliasingMode;
-        Video.RenderScalePercent = _snapshotRenderScalePercent;
         Video.FrameRateLimit = _snapshotFrameRateLimit;
         Video.VerticalSync = _snapshotVerticalSync;
         Video.RayTracing = _snapshotRayTracing;
@@ -391,13 +388,6 @@ internal sealed class OptionsSettingsSession
                     Enum.GetValues(typeof(UserAntiAliasingMode)).Length
                 );
                 break;
-            case UserGraphicsSetting.RenderScale:
-                Video.RenderScalePercent = StepValue(
-                    _renderScalePercentages,
-                    Video.RenderScalePercent,
-                    delta
-                );
-                break;
             case UserGraphicsSetting.VerticalSync:
                 Video.VerticalSync = !Video.VerticalSync;
                 break;
@@ -470,7 +460,6 @@ internal sealed class OptionsSettingsSession
         _snapshotQualityLevel = Video.QualityLevel;
         _snapshotGraphicsPresetCustomized = Video.GraphicsPresetCustomized;
         _snapshotAntiAliasingMode = Video.AntiAliasingMode;
-        _snapshotRenderScalePercent = Video.RenderScalePercent;
         _snapshotFrameRateLimit = Video.FrameRateLimit;
         _snapshotVerticalSync = Video.VerticalSync;
         _snapshotRayTracing = Video.RayTracing;
@@ -532,7 +521,6 @@ internal sealed class OptionsSettingsSession
             || Video.QualityLevel != _snapshotQualityLevel
             || Video.GraphicsPresetCustomized != _snapshotGraphicsPresetCustomized
             || Video.AntiAliasingMode != _snapshotAntiAliasingMode
-            || Video.RenderScalePercent != _snapshotRenderScalePercent
             || Video.FrameRateLimit != _snapshotFrameRateLimit
             || Video.VerticalSync != _snapshotVerticalSync
             || Video.RayTracing != _snapshotRayTracing
@@ -724,7 +712,6 @@ internal sealed class OptionsSettingsSession
                 UserAntiAliasingMode.Taa => "TAA",
                 _ => "Off",
             },
-            UserGraphicsSetting.RenderScale => $"{Video.RenderScalePercent}%",
             UserGraphicsSetting.VerticalSync => GetToggleLabel(Video.VerticalSync),
             UserGraphicsSetting.FrameRateLimit => Video.FrameRateLimit == 0
                 ? "Unlimited"
@@ -775,7 +762,6 @@ internal sealed class OptionsSettingsSession
         preset.ApplyGraphicsPreset(Video.QualityLevel);
         Video.GraphicsPresetCustomized =
             Video.AntiAliasingMode != preset.AntiAliasingMode
-            || Video.RenderScalePercent != preset.RenderScalePercent
             || Video.AmbientOcclusion != preset.AmbientOcclusion
             || Video.Bloom != preset.Bloom
             || Video.MotionBlur != preset.MotionBlur;

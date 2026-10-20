@@ -3751,6 +3751,8 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
+            List<GameResult> results = new List<GameResult>();
+            system.ResultsProduced += results.AddRange;
             bool initiated = system.InitiateMission(
                 CreateContext(
                     SabotageMission.MissionTypeID,
@@ -3759,7 +3761,6 @@ namespace Rebellion.Tests.Simulation
                     selectedTarget: sabotageTarget
                 )
             );
-            List<GameResult> results = system.TakePendingResults();
 
             Assert.IsTrue(initiated);
             Assert.AreSame(origin, officer.GetParent());
@@ -3826,6 +3827,8 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
+            List<GameResult> results = new List<GameResult>();
+            system.ResultsProduced += results.AddRange;
             bool initiated = system.InitiateMission(
                 CreateContext(
                     SabotageMission.MissionTypeID,
@@ -3834,7 +3837,6 @@ namespace Rebellion.Tests.Simulation
                     selectedTarget: sabotageTarget
                 )
             );
-            List<GameResult> results = system.TakePendingResults();
 
             Assert.IsTrue(initiated);
             Assert.IsInstanceOf<SabotageMission>(participant.GetParent());
@@ -4008,7 +4010,6 @@ namespace Rebellion.Tests.Simulation
                 mission.IncrementProgress();
 
             IReadOnlyList<GameResult> results = new MissionTickProcessor(
-                system,
                 TestSystems.GetMissionResolver(system)
             ).ProcessTick(game);
 
@@ -4065,7 +4066,6 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
             IReadOnlyList<GameResult> results = new MissionTickProcessor(
-                system,
                 TestSystems.GetMissionResolver(system)
             ).ProcessTick(game);
 
@@ -4198,8 +4198,11 @@ namespace Rebellion.Tests.Simulation
             Assert.IsNull(mission.GetParent());
         }
 
+        /// <summary>
+        /// Verifies abort capture is published at its original tick and never replayed by ticking.
+        /// </summary>
         [Test]
-        public void ProcessTick_AbortedStrandedMission_ReturnsDeferredCaptureOnce()
+        public void AbortMission_StrandedOfficer_PublishesCaptureImmediatelyOnce()
         {
             (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
                 factionOwnsPlanet: true
@@ -4215,14 +4218,11 @@ namespace Rebellion.Tests.Simulation
                 movement
             );
 
+            List<GameResult> results = new List<GameResult>();
+            system.ResultsProduced += results.AddRange;
             Assert.IsTrue(system.AbortMission(mission.InstanceID));
             Assert.IsTrue(officer.IsCaptured);
             Assert.IsNull(mission.GetParent());
-            game.CurrentTick = 43;
-            IReadOnlyList<GameResult> results = new MissionTickProcessor(
-                system,
-                TestSystems.GetMissionResolver(system)
-            ).ProcessTick(game);
 
             OfficerCaptureStateResult capture = results
                 .OfType<OfficerCaptureStateResult>()
@@ -4231,10 +4231,7 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(42, capture.Tick);
             Assert.AreEqual(mission.InstanceID, capture.MissionInstanceID);
             Assert.IsEmpty(
-                new MissionTickProcessor(
-                    system,
-                    TestSystems.GetMissionResolver(system)
-                ).ProcessTick(game)
+                new MissionTickProcessor(TestSystems.GetMissionResolver(system)).ProcessTick(game)
             );
         }
 
@@ -4311,8 +4308,11 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(game.GetSceneNodesByType<Mission>());
         }
 
+        /// <summary>
+        /// Verifies starting a mission publishes its start result without requiring a tick.
+        /// </summary>
         [Test]
-        public void ProcessTick_StartedMission_ReturnsMissionStartedResult()
+        public void InitiateMission_StartedMission_PublishesMissionStartedResultImmediately()
         {
             (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
                 factionOwnsPlanet: true
@@ -4324,6 +4324,8 @@ namespace Rebellion.Tests.Simulation
                 new StubRNG(),
                 movement
             );
+            List<GameResult> results = new List<GameResult>();
+            commands.ResultsProduced += results.AddRange;
             bool initiated = commands.InitiateMission(
                 CreateContext(
                     ResearchMission.MissionTypeID,
@@ -4332,10 +4334,6 @@ namespace Rebellion.Tests.Simulation
                     discipline: ResearchDiscipline.FacilityDesign
                 )
             );
-            IReadOnlyList<GameResult> results = new MissionTickProcessor(
-                commands,
-                TestSystems.GetMissionResolver(commands)
-            ).ProcessTick(game);
 
             Assert.IsTrue(initiated);
             MissionStartedResult started = results.OfType<MissionStartedResult>().Single();

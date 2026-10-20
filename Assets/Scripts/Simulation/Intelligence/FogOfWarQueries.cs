@@ -154,12 +154,12 @@ namespace Rebellion.Simulation
         /// <param name="snapshot">The latest intelligence snapshot, if any.</param>
         private static void AddObservedMissions(Planet viewPlanet, PlanetSnapshot snapshot)
         {
-            if (snapshot?.RevealedCategories != PlanetIntelligenceCategory.All)
+            if (snapshot?.RevealedCategories.HasFlag(PlanetIntelligenceCategory.Missions) != true)
                 return;
 
             foreach (Mission mission in snapshot.Missions)
             {
-                Mission viewMission = FogOfWarRecorder.CopyEntityForSnapshot(mission);
+                Mission viewMission = FogOfWarRecorder.CopySnapshotForView(mission);
                 viewMission.SetParent(viewPlanet);
                 viewPlanet.AddChild(viewMission);
             }
@@ -443,13 +443,13 @@ namespace Rebellion.Simulation
             viewPlanet.PopularSupport = new Dictionary<string, int>(popularSupport);
 
             viewPlanet.SetChildren(
-                planetSnapshot.Fleets.Select(FogOfWarRecorder.CopyFleetForSnapshot),
-                planetSnapshot.Officers.Select(FogOfWarRecorder.CopyOfficerForSnapshot),
-                planetSnapshot.Regiments.Select(FogOfWarRecorder.CopyEntityForSnapshot),
-                planetSnapshot.SpecialForces.Select(FogOfWarRecorder.CopyEntityForSnapshot),
-                planetSnapshot.Starfighters.Select(FogOfWarRecorder.CopyEntityForSnapshot),
+                planetSnapshot.Fleets.Select(FogOfWarRecorder.CopySnapshotForView),
+                planetSnapshot.Officers.Select(FogOfWarRecorder.CopySnapshotForView),
+                planetSnapshot.Regiments.Select(FogOfWarRecorder.CopySnapshotForView),
+                planetSnapshot.SpecialForces.Select(FogOfWarRecorder.CopySnapshotForView),
+                planetSnapshot.Starfighters.Select(FogOfWarRecorder.CopySnapshotForView),
                 viewPlanet.GetChildren<Mission>(includeDisabled: true),
-                planetSnapshot.Buildings.Select(FogOfWarRecorder.CopyEntityForSnapshot)
+                planetSnapshot.Buildings.Select(FogOfWarRecorder.CopySnapshotForView)
             );
             ApplyManufacturingQueue(viewPlanet, planetSnapshot);
         }
@@ -554,7 +554,7 @@ namespace Rebellion.Simulation
 
             planet.ManufacturingQueue = snapshot
                 .ManufacturingQueueItems.Select(item =>
-                    FogOfWarRecorder.CopyEntityForSnapshot(item) as IManufacturable
+                    FogOfWarRecorder.CopySnapshotForView(item) as IManufacturable
                 )
                 .Where(item => item != null)
                 .GroupBy(item => item.GetManufacturingType())

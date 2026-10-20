@@ -204,18 +204,6 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ProcessFaction_ConfiguredOrderQuantity_QueuesConfiguredQuantity()
-        {
-            _faction.ManageProduction = false;
-            _game.Config.AI.Garrison.AutomatedOrderQuantity = 2;
-
-            _automation.ProcessFaction(_faction);
-
-            Assert.AreEqual(2, _destination.GetAllRegiments().Count);
-            Assert.AreEqual(2, GetQueueCount(_producer, ManufacturingType.Troop));
-        }
-
-        [Test]
         public void ProcessFaction_ConfiguredMinimumGarrisonTarget_UsesConfiguredValue()
         {
             _faction.ManageProduction = false;
@@ -616,6 +604,7 @@ namespace Rebellion.Tests.Simulation
         public void ProcessFaction_MultipleIdleTrainingFacilities_QueuesOneRegiment()
         {
             _faction.ManageProduction = false;
+            _destination.SetPopularSupport(_faction.InstanceID, 10);
             AddProductionFacility(_producer, "TRAINING_2", ManufacturingType.Troop);
             AddCompletedRegiment(_producer, "PRODUCER_DEFENSE_EXTRA");
 
@@ -649,8 +638,12 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
+        /// <summary>
+        /// Verifies completed delegated production is replaced by one order for the resource type
+        /// the faction now needs.
+        /// </summary>
         [Test]
-        public void ProcessFaction_CompletedAutomatedBuildings_RefillsEveryLaneImmediately()
+        public void ProcessFaction_CompletedAutomatedBuilding_QueuesOppositeResourceFacility()
         {
             _faction.ManageGarrisons = false;
             AddProductionInfrastructure();
@@ -659,7 +652,11 @@ namespace Rebellion.Tests.Simulation
             new ManufacturingTickProcessor(_manufacturing, _movement).ProcessTick(_game);
             _automation.ProcessFaction(_faction);
 
-            Assert.AreEqual(2, GetQueueCount(_producer, ManufacturingType.Building));
+            List<IManufacturable> queue = _producer.GetManufacturingQueue()[
+                ManufacturingType.Building
+            ];
+            Assert.AreEqual(1, queue.Count);
+            Assert.AreEqual(BuildingType.Refinery, ((Building)queue.Single()).BuildingType);
             Assert.AreEqual(
                 0,
                 _producer.GetIdleManufacturingFacilities(ManufacturingType.Building)
@@ -685,8 +682,23 @@ namespace Rebellion.Tests.Simulation
 
             new FactionAutomationTickProcessor(_automation).ProcessTick(_game);
 
-            Assert.AreEqual(12, CountResourceFacilities(BuildingType.Mine));
+            Assert.AreEqual(11, CountResourceFacilities(BuildingType.Mine));
             Assert.AreEqual(10, CountResourceFacilities(BuildingType.Refinery));
+        }
+
+        /// <summary>
+        /// Verifies delegated production creates only one unfinished building order when a planet
+        /// has multiple construction facilities.
+        /// </summary>
+        [Test]
+        public void ProcessFaction_MultipleConstructionFacilities_QueuesOneAutomatedBuilding()
+        {
+            _faction.ManageGarrisons = false;
+            AddProductionInfrastructure();
+
+            _automation.ProcessFaction(_faction);
+
+            Assert.AreEqual(1, GetQueueCount(_producer, ManufacturingType.Building));
         }
 
         [Test]
@@ -701,7 +713,7 @@ namespace Rebellion.Tests.Simulation
 
             new FactionAutomationTickProcessor(_automation).ProcessTick(_game);
 
-            Assert.AreEqual(2, _destination.GetTotalBuildingTypeCount(BuildingType.Mine));
+            Assert.AreEqual(1, _destination.GetTotalBuildingTypeCount(BuildingType.Mine));
             Assert.AreEqual(0, distant.GetTotalBuildingTypeCount(BuildingType.Mine));
         }
 
@@ -715,7 +727,7 @@ namespace Rebellion.Tests.Simulation
 
             new FactionAutomationTickProcessor(_automation).ProcessTick(_game);
 
-            Assert.AreEqual(2, _destination.GetTotalBuildingTypeCount(BuildingType.Mine));
+            Assert.AreEqual(1, _destination.GetTotalBuildingTypeCount(BuildingType.Mine));
         }
 
         [Test]
@@ -743,7 +755,7 @@ namespace Rebellion.Tests.Simulation
 
             new FactionAutomationTickProcessor(_automation).ProcessTick(_game);
 
-            Assert.AreEqual(2, _destination.GetTotalBuildingTypeCount(BuildingType.Mine));
+            Assert.AreEqual(1, _destination.GetTotalBuildingTypeCount(BuildingType.Mine));
         }
 
         [Test]
@@ -878,7 +890,6 @@ namespace Rebellion.Tests.Simulation
             config.AI.Garrison.SupportThreshold = 50;
             config.AI.Garrison.GarrisonDivisor = 10;
             config.AI.Garrison.UprisingMultiplier = 2;
-            config.AI.Garrison.AutomatedOrderQuantity = 1;
             config.AI.Garrison.MinimumGarrisonTarget = 1;
             config.AI.Garrison.ResourceFacilitiesPerGarrison = 2;
             config.AI.Garrison.TieBreakRollMinimum = 0;

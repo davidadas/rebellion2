@@ -188,8 +188,11 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(firstFaction.InstanceID, planet.GetOwnerInstanceID());
         }
 
+        /// <summary>
+        /// Verifies a subsequent tick does not replay a command's immediately published start.
+        /// </summary>
         [Test]
-        public void ProcessTick_PendingMissionStartedResult_ObservesAdvancedMissionState()
+        public void ProcessTick_AlreadyPublishedMissionStart_DoesNotPublishItAgain()
         {
             (Faction faction, _, Planet planet) = CreateOpposingDiplomacyScenario();
             CreateReadyDiplomacyMission(faction, planet);
@@ -205,6 +208,10 @@ namespace Rebellion.Tests.Simulation
             officer.SetBaseRating(SkillRating.Diplomacy, 100);
             _game.AttachNode(officer, origin);
             MissionCommands commands = _session.GetService<MissionCommands>();
+            int startCount = 0;
+            using IDisposable observation = _session.Results.Observe<MissionStartedResult>(
+                results => startCount += results.Count
+            );
             Assert.IsTrue(
                 commands.InitiateMission(
                     new MissionContext
@@ -218,14 +225,11 @@ namespace Rebellion.Tests.Simulation
                     }
                 )
             );
-            bool advancedStateObserved = false;
-            using IDisposable observation = _session.Results.Observe<MissionStartedResult>(_ =>
-                advancedStateObserved = planet.GetOwnerInstanceID() == faction.InstanceID
-            );
+            Assert.AreEqual(1, startCount);
 
             _tick.ProcessTick();
 
-            Assert.IsTrue(advancedStateObserved);
+            Assert.AreEqual(1, startCount);
         }
 
         [Test]

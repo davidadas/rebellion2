@@ -346,6 +346,11 @@ public sealed class MainMenuView : MonoBehaviour
         exitConfirmationDialog.InitializeContent(contentAssets);
         exitAnimationFrames = LoadAnimationFrames(contentAssets, _exitAnimationRoot);
         loadAnimationFrames = LoadAnimationFrames(contentAssets, _loadAnimationRoot);
+        foreach (Sprite frame in loadAnimationFrames)
+            frame.texture.filterMode = FilterMode.Bilinear;
+        ContentBindings
+            .RequireSprite(contentAssets, _loadAnimationRoot + "pressed")
+            .texture.filterMode = FilterMode.Bilinear;
         ResetAnimation(exitButton?.targetGraphic as Image, exitAnimationFrames);
         ResetAnimation(loadGameButton?.targetGraphic as Image, loadAnimationFrames);
     }

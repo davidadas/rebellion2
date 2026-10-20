@@ -27,7 +27,6 @@ Shader "Custom/PlanetClouds"
 
             HLSLPROGRAM
             #pragma target 4.5
-            #pragma require cubearray
             #pragma only_renderers d3d11 playstation xboxone xboxseries vulkan metal switch switch2
             #pragma vertex Vert
             #pragma fragment Frag

@@ -48,7 +48,7 @@ public static class UIBuilderMenu
             {
                 "Assets/Prefabs/UI/Boot",
                 "Assets/Prefabs/UI/Common",
-                "Assets/Prefabs/UI/Cutscenes",
+                "Assets/Resources/UI",
                 "Assets/Prefabs/UI/MainMenu",
                 "Assets/Prefabs/UI/OptionsMenu",
                 "Assets/Prefabs/UI/StrategyView",

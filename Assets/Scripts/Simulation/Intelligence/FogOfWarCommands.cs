@@ -57,6 +57,32 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
+        /// Records the planet knowledge retained when a registered faction loses control.
+        /// </summary>
+        /// <param name="faction">The faction that lost control.</param>
+        /// <param name="planet">The planet whose control changed.</param>
+        /// <param name="observedAtTick">The tick represented by the observation, or the current tick.</param>
+        /// <returns>True when the observation was recorded.</returns>
+        internal bool ObservePlanetLoss(Faction faction, Planet planet, int? observedAtTick = null)
+        {
+            Faction liveFaction = FindFaction(faction?.InstanceID);
+            Planet livePlanet = string.IsNullOrEmpty(planet?.InstanceID)
+                ? null
+                : _game.GetSceneNodeByInstanceID<Planet>(planet.InstanceID);
+            PlanetSector sector = livePlanet?.GetParentOfType<PlanetSector>();
+            if (liveFaction == null || livePlanet == null || sector == null)
+                return false;
+
+            _recorder.RecordPlanetLossSnapshot(
+                liveFaction,
+                livePlanet,
+                sector,
+                observedAtTick ?? _game.CurrentTick
+            );
+            return true;
+        }
+
+        /// <summary>
         /// Records selected registered entities for a registered faction.
         /// </summary>
         /// <param name="faction">The faction receiving the observations.</param>

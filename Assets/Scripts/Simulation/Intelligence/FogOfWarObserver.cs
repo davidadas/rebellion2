@@ -340,7 +340,7 @@ namespace Rebellion.Simulation
                 return;
 
             if (result.PreviousOwner != null)
-                _commands.ObservePlanet(result.PreviousOwner, result.Planet, result.Tick);
+                _commands.ObservePlanetLoss(result.PreviousOwner, result.Planet, result.Tick);
 
             IEnumerable<Faction> observers = (
                 result.ObserverFactionInstanceIDs ?? new List<string>()

@@ -33,7 +33,7 @@ namespace Rebellion.Tests.Content
 
             InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
                 GameDataCatalog.ValidateBattleMapReferences(
-                    System.Array.Empty<BattleMap>(),
+                    Array.Empty<BattleMap>(),
                     new[] { sector }
                 )
             );
@@ -50,7 +50,7 @@ namespace Rebellion.Tests.Content
             InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
                 GameDataCatalog.ValidateBattleMapReferences(
                     new[] { first, second },
-                    System.Array.Empty<PlanetSector>()
+                    Array.Empty<PlanetSector>()
                 )
             );
 
@@ -113,8 +113,10 @@ namespace Rebellion.Tests.Content
                 defaultSpaceBattleMapInstanceIDs: new[] { defaultMap.InstanceID }
             );
 
-            System.Collections.Generic.IReadOnlyList<BattleMap> maps =
-                catalog.GetBattleMapsForPlanet(planet, BattleKind.Space);
+            IReadOnlyList<BattleMap> maps = catalog.GetBattleMapsForPlanet(
+                planet,
+                BattleKind.Space
+            );
 
             CollectionAssert.AreEqual(new[] { defaultMap }, maps);
         }
@@ -141,8 +143,10 @@ namespace Rebellion.Tests.Content
                 defaultSpaceBattleMapInstanceIDs: new[] { defaultMap.InstanceID }
             );
 
-            System.Collections.Generic.IReadOnlyList<BattleMap> maps =
-                catalog.GetBattleMapsForPlanet(planet, BattleKind.Space);
+            IReadOnlyList<BattleMap> maps = catalog.GetBattleMapsForPlanet(
+                planet,
+                BattleKind.Space
+            );
 
             CollectionAssert.AreEqual(new[] { planetMap }, maps);
         }

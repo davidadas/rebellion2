@@ -6,7 +6,6 @@ Shader "Hidden/Tests/PlanetSurfaceBinding"
         _BaseColor ("Base Color", Color) = (1, 1, 1, 1)
         _CloudMap ("Cloud Map", 2D) = "black" {}
         _CloudRotationSpeed ("Cloud Rotation Speed", Float) = 0
-        _SunDirection ("Sun Direction", Vector) = (0, 0, 1, 0)
     }
 
     SubShader

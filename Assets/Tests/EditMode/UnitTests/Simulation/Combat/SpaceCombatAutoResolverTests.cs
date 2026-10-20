@@ -118,6 +118,7 @@ namespace Rebellion.Tests.Simulation
             CapitalShip firstTarget = CreatePassiveTarget("first-target", hull: 100);
             CapitalShip secondTarget = CreatePassiveTarget("second-target", hull: 100);
             GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.LaserCannonCapitalDamageMultiplier = 1;
             config.CommanderCombatDivisor = 25;
             config.AutoResolveMaximumIterations = 1;
             config.AutoResolveTargetScanDivisor = 1;
@@ -477,6 +478,99 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(1, GetFighterOutcome(result, defender).SquadronSizeAfter);
         }
 
+        /// <summary>
+        /// Verifies capital-target laser scaling without reducing the charge consumed by a shot.
+        /// </summary>
+        /// <param name="multiplier">The configured capital-target laser damage multiplier.</param>
+        /// <param name="iterations">The number of combat steps to resolve.</param>
+        /// <param name="expectedHull">The target's remaining hull.</param>
+        [TestCase(0.25, 1, 85)]
+        [TestCase(0.25, 2, 85)]
+        [TestCase(1, 1, 40)]
+        [TestCase(0, 1, 100)]
+        [TestCase(-1, 1, 100)]
+        public void Resolve_FighterLaserAgainstCapitalShip_UsesConfiguredMultiplier(
+            double multiplier,
+            int iterations,
+            int expectedHull
+        )
+        {
+            Starfighter attacker = CreateFighter("attacker", squadronSize: 1, weaponStrength: 60);
+            CapitalShip defender = CreatePassiveTarget("defender", hull: 100);
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.LaserCannonCapitalDamageMultiplier = multiplier;
+            config.AutoResolveMaximumIterations = iterations;
+            config.AutoResolveTargetScanDivisor = 1;
+            config.AutoResolveStartingDistance = 0;
+
+            SpaceCombatResult result = Resolve(
+                config,
+                new List<CapitalShip>(),
+                new[] { attacker },
+                new[] { defender },
+                new List<Starfighter>(),
+                defenderCanWithdraw: true
+            );
+
+            Assert.AreEqual(expectedHull, GetShipOutcome(result, defender).HullAfter);
+        }
+
+        /// <summary>
+        /// Verifies that target selection compares scaled capital damage with full fighter damage.
+        /// </summary>
+        [Test]
+        public void Resolve_FighterLaserWithMixedTargets_SelectsHighestEffectiveDamageTarget()
+        {
+            Starfighter attacker = CreateFighter("attacker", squadronSize: 1, weaponStrength: 60);
+            Starfighter defenderFighter = CreateFighter("defender-fighter", 100, weaponStrength: 0);
+            CapitalShip defenderShip = CreatePassiveTarget("defender-ship", hull: 1000);
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.LaserCannonCapitalDamageMultiplier = 0.25;
+            config.AutoResolveMaximumIterations = 1;
+            config.AutoResolveTargetScanDivisor = 1;
+            config.AutoResolveStartingDistance = 0;
+
+            SpaceCombatResult result = Resolve(
+                config,
+                new List<CapitalShip>(),
+                new[] { attacker },
+                new[] { defenderShip },
+                new[] { defenderFighter },
+                defenderCanWithdraw: true
+            );
+
+            Assert.AreEqual(1000, GetShipOutcome(result, defenderShip).HullAfter);
+            Assert.AreEqual(40, GetFighterOutcome(result, defenderFighter).SquadronSizeAfter);
+        }
+
+        /// <summary>
+        /// Verifies that a capital-target laser multiplier does not reduce torpedo damage.
+        /// </summary>
+        [Test]
+        public void Resolve_FighterTorpedoesAgainstCapitalShip_IgnoresLaserMultiplier()
+        {
+            Starfighter attacker = CreateFighter("attacker", squadronSize: 1, weaponStrength: 0);
+            attacker.Torpedoes = 60;
+            attacker.TorpedoRange = 100;
+            CapitalShip defender = CreatePassiveTarget("defender", hull: 100);
+            GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.LaserCannonCapitalDamageMultiplier = 0;
+            config.AutoResolveMaximumIterations = 1;
+            config.AutoResolveTargetScanDivisor = 1;
+            config.AutoResolveStartingDistance = 0;
+
+            SpaceCombatResult result = Resolve(
+                config,
+                new List<CapitalShip>(),
+                new[] { attacker },
+                new[] { defender },
+                new List<Starfighter>(),
+                defenderCanWithdraw: true
+            );
+
+            Assert.AreEqual(40, GetShipOutcome(result, defender).HullAfter);
+        }
+
         [Test]
         public void Resolve_FighterTargetsCapitalShipWithStrongerAvailableAttack_DamagesCapitalShip()
         {
@@ -491,6 +585,7 @@ namespace Rebellion.Tests.Simulation
             );
             defenderFighter.ShieldStrength = 1000;
             GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.LaserCannonCapitalDamageMultiplier = 1;
             config.AutoResolveMaximumIterations = 1;
             config.AutoResolveTargetScanDivisor = 1;
 
@@ -514,6 +609,7 @@ namespace Rebellion.Tests.Simulation
             attacker.ShieldStrength = 1;
             CapitalShip defender = CreatePassiveTarget("defender", hull: 100);
             GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.LaserCannonCapitalDamageMultiplier = 1;
             config.AutoResolveMaximumIterations = 2;
             config.AutoResolveTargetScanDivisor = 1;
             config.AutoResolveStartingDistance = 0;
@@ -537,6 +633,7 @@ namespace Rebellion.Tests.Simulation
             attacker.ShieldStrength = 0;
             CapitalShip defender = CreatePassiveTarget("defender", hull: 100);
             GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.LaserCannonCapitalDamageMultiplier = 1;
             config.AutoResolveMaximumIterations = 4;
             config.AutoResolveTargetScanDivisor = 1;
             config.AutoResolveStartingDistance = 0;
@@ -606,6 +703,7 @@ namespace Rebellion.Tests.Simulation
             CapitalShip defender = CreateShip("defender", hull: 1000, weaponStrength: 6);
             defender.WeaponRecharge = 0;
             GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.LaserCannonCapitalDamageMultiplier = 1;
             config.AutoResolveMaximumIterations = 7;
             config.AutoResolveTargetScanDivisor = 1;
             config.AutoResolveStartingDistance = 0;
@@ -877,6 +975,7 @@ namespace Rebellion.Tests.Simulation
             attacker.CurrentSquadronSize = 6;
             CapitalShip defender = CreatePassiveTarget("defender", hull: 100);
             GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.LaserCannonCapitalDamageMultiplier = 1;
             config.AutoResolveMaximumIterations = 1;
             config.AutoResolveTargetScanDivisor = 1;
 
@@ -1169,6 +1268,7 @@ namespace Rebellion.Tests.Simulation
             defender.ShieldStrength = 10;
             defender.SublightSpeed = 10;
             GameConfig.SpaceCombatConfig config = CreateConfig();
+            config.LaserCannonCapitalDamageMultiplier = 1;
             config.AutoResolveRetreatStrengthRatio = 0.33;
 
             SpaceCombatResult result = Resolve(
