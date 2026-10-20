@@ -269,30 +269,28 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         /// <summary>
-        /// Keeps valid training assignments continuous without a picker repeat variant.
+        /// Completes training after one attempt without automatic repetition.
         /// </summary>
         [Test]
-        public void ShouldRepeatAfterCompletion_ValidAssignment_ReturnsTrue()
+        public void ShouldRepeatAfterCompletion_ValidAssignment_ReturnsFalse()
         {
             JediTrainingMission mission = CreateMission();
 
-            Assert.IsTrue(mission.ShouldRepeatAfterCompletion(_game));
+            Assert.IsFalse(mission.ShouldRepeatAfterCompletion(_game));
         }
 
         /// <summary>
-        /// Retains the team after successful and failed training cycles and releases it on recall.
+        /// Reports successful and failed attempts once and releases the team without repeating.
         /// </summary>
-        /// <param name="bonus">The training progress awarded on each attempt.</param>
-        /// <param name="outcome">The expected outcome for each attempt.</param>
+        /// <param name="bonus">The training progress awarded on the attempt.</param>
+        /// <param name="outcome">The expected outcome for the attempt.</param>
         [TestCase(0, MissionOutcome.Failed)]
         [TestCase(20, MissionOutcome.Success)]
-        public void ProcessTick_CompletedTraining_RepeatsUntilRecalled(
+        public void ProcessTick_CompletedTraining_ReportsOnceAndStops(
             int bonus,
             MissionOutcome outcome
         )
         {
-            _game.Config.ProbabilityTables.Mission.TickRanges.JediTraining.Base = 1;
-            _game.Config.ProbabilityTables.Mission.TickRanges.JediTraining.Spread = 0;
             JediTrainingMission mission = CreateMission();
             _game.MoveNode(_trainer, mission);
             _game.MoveNode(_student, mission);
@@ -307,31 +305,24 @@ namespace Rebellion.Tests.Game.Missions
             );
             MissionCommands commands = TestSystems.CreateMissionCommands(
                 _game,
-                // Each cycle checks both officers' loyalty before training and its next duration.
-                new SequenceRNG(intValues: new[] { 0, 0, 0, 0, bonus, 0, 0, 0, 0, 0, bonus, 0 }),
+                // Both officers' loyalty is checked before the training attempt.
+                new SequenceRNG(intValues: new[] { 0, 0, 0, 0, bonus }),
                 movement
             );
 
-            for (int attempt = 0; attempt < 2; attempt++)
-            {
-                MissionCompletedResult completed = commands
-                    .ProcessMissionTick(_game)
-                    .OfType<MissionCompletedResult>()
-                    .Single();
-                Assert.AreEqual(outcome, completed.Outcome);
-                Assert.IsTrue(completed.CanContinue);
-                Assert.AreSame(_planet, mission.GetParent());
-                Assert.AreSame(mission, _trainer.GetParent());
-                Assert.AreSame(mission, _student.GetParent());
-                Assert.AreEqual(0, mission.CurrentProgress);
-                Assert.AreEqual(1, mission.MaxProgress);
-            }
-
-            Assert.AreEqual(bonus * 2, _student.ForceTrainingAdjustment);
-            Assert.IsTrue(commands.AbortMission(mission.InstanceID));
+            MissionCompletedResult completed = commands
+                .ProcessMissionTick(_game)
+                .OfType<MissionCompletedResult>()
+                .Single();
+            Assert.AreEqual(outcome, completed.Outcome);
+            Assert.IsFalse(completed.CanContinue);
             Assert.IsNull(mission.GetParent());
             Assert.IsFalse(_trainer.IsOnMission());
             Assert.IsFalse(_student.IsOnMission());
+            Assert.AreSame(_planet, _trainer.GetParent());
+            Assert.AreSame(_planet, _student.GetParent());
+            Assert.IsEmpty(commands.ProcessMissionTick(_game).OfType<MissionCompletedResult>());
+            Assert.AreEqual(bonus, _student.ForceTrainingAdjustment);
         }
 
         /// <summary>
