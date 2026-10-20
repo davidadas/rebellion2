@@ -5,7 +5,6 @@ using System.Linq;
 using System.Xml;
 using System.Xml.Schema;
 using Rebellion.Game;
-using Rebellion.Game.Combat;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
