@@ -573,7 +573,7 @@ public sealed class MissionCreateWindowController
         {
             choices.Add(new StrategyMissionChoice(option));
             if (option.CanRepeat)
-                choices.Add(new StrategyMissionChoice(option, repeat: true));
+                choices.Add(new StrategyMissionChoice(option, isRepeating: true));
         }
 
         return choices;
@@ -823,7 +823,7 @@ internal sealed class MissionCreateWindowSession
             Location = planet,
             SelectedTarget = target,
             Discipline = choice.Discipline,
-            Repeat = choice.Repeat,
+            IsRepeating = choice.IsRepeating,
             MainParticipants = agents.ToList(),
             DecoyParticipants = decoys.ToList(),
         };

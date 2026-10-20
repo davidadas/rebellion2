@@ -239,7 +239,7 @@ namespace Rebellion.Game.Missions
                 MainParticipants = context.MainParticipants ?? new List<IMissionParticipant>(),
                 DecoyParticipants = context.DecoyParticipants ?? new List<IMissionParticipant>(),
                 Discipline = context.Discipline,
-                Repeat = context.Repeat,
+                IsRepeating = context.IsRepeating,
             };
 
             if (resolvedContext.MainParticipants.Count == 0)

@@ -169,7 +169,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             );
             _choices.Clear();
             _choices.Add(new StrategyMissionChoice(option));
-            _choices.Add(new StrategyMissionChoice(option, repeat: true));
+            _choices.Add(new StrategyMissionChoice(option, isRepeating: true));
             MissionCreateWindowSession session = CreateSession();
             session.SelectMission(1);
             MissionContext repeating = session.CreateMissionContext(
@@ -184,8 +184,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 _target.Item
             );
 
-            Assert.IsTrue(repeating.Repeat);
-            Assert.IsFalse(normal.Repeat);
+            Assert.IsTrue(repeating.IsRepeating);
+            Assert.IsFalse(normal.IsRepeating);
             Assert.AreEqual(repeating.MissionTypeID, normal.MissionTypeID);
             Assert.AreSame(repeating.Location, normal.Location);
             CollectionAssert.AreEqual(repeating.MainParticipants, normal.MainParticipants);

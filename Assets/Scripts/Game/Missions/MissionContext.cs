@@ -23,7 +23,7 @@ namespace Rebellion.Game.Missions
         /// <summary>
         /// Whether the selected picker entry requests repeated attempts; defaults to false.
         /// </summary>
-        public bool Repeat { get; set; }
+        public bool IsRepeating { get; set; }
 
         /// <summary>
         /// Instance ID of the faction that will own the mission.
