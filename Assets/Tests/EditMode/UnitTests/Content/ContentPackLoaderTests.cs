@@ -95,6 +95,67 @@ namespace Rebellion.Tests.Content
             Assert.AreEqual(0, ordinaryShip.SectorSuppression);
         }
 
+        /// <summary>
+        /// Verifies that the Anniversary scenario retains its difficulty, controller, and size budgets.
+        /// </summary>
+        [Test]
+        public void OpenActive_AnniversaryPack_LoadsPreservedStartingBudgets()
+        {
+            ContentPack pack = ContentPackLoader.OpenExact(
+                TestContent.Pack.ContentRootPath,
+                "twenty-fifth-anniversary",
+                "standard",
+                Array.Empty<string>()
+            );
+            Assert.AreEqual("1.0.0", pack.Definition.Version);
+            int[] easy = { 33, 25, 20 };
+            int[] human = { 25, 20, 15 };
+            int[] ai = { 38, 30, 25 };
+            foreach (string player in new[] { "FNALL1", "FNEMP1" })
+            foreach (
+                GameDifficulty difficulty in new[]
+                {
+                    GameDifficulty.Easy,
+                    GameDifficulty.Medium,
+                    GameDifficulty.Hard,
+                }
+            )
+            foreach (
+                FactionBudget budget in pack.GameData.GenerationConfig.UnitDeployment.FactionBudgets
+            )
+            {
+                GameSummary summary = new GameSummary
+                {
+                    PlayerFactionID = player,
+                    Difficulty = difficulty,
+                };
+                int[] expected =
+                    difficulty == GameDifficulty.Easy ? easy
+                    : budget.FactionID == player ? human
+                    : ai;
+                for (int size = 0; size < expected.Length; size++)
+                    Assert.AreEqual(
+                        expected[size],
+                        budget
+                            .ResolveBudgetLevels(summary)
+                            .Single(level => level.GalaxySize == size)
+                            .Percentage
+                    );
+            }
+            Assert.AreEqual(
+                "REAL002",
+                pack.GameData.Factions.Single(faction =>
+                    faction.InstanceID == "FNALL1"
+                ).GarrisonTroopTypeID
+            );
+            Assert.AreEqual(
+                "REEM002",
+                pack.GameData.Factions.Single(faction =>
+                    faction.InstanceID == "FNEMP1"
+                ).GarrisonTroopTypeID
+            );
+        }
+
         [Test]
         public void OpenActive_DetectionBlockingFacilities_LoadExpectedFlags()
         {

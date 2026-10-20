@@ -774,6 +774,57 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             );
         }
 
+        /// <summary>
+        /// Verifies that editing starting forces updates the active override and preserves its base value.
+        /// </summary>
+        [Test]
+        public void Apply_AnniversaryStartingForceOverride_UpdatesSelectedBudget()
+        {
+            ContentPack pack = ContentPackLoader.OpenExact(
+                TestContent.Pack.ContentRootPath,
+                "twenty-fifth-anniversary",
+                "standard",
+                Array.Empty<string>()
+            );
+            summary = GameLaunchContext.CreateDefaultSummary(pack);
+            summary.GalaxySize = GameSize.Small;
+            summary.Difficulty = GameDifficulty.Hard;
+            GameSummary applied = null;
+            view.StartRequested += (_, launchSummary) => applied = launchSummary;
+            view.Initialize(pack, summary);
+            view.SelectCategory(NewGameSettingsCategory.WorldGeneration);
+            Assert.AreEqual("25", TableInput("starting-forces", "Player").text);
+            Assert.AreEqual("38", TableInput("starting-forces", "AI").text);
+
+            TableInput("starting-forces", "AI").onEndEdit.Invoke("50");
+            ApplyButton().onClick.Invoke();
+
+            FactionBudget budget =
+                applied.GenerationConfigOverride.UnitDeployment.FactionBudgets.Single(candidate =>
+                    candidate.FactionID != summary.PlayerFactionID
+                );
+            Assert.AreEqual(
+                50,
+                budget
+                    .ResolveBudgetLevels(applied)
+                    .Single(level => level.GalaxySize == 0)
+                    .Percentage
+            );
+            Assert.AreEqual(
+                33,
+                budget.BudgetLevels.Single(level => level.GalaxySize == 0).Percentage
+            );
+            Assert.AreEqual(
+                38,
+                pack.GameData.GenerationConfig.UnitDeployment.FactionBudgets.Single(candidate =>
+                        candidate.FactionID == budget.FactionID
+                    )
+                    .ResolveBudgetLevels(summary)
+                    .Single(level => level.GalaxySize == 0)
+                    .Percentage
+            );
+        }
+
         [Test]
         public void Apply_PerFactionResearchLevels_PublishesIndependentValues()
         {

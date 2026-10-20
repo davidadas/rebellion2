@@ -569,7 +569,7 @@ internal sealed class CustomGameSettingsSession
         currentGenerationSection = "STARTING OFFICERS";
         AddOfficerEntries(pack.GameData.Factions, summary.GalaxySize);
         currentGenerationSection = "STARTING FORCES";
-        AddStartingForceEntries(pack.GameData.Factions, summary.GalaxySize);
+        AddStartingForceEntries(pack.GameData.Factions, summary);
         currentGenerationSection = "CORE WORLD CONTROL";
         AddGalaxyClassificationEntries(pack, summary);
         AddResourceEntries(summary.ResourceAvailability);
@@ -798,8 +798,8 @@ internal sealed class CustomGameSettingsSession
     /// Adds each faction's variable starting-unit budget for the selected galaxy size.
     /// </summary>
     /// <param name="factions">The active faction templates in display order.</param>
-    /// <param name="galaxySize">The selected galaxy size.</param>
-    private void AddStartingForceEntries(IReadOnlyList<Faction> factions, GameSize galaxySize)
+    /// <param name="summary">The selected galaxy size, difficulty, and player faction.</param>
+    private void AddStartingForceEntries(IReadOnlyList<Faction> factions, GameSummary summary)
     {
         foreach (Faction faction in factions)
         {
@@ -810,10 +810,9 @@ internal sealed class CustomGameSettingsSession
             if (budgetIndex < 0)
                 continue;
             List<BudgetLevel> levels = generationDefaults
-                .UnitDeployment
-                .FactionBudgets[budgetIndex]
-                .BudgetLevels;
-            int levelIndex = levels.FindIndex(level => level.GalaxySize == (int)galaxySize);
+                .UnitDeployment.FactionBudgets[budgetIndex]
+                .ResolveBudgetLevels(summary);
+            int levelIndex = levels.FindIndex(level => level.GalaxySize == (int)summary.GalaxySize);
             if (levelIndex < 0)
                 levelIndex = 0;
 
@@ -827,15 +826,13 @@ internal sealed class CustomGameSettingsSession
                 100,
                 config =>
                     config
-                        .UnitDeployment
-                        .FactionBudgets[budgetIndex]
-                        .BudgetLevels[levelIndex]
+                        .UnitDeployment.FactionBudgets[budgetIndex]
+                        .ResolveBudgetLevels(summary)[levelIndex]
                         .Percentage,
                 (config, value) =>
                     config
-                        .UnitDeployment
-                        .FactionBudgets[budgetIndex]
-                        .BudgetLevels[levelIndex]
+                        .UnitDeployment.FactionBudgets[budgetIndex]
+                        .ResolveBudgetLevels(summary)[levelIndex]
                         .Percentage = value
             );
         }

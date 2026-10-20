@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.Game.Factions;
 using Rebellion.Util.Serialization;
 
@@ -315,8 +316,43 @@ namespace Rebellion.Game
     {
         public string FactionID { get; set; }
         public List<BudgetLevel> BudgetLevels { get; set; }
+        public List<StartingUnitBudgetOverride> Overrides { get; set; } =
+            new List<StartingUnitBudgetOverride>();
         public List<WeightedUnitEntry> UnitTable { get; set; }
         public List<StartingUnitBudgetBonus> Bonuses { get; set; }
+
+        /// <summary>
+        /// Selects starting budgets for the launch difficulty and this faction's controller role.
+        /// </summary>
+        /// <param name="summary">The launch settings, or null to use the base budget.</param>
+        /// <returns>The matching override's levels, or the base levels when no override applies.</returns>
+        public List<BudgetLevel> ResolveBudgetLevels(GameSummary summary)
+        {
+            if (summary == null || string.IsNullOrEmpty(summary.PlayerFactionID))
+                return BudgetLevels;
+            PlayerControllerType controller =
+                FactionID == summary.PlayerFactionID
+                    ? PlayerControllerType.Human
+                    : PlayerControllerType.AI;
+            return Overrides
+                    ?.FirstOrDefault(candidate =>
+                        candidate.Difficulty == summary.Difficulty
+                        && candidate.ControllerType == controller
+                    )
+                    ?.BudgetLevels
+                ?? BudgetLevels;
+        }
+    }
+
+    /// <summary>
+    /// Replaces a faction's base starting-unit budget for one difficulty and controller role.
+    /// </summary>
+    [PersistableObject]
+    public class StartingUnitBudgetOverride
+    {
+        public GameDifficulty Difficulty { get; set; }
+        public PlayerControllerType ControllerType { get; set; }
+        public List<BudgetLevel> BudgetLevels { get; set; }
     }
 
     /// <summary>

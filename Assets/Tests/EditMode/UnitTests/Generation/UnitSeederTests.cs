@@ -681,6 +681,62 @@ namespace Rebellion.Tests.Generation
         }
 
         /// <summary>
+        /// Verifies that normal deployments consume the budget selected by difficulty and controller.
+        /// </summary>
+        /// <param name="difficulty">The launch difficulty.</param>
+        /// <param name="playerFactionID">The human faction, or null for the base-budget fallback.</param>
+        /// <param name="expectedShips">The number of affordable ships.</param>
+        [TestCase(GameDifficulty.Hard, "FNALL1", 3)]
+        [TestCase(GameDifficulty.Hard, "FNEMP1", 2)]
+        [TestCase(GameDifficulty.Medium, "FNALL1", 1)]
+        [TestCase(GameDifficulty.Easy, "FNEMP1", 1)]
+        [TestCase(GameDifficulty.Hard, null, 1)]
+        public void Seed_StartingBudgetOverrides_UsesMatchingDifficultyAndController(
+            GameDifficulty difficulty,
+            string playerFactionID,
+            int expectedShips
+        )
+        {
+            (GenerationContext context, Planet planet) = CreateStartingUnitBonusContext(
+                StartingUnitBudgetCategory.Regiment
+            );
+            context.Summary.Difficulty = difficulty;
+            context.Summary.PlayerFactionID = playerFactionID;
+            FactionBudget budget = context.Config.UnitDeployment.FactionBudgets.Single();
+            budget.Bonuses.Clear();
+            budget.Overrides.Add(
+                new StartingUnitBudgetOverride
+                {
+                    Difficulty = GameDifficulty.Hard,
+                    ControllerType = PlayerControllerType.AI,
+                    BudgetLevels = new List<BudgetLevel>
+                    {
+                        new BudgetLevel { GalaxySize = 0, Percentage = 75 },
+                        new BudgetLevel { GalaxySize = 1, Percentage = 100 },
+                    },
+                }
+            );
+            budget.Overrides.Add(
+                new StartingUnitBudgetOverride
+                {
+                    Difficulty = GameDifficulty.Hard,
+                    ControllerType = PlayerControllerType.Human,
+                    BudgetLevels = new List<BudgetLevel>
+                    {
+                        new BudgetLevel { GalaxySize = 0, Percentage = 50 },
+                    },
+                }
+            );
+
+            new UnitSeeder().Seed(context);
+
+            Assert.AreEqual(
+                expectedShips,
+                planet.GetChildren<Fleet>().Single().GetChildren<CapitalShip>().Count
+            );
+        }
+
+        /// <summary>
         /// Creates a seeded planet and context for starting-unit bonus tests.
         /// </summary>
         /// <param name="category">The category receiving the test bonus.</param>

@@ -405,7 +405,7 @@ namespace Rebellion.Generation
                     factory,
                     CalculateDeployBudget(
                         allocation.AvailableCapacity,
-                        allocation.Budget.BudgetLevels,
+                        allocation.Budget.ResolveBudgetLevels(ctx.Summary),
                         (int)ctx.Summary.GalaxySize
                     )
                 );

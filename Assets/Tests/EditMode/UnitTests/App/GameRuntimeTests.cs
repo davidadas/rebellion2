@@ -125,6 +125,64 @@ namespace Rebellion.Tests.App
             Assert.AreEqual(expected, ship.SectorSuppression);
         }
 
+        /// <summary>
+        /// Verifies that saved Anniversary campaigns retain their world state after setup migration.
+        /// </summary>
+        /// <param name="playerFactionID">The human faction selected at launch.</param>
+        [TestCase("FNALL1")]
+        [TestCase("FNEMP1")]
+        public void StartLoadedGame_AnniversaryCampaign_PreservesSavedProgress(
+            string playerFactionID
+        )
+        {
+            ContentPack pack = ContentPackLoader.OpenExact(
+                TestContent.Pack.ContentRootPath,
+                "twenty-fifth-anniversary",
+                "standard",
+                Array.Empty<string>()
+            );
+            GameSummary summary = GameLaunchContext.CreateDefaultSummary(pack);
+            summary.PlayerFactionID = playerFactionID;
+            summary.GalaxySize = GameSize.Small;
+            summary.Difficulty = GameDifficulty.Hard;
+            summary.Seed = 25;
+            GameRoot game = new GameBuilder(summary, pack.GameData).Build();
+            game.CurrentTick = 123;
+            Planet planet = game
+                .Galaxy.GetChildren<PlanetSector>()
+                .SelectMany(sector => sector.GetChildren<Planet>())
+                .First(candidate => candidate.OwnerInstanceID == playerFactionID);
+            planet.SetPopularSupport(playerFactionID, 73);
+            CapitalShip ship = game.GetRegisteredSceneNodesByType<CapitalShip>().First();
+            ship.CurrentHullStrength = 1;
+            _saveGameManager.SaveGameData(game, "anniversary-campaign", "Anniversary Campaign");
+            GameRoot restored = _saveGameManager.LoadGameData("anniversary-campaign");
+            GameRuntime runtime = new GameRuntime(pack, _saveGameManager, () => _gameplaySettings);
+
+            runtime.StartLoadedGame(restored);
+
+            Assert.AreEqual(123, restored.CurrentTick);
+            Assert.AreEqual(
+                73,
+                restored
+                    .Galaxy.GetChildren<PlanetSector>()
+                    .SelectMany(sector => sector.GetChildren<Planet>())
+                    .Single(candidate => candidate.InstanceID == planet.InstanceID)
+                    .GetPopularSupport(playerFactionID)
+            );
+            Assert.AreEqual(
+                1,
+                restored
+                    .GetRegisteredSceneNodesByType<CapitalShip>()
+                    .Single(candidate => candidate.InstanceID == ship.InstanceID)
+                    .CurrentHullStrength
+            );
+            Assert.AreEqual(
+                game.GetRegisteredSceneNodesByType<CapitalShip>().Count,
+                restored.GetRegisteredSceneNodesByType<CapitalShip>().Count
+            );
+        }
+
         [Test]
         public void StartLoadedGame_LegacyFactionSettings_RestoresActiveContentSettings()
         {
