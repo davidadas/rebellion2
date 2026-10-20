@@ -438,6 +438,70 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.AreEqual(310f, scrollRoot.sizeDelta.y);
         }
 
+        /// <summary>
+        /// Keeps the themed settings scrollbar at its authored width when switching layouts.
+        /// </summary>
+        [Test]
+        public void SelectCategory_GameSetup_PreservesSharedScrollbarStyle()
+        {
+            view.Initialize(TestContent.Pack, summary, optionsPrefab, null);
+            view.SelectCategory(NewGameSettingsCategory.GameSetup);
+            ScrollAreaView area = instance.GetComponentInChildren<ScrollAreaView>();
+            Scrollbar scrollbar = area.GetComponentInChildren<Scrollbar>(true);
+            RectInt bounds = UILayout.GetSourceRect(scrollbar.transform as RectTransform);
+
+            Assert.AreEqual(12, bounds.width);
+            Assert.AreEqual(342, bounds.xMax);
+            Assert.IsEmpty(scrollbar.GetComponentsInChildren<RawImage>(true));
+            Assert.IsTrue(
+                scrollbar
+                    .handleRect.GetComponentsInChildren<Image>(true)
+                    .Any(image => image.type == Image.Type.Sliced)
+            );
+            Assert.LessOrEqual(area.ViewportWidth, bounds.x);
+        }
+
+        /// <summary>
+        /// Fits every cloned selector and both arrow glyphs within the available viewport.
+        /// </summary>
+        [Test]
+        public void SelectCategory_GameSetup_KeepsClonedSelectorsWithinViewport()
+        {
+            view.Initialize(TestContent.Pack, summary, optionsPrefab, null);
+            view.SelectCategory(NewGameSettingsCategory.GameSetup);
+            ScrollAreaView area = instance.GetComponentInChildren<ScrollAreaView>();
+
+            foreach (
+                OptionsChoiceFieldView choice in instance.GetComponentsInChildren<OptionsChoiceFieldView>()
+            )
+            {
+                RectTransform root = choice.transform as RectTransform;
+                Assert.LessOrEqual(
+                    UILayout.GetSourceRect(root).xMax,
+                    area.ViewportWidth,
+                    choice.name
+                );
+                foreach (string name in new[] { "Badge", "Previous/Glyph", "Value", "Next/Glyph" })
+                {
+                    RectTransform child = root.Find(name) as RectTransform;
+                    Bounds bounds = RectTransformUtility.CalculateRelativeRectTransformBounds(
+                        root,
+                        child
+                    );
+                    Assert.GreaterOrEqual(
+                        bounds.min.x,
+                        root.rect.xMin - 0.001f,
+                        choice.name + "/" + name
+                    );
+                    Assert.LessOrEqual(
+                        bounds.max.x,
+                        root.rect.xMax + 0.001f,
+                        choice.name + "/" + name
+                    );
+                }
+            }
+        }
+
         [Test]
         public void SelectCategory_GameSetup_ExplainsBaseDifficultyDefaults()
         {

@@ -1123,12 +1123,14 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     /// <param name="name">The cloned selector name.</param>
     /// <param name="x">The destination left coordinate.</param>
     /// <param name="y">The destination top coordinate.</param>
+    /// <param name="width">The space available for the destination selector.</param>
     /// <returns>The reusable cloned choice field.</returns>
     internal OptionsChoiceFieldView CloneContentPackChoice(
         Transform parent,
         string name,
         int x,
-        int y
+        int y,
+        int width
     )
     {
         Transform sourceParent = _contentPackValueField.transform.parent;
@@ -1144,7 +1146,8 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             _contentPackPrevButton,
             _contentPackNextButton,
             x,
-            y
+            y,
+            width
         );
     }
 

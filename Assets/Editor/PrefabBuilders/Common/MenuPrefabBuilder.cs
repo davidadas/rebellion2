@@ -25,14 +25,8 @@ public static class MenuPrefabBuilder
         "Application/OptionsMenu/UI/ui_settingsmenu_badge_background";
     internal const string _menuFrameGlowAddress =
         "Application/OptionsMenu/UI/ui_settingsmenu_frame_overlay";
-    internal const string _scrollAreaPrefabPath = "Assets/Prefabs/UI/Common/ScrollArea.prefab";
+    internal const string _scrollAreaPrefabPath = "Assets/Prefabs/UI/Common/MenuScrollArea.prefab";
     internal const string _textInputPrefabPath = "Assets/Prefabs/UI/Common/TextInput.prefab";
-    internal const string _scrollUpAddress =
-        "Application/Strategy/UI/Controls/ui_strategyview_scrollbar_arrow_up.png";
-    internal const string _scrollDownAddress =
-        "Application/Strategy/UI/Controls/ui_strategyview_scrollbar_arrow_pressed_2.png";
-    internal const string _scrollHandleAddress =
-        "Application/Strategy/UI/Controls/ui_strategyview_scrollbar_middle.png";
     internal static readonly Vector4 _panelBorder = new Vector4(7f, 7f, 7f, 7f);
     internal static readonly Vector4 _badgeBorder = new Vector4(6f, 6f, 6f, 6f);
     internal static readonly Color32 _buttonSurfaceColor = new Color32(35, 56, 80, 255);
@@ -42,9 +36,97 @@ public static class MenuPrefabBuilder
     /// </summary>
     internal static void RebuildSharedPrefabs()
     {
+        BuildScrollAreaPrefab();
         BuildWindowPrefab();
         BuildButtonPrefab(_navigationPrefabPath, _menuRowAddress, _panelBorder, 163, 28, 13);
         BuildButtonPrefab(_actionPrefabPath, _menuBadgeAddress, _badgeBorder, 76, 22, 11);
+    }
+
+    /// <summary>
+    /// Authors the menu theme once on the shared scroll control without replacing its behavior.
+    /// </summary>
+    private static void BuildScrollAreaPrefab()
+    {
+        ScrollAreaView view = CommonUIPrefabBuilder.CreateScrollAreaView(
+            "Assets/Prefabs/UI/Common/ScrollArea.prefab",
+            null,
+            "MenuScrollArea",
+            new RectInt(0, 0, 1, 1),
+            new RectInt(0, 0, 1, 1),
+            new RectInt(0, 0, 12, 24),
+            out _
+        );
+        Scrollbar scrollbar = view.GetComponentInChildren<Scrollbar>(true);
+        Image thumb = CreateScrollControlSurface(scrollbar.handleRect);
+        ApplyMenuSurfaceFeedback(scrollbar, thumb);
+        CreateScrollThumbGrip(thumb.rectTransform);
+        foreach (Button button in scrollbar.GetComponentsInChildren<Button>(true))
+        {
+            RectTransform rect = button.transform as RectTransform;
+            SetSourceRect(rect, 0, 0, 12, 12);
+            Image surface = CreateScrollControlSurface(rect);
+            ApplyMenuSurfaceFeedback(button, surface);
+            TextMeshProUGUI arrow = CreateTextLabel("Arrow", rect);
+            arrow.text = button.name == "ScrollUpButtonImage" ? "\u25b2" : "\u25bc";
+            arrow.fontSize = 8;
+            arrow.color = new Color(0.373f, 0.659f, 0.925f);
+            arrow.alignment = TextAlignmentOptions.Midline;
+            FillParent(arrow.rectTransform);
+        }
+
+        Image track = FindRequiredChild<Image>(scrollbar.transform, "TrackBackgroundImage");
+        track.color = new Color32(15, 23, 33, 255);
+        track.raycastTarget = false;
+        view.SetLayout(Vector2.zero, Vector2.one, Vector2.zero, new Vector2(12, 24));
+        SaveGeneratedPrefabAsset(view.gameObject, _scrollAreaPrefabPath);
+        UnityEngine.Object.DestroyImmediate(view.gameObject);
+    }
+
+    /// <summary>
+    /// Replaces a texture-stretched scroll visual with the menu's sliced, content-bound surface.
+    /// </summary>
+    /// <param name="parent">The existing handle or arrow rectangle.</param>
+    /// <returns>The surface receiving pointer and hover feedback.</returns>
+    private static Image CreateScrollControlSurface(RectTransform parent)
+    {
+        UnityEngine.Object.DestroyImmediate(parent.GetComponent<ContentPressVisualBinding>());
+        UnityEngine.Object.DestroyImmediate(parent.GetComponent<RawImagePressVisual>());
+        UnityEngine.Object.DestroyImmediate(parent.GetComponent<ContentTextureBinding>());
+        UnityEngine.Object.DestroyImmediate(parent.GetComponent<RawImage>());
+        Image surface = CreateSlicedImage(
+            "Surface",
+            parent,
+            _menuRowAddress,
+            _panelBorder,
+            0,
+            0,
+            12,
+            12,
+            Color.white
+        );
+        FillParent(surface.rectTransform);
+        surface.raycastTarget = true;
+        return CreateMenuControlSurface(surface);
+    }
+
+    /// <summary>
+    /// Adds a centered grip that stays legible as the thumb changes height.
+    /// </summary>
+    /// <param name="handle">The proportional thumb rectangle.</param>
+    private static void CreateScrollThumbGrip(RectTransform handle)
+    {
+        RectTransform grip = CreateLayer("Grip", handle).GetComponent<RectTransform>();
+        grip.anchorMin = grip.anchorMax = grip.pivot = new Vector2(0.5f, 0.5f);
+        grip.sizeDelta = new Vector2(6, 5);
+        grip.anchoredPosition = Vector2.zero;
+        for (int index = 0; index < 3; index++)
+        {
+            GameObject line = CreateLayer($"Line{index}", grip);
+            SetSourceRect(line.GetComponent<RectTransform>(), 0, index * 2, 6, 1);
+            Image image = line.AddComponent<Image>();
+            image.color = new Color(0.373f, 0.659f, 0.925f);
+            image.raycastTarget = false;
+        }
     }
 
     /// <summary>
@@ -360,7 +442,16 @@ public static class MenuPrefabBuilder
     /// <returns>The clipped surface image.</returns>
     internal static Image CreateMenuButtonSurface(Button button)
     {
-        Image buttonImage = button.targetGraphic as Image;
+        return CreateMenuControlSurface(button.targetGraphic as Image);
+    }
+
+    /// <summary>
+    /// Fills a menu control's sliced frame with the shared hoverable surface.
+    /// </summary>
+    /// <param name="frame">The content-bound frame defining the control's shape.</param>
+    /// <returns>The clipped surface receiving interaction feedback.</returns>
+    private static Image CreateMenuControlSurface(Image frame)
+    {
         GameObject maskObject = new GameObject(
             "SurfaceMask",
             typeof(RectTransform),
@@ -368,17 +459,17 @@ public static class MenuPrefabBuilder
             typeof(Image),
             typeof(Mask)
         );
-        maskObject.transform.SetParent(button.transform, false);
+        maskObject.transform.SetParent(frame.transform, false);
         maskObject.transform.SetAsFirstSibling();
         RectTransform maskRect = maskObject.GetComponent<RectTransform>();
         FillParent(maskRect);
 
         Image maskImage = maskObject.GetComponent<Image>();
-        maskImage.sprite = buttonImage.sprite;
-        maskImage.type = buttonImage.type;
-        maskImage.pixelsPerUnitMultiplier = buttonImage.pixelsPerUnitMultiplier;
+        maskImage.sprite = frame.sprite;
+        maskImage.type = frame.type;
+        maskImage.pixelsPerUnitMultiplier = frame.pixelsPerUnitMultiplier;
         maskImage.raycastTarget = false;
-        ContentSpriteBinding frameBinding = buttonImage.GetComponent<ContentSpriteBinding>();
+        ContentSpriteBinding frameBinding = frame.GetComponent<ContentSpriteBinding>();
         maskObject
             .AddComponent<ContentSpriteBinding>()
             .SetAddress(frameBinding.Address, frameBinding.Border);
@@ -710,107 +801,15 @@ public static class MenuPrefabBuilder
         out RectTransform contentRoot
     )
     {
-        ScrollAreaView view = InstantiatePrefabComponent<ScrollAreaView>(
+        return CommonUIPrefabBuilder.CreateScrollAreaView(
             _scrollAreaPrefabPath,
-            parent
+            parent,
+            name,
+            new RectInt(x, y, width, height),
+            new RectInt(viewportX, viewportY, viewportWidth, viewportHeight),
+            new RectInt(scrollbarX, scrollbarY, scrollbarWidth, scrollbarHeight),
+            out contentRoot
         );
-        GameObject root = view.gameObject;
-        root.name = name;
-        root.SetActive(false);
-        SetSourceRect(root.GetComponent<RectTransform>(), x, y, width, height);
-        view.enabled = true;
-
-        RectTransform scrollRoot = view.ScrollRoot;
-        SetSourceRect(scrollRoot, viewportX, viewportY, viewportWidth, viewportHeight);
-        ScrollRect scrollRect = scrollRoot.GetComponent<ScrollRect>();
-        scrollRect.horizontal = false;
-        scrollRect.vertical = true;
-        scrollRect.movementType = ScrollRect.MovementType.Clamped;
-        scrollRect.inertia = false;
-
-        RectTransform viewportRect = view.ViewportRoot;
-        SetSourceRect(viewportRect, 0, 0, viewportWidth, viewportHeight);
-        Image viewportImage = viewportRect.GetComponent<Image>();
-        viewportImage.color = Color.clear;
-        viewportImage.raycastTarget = true;
-
-        contentRoot = view.ContentRoot;
-        SetSourceRect(contentRoot, 0, 0, viewportWidth, viewportHeight);
-        scrollRect.viewport = viewportRect;
-        scrollRect.content = contentRoot;
-
-        Scrollbar scrollbar = view.GetComponentInChildren<Scrollbar>(true);
-        if (scrollbar == null)
-            throw new MissingReferenceException($"{name}/Scrollbar is missing.");
-        scrollbar.handleRect = null;
-        SetSourceRect(
-            scrollbar.transform as RectTransform,
-            scrollbarX,
-            scrollbarY,
-            scrollbarWidth,
-            scrollbarHeight
-        );
-
-        Texture2D scrollUpTexture = LoadTexture(_scrollUpAddress);
-        Texture2D scrollDownTexture = LoadTexture(_scrollDownAddress);
-        int upArrowHeight = GetTextureHeight(scrollUpTexture, 9);
-        int downArrowHeight = GetTextureHeight(scrollDownTexture, 9);
-        int trackHeight = Mathf.Max(0, scrollbarHeight - upArrowHeight - downArrowHeight);
-
-        Image scrollbarBackground = scrollbar.GetComponent<Image>();
-        scrollbarBackground.color = Color.clear;
-        scrollbarBackground.raycastTarget = true;
-        scrollbar.direction = Scrollbar.Direction.BottomToTop;
-
-        Image trackBackground = FindRequiredChild<Image>(
-            scrollbar.transform,
-            "TrackBackgroundImage"
-        );
-        trackBackground.color = Color.black;
-        SetSourceRect(trackBackground.rectTransform, 0, upArrowHeight, scrollbarWidth, trackHeight);
-
-        RawImage scrollUpImage = FindRequiredChild<RawImage>(
-            scrollbar.transform,
-            "ScrollUpButtonImage"
-        );
-        scrollUpImage.texture = scrollUpTexture;
-        AttachTextureBinding(scrollUpImage, _scrollUpAddress);
-        SetSourceRect(scrollUpImage.rectTransform, 0, 0, scrollbarWidth, upArrowHeight);
-        ConfigureScrollButton(scrollUpImage);
-
-        RawImage scrollDownImage = FindRequiredChild<RawImage>(
-            scrollbar.transform,
-            "ScrollDownButtonImage"
-        );
-        scrollDownImage.texture = scrollDownTexture;
-        AttachTextureBinding(scrollDownImage, _scrollDownAddress);
-        SetSourceRect(
-            scrollDownImage.rectTransform,
-            0,
-            scrollbarHeight - downArrowHeight,
-            scrollbarWidth,
-            downArrowHeight
-        );
-        ConfigureScrollButton(scrollDownImage);
-
-        RectTransform slidingArea = FindRequiredChild<RectTransform>(
-            scrollbar.transform,
-            "SlidingArea"
-        );
-        SetSourceRect(slidingArea, 0, upArrowHeight, scrollbarWidth, trackHeight);
-        RawImage handleImage = FindRequiredChild<RawImage>(slidingArea, "Handle");
-        handleImage.texture = LoadTexture(_scrollHandleAddress);
-        AttachTextureBinding(handleImage, _scrollHandleAddress);
-        FillParent(handleImage.rectTransform);
-        handleImage.raycastTarget = true;
-        scrollbar.handleRect = handleImage.rectTransform;
-        scrollbar.targetGraphic = handleImage;
-        scrollbar.transition = Selectable.Transition.None;
-        scrollRect.verticalScrollbar = scrollbar;
-        scrollRect.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.Permanent;
-
-        root.SetActive(true);
-        return view;
     }
 
     /// <summary>
@@ -997,30 +996,6 @@ public static class MenuPrefabBuilder
         int separatorIndex = texturePath.LastIndexOf('/');
         int extensionIndex = texturePath.LastIndexOf('.');
         return extensionIndex > separatorIndex ? texturePath[..extensionIndex] : texturePath;
-    }
-
-    /// <summary>
-    /// Reads a texture's source height or uses a fallback when unavailable.
-    /// </summary>
-    /// <param name="texture">The texture whose source height is needed.</param>
-    /// <param name="fallback">The height used when metadata is unavailable.</param>
-    /// <returns>The usable source height.</returns>
-    internal static int GetTextureHeight(Texture texture, int fallback)
-    {
-        int height = UILayout.GetTextureSourceHeight(texture);
-        return height > 0 ? height : fallback;
-    }
-
-    /// <summary>
-    /// Configures an authored scrollbar arrow as a raw-image button.
-    /// </summary>
-    /// <param name="image">The arrow image to configure.</param>
-    internal static void ConfigureScrollButton(RawImage image)
-    {
-        image.raycastTarget = true;
-        Button button = image.GetComponent<Button>();
-        button.targetGraphic = image;
-        button.transition = Selectable.Transition.None;
     }
 
     /// <summary>

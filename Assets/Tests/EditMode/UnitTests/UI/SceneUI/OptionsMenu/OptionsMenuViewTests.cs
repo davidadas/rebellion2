@@ -115,6 +115,51 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             );
         }
 
+        /// <summary>
+        /// Keeps the Graphics form and themed scrollbar inside the panel in either menu host.
+        /// </summary>
+        /// <param name="showModsTab">Whether the host exposes content management.</param>
+        [TestCase(true)]
+        [TestCase(false)]
+        public void Render_GraphicsPage_InsetsScrollbarAndFitsSelectors(bool showModsTab)
+        {
+            _view.Render(CreateRenderDataForTab(OptionsMenuTab.Graphics, showModsTab: showModsTab));
+            ScrollAreaView area = GetField<ScrollAreaView>("_graphicsScrollArea");
+            Scrollbar scrollbar = area.GetComponentInChildren<Scrollbar>();
+            RectTransform page = area.transform.parent as RectTransform;
+            RectInt barBounds = UILayout.GetSourceRect(scrollbar.transform as RectTransform);
+
+            Assert.AreEqual(16, barBounds.y);
+            Assert.AreEqual(20, page.rect.width - barBounds.xMax);
+            Assert.LessOrEqual(barBounds.yMax, area.ViewportHeight);
+            Assert.IsEmpty(scrollbar.GetComponentsInChildren<RawImage>(true));
+            foreach (
+                RectTransform badge in area
+                    .ContentRoot.Cast<RectTransform>()
+                    .Where(child => child.name.EndsWith("Badge", StringComparison.Ordinal))
+            )
+                Assert.LessOrEqual(UILayout.GetSourceRect(badge).xMax, area.ViewportWidth);
+        }
+
+        /// <summary>
+        /// Preserves Graphics scrolling through value refreshes and resets it when returning.
+        /// </summary>
+        [Test]
+        public void Render_GraphicsPage_ResetsScrollOnlyWhenEntering()
+        {
+            OptionsMenuRenderData graphics = CreateRenderDataForTab(OptionsMenuTab.Graphics);
+            _view.Render(graphics);
+            ScrollAreaView area = GetField<ScrollAreaView>("_graphicsScrollArea");
+            area.VerticalNormalizedPosition = 0.5f;
+
+            _view.Render(graphics);
+            Assert.AreEqual(0.5f, area.VerticalNormalizedPosition, 0.001f);
+
+            _view.Render(CreateRenderDataForTab(OptionsMenuTab.Audio));
+            _view.Render(graphics);
+            Assert.AreEqual(1f, area.VerticalNormalizedPosition, 0.001f);
+        }
+
         [Test]
         public void SaveLoadPage_Default_UsesAuthoredSaveListSubview()
         {
@@ -752,6 +797,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.IsFalse(_root);
         }
 
+        /// <summary>
+        /// Keeps the pack label between the resolved arrow bounds, including edge anchors.
+        /// </summary>
         [Test]
         public void Render_LongContentPackName_KeepsTextWithinWideSelector()
         {
@@ -767,18 +815,23 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 .GetComponentInChildren<TextMeshProUGUI>();
             TextMeshProUGUI nextGlyph = GetField<Button>("_contentPackNextButton")
                 .GetComponentInChildren<TextMeshProUGUI>();
-            RectInt previousButtonRect = UILayout.GetSourceRect(
-                previousGlyph.transform.parent as RectTransform
+            Transform parent = value.transform.parent;
+            Bounds valueBounds = RectTransformUtility.CalculateRelativeRectTransformBounds(
+                parent,
+                value.rectTransform
             );
-            RectInt nextButtonRect = UILayout.GetSourceRect(
-                nextGlyph.transform.parent as RectTransform
+            Bounds previousBounds = RectTransformUtility.CalculateRelativeRectTransformBounds(
+                parent,
+                previousGlyph.rectTransform
             );
-            RectInt previousGlyphRect = UILayout.GetSourceRect(previousGlyph.rectTransform);
-            RectInt nextGlyphRect = UILayout.GetSourceRect(nextGlyph.rectTransform);
+            Bounds nextBounds = RectTransformUtility.CalculateRelativeRectTransformBounds(
+                parent,
+                nextGlyph.rectTransform
+            );
 
             Assert.GreaterOrEqual(valueRect.width, 270);
-            Assert.GreaterOrEqual(valueRect.x, previousButtonRect.x + previousGlyphRect.xMax);
-            Assert.LessOrEqual(valueRect.xMax, nextButtonRect.x + nextGlyphRect.x);
+            Assert.GreaterOrEqual(valueBounds.min.x, previousBounds.max.x);
+            Assert.LessOrEqual(valueBounds.max.x, nextBounds.min.x);
             Assert.AreEqual(TextOverflowModes.Ellipsis, value.overflowMode);
             Assert.AreEqual(TextWrappingModes.NoWrap, value.textWrappingMode);
             Assert.IsFalse(value.raycastTarget);
@@ -829,24 +882,33 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.AreEqual(-1, fullScreenDelta);
         }
 
-        [Test]
-        public void DisplaySteppers_Awake_ExpandAcrossCompleteValueBadge()
+        /// <summary>
+        /// Covers the whole selector badge with adjacent previous and next hit areas.
+        /// </summary>
+        /// <param name="previousField">The serialized previous button reference.</param>
+        /// <param name="nextField">The serialized next button reference.</param>
+        /// <param name="badgeName">The selector's badge object name.</param>
+        [TestCase("_resolutionPrevButton", "_resolutionNextButton", "ResolutionBadge")]
+        [TestCase("_fullScreenPrevButton", "_fullScreenNextButton", "DisplayBadge")]
+        public void DisplaySteppers_Awake_ExpandAcrossCompleteValueBadge(
+            string previousField,
+            string nextField,
+            string badgeName
+        )
         {
-            RectTransform resolutionPrevious = (RectTransform)
-                GetField<Button>("_resolutionPrevButton").transform;
-            RectTransform resolutionNext = (RectTransform)
-                GetField<Button>("_resolutionNextButton").transform;
-            RectTransform fullScreenPrevious = (RectTransform)
-                GetField<Button>("_fullScreenPrevButton").transform;
-            RectTransform fullScreenNext = (RectTransform)
-                GetField<Button>("_fullScreenNextButton").transform;
+            RectTransform previous = GetField<Button>(previousField).transform as RectTransform;
+            RectTransform next = GetField<Button>(nextField).transform as RectTransform;
+            RectInt previousBounds = UILayout.GetSourceRect(previous);
+            RectInt nextBounds = UILayout.GetSourceRect(next);
+            RectInt badgeBounds = UILayout.GetSourceRect(
+                previous.parent.Find(badgeName) as RectTransform
+            );
 
-            Assert.AreEqual(78f, resolutionPrevious.sizeDelta.x);
-            Assert.AreEqual(77f, resolutionNext.sizeDelta.x);
-            Assert.AreEqual(78f, fullScreenPrevious.sizeDelta.x);
-            Assert.AreEqual(77f, fullScreenNext.sizeDelta.x);
-            Assert.AreEqual(272f, resolutionNext.anchoredPosition.x);
-            Assert.AreEqual(272f, fullScreenNext.anchoredPosition.x);
+            Assert.AreEqual(badgeBounds.x, previousBounds.x);
+            Assert.AreEqual(previousBounds.xMax, nextBounds.x);
+            Assert.AreEqual(badgeBounds.xMax, nextBounds.xMax);
+            Assert.AreEqual(badgeBounds.height, previousBounds.height);
+            Assert.AreEqual(badgeBounds.height, nextBounds.height);
         }
 
         [Test]
