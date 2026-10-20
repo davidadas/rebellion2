@@ -78,6 +78,23 @@ namespace Rebellion.Tests.Content
             + "<MaintenanceCapacityPercent>150</MaintenanceCapacityPercent>"
             + "</GameModifier></Value></Entry></DifficultyModifiers></GameConfig>";
 
+        /// <summary>
+        /// Verifies that stock ship suppression is loaded independently from destruction capability.
+        /// </summary>
+        [Test]
+        public void OpenActive_SectorSuppression_LoadsAuthoredShipValues()
+        {
+            CapitalShip suppressionShip = TestContent.Pack.GameData.CapitalShips.Single(ship =>
+                ship.TypeID == "CSEM015"
+            );
+            CapitalShip ordinaryShip = TestContent.Pack.GameData.CapitalShips.Single(ship =>
+                ship.TypeID == "CSEM005"
+            );
+            Assert.AreEqual(2, suppressionShip.SectorSuppression);
+            Assert.IsTrue(suppressionShip.CanDestroyPlanets);
+            Assert.AreEqual(0, ordinaryShip.SectorSuppression);
+        }
+
         [Test]
         public void OpenActive_DetectionBlockingFacilities_LoadExpectedFlags()
         {

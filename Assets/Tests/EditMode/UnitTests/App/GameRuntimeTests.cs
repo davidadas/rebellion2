@@ -89,6 +89,42 @@ namespace Rebellion.Tests.App
             Assert.AreSame(manager, _runtime.GetActiveGameManager());
         }
 
+        /// <summary>
+        /// Verifies that missing ship suppression values use content while explicit values survive loading.
+        /// </summary>
+        /// <param name="savedDivisor">The saved value, or null for a legacy unit without this property.</param>
+        /// <param name="expected">The restored ship divisor.</param>
+        [TestCase(null, 2)]
+        [TestCase(0, 0)]
+        [TestCase(3, 3)]
+        public void StartLoadedGame_SectorSuppression_RestoresOnlyMissingValues(
+            int? savedDivisor,
+            int expected
+        )
+        {
+            GameRoot game = CreateGame();
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
+            Planet planet = new Planet { InstanceID = "planet" };
+            Fleet fleet = new Fleet { InstanceID = "fleet" };
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "retained-ship",
+                TypeID = "CSEM015",
+                CanDestroyPlanets = true,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            if (savedDivisor.HasValue)
+                ship.SectorSuppression = savedDivisor.Value;
+            game.AttachNode(sector, game.Galaxy);
+            game.AttachNode(planet, sector);
+            game.AttachNode(fleet, planet);
+            game.AttachNode(ship, fleet);
+
+            _runtime.StartLoadedGame(game);
+
+            Assert.AreEqual(expected, ship.SectorSuppression);
+        }
+
         [Test]
         public void StartLoadedGame_LegacyFactionSettings_RestoresActiveContentSettings()
         {
