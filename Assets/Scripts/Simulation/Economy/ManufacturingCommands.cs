@@ -172,6 +172,8 @@ namespace Rebellion.Simulation
             int count
         )
         {
+            // The public order boundary validates maintenance for the complete batch before this
+            // loop. Each item still receives destination and ownership validation below.
             bool started = false;
             Fleet capitalShipDestination = null;
             Planet destinationPlanet = destination as Planet;
@@ -196,11 +198,21 @@ namespace Rebellion.Simulation
                 bool enqueued;
                 if (destinationFleet != null)
                 {
-                    enqueued = Enqueue(producer, item, destinationFleet);
+                    enqueued = TryEnqueue(
+                        producer,
+                        item,
+                        destinationFleet,
+                        checkMaintenanceHeadroom: false
+                    );
                 }
                 else if (destinationShip != null)
                 {
-                    enqueued = Enqueue(producer, item, destinationShip);
+                    enqueued = TryEnqueue(
+                        producer,
+                        item,
+                        destinationShip,
+                        checkMaintenanceHeadroom: false
+                    );
                 }
                 else if (destinationPlanet != null && item is CapitalShip)
                 {
@@ -211,11 +223,21 @@ namespace Rebellion.Simulation
                     if (capitalShipDestination == null)
                         return started;
 
-                    enqueued = Enqueue(producer, item, capitalShipDestination);
+                    enqueued = TryEnqueue(
+                        producer,
+                        item,
+                        capitalShipDestination,
+                        checkMaintenanceHeadroom: false
+                    );
                 }
                 else if (destinationPlanet != null)
                 {
-                    enqueued = Enqueue(producer, item, destinationPlanet);
+                    enqueued = TryEnqueue(
+                        producer,
+                        item,
+                        destinationPlanet,
+                        checkMaintenanceHeadroom: false
+                    );
                 }
                 else
                 {
@@ -391,6 +413,24 @@ namespace Rebellion.Simulation
         /// <returns>True when the item was queued; otherwise, false.</returns>
         public bool Enqueue(Planet planet, IManufacturable item, Planet destination)
         {
+            return TryEnqueue(planet, item, destination, checkMaintenanceHeadroom: true);
+        }
+
+        /// <summary>
+        /// Attempts to enqueue an item for delivery to a planet.
+        /// </summary>
+        /// <param name="planet">The planet where production occurs.</param>
+        /// <param name="item">The item to manufacture.</param>
+        /// <param name="destination">The planet receiving the completed item.</param>
+        /// <param name="checkMaintenanceHeadroom">Whether to validate faction maintenance before enqueueing.</param>
+        /// <returns>True when the item was queued; otherwise, false.</returns>
+        private bool TryEnqueue(
+            Planet planet,
+            IManufacturable item,
+            Planet destination,
+            bool checkMaintenanceHeadroom
+        )
+        {
             Faction faction = GetValidatedFaction(planet, item);
             if (faction == null || !IsLiveDestination(destination))
                 return false;
@@ -410,7 +450,7 @@ namespace Rebellion.Simulation
             if (!destination.CanAcceptChild(item))
                 return false;
 
-            if (!HasMaintenanceHeadroom(faction, item))
+            if (checkMaintenanceHeadroom && !HasMaintenanceHeadroom(faction, item))
                 return false;
 
             _game.AttachNode(item, destination);
@@ -439,6 +479,24 @@ namespace Rebellion.Simulation
         /// <param name="destination">The fleet receiving the completed item.</param>
         /// <returns>True when the item was queued; otherwise, false.</returns>
         public bool Enqueue(Planet planet, IManufacturable item, Fleet destination)
+        {
+            return TryEnqueue(planet, item, destination, checkMaintenanceHeadroom: true);
+        }
+
+        /// <summary>
+        /// Attempts to enqueue an item for delivery to a fleet.
+        /// </summary>
+        /// <param name="planet">The planet where production occurs.</param>
+        /// <param name="item">The item to manufacture.</param>
+        /// <param name="destination">The fleet receiving the completed item.</param>
+        /// <param name="checkMaintenanceHeadroom">Whether to validate faction maintenance before enqueueing.</param>
+        /// <returns>True when the item was queued; otherwise, false.</returns>
+        private bool TryEnqueue(
+            Planet planet,
+            IManufacturable item,
+            Fleet destination,
+            bool checkMaintenanceHeadroom
+        )
         {
             Faction faction = GetValidatedFaction(planet, item);
             if (faction == null || !IsLiveDestination(destination))
@@ -483,7 +541,7 @@ namespace Rebellion.Simulation
             if (!parent.CanAcceptChild(item))
                 return false;
 
-            if (!HasMaintenanceHeadroom(faction, item))
+            if (checkMaintenanceHeadroom && !HasMaintenanceHeadroom(faction, item))
                 return false;
 
             _game.AttachNode(item, parent);
@@ -511,6 +569,24 @@ namespace Rebellion.Simulation
         /// <returns>True when the item was queued; otherwise false.</returns>
         public bool Enqueue(Planet planet, IManufacturable item, CapitalShip destination)
         {
+            return TryEnqueue(planet, item, destination, checkMaintenanceHeadroom: true);
+        }
+
+        /// <summary>
+        /// Attempts to enqueue an item for delivery to a capital ship.
+        /// </summary>
+        /// <param name="planet">The planet where production occurs.</param>
+        /// <param name="item">The item to manufacture.</param>
+        /// <param name="destination">The capital ship receiving the completed item.</param>
+        /// <param name="checkMaintenanceHeadroom">Whether to validate faction maintenance before enqueueing.</param>
+        /// <returns>True when the item was queued; otherwise, false.</returns>
+        private bool TryEnqueue(
+            Planet planet,
+            IManufacturable item,
+            CapitalShip destination,
+            bool checkMaintenanceHeadroom
+        )
+        {
             Faction faction = GetValidatedFaction(planet, item);
             if (faction == null || !IsLiveDestination(destination))
                 return false;
@@ -533,7 +609,7 @@ namespace Rebellion.Simulation
             if (!destination.CanAcceptChild(item))
                 return false;
 
-            if (!HasMaintenanceHeadroom(faction, item))
+            if (checkMaintenanceHeadroom && !HasMaintenanceHeadroom(faction, item))
                 return false;
 
             _game.AttachNode(item, destination);
