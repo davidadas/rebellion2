@@ -615,7 +615,7 @@ internal sealed class CustomGameSettingsSession
             factions,
             "garrison-efficiency",
             "Garrison Efficiency",
-            "Troops needed to garrison core worlds. Higher requires fewer troops. Range: 1 or higher.",
+            "Troops needed in sectors containing a Death Star. Higher requires fewer troops. Range: 1 or higher.",
             1,
             int.MaxValue,
             settings => settings.GarrisonEfficiency,

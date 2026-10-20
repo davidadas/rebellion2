@@ -43,7 +43,7 @@ namespace Rebellion.Game.Factions
         }
 
         /// <summary>
-        /// Garrison requirement divisor on core sectors.
+        /// Garrison requirement divisor in sectors containing an operational planet destroyer.
         /// Higher values mean fewer troops needed (2 = half garrison required).
         /// </summary>
         public int GarrisonEfficiency

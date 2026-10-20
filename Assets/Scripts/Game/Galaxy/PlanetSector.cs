@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Drawing;
+using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Serialization;
 
@@ -41,10 +42,64 @@ namespace Rebellion.Game.Galaxy
         [PersistableMember(Name = "Planets")]
         private List<Planet> _planets = new List<Planet>();
 
+        private readonly HashSet<CapitalShip> _planetDestroyingShips = new HashSet<CapitalShip>();
+        private bool? _projectedPlanetDestroyerPresence;
+
+        /// <summary>
+        /// Returns whether an active, completed planet destroyer is stationary in this sector.
+        /// </summary>
+        [PersistableIgnore]
+        internal bool HasOperationalPlanetDestroyer
+        {
+            get
+            {
+                if (_projectedPlanetDestroyerPresence.HasValue)
+                    return _projectedPlanetDestroyerPresence.Value;
+                foreach (CapitalShip ship in _planetDestroyingShips)
+                {
+                    if (
+                        ship.ManufacturingStatus == ManufacturingStatus.Complete
+                        && ship.Movement == null
+                        && ship.GetParentOfType<Fleet>()?.Movement == null
+                        && ship.IsActive()
+                    )
+                        return true;
+                }
+                return false;
+            }
+        }
+
         /// <summary>
         /// Default constructor used for deserialization.
         /// </summary>
         public PlanetSector() { }
+
+        /// <summary>
+        /// Captures sector suppression state for a faction view with partial descendants.
+        /// </summary>
+        /// <param name="present">Whether the sector contains an operational planet destroyer.</param>
+        internal void SetProjectedPlanetDestroyerPresence(bool present)
+        {
+            _projectedPlanetDestroyerPresence = present;
+        }
+
+        /// <summary>
+        /// Registers a planet destroyer whose ancestor chain includes this sector.
+        /// </summary>
+        /// <param name="ship">The candidate ship.</param>
+        internal void RegisterPlanetDestroyer(CapitalShip ship)
+        {
+            _planetDestroyingShips.Add(ship);
+        }
+
+        /// <summary>
+        /// Removes a ship that no longer supplies planet-destroyer presence in this sector.
+        /// </summary>
+        /// <param name="ship">The candidate ship.</param>
+        internal void UnregisterPlanetDestroyer(CapitalShip ship)
+        {
+            _planetDestroyingShips.Remove(ship);
+        }
 
         /// <summary>
         /// Creates an empty planet-sector copy.

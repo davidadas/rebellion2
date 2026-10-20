@@ -12,7 +12,7 @@ namespace Rebellion.Simulation
         /// <summary>
         /// Calculates how many garrison troops a planet requires for the given faction.
         /// Returns 0 when popular support is at or above the threshold.
-        /// Core worlds with faction garrison efficiency receive a reduced requirement.
+        /// Sector planet-destroyer presence applies the faction's garrison efficiency divisor.
         /// Planets in active uprisings apply the uprising multiplier.
         /// </summary>
         /// <param name="planet">The planet to calculate garrison requirements for.</param>

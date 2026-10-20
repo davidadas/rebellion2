@@ -565,11 +565,10 @@ namespace Rebellion.Game.Galaxy
                 );
             PlanetSector sector = GetParentOfType<PlanetSector>();
             if (
-                sector != null
-                && sector.SectorType == PlanetSectorType.Core
+                sector?.HasOperationalPlanetDestroyer == true
                 && faction.Settings.GarrisonEfficiency > 1
             )
-                garrison = Math.Max(1, garrison / faction.Settings.GarrisonEfficiency);
+                garrison /= faction.Settings.GarrisonEfficiency;
             if (IsInUprising)
                 garrison *= config.UprisingMultiplier;
             return garrison;

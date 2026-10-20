@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Encyclopedia;
+using Rebellion.Game.Galaxy;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Serialization;
 
@@ -160,7 +161,21 @@ namespace Rebellion.Game.Units
         [PersistableMember(Name = nameof(HasGravityWell))]
         private bool _hasGravityWell;
 
-        public bool CanDestroyPlanets { get; set; }
+        private bool _canDestroyPlanets;
+        private PlanetSector _planetDestroyerSector;
+
+        /// <summary>
+        /// Whether this ship can destroy planets and provide sector suppression when operational.
+        /// </summary>
+        public bool CanDestroyPlanets
+        {
+            get => _canDestroyPlanets;
+            set
+            {
+                _canDestroyPlanets = value;
+                UpdatePlanetDestroyerSector();
+            }
+        }
 
         [PersistableMember(Name = nameof(DetectionRating))]
         private int _detectionRating;
@@ -298,6 +313,28 @@ namespace Rebellion.Game.Units
         /// Default constructor used for deserialization.
         /// </summary>
         public CapitalShip() { }
+
+        /// <summary>
+        /// Updates sector membership after this ship or an ancestor is reparented.
+        /// </summary>
+        protected override void OnHierarchyChanged()
+        {
+            UpdatePlanetDestroyerSector();
+            base.OnHierarchyChanged();
+        }
+
+        /// <summary>
+        /// Maintains sector membership for planet destroyers without scanning sector descendants.
+        /// </summary>
+        private void UpdatePlanetDestroyerSector()
+        {
+            PlanetSector sector = CanDestroyPlanets ? GetParentOfType<PlanetSector>() : null;
+            if (_planetDestroyerSector == sector)
+                return;
+            _planetDestroyerSector?.UnregisterPlanetDestroyer(this);
+            _planetDestroyerSector = sector;
+            sector?.RegisterPlanetDestroyer(this);
+        }
 
         /// <summary>
         /// Creates an empty capital-ship copy.
