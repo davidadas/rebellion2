@@ -276,6 +276,7 @@ public sealed class MissionCreateWindowController
         view.DropdownToggleRequested += HandleDropdownToggleRequested;
         view.InfoRequested += HandleInfoRequested;
         view.MissionOddsVisibilityChanged += HandleMissionOddsVisibilityChanged;
+        view.RepeatChanged += HandleRepeatChanged;
         view.MoveParticipantsRequested += HandleMoveParticipantsRequested;
         view.ParticipantClicked += HandleParticipantClicked;
         view.ParticipantPressed += HandleParticipantPressed;
@@ -412,6 +413,21 @@ public sealed class MissionCreateWindowController
     }
 
     /// <summary>
+    /// Changes the repeat selection for this assignment.
+    /// </summary>
+    /// <param name="view">The requesting mission window.</param>
+    /// <param name="repeat">Whether repeat is selected.</param>
+    private void HandleRepeatChanged(MissionCreateWindowView view, bool repeat)
+    {
+        if (!sessions.TryGetValue(view, out MissionCreateWindowSession session))
+            return;
+
+        session.Window.RequestFocus();
+        if (session.SetRepeat(repeat))
+            markDirty();
+    }
+
+    /// <summary>
     /// Moves the selected participants out of one requested source role.
     /// </summary>
     /// <param name="view">The requesting Mission Create view.</param>
@@ -517,6 +533,7 @@ public sealed class MissionCreateWindowController
         view.DropdownToggleRequested -= HandleDropdownToggleRequested;
         view.InfoRequested -= HandleInfoRequested;
         view.MissionOddsVisibilityChanged -= HandleMissionOddsVisibilityChanged;
+        view.RepeatChanged -= HandleRepeatChanged;
         view.MoveParticipantsRequested -= HandleMoveParticipantsRequested;
         view.ParticipantClicked -= HandleParticipantClicked;
         view.ParticipantPressed -= HandleParticipantPressed;
@@ -702,6 +719,8 @@ internal sealed class MissionCreateWindowSession
 
     public bool ShowMissionOdds { get; private set; }
 
+    public bool Repeat { get; private set; }
+
     public StrategyMissionChoice SelectedChoice =>
         SelectedMissionIndex >= 0 && SelectedMissionIndex < Choices.Count
             ? Choices[SelectedMissionIndex]
@@ -794,6 +813,20 @@ internal sealed class MissionCreateWindowSession
             return false;
 
         ShowMissionOdds = visible;
+        return true;
+    }
+
+    /// <summary>
+    /// Changes the repeat selection within this mission-creation session.
+    /// </summary>
+    /// <param name="repeat">Whether repeat is selected.</param>
+    /// <returns>True when the selection changed.</returns>
+    public bool SetRepeat(bool repeat)
+    {
+        if (Repeat == repeat)
+            return false;
+
+        Repeat = repeat;
         return true;
     }
 

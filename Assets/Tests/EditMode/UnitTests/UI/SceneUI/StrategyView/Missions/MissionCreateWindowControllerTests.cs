@@ -212,6 +212,37 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreEqual(0, _showMissionOddsSaveCount);
         }
 
+        /// <summary>
+        /// Retains repeat through rendering without changing odds preferences or later assignments.
+        /// </summary>
+        [Test]
+        public void RepeatCheckbox_Toggled_PersistsOnlyInCurrentSession()
+        {
+            MissionCreateWindowView view = OpenWindow(out UIWindow window);
+            UICheckboxView repeat = view.GetComponentsInChildren<UICheckboxView>(true)
+                .Single(checkbox => checkbox.name == "RepeatCheckbox");
+            UIComponentTestHelper.InvokeLifecycle(repeat, "Awake");
+            _controller.RenderWindow(view, window);
+            Assert.IsFalse(repeat.IsChecked);
+
+            repeat.GetComponent<Toggle>().isOn = true;
+            _controller.RenderWindow(view, window);
+
+            Assert.IsTrue(repeat.IsChecked);
+            Assert.IsTrue(_showMissionOdds);
+            Assert.AreEqual(0, _showMissionOddsSaveCount);
+            Assert.AreEqual(2, _dirtyCount);
+
+            FindButton(view, "CancelButtonImage").onClick.Invoke();
+            MissionCreateWindowView next = OpenWindow(out UIWindow nextWindow);
+            _controller.RenderWindow(next, nextWindow);
+            Assert.IsFalse(
+                next.GetComponentsInChildren<UICheckboxView>(true)
+                    .Single(checkbox => checkbox.name == "RepeatCheckbox")
+                    .IsChecked
+            );
+        }
+
         [Test]
         public void CancelButton_InitializedSession_ClosesOwningWindow()
         {

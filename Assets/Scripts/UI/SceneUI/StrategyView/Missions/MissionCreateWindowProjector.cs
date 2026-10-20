@@ -85,7 +85,8 @@ internal sealed class MissionCreateWindowProjector
             selectedMissionOdds,
             session.ShowMissionOdds,
             uiContext.GetTexture(checkboxTheme?.FrameImagePath),
-            uiContext.GetTexture(checkboxTheme?.CheckMarkImagePath)
+            uiContext.GetTexture(checkboxTheme?.CheckMarkImagePath),
+            session.Repeat
         );
     }
 
