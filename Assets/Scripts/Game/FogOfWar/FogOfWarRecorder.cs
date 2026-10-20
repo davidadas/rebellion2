@@ -801,6 +801,52 @@ namespace Rebellion.Game.FogOfWar
         }
 
         /// <summary>
+        /// Records the durable planet knowledge retained by a faction that just lost control.
+        /// </summary>
+        /// <param name="faction">The faction that lost control.</param>
+        /// <param name="planet">The planet whose control changed.</param>
+        /// <param name="sector">The sector containing the planet.</param>
+        /// <param name="currentTick">The tick when control changed.</param>
+        public void RecordPlanetLossSnapshot(
+            Faction faction,
+            Planet planet,
+            PlanetSector sector,
+            int currentTick
+        )
+        {
+            if (faction == null || planet == null || sector == null)
+                return;
+
+            planet.AddVisitor(faction.InstanceID);
+            PlanetSectorSnapshot sectorSnapshot = GetOrCreatePlanetSectorSnapshot(faction, sector);
+            faction.Fog.PlanetToSector[planet.InstanceID] = sector.InstanceID;
+            sectorSnapshot.Planets.TryGetValue(
+                planet.InstanceID,
+                out PlanetSnapshot previousSnapshot
+            );
+
+            PlanetSnapshot snapshot = CreatePlanetSnapshot(planet, currentTick);
+            PlanetIntelligenceCategory discardedCategories =
+                PlanetIntelligenceCategory.CapitalShips
+                | PlanetIntelligenceCategory.Starfighters
+                | PlanetIntelligenceCategory.GroundForces
+                | PlanetIntelligenceCategory.Officers;
+            snapshot.RevealedCategories =
+                (previousSnapshot?.RevealedCategories ?? PlanetIntelligenceCategory.None)
+                & ~discardedCategories;
+            snapshot.Buildings.AddRange(
+                planet
+                    .GetChildren<Building>(includeDisabled: true)
+                    .Where(building => building.ManufacturingStatus == ManufacturingStatus.Complete)
+                    .Select(building => CopyEntityForObservation(building, currentTick))
+            );
+            CarryForwardRevealedMissions(previousSnapshot, snapshot);
+
+            ReconcileEntityLocations(faction, planet.InstanceID, snapshot);
+            sectorSnapshot.Planets[planet.InstanceID] = snapshot;
+        }
+
+        /// <summary>
         /// Updates ownership in an existing planet snapshot without creating new intelligence.
         /// </summary>
         /// <param name="faction">The faction whose existing snapshot is updated.</param>
@@ -911,8 +957,8 @@ namespace Rebellion.Game.FogOfWar
                 includeEspionageIntelligence,
                 currentTick
             );
-            AddEntityCopiesToSnapshot(
-                planet.GetChildren<Building>(),
+            AddBuildingCopiesToSnapshot(
+                planet.GetChildren<Building>(includeDisabled: true),
                 planetSnapshot.Buildings,
                 faction,
                 includeEspionageIntelligence,
@@ -1390,6 +1436,46 @@ namespace Rebellion.Game.FogOfWar
                     continue;
 
                 snapshot.Fleets.Add(fleetCopy);
+            }
+        }
+
+        /// <summary>
+        /// Adds observable buildings while retaining completed facilities owned by the observer.
+        /// </summary>
+        /// <param name="source">The live buildings.</param>
+        /// <param name="destination">The snapshot building list.</param>
+        /// <param name="faction">The faction receiving the snapshot.</param>
+        /// <param name="includeEspionageIntelligence">Whether hidden intelligence should be included.</param>
+        /// <param name="observedAtTick">The tick when the state was observed.</param>
+        private void AddBuildingCopiesToSnapshot(
+            IEnumerable<Building> source,
+            List<Building> destination,
+            Faction faction,
+            bool includeEspionageIntelligence,
+            int observedAtTick
+        )
+        {
+            foreach (Building building in source)
+            {
+                if (building.OwnerInstanceID == faction.InstanceID)
+                {
+                    RemoveEntityFromSnapshotState(faction, building.InstanceID);
+                    if (building.ManufacturingStatus == ManufacturingStatus.Complete)
+                        destination.Add(CopyEntityForObservation(building, observedAtTick));
+                    continue;
+                }
+
+                if (!building.IsEnabled)
+                    continue;
+                if (
+                    !includeEspionageIntelligence
+                    && !IsObservableAtPlanet(building, faction.InstanceID)
+                )
+                    continue;
+                if (!includeEspionageIntelligence && IsManufacturingInProgress(building))
+                    continue;
+
+                destination.Add(CopyEntityForObservation(building, observedAtTick));
             }
         }
 

@@ -154,7 +154,7 @@ namespace Rebellion.Simulation
         /// <param name="snapshot">The latest intelligence snapshot, if any.</param>
         private static void AddObservedMissions(Planet viewPlanet, PlanetSnapshot snapshot)
         {
-            if (snapshot?.RevealedCategories != PlanetIntelligenceCategory.All)
+            if (snapshot?.RevealedCategories.HasFlag(PlanetIntelligenceCategory.Missions) != true)
                 return;
 
             foreach (Mission mission in snapshot.Missions)
