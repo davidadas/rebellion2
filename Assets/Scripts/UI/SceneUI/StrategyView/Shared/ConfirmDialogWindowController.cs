@@ -129,8 +129,21 @@ public sealed class ConfirmDialogWindowController
     /// <param name="confirmedAction">The action to invoke after confirmation.</param>
     public void OpenMissionAbort(Mission mission, Action confirmedAction)
     {
+        OpenMissionAbort(
+            mission == null ? Array.Empty<Mission>() : new[] { mission },
+            confirmedAction
+        );
+    }
+
+    /// <summary>
+    /// Opens abort confirmation for a complete active mission selection.
+    /// </summary>
+    /// <param name="missions">The missions being aborted.</param>
+    /// <param name="confirmedAction">The action to invoke after confirmation.</param>
+    public void OpenMissionAbort(IReadOnlyList<Mission> missions, Action confirmedAction)
+    {
         Open(
-            mission == null ? Array.Empty<ISceneNode>() : new ISceneNode[] { mission },
+            missions?.Cast<ISceneNode>().ToArray() ?? Array.Empty<ISceneNode>(),
             ConfirmDialogKind.MissionAbort,
             -1,
             confirmedAction
@@ -337,6 +350,8 @@ public sealed class ConfirmDialogWindowController
             ConfirmDialogKind.Scrap => _scrapPrompt,
             ConfirmDialogKind.Retire => _retirePrompt,
             ConfirmDialogKind.StopConstruction => _stopConstructionPrompt,
+            ConfirmDialogKind.MissionAbort when session.Items.Count > 1 =>
+                $"Are you sure you want to abort these {session.Items.Count} missions?",
             ConfirmDialogKind.MissionAbort => _missionAbortPrompt,
             ConfirmDialogKind.Move when session.TransitTimeInDays >= 0 =>
                 $"{_moveTransitLabel} {session.TransitTimeInDays}",

@@ -4177,6 +4177,59 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void AbortMissions_ActiveMissionSelection_AbortsEveryMission()
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            Officer secondOfficer = new Officer { InstanceID = "o2", OwnerInstanceID = "empire" };
+            game.AttachNode(secondOfficer, planet);
+            StubMission firstMission = CreateMission(game, planet, officer);
+            StubMission secondMission = CreateMission(game, planet, secondOfficer);
+            game.MoveNode(officer, firstMission);
+            game.MoveNode(secondOfficer, secondMission);
+            firstMission.Initiate(1);
+            secondMission.Initiate(1);
+            MissionCommands system = TestSystems.CreateMissionCommands(
+                game,
+                new StubRNG(),
+                movement
+            );
+
+            bool aborted = system.AbortMissions(
+                new[] { firstMission.InstanceID, secondMission.InstanceID }
+            );
+
+            Assert.IsTrue(aborted);
+            Assert.AreEqual(planet, officer.GetParent());
+            Assert.AreEqual(planet, secondOfficer.GetParent());
+            Assert.IsNull(firstMission.GetParent());
+            Assert.IsNull(secondMission.GetParent());
+        }
+
+        [Test]
+        public void AbortMissions_SelectionContainsMissingMission_PreservesEveryMission()
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            StubMission mission = CreateMission(game, planet, officer);
+            game.MoveNode(officer, mission);
+            mission.Initiate(1);
+            MissionCommands system = TestSystems.CreateMissionCommands(
+                game,
+                new StubRNG(),
+                movement
+            );
+
+            bool aborted = system.AbortMissions(new[] { mission.InstanceID, "missing" });
+
+            Assert.IsFalse(aborted);
+            Assert.AreEqual(planet, mission.GetParent());
+            Assert.AreEqual(mission, officer.GetParent());
+        }
+
+        [Test]
         public void AbortMission_ParticipantInTransit_ReturnsParticipantToOrigin()
         {
             (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(

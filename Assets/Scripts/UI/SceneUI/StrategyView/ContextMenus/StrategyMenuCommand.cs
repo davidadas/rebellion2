@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -273,6 +274,32 @@ internal static class StrategyBombardmentMenuBuilder
 /// </summary>
 public static class StrategyContextMenuAvailability
 {
+    /// <summary>
+    /// Determines whether every selected mission is owned by the player and actively working.
+    /// </summary>
+    /// <param name="items">The selected mission scene nodes.</param>
+    /// <param name="playerFactionId">The player faction identifier.</param>
+    /// <returns><see langword="true"/> when the complete selection can be aborted.</returns>
+    public static bool CanAbortMissions(IReadOnlyList<ISceneNode> items, string playerFactionId)
+    {
+        if (items == null || items.Count == 0)
+            return false;
+
+        foreach (ISceneNode item in items)
+        {
+            if (
+                item is not Mission mission
+                || string.IsNullOrEmpty(mission.InstanceID)
+                || !PlayerControlsItem(mission, playerFactionId)
+                || !mission.HasInitiated
+                || mission.IsWaitingForParticipants()
+            )
+                return false;
+        }
+
+        return true;
+    }
+
     /// <summary>
     /// Determines whether idle-bar tracking is available for one context-menu item.
     /// </summary>

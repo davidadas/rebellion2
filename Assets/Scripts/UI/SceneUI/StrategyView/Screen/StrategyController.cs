@@ -2455,37 +2455,10 @@ public sealed class StrategyController
         string missionInstanceId
     )
     {
-        GameRoot game = session.Game;
-        Mission mission = game?.GetSceneNodeByInstanceID<Mission>(missionInstanceId);
-        if (mission?.IsWaitingForParticipants() != false)
-            return;
-
-        confirmDialogWindowController.OpenMissionAbort(
-            mission,
-            () =>
-            {
-                Mission liveMission = game?.GetSceneNodeByInstanceID<Mission>(missionInstanceId);
-                if (liveMission == null)
-                    return;
-
-                Officer speaker = liveMission
-                    .GetMainParticipants()
-                    .Concat(liveMission.GetDecoyParticipants())
-                    .OfType<Officer>()
-                    .FirstOrDefault(officer =>
-                        officer.HasVoicePath(OfficerVoiceLineType.MissionAbort)
-                    );
-                string voicePath = speaker?.GetVoicePath(
-                    OfficerVoiceLineType.MissionAbort,
-                    game.Random
-                );
-                if (!session.GetService<MissionCommands>().AbortMission(missionInstanceId))
-                    return;
-
-                if (!string.IsNullOrEmpty(voicePath))
-                    PlayStrategySfx(voicePath);
-                RefreshStrategyState();
-            }
+        Mission mission = session.Game?.GetSceneNodeByInstanceID<Mission>(missionInstanceId);
+        windowCommandController.OpenMissionAbortConfirmWindow(
+            sourceWindow,
+            mission == null ? Array.Empty<ISceneNode>() : new ISceneNode[] { mission }
         );
     }
 
