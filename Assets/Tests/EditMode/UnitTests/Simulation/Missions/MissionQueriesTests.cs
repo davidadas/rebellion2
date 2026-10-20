@@ -1322,6 +1322,189 @@ namespace Rebellion.Tests.Simulation
         }
 
         /// <summary>
+        /// Prevents defender-count growth from multiplying commander scene-graph scans.
+        /// </summary>
+        [Test]
+        public void GetMissionOdds_MoreDefenders_DoesNotRepeatCommanderContainerTraversals()
+        {
+            int small = MeasureCommanderTraversals(8);
+            int large = MeasureCommanderTraversals(128);
+
+            Assert.That(small, Is.GreaterThan(0));
+            Assert.That(large, Is.EqualTo(small));
+        }
+
+        /// <summary>
+        /// Checks indexed fleet and planetary commanders against direct commander resolution.
+        /// </summary>
+        [Test]
+        public void GetMissionOdds_DifferentCommanderScopes_MatchesAnalyticalRisk()
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer general) = BuildDetectionScene();
+            planet.AddVisitor("empire");
+            spy.SetBaseRating(SkillRating.Combat, 75);
+            spy.SetBaseRating(SkillRating.Espionage, 80);
+            general.SetBaseRating(SkillRating.Combat, 10);
+            general.SetBaseRating(SkillRating.Espionage, 20);
+            SetFoilTable(
+                game,
+                new Dictionary<int, int>
+                {
+                    { -1000, 95 },
+                    { -30, 70 },
+                    { 0, 40 },
+                    { 30, 5 },
+                }
+            );
+            SetEvasionTable(
+                game,
+                new Dictionary<int, int>
+                {
+                    { -1000, 5 },
+                    { -30, 20 },
+                    { 0, 50 },
+                    { 30, 80 },
+                    { 60, 98 },
+                }
+            );
+            Fleet firstFleet = planet.GetChildren<Fleet>().Single();
+            Fleet secondFleet = new Fleet
+            {
+                InstanceID = "second-fleet",
+                OwnerInstanceID = "rebels",
+            };
+            game.AttachNode(secondFleet, planet);
+            CapitalShip firstShip = new CapitalShip
+            {
+                InstanceID = "first-ship",
+                OwnerInstanceID = "rebels",
+                DetectionRating = 30,
+                StarfighterCapacity = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            CapitalShip secondShip = new CapitalShip
+            {
+                InstanceID = "second-ship",
+                OwnerInstanceID = "rebels",
+                DetectionRating = 45,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Starfighter fighter = new Starfighter
+            {
+                InstanceID = "fighter",
+                OwnerInstanceID = "rebels",
+                DetectionRating = 55,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(firstShip, firstFleet);
+            game.AttachNode(secondShip, secondFleet);
+            game.AttachNode(fighter, firstShip);
+            Officer unavailable = EntityFactory.CreateOfficer("unavailable-admiral", "rebels");
+            unavailable.CurrentRank = OfficerRank.Admiral;
+            unavailable.InjuryPoints = 1;
+            game.AttachNode(unavailable, firstShip);
+            Officer admiral = EntityFactory.CreateOfficer("first-admiral", "rebels");
+            admiral.CurrentRank = OfficerRank.Admiral;
+            admiral.SetBaseRating(SkillRating.Combat, 60);
+            admiral.SetBaseRating(SkillRating.Espionage, 50);
+            game.AttachNode(admiral, firstShip);
+            Officer commander = EntityFactory.CreateOfficer("fighter-commander", "rebels");
+            commander.CurrentRank = OfficerRank.Commander;
+            commander.SetBaseRating(SkillRating.Combat, 20);
+            commander.SetBaseRating(SkillRating.Espionage, 10);
+            game.AttachNode(commander, firstShip);
+            Officer secondAdmiral = EntityFactory.CreateOfficer("second-admiral", "rebels");
+            secondAdmiral.CurrentRank = OfficerRank.Admiral;
+            secondAdmiral.SetBaseRating(SkillRating.Combat, 95);
+            secondAdmiral.SetBaseRating(SkillRating.Espionage, 80);
+            game.AttachNode(secondAdmiral, secondShip);
+            ISceneNode[] detectors =
+            {
+                planet.GetChildren<Regiment>().Single(),
+                firstShip,
+                secondShip,
+                fighter,
+            };
+            MissionQueries queries = new MissionQueries(game);
+            MissionContext context = CreateContext(EspionageMission.MissionTypeID, spy, planet);
+            Assert.That(queries.TryCreateMission(context, out Mission mission), Is.True);
+            double expectedFoil =
+                1
+                - detectors.Aggregate(
+                    1d,
+                    (value, detector) =>
+                        value * (1 - queries.GetFoilProbability(mission, detector) / 100d)
+                );
+            double expectedEvasion = detectors.Average(detector =>
+                Math.Clamp(
+                    queries.GetEvasionProbability(
+                        spy.GetEffectiveRating(SkillRating.Combat)
+                            - (
+                                mission
+                                    .FindDetectorCommander(detector)
+                                    ?.GetEffectiveRating(SkillRating.Combat)
+                                ?? 0
+                            )
+                    ) / 100d,
+                    0,
+                    1
+                )
+            );
+
+            MissionOdds odds = queries.GetMissionOdds(
+                context,
+                (_, _, phase, _) =>
+                    phase == MissionEncounterPhase.PreObjective
+                        ? detectors
+                        : Array.Empty<ISceneNode>()
+            );
+
+            Assert.That(odds.FoilProbability, Is.EqualTo(expectedFoil * 100).Within(1e-9));
+            Assert.That(
+                odds.PersonnelLossProbability,
+                Is.EqualTo(expectedFoil * (1 - expectedEvasion) * 100).Within(1e-9)
+            );
+        }
+
+        /// <summary>
+        /// Measures commander-container enumeration independently of wall-clock timing.
+        /// </summary>
+        /// <param name="defenderCount">The number of ships whose odds are requested.</param>
+        /// <returns>The number of traversals of their shared fleet container.</returns>
+        private int MeasureCommanderTraversals(int defenderCount)
+        {
+            (GameRoot game, Planet planet, Officer spy, Officer _) = BuildDetectionScene();
+            planet.AddVisitor("empire");
+            CountingFleet fleet = new CountingFleet
+            {
+                InstanceID = "counted-fleet",
+                OwnerInstanceID = "rebels",
+            };
+            game.AttachNode(fleet, planet);
+            List<ISceneNode> detectors = new List<ISceneNode>();
+            for (int index = 0; index < defenderCount; index++)
+            {
+                CapitalShip ship = new CapitalShip
+                {
+                    InstanceID = "counted-ship-" + index,
+                    OwnerInstanceID = "rebels",
+                    DetectionRating = 30,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                };
+                game.AttachNode(ship, fleet);
+                detectors.Add(ship);
+            }
+            MissionQueries queries = new MissionQueries(game);
+            MissionContext context = CreateContext(EspionageMission.MissionTypeID, spy, planet);
+            Assert.That(queries.TryCreateMission(context, out _), Is.True);
+            fleet.ChildEnumerationCount = 0;
+
+            Assert.That(queries.GetMissionOdds(context, detectors), Is.Not.Null);
+
+            return fleet.ChildEnumerationCount;
+        }
+
+        /// <summary>
         /// Builds scene.
         /// </summary>
         /// <param name="factionOwnsPlanet">Whether faction owns planet.</param>
@@ -1684,6 +1867,30 @@ namespace Rebellion.Tests.Simulation
 
             MissionQueries missions = new MissionQueries(game);
             return (game, origin, targetPlanet, participant, target, missions);
+        }
+
+        /// <summary>
+        /// Counts container traversal without adding timing instrumentation to production code.
+        /// </summary>
+        private sealed class CountingFleet : Fleet
+        {
+            public int ChildEnumerationCount { get; set; }
+
+            /// <summary>
+            /// Creates a copy that preserves the fleet's diagnostic subtype.
+            /// </summary>
+            /// <returns>An empty counting fleet.</returns>
+            protected override BaseSceneNode CreateNodeCopy() => new CountingFleet();
+
+            /// <summary>
+            /// Counts enumeration calls before using the standard fleet children.
+            /// </summary>
+            /// <returns>The fleet's direct child nodes.</returns>
+            protected override IEnumerable<ISceneNode> EnumerateChildren()
+            {
+                ChildEnumerationCount++;
+                return base.EnumerateChildren();
+            }
         }
     }
 }
