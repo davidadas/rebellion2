@@ -152,23 +152,20 @@ namespace Rebellion.Game.Missions
                 "Incite Uprising",
                 SkillRating.Leadership,
                 MissionTargetKind.Planet,
-                SkillRating.Espionage,
-                canRepeat: true
+                SkillRating.Espionage
             ),
             new MissionOption(
                 ReconnaissanceMission.MissionTypeID,
                 "Reconnaissance",
                 SkillRating.Espionage,
                 MissionTargetKind.Planet,
-                SkillRating.Espionage,
-                canRepeat: true
+                SkillRating.Espionage
             ),
             new MissionOption(
                 JediTrainingMission.MissionTypeID,
                 "Jedi Training",
                 SkillRating.Diplomacy,
-                MissionTargetKind.Planet,
-                canRepeat: true
+                MissionTargetKind.Planet
             ),
             new MissionOption(
                 EspionageMission.MissionTypeID,

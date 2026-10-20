@@ -1657,7 +1657,7 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Resolves one training attempt for each selected officer and completes the mission.
+        /// Resolves one training attempt for each selected officer and reports the completed cycle.
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <param name="provider">The random number provider used for training rolls.</param>
@@ -1734,11 +1734,11 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Returns whether Jedi training should repeat after completion.
+        /// Keeps Jedi training assigned between attempts until recalled or interrupted.
         /// </summary>
         /// <param name="game">The current game state.</param>
-        /// <returns>Always false because Jedi training completes after one execution.</returns>
-        public override bool ShouldRepeatAfterCompletion(GameRoot game) => false;
+        /// <returns>True; the shared lifecycle handles recall and invalid assignments.</returns>
+        public override bool ShouldRepeatAfterCompletion(GameRoot game) => true;
     }
 
     /// <summary>

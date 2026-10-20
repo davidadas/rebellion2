@@ -181,11 +181,21 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         }
 
         /// <summary>
-        /// Offers adjacent normal and repeat entries in the existing dropdown and panel.
+        /// Offers repeat entries only for missions whose picker option supports them.
         /// </summary>
-        [Test]
-        public void DropdownButton_SingleAttemptMission_OffersNormalAndRepeatChoices()
+        /// <param name="espionage">Whether to use repeatable espionage instead of reconnaissance.</param>
+        [TestCase(false)]
+        [TestCase(true)]
+        public void DropdownButton_MissionRepeatPolicy_OffersExpectedChoices(bool espionage)
         {
+            if (espionage)
+            {
+                _specialForces.AllowedMissionTypeIDs = new List<string>
+                {
+                    EspionageMission.MissionTypeID,
+                };
+                _target.Planet.Planet.AddVisitor(_playerFactionId);
+            }
             MissionCreateWindowView view = OpenWindow(out UIWindow window);
             FindButton(view, "DropdownButtonImage").onClick.Invoke();
             _controller.RenderWindow(view, window);
@@ -202,7 +212,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 .ToArray();
 
             CollectionAssert.AreEqual(
-                new[] { "Reconnaissance", "Reconnaissance (Repeat)" },
+                espionage
+                    ? new[] { "Espionage", "Espionage (Repeat)" }
+                    : new[] { "Reconnaissance" },
                 labels
             );
             Assert.AreEqual(355, UILayout.GetSourceRect((RectTransform)view.transform).height);

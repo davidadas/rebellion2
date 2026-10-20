@@ -3684,8 +3684,15 @@ namespace Rebellion.Tests.Simulation
             );
         }
 
-        [Test]
-        public void InitiateMission_SecondDepartureEncounterFoils_FoilsBeforeTravel()
+        /// <summary>
+        /// Ends foiled departures even for missions that normally repeat automatically.
+        /// </summary>
+        /// <param name="missionTypeID">The mission whose departure is intercepted.</param>
+        [TestCase(SabotageMission.MissionTypeID)]
+        [TestCase(InciteUprisingMission.MissionTypeID)]
+        public void InitiateMission_SecondDepartureEncounterFoils_FoilsBeforeTravel(
+            string missionTypeID
+        )
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
@@ -3755,10 +3762,12 @@ namespace Rebellion.Tests.Simulation
             system.ResultsProduced += results.AddRange;
             bool initiated = system.InitiateMission(
                 CreateContext(
-                    SabotageMission.MissionTypeID,
+                    missionTypeID,
                     officer,
                     target,
-                    selectedTarget: sabotageTarget
+                    selectedTarget: missionTypeID == SabotageMission.MissionTypeID
+                        ? sabotageTarget
+                        : null
                 )
             );
 
@@ -3773,6 +3782,7 @@ namespace Rebellion.Tests.Simulation
                 .OfType<MissionCompletedResult>()
                 .Single(result => result.Outcome == MissionOutcome.Foiled);
             Assert.AreEqual(completed.MissionInstanceID, capture.MissionInstanceID);
+            Assert.IsFalse(completed.CanContinue);
         }
 
         [Test]
