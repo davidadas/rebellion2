@@ -11,7 +11,7 @@ using Rebellion.Game.Units;
 using Rebellion.Simulation;
 
 /// <summary>
-/// Verifies handle results captured mission participant tears down mission at current planet.
+/// Verifies terminal participant changes reconcile missions at their current planets.
 /// </summary>
 namespace Rebellion.Tests.Simulation
 {
@@ -139,6 +139,141 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void Connect_KilledMissionParticipant_RegistersInterruption()
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            StubMission mission = CreateMission(game, planet, officer);
+            game.MoveNode(officer, mission);
+            mission.Initiate(1);
+            new PersonnelCommands(new PersonnelQueries(game)).KillOfficer(officer);
+            MissionCommands system = TestSystems.CreateMissionCommands(
+                game,
+                new StubRNG(),
+                movement
+            );
+
+            GameResultBus results = new GameResultBus();
+            MissionObserver observer = new MissionObserver(TestSystems.GetMissionResolver(system));
+            observer.Connect(results);
+            results.Publish(
+                new OfficerKilledResult
+                {
+                    TargetOfficer = officer,
+                    ParentAtDeath = mission,
+                    Context = planet,
+                }
+            );
+
+            Assert.IsNull(mission.GetParent());
+            Assert.AreSame(planet, officer.GetParent());
+            Assert.IsTrue(officer.IsKilled);
+            Assert.IsFalse(officer.IsEnabled);
+        }
+
+        [Test]
+        public void HandleResults_KilledMainParticipantHasSurvivingMain_ContinuesMission()
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            Officer survivor = new Officer
+            {
+                InstanceID = "o2",
+                OwnerInstanceID = "empire",
+                MissionReturnParentInstanceID = planet.InstanceID,
+                MissionReturnLocationInstanceID = planet.InstanceID,
+            };
+            game.AttachNode(survivor, planet);
+            StubMission mission = CreateMission(game, planet, officer);
+            mission.AddChild(survivor);
+            game.MoveNode(officer, mission);
+            game.MoveNode(survivor, mission);
+            mission.Initiate(1);
+            new PersonnelCommands(new PersonnelQueries(game)).KillOfficer(officer);
+            MissionCommands commands = TestSystems.CreateMissionCommands(
+                game,
+                new ThrowingRNG(),
+                movement
+            );
+            MissionObserver observer = new MissionObserver(
+                TestSystems.GetMissionResolver(commands)
+            );
+
+            List<GameResult> results = observer.HandleResults(
+                new[]
+                {
+                    new OfficerKilledResult
+                    {
+                        TargetOfficer = officer,
+                        ParentAtDeath = mission,
+                        Context = planet,
+                    },
+                }
+            );
+
+            Assert.IsEmpty(results);
+            Assert.AreSame(planet, mission.GetParent());
+            Assert.AreSame(planet, officer.GetParent());
+            Assert.AreSame(mission, survivor.GetParent());
+            CollectionAssert.AreEqual(
+                new IMissionParticipant[] { survivor },
+                mission.GetMainParticipants(includeDisabled: true)
+            );
+            Assert.IsNull(mission.GetAbortReason(game));
+        }
+
+        [Test]
+        public void HandleResults_KilledDecoyParticipant_ContinuesMissionWithoutDecoy()
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            Officer decoy = new Officer
+            {
+                InstanceID = "decoy",
+                OwnerInstanceID = "empire",
+                MissionReturnParentInstanceID = planet.InstanceID,
+                MissionReturnLocationInstanceID = planet.InstanceID,
+            };
+            game.AttachNode(decoy, planet);
+            StubMission mission = CreateMission(game, planet, officer);
+            mission.AddDecoyParticipant(decoy);
+            game.MoveNode(officer, mission);
+            game.MoveNode(decoy, mission);
+            mission.Initiate(1);
+            new PersonnelCommands(new PersonnelQueries(game)).KillOfficer(decoy);
+            MissionCommands commands = TestSystems.CreateMissionCommands(
+                game,
+                new ThrowingRNG(),
+                movement
+            );
+            MissionObserver observer = new MissionObserver(
+                TestSystems.GetMissionResolver(commands)
+            );
+
+            List<GameResult> results = observer.HandleResults(
+                new[]
+                {
+                    new OfficerKilledResult
+                    {
+                        TargetOfficer = decoy,
+                        ParentAtDeath = mission,
+                        Context = planet,
+                    },
+                }
+            );
+
+            Assert.IsEmpty(results);
+            Assert.AreSame(planet, mission.GetParent());
+            Assert.AreSame(mission, officer.GetParent());
+            Assert.AreSame(planet, decoy.GetParent());
+            Assert.IsEmpty(mission.GetDecoyParticipants(includeDisabled: true));
+            Assert.IsNull(mission.GetAbortReason(game));
+        }
+
+        [Test]
         public void HandleResults_OfficerMovedBeforeDelivery_InterruptsRecordedMission()
         {
             (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
@@ -170,6 +305,73 @@ namespace Rebellion.Tests.Simulation
             );
 
             Assert.IsNull(mission.GetParent());
+            Assert.AreSame(planet, officer.GetParent());
+        }
+
+        [Test]
+        public void HandleResults_KilledOfficerMovedBeforeDelivery_InterruptsRecordedMission()
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            StubMission mission = CreateMission(game, planet, officer);
+            game.MoveNode(officer, mission);
+            mission.Initiate(1);
+            new PersonnelCommands(new PersonnelQueries(game)).KillOfficer(officer);
+            MissionCommands commands = TestSystems.CreateMissionCommands(
+                game,
+                new StubRNG(),
+                movement
+            );
+            GameResultBus results = new GameResultBus();
+            results.Subscribe<OfficerKilledResult>(_ => game.MoveNode(officer, planet));
+            new MissionObserver(TestSystems.GetMissionResolver(commands)).Connect(results);
+
+            results.Publish(
+                new OfficerKilledResult
+                {
+                    TargetOfficer = officer,
+                    ParentAtDeath = mission,
+                    Context = planet,
+                }
+            );
+
+            Assert.IsNull(mission.GetParent());
+            Assert.AreSame(planet, officer.GetParent());
+        }
+
+        [Test]
+        public void HandleResults_RecordedMissionAlreadyDetached_ReturnsNoResults()
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            StubMission mission = CreateMission(game, planet, officer);
+            game.MoveNode(officer, mission);
+            game.MoveNode(officer, planet);
+            game.DetachNode(mission);
+            MissionCommands commands = TestSystems.CreateMissionCommands(
+                game,
+                new ThrowingRNG(),
+                movement
+            );
+            MissionObserver observer = new MissionObserver(
+                TestSystems.GetMissionResolver(commands)
+            );
+
+            List<GameResult> results = observer.HandleResults(
+                new[]
+                {
+                    new OfficerKilledResult
+                    {
+                        TargetOfficer = officer,
+                        ParentAtDeath = mission,
+                        Context = planet,
+                    },
+                }
+            );
+
+            Assert.IsEmpty(results);
             Assert.AreSame(planet, officer.GetParent());
         }
 
@@ -248,6 +450,39 @@ namespace Rebellion.Tests.Simulation
                 {
                     TargetOfficer = officer,
                     IsCaptured = true,
+                    Context = planet,
+                }
+            );
+
+            Assert.AreSame(mission, officer.GetParent());
+        }
+
+        [Test]
+        public void Dispose_KilledMissionParticipant_StopsInterruption()
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementCommands movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            StubMission mission = CreateMission(game, planet, officer);
+            game.MoveNode(officer, mission);
+            new PersonnelCommands(new PersonnelQueries(game)).KillOfficer(officer);
+            MissionCommands commands = TestSystems.CreateMissionCommands(
+                game,
+                new StubRNG(),
+                movement
+            );
+            GameResultBus results = new GameResultBus();
+            MissionObserver observer = new MissionObserver(
+                TestSystems.GetMissionResolver(commands)
+            );
+            observer.Connect(results);
+            observer.Dispose();
+
+            results.Publish(
+                new OfficerKilledResult
+                {
+                    TargetOfficer = officer,
+                    ParentAtDeath = mission,
                     Context = planet,
                 }
             );

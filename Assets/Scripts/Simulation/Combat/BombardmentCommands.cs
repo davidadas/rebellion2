@@ -655,11 +655,13 @@ namespace Rebellion.Simulation
                 )
                     continue;
 
+                ISceneNode parentAtDeath = officer.GetParent();
                 _personnelCommands.KillOfficer(officer);
                 result.Events.Add(
                     new OfficerKilledResult
                     {
                         TargetOfficer = officer,
+                        ParentAtDeath = parentAtDeath,
                         Context = planet,
                         Tick = _game.CurrentTick,
                     }

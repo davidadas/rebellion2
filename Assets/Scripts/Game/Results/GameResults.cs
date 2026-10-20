@@ -352,6 +352,7 @@ namespace Rebellion.Game.Results
     public class OfficerKilledResult : GameResult
     {
         public Officer TargetOfficer { get; set; }
+        public ISceneNode ParentAtDeath { get; set; }
         public IGameEntity Assassin { get; set; }
         public IGameEntity Context { get; set; }
     }
