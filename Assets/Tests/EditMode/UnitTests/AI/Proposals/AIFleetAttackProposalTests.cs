@@ -571,6 +571,61 @@ namespace Rebellion.Tests.AI.Fleets
         }
 
         /// <summary>
+        /// Verifies that a successful assault refreshes maintenance after ownership changes.
+        /// </summary>
+        [Test]
+        public void Execute_WithSuccessfulPlanetaryAssault_RefreshesManufacturingBudget()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultSuccessPercent = 0;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet target = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "target",
+                rebels.InstanceID,
+                rawResourceNodes: 1
+            );
+            target.SetPopularSupport(empire.InstanceID, 100);
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                target,
+                "mine",
+                BuildingType.Mine,
+                ManufacturingType.None
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                target,
+                "refinery",
+                BuildingType.Refinery,
+                ManufacturingType.None
+            );
+            Fleet fleet = AddBattleFleet(game, target, empire.InstanceID);
+            CapitalShip ship = fleet.GetChildren<CapitalShip>().Single();
+            game.AttachNode(AITestSceneBuilder.CreateRegiment("attacker", empire.InstanceID), ship);
+            fleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                Status = FleetOrderStatus.Ready,
+                TargetPlanetId = target.InstanceID,
+            };
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIFleetAttackProposal proposal = new AIFleetAttackProposal(
+                fleet,
+                FleetOrderType.Attack,
+                FleetOrderStatus.Ready,
+                target
+            );
+            Assert.AreEqual(0, context.AvailableProjectedMaintenanceHeadroom);
+
+            proposal.Execute(context);
+
+            Assert.AreEqual(empire.InstanceID, target.GetOwnerInstanceID());
+            Assert.AreEqual(50, context.AvailableProjectedMaintenanceHeadroom);
+        }
+
+        /// <summary>
         /// Adds battle fleet.
         /// </summary>
         /// <param name="game">The game.</param>

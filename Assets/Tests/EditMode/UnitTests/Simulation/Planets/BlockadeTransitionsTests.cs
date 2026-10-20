@@ -22,11 +22,13 @@ namespace Rebellion.Tests.Simulation
             (GameRoot game, Planet planet) = BuildScene();
             bool wasBlockaded = planet.IsBlockaded();
             Fleet fleet = AttachOperationalFleet(game, planet, "alliance");
+            long economyRevision = game.EconomyRevision;
             List<GameResult> results = new List<GameResult>();
 
             bool added = BlockadeTransitions.AddChangedResult(game, planet, wasBlockaded, results);
 
             Assert.IsTrue(added);
+            Assert.AreEqual(economyRevision + 1, game.EconomyRevision);
             BlockadeChangedResult result = results.OfType<BlockadeChangedResult>().Single();
             Assert.AreSame(planet, result.Planet);
             Assert.AreSame(fleet, result.BlockadingFleet);
@@ -39,6 +41,7 @@ namespace Rebellion.Tests.Simulation
         {
             (GameRoot game, Planet planet) = BuildScene();
             AttachOperationalFleet(game, planet, "alliance");
+            long economyRevision = game.EconomyRevision;
             List<GameResult> results = new List<GameResult>();
 
             bool added = BlockadeTransitions.AddChangedResult(
@@ -49,6 +52,7 @@ namespace Rebellion.Tests.Simulation
             );
 
             Assert.IsFalse(added);
+            Assert.AreEqual(economyRevision, game.EconomyRevision);
             Assert.IsEmpty(results);
         }
 
@@ -76,11 +80,13 @@ namespace Rebellion.Tests.Simulation
             Fleet fleet = AttachOperationalFleet(game, planet, "alliance");
             bool wasBlockaded = planet.IsBlockaded();
             fleet.Movement = new MovementState { TransitTicks = 1 };
+            long economyRevision = game.EconomyRevision;
             List<GameResult> results = new List<GameResult>();
 
             bool added = BlockadeTransitions.AddChangedResult(game, planet, wasBlockaded, results);
 
             Assert.IsTrue(added);
+            Assert.AreEqual(economyRevision + 1, game.EconomyRevision);
             BlockadeChangedResult result = results.OfType<BlockadeChangedResult>().Single();
             Assert.AreSame(planet, result.Planet);
             Assert.IsNull(result.BlockadingFleet);

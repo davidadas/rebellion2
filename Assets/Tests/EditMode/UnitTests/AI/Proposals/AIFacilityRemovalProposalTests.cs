@@ -69,6 +69,25 @@ namespace Rebellion.Tests.AI.Proposals
         }
 
         /// <summary>
+        /// Verifies that removing a facility releases maintenance in the active turn budget.
+        /// </summary>
+        [Test]
+        public void Execute_WithActiveManufacturingBudget_SynchronizesReleasedMaintenance()
+        {
+            AITurnContext context = CreateContextWithSurplusShipyards(
+                out _,
+                out _,
+                maintenanceCost: 10
+            );
+            AIProposal proposal = new AIFacilityRemovalPlanner().Plan(context).Single();
+            int initialHeadroom = context.AvailableProjectedMaintenanceHeadroom;
+
+            proposal.Execute(context);
+
+            Assert.AreEqual(initialHeadroom + 10, context.AvailableProjectedMaintenanceHeadroom);
+        }
+
+        /// <summary>
         /// Creates a faction with two shipyards and a strategic requirement for one.
         /// </summary>
         /// <param name="lowerValue">The lower-value shipyard planet.</param>

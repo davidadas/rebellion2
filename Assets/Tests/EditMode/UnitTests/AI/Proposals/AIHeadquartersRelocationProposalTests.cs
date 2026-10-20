@@ -67,8 +67,11 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.IsNotNull(headquarters.Movement);
         }
 
+        /// <summary>
+        /// Verifies that removing a resource facility refreshes maintenance before relocation.
+        /// </summary>
         [Test]
-        public void Execute_ResourceFacilityRemoval_CommitsMaintenanceHeadroomCost()
+        public void Execute_ResourceFacilityRemoval_RefreshesMaintenanceHeadroom()
         {
             AITurnContext context = CreateContext(
                 unfinishedDestinationBuilding: false,

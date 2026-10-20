@@ -196,8 +196,7 @@ namespace Rebellion.AI.Proposals
 
             if (Demand.Kind == AIProductionDemandKind.BuildingUpgrade)
             {
-                if (ExecuteBuildingUpgrade(context))
-                    CommitMaintenance(context);
+                ExecuteBuildingUpgrade(context);
                 return;
             }
 
@@ -208,12 +207,15 @@ namespace Rebellion.AI.Proposals
                     Product.GetReference(),
                     Destination,
                     GetManufacturingCount(),
-                    context.Faction.InstanceID
+                    context.Faction.InstanceID,
+                    context.AvailableProjectedMaintenanceHeadroom,
+                    GetMinimumMaintenanceHeadroom(context),
+                    out int addedMaintenance,
+                    out int releasedMaintenance
                 );
+                context.RecordManufacturingMutation(addedMaintenance, releasedMaintenance);
                 if (!started)
                     LogEnqueueFailure();
-                else
-                    CommitMaintenance(context);
                 return;
             }
 
@@ -233,8 +235,6 @@ namespace Rebellion.AI.Proposals
             {
                 if (!EnqueueFleetSeed(context, capitalShip, fleetPlanet))
                     LogEnqueueFailure();
-                else
-                    CommitMaintenance(context);
                 return;
             }
 
@@ -242,17 +242,13 @@ namespace Rebellion.AI.Proposals
             {
                 if (!EnqueueAtPlanet(context, planet, manufacturable))
                     LogEnqueueFailure();
-                else
-                    CommitMaintenance(context);
                 return;
             }
 
             if (Destination is Fleet fleet)
             {
-                if (!context.Manufacturing.Enqueue(ProducerPlanet, manufacturable, fleet))
+                if (!Enqueue(context, manufacturable, fleet))
                     LogEnqueueFailure();
-                else
-                    CommitMaintenance(context);
             }
         }
 
@@ -453,7 +449,7 @@ namespace Rebellion.AI.Proposals
             Fleet fleet = context.Faction.CreateFleet(roleType: roleType);
             context.Game.AttachNode(fleet, destinationPlanet);
 
-            if (context.Manufacturing.Enqueue(ProducerPlanet, capitalShip, fleet))
+            if (Enqueue(context, capitalShip, fleet))
                 return true;
 
             context.Game.DetachNode(fleet);
@@ -576,26 +572,18 @@ namespace Rebellion.AI.Proposals
         /// <returns>True when the replacement order was queued.</returns>
         private bool ExecuteBuildingUpgrade(AITurnContext context)
         {
-            Building replacement = Demand.BuildingToReplace;
-            Planet destinationPlanet = Destination as Planet;
-            context.Game.DetachNode(replacement);
-
-            bool started = false;
-            try
-            {
-                started = context.Manufacturing.StartManufacturing(
-                    ProducerPlanet,
-                    Product.GetReference(),
-                    destinationPlanet,
-                    1,
-                    context.Faction.InstanceID
-                );
-            }
-            finally
-            {
-                if (!started && replacement.GetParent() == null)
-                    context.Game.AttachNode(replacement, destinationPlanet);
-            }
+            bool started = context.Manufacturing.StartBuildingUpgrade(
+                ProducerPlanet,
+                Product.GetReference() as Building,
+                Destination as Planet,
+                Demand.BuildingToReplace,
+                context.Faction.InstanceID,
+                context.AvailableProjectedMaintenanceHeadroom,
+                GetMinimumMaintenanceHeadroom(context),
+                out int addedMaintenance,
+                out int releasedMaintenance
+            );
+            context.RecordManufacturingMutation(addedMaintenance, releasedMaintenance);
 
             if (!started)
                 LogEnqueueFailure();
@@ -615,17 +603,33 @@ namespace Rebellion.AI.Proposals
             IManufacturable manufacturable
         )
         {
-            return context.Manufacturing.Enqueue(ProducerPlanet, manufacturable, destinationPlanet);
+            return Enqueue(context, manufacturable, destinationPlanet);
         }
 
         /// <summary>
-        /// Commits this successfully queued order to the turn-scoped maintenance budget.
+        /// Queues one item and records its exact maintenance change in the AI turn budget.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        private void CommitMaintenance(AITurnContext context)
+        /// <param name="manufacturable">The item to queue.</param>
+        /// <param name="destination">The destination that receives the completed item.</param>
+        /// <returns>True when the item was queued.</returns>
+        private bool Enqueue(
+            AITurnContext context,
+            IManufacturable manufacturable,
+            ISceneNode destination
+        )
         {
-            if (Demand?.RestoresMaintenanceCapacity != true)
-                context.CommitMaintenanceCost(GetMaintenanceCost());
+            bool enqueued = context.Manufacturing.Enqueue(
+                ProducerPlanet,
+                manufacturable,
+                destination,
+                context.Faction.InstanceID,
+                context.AvailableProjectedMaintenanceHeadroom,
+                GetMinimumMaintenanceHeadroom(context),
+                out int addedMaintenance
+            );
+            context.RecordManufacturingMutation(addedMaintenance, 0);
+            return enqueued;
         }
 
         /// <summary>
@@ -780,7 +784,7 @@ namespace Rebellion.AI.Proposals
                 return true;
 
             int minimumHeadroom = GetMinimumMaintenanceHeadroom(context);
-            return context.AvailableProjectedMaintenanceHeadroom - maintenanceCost
+            return (long)context.AvailableProjectedMaintenanceHeadroom - maintenanceCost
                 >= minimumHeadroom;
         }
     }

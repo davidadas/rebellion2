@@ -113,6 +113,12 @@ namespace Rebellion.Game
             set => _gameSpeed = value;
         }
 
+        /// <summary>
+        /// Gets the runtime revision of scene changes that can affect faction economies.
+        /// </summary>
+        [PersistableIgnore]
+        internal long EconomyRevision { get; private set; }
+
         // Game events.
         [PersistableMember(Name = "EventPool")]
         private List<GameEvent> _eventPool = new List<GameEvent>();
@@ -646,6 +652,8 @@ namespace Rebellion.Game
             if (node.OwnerInstanceID != null)
             {
                 GetFactionByOwnerInstanceID(node.OwnerInstanceID).AddOwnedUnit(node);
+                if (node is IManufacturable || node is Planet)
+                    RecordEconomyMutation();
             }
         }
 
@@ -658,7 +666,17 @@ namespace Rebellion.Game
             if (node.OwnerInstanceID != null)
             {
                 GetFactionByOwnerInstanceID(node.OwnerInstanceID).RemoveOwnedUnit(node);
+                if (node is IManufacturable || node is Planet)
+                    RecordEconomyMutation();
             }
+        }
+
+        /// <summary>
+        /// Advances the runtime revision after a change that can affect faction economies.
+        /// </summary>
+        internal void RecordEconomyMutation()
+        {
+            EconomyRevision++;
         }
 
         /// <summary>

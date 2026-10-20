@@ -43,10 +43,8 @@ namespace Rebellion.AI
         {
             get
             {
-                long available =
-                    (long)(Assessment?.ProjectedMaintenanceHeadroom ?? 0)
-                    - _committedMaintenanceCost;
-                return (int)Math.Max(int.MinValue, Math.Min(int.MaxValue, available));
+                EnsureManufacturingBudget();
+                return _availableManufacturingHeadroom;
             }
         }
 
@@ -76,7 +74,9 @@ namespace Rebellion.AI
         );
         private readonly HashSet<SpecialForces> _headquartersEspionageAgents;
         private readonly HashSet<string> _unlockedSpecialForcesMissionTypes;
-        private long _committedMaintenanceCost;
+        private bool _hasManufacturingBudget;
+        private int _availableManufacturingHeadroom;
+        private long _manufacturingBudgetRevision = -1;
 
         /// <summary>
         /// Creates a turn context.
@@ -278,12 +278,54 @@ namespace Rebellion.AI
         }
 
         /// <summary>
-        /// Records maintenance headroom consumed by an action that executed this turn.
+        /// Records the maintenance change produced by one manufacturing command.
         /// </summary>
-        /// <param name="maintenanceCost">The non-negative maintenance cost committed.</param>
-        public void CommitMaintenanceCost(int maintenanceCost)
+        /// <param name="addedMaintenance">Maintenance committed by queued items.</param>
+        /// <param name="releasedMaintenance">Maintenance released by removed items.</param>
+        internal void RecordManufacturingMutation(int addedMaintenance, int releasedMaintenance)
         {
-            _committedMaintenanceCost += Math.Max(0, maintenanceCost);
+            if (!_hasManufacturingBudget)
+            {
+                EnsureManufacturingBudget();
+                return;
+            }
+
+            long available =
+                (long)_availableManufacturingHeadroom
+                + Math.Max(0, releasedMaintenance)
+                - Math.Max(0, addedMaintenance);
+            _availableManufacturingHeadroom = (int)
+                Math.Max(int.MinValue, Math.Min(int.MaxValue, available));
+            _manufacturingBudgetRevision = Game?.EconomyRevision ?? -1;
+        }
+
+        /// <summary>
+        /// Initializes the turn-scoped manufacturing budget from live economy state.
+        /// </summary>
+        private void EnsureManufacturingBudget()
+        {
+            long economyRevision = Game?.EconomyRevision ?? -1;
+            if (_hasManufacturingBudget && _manufacturingBudgetRevision == economyRevision)
+                return;
+
+            _availableManufacturingHeadroom = CalculateAvailableManufacturingHeadroom();
+            _hasManufacturingBudget = true;
+            _manufacturingBudgetRevision = economyRevision;
+        }
+
+        /// <summary>
+        /// Calculates current maintenance capacity minus projected maintenance cost.
+        /// </summary>
+        /// <returns>The faction's current manufacturing headroom.</returns>
+        private int CalculateAvailableManufacturingHeadroom()
+        {
+            if (Game == null || Faction == null)
+                return Assessment?.ProjectedMaintenanceHeadroom ?? 0;
+
+            long available =
+                (long)ResourceProductionQueries.CalculateMaintenanceCapacity(Game, Faction)
+                - Faction.GetTotalProjectedMaintenanceCost();
+            return (int)Math.Max(int.MinValue, Math.Min(int.MaxValue, available));
         }
 
         /// <summary>

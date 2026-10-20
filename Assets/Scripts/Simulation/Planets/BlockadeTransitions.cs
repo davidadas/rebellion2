@@ -51,6 +51,7 @@ namespace Rebellion.Simulation
             if (isBlockaded && blockadingFleet == null)
                 return false;
 
+            game.RecordEconomyMutation();
             results.Add(
                 new BlockadeChangedResult
                 {

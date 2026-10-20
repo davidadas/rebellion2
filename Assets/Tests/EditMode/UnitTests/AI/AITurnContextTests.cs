@@ -161,27 +161,95 @@ namespace Rebellion.Tests.AI
             Assert.AreSame(result, context.Results[0]);
         }
 
+        /// <summary>
+        /// Verifies that adding a manufacturable invalidates a previously read maintenance budget.
+        /// </summary>
         [Test]
-        public void CommitMaintenanceCost_WithPositiveCost_ReducesAvailableHeadroom()
+        public void AvailableProjectedMaintenanceHeadroom_ManufacturableAddedAfterFirstRead_RefreshesSnapshot()
         {
-            AITurnContext context = new AITurnContext(
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "planet",
+                empire.InstanceID,
+                rawResourceNodes: 1
             );
-            int initialHeadroom = context.AvailableProjectedMaintenanceHeadroom;
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "mine",
+                BuildingType.Mine,
+                ManufacturingType.None
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "refinery",
+                BuildingType.Refinery,
+                ManufacturingType.None
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            Starfighter fighter = AITestSceneBuilder.CreateStarfighter(
+                "fighter",
+                empire.InstanceID,
+                maintenanceCost: 7
+            );
+            Assert.AreEqual(50, context.AvailableProjectedMaintenanceHeadroom);
 
-            context.CommitMaintenanceCost(7);
+            game.AttachNode(fighter, planet);
 
-            Assert.AreEqual(initialHeadroom - 7, context.AvailableProjectedMaintenanceHeadroom);
+            Assert.AreEqual(43, context.AvailableProjectedMaintenanceHeadroom);
+        }
+
+        /// <summary>
+        /// Verifies that transferring a manufacturable invalidates a previously read maintenance budget.
+        /// </summary>
+        [Test]
+        public void AvailableProjectedMaintenanceHeadroom_OwnershipChangedAfterFirstRead_RefreshesSnapshot()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "planet",
+                empire.InstanceID,
+                rawResourceNodes: 1
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "mine",
+                BuildingType.Mine,
+                ManufacturingType.None
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "refinery",
+                BuildingType.Refinery,
+                ManufacturingType.None
+            );
+            Planet opposingPlanet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "opposing-planet",
+                rebels.InstanceID
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            Starfighter capturedFighter = AITestSceneBuilder.CreateStarfighter(
+                "captured-fighter",
+                rebels.InstanceID,
+                maintenanceCost: 7
+            );
+            game.AttachNode(capturedFighter, opposingPlanet);
+            Assert.AreEqual(50, context.AvailableProjectedMaintenanceHeadroom);
+
+            game.ChangeOwnership(capturedFighter, empire.InstanceID);
+
+            Assert.AreEqual(43, context.AvailableProjectedMaintenanceHeadroom);
         }
     }
 }
