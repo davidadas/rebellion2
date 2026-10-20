@@ -1506,6 +1506,7 @@ namespace Rebellion.Tests.Simulation
         public void ProcessTick_StalledEnemyWithdrawal_KeepsEntireVictoriousFleetAtCombatPlanet()
         {
             GameRoot game = CreateAutomaticCombatGame();
+            game.Config.Combat.SpaceCombat.LaserCannonCapitalDamageMultiplier = 1;
             game.Random = new SequenceRNG();
             game.Config.Combat.SpaceCombat.AutoResolveRetreatStrengthRatio = double.MaxValue;
             game.Config.Combat.SpaceCombat.AutoResolveStartingDistance = 0;
@@ -2925,6 +2926,7 @@ namespace Rebellion.Tests.Simulation
         public void ResolvePending_CapitalShipAgainstPlanetaryFighter_DestroysFighter()
         {
             GameRoot game = CreateAutomaticCombatGame();
+            game.Config.Combat.SpaceCombat.LaserCannonCapitalDamageMultiplier = 1;
             game.Random = new SequenceRNG();
             game.SetFactionController("alliance", "player1", PlayerControllerType.Human);
             (Planet planet, _) = CreatePlanet(game, "combat", owner: "empire");
