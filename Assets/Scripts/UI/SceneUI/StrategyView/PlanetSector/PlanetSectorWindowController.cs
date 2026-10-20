@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using UnityEngine;
@@ -536,7 +537,7 @@ public sealed class PlanetSectorWindowController
         List<ISceneNode> items =
             mobileHeadquarters != null
                 ? new List<ISceneNode> { mobileHeadquarters }
-                : GetPlayerFleetItems(hit?.Planet);
+                : GetPlayerOverlayItems(hit);
         string playerFactionId = GetUIContext().GetPlayerFactionInstanceID();
         List<StrategyMenuCommand> commands = PlanetSectorWindowContextMenuBuilder.Create(
             hit,
@@ -716,6 +717,9 @@ public sealed class PlanetSectorWindowController
             case StrategyMenuAction.Scrap:
                 confirmationActions.OpenScrapConfirmWindow(source.Window, source.Items);
                 break;
+            case StrategyMenuAction.Abort:
+                confirmationActions.OpenMissionAbortConfirmWindow(source.Window, source.Items);
+                break;
             case StrategyMenuAction.WaypointMove
                 when source.Items?.OfType<Fleet>().Any(fleet => fleet.HasWaypoints()) == true:
                 targetingController.Cancel();
@@ -836,10 +840,10 @@ public sealed class PlanetSectorWindowController
     }
 
     /// <summary>
-    /// Gets the movable player-controlled items represented by a planet-sector selection.
+    /// Gets the player-controlled items represented by a planet-sector selection.
     /// </summary>
     /// <param name="view">The source planet-sector view.</param>
-    /// <returns>The selected fleet or mobile-headquarters items.</returns>
+    /// <returns>The selected fleet, mission, or mobile-headquarters items.</returns>
     public List<ISceneNode> GetContextItems(PlanetSectorWindowView view)
     {
         if (!sessions.TryGetValue(view, out PlanetSectorWindowSession session))
@@ -850,9 +854,7 @@ public sealed class PlanetSectorWindowController
         if (mobileHeadquarters != null)
             return new List<ISceneNode> { mobileHeadquarters };
 
-        return hit?.Icon == PlanetIcon.Fleet
-            ? GetPlayerFleetItems(hit.Planet)
-            : new List<ISceneNode>();
+        return GetPlayerOverlayItems(hit);
     }
 
     /// <summary>
@@ -1182,6 +1184,21 @@ public sealed class PlanetSectorWindowController
     }
 
     /// <summary>
+    /// Gets the player-controlled scene nodes represented by one planet overlay.
+    /// </summary>
+    /// <param name="hit">The selected planet-sector hit.</param>
+    /// <returns>The represented player-controlled scene nodes.</returns>
+    private List<ISceneNode> GetPlayerOverlayItems(PlanetSectorWindowHit hit)
+    {
+        return hit?.Icon switch
+        {
+            PlanetIcon.Fleet => GetPlayerFleetItems(hit.Planet),
+            PlanetIcon.Mission => GetPlayerMissionItems(hit.Planet),
+            _ => new List<ISceneNode>(),
+        };
+    }
+
+    /// <summary>
     /// Gets all player-controlled fleets at one planet.
     /// </summary>
     /// <param name="planet">The represented planet.</param>
@@ -1194,6 +1211,24 @@ public sealed class PlanetSectorWindowController
                 .Cast<ISceneNode>()
                 .Where(fleet =>
                     StrategyContextMenuAvailability.PlayerControlsItem(fleet, playerFactionId)
+                )
+                .ToList()
+            ?? new List<ISceneNode>();
+    }
+
+    /// <summary>
+    /// Gets all player-controlled missions represented by one planet mission overlay.
+    /// </summary>
+    /// <param name="planet">The represented planet.</param>
+    /// <returns>The player-controlled mission nodes.</returns>
+    private List<ISceneNode> GetPlayerMissionItems(Planet planet)
+    {
+        string playerFactionId = GetUIContext().GetPlayerFactionInstanceID();
+        return planet
+                ?.GetChildren<Mission>()
+                .Cast<ISceneNode>()
+                .Where(mission =>
+                    StrategyContextMenuAvailability.PlayerControlsItem(mission, playerFactionId)
                 )
                 .ToList()
             ?? new List<ISceneNode>();

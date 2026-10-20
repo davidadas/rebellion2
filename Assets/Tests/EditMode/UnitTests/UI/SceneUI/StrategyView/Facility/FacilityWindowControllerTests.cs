@@ -628,6 +628,16 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             public void OpenFacilityInfo(StrategyStatusTarget target) { }
 
             /// <summary>
+            /// Opens mission abort confirmation.
+            /// </summary>
+            /// <param name="sourceWindow">The source window.</param>
+            /// <param name="items">The selected missions.</param>
+            public void OpenMissionAbortConfirmWindow(
+                UIWindow sourceWindow,
+                IReadOnlyList<ISceneNode> items
+            ) { }
+
+            /// <summary>
             /// Opens scrap confirm window.
             /// </summary>
             /// <param name="sourceWindow">The source window.</param>

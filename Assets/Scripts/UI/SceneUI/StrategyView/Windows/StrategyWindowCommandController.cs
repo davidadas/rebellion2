@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Simulation;
@@ -320,6 +322,42 @@ public sealed class StrategyWindowCommandController
     }
 
     /// <summary>
+    /// Opens abort confirmation for a complete active mission selection.
+    /// </summary>
+    /// <param name="sourceWindow">The strategy window that owns the selection.</param>
+    /// <param name="items">The selected missions.</param>
+    public void OpenMissionAbortConfirmWindow(
+        UIWindow sourceWindow,
+        IReadOnlyList<ISceneNode> items
+    )
+    {
+        List<string> missionInstanceIds = GetMissionInstanceIds(items);
+        if (!TryResolveAbortMissions(missionInstanceIds, out List<Mission> missions))
+            return;
+
+        confirmDialogWindowController.OpenMissionAbort(
+            missions,
+            () =>
+            {
+                if (!TryResolveAbortMissions(missionInstanceIds, out List<Mission> liveMissions))
+                    return;
+
+                GameRoot game = services.GetService<GameRoot>();
+                string voicePath = GetMissionAbortVoicePath(liveMissions, game);
+                if (
+                    services.GetService<MissionCommands>()?.AbortMissions(missionInstanceIds)
+                    != true
+                )
+                    return;
+
+                if (!string.IsNullOrEmpty(voicePath))
+                    playSfx(voicePath);
+                RefreshAfterMutation(sourceWindow);
+            }
+        );
+    }
+
+    /// <summary>
     /// Opens scrap confirmation for selected units.
     /// </summary>
     /// <param name="sourceWindow">The strategy window that owns the selection.</param>
@@ -509,6 +547,75 @@ public sealed class StrategyWindowCommandController
         );
         if (!string.IsNullOrEmpty(voicePath))
             playSfx(voicePath);
+    }
+
+    /// <summary>
+    /// Captures unique mission identities from one context-menu selection.
+    /// </summary>
+    /// <param name="items">The selected scene nodes.</param>
+    /// <returns>The mission instance identifiers in selection order.</returns>
+    private static List<string> GetMissionInstanceIds(IReadOnlyList<ISceneNode> items)
+    {
+        if (
+            items == null
+            || items.Count == 0
+            || items.Any(item =>
+                item is not Mission mission || string.IsNullOrEmpty(mission.InstanceID)
+            )
+        )
+            return new List<string>();
+
+        return items
+            .Cast<Mission>()
+            .Select(mission => mission.InstanceID)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+    }
+
+    /// <summary>
+    /// Resolves and validates a complete mission selection against the current game.
+    /// </summary>
+    /// <param name="missionInstanceIds">The persistent mission identifiers.</param>
+    /// <param name="missions">Receives the resolved active missions.</param>
+    /// <returns>True when every mission remains available for abort.</returns>
+    private bool TryResolveAbortMissions(
+        IReadOnlyList<string> missionInstanceIds,
+        out List<Mission> missions
+    )
+    {
+        GameRoot game = services.GetService<GameRoot>();
+        missions =
+            missionInstanceIds
+                ?.Select(instanceId => game?.GetSceneNodeByInstanceID<Mission>(instanceId))
+                .Where(mission => mission != null)
+                .ToList()
+            ?? new List<Mission>();
+        return missionInstanceIds != null
+            && missions.Count == missionInstanceIds.Count
+            && StrategyContextMenuAvailability.CanAbortMissions(
+                missions.Cast<ISceneNode>().ToList(),
+                GetPlayerFactionID()
+            );
+    }
+
+    /// <summary>
+    /// Selects one mission-abort response from the validated mission selection.
+    /// </summary>
+    /// <param name="missions">The missions being aborted.</param>
+    /// <param name="game">The current game state.</param>
+    /// <returns>The selected voice path, or null.</returns>
+    private static string GetMissionAbortVoicePath(IReadOnlyList<Mission> missions, GameRoot game)
+    {
+        if (game == null)
+            return null;
+
+        Officer speaker = missions
+            ?.SelectMany(mission =>
+                mission.GetMainParticipants().Concat(mission.GetDecoyParticipants())
+            )
+            .OfType<Officer>()
+            .FirstOrDefault(officer => officer.HasVoicePath(OfficerVoiceLineType.MissionAbort));
+        return speaker?.GetVoicePath(OfficerVoiceLineType.MissionAbort, game.Random);
     }
 
     /// <summary>

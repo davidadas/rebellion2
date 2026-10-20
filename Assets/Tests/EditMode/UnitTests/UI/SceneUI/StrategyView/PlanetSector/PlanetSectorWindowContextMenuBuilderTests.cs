@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
@@ -58,7 +59,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         }
 
         [Test]
-        public void Create_MissionHit_ReturnsDisabledMissionCommands()
+        public void Create_MissionHitWithoutOwnedMissions_ReturnsDisabledMissionCommands()
         {
             PlanetSectorWindowHit hit = CreateHit(PlanetIcon.Mission, false);
 
@@ -78,6 +79,49 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.AreEqual(StrategyMenuAction.Abort, commands[2].Action);
             Assert.AreEqual("Abort", commands[2].Text);
             Assert.IsFalse(commands[2].Enabled);
+        }
+
+        [Test]
+        public void Create_MissionHitWithWorkingMissions_ReturnsEnabledAbortCommand()
+        {
+            PlanetSectorWindowHit hit = CreateHit(PlanetIcon.Mission, false);
+            DiplomacyMission firstMission = CreateMission("first-mission");
+            DiplomacyMission secondMission = CreateMission("second-mission");
+
+            List<StrategyMenuCommand> commands = PlanetSectorWindowContextMenuBuilder.Create(
+                hit,
+                new List<ISceneNode> { firstMission, secondMission },
+                _playerFactionId
+            );
+
+            Assert.IsTrue(
+                commands.Single(command => command.Action == StrategyMenuAction.Abort).Enabled
+            );
+        }
+
+        [Test]
+        public void Create_MissionHitWithWaitingMission_ReturnsDisabledAbortCommand()
+        {
+            PlanetSectorWindowHit hit = CreateHit(PlanetIcon.Mission, false);
+            DiplomacyMission workingMission = CreateMission("working-mission");
+            DiplomacyMission waitingMission = CreateMission("waiting-mission");
+            waitingMission.AddChild(
+                new Officer
+                {
+                    OwnerInstanceID = _playerFactionId,
+                    Movement = new MovementState { TransitTicks = 10 },
+                }
+            );
+
+            List<StrategyMenuCommand> commands = PlanetSectorWindowContextMenuBuilder.Create(
+                hit,
+                new List<ISceneNode> { workingMission, waitingMission },
+                _playerFactionId
+            );
+
+            Assert.IsFalse(
+                commands.Single(command => command.Action == StrategyMenuAction.Abort).Enabled
+            );
         }
 
         [Test]
@@ -267,6 +311,22 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
 
             Assert.AreEqual("Waypoint Move", commands[2].Text);
             Assert.IsTrue(commands[2].Enabled);
+        }
+
+        /// <summary>
+        /// Creates one working mission owned by the player.
+        /// </summary>
+        /// <param name="instanceId">The mission instance identifier.</param>
+        /// <returns>The working mission.</returns>
+        private static DiplomacyMission CreateMission(string instanceId)
+        {
+            DiplomacyMission mission = new DiplomacyMission
+            {
+                InstanceID = instanceId,
+                OwnerInstanceID = _playerFactionId,
+            };
+            mission.Initiate(1);
+            return mission;
         }
 
         /// <summary>

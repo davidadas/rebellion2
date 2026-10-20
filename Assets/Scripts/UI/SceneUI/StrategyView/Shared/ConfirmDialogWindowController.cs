@@ -129,8 +129,21 @@ public sealed class ConfirmDialogWindowController
     /// <param name="confirmedAction">The action to invoke after confirmation.</param>
     public void OpenMissionAbort(Mission mission, Action confirmedAction)
     {
+        OpenMissionAbort(
+            mission == null ? Array.Empty<Mission>() : new[] { mission },
+            confirmedAction
+        );
+    }
+
+    /// <summary>
+    /// Opens abort confirmation for a complete active mission selection.
+    /// </summary>
+    /// <param name="missions">The missions being aborted.</param>
+    /// <param name="confirmedAction">The action to invoke after confirmation.</param>
+    public void OpenMissionAbort(IReadOnlyList<Mission> missions, Action confirmedAction)
+    {
         Open(
-            mission == null ? Array.Empty<ISceneNode>() : new ISceneNode[] { mission },
+            missions?.Cast<ISceneNode>().ToArray() ?? Array.Empty<ISceneNode>(),
             ConfirmDialogKind.MissionAbort,
             -1,
             confirmedAction

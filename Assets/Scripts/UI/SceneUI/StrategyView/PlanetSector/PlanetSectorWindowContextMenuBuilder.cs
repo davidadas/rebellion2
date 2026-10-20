@@ -11,7 +11,7 @@ internal static class PlanetSectorWindowContextMenuBuilder
     /// Creates context commands for one planet-sector hit.
     /// </summary>
     /// <param name="hit">The active semantic planet hit.</param>
-    /// <param name="fleetItems">The player-controlled fleet items at the hit planet.</param>
+    /// <param name="items">The player-controlled items represented by the hit overlay.</param>
     /// <param name="playerFactionId">The player faction identifier.</param>
     /// <param name="mobileHeadquarters">The mobile headquarters selected at the hit planet.</param>
     /// <param name="canBombard">Whether the fleets can bombard the hit planet.</param>
@@ -20,7 +20,7 @@ internal static class PlanetSectorWindowContextMenuBuilder
     /// <returns>The available context commands in display order.</returns>
     public static List<StrategyMenuCommand> Create(
         PlanetSectorWindowHit hit,
-        List<ISceneNode> fleetItems,
+        List<ISceneNode> items,
         string playerFactionId,
         Building mobileHeadquarters = null,
         bool canBombard = false,
@@ -48,19 +48,37 @@ internal static class PlanetSectorWindowContextMenuBuilder
             PlanetIcon.Facility => CreatePlanetInformationCommands(true),
             PlanetIcon.Defense => CreatePlanetInformationCommands(true),
             PlanetIcon.Fleet => CreateFleetCommands(
-                fleetItems,
+                items,
                 playerFactionId,
                 canBombard,
                 canDestroyPlanet,
                 canAssault
             ),
-            PlanetIcon.Mission => new List<StrategyMenuCommand>
-            {
-                new StrategyMenuCommand(StrategyMenuAction.Encyclopedia, "Encyclopedia", false),
-                new StrategyMenuCommand(StrategyMenuAction.Status, "Status", false),
-                new StrategyMenuCommand(StrategyMenuAction.Abort, "Abort", false),
-            },
+            PlanetIcon.Mission => CreateMissionCommands(items, playerFactionId),
             _ => CreatePlanetInformationCommands(false),
+        };
+    }
+
+    /// <summary>
+    /// Creates commands for the missions represented by one planet mission overlay.
+    /// </summary>
+    /// <param name="missionItems">The player-controlled missions at the planet.</param>
+    /// <param name="playerFactionId">The player faction identifier.</param>
+    /// <returns>The mission commands.</returns>
+    private static List<StrategyMenuCommand> CreateMissionCommands(
+        List<ISceneNode> missionItems,
+        string playerFactionId
+    )
+    {
+        return new List<StrategyMenuCommand>
+        {
+            new StrategyMenuCommand(StrategyMenuAction.Encyclopedia, "Encyclopedia", false),
+            new StrategyMenuCommand(StrategyMenuAction.Status, "Status", false),
+            new StrategyMenuCommand(
+                StrategyMenuAction.Abort,
+                "Abort",
+                StrategyContextMenuAvailability.CanAbortMissions(missionItems, playerFactionId)
+            ),
         };
     }
 
