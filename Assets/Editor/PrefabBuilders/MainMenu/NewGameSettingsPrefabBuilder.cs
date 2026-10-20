@@ -90,9 +90,9 @@ public static class NewGameSettingsPrefabBuilder
             0,
             326,
             290,
-            333,
+            330,
             0,
-            9,
+            12,
             290,
             out RectTransform content
         );

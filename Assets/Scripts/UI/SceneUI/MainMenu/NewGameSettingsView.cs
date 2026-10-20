@@ -521,8 +521,8 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
         scrollArea.SetLayout(
             Vector2.zero,
             new Vector2(326f, height),
-            new Vector2(333f, 0f),
-            new Vector2(9f, height)
+            new Vector2(330f, 0f),
+            new Vector2(12f, height)
         );
     }
 
@@ -723,11 +723,13 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
                     "The shared Options selector is required for Game Setup."
                 );
 
+            const int controlLeft = 171;
             choice = optionsMenuPrefab.CloneContentPackChoice(
                 row.transform,
                 "Choice-" + key,
-                171,
-                _controlTop
+                controlLeft,
+                _controlTop,
+                Mathf.RoundToInt(scrollArea.ViewportWidth) - controlLeft
             );
             choice.StepRequested += delta => step(delta);
             setupChoiceFields.Add(key, choice);
