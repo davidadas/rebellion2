@@ -512,6 +512,71 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsEmpty(spacious.GetAllBuildings());
         }
 
+        [TestCase(5, 4)]
+        [TestCase(4, 0)]
+        public void Plan_PrimaryHubUnavailable_RequiresSpaceForSecondaryHubAndShield(
+            int energyCapacity,
+            int expectedQuantity
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
+            game.Config.AI.Selection.MaintenanceHeadroomReserve = 0;
+            game.Config.AI.Infrastructure.FacilityConstructionLaneReserve = 0;
+            game.Config.AI.Infrastructure.ShipyardPrimaryHubTargetCount = 6;
+            game.Config.AI.Infrastructure.ShipyardSecondaryHubTargetCount = 4;
+            game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit = 2;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet producer = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "producer",
+                faction.InstanceID,
+                energyCapacity: 3
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                producer,
+                "constructor",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+            AddMaintenanceCapacity(game, producer, 1);
+            AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "destination",
+                faction.InstanceID,
+                energyCapacity: energyCapacity
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
+            context.SetProductionDemands(
+                new[]
+                {
+                    new AIProductionDemand(
+                        "industry",
+                        AIProductionDemandKind.Shipyard,
+                        ManufacturingType.Building,
+                        BuildingType.Shipyard,
+                        null,
+                        6,
+                        targetCount: 6,
+                        baseDemandPercent: 100
+                    ),
+                }
+            );
+
+            new AIProductionPlanner().Plan(context);
+
+            Assert.AreEqual(
+                expectedQuantity,
+                context
+                    .ProductionDemands.Where(demand =>
+                        demand.Kind == AIProductionDemandKind.Shipyard
+                    )
+                    .Sum(demand => demand.QuantityNeeded)
+            );
+        }
+
         [TestCase(BuildingType.Defense)]
         [TestCase(BuildingType.Weapon)]
         public void Plan_ThreatenedExistingFiller_ProtectsOrderWithoutRestarting(BuildingType type)

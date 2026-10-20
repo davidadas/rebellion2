@@ -282,7 +282,7 @@ namespace Rebellion.AI.Planners
                         )
                         .FirstOrDefault();
                     if (destination == null)
-                        break;
+                        continue;
                     assignedDestinationIds.Add(destination.InstanceID);
                     int requestedQuantity = Math.Min(
                         remainingFacilityCount,
