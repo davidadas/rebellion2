@@ -350,6 +350,8 @@ public sealed class ConfirmDialogWindowController
             ConfirmDialogKind.Scrap => _scrapPrompt,
             ConfirmDialogKind.Retire => _retirePrompt,
             ConfirmDialogKind.StopConstruction => _stopConstructionPrompt,
+            ConfirmDialogKind.MissionAbort when session.Items.Count > 1 =>
+                $"Are you sure you want to abort these {session.Items.Count} missions?",
             ConfirmDialogKind.MissionAbort => _missionAbortPrompt,
             ConfirmDialogKind.Move when session.TransitTimeInDays >= 0 =>
                 $"{_moveTransitLabel} {session.TransitTimeInDays}",
