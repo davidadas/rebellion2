@@ -102,7 +102,7 @@ namespace Rebellion.AI.Planners
         public List<AIProposal> Plan(AITurnContext context)
         {
             ResetPlanningCache();
-            List<AIProductionDemand> demands = ExpandFacilityDemands(
+            List<AIProductionDemand> demands = ExpandProductionDemands(
                 context,
                 context.ProductionDemands
             );
@@ -165,12 +165,12 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Expands score-free facility-capacity deficits into destination-specific hub demands.
+        /// Expands capacity deficits into destination-specific production demands.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="demands">The score-free demands generated for the turn.</param>
-        /// <returns>The production demands with facility hubs expanded in original order.</returns>
-        private List<AIProductionDemand> ExpandFacilityDemands(
+        /// <returns>The production demands with industrial layouts and economic destinations assigned.</returns>
+        private List<AIProductionDemand> ExpandProductionDemands(
             AITurnContext context,
             IEnumerable<AIProductionDemand> demands
         )
@@ -187,7 +187,163 @@ namespace Rebellion.AI.Planners
                     expanded.Add(demand);
             }
 
+            return ExpandEconomyDemands(context, expanded);
+        }
+
+        /// <summary>
+        /// Assigns economy capacity deficits to destinations outside the completed industrial layout.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="demands">The requirements after industrial allocation.</param>
+        /// <returns>The requirements with economic destinations assigned.</returns>
+        private static List<AIProductionDemand> ExpandEconomyDemands(
+            AITurnContext context,
+            IEnumerable<AIProductionDemand> demands
+        )
+        {
+            List<AIProductionDemand> expanded = new();
+            HashSet<string> mineTargetIds = new(StringComparer.Ordinal);
+            foreach (AIProductionDemand demand in demands)
+            {
+                if (
+                    demand.Destination != null
+                    || demand.Kind
+                        is not (AIProductionDemandKind.Mine or AIProductionDemandKind.Refinery)
+                )
+                {
+                    expanded.Add(demand);
+                    if (
+                        demand.Kind == AIProductionDemandKind.Mine
+                        && demand.DestinationPlanet != null
+                    )
+                        mineTargetIds.Add(demand.DestinationPlanet.InstanceID);
+                    continue;
+                }
+
+                IEnumerable<Planet> targets =
+                    demand.Kind == AIProductionDemandKind.Mine
+                        ? FindMineTargets(context, demand.QuantityNeeded)
+                        : FindRefineryTargets(context, demand.QuantityNeeded, mineTargetIds);
+                foreach (Planet target in targets)
+                {
+                    expanded.Add(
+                        CreateBuildingDemand(
+                            context,
+                            demand.Kind,
+                            demand.BuildingType,
+                            target,
+                            demand.TargetCount,
+                            demand.BaseDemandPercent
+                        )
+                    );
+                    if (demand.Kind == AIProductionDemandKind.Mine)
+                        mineTargetIds.Add(target.InstanceID);
+                }
+            }
             return expanded;
+        }
+
+        /// <summary>
+        /// Creates one economy building requirement.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="kind">The economy requirement kind.</param>
+        /// <param name="buildingType">The required building type.</param>
+        /// <param name="target">The destination planet.</param>
+        /// <param name="targetCount">The projected faction-wide target count.</param>
+        /// <param name="baseDemandPercent">The base economy pressure.</param>
+        /// <returns>The production requirement.</returns>
+        private static AIProductionDemand CreateBuildingDemand(
+            AITurnContext context,
+            AIProductionDemandKind kind,
+            BuildingType buildingType,
+            Planet target,
+            int targetCount,
+            int baseDemandPercent
+        )
+        {
+            return new AIProductionDemand(
+                AIProductionDemand.CreateId(context.Faction.InstanceID, kind, target.InstanceID),
+                kind,
+                ManufacturingType.Building,
+                buildingType,
+                target,
+                1,
+                targetCount: targetCount,
+                baseDemandPercent: baseDemandPercent
+            );
+        }
+
+        /// <summary>
+        /// Returns candidate planets for new mines.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="count">Maximum number of planets.</param>
+        /// <returns>Ranked mine destinations.</returns>
+        private static IEnumerable<Planet> FindMineTargets(AITurnContext context, int count)
+        {
+            return count <= 0
+                ? Enumerable.Empty<Planet>()
+                : GetBuildingDestinations(context, BuildingType.Mine)
+                    .Where(planet => planet.GetUnminedResourceNodeCount() > 0)
+                    .OrderByDescending(planet => planet.GetUnminedResourceNodeCount())
+                    .ThenByDescending(planet => planet.GetAvailableEnergy())
+                    .ThenBy(planet => planet.InstanceID)
+                    .Take(count);
+        }
+
+        /// <summary>
+        /// Returns candidate planets for new refineries.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="count">Maximum number of planets.</param>
+        /// <param name="excludedPlanetIds">Planets already selected for mines.</param>
+        /// <returns>Ranked refinery destinations.</returns>
+        private static IEnumerable<Planet> FindRefineryTargets(
+            AITurnContext context,
+            int count,
+            HashSet<string> excludedPlanetIds
+        )
+        {
+            if (count <= 0)
+                return Enumerable.Empty<Planet>();
+
+            List<Planet> targets = GetBuildingDestinations(context, BuildingType.Refinery)
+                .Where(planet => !excludedPlanetIds.Contains(planet.InstanceID))
+                .OrderBy(planet => planet.GetTotalBuildingTypeCount(BuildingType.Refinery))
+                .ThenByDescending(planet => planet.GetAvailableEnergy())
+                .ThenBy(planet => planet.InstanceID)
+                .Take(count)
+                .ToList();
+            if (targets.Count >= count)
+                return targets;
+
+            targets.AddRange(
+                GetBuildingDestinations(context, BuildingType.Refinery)
+                    .Where(planet => excludedPlanetIds.Contains(planet.InstanceID))
+                    .OrderBy(planet => planet.GetTotalBuildingTypeCount(BuildingType.Refinery))
+                    .ThenByDescending(planet => planet.GetAvailableEnergy())
+                    .ThenBy(planet => planet.InstanceID)
+                    .Take(count - targets.Count)
+            );
+            return targets;
+        }
+
+        /// <summary>
+        /// Returns owned planets that can receive an economy building.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="buildingType">The economic building to place.</param>
+        /// <returns>Eligible building destinations.</returns>
+        private static IEnumerable<Planet> GetBuildingDestinations(
+            AITurnContext context,
+            BuildingType buildingType
+        )
+        {
+            return context.Assessment.OwnedPlanets.Where(planet =>
+                planet?.IsDestroyed == false
+                && context.StrategicPlan.GetAvailableConstructionSpace(planet, buildingType) > 0
+            );
         }
 
         /// <summary>

@@ -21,6 +21,241 @@ namespace Rebellion.Tests.AI.Planners
     [TestFixture]
     public sealed partial class AIProductionPlannerTests
     {
+        [TestCase(BuildingType.ConstructionFacility, 5)]
+        [TestCase(BuildingType.Shipyard, 6)]
+        [TestCase(BuildingType.TrainingFacility, 4)]
+        public void Plan_PlannedIndustrialAndDefenseSlots_PlacesEconomyOnAnotherPlanet(
+            BuildingType facilityType,
+            int facilityTarget
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
+            game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit = 2;
+            game.Config.AI.Infrastructure.ConstructionFacilityPrimaryHubTargetCount = 0;
+            game.Config.AI.Infrastructure.ConstructionFacilitySecondaryHubTargetCount = 0;
+            game.Config.AI.Infrastructure.ShipyardPrimaryHubTargetCount = 0;
+            game.Config.AI.Infrastructure.ShipyardSecondaryHubTargetCount = 0;
+            game.Config.AI.Infrastructure.TrainingFacilityHubTargetCount = 0;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet hub = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "hub",
+                faction.InstanceID,
+                energyCapacity: facilityTarget + 1,
+                rawResourceNodes: 10
+            );
+            Planet economy = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "economy",
+                faction.InstanceID,
+                rawResourceNodes: 1
+            );
+            hub.SetPopularSupport(faction.InstanceID, 100);
+            economy.SetPopularSupport(faction.InstanceID, 100);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
+            Assert.IsTrue(
+                context.StrategicPlan.TryAllocateInfrastructureHub(
+                    hub,
+                    facilityType,
+                    facilityTarget
+                )
+            );
+
+            PlanProduction(context);
+            var demands = context.ProductionDemands;
+
+            Assert.IsFalse(
+                demands.Any(d =>
+                    d.DestinationPlanet == hub
+                    && d.Kind is AIProductionDemandKind.Mine or AIProductionDemandKind.Refinery
+                )
+            );
+            Assert.IsTrue(
+                demands.Any(d =>
+                    d.DestinationPlanet == economy && d.Kind == AIProductionDemandKind.Mine
+                )
+            );
+        }
+
+        [Test]
+        public void Plan_WithMultipleEconomyDestinations_RequestsOneBuildingPerDestination()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 0;
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            for (int index = 0; index < 3; index++)
+            {
+                Planet planet = AITestSceneBuilder.AddPlanet(
+                    game,
+                    system,
+                    $"resource-world-{index}",
+                    empire.InstanceID,
+                    energyCapacity: 20,
+                    rawResourceNodes: 4
+                );
+                AITestSceneBuilder.AddProductionFacility(
+                    game,
+                    planet,
+                    $"construction-yard-{index}",
+                    BuildingType.ConstructionFacility,
+                    ManufacturingType.Building
+                );
+            }
+            empire.PendingRefinedMaterialFacilityIDs.Add("waiting-production-facility");
+
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            PlanProduction(context);
+
+            List<AIProductionDemand> economyDemands = context
+                .ProductionDemands.Where(demand =>
+                    demand.Kind is AIProductionDemandKind.Mine or AIProductionDemandKind.Refinery
+                )
+                .ToList();
+
+            Assert.Greater(economyDemands.Count, 1);
+            Assert.IsTrue(economyDemands.All(demand => demand.QuantityNeeded == 1));
+        }
+
+        [Test]
+        public void Plan_WithOwnedNonOperationalOuterRimPlanet_AddsEconomyDemand()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "outer-rim");
+            sector.SectorType = PlanetSectorType.OuterRim;
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "claimed-world",
+                empire.InstanceID,
+                energyCapacity: 10,
+                rawResourceNodes: 5
+            );
+            planet.IsColonized = false;
+            empire.PendingRefinedMaterialFacilityIDs.Add("waiting-production-facility");
+
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            PlanProduction(context);
+            var demands = context.ProductionDemands;
+
+            Assert.IsTrue(
+                demands.Any(demand =>
+                    demand.Kind is AIProductionDemandKind.Mine or AIProductionDemandKind.Refinery
+                    && demand.DestinationPlanet == planet
+                )
+            );
+        }
+
+        [Test]
+        public void Plan_WithLowestRefineryCountAtFullEnergy_TargetsEligiblePlanet()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet fullPlanet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "full-world",
+                empire.InstanceID,
+                energyCapacity: 1,
+                rawResourceNodes: 1
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                fullPlanet,
+                "full-world-mine",
+                BuildingType.Mine,
+                ManufacturingType.None
+            );
+            Planet eligiblePlanet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "eligible-world",
+                empire.InstanceID,
+                energyCapacity: 20,
+                rawResourceNodes: 2
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                eligiblePlanet,
+                "eligible-world-mine",
+                BuildingType.Mine,
+                ManufacturingType.None
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                eligiblePlanet,
+                "eligible-world-refinery",
+                BuildingType.Refinery,
+                ManufacturingType.None
+            );
+            empire.PendingRefinedMaterialFacilityIDs.Add("waiting-production-facility");
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            PlanProduction(context);
+            AIProductionDemand demand = context.ProductionDemands.Single(item =>
+                item.Kind == AIProductionDemandKind.Refinery
+            );
+
+            Assert.AreSame(eligiblePlanet, demand.DestinationPlanet);
+        }
+
+        [Test]
+        public void Plan_DefenseLayoutUsesAllSpace_ExcludesEconomyDemand()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "defense-reserve-world",
+                empire.InstanceID,
+                energyCapacity: game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit
+                    + game.Config.AI.Infrastructure.PlanetaryWeaponTargetCount,
+                rawResourceNodes: 4
+            );
+            planet.IsHeadquarters = true;
+            empire.HQInstanceID = planet.InstanceID;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            PlanProduction(context);
+            var demands = context.ProductionDemands;
+
+            Assert.IsFalse(
+                demands.Any(demand =>
+                    demand.Kind is AIProductionDemandKind.Mine or AIProductionDemandKind.Refinery
+                )
+            );
+        }
+
+        [TestCase(AIProductionDemandKind.Mine)]
+        [TestCase(AIProductionDemandKind.Refinery)]
+        public void Plan_EconomySiteReservedForTraining_OffersAnAvailableDestination(
+            AIProductionDemandKind kind
+        )
+        {
+            AITurnContext context = CreateEconomyPlacementContext(kind, true, out Planet economy);
+
+            AIManufactureProposal proposal = PlanProduction(context)
+                .OfType<AIManufactureProposal>()
+                .Single(proposal => proposal.Demand.Kind == kind && proposal.CanSelect(context));
+
+            Assert.AreSame(economy, proposal.Destination);
+        }
+
+        [TestCase(AIProductionDemandKind.Mine)]
+        [TestCase(AIProductionDemandKind.Refinery)]
+        public void Plan_TrainingReservesAllEconomySpace_OmitsUnplaceableDemand(
+            AIProductionDemandKind kind
+        )
+        {
+            AITurnContext context = CreateEconomyPlacementContext(kind, false, out Planet _);
+
+            PlanProduction(context);
+
+            Assert.IsFalse(context.ProductionDemands.Any(demand => demand.Kind == kind));
+        }
+
         [TestCase(1, 2, false, false, "a-interdictor")]
         [TestCase(2, 2, false, false, "z-warship")]
         [TestCase(3, 2, false, false, "z-warship")]
@@ -3076,6 +3311,88 @@ namespace Rebellion.Tests.AI.Planners
                     .Single(demand => demand.DestinationPlanet == demandPlanet)
                     .InfrastructureHubIndex
             );
+        }
+
+        private static AITurnContext CreateEconomyPlacementContext(
+            AIProductionDemandKind kind,
+            bool hasEconomySpace,
+            out Planet economy
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
+            game.Config.AI.Selection.MaintenanceHeadroomReserve = 0;
+            game.Config.AI.Selection.MaintenanceHeadroomTarget = 1000;
+            game.Config.AI.Infrastructure.FacilityConstructionLaneReserve = 0;
+            game.Config.AI.Infrastructure.ConstructionFacilityPrimaryHubTargetCount = 0;
+            game.Config.AI.Infrastructure.ConstructionFacilitySecondaryHubTargetCount = 0;
+            game.Config.AI.Infrastructure.ShipyardPrimaryHubTargetCount = 0;
+            game.Config.AI.Infrastructure.ShipyardSecondaryHubTargetCount = 0;
+            game.Config.AI.Infrastructure.TrainingFacilityHubTargetCount = 4;
+            game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit = 2;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet hub = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "hub",
+                faction.InstanceID,
+                energyCapacity: 5,
+                rawResourceNodes: 10
+            );
+            Planet producer = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "producer",
+                faction.InstanceID,
+                energyCapacity: 4,
+                rawResourceNodes: 2
+            );
+            economy = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "economy",
+                faction.InstanceID,
+                energyCapacity: hasEconomySpace ? 3 : 0,
+                rawResourceNodes: 2
+            );
+            foreach (Planet planet in new[] { hub, producer, economy })
+                planet.SetPopularSupport(faction.InstanceID, 100);
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                hub,
+                "training",
+                BuildingType.TrainingFacility,
+                ManufacturingType.Troop
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                producer,
+                "constructor",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+            for (int index = 0; index < 3; index++)
+                AITestSceneBuilder.AddProductionFacility(
+                    game,
+                    producer,
+                    "resource-" + index,
+                    index < (kind == AIProductionDemandKind.Mine ? 1 : 2)
+                        ? BuildingType.Mine
+                        : BuildingType.Refinery,
+                    ManufacturingType.None
+                );
+            faction.ResearchQueue[ManufacturingType.Building] = new List<Technology>
+            {
+                new(AITestSceneBuilder.CreateBuildingTemplate("mine", BuildingType.Mine)),
+                new(AITestSceneBuilder.CreateBuildingTemplate("refinery", BuildingType.Refinery)),
+                new(
+                    AITestSceneBuilder.CreateBuildingTemplate(
+                        "training",
+                        BuildingType.TrainingFacility,
+                        ManufacturingType.Troop
+                    )
+                ),
+            };
+            return AITestSceneBuilder.CreateContext(game, faction);
         }
 
         /// <summary>

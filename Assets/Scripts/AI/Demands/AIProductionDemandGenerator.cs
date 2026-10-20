@@ -762,42 +762,42 @@ namespace Rebellion.AI.Demands
                 batchSize
             );
             int demandPercent = GetDemandPercent(rawResourceNodes, plannedMines, config);
-            List<Planet> mineTargets = FindMineTargets(context, mineDeficit).ToList();
-            HashSet<string> mineTargetIds = new HashSet<string>(
-                mineTargets.Select(planet => planet.InstanceID),
-                StringComparer.Ordinal
-            );
-            List<Planet> refineryTargets = FindRefineryTargets(
-                    context,
-                    refineryDeficit,
-                    mineTargetIds
-                )
-                .ToList();
-
-            foreach (Planet target in mineTargets)
+            if (mineDeficit > 0)
             {
                 requirements.Add(
-                    CreateBuildingDemand(
-                        context,
+                    new AIProductionDemand(
+                        AIProductionDemand.CreateId(
+                            context.Faction.InstanceID,
+                            AIProductionDemandKind.Mine,
+                            "capacity"
+                        ),
                         AIProductionDemandKind.Mine,
+                        ManufacturingType.Building,
                         BuildingType.Mine,
-                        target,
-                        plannedMines + mineDeficit,
-                        demandPercent
+                        null,
+                        mineDeficit,
+                        targetCount: plannedMines + mineDeficit,
+                        baseDemandPercent: demandPercent
                     )
                 );
             }
 
-            foreach (Planet target in refineryTargets)
+            if (refineryDeficit > 0)
             {
                 requirements.Add(
-                    CreateBuildingDemand(
-                        context,
+                    new AIProductionDemand(
+                        AIProductionDemand.CreateId(
+                            context.Faction.InstanceID,
+                            AIProductionDemandKind.Refinery,
+                            "capacity"
+                        ),
                         AIProductionDemandKind.Refinery,
+                        ManufacturingType.Building,
                         BuildingType.Refinery,
-                        target,
-                        plannedRefineries + refineryDeficit,
-                        demandPercent
+                        null,
+                        refineryDeficit,
+                        targetCount: plannedRefineries + refineryDeficit,
+                        baseDemandPercent: demandPercent
                     )
                 );
             }
@@ -902,109 +902,6 @@ namespace Rebellion.AI.Demands
             return Math.Max(
                 config.EconomyDefaultBatchSize,
                 Math.Max(0, availableLanes - config.EconomyCompetingNeedSlotReserve)
-            );
-        }
-
-        /// <summary>
-        /// Creates one economy building requirement.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="kind">The economy requirement kind.</param>
-        /// <param name="buildingType">The required building type.</param>
-        /// <param name="target">The destination planet.</param>
-        /// <param name="targetCount">The projected faction-wide target count.</param>
-        /// <param name="baseDemandPercent">The base economy pressure.</param>
-        /// <returns>The production requirement.</returns>
-        private static AIProductionDemand CreateBuildingDemand(
-            AITurnContext context,
-            AIProductionDemandKind kind,
-            BuildingType buildingType,
-            Planet target,
-            int targetCount,
-            int baseDemandPercent
-        )
-        {
-            return new AIProductionDemand(
-                AIProductionDemand.CreateId(context.Faction.InstanceID, kind, target.InstanceID),
-                kind,
-                ManufacturingType.Building,
-                buildingType,
-                target,
-                1,
-                targetCount: targetCount,
-                baseDemandPercent: baseDemandPercent
-            );
-        }
-
-        /// <summary>
-        /// Returns candidate planets for new mines.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="count">Maximum number of planets.</param>
-        /// <returns>Ranked mine destinations.</returns>
-        private static IEnumerable<Planet> FindMineTargets(AITurnContext context, int count)
-        {
-            return count <= 0
-                ? Enumerable.Empty<Planet>()
-                : GetBuildingDestinations(context, BuildingType.Mine)
-                    .Where(planet => planet.GetUnminedResourceNodeCount() > 0)
-                    .OrderByDescending(planet => planet.GetUnminedResourceNodeCount())
-                    .ThenByDescending(planet => planet.GetAvailableEnergy())
-                    .ThenBy(planet => planet.InstanceID)
-                    .Take(count);
-        }
-
-        /// <summary>
-        /// Returns candidate planets for new refineries.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="count">Maximum number of planets.</param>
-        /// <param name="excludedPlanetIds">Planets already selected for mines.</param>
-        /// <returns>Ranked refinery destinations.</returns>
-        private static IEnumerable<Planet> FindRefineryTargets(
-            AITurnContext context,
-            int count,
-            HashSet<string> excludedPlanetIds
-        )
-        {
-            if (count <= 0)
-                return Enumerable.Empty<Planet>();
-
-            List<Planet> targets = GetBuildingDestinations(context, BuildingType.Refinery)
-                .Where(planet => !excludedPlanetIds.Contains(planet.InstanceID))
-                .OrderBy(planet => planet.GetTotalBuildingTypeCount(BuildingType.Refinery))
-                .ThenByDescending(planet => planet.GetAvailableEnergy())
-                .ThenBy(planet => planet.InstanceID)
-                .Take(count)
-                .ToList();
-            if (targets.Count >= count)
-                return targets;
-
-            targets.AddRange(
-                GetBuildingDestinations(context, BuildingType.Refinery)
-                    .Where(planet => excludedPlanetIds.Contains(planet.InstanceID))
-                    .OrderBy(planet => planet.GetTotalBuildingTypeCount(BuildingType.Refinery))
-                    .ThenByDescending(planet => planet.GetAvailableEnergy())
-                    .ThenBy(planet => planet.InstanceID)
-                    .Take(count - targets.Count)
-            );
-            return targets;
-        }
-
-        /// <summary>
-        /// Returns owned planets that can receive an economy building.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="buildingType">The economic building to place.</param>
-        /// <returns>Eligible building destinations.</returns>
-        private static IEnumerable<Planet> GetBuildingDestinations(
-            AITurnContext context,
-            BuildingType buildingType
-        )
-        {
-            return context.Assessment.OwnedPlanets.Where(planet =>
-                planet?.IsDestroyed == false
-                && context.StrategicPlan.GetAvailableConstructionSpace(planet, buildingType) > 0
             );
         }
 
