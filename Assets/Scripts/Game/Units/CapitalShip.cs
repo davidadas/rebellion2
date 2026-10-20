@@ -161,19 +161,24 @@ namespace Rebellion.Game.Units
         [PersistableMember(Name = nameof(HasGravityWell))]
         private bool _hasGravityWell;
 
-        private bool _canDestroyPlanets;
-        private PlanetSector _planetDestroyerSector;
+        private int? _sectorSuppression;
+        private PlanetSector _suppressionSector;
 
         /// <summary>
-        /// Whether this ship can destroy planets and provide sector suppression when operational.
+        /// Whether this ship can destroy planets.
         /// </summary>
-        public bool CanDestroyPlanets
+        public bool CanDestroyPlanets { get; set; }
+
+        /// <summary>
+        /// Sector garrison divisor while operational and stationary; values zero or one have no effect.
+        /// </summary>
+        public int SectorSuppression
         {
-            get => _canDestroyPlanets;
+            get => _sectorSuppression.GetValueOrDefault();
             set
             {
-                _canDestroyPlanets = value;
-                UpdatePlanetDestroyerSector();
+                _sectorSuppression = Math.Max(value, 0);
+                UpdateSuppressionSector();
             }
         }
 
@@ -319,21 +324,31 @@ namespace Rebellion.Game.Units
         /// </summary>
         protected override void OnHierarchyChanged()
         {
-            UpdatePlanetDestroyerSector();
+            UpdateSuppressionSector();
             base.OnHierarchyChanged();
         }
 
         /// <summary>
-        /// Maintains sector membership for planet destroyers without scanning sector descendants.
+        /// Supplies content defaults only when a retained unit predates the suppression property.
         /// </summary>
-        private void UpdatePlanetDestroyerSector()
+        /// <param name="suppression">The divisor authored on the unit template.</param>
+        internal void ApplySectorSuppressionDefault(int suppression)
         {
-            PlanetSector sector = CanDestroyPlanets ? GetParentOfType<PlanetSector>() : null;
-            if (_planetDestroyerSector == sector)
+            if (!_sectorSuppression.HasValue)
+                SectorSuppression = suppression;
+        }
+
+        /// <summary>
+        /// Maintains suppression membership without scanning sector descendants.
+        /// </summary>
+        private void UpdateSuppressionSector()
+        {
+            PlanetSector sector = SectorSuppression > 1 ? GetParentOfType<PlanetSector>() : null;
+            if (_suppressionSector == sector)
                 return;
-            _planetDestroyerSector?.UnregisterPlanetDestroyer(this);
-            _planetDestroyerSector = sector;
-            sector?.RegisterPlanetDestroyer(this);
+            _suppressionSector?.UnregisterSuppressionSource(this);
+            _suppressionSector = sector;
+            sector?.RegisterSuppressionSource(this);
         }
 
         /// <summary>
@@ -398,6 +413,7 @@ namespace Rebellion.Game.Units
             copy.TractorBeamnRange = TractorBeamnRange;
             copy.HasGravityWell = HasGravityWell;
             copy.CanDestroyPlanets = CanDestroyPlanets;
+            copy.SectorSuppression = SectorSuppression;
             copy.DetectionRating = DetectionRating;
             copy.InitialParentInstanceID = InitialParentInstanceID;
         }

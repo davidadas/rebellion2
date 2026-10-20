@@ -674,8 +674,8 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.AreEqual(
                 TestContent
                     .Pack.GameData.Factions[0]
-                    .Settings.GarrisonEfficiency.ToString(CultureInfo.InvariantCulture),
-                TableInput("garrison-efficiency", "Player").text
+                    .Settings.UprisingResistance.ToString(CultureInfo.InvariantCulture),
+                TableInput("uprising-resistance", "Player").text
             );
             Assert.AreEqual(
                 "Usable supply gained from raw and refined materials. Higher provides more supply. Range: 1 or higher.",
@@ -696,19 +696,19 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         public void Apply_EditedFactionModifier_PublishesOverrideWithoutMutatingContent()
         {
             GameSummary applied = null;
-            int authored = TestContent.Pack.GameData.Factions[0].Settings.GarrisonEfficiency;
+            int authored = TestContent.Pack.GameData.Factions[0].Settings.UprisingResistance;
             view.StartRequested += (_, launchSummary) => applied = launchSummary;
             view.Initialize(TestContent.Pack, summary);
             view.SelectCategory(NewGameSettingsCategory.FactionModifiers);
 
-            TableInput("garrison-efficiency", "Player").onEndEdit.Invoke("3");
+            TableInput("uprising-resistance", "Player").onEndEdit.Invoke("3");
             ApplyButton().onClick.Invoke();
 
             GameGenerationConfig config = applied.GenerationConfigOverride;
-            Assert.AreEqual(3, config.FactionModifiers[0].Settings.GarrisonEfficiency);
+            Assert.AreEqual(3, config.FactionModifiers[0].Settings.UprisingResistance);
             Assert.AreEqual(
                 authored,
-                TestContent.Pack.GameData.Factions[0].Settings.GarrisonEfficiency
+                TestContent.Pack.GameData.Factions[0].Settings.UprisingResistance
             );
         }
 

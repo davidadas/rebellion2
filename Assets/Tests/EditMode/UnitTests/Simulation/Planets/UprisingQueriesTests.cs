@@ -57,7 +57,7 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void CalculateGarrisonRequirement_CoreWorldWithoutPlanetDestroyer_NotHalved()
+        public void CalculateGarrisonRequirement_CoreWorldWithoutSuppressionSource_NotHalved()
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = TestGame.Create(config);
@@ -176,11 +176,11 @@ namespace Rebellion.Tests.Simulation
         }
 
         /// <summary>
-        /// Verifies that region, suppression presence, faction settings, and uprising state compose.
+        /// Verifies that region, suppression strength, and uprising state compose.
         /// </summary>
         /// <param name="region">The sector's galactic region.</param>
-        /// <param name="efficiency">The faction's suppression divisor.</param>
-        /// <param name="present">Whether a planet destroyer is deployed.</param>
+        /// <param name="suppression">The ship's suppression divisor.</param>
+        /// <param name="present">Whether a suppression source is deployed.</param>
         /// <param name="uprising">Whether the planet is in uprising.</param>
         /// <param name="support">Popular support for the controller.</param>
         /// <param name="expected">The required regiment count.</param>
@@ -198,9 +198,12 @@ namespace Rebellion.Tests.Simulation
         [TestCase(PlanetSectorType.Core, 2, true, true, 50, 0)]
         [TestCase(PlanetSectorType.Core, 2, true, false, 55, 0)]
         [TestCase(PlanetSectorType.Core, 2, true, true, 60, 0)]
-        public void CalculateGarrisonRequirement_SectorSuppression_UsesPresenceAndFactionDivisor(
+        [TestCase(PlanetSectorType.Core, 3, true, false, 0, 2)]
+        [TestCase(PlanetSectorType.OuterRim, 3, true, true, 0, 4)]
+        [TestCase(PlanetSectorType.Core, 0, true, false, 0, 6)]
+        public void CalculateGarrisonRequirement_SectorSuppression_UsesAuthoredShipDivisor(
             PlanetSectorType region,
-            int efficiency,
+            int suppression,
             bool present,
             bool uprising,
             int support,
@@ -209,13 +212,55 @@ namespace Rebellion.Tests.Simulation
         {
             var (game, faction, planet, sector) = CreateSuppressionScene();
             sector.SectorType = region;
-            faction.Settings.GarrisonEfficiency = efficiency;
             planet.SetPopularSupport(faction.InstanceID, support);
             if (present)
-                AddPlanetDestroyer(game, planet);
+                AddSuppressionSource(game, planet).SectorSuppression = suppression;
             if (uprising)
                 planet.BeginUprising();
             Assert.AreEqual(expected, Requirement(game, faction, planet));
+        }
+
+        /// <summary>
+        /// Verifies that suppression strength is independent of planet destruction.
+        /// </summary>
+        /// <param name="canDestroyPlanets">Whether the ship can destroy planets.</param>
+        /// <param name="suppression">The authored sector divisor.</param>
+        /// <param name="expected">The required regiment count.</param>
+        [TestCase(true, 0, 6)]
+        [TestCase(false, 2, 3)]
+        [TestCase(true, 3, 2)]
+        public void CalculateGarrisonRequirement_IndependentShipCapabilities_UsesOnlySuppression(
+            bool canDestroyPlanets,
+            int suppression,
+            int expected
+        )
+        {
+            var (game, faction, planet, _) = CreateSuppressionScene();
+            CapitalShip ship = AddSuppressionSource(game, planet);
+            ship.CanDestroyPlanets = canDestroyPlanets;
+            ship.SectorSuppression = suppression;
+            Assert.AreEqual(expected, Requirement(game, faction, planet));
+        }
+
+        /// <summary>
+        /// Verifies that the strongest active source sets the divisor without stacking.
+        /// </summary>
+        [Test]
+        public void CalculateGarrisonRequirement_MultipleSuppressionShips_UsesStrongestDivisor()
+        {
+            var (game, faction, planet, _) = CreateSuppressionScene();
+            CapitalShip first = AddSuppressionSource(game, planet);
+            CapitalShip stronger = new CapitalShip
+            {
+                InstanceID = "stronger",
+                OwnerInstanceID = faction.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                SectorSuppression = 3,
+            };
+            game.AttachNode(stronger, first.GetParent());
+            Assert.AreEqual(2, Requirement(game, faction, planet));
+            game.DeleteNode(stronger);
+            Assert.AreEqual(3, Requirement(game, faction, planet));
         }
 
         /// <summary>
@@ -227,12 +272,12 @@ namespace Rebellion.Tests.Simulation
         [TestCase("disabled-fleet")]
         [TestCase("moving-ship")]
         [TestCase("moving-fleet")]
-        public void CalculateGarrisonRequirement_UnavailablePlanetDestroyer_DoesNotReduceRequirement(
+        public void CalculateGarrisonRequirement_UnavailableSuppressionSource_DoesNotReduceRequirement(
             string unavailable
         )
         {
             var (game, faction, planet, _) = CreateSuppressionScene();
-            CapitalShip ship = AddPlanetDestroyer(game, planet);
+            CapitalShip ship = AddSuppressionSource(game, planet);
             Fleet fleet = ship.GetParentOfType<Fleet>();
             switch (unavailable)
             {
@@ -262,7 +307,7 @@ namespace Rebellion.Tests.Simulation
         public void CalculateGarrisonRequirement_FleetChangesSector_UpdatesBothRequirements()
         {
             var (game, faction, planet, _) = CreateSuppressionScene();
-            CapitalShip ship = AddPlanetDestroyer(game, planet);
+            CapitalShip ship = AddSuppressionSource(game, planet);
             PlanetSector destinationSector = new PlanetSector { InstanceID = "destination-sector" };
             Planet destination = new Planet
             {
@@ -282,17 +327,17 @@ namespace Rebellion.Tests.Simulation
         /// Verifies that completion, capability changes, and removal affect current eligibility.
         /// </summary>
         [Test]
-        public void CalculateGarrisonRequirement_PlanetDestroyerLifecycle_UsesCurrentEligibility()
+        public void CalculateGarrisonRequirement_SuppressionSourceLifecycle_UsesCurrentEligibility()
         {
             var (game, faction, planet, _) = CreateSuppressionScene();
-            CapitalShip ship = AddPlanetDestroyer(game, planet);
+            CapitalShip ship = AddSuppressionSource(game, planet);
             ship.ManufacturingStatus = ManufacturingStatus.Building;
             Assert.AreEqual(6, Requirement(game, faction, planet));
             ship.ManufacturingStatus = ManufacturingStatus.Complete;
             Assert.AreEqual(3, Requirement(game, faction, planet));
-            ship.CanDestroyPlanets = false;
+            ship.SectorSuppression = 0;
             Assert.AreEqual(6, Requirement(game, faction, planet));
-            ship.CanDestroyPlanets = true;
+            ship.SectorSuppression = 2;
             Assert.AreEqual(3, Requirement(game, faction, planet));
             game.DeleteNode(ship.GetParentOfType<Fleet>());
             Assert.AreEqual(6, Requirement(game, faction, planet));
@@ -305,7 +350,7 @@ namespace Rebellion.Tests.Simulation
         public void CalculateGarrisonRequirement_CopiedSector_KeepsIndependentPresence()
         {
             var (game, faction, planet, sector) = CreateSuppressionScene();
-            CapitalShip ship = AddPlanetDestroyer(game, planet);
+            CapitalShip ship = AddSuppressionSource(game, planet);
             PlanetSector copy = (PlanetSector)sector.CreateCopy(recursive: true);
             Planet copiedPlanet = copy.GetChildren<Planet>().Single();
             game.DeleteNode(ship);
@@ -320,7 +365,7 @@ namespace Rebellion.Tests.Simulation
         public void CalculateGarrisonRequirement_RestoredSector_RebuildsSuppressionPresence()
         {
             var (game, faction, planet, sector) = CreateSuppressionScene();
-            AddPlanetDestroyer(game, planet);
+            AddSuppressionSource(game, planet);
             PlanetSector restored = SerializationHelper.Deserialize<PlanetSector>(
                 SerializationHelper.Serialize(sector)
             );
@@ -340,7 +385,7 @@ namespace Rebellion.Tests.Simulation
             Planet other = new Planet { InstanceID = "other", OwnerInstanceID = "other-faction" };
             game.GetFactions().Add(new Faction { InstanceID = "other-faction" });
             game.AttachNode(other, sector);
-            AddPlanetDestroyer(game, other);
+            AddSuppressionSource(game, other);
             GalaxyMap view = new FogOfWarQueries(game).BuildFactionView(faction);
             Planet observed = view.GetChildren<PlanetSector>()
                 .Single()
@@ -386,7 +431,7 @@ namespace Rebellion.Tests.Simulation
         /// <param name="game">The owning scene.</param>
         /// <param name="planet">The deployment location.</param>
         /// <returns>The deployed ship.</returns>
-        private static CapitalShip AddPlanetDestroyer(GameRoot game, Planet planet)
+        private static CapitalShip AddSuppressionSource(GameRoot game, Planet planet)
         {
             Fleet fleet = new Fleet
             {
@@ -398,7 +443,7 @@ namespace Rebellion.Tests.Simulation
                 InstanceID = "ship",
                 OwnerInstanceID = planet.OwnerInstanceID,
                 ManufacturingStatus = ManufacturingStatus.Complete,
-                CanDestroyPlanets = true,
+                SectorSuppression = 2,
             };
             game.AttachNode(fleet, planet);
             game.AttachNode(ship, fleet);

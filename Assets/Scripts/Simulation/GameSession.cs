@@ -78,6 +78,7 @@ namespace Rebellion.Simulation
             if (Game.Config == null)
                 Game.SetConfig(_gameData.GameConfig);
             Game.RebuildSceneState();
+            RestoreSectorSuppressionDefaults();
             Tick.Reset();
             _randomProvider = game.Random;
             Action[] previousConnections = _disconnect.ToArray();
@@ -117,6 +118,28 @@ namespace Rebellion.Simulation
             foreach (ServiceLocator retiredScope in _retiredServiceScopes)
                 retiredScope.Dispose();
             _retiredServiceScopes.Clear();
+        }
+
+        /// <summary>
+        /// Restores newly authored suppression values on units from older saved games.
+        /// </summary>
+        private void RestoreSectorSuppressionDefaults()
+        {
+            Dictionary<string, CapitalShip> templates = _gameData
+                .CapitalShips.Where(template => !string.IsNullOrEmpty(template?.TypeID))
+                .ToDictionary(template => template.TypeID, StringComparer.Ordinal);
+            foreach (
+                CapitalShip ship in Game.GetRegisteredSceneNodesByType<CapitalShip>(
+                    includeDisabled: true
+                )
+            )
+            {
+                if (
+                    !string.IsNullOrEmpty(ship.TypeID)
+                    && templates.TryGetValue(ship.TypeID, out CapitalShip template)
+                )
+                    ship.ApplySectorSuppressionDefault(template.SectorSuppression);
+            }
         }
 
         /// <summary>

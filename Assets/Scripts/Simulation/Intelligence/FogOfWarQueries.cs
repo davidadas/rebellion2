@@ -66,9 +66,7 @@ namespace Rebellion.Simulation
             foreach (PlanetSector masterSector in _game.Galaxy.GetChildren<PlanetSector>())
             {
                 PlanetSector viewSector = (PlanetSector)masterSector.CreateCopy();
-                viewSector.SetProjectedPlanetDestroyerPresence(
-                    masterSector.HasOperationalPlanetDestroyer
-                );
+                viewSector.SetProjectedSectorSuppression(masterSector.SectorSuppressionDivisor);
                 viewSector.SetPlanets(Enumerable.Empty<Planet>());
                 viewSector.SetParent(factionView);
 

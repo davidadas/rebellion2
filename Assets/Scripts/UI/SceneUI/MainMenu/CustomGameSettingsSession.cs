@@ -613,16 +613,6 @@ internal sealed class CustomGameSettingsSession
         currentGenerationSection = "UPRISINGS";
         AddFactionModifierRow(
             factions,
-            "garrison-efficiency",
-            "Garrison Efficiency",
-            "Troops needed in sectors containing a Death Star. Higher requires fewer troops. Range: 1 or higher.",
-            1,
-            int.MaxValue,
-            settings => settings.GarrisonEfficiency,
-            (settings, value) => settings.GarrisonEfficiency = value
-        );
-        AddFactionModifierRow(
-            factions,
             "uprising-resistance",
             "Uprising Resistance",
             "Garrison strength during core-world uprisings. Higher makes each troop stronger. Range: 1 or higher.",

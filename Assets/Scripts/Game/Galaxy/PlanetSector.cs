@@ -42,20 +42,21 @@ namespace Rebellion.Game.Galaxy
         [PersistableMember(Name = "Planets")]
         private List<Planet> _planets = new List<Planet>();
 
-        private readonly HashSet<CapitalShip> _planetDestroyingShips = new HashSet<CapitalShip>();
-        private bool? _projectedPlanetDestroyerPresence;
+        private readonly HashSet<CapitalShip> _suppressionSources = new HashSet<CapitalShip>();
+        private int? _projectedSectorSuppression;
 
         /// <summary>
-        /// Returns whether an active, completed planet destroyer is stationary in this sector.
+        /// Returns the strongest operational, stationary ship's sector garrison divisor.
         /// </summary>
         [PersistableIgnore]
-        internal bool HasOperationalPlanetDestroyer
+        internal int SectorSuppressionDivisor
         {
             get
             {
-                if (_projectedPlanetDestroyerPresence.HasValue)
-                    return _projectedPlanetDestroyerPresence.Value;
-                foreach (CapitalShip ship in _planetDestroyingShips)
+                if (_projectedSectorSuppression.HasValue)
+                    return _projectedSectorSuppression.Value;
+                int divisor = 1;
+                foreach (CapitalShip ship in _suppressionSources)
                 {
                     if (
                         ship.ManufacturingStatus == ManufacturingStatus.Complete
@@ -63,9 +64,9 @@ namespace Rebellion.Game.Galaxy
                         && ship.GetParentOfType<Fleet>()?.Movement == null
                         && ship.IsActive()
                     )
-                        return true;
+                        divisor = System.Math.Max(divisor, ship.SectorSuppression);
                 }
-                return false;
+                return divisor;
             }
         }
 
@@ -77,28 +78,28 @@ namespace Rebellion.Game.Galaxy
         /// <summary>
         /// Captures sector suppression state for a faction view with partial descendants.
         /// </summary>
-        /// <param name="present">Whether the sector contains an operational planet destroyer.</param>
-        internal void SetProjectedPlanetDestroyerPresence(bool present)
+        /// <param name="divisor">The observed sector garrison divisor.</param>
+        internal void SetProjectedSectorSuppression(int divisor)
         {
-            _projectedPlanetDestroyerPresence = present;
+            _projectedSectorSuppression = divisor;
         }
 
         /// <summary>
-        /// Registers a planet destroyer whose ancestor chain includes this sector.
+        /// Registers a suppression source whose ancestor chain includes this sector.
         /// </summary>
         /// <param name="ship">The candidate ship.</param>
-        internal void RegisterPlanetDestroyer(CapitalShip ship)
+        internal void RegisterSuppressionSource(CapitalShip ship)
         {
-            _planetDestroyingShips.Add(ship);
+            _suppressionSources.Add(ship);
         }
 
         /// <summary>
-        /// Removes a ship that no longer supplies planet-destroyer presence in this sector.
+        /// Removes a ship that no longer supplies suppression-source presence in this sector.
         /// </summary>
         /// <param name="ship">The candidate ship.</param>
-        internal void UnregisterPlanetDestroyer(CapitalShip ship)
+        internal void UnregisterSuppressionSource(CapitalShip ship)
         {
-            _planetDestroyingShips.Remove(ship);
+            _suppressionSources.Remove(ship);
         }
 
         /// <summary>

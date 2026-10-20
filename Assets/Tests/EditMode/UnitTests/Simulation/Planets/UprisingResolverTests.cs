@@ -574,12 +574,12 @@ namespace Rebellion.Tests.Simulation
         }
 
         /// <summary>
-        /// Verifies that a sector planet destroyer reduces the garrison needed to prevent uprising.
+        /// Verifies that a sector suppression source reduces the garrison needed to prevent uprising.
         /// </summary>
         /// <param name="region">The sector's galactic region.</param>
         [TestCase(PlanetSectorType.Core)]
         [TestCase(PlanetSectorType.OuterRim)]
-        public void ProcessTick_EmpireGarrisonWithPlanetDestroyer_HalvesRequirement(
+        public void ProcessTick_EmpireGarrisonWithSuppressionSource_HalvesRequirement(
             PlanetSectorType region
         )
         {
@@ -621,9 +621,9 @@ namespace Rebellion.Tests.Simulation
             game.AttachNode(
                 new CapitalShip
                 {
-                    InstanceID = "planet-destroyer",
+                    InstanceID = "suppression-source",
                     OwnerInstanceID = "empire",
-                    CanDestroyPlanets = true,
+                    SectorSuppression = 2,
                     ManufacturingStatus = ManufacturingStatus.Complete,
                 },
                 suppressionFleet
@@ -657,7 +657,7 @@ namespace Rebellion.Tests.Simulation
         [Test]
         public void ProcessTick_EmpireGarrisonOnOuterRim_NoBonus()
         {
-            // Without a sector planet destroyer, the requirement stays at three with one troop.
+            // Without a sector suppression source, the requirement stays at three with one troop.
             GameConfig config = TestConfig.Create();
             GameRoot game = TestGame.Create(config);
             Faction empire = new Faction

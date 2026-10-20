@@ -564,11 +564,7 @@ namespace Rebellion.Game.Galaxy
                     (config.SupportThreshold - popularSupport) / (double)config.GarrisonDivisor
                 );
             PlanetSector sector = GetParentOfType<PlanetSector>();
-            if (
-                sector?.HasOperationalPlanetDestroyer == true
-                && faction.Settings.GarrisonEfficiency > 1
-            )
-                garrison /= faction.Settings.GarrisonEfficiency;
+            garrison /= sector?.SectorSuppressionDivisor ?? 1;
             if (IsInUprising)
                 garrison *= config.UprisingMultiplier;
             return garrison;

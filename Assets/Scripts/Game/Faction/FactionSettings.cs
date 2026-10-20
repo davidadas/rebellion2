@@ -43,8 +43,8 @@ namespace Rebellion.Game.Factions
         }
 
         /// <summary>
-        /// Garrison requirement divisor in sectors containing an operational planet destroyer.
-        /// Higher values mean fewer troops needed (2 = half garrison required).
+        /// Legacy faction value retained for compatibility with saved launch settings.
+        /// Sector garrison reduction is authored on ships through SectorSuppression.
         /// </summary>
         public int GarrisonEfficiency
         {
