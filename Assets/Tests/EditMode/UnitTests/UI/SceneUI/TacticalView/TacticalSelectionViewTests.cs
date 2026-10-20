@@ -4,6 +4,7 @@ using NUnit.Framework;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Simulation.Tactical;
 using TMPro;
 using UnityEditor;
 using UnityEngine;
@@ -379,6 +380,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                 RectTransform dock = (RectTransform)_view.transform.Find("BattleDock");
                 RectTransform instruments = (RectTransform)dock.Find("InstrumentsHousing");
                 RectTransform commands = (RectTransform)dock.Find("CommandsHousing");
+                RectTransform follow = (RectTransform)dock.Find("FollowSelected");
                 Assert.AreEqual(288f, dock.rect.height);
                 Assert.That(instruments.rect.width, Is.EqualTo(250f));
                 Assert.That(commands.rect.width, Is.EqualTo(218f));
@@ -394,7 +396,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                     dock.rect.width,
                     Is.EqualTo(((RectTransform)dock.parent).rect.width - 16f).Within(0.1f)
                 );
-                foreach (RectTransform panel in new[] { instruments, commands })
+                foreach (RectTransform panel in new[] { instruments, commands, follow })
                 {
                     Vector3[] corners = new Vector3[4];
                     panel.GetWorldCorners(corners);
@@ -457,17 +459,17 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         }
 
         /// <summary>
-        /// Verifies reserved controls do not advertise unimplemented commands.
+        /// Verifies carrier commands occupy the remaining three authored command slots.
         /// </summary>
         [Test]
-        public void RenderSelection_ReservedCommandSlots_KeepLabelsBlank()
+        public void RenderSelection_CarrierCommandSlots_ShowLaunchRecallAndDock()
         {
             Transform panel = _view.transform.Find("BattleDock/CommandsHousing");
 
-            for (int slot = 7; slot <= 9; slot++)
+            foreach (string command in new[] { "Launch", "Recall", "Dock" })
             {
-                Transform button = panel.Find($"CommandSlot{slot}");
-                Assert.IsEmpty(button.GetComponentInChildren<TMP_Text>().text);
+                Transform button = panel.Find(command);
+                Assert.AreEqual(command, button.GetComponentInChildren<TMP_Text>().text);
                 Assert.IsNull(button.Find("KeyFace/Symbol"));
             }
         }
@@ -642,6 +644,72 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             {
                 UnityEngine.Object.DestroyImmediate(mesh);
             }
+        }
+
+        /// <summary>
+        /// Checks selecting a friendly carrier exposes its hidden squadron through the existing roster.
+        /// </summary>
+        [Test]
+        public void RenderSelection_FriendlyCarrier_ShowsDockedCargoAndEnablesLaunch()
+        {
+            ActiveBattle battle = new ActiveBattle { Kind = BattleKind.Space };
+            CapitalShip source = new CapitalShip
+            {
+                OwnerInstanceID = "PLAYER",
+                StarfighterCapacity = 1,
+            };
+            Starfighter squadron = new Starfighter
+            {
+                OwnerInstanceID = "PLAYER",
+                CurrentSquadronSize = 3,
+                SublightSpeed = 10,
+                TypeID = "FIGHTER",
+            };
+            source.AddChild(squadron);
+            squadron.SetParent(source);
+            CombatUnit carrier = battle.AddCombatants(source)[0];
+            battle.AddCombatants(squadron);
+            TacticalCarrierOperations operations = new TacticalCarrierOperations(
+                battle,
+                new Dictionary<CombatUnit, System.Numerics.Vector3[][]>
+                {
+                    [carrier] = new[]
+                    {
+                        new[] { System.Numerics.Vector3.Zero, System.Numerics.Vector3.UnitZ },
+                    },
+                }
+            );
+            _view.BindCarrierOperations(operations, "PLAYER");
+            _view.RenderSelection(new[] { carrier }, null, null);
+            TacticalUnitCardView[] cards = _view.GetComponentsInChildren<TacticalUnitCardView>();
+            Assert.That(cards.Length, Is.EqualTo(2));
+            Assert.That(
+                cards.Single(card => card.Combatant.GetUnit() is Starfighter).Combatants.Count,
+                Is.EqualTo(1)
+            );
+            Assert.IsTrue(_view.LaunchButton.interactable);
+            Assert.IsFalse(_view.RecallButton.interactable);
+        }
+
+        /// <summary>
+        /// Checks camera following lives outside the unchanged nine-command panel.
+        /// </summary>
+        [Test]
+        public void FollowButton_AuthoredDock_IsSeparateFromNineCommandPanel()
+        {
+            Transform dock = _view.transform.Find("BattleDock");
+            Assert.AreSame(dock, _view.FollowButton.transform.parent);
+            Assert.That(
+                dock.Find("CommandsHousing")
+                    .GetComponentsInChildren<TacticalCommandButton>()
+                    .Length,
+                Is.EqualTo(9)
+            );
+            Assert.That(
+                ((RectTransform)_view.FollowButton.transform).anchoredPosition.y,
+                Is.GreaterThan(226f)
+            );
+            Assert.IsFalse(_view.FollowButton.interactable);
         }
 
         /// <summary>

@@ -223,17 +223,20 @@ namespace Rebellion.Tests.Simulation.Tactical
             );
         }
 
+        /// <summary>
+        /// Checks setup performance against an explicit fleet of fourteen hundred tactical units.
+        /// </summary>
         [Test]
         public void Deploy_LargeMixedFleet_CompletesDeploymentWithinSetupBudget()
         {
-            ActiveBattle battle = CreateBattle(200, 100, 12);
+            ActiveBattle battle = CreateBattle(200, 1200, 12);
             Stopwatch timer = Stopwatch.StartNew();
 
             FleetDeploymentPlanner.Deploy(battle, CreateMap());
 
             timer.Stop();
             TestContext.WriteLine(
-                $"Deploying 200 capitals and 1200 fighters: {timer.Elapsed.TotalMilliseconds:F2} ms"
+                $"Deploying 200 capitals and 1200 squadrons: {timer.Elapsed.TotalMilliseconds:F2} ms"
             );
             Assert.That(GetCombatants(battle).Count(), Is.EqualTo(1400));
             Assert.That(timer.Elapsed.TotalSeconds, Is.LessThan(5d));

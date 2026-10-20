@@ -11,6 +11,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView.Camera
     {
         private GameObject cameraObject;
         private TacticalViewCameraController controller;
+        private GameObject followObject;
 
         /// <summary>
         /// Creates a configured tactical camera for each test.
@@ -34,6 +35,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView.Camera
         public void TearDown()
         {
             UnityEngine.Object.DestroyImmediate(cameraObject);
+            if (followObject)
+                UnityEngine.Object.DestroyImmediate(followObject);
+            followObject = null;
         }
 
         [Test]
@@ -200,6 +204,110 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView.Camera
             Assert.Throws<ArgumentException>(() =>
                 controller.Frame(CreateFleetBounds(), new Rect(0.6f, 0f, 0.4f, 1f))
             );
+        }
+
+        /// <summary>
+        /// Checks following recenters the existing orbit without changing its angle or zoom.
+        /// </summary>
+        [Test]
+        public void Follow_VisibleUnit_PreservesOrbitAndZoom()
+        {
+            followObject = new GameObject("Follow Target");
+            followObject.transform.position = new Vector3(100f, 30f, 80f);
+            float distance = controller.Distance;
+            Quaternion rotation = cameraObject.transform.rotation;
+            controller.Follow(followObject.transform);
+            Assert.AreSame(followObject.transform, controller.FollowTarget);
+            Assert.AreEqual(followObject.transform.position, controller.Pivot);
+            Assert.AreEqual(distance, controller.Distance);
+            Assert.That(
+                Quaternion.Angle(rotation, cameraObject.transform.rotation),
+                Is.LessThan(0.05f)
+            );
+        }
+
+        /// <summary>
+        /// Checks manual navigation releases tracking rather than snapping back on the next frame.
+        /// </summary>
+        [Test]
+        public void Pan_FollowingUnit_ReleasesFollowTarget()
+        {
+            followObject = new GameObject("Follow Target");
+            controller.Follow(followObject.transform);
+            controller.Pan(Vector2.right, 0.1f, false);
+            Assert.IsNull(controller.FollowTarget);
+        }
+
+        /// <summary>
+        /// Checks orbit and wheel zoom stay available while a unit is being followed.
+        /// </summary>
+        [Test]
+        public void Orbit_FollowingUnit_PreservesFollowTarget()
+        {
+            followObject = new GameObject("Follow Target");
+            controller.Follow(followObject.transform);
+            controller.Orbit(new Vector2(30f, 12f));
+            controller.ZoomByScroll(120f, RuntimePlatform.WindowsPlayer);
+            Assert.AreSame(followObject.transform, controller.FollowTarget);
+        }
+
+        /// <summary>
+        /// Checks recentering from the radar releases the tracked unit.
+        /// </summary>
+        [Test]
+        public void Recenter_FollowingUnit_ReleasesFollowTarget()
+        {
+            followObject = new GameObject("Follow Target");
+            controller.Follow(followObject.transform);
+            controller.Recenter(new Vector3(100f, 0f, 100f));
+            Assert.IsNull(controller.FollowTarget);
+        }
+
+        /// <summary>
+        /// Checks an explicit stop keeps the camera at its current pose.
+        /// </summary>
+        [Test]
+        public void StopFollowing_TrackedUnit_PreservesCameraPose()
+        {
+            followObject = new GameObject("Follow Target");
+            controller.Follow(followObject.transform);
+            Vector3 position = cameraObject.transform.position;
+            controller.StopFollowing();
+            Assert.IsNull(controller.FollowTarget);
+            Assert.AreEqual(position, cameraObject.transform.position);
+        }
+
+        /// <summary>
+        /// Checks hidden cargo cannot be selected as a camera target.
+        /// </summary>
+        [Test]
+        public void Follow_InactiveUnit_RejectsHiddenTarget()
+        {
+            followObject = new GameObject("Hidden Target");
+            followObject.SetActive(false);
+            Assert.Throws<ArgumentException>(() => controller.Follow(followObject.transform));
+            Assert.IsNull(controller.FollowTarget);
+        }
+
+        /// <summary>
+        /// Checks a followed unit is released when its presentation leaves open space.
+        /// </summary>
+        /// <returns>The runtime visibility change and cleanup.</returns>
+        [UnityTest]
+        public IEnumerator Follow_TargetBecomesInactive_ReleasesFollowTarget()
+        {
+            UnityEngine.Object.DestroyImmediate(cameraObject);
+            yield return new EnterPlayMode();
+            SetUp();
+            followObject = new GameObject("Follow Target");
+            controller.Follow(followObject.transform);
+            followObject.SetActive(false);
+            yield return null;
+            yield return null;
+            Assert.IsNull(controller.FollowTarget);
+            UnityEngine.Object.DestroyImmediate(cameraObject);
+            UnityEngine.Object.DestroyImmediate(followObject);
+            yield return new ExitPlayMode();
         }
 
         /// <summary>

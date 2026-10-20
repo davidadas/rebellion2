@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// A tactile command key; intentionally does not issue gameplay orders yet.
+/// Provides shared tactile press feedback for tactical commands and camera controls.
 /// </summary>
 public sealed class TacticalCommandButton : Button
 {

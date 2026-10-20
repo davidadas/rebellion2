@@ -77,6 +77,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
             );
         }
 
+        /// <summary>
+        /// Checks every preview squadron has exactly one tactical representation with its configured strength.
+        /// </summary>
         [Test]
         public void Reset_DefaultContent_CreatesEveryFighterSquadronTypeForEachPlayableFaction()
         {
@@ -105,12 +108,43 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                     CombatUnit[] squadron = groups
                         .Single(group => group.First().GetUnit().TypeID == template.TypeID)
                         .ToArray();
-                    Assert.That(squadron.Length, Is.EqualTo(template.CurrentSquadronSize));
+                    Assert.That(squadron.Length, Is.EqualTo(1));
                     Assert.That(
                         squadron.Select(combatant => (Starfighter)combatant.GetUnit()),
-                        Has.All.Matches<Starfighter>(fighter => fighter.CurrentSquadronSize == 1)
+                        Has.All.Matches<Starfighter>(fighter =>
+                            fighter.CurrentSquadronSize == template.CurrentSquadronSize
+                            && fighter.MaxSquadronSize == template.MaxSquadronSize
+                        )
                     );
                 }
+            }
+        }
+
+        /// <summary>
+        /// Checks preview squadrons without hyperdrives begin carried by an available friendly ship.
+        /// </summary>
+        [Test]
+        public void Reset_NonHyperdriveSquadrons_StartsDockedWithFriendlyCarrier()
+        {
+            foreach (
+                BattleParticipant participant in TacticalBattleLaunchContext.ActiveBattle.GetParticipants()
+            )
+            foreach (
+                CombatUnit fighter in participant
+                    .GetCombatants()
+                    .Where(unit => unit.GetUnit() is Starfighter { Hyperdrive: <= 0 })
+            )
+            {
+                Assert.That(fighter.FlightState, Is.EqualTo(FighterFlightState.Docked));
+                Assert.That(
+                    participant
+                        .GetCombatants()
+                        .Any(unit =>
+                            unit.GetUnit() is CapitalShip
+                            && unit.SourceUnitInstanceID == fighter.CarrierSourceUnitInstanceID
+                        ),
+                    Is.True
+                );
             }
         }
 

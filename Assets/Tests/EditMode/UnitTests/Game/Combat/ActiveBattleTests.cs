@@ -32,8 +32,11 @@ namespace Rebellion.Tests.Game.Combat
             Assert.AreNotSame(source, addedCombatants[0].GetUnit());
         }
 
+        /// <summary>
+        /// Checks a squadron creates one battle unit while retaining its remaining strength.
+        /// </summary>
         [Test]
-        public void AddCombatants_StarfighterSquadron_AddsOneCopyPerSurvivingFighter()
+        public void AddCombatants_StarfighterSquadron_AddsOneCopyWithSquadronStrength()
         {
             Starfighter source = new Starfighter
             {
@@ -47,15 +50,32 @@ namespace Rebellion.Tests.Game.Combat
             IReadOnlyList<CombatUnit> addedCombatants = battle.AddCombatants(source);
             BattleParticipant participant = battle.GetParticipants().Single();
 
-            Assert.AreEqual(3, addedCombatants.Count);
-            Assert.AreEqual(3, participant.GetCombatants().Count);
+            Assert.AreEqual(1, addedCombatants.Count);
+            Assert.AreEqual(1, participant.GetCombatants().Count);
             foreach (CombatUnit combatUnit in addedCombatants)
             {
                 Assert.AreEqual(source.InstanceID, combatUnit.SourceUnitInstanceID);
                 Starfighter fighter = combatUnit.GetUnit() as Starfighter;
                 Assert.IsNotNull(fighter);
-                Assert.AreEqual(1, fighter.CurrentSquadronSize);
+                Assert.AreEqual(3, fighter.CurrentSquadronSize);
+                Assert.AreEqual(12, fighter.MaxSquadronSize);
             }
+        }
+
+        /// <summary>
+        /// Checks destroyed squadrons do not create a tactical representation or an empty participant.
+        /// </summary>
+        [Test]
+        public void AddCombatants_DestroyedSquadron_DoesNotAddCombatant()
+        {
+            ActiveBattle battle = CreateBattle();
+            Assert.That(
+                battle.AddCombatants(
+                    new Starfighter { OwnerInstanceID = "FACTION_1", CurrentSquadronSize = 0 }
+                ),
+                Is.Empty
+            );
+            Assert.That(battle.GetParticipants(), Is.Empty);
         }
 
         [Test]

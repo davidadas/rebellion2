@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Simulation.Tactical;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -45,6 +46,21 @@ public sealed class TacticalSelectionView : MonoBehaviour
     [SerializeField]
     private TacticalCommandButton stopButton;
 
+    [SerializeField]
+    private TacticalCommandButton launchButton;
+
+    [SerializeField]
+    private TacticalCommandButton recallButton;
+
+    [SerializeField]
+    private TacticalCommandButton dockButton;
+
+    [SerializeField]
+    private TacticalCommandButton followButton;
+
+    [SerializeField]
+    private TMP_Text followLabel;
+
     private readonly List<RectTransform> _frames = new List<RectTransform>();
     private readonly List<TacticalUnitCardView> _cards = new List<TacticalUnitCardView>();
     private readonly List<CombatUnit> _singleSelection = new List<CombatUnit>(1);
@@ -53,11 +69,45 @@ public sealed class TacticalSelectionView : MonoBehaviour
     private IContentAssetSource _assets;
     private readonly List<CombatUnit> _selectionSnapshot = new List<CombatUnit>();
     private readonly List<List<CombatUnit>> _groups = new List<List<CombatUnit>>();
+    private readonly List<CombatUnit> _roster = new List<CombatUnit>();
+    private readonly HashSet<CombatUnit> _rosterSeen = new HashSet<CombatUnit>();
+    private TacticalCarrierOperations _carrierOperations;
+    private string _orderingFaction;
+    private int _flightRevision = -1;
 
     public TacticalCommandButton MoveButton => moveButton;
     public TacticalCommandButton StopButton => stopButton;
+    public TacticalCommandButton LaunchButton => launchButton;
+    public TacticalCommandButton RecallButton => recallButton;
+    public TacticalCommandButton DockButton => dockButton;
+    public TacticalCommandButton FollowButton => followButton;
 
     public event Action<IReadOnlyList<CombatUnit>> CardClicked;
+
+    /// <summary>
+    /// Refreshes the independent camera-follow control without changing the command grid.
+    /// </summary>
+    /// <param name="available">Whether the current primary selection can be followed.</param>
+    /// <param name="following">Whether the camera is already tracking a unit.</param>
+    public void RenderFollowState(bool available, bool following)
+    {
+        followButton.interactable = available || following;
+        string text = following ? "UNFOLLOW" : "FOLLOW SELECTED";
+        if (followLabel.text != text)
+            followLabel.text = text;
+    }
+
+    /// <summary>
+    /// Binds carrier manifests and command availability to the same battle operations as the scene.
+    /// </summary>
+    /// <param name="operations">The battle's indexed carrier operations, or null when unbound.</param>
+    /// <param name="owner">The viewing player faction.</param>
+    public void BindCarrierOperations(TacticalCarrierOperations operations, string owner)
+    {
+        _carrierOperations = operations;
+        _orderingFaction = owner;
+        _flightRevision = int.MinValue;
+    }
 
     /// <summary>
     /// Displays drag-selection feedback without intercepting world input.
@@ -147,11 +197,34 @@ public sealed class TacticalSelectionView : MonoBehaviour
     )
     {
         int count = selected?.Count ?? 0;
-        bool changed = _selectionSnapshot.Count != count;
+        bool changed =
+            _selectionSnapshot.Count != count
+            || _flightRevision != (_carrierOperations?.Revision ?? -1);
         for (int i = 0; !changed && i < count; i++)
             changed = _selectionSnapshot[i] != selected[i];
         if (changed)
+        {
+            _flightRevision = _carrierOperations?.Revision ?? -1;
             RebuildGroups(selected);
+            bool launch =
+                _carrierOperations?.CanLaunch(
+                    selected ?? Array.Empty<CombatUnit>(),
+                    _orderingFaction
+                ) == true;
+            bool recall =
+                _carrierOperations?.CanRecall(
+                    selected ?? Array.Empty<CombatUnit>(),
+                    _orderingFaction
+                ) == true;
+            if (launchButton)
+                launchButton.interactable = launch;
+            if (recallButton)
+                recallButton.interactable =
+                    recall && _selectionSnapshot.Exists(unit => unit.GetUnit() is CapitalShip);
+            if (dockButton)
+                dockButton.interactable =
+                    recall && _selectionSnapshot.Exists(unit => unit.GetUnit() is Starfighter);
+        }
         while (_cards.Count < _groups.Count)
         {
             TacticalUnitCardView card = Instantiate(cardTemplate, rosterContent);
@@ -189,6 +262,7 @@ public sealed class TacticalSelectionView : MonoBehaviour
                 && presentations != null
                 && presentations.TryGetValue(selected[i], out Transform root)
                 && root
+                && root.gameObject.activeInHierarchy
                 && RenderFrame(_frames[i], root, selected[i].GetUnit().ModelSize, camera);
             _frames[i].gameObject.SetActive(frameVisible);
         }
@@ -202,7 +276,10 @@ public sealed class TacticalSelectionView : MonoBehaviour
             );
             rosterContent.sizeDelta = new Vector2(width, 0f);
             rosterScroll.horizontalNormalizedPosition = 0f;
-            rosterTitle.text = $"SELECTED UNITS  //  {count:000}";
+            rosterTitle.text =
+                _roster.Count > count
+                    ? $"SELECTED / CARRIED  //  {_roster.Count:000}"
+                    : $"SELECTED UNITS  //  {count:000}";
         }
         if (count == 0)
             selectionFrame.gameObject.SetActive(false);
@@ -216,6 +293,8 @@ public sealed class TacticalSelectionView : MonoBehaviour
     {
         _selectionSnapshot.Clear();
         _groups.Clear();
+        _roster.Clear();
+        _rosterSeen.Clear();
         Dictionary<(string Owner, string Type, string Squadron), List<CombatUnit>> index =
             new Dictionary<(string, string, string), List<CombatUnit>>();
         if (selected == null)
@@ -223,6 +302,29 @@ public sealed class TacticalSelectionView : MonoBehaviour
         foreach (CombatUnit combatant in selected)
         {
             _selectionSnapshot.Add(combatant);
+            if (_rosterSeen.Add(combatant))
+                _roster.Add(combatant);
+            if (
+                _carrierOperations != null
+                && combatant.GetUnit().OwnerInstanceID == _orderingFaction
+            )
+                foreach (CombatUnit carried in _carrierOperations.GetManifest(combatant))
+                    if (
+                        !carried.HasRetreated
+                        && (
+                            carried.FlightState == FighterFlightState.Docked
+                            || carried.FlightState == FighterFlightState.Queued
+                            || (
+                                carried.FlightState == FighterFlightState.Launching
+                                && carried.FlightDelay > 0f
+                            )
+                        )
+                        && _rosterSeen.Add(carried)
+                    )
+                        _roster.Add(carried);
+        }
+        foreach (CombatUnit combatant in _roster)
+        {
             BaseSceneNode unit = combatant.GetUnit();
             // Missing type identifiers cannot establish that two units share a definition.
             if (string.IsNullOrWhiteSpace(unit.TypeID))

@@ -49,8 +49,10 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         [UnityTest]
         public IEnumerator OnPointerDown_AllCommands_DepressesAndRestoresFace()
         {
-            TacticalCommandButton[] buttons =
-                _instance.GetComponentsInChildren<TacticalCommandButton>();
+            TacticalCommandButton[] buttons = _instance
+                .GetComponentInChildren<TacticalSelectionView>()
+                .transform.Find("BattleDock/CommandsHousing")
+                .GetComponentsInChildren<TacticalCommandButton>();
             Assert.AreEqual(9, buttons.Length);
             foreach (TacticalCommandButton button in buttons)
             {
@@ -69,6 +71,31 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
                 button.OnPointerUp(pointer);
                 Assert.AreEqual(released, face.anchoredPosition);
             }
+            yield return null;
+        }
+
+        /// <summary>
+        /// Checks the independent follow key uses the same press and release response as command keys.
+        /// </summary>
+        /// <returns>The frame allowing transition feedback to settle.</returns>
+        [UnityTest]
+        public IEnumerator OnPointerDown_FollowKey_DepressesAndRestoresFace()
+        {
+            TacticalSelectionView view = _instance.GetComponentInChildren<TacticalSelectionView>();
+            view.RenderFollowState(true, false);
+            TacticalCommandButton button = view.FollowButton;
+            Assert.IsTrue(button.targetGraphic.raycastTarget);
+            RectTransform face = (RectTransform)button.transform.Find("KeyFace");
+            Vector2 released = face.anchoredPosition;
+            PointerEventData pointer = new PointerEventData(EventSystem.current)
+            {
+                button = PointerEventData.InputButton.Left,
+            };
+            button.OnPointerEnter(pointer);
+            button.OnPointerDown(pointer);
+            Assert.That(face.anchoredPosition.y, Is.EqualTo(released.y - 2f));
+            button.OnPointerUp(pointer);
+            Assert.AreEqual(released, face.anchoredPosition);
             yield return null;
         }
 

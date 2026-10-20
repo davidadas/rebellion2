@@ -5,6 +5,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using Rebellion.Game;
 using Rebellion.Game.Combat;
+using Rebellion.Game.ShipComponents;
+using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Simulation.Tactical;
 using UnityEngine;
@@ -16,6 +18,7 @@ using UnityEngine.Rendering.HighDefinition;
 public sealed class TacticalViewController : MonoBehaviour
 {
     private const string _arrivalSoundPath = "Pack/Shared/Tactical/Audio/hyperspace-arrival.wav";
+    private const string _launchSoundPath = "Pack/Shared/Tactical/Audio/fighter-launch.wav";
 
     [SerializeField]
     private Camera battleCamera;
@@ -36,6 +39,9 @@ public sealed class TacticalViewController : MonoBehaviour
     private TacticalSelectionController selectionController;
     private string viewerFactionInstanceID;
     private TacticalArrivalView arrivals;
+    private TacticalCarrierOperations carrierOperations;
+    private TacticalFlightAudio flightAudio;
+    private readonly Dictionary<CombatUnit, System.Numerics.Vector3[][]> carrierPaths = new();
 
     /// <summary>
     /// Gets the active battle presented by this scene.
@@ -84,6 +90,7 @@ public sealed class TacticalViewController : MonoBehaviour
     /// </summary>
     private void Update()
     {
+        flightAudio?.Advance(Time.unscaledDeltaTime);
         bool paused = GetComponent<TacticalMenuController>()?.IsOpen == true;
         if (arrivals?.Advance(Time.deltaTime, paused) == false)
         {
@@ -92,11 +99,19 @@ public sealed class TacticalViewController : MonoBehaviour
         }
         if (paused)
             return;
+        foreach (CombatUnit unit in combatantPresentations.Keys)
+            if (
+                (unit.GetUnit() is CapitalShip || unit.FlightState == FighterFlightState.Deployed)
+                && arrivals?.IsArriving(unit) != true
+            )
+                TacticalMovement.Advance(unit, Time.deltaTime);
+        if (arrivals == null)
+            carrierOperations?.Advance(Time.deltaTime);
         foreach (KeyValuePair<CombatUnit, Transform> presentation in combatantPresentations)
         {
             if (arrivals?.IsArriving(presentation.Key) == true)
                 continue;
-            TacticalMovement.Advance(presentation.Key, Time.deltaTime);
+            presentation.Value.gameObject.SetActive(IsVisible(presentation.Key));
             presentation.Value.localPosition = ToUnityVector(presentation.Key.Position);
             Vector3 forward = ToUnityVector(presentation.Key.Forward);
             if (forward.sqrMagnitude > Mathf.Epsilon)
@@ -158,6 +173,18 @@ public sealed class TacticalViewController : MonoBehaviour
         );
 
     /// <summary>
+    /// Queues the selected friendly carrier's cargo or selected docked squadrons for departure.
+    /// </summary>
+    private void RequestLaunch() =>
+        carrierOperations.Launch(selectionController.SelectedCombatants, viewerFactionInstanceID);
+
+    /// <summary>
+    /// Recalls fighters belonging to the selected friendly carriers or squadrons.
+    /// </summary>
+    private void RequestRecall() =>
+        carrierOperations.Recall(selectionController.SelectedCombatants, viewerFactionInstanceID);
+
+    /// <summary>
     /// Resolves the active tactical battle after the scene becomes active.
     /// </summary>
     private async void Start()
@@ -192,6 +219,11 @@ public sealed class TacticalViewController : MonoBehaviour
             FactionThemeLibrary themes = new FactionThemeLibrary(gameData.FactionThemes);
             FactionTheme theme = themes.GetTheme(themeFaction);
             AudioClip arrivalClip = null;
+            AudioClip launchClip = await bootstrap
+                .GetContentAssets()
+                .LoadAudioAsync(_launchSoundPath);
+            if (this == null)
+                return;
             if (game == null && activeBattle.Kind == BattleKind.Space)
             {
                 arrivalClip = await bootstrap.GetContentAssets().LoadAudioAsync(_arrivalSoundPath);
@@ -207,6 +239,12 @@ public sealed class TacticalViewController : MonoBehaviour
             );
             if (this == null)
                 return;
+            flightAudio = new TacticalFlightAudio(
+                transform,
+                launchClip,
+                bootstrap.GetAudioManager()
+            );
+            carrierOperations.SquadronLaunched += flightAudio.PlayLaunch;
             GetComponentInChildren<TacticalSelectionView>()
                 .ApplyTheme(theme.BattleHud, bootstrap.GetContentAssets());
             ContentBindings.Apply(mapRoot.gameObject, bootstrap.GetContentAssets());
@@ -311,8 +349,10 @@ public sealed class TacticalViewController : MonoBehaviour
         }
         if (deployFleet)
             FleetDeploymentPlanner.Deploy(activeBattle, battleMap);
+        carrierOperations = new TacticalCarrierOperations(activeBattle, carrierPaths);
         foreach (KeyValuePair<CombatUnit, Transform> presentation in presentations)
         {
+            presentation.Value.gameObject.SetActive(IsVisible(presentation.Key));
             presentation.Value.localPosition = ToUnityVector(presentation.Key.Position);
             Vector3 forward = ToUnityVector(presentation.Key.Forward);
             if (forward.sqrMagnitude > Mathf.Epsilon)
@@ -329,6 +369,12 @@ public sealed class TacticalViewController : MonoBehaviour
         selectionController.StopRequested -= RequestStop;
         selectionController.MoveRequested += RequestMove;
         selectionController.StopRequested += RequestStop;
+        selectionController.LaunchRequested -= RequestLaunch;
+        selectionController.RecallRequested -= RequestRecall;
+        selectionController.DockRequested -= RequestRecall;
+        selectionController.LaunchRequested += RequestLaunch;
+        selectionController.RecallRequested += RequestRecall;
+        selectionController.DockRequested += RequestRecall;
         foreach (KeyValuePair<CombatUnit, Transform> presentation in presentations)
             combatantPresentations.Add(presentation.Key, presentation.Value);
         GetComponentInChildren<TacticalSelectionView>()
@@ -340,6 +386,8 @@ public sealed class TacticalViewController : MonoBehaviour
                     ?? activeBattle.GetParticipants().FirstOrDefault()?.FactionInstanceID,
                 GetComponent<TacticalSelectionController>().SelectedCombatants
             );
+        GetComponentInChildren<TacticalSelectionView>()
+            .BindCarrierOperations(carrierOperations, this.viewerFactionInstanceID);
     }
 
     /// <summary>
@@ -351,6 +399,9 @@ public sealed class TacticalViewController : MonoBehaviour
         {
             selectionController.MoveRequested -= RequestMove;
             selectionController.StopRequested -= RequestStop;
+            selectionController.LaunchRequested -= RequestLaunch;
+            selectionController.RecallRequested -= RequestRecall;
+            selectionController.DockRequested -= RequestRecall;
         }
         ReleaseModels();
     }
@@ -387,6 +438,34 @@ public sealed class TacticalViewController : MonoBehaviour
         }
         modelInstances.Add(instance);
         instance.ApplyPose(presentation, scale, Vector3.zero, false, false, true, -1);
+        if (combatant.GetUnit() is CapitalShip carrier)
+        {
+            List<System.Numerics.Vector3[]> paths = new();
+            foreach (StarfighterBay bay in carrier.GetComponents().OfType<StarfighterBay>())
+            {
+                if (bay.FlightPath.Count == 0)
+                    continue;
+                Transform node =
+                    bay.ModelNodePath == "." || bay.ModelNodePath == instance.ModelRoot.name
+                        ? instance.ModelRoot
+                        : instance.ModelRoot.Find(bay.ModelNodePath);
+                if (!node)
+                    throw new InvalidOperationException(
+                        $"Carrier '{carrier.TypeID}' has an unknown bay model node '{bay.ModelNodePath}'."
+                    );
+                System.Numerics.Vector3[] path = new System.Numerics.Vector3[bay.FlightPath.Count];
+                for (int index = 0; index < path.Length; index++)
+                {
+                    StarfighterBayWaypoint point = bay.FlightPath[index];
+                    Vector3 local = presentation.InverseTransformPoint(
+                        node.TransformPoint(new Vector3(-point.X, point.Y, point.Z))
+                    );
+                    path[index] = new System.Numerics.Vector3(local.x, local.y, local.z);
+                }
+                paths.Add(path);
+            }
+            carrierPaths.Add(combatant, paths.ToArray());
+        }
     }
 
     /// <summary>
@@ -394,6 +473,12 @@ public sealed class TacticalViewController : MonoBehaviour
     /// </summary>
     private void ReleaseModels()
     {
+        if (carrierOperations != null && flightAudio != null)
+            carrierOperations.SquadronLaunched -= flightAudio.PlayLaunch;
+        flightAudio?.Dispose();
+        flightAudio = null;
+        carrierOperations = null;
+        carrierPaths.Clear();
         arrivals?.Dispose();
         arrivals = null;
         combatantPresentations.Clear();
@@ -466,6 +551,8 @@ public sealed class TacticalViewController : MonoBehaviour
         {
             foreach (CombatUnit combatant in viewer.GetCombatants())
             {
+                if (!IsVisible(combatant))
+                    continue;
                 ModelDimensions size = combatant.GetUnit().ModelSize;
                 Quaternion rotation = Quaternion.LookRotation(
                     ToUnityVector(combatant.Forward).normalized
@@ -487,6 +574,17 @@ public sealed class TacticalViewController : MonoBehaviour
     /// <returns>The absolute axis.</returns>
     private static Vector3 Abs(Vector3 value) =>
         new Vector3(Mathf.Abs(value.x), Mathf.Abs(value.y), Mathf.Abs(value.z));
+
+    /// <summary>
+    /// Hides carried fighters until they physically begin leaving a bay.
+    /// </summary>
+    /// <param name="unit">The combatant to present.</param>
+    /// <returns>Whether its hull is present in open space.</returns>
+    private static bool IsVisible(CombatUnit unit) =>
+        !unit.HasRetreated
+        && unit.FlightState != FighterFlightState.Docked
+        && unit.FlightState != FighterFlightState.Queued
+        && !(unit.FlightState == FighterFlightState.Launching && unit.FlightDelay > 0f);
 
     /// <summary>
     /// Resolves the orbit pivot where the authored starting view crosses the participant's battle plane.

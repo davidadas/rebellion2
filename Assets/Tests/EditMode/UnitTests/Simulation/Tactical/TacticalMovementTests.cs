@@ -40,7 +40,14 @@ namespace Rebellion.Tests.Simulation.Tactical
         [Test]
         public void Advance_Fighter_UsesFighterSpeed()
         {
-            CombatUnit unit = CombatUnit.Create(new Starfighter { SublightSpeed = 11 });
+            CombatUnit unit = CombatUnit.Create(
+                new Starfighter
+                {
+                    SublightSpeed = 11,
+                    CurrentSquadronSize = 12,
+                    MaxSquadronSize = 12,
+                }
+            );
             unit.Forward = new BattleVector3 { X = 1f };
             unit.MoveDestination = new BattleVector3 { X = 100f };
 
@@ -104,7 +111,14 @@ namespace Rebellion.Tests.Simulation.Tactical
         )
         {
             CombatUnit unit = fighter
-                ? CombatUnit.Create(new Starfighter { SublightSpeed = speed })
+                ? CombatUnit.Create(
+                    new Starfighter
+                    {
+                        SublightSpeed = speed,
+                        CurrentSquadronSize = 12,
+                        MaxSquadronSize = 12,
+                    }
+                )
                 : CombatUnit.Create(new CapitalShip { SublightSpeed = speed });
             unit.MoveDestination = new BattleVector3 { X = 100f };
 

@@ -102,7 +102,15 @@ namespace Rebellion.Simulation.Tactical
                 throw new ArgumentNullException(nameof(unit));
             if (float.IsNaN(deltaTime) || float.IsInfinity(deltaTime) || deltaTime < 0f)
                 throw new ArgumentOutOfRangeException(nameof(deltaTime));
-            if (unit.MoveDestination == null || unit.HasRetreated || deltaTime == 0f)
+            if (
+                unit.MoveDestination == null
+                || unit.HasRetreated
+                || deltaTime == 0f
+                || (
+                    unit.FlightState != FighterFlightState.Deployed
+                    && unit.FlightState != FighterFlightState.Returning
+                )
+            )
                 return;
             float speed = unit.GetUnit() switch
             {
@@ -267,7 +275,11 @@ namespace Rebellion.Simulation.Tactical
                 )
                     continue;
                 foreach (CombatUnit unit in participant.GetCombatants())
-                    if (!unit.HasRetreated && selected.Remove(unit))
+                    if (
+                        !unit.HasRetreated
+                        && unit.FlightState == FighterFlightState.Deployed
+                        && selected.Remove(unit)
+                    )
                         units.Add(unit);
             }
             return units;
