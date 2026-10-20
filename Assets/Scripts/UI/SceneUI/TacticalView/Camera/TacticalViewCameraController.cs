@@ -488,6 +488,13 @@ public sealed class TacticalViewCameraController : MonoBehaviour
         Keyboard keyboard = Keyboard.current;
         if (keyboard == null)
             return;
+        if (
+            keyboard.leftCtrlKey.isPressed
+            || keyboard.rightCtrlKey.isPressed
+            || keyboard.leftMetaKey.isPressed
+            || keyboard.rightMetaKey.isPressed
+        )
+            return;
 
         if (keyboard.numpadPlusKey.isPressed || keyboard.equalsKey.isPressed)
             Zoom(_keyboardZoomInMultiplier);

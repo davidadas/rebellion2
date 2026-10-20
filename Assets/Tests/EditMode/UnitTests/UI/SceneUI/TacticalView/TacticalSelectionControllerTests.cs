@@ -564,6 +564,64 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView
         }
 
         /// <summary>
+        /// Checks Control+A and Command+A select only active, deployed combatants owned by the viewer.
+        /// </summary>
+        /// <returns>The two primary-modifier input sequences and resulting selection updates.</returns>
+        [UnityTest]
+        public IEnumerator SelectedCombatants_PrimaryModifierA_SelectsAllOwnedVisibleCombatants()
+        {
+            PreparePlayMode();
+            yield return new EnterPlayMode();
+            SetUp();
+            InputTestFixture input = new InputTestFixture();
+            input.Setup();
+            try
+            {
+                Keyboard keyboard = InputSystem.AddDevice<Keyboard>();
+                CombatUnit left = AddHull(new Vector3(-10f, 0f, 0f));
+                CombatUnit right = AddHull(new Vector3(10f, 0f, 0f));
+                CombatUnit enemy = AddHull(new Vector3(0f, 10f, 0f));
+                CombatUnit carried = AddHull(new Vector3(0f, -10f, 0f));
+                left.GetUnit().OwnerInstanceID = "PLAYER";
+                right.GetUnit().OwnerInstanceID = "PLAYER";
+                enemy.GetUnit().OwnerInstanceID = "ENEMY";
+                carried.GetUnit().OwnerInstanceID = "PLAYER";
+                _presentations[carried].gameObject.SetActive(false);
+                _controller.Initialize(_camera, _presentations, "PLAYER");
+
+                input.Press(keyboard.leftCtrlKey);
+                input.Press(keyboard.aKey);
+                yield return null;
+
+                CollectionAssert.AreEquivalent(
+                    new[] { left, right },
+                    _controller.SelectedCombatants
+                );
+
+                input.Release(keyboard.aKey);
+                input.Release(keyboard.leftCtrlKey);
+                yield return null;
+                _controller.SelectAt(_camera.ViewportToScreenPoint(new Vector3(0.95f, 0.95f)));
+                Assert.IsEmpty(_controller.SelectedCombatants);
+
+                input.Press(keyboard.leftMetaKey);
+                input.Press(keyboard.aKey);
+                yield return null;
+
+                CollectionAssert.AreEquivalent(
+                    new[] { left, right },
+                    _controller.SelectedCombatants
+                );
+            }
+            finally
+            {
+                input.TearDown();
+                UnityEngine.Object.DestroyImmediate(_instance);
+            }
+            yield return new ExitPlayMode();
+        }
+
+        /// <summary>
         /// Verifies retired combatants cannot be selected.
         /// </summary>
         [Test]

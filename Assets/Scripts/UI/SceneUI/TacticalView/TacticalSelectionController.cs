@@ -25,6 +25,7 @@ public sealed class TacticalSelectionController : MonoBehaviour
     private bool _selecting;
     private bool _choosingDestination;
     private TacticalViewCameraController _cameraInput;
+    private string _viewerFactionInstanceID;
 
     public event Action<Vector2> MoveRequested;
     public event Action StopRequested;
@@ -62,7 +63,12 @@ public sealed class TacticalSelectionController : MonoBehaviour
     /// </summary>
     /// <param name="camera">The camera displaying the battle.</param>
     /// <param name="presentations">The loaded combatants and their presentation roots.</param>
-    public void Initialize(Camera camera, IReadOnlyDictionary<CombatUnit, Transform> presentations)
+    /// <param name="viewerFactionInstanceID">The faction controlled by the local player.</param>
+    public void Initialize(
+        Camera camera,
+        IReadOnlyDictionary<CombatUnit, Transform> presentations,
+        string viewerFactionInstanceID = null
+    )
     {
         if (camera == null)
             throw new ArgumentNullException(nameof(camera));
@@ -74,6 +80,7 @@ public sealed class TacticalSelectionController : MonoBehaviour
         Clear();
         _camera = camera;
         _presentations = presentations;
+        _viewerFactionInstanceID = viewerFactionInstanceID;
         _cameraInput = camera.GetComponent<TacticalViewCameraController>();
         if (_cameraInput)
             _cameraInput.RightClicked += RequestMove;
@@ -145,6 +152,7 @@ public sealed class TacticalSelectionController : MonoBehaviour
             _cameraInput.RightClicked -= RequestMove;
         }
         _cameraInput = null;
+        _viewerFactionInstanceID = null;
         _presentations = null;
         _camera = null;
         _interfaceHits.Clear();
@@ -195,6 +203,7 @@ public sealed class TacticalSelectionController : MonoBehaviour
     {
         if (_presentations == null)
             return;
+        HandleKeyboardShortcuts();
         Mouse mouse = Mouse.current;
         bool additive = Keyboard.current?.shiftKey.isPressed == true;
         if (mouse != null)
@@ -255,6 +264,60 @@ public sealed class TacticalSelectionController : MonoBehaviour
         if (!_selecting)
             view.RenderMarquee(Vector2.zero, Vector2.zero, false);
         RefreshView();
+    }
+
+    /// <summary>
+    /// Selects every deployed, active combatant controlled by the viewing faction.
+    /// </summary>
+    public void SelectAllOwnedCombatants()
+    {
+        if (_presentations == null || string.IsNullOrWhiteSpace(_viewerFactionInstanceID))
+            return;
+
+        _selected.Clear();
+        foreach (KeyValuePair<CombatUnit, Transform> pair in _presentations)
+        {
+            if (
+                !pair.Value
+                || !pair.Value.gameObject.activeInHierarchy
+                || pair.Key.HasRetreated
+                || !string.Equals(
+                    pair.Key.GetUnit().OwnerInstanceID,
+                    _viewerFactionInstanceID,
+                    StringComparison.Ordinal
+                )
+            )
+                continue;
+            _selected.Add(pair.Key);
+        }
+        RefreshView();
+    }
+
+    /// <summary>
+    /// Dispatches tactical selection shortcuts without allowing camera navigation to consume them.
+    /// </summary>
+    private void HandleKeyboardShortcuts()
+    {
+        Keyboard keyboard = Keyboard.current;
+        if (
+            keyboard?.aKey.wasPressedThisFrame != true
+            || !IsPrimaryShortcutModifierPressed(keyboard)
+        )
+            return;
+        SelectAllOwnedCombatants();
+    }
+
+    /// <summary>
+    /// Returns whether the platform's Control or Command modifier is currently pressed.
+    /// </summary>
+    /// <param name="keyboard">The active keyboard.</param>
+    /// <returns>True when a primary shortcut modifier is pressed.</returns>
+    private static bool IsPrimaryShortcutModifierPressed(Keyboard keyboard)
+    {
+        return keyboard.leftCtrlKey.isPressed
+            || keyboard.rightCtrlKey.isPressed
+            || keyboard.leftMetaKey.isPressed
+            || keyboard.rightMetaKey.isPressed;
     }
 
     /// <summary>

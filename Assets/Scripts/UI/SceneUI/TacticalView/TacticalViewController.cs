@@ -358,12 +358,13 @@ public sealed class TacticalViewController : MonoBehaviour
             if (forward.sqrMagnitude > Mathf.Epsilon)
                 presentation.Value.localRotation = Quaternion.LookRotation(forward.normalized);
         }
-        ConfigureCamera(viewerFactionInstanceID);
-        battleRoot.gameObject.SetActive(true);
-        GetComponent<TacticalSelectionController>().Initialize(battleCamera, presentations);
         this.viewerFactionInstanceID =
             viewerFactionInstanceID
             ?? activeBattle.GetParticipants().FirstOrDefault()?.FactionInstanceID;
+        ConfigureCamera(this.viewerFactionInstanceID);
+        battleRoot.gameObject.SetActive(true);
+        GetComponent<TacticalSelectionController>()
+            .Initialize(battleCamera, presentations, this.viewerFactionInstanceID);
         selectionController = GetComponent<TacticalSelectionController>();
         selectionController.MoveRequested -= RequestMove;
         selectionController.StopRequested -= RequestStop;
@@ -382,8 +383,7 @@ public sealed class TacticalViewController : MonoBehaviour
                 presentations,
                 battleMap.PlayableBounds,
                 battleCamera,
-                viewerFactionInstanceID
-                    ?? activeBattle.GetParticipants().FirstOrDefault()?.FactionInstanceID,
+                this.viewerFactionInstanceID,
                 GetComponent<TacticalSelectionController>().SelectedCombatants
             );
         GetComponentInChildren<TacticalSelectionView>()

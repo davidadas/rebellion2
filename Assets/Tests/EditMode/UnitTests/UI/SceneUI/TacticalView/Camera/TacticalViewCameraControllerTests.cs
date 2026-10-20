@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.TestTools;
 
 namespace Rebellion.Tests.UI.SceneUI.TacticalView.Camera
@@ -91,6 +92,37 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalView.Camera
             controller.Pan(Vector2.up, 0.1f, fast);
 
             Assert.That(controller.Pivot.z, Is.EqualTo(expected).Within(0.001f));
+        }
+
+        /// <summary>
+        /// Checks a primary-modifier shortcut does not leak its A key into camera navigation.
+        /// </summary>
+        /// <returns>The runtime keyboard input frame and camera assertion.</returns>
+        [UnityTest]
+        public IEnumerator Update_ControlAHeld_DoesNotPanCamera()
+        {
+            UnityEngine.Object.DestroyImmediate(cameraObject);
+            yield return new EnterPlayMode();
+            SetUp();
+            InputTestFixture input = new InputTestFixture();
+            input.Setup();
+            try
+            {
+                Keyboard keyboard = InputSystem.AddDevice<Keyboard>();
+                Vector3 pivot = controller.Pivot;
+
+                input.Press(keyboard.leftCtrlKey);
+                input.Press(keyboard.aKey);
+                yield return null;
+
+                Assert.AreEqual(pivot, controller.Pivot);
+            }
+            finally
+            {
+                input.TearDown();
+                UnityEngine.Object.DestroyImmediate(cameraObject);
+            }
+            yield return new ExitPlayMode();
         }
 
         [Test]
