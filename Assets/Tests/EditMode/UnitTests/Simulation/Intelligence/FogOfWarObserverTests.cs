@@ -822,6 +822,9 @@ namespace Rebellion.Tests.Simulation
             Fleet fleet = CreateFleet("OPPOSING_FLEET", _alliance);
             _game.AttachNode(fleet, _coruscant);
             AddCapitalShip(fleet, _alliance, "OPPOSING_SHIP");
+            Mission mission = CreateMission("OPPOSING_MISSION", _alliance, _coruscant);
+            _game.AttachNode(mission, _coruscant);
+            new FogOfWarRecorder().RecordEspionageSnapshot(_empire, _coruscant, _coreSector, 10);
             _coruscant.SetOwnerInstanceID(null);
 
             _observer.ObserveOwnershipChange(
@@ -848,6 +851,17 @@ namespace Rebellion.Tests.Simulation
             Assert.IsEmpty(snapshot.Regiments);
             Assert.IsEmpty(snapshot.SpecialForces);
             Assert.IsEmpty(snapshot.Starfighters);
+            PlanetIntelligenceCategory defenseCategories =
+                PlanetIntelligenceCategory.CapitalShips
+                | PlanetIntelligenceCategory.Starfighters
+                | PlanetIntelligenceCategory.GroundForces
+                | PlanetIntelligenceCategory.Officers;
+            Assert.AreEqual(
+                PlanetIntelligenceCategory.None,
+                snapshot.RevealedCategories & defenseCategories
+            );
+            Assert.IsTrue(snapshot.RevealedCategories.HasFlag(PlanetIntelligenceCategory.Missions));
+            Assert.AreEqual(mission.InstanceID, snapshot.Missions.Single().InstanceID);
 
             Planet viewPlanet = new FogOfWarQueries(_game)
                 .BuildFactionView(_empire)
@@ -863,6 +877,45 @@ namespace Rebellion.Tests.Simulation
                 viewPlanet.GetChildren<Building>().Single().InstanceID
             );
             Assert.IsEmpty(viewPlanet.GetChildren<Fleet>());
+            Assert.AreEqual(
+                mission.InstanceID,
+                viewPlanet.GetChildren<Mission>().Single().InstanceID
+            );
+        }
+
+        [Test]
+        public void RefreshVisibleKnowledge_NeutralPlanetWithFormerOwnerFleet_PreservesRetainedBuildingsAfterFleetDeparts()
+        {
+            _coruscant.EnergyCapacity = 1;
+            Building facility = CreateBuilding("KNOWN_FACILITY", _empire);
+            _game.AttachNode(facility, _coruscant);
+            Fleet fleet = CreateFleet("FORMER_OWNER_FLEET", _empire);
+            _game.AttachNode(fleet, _coruscant);
+            AddCapitalShip(fleet, _empire, "FORMER_OWNER_SHIP");
+            _coruscant.SetOwnerInstanceID(null);
+            _observer.ObserveOwnershipChange(
+                new PlanetOwnershipChangedResult
+                {
+                    Planet = _coruscant,
+                    PreviousOwner = _empire,
+                    NewOwner = null,
+                    Tick = 42,
+                }
+            );
+
+            _observer.RefreshVisibleKnowledge();
+            _game.DetachNode(fleet);
+
+            Planet viewPlanet = new FogOfWarQueries(_game)
+                .BuildFactionView(_empire)
+                .GetChildren<PlanetSector>()
+                .Single(sector => sector.InstanceID == _coreSector.InstanceID)
+                .GetChildren<Planet>()
+                .Single(planet => planet.InstanceID == _coruscant.InstanceID);
+            Assert.AreEqual(
+                facility.InstanceID,
+                viewPlanet.GetChildren<Building>().Single().InstanceID
+            );
         }
 
         [Test]

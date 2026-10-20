@@ -826,8 +826,14 @@ namespace Rebellion.Game.FogOfWar
             );
 
             PlanetSnapshot snapshot = CreatePlanetSnapshot(planet, currentTick);
+            PlanetIntelligenceCategory discardedCategories =
+                PlanetIntelligenceCategory.CapitalShips
+                | PlanetIntelligenceCategory.Starfighters
+                | PlanetIntelligenceCategory.GroundForces
+                | PlanetIntelligenceCategory.Officers;
             snapshot.RevealedCategories =
-                previousSnapshot?.RevealedCategories ?? PlanetIntelligenceCategory.None;
+                (previousSnapshot?.RevealedCategories ?? PlanetIntelligenceCategory.None)
+                & ~discardedCategories;
             snapshot.Buildings.AddRange(
                 planet
                     .GetChildren<Building>(includeDisabled: true)
@@ -951,8 +957,8 @@ namespace Rebellion.Game.FogOfWar
                 includeEspionageIntelligence,
                 currentTick
             );
-            AddEntityCopiesToSnapshot(
-                planet.GetChildren<Building>(),
+            AddBuildingCopiesToSnapshot(
+                planet.GetChildren<Building>(includeDisabled: true),
                 planetSnapshot.Buildings,
                 faction,
                 includeEspionageIntelligence,
@@ -1430,6 +1436,46 @@ namespace Rebellion.Game.FogOfWar
                     continue;
 
                 snapshot.Fleets.Add(fleetCopy);
+            }
+        }
+
+        /// <summary>
+        /// Adds observable buildings while retaining completed facilities owned by the observer.
+        /// </summary>
+        /// <param name="source">The live buildings.</param>
+        /// <param name="destination">The snapshot building list.</param>
+        /// <param name="faction">The faction receiving the snapshot.</param>
+        /// <param name="includeEspionageIntelligence">Whether hidden intelligence should be included.</param>
+        /// <param name="observedAtTick">The tick when the state was observed.</param>
+        private void AddBuildingCopiesToSnapshot(
+            IEnumerable<Building> source,
+            List<Building> destination,
+            Faction faction,
+            bool includeEspionageIntelligence,
+            int observedAtTick
+        )
+        {
+            foreach (Building building in source)
+            {
+                if (building.OwnerInstanceID == faction.InstanceID)
+                {
+                    RemoveEntityFromSnapshotState(faction, building.InstanceID);
+                    if (building.ManufacturingStatus == ManufacturingStatus.Complete)
+                        destination.Add(CopyEntityForObservation(building, observedAtTick));
+                    continue;
+                }
+
+                if (!building.IsEnabled)
+                    continue;
+                if (
+                    !includeEspionageIntelligence
+                    && !IsObservableAtPlanet(building, faction.InstanceID)
+                )
+                    continue;
+                if (!includeEspionageIntelligence && IsManufacturingInProgress(building))
+                    continue;
+
+                destination.Add(CopyEntityForObservation(building, observedAtTick));
             }
         }
 
