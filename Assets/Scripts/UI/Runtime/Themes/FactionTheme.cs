@@ -14,6 +14,8 @@ public class FactionTheme
 
     public BattleParticipantTheme BattleParticipant { get; set; }
 
+    public BattleHudTheme BattleHud { get; set; } = new BattleHudTheme();
+
     public bool UseUpperButtonLayout { get; set; }
 
     public string SavedGameSlotIconImagePath { get; set; }

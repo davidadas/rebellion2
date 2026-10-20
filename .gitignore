@@ -97,3 +97,4 @@ Assets/Art/Models/MainMenu/
 
 # App icon lives in private rebellion2-media, not here
 /Assets/GameIcon/
+/Assets/GameIcon.meta

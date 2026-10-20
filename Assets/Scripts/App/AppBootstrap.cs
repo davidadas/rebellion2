@@ -165,6 +165,7 @@ public sealed class AppBootstrap : MonoBehaviour
         Cursor.SetCursor(cursorTexture, Vector2.zero, CursorMode.Auto);
         _contentModelCache = new ContentModelCache(_contentAssets);
         GameLaunchContext.Reset(_contentPack);
+        TacticalBattleLaunchContext.Reset(_contentPack);
         audioManager = AudioManager.EnsureExists(transform);
         audioManager.InitializeContent(_contentAssets);
 
@@ -236,6 +237,16 @@ public sealed class AppBootstrap : MonoBehaviour
     {
         StartStrategyContentPreload();
         return _strategyContentTask;
+    }
+
+    /// <summary>
+    /// Confirms that application-owned content services are ready for the tactical scene. Tactical
+    /// models are loaded on demand through the application model cache.
+    /// </summary>
+    /// <returns>A completed task because the content catalog and model cache are created at bootstrap.</returns>
+    internal Task InitializeTacticalContentAsync()
+    {
+        return Task.CompletedTask;
     }
 
     /// <summary>

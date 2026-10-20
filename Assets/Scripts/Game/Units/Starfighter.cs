@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Rebellion.Game.Encyclopedia;
+using Rebellion.Game.ShipComponents;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Serialization;
 
@@ -43,6 +44,12 @@ namespace Rebellion.Game.Units
 
         [PersistableMember(Name = nameof(ShieldStrength))]
         private int _shieldStrength;
+
+        [PersistableMember(Name = nameof(MaxHullStrength))]
+        private int _maxHullStrength;
+
+        [PersistableMember(Name = nameof(CurrentHullStrength))]
+        private int _currentHullStrength;
 
         // Maneuverability Info.
         [PersistableMember(Name = nameof(Hyperdrive))]
@@ -109,6 +116,26 @@ namespace Rebellion.Game.Units
             set => _shieldStrength = value;
         }
 
+        /// <summary>
+        /// Gets or sets the configured hull strength of one fighter.
+        /// </summary>
+        [PersistableIgnore]
+        public int MaxHullStrength
+        {
+            get => _maxHullStrength;
+            set => _maxHullStrength = value;
+        }
+
+        /// <summary>
+        /// Gets or sets the remaining hull strength of one fighter.
+        /// </summary>
+        [PersistableIgnore]
+        public int CurrentHullStrength
+        {
+            get => _currentHullStrength;
+            set => _currentHullStrength = value;
+        }
+
         [PersistableIgnore]
         public int Hyperdrive
         {
@@ -172,6 +199,13 @@ namespace Rebellion.Game.Units
             set => _torpedoRange = value;
         }
 
+        // Component Info.
+        [PersistableMember(Name = "Components")]
+        private List<ShipComponent> _components = new List<ShipComponent>();
+
+        [PersistableMember(Name = "HardpointGroups")]
+        private List<HardpointGroup> _hardpointGroups = new List<HardpointGroup>();
+
         // Manufacturing Info.
         public string ProducerOwnerID { get; set; }
         public string ProducerPlanetID { get; set; }
@@ -220,6 +254,8 @@ namespace Rebellion.Game.Units
             copy.DetectionRating = DetectionRating;
             copy.Bombardment = Bombardment;
             copy.ShieldStrength = ShieldStrength;
+            copy.MaxHullStrength = MaxHullStrength;
+            copy.CurrentHullStrength = CurrentHullStrength;
             copy.Hyperdrive = Hyperdrive;
             copy.SublightSpeed = SublightSpeed;
             copy.Agility = Agility;
@@ -229,12 +265,38 @@ namespace Rebellion.Game.Units
             copy.LaserRange = LaserRange;
             copy.IonRange = IonRange;
             copy.TorpedoRange = TorpedoRange;
+            copy._components = _components?.ConvertAll(component => component?.CreateCopy());
+            copy._hardpointGroups = _hardpointGroups?.ConvertAll(group => group?.CreateCopy());
             copy.ProducerOwnerID = ProducerOwnerID;
             copy.ProducerPlanetID = ProducerPlanetID;
             copy.ManufacturingQueueSequence = ManufacturingQueueSequence;
             copy.ManufacturingProgress = ManufacturingProgress;
             copy.ManufacturingStatus = ManufacturingStatus;
             copy.Movement = Movement?.CreateCopy();
+        }
+
+        /// <summary>
+        /// Returns the components installed on this starfighter type.
+        /// </summary>
+        /// <returns>The installed components.</returns>
+        public List<ShipComponent> GetComponents()
+        {
+            return _components;
+        }
+
+        /// <summary>
+        /// Returns the fighter's non-negative configured sublight movement speed.
+        /// </summary>
+        /// <returns>The sublight movement speed.</returns>
+        public int GetSublightSpeed() => Math.Max(0, SublightSpeed);
+
+        /// <summary>
+        /// Returns the weapon groups installed on this starfighter type.
+        /// </summary>
+        /// <returns>The installed hardpoint groups.</returns>
+        public List<HardpointGroup> GetHardpointGroups()
+        {
+            return _hardpointGroups;
         }
 
         /// <summary>

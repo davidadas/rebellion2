@@ -15,6 +15,15 @@
     <ProjectReference Include="GameAssembly.Lint.csproj" />
   </ItemGroup>
   <PropertyGroup>
+    <InputSystemHintPath Condition="Exists('$(UnityManagedAssembliesPath)/Unity.InputSystem.dll')"
+      >$(UnityManagedAssembliesPath)/Unity.InputSystem.dll</InputSystemHintPath
+    >
+    <InputSystemHintPath
+      Condition="'$(InputSystemHintPath)' == '' And Exists('Library/ScriptAssemblies/Unity.InputSystem.dll')"
+      >Library/ScriptAssemblies/Unity.InputSystem.dll</InputSystemHintPath
+    >
+  </PropertyGroup>
+  <PropertyGroup>
     <!-- uGUI and TextMeshPro ship as package assemblies. Prefer the staged lint assemblies
          (CI provides them there before the project's own Library is compiled), then fall back
          to the locally compiled project output. Resolving these keeps the semantic model complete
@@ -173,6 +182,10 @@
     </Reference>
     <Reference Include="UnityEngine.UI" Condition="'$(UGuiHintPath)' != ''">
       <HintPath>$(UGuiHintPath)</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.InputSystem" Condition="'$(InputSystemHintPath)' != ''">
+      <HintPath>$(InputSystemHintPath)</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="Unity.TextMeshPro" Condition="'$(TextMeshProHintPath)' != ''">

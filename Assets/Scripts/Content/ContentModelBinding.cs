@@ -119,7 +119,15 @@ public sealed class ContentModelBinding : MonoBehaviour
                 .InstantiateAsync(address, transform, cancellationToken);
             modelInstance = loadedModel;
             cancellationToken.ThrowIfCancellationRequested();
-            ApplyPosing(loadedModel.ModelRoot);
+            loadedModel.ApplyPose(
+                transform,
+                modelScale,
+                rotationEuler,
+                overwriteRotation,
+                normalizeToUnitDiameter,
+                centerOnPivot,
+                contentLayer
+            );
         }
         catch (OperationCanceledException)
         {
@@ -136,82 +144,5 @@ public sealed class ContentModelBinding : MonoBehaviour
                 $"{name}: content model '{address}' unavailable; skipping.\n{exception}"
             );
         }
-    }
-
-    /// <summary>
-    /// Applies the authored rotation, normalization, scale, centering, and layer to a loaded model.
-    /// </summary>
-    /// <param name="model">The instantiated model root.</param>
-    private void ApplyPosing(Transform model)
-    {
-        model.localPosition = Vector3.zero;
-        if (overwriteRotation)
-            model.localRotation = Quaternion.Euler(rotationEuler);
-        if (normalizeToUnitDiameter)
-            NormalizeToUnitDiameter(model);
-        if (!Mathf.Approximately(modelScale, 1f))
-            model.localScale *= modelScale;
-        if (centerOnPivot)
-            CenterOnPivot(transform, model);
-        if (contentLayer >= 0)
-            SetLayerRecursively(model.gameObject, contentLayer);
-    }
-
-    /// <summary>
-    /// Scales a model so its largest bounds dimension spans two units.
-    /// </summary>
-    /// <param name="model">The model to scale.</param>
-    private static void NormalizeToUnitDiameter(Transform model)
-    {
-        if (!TryGetBounds(model, out Bounds bounds))
-            return;
-
-        float maxExtent = Mathf.Max(bounds.size.x, bounds.size.y, bounds.size.z);
-        if (maxExtent > 0f)
-            model.localScale *= 2f / maxExtent;
-    }
-
-    /// <summary>
-    /// Offsets a model so its bounds center aligns with the pivot.
-    /// </summary>
-    /// <param name="pivot">The transform to center on.</param>
-    /// <param name="model">The model to recenter.</param>
-    private static void CenterOnPivot(Transform pivot, Transform model)
-    {
-        if (TryGetBounds(model, out Bounds bounds))
-            model.position += pivot.position - bounds.center;
-    }
-
-    /// <summary>
-    /// Computes the combined world bounds of a model's renderers.
-    /// </summary>
-    /// <param name="model">The model to measure.</param>
-    /// <param name="bounds">The combined world bounds when renderers exist.</param>
-    /// <returns>True when the model has at least one renderer.</returns>
-    private static bool TryGetBounds(Transform model, out Bounds bounds)
-    {
-        Renderer[] renderers = model.GetComponentsInChildren<Renderer>();
-        if (renderers.Length == 0)
-        {
-            bounds = default;
-            return false;
-        }
-
-        bounds = renderers[0].bounds;
-        for (int i = 1; i < renderers.Length; i++)
-            bounds.Encapsulate(renderers[i].bounds);
-        return true;
-    }
-
-    /// <summary>
-    /// Assigns a layer to a model and every descendant.
-    /// </summary>
-    /// <param name="model">The model root.</param>
-    /// <param name="layer">The layer to assign.</param>
-    private static void SetLayerRecursively(GameObject model, int layer)
-    {
-        model.layer = layer;
-        foreach (Transform child in model.transform)
-            SetLayerRecursively(child.gameObject, layer);
     }
 }

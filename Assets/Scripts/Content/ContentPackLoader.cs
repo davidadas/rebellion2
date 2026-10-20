@@ -417,6 +417,7 @@ public static class ContentPackLoader
             pack.PlanetSectorsPath,
             "PlanetSectors"
         );
+        BattleMap[] battleMaps = LoadBattleMaps(fileResolver, pack.BattleMapPaths);
         Building[] buildings = DeserializeGameData<Building[]>(
             fileResolver,
             pack.BuildingsPath,
@@ -513,6 +514,7 @@ public static class ContentPackLoader
             generationConfig,
             factionData.ToArray(),
             planetSectors,
+            battleMaps,
             buildings,
             capitalShips.ToArray(),
             starfighters.ToArray(),
@@ -523,7 +525,8 @@ public static class ContentPackLoader
             messageDefinitions,
             encyclopediaEntries,
             themes,
-            officerTraits
+            officerTraits,
+            pack.DefaultSpaceBattleMapInstanceIDs
         );
     }
 
@@ -682,6 +685,25 @@ public static class ContentPackLoader
         return paths
             .Select(path => DeserializeXml<T>(RequirePackFile(fileResolver, path)))
             .ToList();
+    }
+
+    /// <summary>
+    /// Loads the battle-map files declared by a content pack.
+    /// </summary>
+    /// <param name="fileResolver">The layered content file resolver.</param>
+    /// <param name="paths">The pack-relative battle-map paths.</param>
+    /// <returns>The loaded battle maps in declared order.</returns>
+    private static BattleMap[] LoadBattleMaps(
+        ContentFileResolver fileResolver,
+        IEnumerable<string> paths
+    )
+    {
+        if (fileResolver == null)
+            throw new ArgumentNullException(nameof(fileResolver));
+
+        return (paths ?? Enumerable.Empty<string>())
+            .Select(path => BattleMapLoader.Load(RequirePackFile(fileResolver, path)))
+            .ToArray();
     }
 
     /// <summary>

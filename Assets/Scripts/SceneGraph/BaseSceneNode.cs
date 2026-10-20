@@ -10,6 +10,18 @@ namespace Rebellion.SceneGraph
     /// </summary>
     public abstract class BaseSceneNode : BaseGameEntity, ISceneNode
     {
+        public string ModelPath { get; set; }
+
+        /// <summary>
+        /// Gets or sets the intentional uniform scale applied to the imported model.
+        /// </summary>
+        public float ModelScale { get; set; } = 1f;
+
+        /// <summary>
+        /// Gets or sets dimensions measured from the loaded model before deployment and framing.
+        /// </summary>
+        public ModelDimensions ModelSize { get; set; }
+
         // Parent Info.
         public string ParentInstanceID { get; set; }
 
@@ -288,6 +300,9 @@ namespace Rebellion.SceneGraph
             copy.CapturedOverlayImagePath = CapturedOverlayImagePath;
             copy.InjuredImagePath = InjuredImagePath;
             copy.Description = Description;
+            copy.ModelPath = ModelPath;
+            copy.ModelScale = ModelScale;
+            copy.ModelSize = ModelSize?.CreateCopy();
             copy.OwnerInstanceID = OwnerInstanceID;
             copy.IsEnabled = IsEnabled;
         }

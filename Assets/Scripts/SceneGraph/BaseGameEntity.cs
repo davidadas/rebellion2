@@ -71,6 +71,28 @@ namespace Rebellion.SceneGraph
         }
 
         /// <summary>
+        /// Copies entity identity and display data to another entity.
+        /// </summary>
+        /// <param name="copy">The destination entity.</param>
+        protected void CopyEntityStateTo(BaseGameEntity copy)
+        {
+            copy.InstanceID = InstanceID;
+            copy.TypeID = TypeID;
+            copy.DisplayName = DisplayName;
+            copy.DisplayStatus = DisplayStatus;
+            copy.DisplayImagePath = DisplayImagePath;
+            copy.SmallDisplayImagePath = SmallDisplayImagePath;
+            copy.MessageImagePath = MessageImagePath;
+            copy.InTransitImagePath = InTransitImagePath;
+            copy.InTransitSmallImagePath = InTransitSmallImagePath;
+            copy.DamagedImagePath = DamagedImagePath;
+            copy.DamagedSmallImagePath = DamagedSmallImagePath;
+            copy.CapturedOverlayImagePath = CapturedOverlayImagePath;
+            copy.InjuredImagePath = InjuredImagePath;
+            copy.Description = Description;
+        }
+
+        /// <summary>
         /// Returns the instance ID of the entity.
         /// </summary>
         /// <returns>The instance ID of the entity.</returns>

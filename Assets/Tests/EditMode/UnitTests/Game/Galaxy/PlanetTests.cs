@@ -434,6 +434,32 @@ namespace Rebellion.Tests.Game.Galaxy
         }
 
         [Test]
+        public void BattleMapInstanceIDs_SerializedPlanet_RetainsReferences()
+        {
+            _planet.BattleMapInstanceIDs.Add("SPACE_MAP");
+
+            string serialized = SerializationHelper.Serialize(_planet);
+            Planet deserialized = SerializationHelper.Deserialize<Planet>(serialized);
+
+            CollectionAssert.AreEqual(new[] { "SPACE_MAP" }, deserialized.BattleMapInstanceIDs);
+        }
+
+        [Test]
+        public void BattleMapInstanceIDs_CopiedPlanet_CreatesIndependentList()
+        {
+            _planet.BattleMapInstanceIDs.Add("SPACE_MAP");
+
+            Planet copy = (Planet)_planet.CreateCopy();
+            copy.BattleMapInstanceIDs.Add("GROUND_MAP");
+
+            CollectionAssert.AreEqual(new[] { "SPACE_MAP" }, _planet.BattleMapInstanceIDs);
+            CollectionAssert.AreEqual(
+                new[] { "SPACE_MAP", "GROUND_MAP" },
+                copy.BattleMapInstanceIDs
+            );
+        }
+
+        [Test]
         public void SetManufacturingReserved_ReservedThenReleased_UpdatesSelectedLaneOnly()
         {
             _planet.SetManufacturingReserved(ManufacturingType.Troop, true);

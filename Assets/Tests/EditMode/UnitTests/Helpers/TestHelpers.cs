@@ -7,6 +7,7 @@ using System.Runtime.CompilerServices;
 using System.Xml;
 using System.Xml.Schema;
 using Rebellion.Game;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
@@ -504,11 +505,17 @@ public static class TestGameData
     /// </summary>
     /// <param name="config">The config.</param>
     /// <param name="messageDefinitions">The message definitions.</param>
+    /// <param name="planetSectors">The planet-sector templates.</param>
+    /// <param name="battleMaps">The battle-map definitions.</param>
+    /// <param name="defaultSpaceBattleMapInstanceIDs">The default space-map identifiers.</param>
     /// <param name="officerTraits">The officer trait definitions.</param>
     /// <returns>The created value.</returns>
     public static GameDataCatalog Create(
         GameConfig config = null,
         MessageDefinition[] messageDefinitions = null,
+        PlanetSector[] planetSectors = null,
+        BattleMap[] battleMaps = null,
+        IEnumerable<string> defaultSpaceBattleMapInstanceIDs = null,
         OfficerTraitDefinition[] officerTraits = null
     )
     {
@@ -516,7 +523,8 @@ public static class TestGameData
             config ?? new GameConfig(),
             new GameGenerationConfig(),
             Array.Empty<Faction>(),
-            Array.Empty<PlanetSector>(),
+            planetSectors ?? Array.Empty<PlanetSector>(),
+            battleMaps ?? Array.Empty<BattleMap>(),
             Array.Empty<Building>(),
             Array.Empty<CapitalShip>(),
             Array.Empty<Starfighter>(),
@@ -527,7 +535,8 @@ public static class TestGameData
             messageDefinitions ?? Array.Empty<MessageDefinition>(),
             new EncyclopediaEntries(),
             new FactionThemes(),
-            officerTraits
+            officerTraits,
+            defaultSpaceBattleMapInstanceIDs
         );
     }
 }

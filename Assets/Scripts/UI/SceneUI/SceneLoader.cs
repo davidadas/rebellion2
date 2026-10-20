@@ -116,6 +116,8 @@ public sealed class SceneLoader : MonoBehaviour
         AppBootstrap bootstrap = AppBootstrap.Instance;
         if (sceneName == "StrategyView")
             return bootstrap.InitializeStrategyContentAsync();
+        if (sceneName == "TacticalView")
+            return bootstrap.InitializeTacticalContentAsync();
 
         return bootstrap.InitializeMainMenuSceneAsync();
     }
