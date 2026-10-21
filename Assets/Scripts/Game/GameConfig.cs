@@ -162,6 +162,8 @@ namespace Rebellion.Game
 
             public int MaximumOfficerMissionLossProbability { get; set; }
 
+            public int EncounterCacheCapacity { get; set; }
+
             public int MissionDefenseIntelFullWeightTicks { get; set; }
 
             public int MissionDefenseFallbackGroundDetectorCount { get; set; }
@@ -351,6 +353,9 @@ namespace Rebellion.Game
             public int MinimumDefenseStrength { get; set; }
 
             public int HeadquartersDefenseCombatPercent { get; set; }
+
+            /// <summary>Sets the headquarters reserve against the strongest known hostile fleet; zero uses the attack multiplier.</summary>
+            public int HeadquartersDefensePercentOfStrongestHostileFleet { get; set; }
 
             public int MinimumPlanetaryAssaultRegimentCount { get; set; }
 
@@ -546,8 +551,30 @@ namespace Rebellion.Game
             public int RefinedMaterialCommitmentHorizonTicks { get; set; }
             public int MaintenanceHeadroomReserve { get; set; }
             public int MaintenanceHeadroomTarget { get; set; }
+
+            public AIMaintenanceRecoveryConfig MaintenanceRecovery { get; set; } =
+                new AIMaintenanceRecoveryConfig();
+
+            /// <summary>Discounts anticipated economic capacity from active diplomacy for planning urgency only.</summary>
+            public int DiplomacyEconomyConfidencePercent { get; set; }
             public AIProductionUtilityConfig ProductionUtility { get; set; } =
                 new AIProductionUtilityConfig();
+        }
+
+        /// <summary>
+        /// Controls deliberate retirement of maintenance commitments during a shortage.
+        /// </summary>
+        [PersistableObject]
+        public class AIMaintenanceRecoveryConfig
+        {
+            public bool Enabled { get; set; }
+            public int TargetHeadroom { get; set; }
+            public double ReplacementCostWeight { get; set; }
+            public double DefenseWeight { get; set; }
+            public double AttackWeight { get; set; }
+            public double GarrisonWeight { get; set; }
+            public double AgentWeight { get; set; }
+            public double ProductionWeight { get; set; }
         }
 
         /// <summary>
@@ -631,6 +658,9 @@ namespace Rebellion.Game
             public AIConsiderationConfig ColonyFoundation { get; set; } =
                 new AIConsiderationConfig();
 
+            public AIConsiderationConfig HeadquartersReinforcement { get; set; } =
+                new AIConsiderationConfig();
+
             public AIConsiderationConfig HeadroomRisk { get; set; } = new AIConsiderationConfig();
 
             public AIConsiderationConfig Shortfall { get; set; } = new AIConsiderationConfig();
@@ -700,6 +730,9 @@ namespace Rebellion.Game
             public bool RequireEstablishedIndustryForStaticDefense { get; set; }
             public int PlanetaryDefenseSurplusBatchSize { get; set; }
             public int PlanetaryShieldDemandPercent { get; set; }
+
+            /// <summary>Sets the shield count reserved for industrial worlds without an immediate defense need.</summary>
+            public int IndustrialShieldTargetCount { get; set; } = 1;
             public int PlanetaryWeaponDemandPercent { get; set; }
             public int PlanetaryGarrisonDemandPercent { get; set; }
             public int PlanetaryDefenseMaintenanceReservePercent { get; set; }
@@ -1298,6 +1331,8 @@ namespace Rebellion.Game
         [PersistableObject]
         public class GameSpeedConfig
         {
+            public double TickWorkBudgetMilliseconds { get; set; }
+
             public float FastTickIntervalSeconds { get; set; }
 
             public float MediumTickIntervalSeconds { get; set; }

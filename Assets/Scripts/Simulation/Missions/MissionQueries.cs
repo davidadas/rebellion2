@@ -19,6 +19,15 @@ namespace Rebellion.Simulation
         private readonly GameRoot _game;
         private readonly MissionFactory _missionFactory;
         private readonly Func<ISceneNode, Planet, Officer> _detectorCommander;
+        private readonly MissionEncounterOdds.Cache _encounterCache;
+        private Dictionary<
+            (Dictionary<int, int> Table, int Score, int Default),
+            int
+        > _probabilityLookups;
+        private Dictionary<
+            (ISceneNode Detector, Planet Planet),
+            (Officer Commander, int Detection, bool Orbital)
+        > _encounterDefenders;
 
         /// <summary>
         /// Creates mission queries for the supplied game state.
@@ -33,11 +42,25 @@ namespace Rebellion.Simulation
         /// <param name="game">The game used to resolve participants and mission rules.</param>
         /// <param name="detectorCommander">Resolves commanders from the caller's observed state.</param>
         internal MissionQueries(GameRoot game, Func<ISceneNode, Planet, Officer> detectorCommander)
+            : this(game, detectorCommander, null) { }
+
+        /// <summary>
+        /// Creates queries with caller-scoped reuse of exact encounter calculations.
+        /// </summary>
+        /// <param name="game">The game whose current rules are evaluated.</param>
+        /// <param name="detectorCommander">Resolves observed defending commanders.</param>
+        /// <param name="encounterCache">Numerical results retained only for this planning scope.</param>
+        internal MissionQueries(
+            GameRoot game,
+            Func<ISceneNode, Planet, Officer> detectorCommander,
+            MissionEncounterOdds.Cache encounterCache
+        )
         {
             _game = game;
             _missionFactory = new MissionFactory(game);
             _detectorCommander =
                 detectorCommander ?? throw new ArgumentNullException(nameof(detectorCommander));
+            _encounterCache = encounterCache;
         }
 
         /// <summary>
@@ -281,49 +304,61 @@ namespace Rebellion.Simulation
             bool reusableDecoys = false
         )
         {
-            if (!TryCreateMission(context, out Mission mission))
-                return null;
-
-            double objectiveSuccessProbability = mission.GetObjectiveSuccessProbability(
-                mission.GetMainParticipants(),
-                _game,
-                context.Location as Planet,
-                context.SelectedTarget
-            );
-            if (objectiveSuccessProbability < minimumOverallProbability)
-                return null;
-            double foilProbability;
-            double personnelLossProbability;
-            if (includePersonnelLoss)
+            var previousLookups = _probabilityLookups;
+            var previousDefenders = _encounterDefenders;
+            _probabilityLookups = new();
+            _encounterDefenders = new();
+            try
             {
-                (foilProbability, personnelLossProbability) = EstimateEncounterOdds(
-                    mission,
-                    context.Location as Planet,
-                    context.SelectedTarget ?? context.Location,
-                    observedDetectorSource
-                );
-            }
-            else
-            {
-                double? estimatedFoil = EstimateFoilProbability(
-                    mission,
-                    context.Location as Planet,
-                    context.SelectedTarget ?? context.Location,
-                    observedDetectorSource,
-                    minimumOverallProbability,
-                    objectiveSuccessProbability,
-                    reusableDecoys
-                );
-                if (!estimatedFoil.HasValue)
+                if (!TryCreateMission(context, out Mission mission))
                     return null;
-                foilProbability = estimatedFoil.Value;
-                personnelLossProbability = 0;
+
+                double objectiveSuccessProbability = mission.GetObjectiveSuccessProbability(
+                    mission.GetMainParticipants(),
+                    _game,
+                    context.Location as Planet,
+                    context.SelectedTarget
+                );
+                if (objectiveSuccessProbability < minimumOverallProbability)
+                    return null;
+                double foilProbability;
+                double personnelLossProbability;
+                if (includePersonnelLoss)
+                {
+                    (foilProbability, personnelLossProbability) = EstimateEncounterOdds(
+                        mission,
+                        context.Location as Planet,
+                        context.SelectedTarget ?? context.Location,
+                        observedDetectorSource
+                    );
+                }
+                else
+                {
+                    double? estimatedFoil = EstimateFoilProbability(
+                        mission,
+                        context.Location as Planet,
+                        context.SelectedTarget ?? context.Location,
+                        observedDetectorSource,
+                        minimumOverallProbability,
+                        objectiveSuccessProbability,
+                        reusableDecoys
+                    );
+                    if (!estimatedFoil.HasValue)
+                        return null;
+                    foilProbability = estimatedFoil.Value;
+                    personnelLossProbability = 0;
+                }
+                return new MissionOdds(
+                    objectiveSuccessProbability,
+                    foilProbability,
+                    personnelLossProbability
+                );
             }
-            return new MissionOdds(
-                objectiveSuccessProbability,
-                foilProbability,
-                personnelLossProbability
-            );
+            finally
+            {
+                _probabilityLookups = previousLookups;
+                _encounterDefenders = previousDefenders;
+            }
         }
 
         /// <summary>
@@ -1046,147 +1081,32 @@ namespace Rebellion.Simulation
             if (detectors.Count == 0)
                 return;
 
-            Officer[] mainOfficers = mission.AppliesFoiledParticipantConsequences
+            Officer[] officers = mission.AppliesFoiledParticipantConsequences
                 ? mainParticipants.OfType<Officer>().ToArray()
                 : Array.Empty<Officer>();
-            if (
-                mainOfficers.Length == 1
-                && (BigInteger.One << encounterDecoyIndexes.Count) <= detectors.Count + 1
-            )
-            {
-                survivingByDecoyPool = AccumulateSingleOfficerEncounterOdds(
-                    mission,
-                    planet,
-                    mainParticipants,
-                    mainOfficers[0],
-                    allDecoys,
-                    encounterDecoyIndexes,
-                    detectors,
-                    survivingByDecoyPool,
-                    ref foilProbability,
-                    ref personnelLossProbability
-                );
-                return;
-            }
-
-            Dictionary<
-                BigInteger,
-                (double Probability, double NoOfficerLossProbability)
-            > nextSurvivors = new();
-            foreach (
-                (
-                    BigInteger availableDecoys,
-                    (double survivingProbability, double noOfficerLossProbability)
-                ) in survivingByDecoyPool
-            )
-            {
-                ApplyEncounterStateOdds(
-                    mission,
-                    planet,
-                    mainParticipants,
-                    allDecoys,
-                    encounterDecoyIndexes,
-                    detectors,
-                    availableDecoys,
-                    survivingProbability,
-                    noOfficerLossProbability,
-                    nextSurvivors,
-                    ref foilProbability,
-                    ref personnelLossProbability
-                );
-            }
-
-            survivingByDecoyPool = nextSurvivors;
-        }
-
-        /// <summary>
-        /// Accumulates one primary officer's encounter risk by active-defender count and weighted
-        /// survival sum, without retaining combinations of defender identities.
-        /// </summary>
-        /// <param name="mission">The mission being evaluated.</param>
-        /// <param name="planet">The encounter location.</param>
-        /// <param name="mainParticipants">The main participants present at this encounter.</param>
-        /// <param name="officer">The sole primary officer exposed to foiling consequences.</param>
-        /// <param name="allDecoys">The mission's complete decoy roster.</param>
-        /// <param name="encounterDecoyIndexes">The decoys present at this encounter.</param>
-        /// <param name="detectors">The observed defenders in encounter order.</param>
-        /// <param name="survivingByDecoyPool">The incoming probabilities by remaining decoys.</param>
-        /// <param name="foilProbability">The accumulated probability of being foiled.</param>
-        /// <param name="personnelLossProbability">The accumulated officer-loss probability.</param>
-        /// <returns>The surviving probabilities by remaining decoys for the next checkpoint.</returns>
-        private Dictionary<
-            BigInteger,
-            (double Probability, double NoOfficerLossProbability)
-        > AccumulateSingleOfficerEncounterOdds(
-            Mission mission,
-            Planet planet,
-            IReadOnlyList<IMissionParticipant> mainParticipants,
-            Officer officer,
-            IReadOnlyList<IMissionParticipant> allDecoys,
-            IReadOnlyList<int> encounterDecoyIndexes,
-            IReadOnlyList<ISceneNode> detectors,
-            Dictionary<
-                BigInteger,
-                (double Probability, double NoOfficerLossProbability)
-            > survivingByDecoyPool,
-            ref double foilProbability,
-            ref double personnelLossProbability
-        )
-        {
-            var (pools, remainingPools, selectableCounts) = GetDecoyPoolTransitions(
-                survivingByDecoyPool.Keys,
-                allDecoys.Count,
-                encounterDecoyIndexes
-            );
-            int stride = detectors.Count + 1;
-            (
-                double Total,
-                double NoLoss,
-                double Unfoiled,
-                double UnfoiledNoLoss,
-                double SurvivalSum,
-                double UnfoiledSurvivalSum
-            )[] states = new (double, double, double, double, double, double)[pools.Count * stride];
-            (
-                double Total,
-                double NoLoss,
-                double Unfoiled,
-                double UnfoiledNoLoss,
-                double SurvivalSum,
-                double UnfoiledSurvivalSum
-            )[] next = new (double, double, double, double, double, double)[states.Length];
-            for (int poolIndex = 0; poolIndex < pools.Count; poolIndex++)
-                if (survivingByDecoyPool.TryGetValue(pools[poolIndex], out var probability))
-                    states[poolIndex * stride] = (
-                        probability.Probability,
-                        probability.NoOfficerLossProbability,
-                        probability.Probability,
-                        probability.NoOfficerLossProbability,
-                        0,
-                        0
-                    );
-            int foilChanceModifier = GetFoilChanceModifier(mission);
+            double[] survivalModifiers = officers
+                .Select(officer => 1d - Mission.GetEvasionDeathProbability(officer, _game.Config))
+                .ToArray();
+            int foilModifier = GetFoilChanceModifier(mission);
             int participantScore = GetFoilParticipantScore(mainParticipants);
-            double[] diversions = new double[allDecoys.Count];
-            double[] decoyLosses = new double[allDecoys.Count];
-            for (int detectorIndex = 0; detectorIndex < detectors.Count; detectorIndex++)
+            List<MissionEncounterOdds.DefenderProbabilities> probabilities = new(detectors.Count);
+            foreach (ISceneNode detector in detectors)
             {
-                ISceneNode detector = detectors[detectorIndex];
                 Planet defenderPlanet = detector.GetParentOfType<Planet>() ?? planet;
-                double unfoiled =
+                double noFoil =
                     1d
                     - Math.Clamp(
                         GetFoilProbabilityForScore(
                             detector,
-                            foilChanceModifier,
+                            foilModifier,
                             participantScore,
                             defenderPlanet
                         ) / 100d,
                         0,
                         1
                     );
-                double survival =
-                    1d - GetOfficerEncounterLossProbability(mission, officer, detector);
+                double[] diversions = new double[allDecoys.Count];
+                double[] decoyLosses = new double[allDecoys.Count];
                 foreach (int index in encounterDecoyIndexes)
                 {
                     diversions[index] = Math.Clamp(
@@ -1199,381 +1119,61 @@ namespace Rebellion.Simulation
                         ? GetOfficerEncounterLossProbability(mission, decoy, detector)
                         : 0;
                 }
-                Array.Clear(next, 0, next.Length);
-                for (int poolIndex = 0; poolIndex < pools.Count; poolIndex++)
-                for (int count = 0; count <= detectorIndex; count++)
-                {
-                    int position = poolIndex * stride + count;
-                    var probability = states[position];
-                    if (probability.Total <= 0)
-                        continue;
-                    int selectable = selectableCounts[poolIndex];
-                    if (selectable == 0)
-                    {
-                        AddSingleOfficerEncounterProbability(
-                            ref next[position + 1],
-                            probability.Total,
-                            probability.NoLoss,
-                            probability.Unfoiled * unfoiled,
-                            probability.UnfoiledNoLoss * unfoiled,
-                            probability.SurvivalSum + probability.NoLoss * survival,
-                            (
-                                probability.UnfoiledSurvivalSum
-                                + probability.UnfoiledNoLoss * survival
-                            ) * unfoiled
-                        );
-                        continue;
-                    }
-                    foreach (int index in encounterDecoyIndexes)
-                    {
-                        int remainingPool = remainingPools[poolIndex, index];
-                        if (remainingPool == poolIndex)
-                            continue;
-                        double diverted = diversions[index] / selectable;
-                        double confronted = (1d - diversions[index]) / selectable;
-                        double survived = 1d - decoyLosses[index];
-                        AddSingleOfficerEncounterProbability(
-                            ref next[position],
-                            probability.Total * diverted,
-                            probability.NoLoss * diverted,
-                            probability.Unfoiled * diverted,
-                            probability.UnfoiledNoLoss * diverted,
-                            probability.SurvivalSum * diverted,
-                            probability.UnfoiledSurvivalSum * diverted
-                        );
-                        personnelLossProbability +=
-                            probability.NoLoss * confronted * decoyLosses[index];
-                        AddSingleOfficerEncounterProbability(
-                            ref next[remainingPool * stride + count + 1],
-                            probability.Total * confronted,
-                            probability.NoLoss * confronted * survived,
-                            probability.Unfoiled * confronted * unfoiled,
-                            probability.UnfoiledNoLoss * confronted * survived * unfoiled,
-                            (probability.SurvivalSum + probability.NoLoss * survival)
-                                * confronted
-                                * survived,
-                            (
-                                probability.UnfoiledSurvivalSum
-                                + probability.UnfoiledNoLoss * survival
-                            )
-                                * confronted
-                                * survived
-                                * unfoiled
-                        );
-                    }
-                }
-                (states, next) = (next, states);
-            }
-            Dictionary<
-                BigInteger,
-                (double Probability, double NoOfficerLossProbability)
-            > nextSurvivors = new();
-            for (int poolIndex = 0; poolIndex < pools.Count; poolIndex++)
-            for (int count = 0; count <= detectors.Count; count++)
-            {
-                var probability = states[poolIndex * stride + count];
-                if (probability.Total <= 0)
-                    continue;
-                foilProbability += Math.Max(0, probability.Total - probability.Unfoiled);
-                if (count > 0)
-                    personnelLossProbability += Math.Max(
-                        0,
-                        probability.NoLoss
-                            - probability.UnfoiledNoLoss
-                            - (probability.SurvivalSum - probability.UnfoiledSurvivalSum) / count
-                    );
-                AddEncounterProbability(
-                    nextSurvivors,
-                    pools[poolIndex],
-                    probability.Unfoiled,
-                    probability.UnfoiledNoLoss
-                );
-            }
-            return nextSurvivors;
-        }
-
-        /// <summary>
-        /// Merges probability weights and survival sums for equivalent single-officer states.
-        /// </summary>
-        /// <param name="state">The accumulated probabilities for one decoy pool and defender count.</param>
-        /// <param name="total">The total probability.</param>
-        /// <param name="noLoss">The probability with no officer losses.</param>
-        /// <param name="unfoiled">The probability with no foiling.</param>
-        /// <param name="unfoiledNoLoss">The probability with neither foiling nor officer losses.</param>
-        /// <param name="survivalSum">The no-loss-weighted sum of primary-officer survival chances.</param>
-        /// <param name="unfoiledSurvivalSum">The corresponding sum on unfoiled paths.</param>
-        private static void AddSingleOfficerEncounterProbability(
-            ref (
-                double Total,
-                double NoLoss,
-                double Unfoiled,
-                double UnfoiledNoLoss,
-                double SurvivalSum,
-                double UnfoiledSurvivalSum
-            ) state,
-            double total,
-            double noLoss,
-            double unfoiled,
-            double unfoiledNoLoss,
-            double survivalSum,
-            double unfoiledSurvivalSum
-        )
-        {
-            state.Total += total;
-            state.NoLoss += noLoss;
-            state.Unfoiled += unfoiled;
-            state.UnfoiledNoLoss += unfoiledNoLoss;
-            state.SurvivalSum += survivalSum;
-            state.UnfoiledSurvivalSum += unfoiledSurvivalSum;
-        }
-
-        /// <summary>
-        /// Resolves one available-decoy state through a complete encounter checkpoint.
-        /// </summary>
-        /// <param name="mission">The mission being estimated.</param>
-        /// <param name="planet">The encounter planet.</param>
-        /// <param name="mainParticipants">The primary participants present.</param>
-        /// <param name="allDecoys">Every decoy assigned to the mission.</param>
-        /// <param name="encounterDecoyIndexes">Indexes of decoys present at this encounter.</param>
-        /// <param name="detectors">The detectors active at the checkpoint.</param>
-        /// <param name="availableDecoys">The available-decoy bit set.</param>
-        /// <param name="stateProbability">The probability of reaching this state.</param>
-        /// <param name="noOfficerLossProbability">The probability of reaching this state without losing an officer.</param>
-        /// <param name="nextSurvivors">The next checkpoint's surviving states.</param>
-        /// <param name="foilProbability">Accumulated foil probability.</param>
-        /// <param name="personnelLossProbability">Accumulated personnel-loss probability.</param>
-        private void ApplyEncounterStateOdds(
-            Mission mission,
-            Planet planet,
-            IReadOnlyList<IMissionParticipant> mainParticipants,
-            IReadOnlyList<IMissionParticipant> allDecoys,
-            IReadOnlyList<int> encounterDecoyIndexes,
-            IReadOnlyList<ISceneNode> detectors,
-            BigInteger availableDecoys,
-            double stateProbability,
-            double noOfficerLossProbability,
-            Dictionary<
-                BigInteger,
-                (double Probability, double NoOfficerLossProbability)
-            > nextSurvivors,
-            ref double foilProbability,
-            ref double personnelLossProbability
-        )
-        {
-            Officer[] mainOfficers = mission.AppliesFoiledParticipantConsequences
-                ? mainParticipants.OfType<Officer>().ToArray()
-                : Array.Empty<Officer>();
-            List<double[]> survivalGroups = new();
-            int[] detectorGroups = new int[detectors.Count];
-            for (int index = 0; index < detectors.Count; index++)
-            {
-                double[] survival = mainOfficers
+                Officer commander = GetEncounterDefender(
+                    detector,
+                    mission.GetParent() as Planet
+                ).Commander;
+                int defenderCombat = commander?.GetEffectiveRating(SkillRating.Combat) ?? 0;
+                int[] evasion = officers
                     .Select(officer =>
-                        1d - GetOfficerEncounterLossProbability(mission, officer, detectors[index])
+                        (int)
+                            Math.Clamp(
+                                GetEvasionProbability(
+                                    officer.GetEffectiveRating(SkillRating.Combat) - defenderCombat
+                                ),
+                                0,
+                                100
+                            )
                     )
                     .ToArray();
-                int group = survivalGroups.FindIndex(existing => existing.SequenceEqual(survival));
-                if (group < 0)
-                {
-                    group = survivalGroups.Count;
-                    survivalGroups.Add(survival);
-                }
-                detectorGroups[index] = group;
-            }
-
-            bool uniform = survivalGroups.Count == 1;
-            BigInteger radix = detectors.Count + 1;
-            BigInteger[] groupWeights = Enumerable
-                .Range(0, survivalGroups.Count)
-                .Select(index => uniform ? BigInteger.Zero : BigInteger.Pow(radix, index))
-                .ToArray();
-            Dictionary<
-                (BigInteger Decoys, BigInteger ActiveGroups),
-                (double Total, double NoLoss, double Unfoiled, double UnfoiledNoLoss)
-            > states = new()
-            {
-                {
-                    (availableDecoys, BigInteger.Zero),
-                    (
-                        stateProbability,
-                        noOfficerLossProbability,
-                        stateProbability,
-                        noOfficerLossProbability
+                probabilities.Add(
+                    new MissionEncounterOdds.DefenderProbabilities(
+                        noFoil,
+                        diversions,
+                        evasion,
+                        decoyLosses,
+                        survivalModifiers
                     )
-                },
-            };
-            int foilChanceModifier = GetFoilChanceModifier(mission);
-            int participantScore = GetFoilParticipantScore(mainParticipants);
-            double[] diversions = new double[allDecoys.Count];
-            double[] decoyLosses = new double[allDecoys.Count];
-            for (int detectorIndex = 0; detectorIndex < detectors.Count; detectorIndex++)
-            {
-                ISceneNode detector = detectors[detectorIndex];
-                double unfoiled =
-                    1d
-                    - Math.Clamp(
-                        GetFoilProbabilityForScore(
-                            detector,
-                            foilChanceModifier,
-                            participantScore,
-                            detector.GetParentOfType<Planet>() ?? planet
-                        ) / 100d,
-                        0,
-                        1
-                    );
-                foreach (int index in encounterDecoyIndexes)
-                {
-                    diversions[index] = Math.Clamp(
-                        GetDecoyProbability(
-                            mission,
-                            allDecoys[index],
-                            detector,
-                            detector.GetParentOfType<Planet>() ?? planet
-                        ) / 100d,
-                        0,
-                        1
-                    );
-                    decoyLosses[index] = allDecoys[index] is Officer officer
-                        ? GetOfficerEncounterLossProbability(mission, officer, detector)
-                        : 0;
-                }
-                BigInteger activeGroupIncrement = groupWeights[detectorGroups[detectorIndex]];
-                Dictionary<
-                    (BigInteger Decoys, BigInteger ActiveGroups),
-                    (double Total, double NoLoss, double Unfoiled, double UnfoiledNoLoss)
-                > next = new();
-                foreach (var ((pool, activeGroups), probability) in states)
-                {
-                    int selectable = encounterDecoyIndexes.Count(index => IsBitSet(pool, index));
-                    if (selectable == 0)
-                    {
-                        AddEncounterStateProbability(
-                            next,
-                            pool,
-                            activeGroups + activeGroupIncrement,
-                            probability.Total,
-                            probability.NoLoss,
-                            probability.Unfoiled * unfoiled,
-                            probability.UnfoiledNoLoss * unfoiled
-                        );
-                        continue;
-                    }
-                    foreach (int index in encounterDecoyIndexes)
-                    {
-                        if (!IsBitSet(pool, index))
-                            continue;
-                        double diverted = diversions[index] / selectable;
-                        double confronted = (1d - diversions[index]) / selectable;
-                        double survived = 1d - decoyLosses[index];
-                        AddEncounterStateProbability(
-                            next,
-                            pool,
-                            activeGroups,
-                            probability.Total * diverted,
-                            probability.NoLoss * diverted,
-                            probability.Unfoiled * diverted,
-                            probability.UnfoiledNoLoss * diverted
-                        );
-                        personnelLossProbability +=
-                            probability.NoLoss * confronted * decoyLosses[index];
-                        AddEncounterStateProbability(
-                            next,
-                            ClearBit(pool, index),
-                            activeGroups + activeGroupIncrement,
-                            probability.Total * confronted,
-                            probability.NoLoss * confronted * survived,
-                            probability.Unfoiled * confronted * unfoiled,
-                            probability.UnfoiledNoLoss * confronted * survived * unfoiled
-                        );
-                    }
-                }
-                states = next;
-            }
-            foreach (var ((pool, activeGroups), probability) in states)
-            {
-                double mainSurvival = GetGroupedOfficerSurvival(
-                    survivalGroups,
-                    groupWeights,
-                    radix,
-                    activeGroups
-                );
-                foilProbability += Math.Max(0, probability.Total - probability.Unfoiled);
-                personnelLossProbability +=
-                    Math.Max(0, probability.NoLoss - probability.UnfoiledNoLoss)
-                    * (1d - mainSurvival);
-                AddEncounterProbability(
-                    nextSurvivors,
-                    pool,
-                    probability.Unfoiled,
-                    probability.UnfoiledNoLoss
                 );
             }
-        }
-
-        /// <summary>
-        /// Calculates primary-officer survival from the counts of equivalent active defenders.
-        /// Counts use digits in a radix larger than the total number of defenders, so adding a
-        /// defender cannot carry into another group's count. A single group needs no count.
-        /// </summary>
-        /// <param name="groups">Per-officer survival chances for each defender group.</param>
-        /// <param name="weights">The place value of each group's count.</param>
-        /// <param name="radix">One greater than the encounter's total defender count.</param>
-        /// <param name="activeGroups">The encoded active-defender counts.</param>
-        /// <returns>The chance that every primary officer survives free after foiling.</returns>
-        private static double GetGroupedOfficerSurvival(
-            IReadOnlyList<double[]> groups,
-            IReadOnlyList<BigInteger> weights,
-            BigInteger radix,
-            BigInteger activeGroups
-        )
-        {
-            if (groups.Count == 1)
-                return groups[0].Aggregate(1d, (probability, survival) => probability * survival);
-            double[] survivalSums = new double[groups[0].Length];
-            int count = 0;
-            for (int group = 0; group < groups.Count; group++)
-            {
-                int activeCount = (int)((activeGroups / weights[group]) % radix);
-                count += activeCount;
-                for (int officer = 0; officer < survivalSums.Length; officer++)
-                    survivalSums[officer] += activeCount * groups[group][officer];
-            }
-            return count == 0
-                ? 1d
-                : survivalSums.Aggregate(1d, (probability, sum) => probability * (sum / count));
-        }
-
-        /// <summary>Merges total and unfoiled probabilities for equivalent encounter histories.</summary>
-        /// <param name="states">The accumulated encounter states.</param>
-        /// <param name="pool">The decoys still available.</param>
-        /// <param name="activeGroups">The encoded active-defender group counts.</param>
-        /// <param name="total">The total probability being merged.</param>
-        /// <param name="noLoss">Its subset with no prior officer losses.</param>
-        /// <param name="unfoiled">Its subset with no foiling detection.</param>
-        /// <param name="unfoiledNoLoss">Its subset with neither foiling nor officer losses.</param>
-        private static void AddEncounterStateProbability(
-            Dictionary<
-                (BigInteger Decoys, BigInteger ActiveGroups),
-                (double Total, double NoLoss, double Unfoiled, double UnfoiledNoLoss)
-            > states,
-            BigInteger pool,
-            BigInteger activeGroups,
-            double total,
-            double noLoss,
-            double unfoiled,
-            double unfoiledNoLoss
-        )
-        {
-            if (total <= 0)
-                return;
-            var key = (pool, activeGroups);
-            states.TryGetValue(key, out var existing);
-            states[key] = (
-                existing.Total + total,
-                existing.NoLoss + noLoss,
-                existing.Unfoiled + unfoiled,
-                existing.UnfoiledNoLoss + unfoiledNoLoss
+            var survivors = survivingByDecoyPool.ToDictionary(
+                entry => entry.Key,
+                entry => entry.Value.Probability
             );
+            var noLossSurvivors = survivingByDecoyPool.ToDictionary(
+                entry => entry.Key,
+                entry => entry.Value.NoOfficerLossProbability
+            );
+            MissionEncounterOdds.Result result =
+                _encounterCache == null
+                    ? MissionEncounterOdds.Apply(
+                        probabilities,
+                        encounterDecoyIndexes,
+                        survivors,
+                        noLossSurvivors
+                    )
+                    : _encounterCache.Evaluate(
+                        probabilities,
+                        encounterDecoyIndexes,
+                        survivors,
+                        noLossSurvivors
+                    );
+            survivingByDecoyPool = result.Survivors.ToDictionary(
+                entry => entry.Key,
+                entry => (entry.Value, result.NoLossSurvivors[entry.Key])
+            );
+            foilProbability += result.FoilProbability;
+            personnelLossProbability += result.PersonnelLossProbability;
         }
 
         /// <summary>
@@ -1591,34 +1191,6 @@ namespace Rebellion.Simulation
             1d
             - GetParticipantEvasionProbability(mission, officer, detector)
                 * (1d - Mission.GetEvasionDeathProbability(officer, _game.Config));
-
-        /// <summary>
-        /// Merges encounter probability and its subset with no officer losses into a state.
-        /// </summary>
-        /// <param name="probabilities">The encounter distribution to update.</param>
-        /// <param name="state">The state key.</param>
-        /// <param name="probability">The probability reaching this state.</param>
-        /// <param name="noOfficerLossProbability">The probability reaching it with every officer surviving free.</param>
-        /// <typeparam name="T">The encounter-state key type.</typeparam>
-        private static void AddEncounterProbability<T>(
-            Dictionary<T, (double Probability, double NoOfficerLossProbability)> probabilities,
-            T state,
-            double probability,
-            double noOfficerLossProbability
-        )
-        {
-            if (probability <= 0)
-                return;
-
-            probabilities.TryGetValue(
-                state,
-                out (double Probability, double NoOfficerLossProbability) existing
-            );
-            probabilities[state] = (
-                existing.Probability + probability,
-                existing.NoOfficerLossProbability + noOfficerLossProbability
-            );
-        }
 
         /// <summary>
         /// Returns the indexes of decoys currently stationed at a planet.
@@ -1791,15 +1363,6 @@ namespace Rebellion.Simulation
             (value & (BigInteger.One << index)) != BigInteger.Zero;
 
         /// <summary>
-        /// Returns a bit set with the specified bit enabled.
-        /// </summary>
-        /// <param name="value">The bit set.</param>
-        /// <param name="index">The zero-based bit index.</param>
-        /// <returns>The updated bit set.</returns>
-        private static BigInteger SetBit(BigInteger value, int index) =>
-            value | (BigInteger.One << index);
-
-        /// <summary>
         /// Returns a bit set with the specified bit disabled.
         /// </summary>
         /// <param name="value">The bit set.</param>
@@ -1824,10 +1387,10 @@ namespace Rebellion.Simulation
             if (participant is not Officer && participant is not SpecialForces)
                 return 1d;
 
-            Officer commander = _detectorCommander(
+            Officer commander = GetEncounterDefender(
                 detector,
-                mission.GetParent() as Planet ?? detector?.GetParentOfType<Planet>()
-            );
+                mission.GetParent() as Planet
+            ).Commander;
             int defenderCombat = commander?.GetEffectiveRating(SkillRating.Combat) ?? 0;
             int score = participant.GetEffectiveRating(SkillRating.Combat) - defenderCombat;
             return Math.Clamp(GetEvasionProbability(score) / 100d, 0, 1);
@@ -1863,20 +1426,20 @@ namespace Rebellion.Simulation
                 return 0;
 
             GameConfig.MissionProbabilityTablesConfig missionTables = GetMissionTables();
-            Officer commander = _detectorCommander(
+            var defender = GetEncounterDefender(
                 detector,
-                encounterPlanet
-                    ?? mission.GetParent() as Planet
-                    ?? detector?.GetParentOfType<Planet>()
+                encounterPlanet ?? mission.GetParent() as Planet
             );
             int score =
                 decoy.GetEffectiveRating(SkillRating.Espionage)
-                - GetEffectiveDetectionRating(detector)
-                - GetScaledCommanderEspionage(commander, missionTables.DecoyDefenderScalingPercent);
-            Dictionary<int, int> table =
-                detector.GetParentOfType<Fleet>() != null
-                    ? missionTables.FleetDecoy
-                    : missionTables.PlanetaryDecoy;
+                - defender.Detection
+                - GetScaledCommanderEspionage(
+                    defender.Commander,
+                    missionTables.DecoyDefenderScalingPercent
+                );
+            Dictionary<int, int> table = defender.Orbital
+                ? missionTables.FleetDecoy
+                : missionTables.PlanetaryDecoy;
             return LookupProbability(table, score);
         }
 
@@ -1961,15 +1524,36 @@ namespace Rebellion.Simulation
         /// <returns>The defender contribution subtracted from a mission team's Espionage rating.</returns>
         internal int GetMissionDetectorStrength(ISceneNode detector, Planet planet = null)
         {
-            Officer commander = _detectorCommander(
-                detector,
-                planet ?? detector?.GetParentOfType<Planet>()
-            );
-            return GetEffectiveDetectionRating(detector)
+            var defender = GetEncounterDefender(detector, planet);
+            return defender.Detection
                 + GetScaledCommanderEspionage(
-                    commander,
+                    defender.Commander,
                     GetMissionTables().FoilDefenderScalingPercent
                 );
+        }
+
+        /// <summary>
+        /// Reuses unchanged defender context only within the current odds evaluation.
+        /// </summary>
+        /// <param name="detector">The observed defending unit.</param>
+        /// <param name="planet">The explicit encounter planet, or null to use its container.</param>
+        /// <returns>The commander, effective detection rating, and orbital detector scope.</returns>
+        private (Officer Commander, int Detection, bool Orbital) GetEncounterDefender(
+            ISceneNode detector,
+            Planet planet
+        )
+        {
+            var key = (detector, planet);
+            if (_encounterDefenders != null && _encounterDefenders.TryGetValue(key, out var cached))
+                return cached;
+
+            var defender = (
+                _detectorCommander(detector, planet ?? detector?.GetParentOfType<Planet>()),
+                GetEffectiveDetectionRating(detector),
+                detector?.GetParentOfType<Fleet>() != null
+            );
+            _encounterDefenders?.Add(key, defender);
+            return defender;
         }
 
         /// <summary>
@@ -2165,16 +1749,18 @@ namespace Rebellion.Simulation
         /// <param name="score">The score to look up.</param>
         /// <param name="defaultValue">The value returned when the table is empty.</param>
         /// <returns>The configured probability value.</returns>
-        private static int LookupProbability(
-            Dictionary<int, int> entries,
-            int score,
-            int defaultValue = 0
-        )
+        private int LookupProbability(Dictionary<int, int> entries, int score, int defaultValue = 0)
         {
             if (entries == null || entries.Count == 0)
                 return defaultValue;
 
-            return new ProbabilityTable(entries).Lookup(score);
+            var key = (entries, score, defaultValue);
+            if (_probabilityLookups != null && _probabilityLookups.TryGetValue(key, out int cached))
+                return cached;
+
+            int probability = new ProbabilityTable(entries).Lookup(score);
+            _probabilityLookups?.Add(key, probability);
+            return probability;
         }
     }
 }

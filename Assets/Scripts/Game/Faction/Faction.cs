@@ -583,11 +583,22 @@ namespace Rebellion.Game.Factions
         /// <returns>The available refined capacity count.</returns>
         public int GetTotalAvailableMaterialsRaw()
         {
-            return CalculateRefinedCapacity(
-                GetTotalAvailableResourceNodes(),
-                GetTotalAvailableMinedResources(),
-                GetTotalAvailableRefinementCapacity()
-            );
+            int resourceNodes = 0;
+            int minedResources = 0;
+            int refinementCapacity = 0;
+            foreach (Planet planet in GetOwnedUnitsByType<Planet>())
+            {
+                if (planet.IsResourceProductionSuspended())
+                    continue;
+                checked
+                {
+                    resourceNodes += planet.GetRawResourceNodes();
+                    minedResources += planet.GetActiveMinedResources();
+                    refinementCapacity += planet.GetActiveRefinementCapacity();
+                }
+            }
+
+            return CalculateRefinedCapacity(resourceNodes, minedResources, refinementCapacity);
         }
 
         /// <summary>

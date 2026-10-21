@@ -21,6 +21,203 @@ namespace Rebellion.Tests.AI.Planners
     [TestFixture]
     public sealed partial class AIProductionPlannerTests
     {
+        /// <summary>
+        /// Keeps a faction-wide construction shortage from allocating excess yards to another sector.
+        /// </summary>
+        /// <param name="committedCount">Yards already committed to the existing hub.</param>
+        /// <param name="status">The manufacturing state of those yards.</param>
+        /// <param name="expectedQuantity">The most additional yards that sector should request.</param>
+        [TestCase(5, ManufacturingStatus.Complete, 0)]
+        [TestCase(5, ManufacturingStatus.Building, 0)]
+        [TestCase(5, ManufacturingStatus.Delivering, 0)]
+        [TestCase(3, ManufacturingStatus.Complete, 2)]
+        public void Plan_OtherSectorNeedsConstruction_LimitsEachSectorToItsOwnDeficit(
+            int committedCount,
+            ManufacturingStatus status,
+            int expectedQuantity
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
+            game.Config.AI.Infrastructure.ConstructionFacilityPrimaryHubTargetCount = 5;
+            game.Config.AI.Infrastructure.ConstructionFacilitySecondaryHubTargetCount = 0;
+            game.Config.AI.Infrastructure.IndustrialShieldTargetCount = 0;
+            game.Config.AI.Infrastructure.PlanetaryWeaponTargetCount = 0;
+            game.Config.AI.Infrastructure.FacilityConstructionLaneReserve = 0;
+            PlanetSector established = AITestSceneBuilder.AddSector(game, "established");
+            Planet hub = AITestSceneBuilder.AddPlanet(
+                game,
+                established,
+                "existing-hub",
+                faction.InstanceID,
+                energyCapacity: 6
+            );
+            hub.SetPopularSupport(faction.InstanceID, 100);
+            for (int index = 0; index < committedCount; index++)
+            {
+                Building building = AITestSceneBuilder.AddProductionFacility(
+                    game,
+                    hub,
+                    "yard-" + index,
+                    BuildingType.ConstructionFacility,
+                    ManufacturingType.Building
+                );
+                building.ManufacturingStatus = status;
+            }
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                hub,
+                "training",
+                BuildingType.TrainingFacility,
+                ManufacturingType.Troop
+            );
+            Planet alternative = AITestSceneBuilder.AddPlanet(
+                game,
+                established,
+                "unmixed-site",
+                faction.InstanceID,
+                energyCapacity: 5
+            );
+            alternative.SetPopularSupport(faction.InstanceID, 100);
+            PlanetSector underserved = AITestSceneBuilder.AddSector(game, "underserved");
+            Planet smallSite = AITestSceneBuilder.AddPlanet(
+                game,
+                underserved,
+                "small-site",
+                faction.InstanceID,
+                energyCapacity: 3
+            );
+            smallSite.SetPopularSupport(faction.InstanceID, 100);
+            Building template = AITestSceneBuilder.CreateBuildingTemplate(
+                "constructor",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+            faction.ResearchQueue[ManufacturingType.Building] = new List<Technology>
+            {
+                new(template),
+            };
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
+            context.SetProductionDemands(
+                new List<AIProductionDemand>
+                {
+                    new(
+                        "construction",
+                        AIProductionDemandKind.ConstructionFacility,
+                        ManufacturingType.Building,
+                        BuildingType.ConstructionFacility,
+                        null,
+                        10 - committedCount,
+                        targetCount: 10,
+                        baseDemandPercent: 100
+                    ),
+                }
+            );
+
+            new AIProductionPlanner().Plan(context);
+
+            Assert.AreEqual(
+                expectedQuantity,
+                context
+                    .ProductionDemands.Where(demand =>
+                        demand.DestinationPlanet?.GetParent() == established
+                    )
+                    .Sum(demand => demand.QuantityNeeded)
+            );
+        }
+
+        /// <summary>
+        /// Prefers a full construction hub without rejecting usable smaller destinations.
+        /// </summary>
+        /// <param name="capacity">The existing producer's total building capacity.</param>
+        /// <param name="hasLargerSite">Whether a planet fitting the preferred hub is available.</param>
+        /// <param name="expectedTarget">The achievable target at the chosen destination.</param>
+        [TestCase(1, false, 1)]
+        [TestCase(3, false, 3)]
+        [TestCase(4, false, 4)]
+        [TestCase(5, false, 5)]
+        [TestCase(3, true, 5)]
+        public void Plan_ConstructionHubPreference_UsesBestFeasibleTarget(
+            int capacity,
+            bool hasLargerSite,
+            int expectedTarget
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
+            game.Config.AI.Infrastructure.ConstructionFacilityPrimaryHubTargetCount = 5;
+            game.Config.AI.Infrastructure.ConstructionFacilitySecondaryHubTargetCount = 0;
+            game.Config.AI.Infrastructure.IndustrialShieldTargetCount = 0;
+            game.Config.AI.Infrastructure.PlanetaryWeaponTargetCount = 0;
+            game.Config.AI.Infrastructure.FacilityConstructionLaneReserve = 0;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet producer = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "producer",
+                faction.InstanceID,
+                energyCapacity: capacity
+            );
+            producer.SetPopularSupport(faction.InstanceID, 100);
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                producer,
+                "existing-yard",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+            Planet largerSite = hasLargerSite
+                ? AITestSceneBuilder.AddPlanet(
+                    game,
+                    sector,
+                    "larger-site",
+                    faction.InstanceID,
+                    energyCapacity: 5
+                )
+                : null;
+            largerSite?.SetPopularSupport(faction.InstanceID, 100);
+            Building yard = AITestSceneBuilder.CreateBuildingTemplate(
+                "yard",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+            faction.ResearchQueue[ManufacturingType.Building] = new List<Technology> { new(yard) };
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
+            context.SetProductionDemands(
+                new List<AIProductionDemand>
+                {
+                    new(
+                        "construction",
+                        AIProductionDemandKind.ConstructionFacility,
+                        ManufacturingType.Building,
+                        BuildingType.ConstructionFacility,
+                        null,
+                        5,
+                        targetCount: 5,
+                        baseDemandPercent: 100
+                    ),
+                }
+            );
+
+            new AIProductionPlanner().Plan(context);
+
+            if (expectedTarget == 1)
+            {
+                Assert.IsEmpty(context.ProductionDemands);
+                return;
+            }
+            AIProductionDemand demand = context.ProductionDemands.Single();
+            Planet expectedDestination = largerSite ?? producer;
+            Assert.AreSame(expectedDestination, demand.DestinationPlanet);
+            Assert.AreEqual(expectedTarget, demand.TargetCount);
+            Assert.AreEqual(hasLargerSite ? 4 : expectedTarget - 1, demand.QuantityNeeded);
+            Assert.AreEqual(
+                expectedTarget,
+                context.StrategicPlan.GetAllocatedInfrastructureTarget(
+                    expectedDestination,
+                    BuildingType.ConstructionFacility
+                )
+            );
+        }
+
         [TestCase(BuildingType.ConstructionFacility, 5)]
         [TestCase(BuildingType.Shipyard, 6)]
         [TestCase(BuildingType.TrainingFacility, 4)]

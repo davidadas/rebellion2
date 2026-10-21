@@ -525,53 +525,7 @@ namespace Rebellion.AI.Demands
         /// <returns>The required starfighter count.</returns>
         private static int GetPlanetaryStarfighterCount(AITurnContext context, Planet planet)
         {
-            GameConfig.AINonCapitalSummaryConfig config = context.Game.Config.AI.NonCapitalSummary;
-            bool hasShipProduction =
-                context.Assessment.GetPlanetProductionFacilityCount(planet, ManufacturingType.Ship)
-                > 0;
-            int baseline =
-                planet.IsHeadquarters ? config.StarfighterRequirementHeadquarters
-                : hasShipProduction ? config.StarfighterRequirementInfrastructure
-                : config.StarfighterRequirementDefault;
-            if (
-                !planet.IsHeadquarters
-                && !context.Assessment.IsPlanetThreatened(planet)
-                && !hasShipProduction
-            )
-            {
-                baseline = IntegerMath.ScaleByPercent(
-                    baseline,
-                    config.InteriorStarfighterBaselinePercent
-                );
-            }
-
-            int requiredStrength = context.StrategicPlan.GetPlanetDefenseStrength(planet);
-            int fighterStrength = GetStrongestStarfighterStrength(context);
-            return baseline
-                + (
-                    fighterStrength > 0
-                        ? IntegerMath.DivideRoundedUp(requiredStrength, fighterStrength)
-                        : 0
-                );
-        }
-
-        /// <summary>
-        /// Returns the strongest available starfighter weapon strength.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <returns>The strongest weapon strength, or zero.</returns>
-        private static int GetStrongestStarfighterStrength(AITurnContext context)
-        {
-            return context
-                .Faction.GetUnlockedTechnologies(ManufacturingType.Ship)
-                .Select(technology => technology.GetReference())
-                .OfType<Starfighter>()
-                .Where(starfighter =>
-                    IManufacturable.CanBeManufacturedBy(starfighter, context.Faction.InstanceID)
-                )
-                .Select(starfighter => starfighter.GetWeaponStrength())
-                .DefaultIfEmpty()
-                .Max();
+            return context.StrategicPlan.GetPlanetaryStarfighterTarget(planet);
         }
 
         /// <summary>
@@ -815,6 +769,8 @@ namespace Rebellion.AI.Demands
                 || context.Assessment.ProjectedRefinedMaterialPercent
                     <= context.Game.Config.AI.Selection.RefinedMaterialEconomyWarningPercent
                 || context.Assessment.ProjectedEconomyMaintenanceHeadroom
+                    < context.Game.Config.AI.Selection.MaintenanceHeadroomReserve
+                || context.Assessment.EconomyPlanningMaintenanceHeadroom
                     < context.Game.Config.AI.Selection.MaintenanceHeadroomTarget;
         }
 
@@ -1791,21 +1747,8 @@ namespace Rebellion.AI.Demands
             Dictionary<string, int> existingSupplyByRole = new Dictionary<string, int>(
                 StringComparer.Ordinal
             );
-            Dictionary<string, int> activeOfficerMissionsByType =
-                GetActiveHostileOfficerMissionCounts(context);
             foreach (SpecialForces unit in existingUnits.Where(unit => !unit.IsRetired))
                 IncrementCount(existingSupplyByRole, GetRoleId(unit));
-
-            int saboteurTarget =
-                context.Assessment.EnemyPlanets.Sum(planet =>
-                    planet
-                        .GetAllBuildings()
-                        .Count(building =>
-                            building.IsDefenseFacility()
-                            && building.ManufacturingStatus == ManufacturingStatus.Complete
-                        )
-                ) * config.SaboteursPerEnemyDefense;
-            int spyTarget = context.Assessment.EnemyPlanets.Count * config.SpiesPerEnemyPlanet;
 
             List<IGrouping<string, SpecialForces>> roles = context
                 .UnlockedSpecialForcesTemplates.Where(template =>
@@ -1849,22 +1792,7 @@ namespace Rebellion.AI.Demands
                     buildEfficiency
                 );
                 existingSupplyByRole.TryGetValue(role.Key, out int existingSupply);
-                int activeMissionDemand = template.AllowedMissionTypeIDs.Sum(missionTypeId =>
-                    activeOfficerMissionsByType.TryGetValue(missionTypeId, out int count)
-                        ? count
-                        : 0
-                );
-                int desiredSupply = GetDesiredSupply(
-                    activeMissionDemand,
-                    config.SpecialForcesMissionCoveragePercent
-                );
-                if (
-                    template.CanPerformMission(MissionTypeIDs.Sabotage)
-                    || template.CanPerformMission(MissionTypeIDs.Espionage)
-                )
-                    desiredSupply =
-                        (template.CanPerformMission(MissionTypeIDs.Sabotage) ? saboteurTarget : 0)
-                        + (template.CanPerformMission(MissionTypeIDs.Espionage) ? spyTarget : 0);
+                int desiredSupply = context.Assessment.GetSpecialForcesReserveTarget(template);
                 int coverageDeficit = desiredSupply - existingSupply;
                 bool suppliesHeadquartersEspionage =
                     role.Key == headquartersEspionageRole && headquartersEspionageTemplate != null;
@@ -1944,46 +1872,6 @@ namespace Rebellion.AI.Demands
                 .ThenBy(candidate => candidate.MaintenanceCost)
                 .ThenBy(candidate => candidate.GetTypeID(), StringComparer.Ordinal)
                 .FirstOrDefault();
-        }
-
-        /// <summary>
-        /// Calculates decoy supply from current hostile officer-mission workload.
-        /// </summary>
-        /// <param name="activeMissionCount">The active officer-led hostile mission count.</param>
-        /// <param name="coveragePercent">The portion of that workload to cover with decoys.</param>
-        /// <returns>The required decoy supply.</returns>
-        private static int GetDesiredSupply(int activeMissionCount, int coveragePercent)
-        {
-            int boundedCoveragePercent = Math.Max(0, Math.Min(100, coveragePercent));
-            return (activeMissionCount * boundedCoveragePercent + 99) / 100;
-        }
-
-        /// <summary>
-        /// Counts active officer-led missions in enemy territory by mission type.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <returns>Active hostile officer-mission counts keyed by mission type.</returns>
-        private static Dictionary<string, int> GetActiveHostileOfficerMissionCounts(
-            AITurnContext context
-        )
-        {
-            Dictionary<string, int> counts = new Dictionary<string, int>(StringComparer.Ordinal);
-            foreach (Mission mission in context.Assessment.ActiveMissions)
-            {
-                Planet target = mission.GetParentOfType<Planet>();
-                if (
-                    target == null
-                    || !context.Assessment.IsEnemyPlanet(target)
-                    || !mission.GetMainParticipants().OfType<Officer>().Any()
-                )
-                    continue;
-
-                string missionTypeId = mission.ConfigKey;
-                counts.TryGetValue(missionTypeId, out int count);
-                counts[missionTypeId] = count + 1;
-            }
-
-            return counts;
         }
 
         /// <summary>

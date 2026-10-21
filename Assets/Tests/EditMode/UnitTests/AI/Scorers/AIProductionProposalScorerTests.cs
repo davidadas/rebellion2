@@ -362,6 +362,160 @@ namespace Rebellion.Tests.AI.Scorers
             Assert.AreEqual(50, primaryPressure - secondaryPressure);
         }
 
+        /// <summary>Raises priority for combat reinforcements when headquarters defense is short.</summary>
+        /// <param name="kind">The combat reinforcement being manufactured.</param>
+        [TestCase(AIProductionDemandKind.FleetCapitalShip)]
+        [TestCase(AIProductionDemandKind.FleetStarfighter)]
+        public void Score_HeadquartersDefenseBelowTarget_AddsReinforcementPriority(
+            AIProductionDemandKind kind
+        )
+        {
+            AITurnContext context = CreateHeadquartersReinforcementContext(kind, out var proposal);
+            AIProductionProposalScorer scorer = new AIProductionProposalScorer();
+            context.Game.Config.AI.Selection.ProductionUtility.HeadquartersReinforcement.Weight = 0;
+            double withoutPriority = scorer.Score(context, proposal);
+            context.Game.Config.AI.Selection.ProductionUtility.HeadquartersReinforcement.Weight = 1;
+
+            Assert.Greater(scorer.Score(context, proposal), withoutPriority);
+        }
+
+        /// <summary>Does not reward additional combat strength already covered by committed ships.</summary>
+        /// <param name="status">The reinforcement's current production state.</param>
+        [TestCase(ManufacturingStatus.Complete)]
+        [TestCase(ManufacturingStatus.Building)]
+        [TestCase(ManufacturingStatus.Delivering)]
+        public void Score_HeadquartersDefenseCoveredByCommittedShips_DoesNotAddPriority(
+            ManufacturingStatus status
+        )
+        {
+            AITurnContext context = CreateHeadquartersReinforcementContext(
+                AIProductionDemandKind.FleetCapitalShip,
+                out var proposal
+            );
+            CapitalShip reinforcement = AITestSceneBuilder.CreateCapitalShip(
+                "committed-reinforcement",
+                context.Faction.InstanceID,
+                combatStrength: 2000
+            );
+            reinforcement.ManufacturingStatus = status;
+            if (status == ManufacturingStatus.Delivering)
+                reinforcement.Movement = new MovementState { TransitTicks = 10 };
+            context.Game.AttachNode(reinforcement, proposal.Demand.DestinationFleet);
+            context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+
+            Assert.Zero(new AIProductionProposalScorer().Score(context, proposal));
+        }
+
+        /// <summary>Does not apply headquarters defense priority to other fleet assignments.</summary>
+        /// <param name="orderType">The fleet's assigned action.</param>
+        /// <param name="isHeadquarters">Whether the defended planet is the faction headquarters.</param>
+        [TestCase(FleetOrderType.Attack, true)]
+        [TestCase(FleetOrderType.Defend, false)]
+        public void Score_FleetNotDefendingHeadquarters_DoesNotAddPriority(
+            FleetOrderType orderType,
+            bool isHeadquarters
+        )
+        {
+            AITurnContext context = CreateHeadquartersReinforcementContext(
+                AIProductionDemandKind.FleetCapitalShip,
+                out var proposal
+            );
+            proposal.Demand.DestinationFleet.Order.OrderType = orderType;
+            if (!isHeadquarters)
+                context.Faction.HQInstanceID = "other-headquarters";
+            context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+
+            Assert.Zero(new AIProductionProposalScorer().Score(context, proposal));
+        }
+
+        /// <summary>Reduces the reinforcement bonus as the remaining defense gap closes.</summary>
+        [Test]
+        public void Score_HeadquartersDefenseGapShrinks_ReducesPriority()
+        {
+            AITurnContext context = CreateHeadquartersReinforcementContext(
+                AIProductionDemandKind.FleetCapitalShip,
+                out var proposal
+            );
+            AIProductionProposalScorer scorer = new AIProductionProposalScorer();
+            double before = scorer.Score(context, proposal);
+            context.Game.AttachNode(
+                AITestSceneBuilder.CreateCapitalShip(
+                    "additional-escort",
+                    context.Faction.InstanceID,
+                    combatStrength: 100
+                ),
+                proposal.Demand.DestinationFleet
+            );
+            context = AITestSceneBuilder.CreateContext(context.Game, context.Faction);
+
+            Assert.Less(scorer.Score(context, proposal), before);
+        }
+
+        /// <summary>Creates an understrength headquarters fleet with other scoring considerations disabled.</summary>
+        /// <param name="kind">The reinforcement demand category.</param>
+        /// <param name="proposal">The proposal to reinforce the headquarters fleet.</param>
+        /// <returns>The faction turn used to evaluate reinforcement priority.</returns>
+        private static AITurnContext CreateHeadquartersReinforcementContext(
+            AIProductionDemandKind kind,
+            out AIManufactureProposal proposal
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
+            game.Config.AI.FleetDeployment.MinimumDefenseStrength = 1000;
+            game.Config.AI.FleetDeployment.HeadquartersDefenseCombatPercent = 0;
+            game.Config.AI.Selection.DemandUtility.Weight = 0;
+            game.Config.AI.Selection.ProductionUtility.TravelCost.Weight = 0;
+            game.Config.AI.Selection.ProductionUtility.HeadroomRisk.Weight = 0;
+            game.Config.AI.Selection.ProductionUtility.Shortfall.Weight = 0;
+            game.Config.AI.Selection.ProductionUtility.HeadquartersReinforcement.Weight = 1;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "headquarters-sector");
+            Planet headquarters = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "headquarters",
+                faction.InstanceID
+            );
+            faction.HQInstanceID = headquarters.InstanceID;
+            headquarters.IsHeadquarters = true;
+            Fleet fleet = EntityFactory.CreateFleet("headquarters-fleet", faction.InstanceID);
+            fleet.RoleType = FleetRoleType.Battle;
+            fleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Defend,
+                TargetPlanetId = headquarters.InstanceID,
+            };
+            game.AttachNode(fleet, headquarters);
+            game.AttachNode(
+                AITestSceneBuilder.CreateCapitalShip("escort", faction.InstanceID, 50),
+                fleet
+            );
+            Technology product =
+                kind == AIProductionDemandKind.FleetStarfighter
+                    ? new Technology(
+                        AITestSceneBuilder.CreateStarfighter("fighter", faction.InstanceID)
+                    )
+                    : new Technology(
+                        AITestSceneBuilder.CreateCapitalShip("hull", faction.InstanceID)
+                    );
+            proposal = new AIManufactureProposal(
+                new AIProductionDemand(
+                    "headquarters-reinforcement",
+                    kind,
+                    ManufacturingType.Ship,
+                    BuildingType.None,
+                    fleet,
+                    1,
+                    baseDemandPercent: 90,
+                    targetCount: 100,
+                    deficitCount: 90
+                ),
+                headquarters,
+                product,
+                false
+            );
+            return AITestSceneBuilder.CreateContext(game, faction);
+        }
+
         /// <summary>
         /// Creates a building-production proposal for a test scenario.
         /// </summary>

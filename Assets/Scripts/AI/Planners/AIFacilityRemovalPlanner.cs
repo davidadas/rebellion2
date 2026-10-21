@@ -27,7 +27,10 @@ namespace Rebellion.AI.Planners
             )
                 return proposals;
 
-            if (context.Assessment.ProjectedMaintenanceHeadroom >= 0)
+            if (
+                context.Game.Config.AI.Selection.MaintenanceRecovery.Enabled
+                || context.Assessment.ProjectedMaintenanceHeadroom >= 0
+            )
                 return proposals;
 
             int minimumShipyardCount = context.StrategicPlan.GetInfrastructureTarget(

@@ -229,6 +229,26 @@ namespace Rebellion.AI
         }
 
         /// <summary>
+        /// Returns the preferred facility count capped by the space available for its layout.
+        /// </summary>
+        /// <param name="planet">The proposed hub destination.</param>
+        /// <param name="buildingType">The production category being assigned.</param>
+        /// <param name="preferredCount">The preferred completed facility count.</param>
+        /// <returns>The achievable count, including facilities already committed to the planet.</returns>
+        public int GetAchievableInfrastructureHubTarget(
+            Planet planet,
+            BuildingType buildingType,
+            int preferredCount
+        )
+        {
+            int committed = planet?.GetTotalBuildingTypeCount(buildingType) ?? 0;
+            return Math.Min(
+                Math.Max(0, preferredCount),
+                committed + GetAvailableConstructionSpace(planet, buildingType)
+            );
+        }
+
+        /// <summary>
         /// Checks whether an industrial hub and its required defenses fit together.
         /// </summary>
         /// <param name="planet">The proposed hub destination.</param>
@@ -335,6 +355,46 @@ namespace Rebellion.AI
         }
 
         /// <summary>
+        /// Returns the planetary fighter reserve for current industry and known threats.
+        /// </summary>
+        /// <param name="planet">The owned planet being protected.</param>
+        /// <returns>The desired squadron count.</returns>
+        public int GetPlanetaryStarfighterTarget(Planet planet)
+        {
+            GameConfig.AINonCapitalSummaryConfig config = _game.Config.AI.NonCapitalSummary;
+            bool hasShipProduction =
+                _assessment.GetPlanetProductionFacilityCount(planet, ManufacturingType.Ship) > 0;
+            int baseline =
+                planet.IsHeadquarters ? config.StarfighterRequirementHeadquarters
+                : hasShipProduction ? config.StarfighterRequirementInfrastructure
+                : config.StarfighterRequirementDefault;
+            if (
+                !planet.IsHeadquarters
+                && !_assessment.IsPlanetThreatened(planet)
+                && !hasShipProduction
+            )
+                baseline = IntegerMath.ScaleByPercent(
+                    baseline,
+                    config.InteriorStarfighterBaselinePercent
+                );
+            var faction = _game.GetFactionByOwnerInstanceID(planet.GetOwnerInstanceID());
+            int strength = faction
+                .GetUnlockedTechnologies(ManufacturingType.Ship)
+                .Select(technology => technology.GetReference())
+                .OfType<Starfighter>()
+                .Where(fighter => IManufacturable.CanBeManufacturedBy(fighter, faction.InstanceID))
+                .Select(fighter => fighter.GetWeaponStrength())
+                .DefaultIfEmpty()
+                .Max();
+            return baseline
+                + (
+                    strength > 0
+                        ? IntegerMath.DivideRoundedUp(GetPlanetDefenseStrength(planet), strength)
+                        : 0
+                );
+        }
+
+        /// <summary>
         /// Returns the shield target for a planet's current or planned strategic role.
         /// </summary>
         /// <param name="planet">The owned planet.</param>
@@ -373,12 +433,14 @@ namespace Rebellion.AI
                         building.GetOwnerInstanceID() == planet.GetOwnerInstanceID()
                         && IsInfrastructureType(building.BuildingType)
                     );
-            return
-                hasInfrastructure
-                || _assessment.GetFactionPopularSupport(planet)
+            if (
+                _assessment.GetFactionPopularSupport(planet)
                     < _game.Config.AI.Garrison.SupportThreshold
                 || _assessment.GetDefensiveSupportRisk(planet) > 0
-                ? Math.Min(1, limit)
+            )
+                return Math.Min(1, limit);
+            return hasInfrastructure
+                ? Math.Clamp(_game.Config.AI.Infrastructure.IndustrialShieldTargetCount, 0, limit)
                 : 0;
         }
 
@@ -460,7 +522,11 @@ namespace Rebellion.AI
                     0,
                     (
                         acquiring
-                            ? Math.Min(1, _game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit)
+                            ? Math.Clamp(
+                                _game.Config.AI.Infrastructure.IndustrialShieldTargetCount,
+                                0,
+                                _game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit
+                            )
                             : GetPlanetaryShieldTarget(planet, IsInfrastructureType(buildingType))
                     )
                         - CountCommittedDefense(planet, true)
@@ -577,7 +643,9 @@ namespace Rebellion.AI
             var config = _game.Config.AI.FleetDeployment;
             int hostileFleetRequirement = IntegerMath.ScaleByPercent(
                 _assessment.GetStrongestKnownHostileFleetStrength(),
-                config.AttackStrengthPercentOfStrongestHostileFleet
+                config.HeadquartersDefensePercentOfStrongestHostileFleet > 0
+                    ? config.HeadquartersDefensePercentOfStrongestHostileFleet
+                    : config.AttackStrengthPercentOfStrongestHostileFleet
             );
             int affordableDefense = IntegerMath.ScaleByPercent(
                 _assessment.GetTotalFleetCombatStrength(),

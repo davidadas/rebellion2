@@ -1239,6 +1239,66 @@ namespace Rebellion.Tests.Game.Factions
             Assert.AreEqual(5, total, "Should exclude blockaded planets from calculation");
         }
 
+        /// <summary>
+        /// Pairs mined resources with refineries across different owned planets.
+        /// </summary>
+        [Test]
+        public void GetTotalAvailableMaterialsRaw_MinesAndRefineriesOnDifferentPlanets_CombinesFactionCapacity()
+        {
+            _planet1.IsColonized = true;
+            _planet1.EnergyCapacity = 10;
+            _planet1.NumRawResourceNodes = 6;
+            _planet2.IsColonized = true;
+            _planet2.EnergyCapacity = 10;
+            _planet2.NumRawResourceNodes = 6;
+            _planet1.AddChild(
+                new Building
+                {
+                    BuildingType = BuildingType.Mine,
+                    OwnerInstanceID = _faction.InstanceID,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                }
+            );
+            _planet2.AddChild(
+                new Building
+                {
+                    BuildingType = BuildingType.Refinery,
+                    OwnerInstanceID = _faction.InstanceID,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                }
+            );
+            _faction.AddOwnedUnit(_planet1);
+            _faction.AddOwnedUnit(_planet2);
+
+            Assert.AreEqual(1, _faction.GetTotalAvailableMaterialsRaw());
+        }
+
+        /// <summary>
+        /// Rechecks production suspension on each capacity query.
+        /// </summary>
+        [Test]
+        public void GetTotalAvailableMaterialsRaw_UprisingStartsBetweenQueries_RemovesSuspendedCapacity()
+        {
+            _planet1.IsColonized = true;
+            _planet1.EnergyCapacity = 10;
+            _planet1.NumRawResourceNodes = 6;
+            foreach (BuildingType type in new[] { BuildingType.Mine, BuildingType.Refinery })
+                _planet1.AddChild(
+                    new Building
+                    {
+                        BuildingType = type,
+                        OwnerInstanceID = _faction.InstanceID,
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                    }
+                );
+            _faction.AddOwnedUnit(_planet1);
+            Assert.AreEqual(1, _faction.GetTotalAvailableMaterialsRaw());
+
+            _planet1.IsInUprising = true;
+
+            Assert.AreEqual(0, _faction.GetTotalAvailableMaterialsRaw());
+        }
+
         [Test]
         public void GetNearestFriendlyPlanetTo_MultipleFriendlyPlanets_ReturnsClosestPlanet()
         {

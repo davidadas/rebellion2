@@ -18,7 +18,7 @@ namespace Rebellion.AI.Planners
     /// <summary>
     /// Builds mission proposals for available mission participants.
     /// </summary>
-    public sealed class AIMissionPlanner : IAIProposalPlanner
+    public sealed class AIMissionPlanner : IAIIncrementalProposalPlanner
     {
         private const PlanetIntelligenceCategory _missionDefenseIntelligence =
             PlanetIntelligenceCategory.CapitalShips
@@ -65,8 +65,26 @@ namespace Rebellion.AI.Planners
         /// <returns>Mission proposals generated for this faction.</returns>
         public List<AIProposal> Plan(AITurnContext context)
         {
+            List<AIProposal> proposals = new();
+            foreach (object step in PlanIncrementally(context, proposals)) { }
+            return proposals;
+        }
+
+        /// <summary>
+        /// Builds mission proposals with cooperative checkpoints between actors and targets.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="proposals">Output retained until every alternative has been considered.</param>
+        /// <returns>Completed actor or sabotage-target work units in their established order.</returns>
+        public IEnumerable<object> PlanIncrementally(
+            AITurnContext context,
+            List<AIProposal> proposals
+        )
+        {
+            if (proposals == null)
+                throw new ArgumentNullException(nameof(proposals));
             if (context?.Game == null || context.Faction == null || context.Missions == null)
-                return new List<AIProposal>();
+                yield break;
 
             AssignSpecialForcesIntent(context);
             _candidateSelector.Reset();
@@ -80,8 +98,8 @@ namespace Rebellion.AI.Planners
             _officerTargetCandidates = null;
             _recruitmentCandidates = null;
             _sabotageCandidates = null;
-            List<AIProposal> proposals = CreateMissionProposals(context);
-            return proposals;
+            foreach (object step in CreateMissionProposals(context, proposals))
+                yield return step;
         }
 
         /// <summary>
@@ -180,10 +198,13 @@ namespace Rebellion.AI.Planners
         /// Creates mission proposals.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <returns>Mission proposals for the available participants.</returns>
-        private List<AIProposal> CreateMissionProposals(AITurnContext context)
+        /// <param name="proposals">The retained mission alternatives being built.</param>
+        /// <returns>Checkpoints between completed actors and sabotage targets.</returns>
+        private IEnumerable<object> CreateMissionProposals(
+            AITurnContext context,
+            List<AIProposal> proposals
+        )
         {
-            List<AIProposal> proposals = new List<AIProposal>();
             AddJediTrainingProposals(context, proposals);
             HashSet<IMissionParticipant> jediTrainers = proposals
                 .OfType<AIMissionProposal>()
@@ -204,10 +225,16 @@ namespace Rebellion.AI.Planners
             foreach (IMissionParticipant participant in availableParticipants)
             {
                 if (AddRecruitmentProposals(context, participant, proposals))
+                {
+                    yield return participant;
                     continue;
+                }
 
                 if (AddDiplomacyProposals(context, participant, proposals))
+                {
+                    yield return participant;
                     continue;
+                }
 
                 AddReconnaissanceProposals(context, participant, proposals);
                 AddSubdueUprisingProposals(context, participant, proposals);
@@ -224,11 +251,11 @@ namespace Rebellion.AI.Planners
                 )
                     _sabotageParticipants.Add(participant);
                 AddOfficerTargetMissionProposals(context, participant, proposals);
+                yield return participant;
             }
 
-            AddSabotageProposals(context, proposals);
-
-            return proposals;
+            foreach (object step in AddSabotageProposals(context, proposals))
+                yield return step;
         }
 
         /// <summary>
@@ -579,10 +606,14 @@ namespace Rebellion.AI.Planners
         /// <summary>Builds bounded complete sabotage teams before mission scoring and selection.</summary>
         /// <param name="context">The current faction turn.</param>
         /// <param name="proposals">The proposal collection to extend.</param>
-        private void AddSabotageProposals(AITurnContext context, List<AIProposal> proposals)
+        /// <returns>Checkpoints after evaluating each target and leader pair.</returns>
+        private IEnumerable<object> AddSabotageProposals(
+            AITurnContext context,
+            List<AIProposal> proposals
+        )
         {
             if (_sabotageParticipants.Count == 0)
-                return;
+                yield break;
 
             GameConfig.AIMissionPlanningConfig config = context.Game.Config.AI.MissionPlanning;
             List<IMissionParticipant> available = context
@@ -637,6 +668,7 @@ namespace Rebellion.AI.Planners
                         candidates,
                         proposals
                     );
+                    yield return leader;
                 }
             }
         }
@@ -666,6 +698,10 @@ namespace Rebellion.AI.Planners
                 selectedTarget: target,
                 teamIsFinal: true
             );
+            // Additional personnel cannot improve the optimistic score of this sabotage target:
+            // objective success is already bounded at 100%, while travel and officer costs cannot fall.
+            if (!_candidateSelector.CanRetain(context, team))
+                return;
             if (!context.MissionQueries.TryCreateMission(team.CreateContext(), out Mission mission))
                 return;
 

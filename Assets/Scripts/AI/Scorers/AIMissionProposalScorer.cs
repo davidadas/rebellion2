@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using Rebellion.AI.Proposals;
 using Rebellion.Game;
@@ -33,6 +34,20 @@ namespace Rebellion.AI.Scorers
         /// <param name="proposal">The proposal to score.</param>
         /// <returns>The mission proposal score.</returns>
         public double Score(AITurnContext context, AIProposal proposal)
+        {
+            return Score(context, proposal, null);
+        }
+
+        /// <summary>Scores a mission against diplomacy commitments already selected this turn.</summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="proposal">The mission proposal to score.</param>
+        /// <param name="commitments">Diplomats and their selected destinations.</param>
+        /// <returns>The current mission score.</returns>
+        internal double Score(
+            AITurnContext context,
+            AIProposal proposal,
+            IReadOnlyDictionary<Officer, Planet> commitments
+        )
         {
             if (proposal is AIAbortMissionProposal)
                 return 0;
@@ -78,7 +93,12 @@ namespace Rebellion.AI.Scorers
                 .AI
                 .MissionPlanning
                 .Utility;
-            AIUtilityScore score = GetMissionScore(context, missionProposal, successProbability);
+            AIUtilityScore score = GetMissionScore(
+                context,
+                missionProposal,
+                successProbability,
+                commitments
+            );
             AddMissionPriorityUtility(ref score, context, utility.Priority, missionProposal);
             score.AddCost(
                 AIUtility.Fulfillment(foilProbability, utility.Objective.FoilRisk),
@@ -178,11 +198,13 @@ namespace Rebellion.AI.Scorers
         /// <param name="context">The current AI turn context.</param>
         /// <param name="proposal">The proposal to evaluate.</param>
         /// <param name="successProbability">The calculated success probability.</param>
+        /// <param name="commitments">Diplomats and destinations already selected this turn.</param>
         /// <returns>The objective score before general bonuses and penalties.</returns>
         private AIUtilityScore GetMissionScore(
             AITurnContext context,
             AIMissionProposal proposal,
-            double successProbability
+            double successProbability,
+            IReadOnlyDictionary<Officer, Planet> commitments = null
         )
         {
             GameConfig.AIMissionObjectiveUtilityConfig utility = context
@@ -196,7 +218,7 @@ namespace Rebellion.AI.Scorers
             score.Add(AIUtility.Fulfillment(successProbability, utility.Success), utility.Success);
             bool isDiplomacy = proposal.MissionTypeID == MissionTypeIDs.Diplomacy;
             bool isSabotage = proposal.MissionTypeID == MissionTypeIDs.Sabotage;
-            AddDiplomacyUtility(ref score, context, proposal, isDiplomacy);
+            AddDiplomacyUtility(ref score, context, proposal, isDiplomacy, commitments);
             AddSabotageTargetUtility(
                 ref score,
                 context,
@@ -483,11 +505,13 @@ namespace Rebellion.AI.Scorers
         /// <param name="proposal">The proposal to evaluate.</param>
         /// <param name="score">The score receiving diplomacy considerations.</param>
         /// <param name="enabled">Whether the proposal is a diplomacy mission.</param>
+        /// <param name="commitments">Diplomats and destinations already selected this turn.</param>
         private static void AddDiplomacyUtility(
             ref AIUtilityScore score,
             AITurnContext context,
             AIMissionProposal proposal,
-            bool enabled
+            bool enabled,
+            IReadOnlyDictionary<Officer, Planet> commitments
         )
         {
             if (!enabled)
@@ -497,7 +521,8 @@ namespace Rebellion.AI.Scorers
                 ref score,
                 context,
                 proposal.TargetPlanet,
-                proposal.Participant
+                proposal.Participant,
+                commitments
             );
         }
 
@@ -521,11 +546,13 @@ namespace Rebellion.AI.Scorers
         /// <param name="context">Current faction turn.</param>
         /// <param name="planet">Diplomacy target to evaluate.</param>
         /// <param name="participant">The diplomat receiving the score, or null for target ordering.</param>
+        /// <param name="commitments">Diplomats and destinations already selected this turn.</param>
         private static void AddDiplomacyTargetUtility(
             ref AIUtilityScore score,
             AITurnContext context,
             Planet planet,
-            IMissionParticipant participant = null
+            IMissionParticipant participant = null,
+            IReadOnlyDictionary<Officer, Planet> commitments = null
         )
         {
             if (context?.Assessment == null || context.StrategicPlan == null || planet == null)
@@ -557,7 +584,8 @@ namespace Rebellion.AI.Scorers
                 double concentration = context.Assessment.GetDiplomacyConcentrationValue(
                     planet,
                     context.MovementQueries,
-                    participant
+                    participant,
+                    commitments
                 );
                 if (concentration > 0)
                     score.Add(concentration, utility.Concentration);

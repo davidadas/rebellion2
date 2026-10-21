@@ -4,6 +4,7 @@ using Rebellion.AI.Demands;
 using Rebellion.AI.Proposals;
 using Rebellion.AI.Selectors;
 using Rebellion.Game;
+using Rebellion.Game.Missions;
 
 namespace Rebellion.AI.Phases
 {
@@ -41,7 +42,9 @@ namespace Rebellion.AI.Phases
             AIMissionSelector missionSelector = new AIMissionSelector(selectionState);
             AIProductionSelector productionSelector = new AIProductionSelector(selectionState);
             float minimumSelectableScore = GetMinimumSelectableScore(context);
-            LinkedList<AIProposal> pending = new(GetSortedProposals(context));
+            LinkedList<AIProposal> pending = new(
+                GetSortedProposals(context, context.Proposals, true)
+            );
             while (pending.First != null)
             {
                 AIProposal proposal = pending.First.Value;
@@ -54,6 +57,13 @@ namespace Rebellion.AI.Phases
                     continue;
 
                 AIProposal selectedProposal = proposal;
+                if (proposal is AIMaintenanceRecoveryProposal recovery)
+                {
+                    if (!productionSelector.TryResolve(context, recovery, out var selectedRecovery))
+                        continue;
+                    selectedProposals.Add(selectedRecovery);
+                    continue;
+                }
                 if (proposal is AIManufactureProposal manufactureProposal)
                 {
                     if (
@@ -95,6 +105,18 @@ namespace Rebellion.AI.Phases
                     continue;
 
                 selectedProposals.Add(selectedProposal);
+                if (
+                    selectedProposal is AIMissionProposal
+                    {
+                        MissionTypeID: MissionTypeIDs.Diplomacy
+                    }
+                )
+                {
+                    missionSelector.RefreshDiplomacyScores(context, pending);
+                    pending = new LinkedList<AIProposal>(
+                        GetSortedProposals(context, pending, false)
+                    );
+                }
                 if (
                     selectedProposal is AIManufactureProposal
                     {
@@ -143,16 +165,22 @@ namespace Rebellion.AI.Phases
         /// Returns proposals ordered by strategic value with seed-faithful random tie resolution.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
+        /// <param name="candidates">The proposals still awaiting selection.</param>
+        /// <param name="shuffleTies">Whether to initialize random tie order.</param>
         /// <returns>Sorted proposals.</returns>
-        private static IEnumerable<AIProposal> GetSortedProposals(AITurnContext context)
+        private static IEnumerable<AIProposal> GetSortedProposals(
+            AITurnContext context,
+            IEnumerable<AIProposal> candidates,
+            bool shuffleTies
+        )
         {
-            List<AIProposal> proposals = context
-                .Proposals.Where(proposal => proposal != null)
+            List<AIProposal> proposals = candidates
+                .Where(proposal => proposal != null)
                 .OrderByDescending(proposal => proposal.Priority)
                 .ThenByDescending(proposal => proposal.Score)
                 .ToList();
             int groupStart = 0;
-            while (groupStart < proposals.Count)
+            while (shuffleTies && groupStart < proposals.Count)
             {
                 int groupEnd = groupStart + 1;
                 while (

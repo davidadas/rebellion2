@@ -187,7 +187,7 @@ namespace Rebellion.AI.Scorers
         }
 
         /// <summary>
-        /// Ranks destinations for one facility hub, preserving specialization and target feasibility.
+        /// Ranks hub capacity and same-type commitments ahead of facility specialization.
         /// </summary>
         /// <param name="candidates">Eligible destination planets.</param>
         /// <param name="demandPlanet">The planet whose demand prompted expansion.</param>
@@ -212,8 +212,7 @@ namespace Rebellion.AI.Scorers
                     buildingType,
                     availableEnergy
                 )
-                .OrderBy(candidate => GetFacilityAssignmentTier(candidate.Planet, buildingType))
-                .ThenByDescending(candidate =>
+                .OrderByDescending(candidate =>
                     CanReachHubTarget(candidate.Planet, buildingType, targetCount, availableEnergy)
                 )
                 .ThenByDescending(candidate =>
@@ -227,6 +226,7 @@ namespace Rebellion.AI.Scorers
                 .ThenByDescending(candidate =>
                     candidate.Planet.GetTotalBuildingTypeCount(buildingType)
                 )
+                .ThenBy(candidate => GetFacilityAssignmentTier(candidate.Planet, buildingType))
                 .ThenBy(candidate =>
                     GetOtherProductionFacilityCount(candidate.Planet, buildingType)
                 )

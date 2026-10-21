@@ -21,6 +21,31 @@ namespace Rebellion.Tests.Simulation
     [TestFixture]
     public sealed class MissionQueriesTests
     {
+        /// <summary>
+        /// Verifies probability lookups are refreshed when configuration changes between evaluations.
+        /// </summary>
+        [Test]
+        public void GetMissionOdds_ChangedProbabilityTable_MatchesFreshQueries()
+        {
+            (MissionQueries queries, MissionContext context) = CreateMixedFleetMission(
+                16,
+                4,
+                true,
+                1
+            );
+            queries.GetMissionOdds(context);
+            context.Game.Config.ProbabilityTables.Mission.Foil.Clear();
+            context.Game.Config.ProbabilityTables.Mission.Foil.Add(-1000, 75);
+            context.Game.Config.ProbabilityTables.Mission.Evasion.Clear();
+            context.Game.Config.ProbabilityTables.Mission.Evasion.Add(-1000, 25);
+
+            MissionOdds expected = new MissionQueries(context.Game).GetMissionOdds(context);
+            MissionOdds actual = queries.GetMissionOdds(context);
+
+            Assert.AreEqual(expected.FoilProbability, actual.FoilProbability);
+            Assert.AreEqual(expected.PersonnelLossProbability, actual.PersonnelLossProbability);
+        }
+
         [Test]
         public void TryGetOperationalMissionOdds_ExactSuccessFloor_AcceptsEveryQualifyingTeam(
             [Values(1, 2, 4, 8, 16)] int defenderCount,

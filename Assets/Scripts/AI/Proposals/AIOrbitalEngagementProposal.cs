@@ -1,11 +1,13 @@
+using System.Linq;
 using Rebellion.AI.Demands;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
+using Rebellion.Simulation;
 
 namespace Rebellion.AI.Proposals
 {
     /// <summary>
-    /// Sends a battle fleet to destroy a known hostile fleet without committing to an invasion.
+    /// Sends a battle fleet to clear hostile orbital forces for a planet capture or interdicted engagement.
     /// </summary>
     public sealed class AIOrbitalEngagementProposal : AIProposal
     {
@@ -77,6 +79,18 @@ namespace Rebellion.AI.Proposals
             }
 
             Planet knownTarget = context.Assessment.GetKnownPlanet(TargetPlanet.InstanceID);
+            if (
+                !context.Assessment.IsAttackPreparationTarget(knownTarget)
+                && !SpaceCombatQueries.GetActiveCapitalShips(Fleet).Any(ship => ship.HasGravityWell)
+            )
+            {
+                if (currentPlanet?.GetOwnerInstanceID() == context.Faction.InstanceID)
+                    Fleet.Order = null;
+                else
+                    ReturnToFriendlyTerritory(context);
+                return;
+            }
+
             if (
                 context.Assessment.GetStrongestHostileFleetStrength(knownTarget) > 0
                 && !CanWinProjectedOrbitalCombat(context, knownTarget)
@@ -199,6 +213,12 @@ namespace Rebellion.AI.Proposals
 
             Planet knownTarget = context.Assessment.GetKnownPlanet(TargetPlanet.InstanceID);
             return context.Assessment.IsEnemyPlanet(knownTarget)
+                && (
+                    context.Assessment.IsAttackPreparationTarget(knownTarget)
+                    || SpaceCombatQueries
+                        .GetActiveCapitalShips(Fleet)
+                        .Any(ship => ship.HasGravityWell)
+                )
                 && context.Assessment.GetStrongestHostileFleetStrength(knownTarget) > 0
                 && CanWinOrbitalCombat(context, knownTarget);
         }

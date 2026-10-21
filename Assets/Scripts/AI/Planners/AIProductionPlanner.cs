@@ -395,7 +395,11 @@ namespace Rebellion.AI.Planners
                     break;
 
                 List<Planet> sectorPlanets = sector.ToList();
-                if (sectorPlanets.Count == 0)
+                int remainingSectorFacilityCount = context.StrategicPlan.GetInfrastructureDeficit(
+                    sectorPlanets,
+                    capacityDemand.BuildingType
+                );
+                if (remainingSectorFacilityCount == 0)
                     continue;
 
                 AIProductionDemand sectorDemand =
@@ -413,7 +417,15 @@ namespace Rebellion.AI.Planners
                 );
                 for (int hubIndex = 0; hubIndex < hubCount; hubIndex++)
                 {
-                    int targetCount = hubTargets[hubIndex];
+                    int preferredTargetCount = hubTargets[hubIndex];
+                    Func<Planet, int> getTargetCount = planet =>
+                        capacityDemand.BuildingType == BuildingType.ConstructionFacility
+                            ? context.StrategicPlan.GetAchievableInfrastructureHubTarget(
+                                planet,
+                                capacityDemand.BuildingType,
+                                preferredTargetCount
+                            )
+                            : preferredTargetCount;
                     Planet destination = placementScorer
                         .RankHubDestinations(
                             sectorPlanets
@@ -422,14 +434,14 @@ namespace Rebellion.AI.Planners
                                     && context.StrategicPlan.CanAllocateInfrastructureHub(
                                         planet,
                                         capacityDemand.BuildingType,
-                                        targetCount
+                                        getTargetCount(planet)
                                     )
                                 )
                                 .ToList(),
                             demandPlanet,
                             supportedType,
                             capacityDemand.BuildingType,
-                            targetCount,
+                            preferredTargetCount,
                             planet =>
                                 context.StrategicPlan.GetAvailableConstructionSpace(
                                     planet,
@@ -439,9 +451,10 @@ namespace Rebellion.AI.Planners
                         .FirstOrDefault();
                     if (destination == null)
                         continue;
+                    int targetCount = getTargetCount(destination);
                     assignedDestinationIds.Add(destination.InstanceID);
                     int requestedQuantity = Math.Min(
-                        remainingFacilityCount,
+                        Math.Min(remainingFacilityCount, remainingSectorFacilityCount),
                         Math.Min(
                             Math.Max(
                                 0,
@@ -484,8 +497,11 @@ namespace Rebellion.AI.Planners
                             hubIndex
                         );
                     if (added)
+                    {
                         remainingFacilityCount -= requestedQuantity;
-                    if (remainingFacilityCount == 0)
+                        remainingSectorFacilityCount -= requestedQuantity;
+                    }
+                    if (remainingFacilityCount == 0 || remainingSectorFacilityCount == 0)
                         break;
                 }
             }

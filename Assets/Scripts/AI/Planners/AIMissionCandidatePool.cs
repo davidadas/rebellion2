@@ -38,7 +38,7 @@ namespace Rebellion.AI.Planners
             AIMissionProposal proposal
         )
         {
-            if (proposal == null)
+            if (!CanRetain(context, proposal))
                 return;
 
             int retainedAlternatives = Math.Max(
@@ -46,15 +46,6 @@ namespace Rebellion.AI.Planners
                 context.Game.Config.AI.MissionPlanning.RetainedAlternativesPerMission
             );
             List<AIMissionProposal> alternatives = GetAlternatives(proposal);
-            AIMissionProposal lowestPriorityAlternative = FindLowestPriorityAlternative(
-                alternatives
-            );
-            if (
-                alternatives.Count >= retainedAlternatives
-                && _scorer.GetScoreUpperBound(context, proposal) < lowestPriorityAlternative.Score
-            )
-                return;
-
             double score = _scorer.Score(context, proposal);
             if (score <= 0)
                 return;
@@ -65,9 +56,31 @@ namespace Rebellion.AI.Planners
             if (alternatives.Count <= retainedAlternatives)
                 return;
 
-            lowestPriorityAlternative = FindLowestPriorityAlternative(alternatives);
+            AIMissionProposal lowestPriorityAlternative = FindLowestPriorityAlternative(
+                alternatives
+            );
             alternatives.Remove(lowestPriorityAlternative);
             proposals.Remove(lowestPriorityAlternative);
+        }
+
+        /// <summary>
+        /// Checks whether a candidate's optimistic score can still enter its retained alternatives.
+        /// </summary>
+        /// <param name="context">The current planning scope.</param>
+        /// <param name="proposal">The proposal whose score bound is being checked.</param>
+        /// <returns>False only when its upper bound is strictly below an already retained alternative.</returns>
+        internal bool CanRetain(AITurnContext context, AIMissionProposal proposal)
+        {
+            if (proposal == null)
+                return false;
+            int retainedAlternatives = Math.Max(
+                1,
+                context.Game.Config.AI.MissionPlanning.RetainedAlternativesPerMission
+            );
+            List<AIMissionProposal> alternatives = GetAlternatives(proposal);
+            return alternatives.Count < retainedAlternatives
+                || _scorer.GetScoreUpperBound(context, proposal)
+                    >= FindLowestPriorityAlternative(alternatives).Score;
         }
 
         /// <summary>

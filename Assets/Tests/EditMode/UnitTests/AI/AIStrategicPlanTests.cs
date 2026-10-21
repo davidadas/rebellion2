@@ -12,6 +12,65 @@ namespace Rebellion.Tests.AI
     [TestFixture]
     public class AIStrategicPlanTests
     {
+        /// <summary>Applies the headquarters multiplier without exceeding its affordable fleet share.</summary>
+        /// <param name="headquartersPercent">The headquarters multiplier, or zero to use the attack setting.</param>
+        /// <param name="friendlyStrength">The faction's available fleet strength.</param>
+        /// <param name="expectedStrength">The resulting headquarters defense requirement.</param>
+        [TestCase(110, 20000, 2200)]
+        [TestCase(175, 20000, 3500)]
+        [TestCase(110, 4000, 1400)]
+        [TestCase(0, 20000, 3500)]
+        public void GetHeadquartersDefenseStrength_ConfiguredHostileFleetMultiplier_RespectsAffordabilityLimit(
+            int headquartersPercent,
+            int friendlyStrength,
+            int expectedStrength
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction enemy);
+            game.Config.AI.FleetDeployment.MinimumDefenseStrength = 1000;
+            game.Config.AI.FleetDeployment.HeadquartersDefenseCombatPercent = 35;
+            game.Config.AI.FleetDeployment.AttackStrengthPercentOfStrongestHostileFleet = 175;
+            game.Config.AI.FleetDeployment.HeadquartersDefensePercentOfStrongestHostileFleet =
+                headquartersPercent;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "headquarters-sector");
+            Planet headquarters = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "headquarters",
+                faction.InstanceID
+            );
+            faction.HQInstanceID = headquarters.InstanceID;
+            Fleet defender = EntityFactory.CreateFleet("defender", faction.InstanceID);
+            game.AttachNode(defender, headquarters);
+            game.AttachNode(
+                AITestSceneBuilder.CreateCapitalShip(
+                    "friendly-ship",
+                    faction.InstanceID,
+                    friendlyStrength
+                ),
+                defender
+            );
+            Planet hostilePlanet = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "hostile-planet",
+                enemy.InstanceID
+            );
+            Fleet hostileFleet = EntityFactory.CreateFleet("hostile", enemy.InstanceID);
+            game.AttachNode(hostileFleet, hostilePlanet);
+            game.AttachNode(
+                AITestSceneBuilder.CreateCapitalShip("hostile-ship", enemy.InstanceID, 2000),
+                hostileFleet
+            );
+            AITestSceneBuilder.RevealPlanet(game, faction, hostilePlanet);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
+
+            Assert.AreEqual(
+                expectedStrength,
+                context.StrategicPlan.GetHeadquartersDefenseStrength(headquarters)
+            );
+        }
+
         /// <summary>Requires room for the completed industrial layout and its shield.</summary>
         /// <param name="availableSpace">The neutral planet's building capacity.</param>
         /// <param name="expectedOpportunity">Whether the layout fits.</param>

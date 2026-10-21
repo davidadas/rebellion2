@@ -88,14 +88,22 @@ namespace Rebellion.SceneGraph
         public bool IsActive()
         {
             ISceneNode node = this;
-            HashSet<ISceneNode> visitedNodes = new HashSet<ISceneNode>();
+            ISceneNode cycleAnchor = this;
+            long checkpointDistance = 1;
+            long distance = 0;
             while (node != null)
             {
-                if (!visitedNodes.Add(node))
-                    throw new InvalidOperationException("Cycle detected in scene graph.");
                 if (!node.IsEnabled)
                     return false;
                 node = node.GetParent();
+                if (ReferenceEquals(node, cycleAnchor))
+                    throw new InvalidOperationException("Cycle detected in scene graph.");
+                if (++distance == checkpointDistance)
+                {
+                    cycleAnchor = node;
+                    checkpointDistance *= 2;
+                    distance = 0;
+                }
             }
 
             return true;
@@ -118,23 +126,27 @@ namespace Rebellion.SceneGraph
         public T GetParentOfType<T>()
             where T : class, ISceneNode
         {
-            // Check the parent scene nodes.
             ISceneNode parent = ParentNode;
-            HashSet<ISceneNode> visitedNodes = new HashSet<ISceneNode> { this };
+            ISceneNode cycleAnchor = this;
+            long checkpointDistance = 1;
+            long distance = 0;
 
             while (parent != null)
             {
-                if (!visitedNodes.Add(parent))
-                {
-                    // Node has already been visited, indicating a cycle in the scene graph.
+                if (ReferenceEquals(parent, this) || ReferenceEquals(parent, cycleAnchor))
                     throw new InvalidOperationException("Cycle detected in scene graph.");
-                }
 
                 if (parent is T matchingParent)
                 {
                     return matchingParent;
                 }
 
+                if (++distance == checkpointDistance)
+                {
+                    cycleAnchor = parent;
+                    checkpointDistance *= 2;
+                    distance = 0;
+                }
                 parent = parent.GetParent();
             }
 
@@ -187,15 +199,8 @@ namespace Rebellion.SceneGraph
             bool includeDisabled = false
         )
         {
-            IEnumerable<ISceneNode> children = EnumerateChildren();
-            IReadOnlyList<ISceneNode> directChildren = (
-                includeDisabled ? children : children.Where(child => child.IsActive())
-            )
-                .ToList()
-                .AsReadOnly();
-
             if (!recursive)
-                return directChildren;
+                return GetDirectChildren<ISceneNode>(includeDisabled);
 
             List<ISceneNode> descendants = new List<ISceneNode>();
             HashSet<ISceneNode> currentPath = new HashSet<ISceneNode> { this };
@@ -231,7 +236,47 @@ namespace Rebellion.SceneGraph
         public IReadOnlyList<T> GetChildren<T>(bool recursive = false, bool includeDisabled = false)
             where T : class, ISceneNode
         {
-            return GetChildren(recursive, includeDisabled).OfType<T>().ToList().AsReadOnly();
+            if (recursive)
+                return GetChildren(recursive: true, includeDisabled)
+                    .OfType<T>()
+                    .ToList()
+                    .AsReadOnly();
+
+            return GetDirectChildren<T>(includeDisabled);
+        }
+
+        /// <summary>
+        /// Copies direct children while sharing ancestor validation within this snapshot only.
+        /// </summary>
+        /// <typeparam name="T">The child type to include.</typeparam>
+        /// <param name="includeDisabled">Whether inactive children may be returned.</param>
+        /// <returns>The ordered, read-only child snapshot.</returns>
+        private IReadOnlyList<T> GetDirectChildren<T>(bool includeDisabled)
+            where T : class, ISceneNode
+        {
+            List<T> children = new List<T>();
+            bool? containerIsActive = null;
+            foreach (ISceneNode child in EnumerateChildren())
+            {
+                if (!includeDisabled)
+                {
+                    if (ReferenceEquals(child.GetParent(), this))
+                    {
+                        if (!child.IsEnabled)
+                            continue;
+                        containerIsActive ??= IsActive();
+                        if (!containerIsActive.Value)
+                            continue;
+                    }
+                    else if (!child.IsActive())
+                        continue;
+                }
+
+                if (child is T matchingChild)
+                    children.Add(matchingChild);
+            }
+
+            return children.AsReadOnly();
         }
 
         /// <summary>

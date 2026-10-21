@@ -21,7 +21,10 @@ namespace Rebellion.AI.Scorers
         /// <returns>True if the proposal is a production proposal.</returns>
         public bool CanScore(AIProposal proposal)
         {
-            return proposal is AIManufactureProposal or AIFacilityRemovalProposal;
+            return proposal
+                is AIManufactureProposal
+                    or AIFacilityRemovalProposal
+                    or AIMaintenanceRecoveryProposal;
         }
 
         /// <summary>
@@ -35,12 +38,48 @@ namespace Rebellion.AI.Scorers
             return proposal switch
             {
                 AIFacilityRemovalProposal => 0,
+                AIMaintenanceRecoveryProposal => Math.Max(
+                    0,
+                    -context.Faction.ProjectedMaintenanceHeadroom
+                ),
                 AIManufactureProposal manufactureProposal => ScoreManufactureProposal(
                     context,
                     manufactureProposal
                 ),
                 _ => 0,
             };
+        }
+
+        /// <summary>
+        /// Returns the additional weighted requirement shortfall per maintenance point saved.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="candidate">The retirement alternative.</param>
+        /// <param name="remaining">Capability remaining after retirements already selected.</param>
+        /// <returns>The marginal damage ratio, or infinity when a safety floor would be broken.</returns>
+        internal static double GetRetirementDamage(
+            AITurnContext context,
+            AIMaintenanceRecoveryProposal.Candidate candidate,
+            IReadOnlyDictionary<AIMaintenanceRecoveryProposal.Requirement, double> remaining
+        )
+        {
+            double damage =
+                Math.Max(0, candidate.Unit.GetConstructionCost())
+                * context.Game.Config.AI.Selection.MaintenanceRecovery.ReplacementCostWeight;
+            foreach (var contribution in candidate.Contributions)
+            {
+                var need = contribution.Key;
+                double before = remaining[need];
+                double after = before - contribution.Value;
+                if (after < need.ProtectedMinimum)
+                    return double.PositiveInfinity;
+                if (need.Required > 0)
+                    damage +=
+                        need.Weight
+                        * (Math.Max(0, need.Required - after) - Math.Max(0, need.Required - before))
+                        / need.Required;
+            }
+            return damage / candidate.Unit.GetMaintenanceCost();
         }
 
         /// <summary>
@@ -72,6 +111,10 @@ namespace Rebellion.AI.Scorers
             double colonyFoundationInput = GetColonyFoundationInput(context, proposal);
             if (proposal.Demand.BuildingType == BuildingType.ConstructionFacility)
                 score.Add(colonyFoundationInput, utility.ColonyFoundation);
+            score.Add(
+                GetHeadquartersReinforcementInput(context, proposal),
+                utility.HeadquartersReinforcement
+            );
             score.AddCost(
                 AIUtility.Fulfillment(GetTravelCost(context, proposal), utility.TravelCost),
                 utility.TravelCost
@@ -497,13 +540,13 @@ namespace Rebellion.AI.Scorers
                 .AI
                 .Infrastructure
                 .DemandUtility;
-            int headroom = context.Assessment.ProjectedEconomyMaintenanceHeadroom;
+            int headroom = context.Assessment.EconomyPlanningMaintenanceHeadroom;
             int floor = context.Game.Config.AI.Selection.MaintenanceHeadroomReserve;
             int target = Math.Max(
                 floor,
                 context.Game.Config.AI.Selection.MaintenanceHeadroomTarget
             );
-            if (headroom < floor)
+            if (context.Assessment.ProjectedEconomyMaintenanceHeadroom < floor)
                 return AIUtility.EvaluatePressure(1, utility.MaintenanceShortfall);
             return headroom >= target
                 ? 0
@@ -809,6 +852,38 @@ namespace Rebellion.AI.Scorers
             return destination.GetTotalBuildingTypeCount(BuildingType.ConstructionFacility) == 0
                 ? 1
                 : 0;
+        }
+
+        /// <summary>
+        /// Returns the uncovered fraction of the headquarters fleet-defense requirement.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="proposal">The reinforcement manufacturing proposal.</param>
+        /// <returns>The remaining defense deficit normalized from zero through one.</returns>
+        private static double GetHeadquartersReinforcementInput(
+            AITurnContext context,
+            AIManufactureProposal proposal
+        )
+        {
+            if (
+                proposal.Demand.Kind
+                    is not AIProductionDemandKind.FleetCapitalShip
+                        and not AIProductionDemandKind.FleetStarfighter
+                || proposal.Demand.DestinationFleet is not Fleet fleet
+                || fleet.Order?.OrderType != FleetOrderType.Defend
+            )
+                return 0;
+
+            Planet target = context.Assessment.GetKnownPlanet(fleet.Order.TargetPlanetId);
+            if (!context.Assessment.IsFactionHeadquarters(target))
+                return 0;
+
+            int requiredStrength = context.StrategicPlan.GetDefenseStrength(target);
+            int missingStrength = Math.Max(
+                0,
+                requiredStrength - context.Assessment.GetProjectedFleetCombatValue(fleet)
+            );
+            return AIUtility.Fulfillment(missingStrength, Math.Max(1, requiredStrength));
         }
 
         /// <summary>

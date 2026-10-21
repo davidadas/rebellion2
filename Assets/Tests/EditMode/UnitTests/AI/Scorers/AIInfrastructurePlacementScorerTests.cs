@@ -200,8 +200,9 @@ namespace Rebellion.Tests.AI.Scorers
             Assert.AreSame(unassignedPlanet, selected);
         }
 
+        /// <summary>Reuses a same-type facility when both sites can reach the hub target.</summary>
         [Test]
-        public void RankHubDestinations_WithMixedTargetFacility_PrefersUnassignedPlanet()
+        public void RankHubDestinations_WithMixedTargetFacility_PrefersExistingHub()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
@@ -246,7 +247,62 @@ namespace Rebellion.Tests.AI.Scorers
                 )
                 .First();
 
-            Assert.AreSame(unassignedPlanet, selected);
+            Assert.AreSame(existingHub, selected);
+        }
+
+        /// <summary>Prefers a larger achievable hub over an undersized site without other facility types.</summary>
+        /// <param name="buildingType">The facility category being expanded.</param>
+        /// <param name="manufacturingType">The production category supported by the facility.</param>
+        /// <param name="targetCount">The preferred hub size.</param>
+        [TestCase(BuildingType.ConstructionFacility, ManufacturingType.Building, 5)]
+        [TestCase(BuildingType.Shipyard, ManufacturingType.Ship, 6)]
+        [TestCase(BuildingType.TrainingFacility, ManufacturingType.Troop, 4)]
+        public void RankHubDestinations_MixedSiteSupportsLargerHub_PrefersAchievableCapacity(
+            BuildingType buildingType,
+            ManufacturingType manufacturingType,
+            int targetCount
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet smallSite = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "small-site",
+                faction.InstanceID,
+                energyCapacity: 3
+            );
+            Planet largeSite = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "large-site",
+                faction.InstanceID,
+                energyCapacity: 8
+            );
+            bool expandingConstruction = buildingType == BuildingType.ConstructionFacility;
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                largeSite,
+                "other-facility",
+                expandingConstruction
+                    ? BuildingType.TrainingFacility
+                    : BuildingType.ConstructionFacility,
+                expandingConstruction ? ManufacturingType.Troop : ManufacturingType.Building
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
+
+            Planet selected = new AIInfrastructurePlacementScorer(context)
+                .RankHubDestinations(
+                    new[] { smallSite, largeSite },
+                    null,
+                    manufacturingType,
+                    buildingType,
+                    targetCount,
+                    planet => planet.GetAvailableEnergy()
+                )
+                .First();
+
+            Assert.AreSame(largeSite, selected);
         }
 
         [Test]

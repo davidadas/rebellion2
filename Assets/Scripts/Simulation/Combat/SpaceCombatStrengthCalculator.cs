@@ -445,7 +445,7 @@ namespace Rebellion.Simulation
         /// <param name="config">The space-combat rules.</param>
         /// <param name="command">The fleet's effective command ratings.</param>
         /// <returns>The squadron's projected combat value.</returns>
-        private static int GetProjectedCarriedStarfighterCombatValue(
+        internal static int GetProjectedCarriedStarfighterCombatValue(
             Starfighter fighter,
             GameConfig.SpaceCombatConfig config,
             SpaceCombatCommandModifiers command

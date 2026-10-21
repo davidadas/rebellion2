@@ -138,7 +138,11 @@ public sealed class GameFlowController : MonoBehaviour
     /// </summary>
     private void AdvanceActiveTick()
     {
-        if (activeTick?.MoveNext() != false)
+        if (
+            activeGameManager != null
+                ? activeGameManager.AdvanceTick(activeTick)
+                : activeTick?.MoveNext() != false
+        )
             return;
 
         DisposeActiveTick();

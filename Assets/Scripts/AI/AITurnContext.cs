@@ -92,6 +92,7 @@ namespace Rebellion.AI
         /// <param name="maintenance">Maintenance system used to project production capacity.</param>
         /// <param name="headquarters">Headquarters system used by relocation proposals.</param>
         /// <param name="officerCommands">Officer command appointment operations.</param>
+        /// <param name="missionQueries">Optional mission queries prepared for the current assessment.</param>
         public AITurnContext(
             GameRoot game,
             Faction faction,
@@ -106,16 +107,26 @@ namespace Rebellion.AI
             GalaxyMap factionView = null,
             MaintenanceCommands maintenance = null,
             HeadquartersCommands headquarters = null,
-            OfficerCommandCommands officerCommands = null
+            OfficerCommandCommands officerCommands = null,
+            MissionQueries missionQueries = null
         )
         {
             Game = game;
             Faction = faction;
             Missions = missions;
             MissionQueries =
-                game == null ? null
-                : assessment == null ? new MissionQueries(game)
-                : new MissionQueries(game, assessment.GetMissionDetectorCommander);
+                missionQueries
+                ?? (
+                    game == null ? null
+                    : assessment == null ? new MissionQueries(game)
+                    : new MissionQueries(
+                        game,
+                        assessment.GetMissionDetectorCommander,
+                        new MissionEncounterOdds.Cache(
+                            game.Config.AI.MissionPlanning.EncounterCacheCapacity
+                        )
+                    )
+                );
             Movement = movement;
             MovementQueries = game == null ? null : new MovementQueries(game);
             Headquarters = headquarters;

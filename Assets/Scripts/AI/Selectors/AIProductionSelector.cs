@@ -6,6 +6,7 @@ using Rebellion.AI.Proposals;
 using Rebellion.AI.Scorers;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
+using Rebellion.Simulation;
 
 namespace Rebellion.AI.Selectors
 {
@@ -48,6 +49,181 @@ namespace Rebellion.AI.Selectors
         internal AIProductionSelector(AISelectionState selectionState)
         {
             _selectionState = selectionState;
+        }
+
+        /// <summary>
+        /// Resolves a deficit-limited retirement set using marginal damage to cached requirements.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="proposal">The assessed retirement alternatives.</param>
+        /// <param name="selectedProposal">The ordered executable recovery action.</param>
+        /// <returns>True when at least one safe retirement can be selected.</returns>
+        internal bool TryResolve(
+            AITurnContext context,
+            AIMaintenanceRecoveryProposal proposal,
+            out AIMaintenanceRecoveryProposal selectedProposal
+        )
+        {
+            selectedProposal = proposal;
+            if (!proposal.CanSelect(context))
+                return false;
+            var remaining = proposal
+                .Candidates.SelectMany(candidate => candidate.Contributions)
+                .Select(contribution => contribution.Key)
+                .Distinct()
+                .ToDictionary(need => need, need => need.Available);
+            var choices = proposal
+                .Candidates.Where(candidate =>
+                    AIMaintenanceRecoveryProposal.CanRetire(context, candidate.Unit)
+                    && _selectionState.CanReserve(GetRetirementReservations(candidate.Unit))
+                )
+                .ToList();
+            var selected = new List<AIMaintenanceRecoveryProposal.Candidate>();
+            long needed =
+                (long)
+                    Math.Max(0, context.Game.Config.AI.Selection.MaintenanceRecovery.TargetHeadroom)
+                - ResourceProductionQueries.CalculateMaintenanceHeadroom(
+                    context.Game,
+                    context.Faction
+                );
+            long saved = 0;
+            while (saved < needed && choices.Count > 0)
+            {
+                AIMaintenanceRecoveryProposal.Candidate best = null;
+                double bestDamage = double.PositiveInfinity;
+                foreach (var candidate in choices)
+                {
+                    double damage = AIProductionProposalScorer.GetRetirementDamage(
+                        context,
+                        candidate,
+                        remaining
+                    );
+                    if (
+                        damage < bestDamage
+                        || damage == bestDamage
+                            && best != null
+                            && (
+                                candidate.Unit.GetMaintenanceCost() < best.Unit.GetMaintenanceCost()
+                                || candidate.Unit.GetMaintenanceCost()
+                                    == best.Unit.GetMaintenanceCost()
+                                    && string.CompareOrdinal(
+                                        candidate.Unit.InstanceID,
+                                        best.Unit.InstanceID
+                                    ) < 0
+                            )
+                    )
+                    {
+                        best = candidate;
+                        bestDamage = damage;
+                    }
+                }
+                if (best == null)
+                    break;
+                selected.Add(best);
+                choices.Remove(best);
+                saved += best.Unit.GetMaintenanceCost();
+                foreach (var contribution in best.Contributions)
+                    remaining[contribution.Key] -= contribution.Value;
+            }
+            if (selected.Count == 0)
+                return false;
+            foreach (var candidate in selected)
+            {
+                _selectionState.Reserve(GetRetirementReservations(candidate.Unit));
+                ReserveAffectedDefense(context, candidate.Unit);
+                if (
+                    candidate.Unit is Building building
+                    && building.GetParentOfType<Planet>() is Planet planet
+                )
+                {
+                    string key =
+                        building.ProductionType == ManufacturingType.Building
+                            ? $"production:building:{planet.InstanceID}"
+                            : $"production:{building.ProductionType}:{planet.InstanceID}";
+                    _reservedProducerCapacity[key] = int.MaxValue;
+                }
+            }
+            selectedProposal = proposal.WithSelection(selected);
+            selectedProposal.SetScore(proposal.Score);
+            return true;
+        }
+
+        /// <summary>
+        /// Prevents departures based on defense totals or stability predicates changed by retirement.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="unit">The retiring unit.</param>
+        private void ReserveAffectedDefense(AITurnContext context, IManufacturable unit)
+        {
+            Planet planet = unit.GetParentOfType<Planet>();
+            bool affectsDefense =
+                planet != null
+                && (
+                    unit is Regiment && unit.GetParent() == planet
+                    || unit is Building building && building.IsPlanetaryShieldGenerator()
+                    || planet.IsHeadquarters && unit is CapitalShip or Starfighter
+                );
+            if (!affectsDefense)
+                return;
+            List<AISelectionReservation> reservations = new();
+            foreach (
+                Fleet fleet in context
+                    .Assessment.GetFriendlyFleets(planet)
+                    .Where(fleet => fleet.Movement == null)
+            )
+            {
+                Add(reservations, AISelectionReservationKind.FleetOrder, fleet.InstanceID);
+                Add(reservations, AISelectionReservationKind.FleetMovement, fleet.InstanceID);
+                Add(
+                    reservations,
+                    AISelectionReservationKind.ContainerTransferSource,
+                    fleet.InstanceID
+                );
+            }
+            _selectionState.Reserve(reservations);
+        }
+
+        /// <summary>
+        /// Reserves actors and affected containers so later proposals cannot use stale capabilities.
+        /// </summary>
+        /// <param name="unit">The retiring unit.</param>
+        /// <returns>The resources affected by retirement.</returns>
+        private static List<AISelectionReservation> GetRetirementReservations(IManufacturable unit)
+        {
+            List<AISelectionReservation> reservations = new();
+            Add(reservations, AISelectionReservationKind.MissionActor, unit.InstanceID);
+            Add(reservations, AISelectionReservationKind.UnitTransfer, unit.InstanceID);
+            Add(
+                reservations,
+                AISelectionReservationKind.ContainerTransferSource,
+                unit.GetParent()?.InstanceID
+            );
+            if (unit.GetParentOfType<Fleet>() is Fleet fleet)
+            {
+                Add(reservations, AISelectionReservationKind.FleetOrder, fleet.InstanceID);
+                Add(reservations, AISelectionReservationKind.FleetMovement, fleet.InstanceID);
+                Add(reservations, AISelectionReservationKind.FleetAttack, fleet.InstanceID);
+                Add(
+                    reservations,
+                    AISelectionReservationKind.FleetCapitalReinforcement,
+                    fleet.InstanceID
+                );
+            }
+            if (unit is Building building)
+            {
+                Add(
+                    reservations,
+                    AISelectionReservationKind.ProductionBuildingReplacement,
+                    unit.InstanceID
+                );
+                Add(
+                    reservations,
+                    AISelectionReservationKind.FacilityAllocation,
+                    unit.GetParentOfType<Planet>()?.InstanceID,
+                    building.BuildingType.ToString()
+                );
+            }
+            return reservations;
         }
 
         /// <summary>

@@ -4,11 +4,12 @@ using Rebellion.AI.Proposals;
 using Rebellion.AI.Scorers;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
+using Rebellion.Simulation;
 
 namespace Rebellion.AI.Planners
 {
     /// <summary>
-    /// Plans favorable fleet engagements using faction-visible orbital intelligence.
+    /// Plans favorable fleet engagements supporting planet captures or using interdiction.
     /// </summary>
     public sealed class AIOrbitalEngagementPlanner : IAIProposalPlanner
     {
@@ -85,8 +86,12 @@ namespace Rebellion.AI.Planners
             if (origin == null || !context.StrategicPlan.CanFleetDepart(fleet))
                 return Enumerable.Empty<Planet>();
 
+            bool hasGravityWell = SpaceCombatQueries
+                .GetActiveCapitalShips(fleet)
+                .Any(ship => ship.HasGravityWell);
             return context.Assessment.EnemyPlanets.Where(target =>
                 target.InstanceID != origin.InstanceID
+                && (context.Assessment.IsAttackPreparationTarget(target) || hasGravityWell)
                 && context.Assessment.GetStrongestHostileFleetStrength(target) > 0
                 && AIFleetProposalScorer.CanWinOrbitalCombat(context, fleet, target)
             );

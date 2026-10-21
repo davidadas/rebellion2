@@ -229,21 +229,17 @@ namespace Rebellion.Game.Galaxy
         /// <returns>True if the planet is blockaded, false otherwise.</returns>
         public bool IsBlockaded()
         {
-            bool hasHostile = GetChildren<Fleet>()
-                .Any(f =>
-                    f.Movement == null
-                    && (
-                        string.IsNullOrEmpty(OwnerInstanceID)
-                        || f.OwnerInstanceID != OwnerInstanceID
-                    )
-                    && f.HasOperationalCapitalShips()
-                );
-            bool hasDefender = GetChildren<Fleet>()
-                .Any(f =>
-                    f.Movement == null
-                    && f.OwnerInstanceID == OwnerInstanceID
-                    && f.HasOperationalCapitalShips()
-                );
+            IReadOnlyList<Fleet> fleets = GetChildren<Fleet>();
+            bool hasHostile = fleets.Any(f =>
+                f.Movement == null
+                && (string.IsNullOrEmpty(OwnerInstanceID) || f.OwnerInstanceID != OwnerInstanceID)
+                && f.HasOperationalCapitalShips()
+            );
+            bool hasDefender = fleets.Any(f =>
+                f.Movement == null
+                && f.OwnerInstanceID == OwnerInstanceID
+                && f.HasOperationalCapitalShips()
+            );
 
             return hasHostile && !hasDefender;
         }

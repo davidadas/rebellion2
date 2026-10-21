@@ -23,6 +23,7 @@ namespace Rebellion.AI
         private readonly IRandomNumberProvider _random;
         private readonly MissionCommands _missions;
         private readonly MissionQueries _missionQueries;
+        private readonly MissionEncounterOdds.Cache _missionEncounterCache;
         private readonly MovementCommands _movement;
         private readonly HeadquartersCommands _headquarters;
         private readonly OfficerCommandCommands _officerCommands;
@@ -53,6 +54,9 @@ namespace Rebellion.AI
         /// Raised after one faction's AI turn completes.
         /// </summary>
         public event Action<Faction> FactionTurnCompleted;
+
+        /// <summary>Exposes selected actions to passive campaign diagnostics.</summary>
+        public event Action<AITurnContext> DiagnosticSelectionCompleted;
 
         /// <summary>
         /// Creates an AI director using the current game systems.
@@ -85,6 +89,9 @@ namespace Rebellion.AI
             _random = random;
             _missions = missions;
             _missionQueries = game == null ? null : new MissionQueries(game);
+            _missionEncounterCache = new MissionEncounterOdds.Cache(
+                game?.Config?.AI?.MissionPlanning?.EncounterCacheCapacity ?? 0
+            );
             _movement = movement;
             _headquarters = headquarters;
             _officerCommands = officerCommands;
@@ -114,7 +121,13 @@ namespace Rebellion.AI
                     }
                 ),
                 new AIDemandGenerationPhase(new IAIDemandGenerator[] { productionDemandGenerator }),
-                new AIPlanningPhase(new IAIProposalPlanner[] { productionPlanner }),
+                new AIPlanningPhase(
+                    new IAIProposalPlanner[]
+                    {
+                        productionPlanner,
+                        new AIMaintenanceRecoveryPlanner(),
+                    }
+                ),
                 new AIScoringPhase(),
                 new AISelectionPhase(),
                 new AIExecutionPhase(),
@@ -202,7 +215,12 @@ namespace Rebellion.AI
                     factionView,
                     _maintenance,
                     _headquarters,
-                    _officerCommands
+                    _officerCommands,
+                    new MissionQueries(
+                        _game,
+                        assessment.GetMissionDetectorCommander,
+                        _missionEncounterCache
+                    )
                 );
             }
             finally
@@ -213,6 +231,8 @@ namespace Rebellion.AI
 
             foreach (IAITurnPhase phase in _turnPhases)
             {
+                if (phase is AIExecutionPhase)
+                    DiagnosticSelectionCompleted?.Invoke(context);
                 string stepName = phase.GetType().Name;
                 FactionTurnStepStarted?.Invoke(faction, stepName);
                 try

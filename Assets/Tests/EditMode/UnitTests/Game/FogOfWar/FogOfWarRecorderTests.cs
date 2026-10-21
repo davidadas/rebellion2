@@ -1,15 +1,65 @@
+using System.IO;
 using System.Linq;
 using NUnit.Framework;
+using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.Tests.Helpers;
+using Rebellion.Util.Serialization;
 
 namespace Rebellion.Tests.Game.FogOfWar
 {
     [TestFixture]
     public class FogOfWarRecorderTests : FogOfWarTestBase
     {
+        /// <summary>
+        /// Verifies ordered refreshes retain identical snapshots after movement and removal.
+        /// </summary>
+        /// <param name="reverseOrder">Whether to observe the previous location first.</param>
+        [TestCase(false)]
+        [TestCase(true)]
+        public void RecordPlanetSnapshots_ChangedLocations_MatchesIndividualObservations(
+            bool reverseOrder
+        )
+        {
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            Faction batchedFaction = new Faction { InstanceID = _alliance.InstanceID };
+            var planets = new[] { _coruscant, _tatooine, _hoth };
+            if (reverseOrder)
+                planets = planets.Reverse().ToArray();
+            Regiment movingUnit = CreateRegiment("MOVING", _empire);
+            _game.AttachNode(movingUnit, _tatooine);
+            Regiment removedUnit = CreateRegiment("REMOVED", _empire);
+            _game.AttachNode(removedUnit, _coruscant);
+            foreach (var planet in planets)
+            {
+                var sector = planet.GetParentOfType<Rebellion.Game.Galaxy.PlanetSector>();
+                recorder.RecordEspionageSnapshot(_alliance, planet, sector, 10);
+                recorder.RecordEspionageSnapshot(batchedFaction, planet, sector, 10);
+            }
+            _game.MoveNode(movingUnit, _coruscant);
+            _game.DeleteNode(removedUnit);
+            _alliance.Fog.EntityLastSeenAt["ABSENT"] = _coruscant.InstanceID;
+            batchedFaction.Fog.EntityLastSeenAt["ABSENT"] = _coruscant.InstanceID;
+
+            foreach (var planet in planets)
+                recorder.RecordPlanetSnapshot(
+                    _alliance,
+                    planet,
+                    planet.GetParentOfType<Rebellion.Game.Galaxy.PlanetSector>(),
+                    11
+                );
+            recorder.RecordPlanetSnapshots(batchedFaction, planets, 11);
+
+            GameSerializer serializer = new GameSerializer(typeof(FogState));
+            using StringWriter expected = new StringWriter();
+            using StringWriter actual = new StringWriter();
+            serializer.Serialize(expected, _alliance.Fog);
+            serializer.Serialize(actual, batchedFaction.Fog);
+            Assert.AreEqual(expected.ToString(), actual.ToString());
+        }
+
         [Test]
         public void RecordIntelligenceSnapshot_CapitalShips_DoesNotLeakShipCargo()
         {

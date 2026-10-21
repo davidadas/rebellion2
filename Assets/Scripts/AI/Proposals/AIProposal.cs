@@ -9,6 +9,7 @@ namespace Rebellion.AI.Proposals
         Optional,
         Mandatory,
         Critical,
+        MaintenanceRecovery,
     }
 
     /// <summary>

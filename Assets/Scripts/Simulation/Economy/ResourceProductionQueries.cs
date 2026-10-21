@@ -582,6 +582,21 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
+        /// Calculates live maintenance headroom using effective capacity and all committed costs.
+        /// </summary>
+        /// <param name="game">The game defining the active difficulty and faction controller.</param>
+        /// <param name="faction">The faction whose remaining capacity is calculated.</param>
+        /// <returns>The effective headroom, or zero when the game or faction is absent.</returns>
+        internal static int CalculateMaintenanceHeadroom(GameRoot game, Faction faction)
+        {
+            if (game == null || faction == null)
+                return 0;
+
+            return CalculateMaintenanceCapacity(game, faction)
+                - faction.GetTotalProjectedMaintenanceCost();
+        }
+
+        /// <summary>
         /// Calculates effective maintenance capacity after applying the faction's difficulty bonus.
         /// </summary>
         /// <param name="game">The game defining the active difficulty and faction controller.</param>

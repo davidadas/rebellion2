@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.AI.Proposals;
+using Rebellion.AI.Scorers;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
@@ -16,6 +17,7 @@ namespace Rebellion.AI.Selectors
     {
         private const int _maximumDecoysPerMission = 2;
         private readonly AISelectionState _state;
+        private readonly Dictionary<Officer, Planet> _diplomacyCommitments = new();
 
         /// <summary>
         /// Creates a mission selector using shared typed reservation state.
@@ -73,7 +75,36 @@ namespace Rebellion.AI.Selectors
             }
 
             _state.Reserve(reservations);
+            if (proposal is AIMissionProposal { MissionTypeID: MissionTypeIDs.Diplomacy } diplomacy)
+                foreach (Officer officer in diplomacy.MainParticipants.OfType<Officer>())
+                    _diplomacyCommitments[officer] = diplomacy.TargetPlanet;
             return true;
+        }
+
+        /// <summary>Refreshes remaining diplomacy choices against the current mission reservations.</summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="pending">The unprocessed proposal queue.</param>
+        internal void RefreshDiplomacyScores(AITurnContext context, LinkedList<AIProposal> pending)
+        {
+            AIMissionProposalScorer scorer = new();
+            LinkedListNode<AIProposal> node = pending.First;
+            while (node != null)
+            {
+                LinkedListNode<AIProposal> next = node.Next;
+                if (
+                    node.Value is AIMissionProposal
+                    {
+                        MissionTypeID: MissionTypeIDs.Diplomacy
+                    } diplomacy
+                )
+                {
+                    if (!_state.CanReserve(GetReservations(diplomacy)))
+                        pending.Remove(node);
+                    else
+                        diplomacy.SetScore(scorer.Score(context, diplomacy, _diplomacyCommitments));
+                }
+                node = next;
+            }
         }
 
         /// <summary>
@@ -159,6 +190,13 @@ namespace Rebellion.AI.Selectors
                 .ToHashSet();
             claimedParticipants.UnionWith(
                 selected.OfType<AIOfficerCommandProposal>().Select(proposal => proposal.Officer)
+            );
+            claimedParticipants.UnionWith(
+                selected
+                    .OfType<AIMaintenanceRecoveryProposal>()
+                    .SelectMany(proposal => proposal.SelectedUnits)
+                    .Select(candidate => candidate.Unit)
+                    .OfType<IMissionParticipant>()
             );
             List<IMissionParticipant> decoys = context
                 .Assessment.AvailableMissionParticipants.Where(participant =>

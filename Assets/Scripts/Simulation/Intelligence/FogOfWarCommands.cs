@@ -57,6 +57,30 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
+        /// Records registered planets in order while sharing the remembered-location lookup.
+        /// </summary>
+        /// <param name="faction">The faction receiving the observations.</param>
+        /// <param name="planets">The distinct planets in observation order.</param>
+        internal void ObservePlanets(Faction faction, IEnumerable<Planet> planets)
+        {
+            Faction liveFaction = FindFaction(faction?.InstanceID);
+            if (liveFaction == null || planets == null)
+                return;
+
+            _recorder.RecordPlanetSnapshots(
+                liveFaction,
+                planets
+                    .Select(planet =>
+                        string.IsNullOrEmpty(planet?.InstanceID)
+                            ? null
+                            : _game.GetSceneNodeByInstanceID<Planet>(planet.InstanceID)
+                    )
+                    .Where(planet => planet?.GetParentOfType<PlanetSector>() != null),
+                _game.CurrentTick
+            );
+        }
+
+        /// <summary>
         /// Records selected registered entities for a registered faction.
         /// </summary>
         /// <param name="faction">The faction receiving the observations.</param>

@@ -22,6 +22,67 @@ namespace Rebellion.Tests.AI.Scorers
     [TestFixture]
     public class AIMissionProposalScorerTests
     {
+        /// <summary>Values a selected diplomat in the candidate sector more than the same diplomat assigned elsewhere.</summary>
+        [Test]
+        public void Score_SelectedDiplomatInCandidateSector_PrefersCommittedGroup()
+        {
+            (AITurnContext context, PlanetSector[] sectors) =
+                CreateDiplomacyGroupCompetitionContext(0, 0);
+            Officer selected = context.Game.GetSceneNodeByInstanceID<Officer>("diplomat-0");
+            Officer candidate = context.Game.GetSceneNodeByInstanceID<Officer>("diplomat-1");
+            Planet target = sectors[0]
+                .GetChildren<Planet>()
+                .First(planet => planet.InstanceID == "target-0-1");
+            Planet localDestination = sectors[0]
+                .GetChildren<Planet>()
+                .First(planet => planet.InstanceID == "target-0-0");
+            Planet otherDestination = sectors[1]
+                .GetChildren<Planet>()
+                .First(planet => planet.InstanceID == "target-1-0");
+            AIMissionProposal proposal = new(new[] { candidate }, MissionTypeIDs.Diplomacy, target);
+            AIMissionProposalScorer scorer = new();
+
+            double local = scorer.Score(
+                context,
+                proposal,
+                new Dictionary<Officer, Planet> { [selected] = localDestination }
+            );
+            double elsewhere = scorer.Score(
+                context,
+                proposal,
+                new Dictionary<Officer, Planet> { [selected] = otherDestination }
+            );
+
+            Assert.Greater(local, elsewhere);
+        }
+
+        /// <summary>Stops counting a diplomat as available to every sector after assigning that officer elsewhere.</summary>
+        [Test]
+        public void Score_SelectedDiplomatInOtherSector_ReducesUncommittedOpportunity()
+        {
+            (AITurnContext context, PlanetSector[] sectors) =
+                CreateDiplomacyGroupCompetitionContext(0, 0);
+            Officer selected = context.Game.GetSceneNodeByInstanceID<Officer>("diplomat-0");
+            Officer candidate = context.Game.GetSceneNodeByInstanceID<Officer>("diplomat-1");
+            Planet target = sectors[0]
+                .GetChildren<Planet>()
+                .First(planet => planet.InstanceID == "target-0-1");
+            Planet destination = sectors[1]
+                .GetChildren<Planet>()
+                .First(planet => planet.InstanceID == "target-1-0");
+            AIMissionProposal proposal = new(new[] { candidate }, MissionTypeIDs.Diplomacy, target);
+            AIMissionProposalScorer scorer = new();
+
+            double available = scorer.Score(context, proposal);
+            double committed = scorer.Score(
+                context,
+                proposal,
+                new Dictionary<Officer, Planet> { [selected] = destination }
+            );
+
+            Assert.Less(committed, available);
+        }
+
         /// <summary>Raises diplomacy value only when acquiring the planet supplies an industrial opportunity.</summary>
         /// <param name="ownedSpace">The owned planet's building capacity.</param>
         /// <param name="expectedBonus">Whether acquisition should increase the target's value.</param>

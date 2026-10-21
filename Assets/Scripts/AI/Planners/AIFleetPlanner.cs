@@ -12,7 +12,7 @@ using Rebellion.Simulation;
 namespace Rebellion.AI.Planners
 {
     /// <summary>
-    /// Builds fleet proposals for attack orders and fleet reinforcement.
+    /// Builds fleet orders and reinforcement choices for each active turn.
     /// </summary>
     public sealed class AIFleetPlanner : IAIProposalPlanner
     {
@@ -1243,12 +1243,11 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns whether an attack fleet needs ground reinforcements and otherwise has the
-        /// projected strength needed to capture its target.
+        /// Returns whether an assembling attack fleet needs ground reinforcements.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
         /// <param name="fleet">The fleet to inspect.</param>
-        /// <returns>True when a planet regiment can complete the fleet's attack force.</returns>
+        /// <returns>True when a planet regiment can fill an unmet ground requirement.</returns>
         private bool CanReceivePlanetRegimentTransfer(AITurnContext context, Fleet fleet)
         {
             Planet targetPlanet = GetReinforcementTargetPlanet(context, fleet);
@@ -1267,11 +1266,7 @@ namespace Rebellion.AI.Planners
                 || context.Assessment.GetProjectedFleetRegimentAttackStrength(fleet)
                     < GetProjectedRegimentStrength(context, fleet, targetPlanet);
             return needsRegiments
-                && context.Assessment.GetFleetRegimentCapacity(fleet) > currentCount
-                && context.Assessment.GetProjectedFleetCombatValueAgainstCapitalShips(fleet)
-                    >= (context.GetAttackDemand(targetPlanet)?.CombatStrength ?? 0)
-                && context.Assessment.GetProjectedFleetBombardmentStrength(fleet)
-                    >= (context.GetAttackDemand(targetPlanet)?.BombardmentStrength ?? 0);
+                && context.Assessment.GetFleetRegimentCapacity(fleet) > currentCount;
         }
 
         /// <summary>
