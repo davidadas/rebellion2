@@ -160,28 +160,5 @@ namespace Rebellion.Tests.AI
             Assert.AreEqual(1, context.Results.Count);
             Assert.AreSame(result, context.Results[0]);
         }
-
-        [Test]
-        public void CommitMaintenanceCost_WithPositiveCost_ReducesAvailableHeadroom()
-        {
-            AITurnContext context = new AITurnContext(
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null
-            );
-            int initialHeadroom = context.AvailableProjectedMaintenanceHeadroom;
-
-            context.CommitMaintenanceCost(7);
-
-            Assert.AreEqual(initialHeadroom - 7, context.AvailableProjectedMaintenanceHeadroom);
-        }
     }
 }

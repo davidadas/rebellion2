@@ -21,6 +21,7 @@ namespace Rebellion.Simulation
     {
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
+        private readonly BlockadeTransitionResolver _blockadeTransitionResolver;
         private readonly HashSet<string> _shortfallFactions = new HashSet<string>();
         private readonly Dictionary<string, int> _nextAutoscrapTickByFaction =
             new Dictionary<string, int>();
@@ -35,10 +36,17 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="game">The game instance.</param>
         /// <param name="provider">Random number provider for scrap target selection.</param>
-        public MaintenanceCommands(GameRoot game, IRandomNumberProvider provider)
+        /// <param name="blockadeTransitionResolver">Resolves blockade changes after fleet scrapping.</param>
+        public MaintenanceCommands(
+            GameRoot game,
+            IRandomNumberProvider provider,
+            BlockadeTransitionResolver blockadeTransitionResolver = null
+        )
         {
             _game = game ?? throw new System.ArgumentNullException(nameof(game));
             _provider = provider;
+            _blockadeTransitionResolver =
+                blockadeTransitionResolver ?? new BlockadeTransitionResolver(game);
         }
 
         /// <summary>
@@ -260,7 +268,12 @@ namespace Rebellion.Simulation
             FleetLifecycle.RemoveEmptyFleet(_game, parentFleet);
             if (wasBlockaded.HasValue)
             {
-                BlockadeTransitions.AddChangedResult(_game, location, wasBlockaded.Value, results);
+                BlockadeChangedResult blockade = _blockadeTransitionResolver.Resolve(
+                    location,
+                    wasBlockaded.Value
+                );
+                if (blockade != null)
+                    results.Add(blockade);
             }
 
             if (

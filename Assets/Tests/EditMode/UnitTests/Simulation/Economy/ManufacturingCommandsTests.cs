@@ -4712,6 +4712,52 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void StartManufacturing_OverflowingBatchMaintenance_RejectsEntireOrder()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet planet = CreateOrderTestShipyardPlanet(game, "p1", "empire");
+            ManufacturingCommands manager = new ManufacturingCommands(
+                game,
+                new FleetCommands(game),
+                new ManufacturingQueries(game)
+            );
+            CapitalShip template = CreateOrderTestCapitalShipTemplate(
+                "dreadnaught",
+                "Dreadnaught",
+                1_073_741_824
+            );
+
+            bool started = manager.StartManufacturing(planet, template, planet, 4, "empire");
+
+            Assert.IsFalse(started);
+            Assert.IsFalse(planet.GetManufacturingQueue().ContainsKey(ManufacturingType.Ship));
+            Assert.IsEmpty(planet.GetChildren<Fleet>());
+        }
+
+        [Test]
+        public void SetManufacturingOrder_OverflowingBatchMaintenance_RejectsEntireOrder()
+        {
+            GameRoot game = CreateOrderTestGame();
+            Planet planet = CreateOrderTestShipyardPlanet(game, "p1", "empire");
+            ManufacturingCommands manager = new ManufacturingCommands(
+                game,
+                new FleetCommands(game),
+                new ManufacturingQueries(game)
+            );
+            CapitalShip template = CreateOrderTestCapitalShipTemplate(
+                "dreadnaught",
+                "Dreadnaught",
+                1_073_741_824
+            );
+
+            bool set = manager.SetManufacturingOrder(planet, template, planet, 4, "empire");
+
+            Assert.IsFalse(set);
+            Assert.IsFalse(planet.GetManufacturingQueue().ContainsKey(ManufacturingType.Ship));
+            Assert.IsEmpty(planet.GetChildren<Fleet>());
+        }
+
+        [Test]
         public void StartManufacturing_VisiblePlanetSnapshots_UpdatesRegisteredPlanets()
         {
             GameRoot game = CreateOrderTestGame();
