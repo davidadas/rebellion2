@@ -195,7 +195,8 @@ public sealed class AppBootstrap : MonoBehaviour
         _userSettingsManager.Load();
         FrameRateMonitor.EnsureExists(
             transform,
-            () => _userSettingsManager?.Settings?.UserInterface?.ShowFrameRate == true
+            () => _userSettingsManager?.Settings?.UserInterface?.ShowFrameRate == true,
+            () => _graphicsManager?.PresentationFrameMultiplier ?? 1u
         );
         _runtime = new GameRuntime(
             _contentPack,

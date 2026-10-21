@@ -39,6 +39,7 @@ internal sealed class OptionsSettingsSession
     private int _snapshotQualityLevel;
     private bool _snapshotGraphicsPresetCustomized;
     private int _snapshotAntiAliasingMode;
+    private int _snapshotFrameGenerationMode;
     private int _snapshotFrameRateLimit;
     private bool _snapshotVerticalSync;
     private bool _snapshotRayTracing;
@@ -126,6 +127,7 @@ internal sealed class OptionsSettingsSession
         Video.QualityLevel = _snapshotQualityLevel;
         Video.GraphicsPresetCustomized = _snapshotGraphicsPresetCustomized;
         Video.AntiAliasingMode = _snapshotAntiAliasingMode;
+        Video.FrameGenerationMode = _snapshotFrameGenerationMode;
         Video.FrameRateLimit = _snapshotFrameRateLimit;
         Video.VerticalSync = _snapshotVerticalSync;
         Video.RayTracing = _snapshotRayTracing;
@@ -388,6 +390,13 @@ internal sealed class OptionsSettingsSession
                     Enum.GetValues(typeof(UserAntiAliasingMode)).Length
                 );
                 break;
+            case UserGraphicsSetting.FrameGeneration:
+                Video.FrameGenerationMode = StepWrapped(
+                    Video.FrameGenerationMode,
+                    delta,
+                    Enum.GetValues(typeof(UserFrameGenerationMode)).Length
+                );
+                break;
             case UserGraphicsSetting.VerticalSync:
                 Video.VerticalSync = !Video.VerticalSync;
                 break;
@@ -460,6 +469,7 @@ internal sealed class OptionsSettingsSession
         _snapshotQualityLevel = Video.QualityLevel;
         _snapshotGraphicsPresetCustomized = Video.GraphicsPresetCustomized;
         _snapshotAntiAliasingMode = Video.AntiAliasingMode;
+        _snapshotFrameGenerationMode = Video.FrameGenerationMode;
         _snapshotFrameRateLimit = Video.FrameRateLimit;
         _snapshotVerticalSync = Video.VerticalSync;
         _snapshotRayTracing = Video.RayTracing;
@@ -521,6 +531,7 @@ internal sealed class OptionsSettingsSession
             || Video.QualityLevel != _snapshotQualityLevel
             || Video.GraphicsPresetCustomized != _snapshotGraphicsPresetCustomized
             || Video.AntiAliasingMode != _snapshotAntiAliasingMode
+            || Video.FrameGenerationMode != _snapshotFrameGenerationMode
             || Video.FrameRateLimit != _snapshotFrameRateLimit
             || Video.VerticalSync != _snapshotVerticalSync
             || Video.RayTracing != _snapshotRayTracing
@@ -712,6 +723,13 @@ internal sealed class OptionsSettingsSession
                 UserAntiAliasingMode.Taa => "TAA",
                 _ => "Off",
             },
+            UserGraphicsSetting.FrameGeneration => (
+                (UserFrameGenerationMode)Video.FrameGenerationMode
+            ) switch
+            {
+                UserFrameGenerationMode.On => "On",
+                _ => "Off",
+            },
             UserGraphicsSetting.VerticalSync => GetToggleLabel(Video.VerticalSync),
             UserGraphicsSetting.FrameRateLimit => Video.FrameRateLimit == 0
                 ? "Unlimited"
@@ -736,6 +754,8 @@ internal sealed class OptionsSettingsSession
         {
             UserGraphicsSetting.FrameRateLimit => !Video.VerticalSync,
             UserGraphicsSetting.RayTracing => _graphicsManager?.RayTracingAvailable == true,
+            UserGraphicsSetting.FrameGeneration => Video.SupportsFrameGeneration
+                && _graphicsManager?.FrameGenerationAvailable == true,
             UserGraphicsSetting.HdrOutput => _graphicsManager?.HdrOutputAvailable == true,
             _ => true,
         };
@@ -748,9 +768,16 @@ internal sealed class OptionsSettingsSession
     /// <returns>The player-facing unavailability label.</returns>
     private string GetUnavailableGraphicsLabel(UserGraphicsSetting setting)
     {
-        return setting == UserGraphicsSetting.FrameRateLimit && Video.VerticalSync
-            ? "Controlled by VSync"
-            : "Unavailable";
+        if (setting == UserGraphicsSetting.FrameRateLimit && Video.VerticalSync)
+            return "Controlled by VSync";
+        if (setting == UserGraphicsSetting.FrameGeneration)
+        {
+            if (_graphicsManager?.FrameGenerationAvailable != true)
+                return "Unavailable";
+            if (!Video.SupportsFrameGeneration)
+                return "Off (Fullscreen)";
+        }
+        return "Unavailable";
     }
 
     /// <summary>

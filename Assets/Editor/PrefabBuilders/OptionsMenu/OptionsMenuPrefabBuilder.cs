@@ -459,6 +459,15 @@ public static class OptionsMenuPrefabBuilder
             previousButtons,
             nextButtons
         );
+        AppendGraphicsFieldRow(
+            graphicsContent,
+            UserGraphicsSetting.FrameGeneration,
+            "DLSS Frame Generation",
+            ref nextRowY,
+            valueFields,
+            previousButtons,
+            nextButtons
+        );
         AppendOptionsSectionHeader(
             graphicsContent,
             "RayTracingHeader",
