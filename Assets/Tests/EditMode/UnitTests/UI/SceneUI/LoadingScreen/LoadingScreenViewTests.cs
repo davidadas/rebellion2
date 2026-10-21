@@ -72,6 +72,18 @@ namespace Rebellion.Tests.UI.SceneUI.LoadingScreen
         }
 
         [Test]
+        public void GeneratedPrefab_ShuttleCamera_UsesCloseFlightFraming()
+        {
+            LoadingScreenView prefab = Resources.Load<LoadingScreenView>("UI/LoadingScreen");
+            Camera camera = prefab
+                .transform.Find("ShuttleRig/CameraOrbit/Camera")
+                .GetComponent<Camera>();
+
+            Assert.AreEqual(new Vector3(0f, 0.08f, -1f), camera.transform.localPosition);
+            Assert.AreEqual(32f, camera.fieldOfView);
+        }
+
+        [Test]
         public void PrepareEntrance_TransitionLayers_StartOverOutgoingScene()
         {
             LoadingScreenView prefab = Resources.Load<LoadingScreenView>("UI/LoadingScreen");
