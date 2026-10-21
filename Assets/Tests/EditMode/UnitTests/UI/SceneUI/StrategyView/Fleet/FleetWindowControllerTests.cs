@@ -14,6 +14,7 @@ using Rebellion.Simulation;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 using GameFleet = Rebellion.Game.Units.Fleet;
 
@@ -428,6 +429,41 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             _controller.RenderWindow(view, window, true);
 
             Assert.AreEqual(-1, _controller.GetSelectedFleetIndex(view));
+        }
+
+        [Test]
+        public void RenderWindow_EighteenFleets_ShowsUsableFleetListScrollbar()
+        {
+            _windowManager.SetContentSource(TestContent.Assets);
+            for (int index = 2; index <= 18; index++)
+            {
+                GameFleet fleet = CreateFleet($"fleet-{index}", $"Fleet {index}", out _);
+                _planet.Planet.AddChild(fleet);
+                AttachFleetGraph(_planet.Planet, fleet);
+            }
+            FleetWindowView view = OpenWindow(out UIWindow window);
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+
+            _controller.RenderWindow(view, window, true);
+
+            FleetListRowView[] rows = view.GetComponentsInChildren<FleetListRowView>(true)
+                .Where(row => row.gameObject.activeInHierarchy)
+                .ToArray();
+            ScrollAreaView scrollArea = rows[0].GetComponentInParent<ScrollAreaView>();
+            Scrollbar scrollbar = scrollArea.GetComponentInChildren<Scrollbar>(true);
+            PointerEventData scroll = new PointerEventData(null)
+            {
+                scrollDelta = new Vector2(0f, -1f),
+            };
+
+            scrollArea.RelayScroll(scroll);
+            for (int frame = 0; frame < 30; frame++)
+                scrollArea.AdvanceScroll(0.04f);
+
+            Assert.AreEqual(18, rows.Length);
+            Assert.IsTrue(scrollbar.gameObject.activeInHierarchy);
+            Assert.IsNotNull(scrollbar.handleRect.GetComponent<RawImage>().texture);
+            Assert.Greater(scrollArea.ContentRoot.anchoredPosition.y, 0f);
         }
 
         [Test]
