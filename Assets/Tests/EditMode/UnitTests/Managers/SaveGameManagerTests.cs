@@ -944,6 +944,40 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
+        public void SaveAndLoadGame_FleetNameSequence_PreservesNextNumber()
+        {
+            Faction faction = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
+            faction.CreateFleet();
+            faction.CreateFleet();
+            GameRoot game = new GameRoot { Galaxy = new GalaxyMap() };
+            game.GetFactions().Add(faction);
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+            Fleet fleet = loadedGame.GetFactions().Single().CreateFleet();
+
+            Assert.AreEqual("Fleet 3", fleet.GetDisplayName());
+        }
+
+        [Test]
+        public void LoadGameData_SaveWithoutFleetNameSequence_LoadsFaction()
+        {
+            Faction faction = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
+            faction.CreateFleet();
+            GameRoot game = new GameRoot { Galaxy = new GalaxyMap() };
+            game.GetFactions().Add(faction);
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            string savePath = _saveGameManager.GetSaveFilePath(_saveFileName);
+            string xml = File.ReadAllText(savePath)
+                .Replace("<NextFleetNumber>2</NextFleetNumber>", string.Empty);
+            File.WriteAllText(savePath, xml);
+
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+
+            Assert.AreEqual("FNALL1", loadedGame.GetFactions().Single().InstanceID);
+        }
+
+        [Test]
         public void SaveGameData_PlayerWithUIState_WritesUIState()
         {
             GameRoot game = BuildGameWithIgnoredItems();
