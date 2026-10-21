@@ -19,6 +19,7 @@ namespace Rebellion.Simulation
         private readonly PlanetaryControlCommands _commands;
         private readonly MovementCommands _movement;
         private readonly PlanetaryControlQueries _queries;
+        private readonly BlockadeTransitionResolver _blockadeTransitionResolver;
         private readonly ConditionalWeakTable<
             PlanetOwnershipChangedResult,
             List<GameResult>
@@ -34,17 +35,21 @@ namespace Rebellion.Simulation
         /// <param name="commands">The ownership and support operations.</param>
         /// <param name="movement">The movement operations used to evacuate displaced units.</param>
         /// <param name="queries">The planetary-control state queries.</param>
+        /// <param name="blockadeTransitionResolver">Resolves blockade changes after control transitions.</param>
         public PlanetaryControlObserver(
             GameRoot game,
             PlanetaryControlCommands commands,
             MovementCommands movement,
-            PlanetaryControlQueries queries
+            PlanetaryControlQueries queries,
+            BlockadeTransitionResolver blockadeTransitionResolver = null
         )
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
             _commands = commands ?? throw new ArgumentNullException(nameof(commands));
             _movement = movement ?? throw new ArgumentNullException(nameof(movement));
             _queries = queries ?? throw new ArgumentNullException(nameof(queries));
+            _blockadeTransitionResolver =
+                blockadeTransitionResolver ?? new BlockadeTransitionResolver(game);
         }
 
         /// <summary>
@@ -466,7 +471,12 @@ namespace Rebellion.Simulation
             }
 
             bool wasBlockaded = change.BlockadedFactionInstanceIDs?.Count > 0;
-            BlockadeTransitions.AddChangedResult(_game, change.Planet, wasBlockaded, results);
+            BlockadeChangedResult blockade = _blockadeTransitionResolver.Resolve(
+                change.Planet,
+                wasBlockaded
+            );
+            if (blockade != null)
+                results.Add(blockade);
 
             int shift;
             switch (change.Reason)
