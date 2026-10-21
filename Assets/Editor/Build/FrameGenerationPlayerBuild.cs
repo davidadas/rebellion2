@@ -6,7 +6,9 @@ using UnityEditor.Build.Reporting;
 /// <summary>
 /// Installs the early-loading bootstrap required by DLSS Frame Generation in Windows players.
 /// </summary>
-public sealed class FrameGenerationPlayerBuild : IPostprocessBuildWithReport
+public sealed class FrameGenerationPlayerBuild
+    : IPreprocessBuildWithReport,
+        IPostprocessBuildWithReport
 {
     private const string _bootstrapRelativePath =
         "Native/FrameGeneration/Bootstrap/UnityPlayerFrameGenerationProxy.dll";
@@ -17,15 +19,27 @@ public sealed class FrameGenerationPlayerBuild : IPostprocessBuildWithReport
     public int callbackOrder => 1000;
 
     /// <summary>
+    /// Removes player libraries left by an earlier build so Unity regenerates its own library
+    /// before the Frame Generation bootstrap is installed again.
+    /// </summary>
+    /// <param name="report">The pending Unity player build report.</param>
+    public void OnPreprocessBuild(BuildReport report)
+    {
+        if (!IsWindowsPlayer(report.summary.platform))
+        {
+            return;
+        }
+
+        RemovePlayerLibraries(report.summary.outputPath);
+    }
+
+    /// <summary>
     /// Installs the Frame Generation bootstrap after Unity has finished producing a Windows player.
     /// </summary>
     /// <param name="report">The completed Unity player build report.</param>
     public void OnPostprocessBuild(BuildReport report)
     {
-        if (
-            report.summary.platform
-            is not (BuildTarget.StandaloneWindows or BuildTarget.StandaloneWindows64)
-        )
+        if (!IsWindowsPlayer(report.summary.platform))
         {
             return;
         }
@@ -79,18 +93,43 @@ public sealed class FrameGenerationPlayerBuild : IPostprocessBuildWithReport
             );
         }
 
-        if (!FilesEqual(unityPlayerPath, bootstrapPath))
-        {
-            File.Copy(unityPlayerPath, unityPlayerCorePath, true);
-        }
-        else if (!File.Exists(unityPlayerCorePath))
+        if (FilesEqual(unityPlayerPath, bootstrapPath))
         {
             throw new BuildFailedException(
-                $"Unity player library backup not found at '{unityPlayerCorePath}'."
+                $"Generated Unity player library at '{unityPlayerPath}' is still the Frame Generation bootstrap."
             );
         }
 
+        File.Copy(unityPlayerPath, unityPlayerCorePath, true);
         File.Copy(bootstrapPath, unityPlayerPath, true);
+    }
+
+    /// <summary>
+    /// Determines whether a build target produces a Windows standalone player.
+    /// </summary>
+    /// <param name="target">The Unity build target.</param>
+    /// <returns><see langword="true"/> for Windows standalone targets.</returns>
+    private static bool IsWindowsPlayer(BuildTarget target)
+    {
+        return target is BuildTarget.StandaloneWindows or BuildTarget.StandaloneWindows64;
+    }
+
+    /// <summary>
+    /// Removes generated player libraries from an earlier Windows build.
+    /// </summary>
+    /// <param name="executablePath">The Windows player executable that will be rebuilt.</param>
+    private static void RemovePlayerLibraries(string executablePath)
+    {
+        string outputDirectory = Path.GetDirectoryName(executablePath);
+        if (string.IsNullOrWhiteSpace(outputDirectory) || !Directory.Exists(outputDirectory))
+        {
+            return;
+        }
+
+        string unityPlayerPath = Path.Combine(outputDirectory, "UnityPlayer.dll");
+        string unityPlayerCorePath = Path.Combine(outputDirectory, "UnityPlayerCore.dll");
+        File.Delete(unityPlayerPath);
+        File.Delete(unityPlayerCorePath);
     }
 
     /// <summary>
