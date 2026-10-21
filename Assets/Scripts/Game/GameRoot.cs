@@ -644,7 +644,9 @@ namespace Rebellion.Game
         public void RegisterOwnedUnit(ISceneNode node)
         {
             if (node.OwnerInstanceID != null)
+            {
                 GetFactionByOwnerInstanceID(node.OwnerInstanceID).AddOwnedUnit(node);
+            }
         }
 
         /// <summary>
@@ -654,7 +656,9 @@ namespace Rebellion.Game
         public void DeregsiterOwnedUnit(ISceneNode node)
         {
             if (node.OwnerInstanceID != null)
+            {
                 GetFactionByOwnerInstanceID(node.OwnerInstanceID).RemoveOwnedUnit(node);
+            }
         }
 
         /// <summary>
