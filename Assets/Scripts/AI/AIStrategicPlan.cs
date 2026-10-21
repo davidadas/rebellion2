@@ -30,6 +30,178 @@ namespace Rebellion.AI
         > _infrastructureTargetsByPlanetId = new(StringComparer.Ordinal);
         private readonly Dictionary<string, AIPlanetDefenseCommitment> _defenseByPlanetId =
             new Dictionary<string, AIPlanetDefenseCommitment>(StringComparer.Ordinal);
+        private readonly Dictionary<
+            (string PlanetId, BuildingType Type, int Target, int Needed),
+            IReadOnlyList<Building>
+        > _resourceReclamationCache = new();
+        private readonly Dictionary<
+            string,
+            IReadOnlyList<Building>
+        > _resourceReclamationByPlanetId = new(StringComparer.Ordinal);
+        private readonly Dictionary<
+            string,
+            (int MaintenanceHeadroom, double RawOutputPerTick, double RefinedOutputPerTick)
+        > _resourceEconomyCache = new(StringComparer.Ordinal);
+
+        /// <summary>
+        /// Finds the smallest complete resource retirement that makes a requested hub fit.
+        /// </summary>
+        /// <param name="planet">The prospective industrial destination.</param>
+        /// <param name="buildingType">The requested production category.</param>
+        /// <param name="targetCount">The full hub target.</param>
+        /// <param name="refresh">Whether live state must be reevaluated before execution.</param>
+        /// <returns>The exact facilities to reclaim, or none if the whole expansion cannot fit safely.</returns>
+        internal IReadOnlyList<Building> GetResourceFacilitiesToReclaim(
+            Planet planet,
+            BuildingType buildingType,
+            int targetCount,
+            bool refresh = false
+        )
+        {
+            if (
+                !IsInfrastructureType(buildingType)
+                || planet == null
+                || !_assessment.IsOwnedPlanet(planet)
+                || !planet.IsColonized
+                || planet.IsDestroyed
+                || planet.IsInUprising
+                || planet.IsBlockadedFor(planet.GetOwnerInstanceID())
+            )
+                return Array.Empty<Building>();
+            int needed = Math.Max(
+                0,
+                targetCount
+                    - planet.GetTotalBuildingTypeCount(buildingType)
+                    - GetConstructionSpace(planet, buildingType, false)
+            );
+            if (needed == 0)
+                return Array.Empty<Building>();
+            var key = (planet.InstanceID, buildingType, targetCount, needed);
+            if (!refresh && _resourceReclamationCache.TryGetValue(key, out var cached))
+                return cached;
+            if (refresh)
+                _resourceEconomyCache.Clear();
+            if (
+                _assessment.ProjectedMaintenanceHeadroom
+                < _game.Config.AI.Selection.MaintenanceHeadroomTarget
+            )
+            {
+                _resourceReclamationCache[key] = Array.Empty<Building>();
+                return Array.Empty<Building>();
+            }
+            List<Building> candidates = planet
+                .GetChildren<Building>()
+                .Where(building =>
+                    building.BuildingType is BuildingType.Mine or BuildingType.Refinery
+                    && building.GetOwnerInstanceID() == planet.GetOwnerInstanceID()
+                    && building.IsEnabled
+                    && building.ManufacturingStatus == ManufacturingStatus.Complete
+                    && building.Movement == null
+                )
+                .OrderByDescending(building =>
+                    building.BuildingType == BuildingType.Mine
+                        ? _assessment.AvailableMinedResourceCapacity
+                            - _assessment.AvailableMaterialCapacity
+                        : _assessment.AvailableRefinementCapacity
+                            - _assessment.AvailableMaterialCapacity
+                )
+                .ThenByDescending(building => building.ProcessRate)
+                .ThenBy(building => building.InstanceID, StringComparer.Ordinal)
+                .ToList();
+            if (candidates.Count < needed)
+            {
+                _resourceReclamationCache[key] = Array.Empty<Building>();
+                return Array.Empty<Building>();
+            }
+            List<Building> selected = new();
+            List<Building> otherRetirements = _resourceReclamationByPlanetId
+                .Where(entry => entry.Key != planet.InstanceID)
+                .SelectMany(entry => entry.Value)
+                .ToList();
+            ResourceProductionQueries economy = new(_game);
+            var faction = _game.GetFactionByOwnerInstanceID(planet.GetOwnerInstanceID());
+            int missingFacilities = Math.Max(
+                0,
+                targetCount - planet.GetTotalBuildingTypeCount(buildingType)
+            );
+            List<Building> templates = faction
+                .GetUnlockedTechnologies(ManufacturingType.Building)
+                .Select(technology => technology.GetReference())
+                .OfType<Building>()
+                .Where(building => building.BuildingType == buildingType)
+                .ToList();
+            if (templates.Count == 0)
+            {
+                _resourceReclamationCache[key] = Array.Empty<Building>();
+                return Array.Empty<Building>();
+            }
+            int hubMaintenance =
+                missingFacilities * templates.Max(building => building.MaintenanceCost);
+            int hubMaterials =
+                missingFacilities * templates.Max(building => building.ConstructionCost);
+            foreach (Building candidate in candidates)
+            {
+                var excluded = otherRetirements.Concat(selected).Append(candidate).ToList();
+                string economyKey = string.Join(
+                    "|",
+                    excluded
+                        .Select(building => building.InstanceID)
+                        .Distinct()
+                        .OrderBy(id => id, StringComparer.Ordinal)
+                );
+                if (!_resourceEconomyCache.TryGetValue(economyKey, out var after))
+                {
+                    after = economy.GetOperatingEconomy(faction, excluded);
+                    _resourceEconomyCache[economyKey] = after;
+                }
+                int horizon = Math.Max(
+                    0,
+                    _game.Config.AI.Selection.RefinedMaterialCommitmentHorizonTicks
+                );
+                double production = Math.Min(after.RawOutputPerTick, after.RefinedOutputPerTick);
+                double materials =
+                    faction.RefinedMaterialStockpile
+                    + production * horizon
+                    - _assessment.NearTermRefinedMaterialCommitment
+                    - hubMaterials;
+                double materialReserve =
+                    _assessment.RefinedMaterialSupply
+                    * _game.Config.AI.Selection.RefinedMaterialEconomyWarningPercent
+                    / 100d;
+                if (
+                    after.MaintenanceHeadroom - hubMaintenance
+                        < _game.Config.AI.Selection.MaintenanceHeadroomTarget
+                    || after.RawOutputPerTick <= 0
+                    || after.RefinedOutputPerTick <= 0
+                    || materials < materialReserve
+                )
+                    continue;
+                selected.Add(candidate);
+                if (selected.Count == needed)
+                    break;
+            }
+            IReadOnlyList<Building> result =
+                selected.Count == needed ? selected : Array.Empty<Building>();
+            _resourceReclamationCache[key] = result;
+            return result;
+        }
+
+        /// <summary>
+        /// Returns capacity available to a full hub after affordable resource reclamation.
+        /// </summary>
+        /// <param name="planet">The proposed hub destination.</param>
+        /// <param name="buildingType">The production category being assigned.</param>
+        /// <param name="targetCount">The full hub target.</param>
+        /// <returns>Actual free capacity plus the exact eligible resource reclamation.</returns>
+        internal int GetReclaimableInfrastructureSpace(
+            Planet planet,
+            BuildingType buildingType,
+            int targetCount
+        )
+        {
+            return GetAvailableConstructionSpace(planet, buildingType)
+                + GetResourceFacilitiesToReclaim(planet, buildingType, targetCount).Count;
+        }
 
         /// <summary>
         /// Returns the number of independently deployable battle fleets allocated for this turn.
@@ -275,14 +447,24 @@ namespace Rebellion.AI
         /// <param name="planet">The chosen hub destination.</param>
         /// <param name="buildingType">The production category being assigned.</param>
         /// <param name="targetCount">The finished industrial target.</param>
+        /// <param name="reclaimResources">Whether surplus resources may be reserved for retirement.</param>
         /// <returns>True when the allocation fits and has been recorded.</returns>
         public bool TryAllocateInfrastructureHub(
             Planet planet,
             BuildingType buildingType,
-            int targetCount
+            int targetCount,
+            bool reclaimResources = false
         )
         {
-            if (!CanAllocateInfrastructureHub(planet, buildingType, targetCount))
+            IReadOnlyList<Building> resources = Array.Empty<Building>();
+            if (
+                !CanAllocateInfrastructureHub(planet, buildingType, targetCount) && reclaimResources
+            )
+                resources = GetResourceFacilitiesToReclaim(planet, buildingType, targetCount);
+            if (
+                !CanAllocateInfrastructureHub(planet, buildingType, targetCount)
+                && resources.Count == 0
+            )
                 return false;
             if (!_infrastructureTargetsByPlanetId.TryGetValue(planet.InstanceID, out var targets))
             {
@@ -290,6 +472,11 @@ namespace Rebellion.AI
                 _infrastructureTargetsByPlanetId.Add(planet.InstanceID, targets);
             }
             targets[buildingType] = targetCount;
+            if (resources.Count > 0)
+            {
+                _resourceReclamationByPlanetId[planet.InstanceID] = resources;
+                _resourceReclamationCache.Clear();
+            }
             return true;
         }
 

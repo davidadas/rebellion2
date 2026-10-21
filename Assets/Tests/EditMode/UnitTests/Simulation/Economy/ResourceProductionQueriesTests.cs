@@ -110,6 +110,94 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void GetSummary_ExcludedMineWithSpareMine_UsesReplacementWithoutChangingGraph()
+        {
+            Planet planet = AddPlanet("planet", rawResourceNodes: 1);
+            Building mine = AddBuilding(planet, BuildingType.Mine, processRate: 1);
+            AddBuilding(planet, BuildingType.Mine, processRate: 1);
+            AddBuilding(planet, BuildingType.Refinery, processRate: 1);
+
+            ResourceEconomySummary after = new ResourceProductionQueries(_game).GetSummary(
+                _faction,
+                new[] { mine }
+            );
+
+            Assert.AreEqual(1, after.Mines.Active);
+            Assert.AreEqual(50, after.MaintenanceHeadroom);
+            Assert.AreSame(mine, _game.GetSceneNodeByInstanceID<Building>(mine.InstanceID));
+            Assert.AreSame(planet, mine.GetParent());
+        }
+
+        [Test]
+        public void GetSummary_ExcludedResourceWithHardBonus_MatchesCapacityAfterRemoval()
+        {
+            _game.Summary = new GameSummary { Difficulty = GameDifficulty.Hard };
+            _game.SetFactionController(_faction.InstanceID, "FACTION1-AI", PlayerControllerType.AI);
+            _game.Config.DifficultyModifiers[GameDifficulty.Hard] = new DifficultyModifiers
+            {
+                MaintenanceCapacityPercent = 150,
+            };
+            Planet planet = AddPlanet("planet", rawResourceNodes: 2);
+            Building mine = AddBuilding(planet, BuildingType.Mine, processRate: 1);
+            AddBuilding(planet, BuildingType.Mine, processRate: 1);
+            AddBuilding(planet, BuildingType.Refinery, processRate: 1);
+            AddBuilding(planet, BuildingType.Refinery, processRate: 1);
+            ResourceProductionQueries queries = new(_game);
+
+            ResourceEconomySummary projected = queries.GetSummary(_faction, new[] { mine });
+            _game.DeleteNode(mine);
+            ResourceEconomySummary actual = queries.GetSummary(_faction);
+
+            Assert.AreEqual(75, projected.MaintenanceHeadroom);
+            Assert.AreEqual(actual.MaintenanceHeadroom, projected.MaintenanceHeadroom);
+        }
+
+        [Test]
+        public void GetSummary_ExcludedResourceWithQueuedUnit_ReservesUnfinishedMaintenance()
+        {
+            Planet planet = AddPlanet("planet", rawResourceNodes: 2);
+            Building mine = AddBuilding(planet, BuildingType.Mine, processRate: 1);
+            AddBuilding(planet, BuildingType.Mine, processRate: 1);
+            AddBuilding(planet, BuildingType.Refinery, processRate: 1);
+            AddBuilding(planet, BuildingType.Refinery, processRate: 1);
+            _game.AttachNode(
+                new Regiment
+                {
+                    InstanceID = "queued",
+                    OwnerInstanceID = _faction.InstanceID,
+                    ManufacturingStatus = ManufacturingStatus.Building,
+                    MaintenanceCost = 60,
+                },
+                planet
+            );
+
+            ResourceEconomySummary after = new ResourceProductionQueries(_game).GetSummary(
+                _faction,
+                new[] { mine }
+            );
+
+            Assert.AreEqual(-10, after.MaintenanceHeadroom);
+        }
+
+        [Test]
+        public void GetOperatingEconomy_ExcludedResource_MatchesFullSummaryProjection()
+        {
+            Planet planet = AddPlanet("planet", rawResourceNodes: 2);
+            Building mine = AddBuilding(planet, BuildingType.Mine, processRate: 2);
+            AddBuilding(planet, BuildingType.Mine, processRate: 1);
+            AddBuilding(planet, BuildingType.Refinery, processRate: 3);
+            AddBuilding(planet, BuildingType.Refinery, processRate: 2);
+            ResourceProductionQueries queries = new(_game);
+
+            var operating = queries.GetOperatingEconomy(_faction, new[] { mine });
+            ResourceEconomySummary summary = queries.GetSummary(_faction, new[] { mine });
+
+            Assert.AreEqual(summary.MaintenanceHeadroom, operating.MaintenanceHeadroom);
+            Assert.AreEqual(summary.RawOutputPerTick, operating.RawOutputPerTick);
+            Assert.AreEqual(summary.RefinedOutputPerTick, operating.RefinedOutputPerTick);
+        }
+
+        [Test]
         public void GetSummary_HardAiMaintenanceBonus_IncreasesEffectiveCapacity()
         {
             _game.Summary = new GameSummary { Difficulty = GameDifficulty.Hard };

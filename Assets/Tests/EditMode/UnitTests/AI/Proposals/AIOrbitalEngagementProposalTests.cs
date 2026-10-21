@@ -17,6 +17,27 @@ namespace Rebellion.Tests.AI.Fleets
     [TestFixture]
     public class AIOrbitalEngagementProposalTests
     {
+        [TestCase(50, true)]
+        [TestCase(51, false)]
+        public void CanExecute_HeadquartersIntelAge_EnforcesLimit(int intelAge, bool expected)
+        {
+            EngagementScenario scenario = CreateScenario(includeHostileFleet: true);
+            GameRoot game = scenario.Context.Game;
+            Faction faction = scenario.Context.Faction;
+            scenario.Target.IsHeadquarters = true;
+            scenario.Fleet.GetChildren<CapitalShip>().Single().HasGravityWell = true;
+            AITestSceneBuilder.RevealPlanet(game, faction, scenario.Target);
+            game.CurrentTick = intelAge;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
+            AIOrbitalEngagementProposal proposal = new AIOrbitalEngagementProposal(
+                scenario.Fleet,
+                context.Assessment.GetKnownPlanet(scenario.Target.InstanceID),
+                scenario.Origin
+            );
+
+            Assert.AreEqual(expected, proposal.CanExecute(context));
+        }
+
         [Test]
         public void Execute_NewEngagement_MovesFleetAndRecordsOrigin()
         {

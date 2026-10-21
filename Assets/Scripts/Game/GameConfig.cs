@@ -373,6 +373,9 @@ namespace Rebellion.Game
 
             public int AttackIntelAgeGraceTicks { get; set; }
 
+            /// <summary>Maximum intelligence age in ticks for starting an attack on a headquarters.</summary>
+            public int HeadquartersAttackMaximumIntelAgeTicks { get; set; } = 50;
+
             public double AttackReadinessFloorWeight { get; set; }
 
             public AIAttackUtilityConfig AttackUtility { get; set; } = new AIAttackUtilityConfig();

@@ -44,6 +44,57 @@ namespace Rebellion.Simulation
                 .Sum(ship => GetCapitalShipCombatValueAgainstCapitalShips(ship, config, modifiers));
         }
 
+        /// <summary>Returns completed ships' strength once their observed travel has finished.</summary>
+        /// <param name="fleet">The observed fleet.</param>
+        /// <param name="config">The space-combat rules.</param>
+        /// <param name="arrivalTicks">Ticks available for observed movement to finish.</param>
+        /// <returns>The capital-target strength available at arrival.</returns>
+        internal static int GetFleetCombatValueAgainstCapitalShipsAtArrival(
+            Fleet fleet,
+            GameConfig.SpaceCombatConfig config,
+            int arrivalTicks
+        )
+        {
+            if (fleet == null || config == null || !HasArrived(fleet.Movement, arrivalTicks))
+                return 0;
+            SpaceCombatCommandModifiers modifiers = SpaceCombatCommands.GetCommandModifiers(
+                new[] { fleet },
+                null,
+                fleet.GetOwnerInstanceID()
+            );
+            return fleet
+                .GetChildren<CapitalShip>()
+                .Sum(ship =>
+                    GetCapitalShipCombatValueAgainstCapitalShips(
+                        ship,
+                        config,
+                        modifiers,
+                        arrivalTicks
+                    )
+                );
+        }
+
+        /// <summary>Checks current readiness or completion of an observed movement.</summary>
+        /// <param name="movement">The observed movement, if any.</param>
+        /// <param name="arrivalTicks">The available travel window, or null for current readiness only.</param>
+        /// <returns>True when movement does not prevent participation.</returns>
+        private static bool HasArrived(MovementState movement, int? arrivalTicks)
+        {
+            return movement == null
+                || arrivalTicks.HasValue && movement.TicksRemaining() <= arrivalTicks.Value;
+        }
+
+        /// <summary>Checks whether manufacture is complete, including finished units being delivered.</summary>
+        /// <param name="unit">The manufactured unit.</param>
+        /// <param name="arrivalTicks">The travel window, or null for present readiness.</param>
+        /// <returns>True when manufacturing does not require a future completion assumption.</returns>
+        private static bool IsManufacturedForArrival(IManufacturable unit, int? arrivalTicks)
+        {
+            return unit?.ManufacturingStatus == ManufacturingStatus.Complete
+                || arrivalTicks.HasValue
+                    && unit?.ManufacturingStatus == ManufacturingStatus.Delivering;
+        }
+
         /// <summary>
         /// Returns the projected strength of a fleet against capital ships.
         /// </summary>
@@ -80,17 +131,19 @@ namespace Rebellion.Simulation
         /// <param name="ship">The capital ship to inspect.</param>
         /// <param name="config">The space-combat rules.</param>
         /// <param name="command">The fleet's effective command ratings.</param>
+        /// <param name="arrivalTicks">The observed travel window, or null for current readiness.</param>
         /// <returns>The ship group's capital-target combat value.</returns>
         private static int GetCapitalShipCombatValueAgainstCapitalShips(
             CapitalShip ship,
             GameConfig.SpaceCombatConfig config,
-            SpaceCombatCommandModifiers command
+            SpaceCombatCommandModifiers command,
+            int? arrivalTicks = null
         )
         {
             if (
                 ship == null
-                || ship.ManufacturingStatus != ManufacturingStatus.Complete
-                || ship.Movement != null
+                || !IsManufacturedForArrival(ship, arrivalTicks)
+                || !HasArrived(ship.Movement, arrivalTicks)
                 || (ship.MaxHullStrength > 0 && ship.CurrentHullStrength <= 0)
             )
                 return 0;
@@ -99,7 +152,12 @@ namespace Rebellion.Simulation
                 + ship.GetChildren<Starfighter>()
                     .Where(fighter => fighter != null)
                     .Sum(fighter =>
-                        GetReadyCarriedStarfighterCombatValue(fighter, config, command)
+                        GetReadyCarriedStarfighterCombatValue(
+                            fighter,
+                            config,
+                            command,
+                            arrivalTicks
+                        )
                     );
         }
 
@@ -267,12 +325,16 @@ namespace Rebellion.Simulation
         /// Returns a ready starfighter squadron's firepower against capital ships.
         /// </summary>
         /// <param name="fighter">The starfighter squadron to inspect.</param>
+        /// <param name="arrivalTicks">The observed travel window, or null for current readiness.</param>
         /// <returns>The capital-target firepower.</returns>
-        internal static int GetStarfighterFirepowerAgainstCapitalShips(Starfighter fighter)
+        internal static int GetStarfighterFirepowerAgainstCapitalShips(
+            Starfighter fighter,
+            int? arrivalTicks = null
+        )
         {
             return
-                fighter?.ManufacturingStatus == ManufacturingStatus.Complete
-                && fighter.Movement == null
+                IsManufacturedForArrival(fighter, arrivalTicks)
+                && HasArrived(fighter.Movement, arrivalTicks)
                 ? GetStarfighterFirepower(
                     fighter,
                     fighter.CurrentSquadronSize,
@@ -285,12 +347,16 @@ namespace Rebellion.Simulation
         /// Returns a ready starfighter squadron's firepower against starfighters.
         /// </summary>
         /// <param name="fighter">The starfighter squadron to inspect.</param>
+        /// <param name="arrivalTicks">The observed travel window, or null for current readiness.</param>
         /// <returns>The fighter-target firepower.</returns>
-        internal static int GetStarfighterFirepowerAgainstStarfighters(Starfighter fighter)
+        internal static int GetStarfighterFirepowerAgainstStarfighters(
+            Starfighter fighter,
+            int? arrivalTicks = null
+        )
         {
             return
-                fighter?.ManufacturingStatus == ManufacturingStatus.Complete
-                && fighter.Movement == null
+                IsManufacturedForArrival(fighter, arrivalTicks)
+                && HasArrived(fighter.Movement, arrivalTicks)
                 ? GetStarfighterFirepower(
                     fighter,
                     fighter.CurrentSquadronSize,
@@ -417,16 +483,18 @@ namespace Rebellion.Simulation
         /// <param name="fighter">The fighter squadron to inspect.</param>
         /// <param name="config">The space-combat rules.</param>
         /// <param name="command">The fleet's effective command ratings.</param>
+        /// <param name="arrivalTicks">The observed travel window, or null for current readiness.</param>
         /// <returns>The squadron's ready combat value.</returns>
         private static int GetReadyCarriedStarfighterCombatValue(
             Starfighter fighter,
             GameConfig.SpaceCombatConfig config,
-            SpaceCombatCommandModifiers command
+            SpaceCombatCommandModifiers command,
+            int? arrivalTicks = null
         )
         {
             if (
-                fighter.ManufacturingStatus != ManufacturingStatus.Complete
-                || fighter.Movement != null
+                !IsManufacturedForArrival(fighter, arrivalTicks)
+                || !HasArrived(fighter.Movement, arrivalTicks)
             )
                 return 0;
 

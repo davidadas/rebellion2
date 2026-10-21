@@ -113,7 +113,6 @@ namespace Rebellion.AI
                     new IAIProposalPlanner[]
                     {
                         new AIAbortMissionPlanner(),
-                        new AIFacilityRemovalPlanner(),
                         new AIHeadquartersRelocationPlanner(),
                         new AIMissionPlanner(),
                         new AIOrbitalEngagementPlanner(),
@@ -125,6 +124,7 @@ namespace Rebellion.AI
                     new IAIProposalPlanner[]
                     {
                         productionPlanner,
+                        new AIFacilityRemovalPlanner(),
                         new AIMaintenanceRecoveryPlanner(),
                     }
                 ),

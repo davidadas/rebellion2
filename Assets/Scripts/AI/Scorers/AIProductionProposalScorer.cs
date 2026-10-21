@@ -657,7 +657,7 @@ namespace Rebellion.AI.Scorers
                 .Infrastructure
                 .DemandUtility
                 .FleetReadiness;
-            AIAttackDemand attackDemand = context.GetAttackDemand(targetPlanet);
+            AIAttackDemand attackDemand = context.GetAttackDemand(targetPlanet, fleet);
             int requiredCombat = attackDemand?.CombatStrength ?? 0;
             int requiredRegiments = GetProjectedRegimentCount(context, fleet, targetPlanet);
             double combatReadiness = GetFulfillmentRatio(
@@ -710,13 +710,13 @@ namespace Rebellion.AI.Scorers
                 return 0;
             bool combatReady =
                 context.Assessment.GetProjectedFleetCombatValueAgainstCapitalShips(fleet)
-                >= (context.GetAttackDemand(targetPlanet)?.CombatStrength ?? 0);
+                >= (context.GetAttackDemand(targetPlanet, fleet)?.CombatStrength ?? 0);
             int requiredRegiments = GetProjectedRegimentCount(context, fleet, targetPlanet);
             bool capacityReady =
                 context.Assessment.GetFleetRegimentCapacity(fleet) >= requiredRegiments;
             bool bombardmentReady =
                 context.Assessment.GetProjectedFleetBombardmentStrength(fleet)
-                >= (context.GetAttackDemand(targetPlanet)?.BombardmentStrength ?? 0);
+                >= (context.GetAttackDemand(targetPlanet, fleet)?.BombardmentStrength ?? 0);
             if (!combatReady || !capacityReady || !bombardmentReady)
                 return 0;
             return AIUtility.EvaluateDiscretePressure(
@@ -750,7 +750,7 @@ namespace Rebellion.AI.Scorers
             Planet targetPlanet
         )
         {
-            AIAttackDemand demand = context.GetAttackDemand(targetPlanet);
+            AIAttackDemand demand = context.GetAttackDemand(targetPlanet, fleet);
             if (demand == null)
                 return 0;
             bool canBombardDefenders =

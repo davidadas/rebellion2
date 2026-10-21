@@ -4,6 +4,7 @@ using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Units;
 using Rebellion.Simulation;
 using Rebellion.Util.Mathematics;
 
@@ -20,7 +21,100 @@ namespace Rebellion.AI.Demands
         /// <param name="context">The current AI turn context.</param>
         public void Generate(AITurnContext context)
         {
-            context?.SetAttackDemands(BuildDemands(context));
+            IReadOnlyList<AIAttackDemand> demands = BuildDemands(context);
+            context?.SetAttackDemands(demands);
+            if (context?.Assessment == null || context.MovementQueries == null)
+                return;
+            foreach (AIAttackDemand demand in demands)
+            {
+                bool hasInbound =
+                    context
+                        .Assessment.GetHostileFleets(demand.TargetPlanet)
+                        .Any(fleet =>
+                            fleet.Movement != null
+                            || fleet
+                                .GetChildren<CapitalShip>()
+                                .Any(ship =>
+                                    ship.Movement != null
+                                    || ship.GetChildren<Starfighter>()
+                                        .Any(fighter => fighter.Movement != null)
+                                )
+                        )
+                    || demand
+                        .TargetPlanet.GetAllStarfighters()
+                        .Any(fighter => fighter.Movement != null);
+                if (!hasInbound)
+                    continue;
+                foreach (
+                    Fleet fleet in context.Assessment.OwnedFleets.Where(fleet =>
+                        fleet.RoleType == FleetRoleType.Battle
+                    )
+                )
+                    context.SetFleetAttackDemand(fleet, BuildArrivalDemand(context, fleet, demand));
+            }
+        }
+
+        /// <summary>Measures known defenders expected to be available when one fleet reaches its target.</summary>
+        /// <param name="context">The current faction assessment.</param>
+        /// <param name="fleet">The prospective attacking fleet.</param>
+        /// <param name="demand">The target's current ground and orbital requirements.</param>
+        /// <returns>The requirements for this fleet's arrival, without changing any orders.</returns>
+        private static AIAttackDemand BuildArrivalDemand(
+            AITurnContext context,
+            Fleet fleet,
+            AIAttackDemand demand
+        )
+        {
+            Planet origin = context.Assessment.GetFleetPlanet(fleet);
+            if (origin == null)
+                return demand;
+            int arrivalTicks = fleet.Movement?.TicksRemaining() ?? 0;
+            if (origin.InstanceID != demand.TargetPlanet.InstanceID)
+                arrivalTicks = (int)
+                    Math.Min(
+                        int.MaxValue,
+                        (long)arrivalTicks
+                            + context.MovementQueries.CalculateTransitTicks(
+                                fleet,
+                                origin,
+                                demand.TargetPlanet
+                            )
+                    );
+            var defense = context.Assessment.GetHostileOrbitalCapabilitiesAtArrival(
+                demand.TargetPlanet,
+                arrivalTicks
+            );
+            GameConfig.AIFleetDeploymentConfig config = context.Game.Config.AI.FleetDeployment;
+            int orbital = IntegerMath.ScaleByPercent(
+                defense.Combat,
+                config.AttackStrengthPercentOfStrongestHostileFleet
+            );
+            int combat = IntegerMath.ScaleByPercent(
+                Math.Max(config.MinimumAttackStrength, orbital),
+                GetIntelReservePercent(context, demand.TargetPlanet)
+            );
+            return new AIAttackDemand(
+                demand.TargetPlanet,
+                combat,
+                orbital,
+                IntegerMath.ScaleByPercent(
+                    defense.CapitalFirepower,
+                    config.AssaultFleetCompositionReservePercent
+                ),
+                IntegerMath.ScaleByPercent(
+                    defense.FighterFirepower,
+                    config.AssaultFleetCompositionReservePercent
+                ),
+                IntegerMath.ScaleByPercent(
+                    defense.Fighters,
+                    config.AssaultFleetCompositionReservePercent
+                ),
+                demand.RegimentStrength,
+                demand.RegimentCount,
+                demand.OccupationRegimentCount,
+                demand.BombardmentStrength,
+                demand.IsAssaultBlockedByShields
+            );
         }
 
         /// <summary>

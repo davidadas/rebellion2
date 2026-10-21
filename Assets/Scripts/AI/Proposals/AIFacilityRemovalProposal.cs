@@ -3,11 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
+using Rebellion.Simulation;
 
 namespace Rebellion.AI.Proposals
 {
     /// <summary>
-    /// Removes an explicitly planned quantity of faction-wide surplus production facilities.
+    /// Removes surplus facilities or reclaims resource buildings for an allocated industrial hub.
     /// </summary>
     public sealed class AIFacilityRemovalProposal : AIProposal
     {
@@ -22,6 +23,21 @@ namespace Rebellion.AI.Proposals
         public int MaximumRemovalCount { get; }
 
         public int MinimumFactionFacilityCount { get; }
+        internal BuildingType ResourceHubType { get; }
+        private int ResourceHubTarget { get; }
+
+        /// <summary>
+        /// Creates an exact resource-reclamation request for a full industrial hub.
+        /// </summary>
+        /// <param name="planet">The allocated industrial destination.</param>
+        /// <param name="hubType">The production category requiring space.</param>
+        /// <param name="targetCount">The finished hub size.</param>
+        internal AIFacilityRemovalProposal(Planet planet, BuildingType hubType, int targetCount)
+        {
+            Planet = planet;
+            ResourceHubType = hubType;
+            ResourceHubTarget = targetCount;
+        }
 
         /// <summary>
         /// Creates a facility-removal proposal.
@@ -49,7 +65,9 @@ namespace Rebellion.AI.Proposals
         /// <returns>The facility-removal sort key.</returns>
         public override string GetSortKey()
         {
-            return $"facility-removal:{Planet?.InstanceID}:{BuildingType}";
+            return ResourceHubType == BuildingType.None
+                ? $"facility-removal:{Planet?.InstanceID}:{BuildingType}"
+                : $"facility-removal:{Planet?.InstanceID}:resources:{ResourceHubType}";
         }
 
         /// <summary>
@@ -59,7 +77,10 @@ namespace Rebellion.AI.Proposals
         /// <returns>True when the proposal can be selected.</returns>
         public override bool CanSelect(AITurnContext context)
         {
-            return IsValid(context);
+            return IsValid(context)
+                && (
+                    ResourceHubType == BuildingType.None || GetResourceFacilities(context).Count > 0
+                );
         }
 
         /// <summary>
@@ -85,6 +106,33 @@ namespace Rebellion.AI.Proposals
         /// <param name="context">The current AI turn context.</param>
         public override void Execute(AITurnContext context)
         {
+            if (ResourceHubType != BuildingType.None)
+            {
+                if (!IsValid(context))
+                    return;
+                while (true)
+                {
+                    var resources = GetResourceFacilities(context, refresh: true);
+                    int before = ResourceProductionQueries.CalculateMaintenanceHeadroom(
+                        context.Game,
+                        context.Faction
+                    );
+                    if (
+                        resources.Count == 0
+                        || !context.Maintenance.TryScrap(
+                            new IManufacturable[] { resources[0] },
+                            context.Faction.InstanceID
+                        )
+                    )
+                        break;
+                    int after = ResourceProductionQueries.CalculateMaintenanceHeadroom(
+                        context.Game,
+                        context.Faction
+                    );
+                    context.CommitMaintenanceCost(Math.Max(0, before - after));
+                }
+                return;
+            }
             if (_surplus.Count == 0 && !CanExecute(context))
                 return;
 
@@ -120,6 +168,9 @@ namespace Rebellion.AI.Proposals
         {
             if (context?.Assessment == null || planet == null)
                 return new List<Building>();
+
+            if (ResourceHubType != BuildingType.None)
+                return GetResourceFacilities(context).ToList();
 
             return GetFacilities(context, planet)
                 .Where(building =>
@@ -171,7 +222,33 @@ namespace Rebellion.AI.Proposals
                 && context.Manufacturing != null
                 && IsOwnedBy(context, Planet)
                 && context.Game.GetSceneNodeByInstanceID<Planet>(Planet.InstanceID) == Planet
-                && BuildingType == BuildingType.Shipyard;
+                && (
+                    ResourceHubType == BuildingType.None
+                        ? BuildingType == BuildingType.Shipyard
+                        : context.StrategicPlan.GetAllocatedInfrastructureTarget(
+                            Planet,
+                            ResourceHubType
+                        ) == ResourceHubTarget
+                );
+        }
+
+        /// <summary>
+        /// Revalidates the economy and exact space needed by the allocated hub.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="refresh">Whether cached planning results must be bypassed.</param>
+        /// <returns>The resource facilities that can be retired together.</returns>
+        internal IReadOnlyList<Building> GetResourceFacilities(
+            AITurnContext context,
+            bool refresh = false
+        )
+        {
+            return context.StrategicPlan.GetResourceFacilitiesToReclaim(
+                Planet,
+                ResourceHubType,
+                ResourceHubTarget,
+                refresh
+            );
         }
     }
 }

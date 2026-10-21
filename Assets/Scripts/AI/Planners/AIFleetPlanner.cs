@@ -96,7 +96,7 @@ namespace Rebellion.AI.Planners
             foreach (Fleet fleet in context.Assessment.AttackOrderedFleets)
             {
                 Planet target = context.Assessment.GetKnownPlanet(fleet.Order.TargetPlanetId);
-                if (context.GetAttackDemand(target) == null)
+                if (context.GetAttackDemand(target, fleet) == null)
                     continue;
                 foreach (
                     Officer officer in context.Assessment.AvailableMissionParticipants.OfType<Officer>()
@@ -533,6 +533,16 @@ namespace Rebellion.AI.Planners
                 return;
             }
 
+            if (
+                fleet.Movement == null
+                && !fleet.IsInCombat
+                && !context.Assessment.HasCurrentHeadquartersAttackIntel(targetPlanet)
+            )
+            {
+                proposals.Add(new AIClearFleetOrderProposal(fleet, order));
+                return;
+            }
+
             bool strandedAtHostileNonTarget =
                 currentPlanet != null
                 && currentPlanet.InstanceID != targetPlanet.InstanceID
@@ -768,6 +778,7 @@ namespace Rebellion.AI.Planners
             foreach (
                 Planet targetPlanet in context.Assessment.EnemyPlanets.Where(targetPlanet =>
                     targetPlanet.InstanceID != fleet.Order.TargetPlanetId
+                    && context.Assessment.HasCurrentHeadquartersAttackIntel(targetPlanet)
                     && (
                         mayLeaveCampaign
                         || context.Assessment.GetPlanetSystemId(targetPlanet) == campaignSystemId
@@ -970,6 +981,7 @@ namespace Rebellion.AI.Planners
             AIFleetAttackProposal selected = null;
             IReadOnlyList<Fleet> availableFleets = fleets.ToList();
             IEnumerable<(Planet Target, double UpperBound)> orderedTargets = targets
+                .Where(context.Assessment.HasCurrentHeadquartersAttackIntel)
                 .Select(target =>
                     (
                         Target: target,
@@ -1629,7 +1641,7 @@ namespace Rebellion.AI.Planners
                 );
             }
 
-            AIAttackDemand attackDemand = context.GetAttackDemand(targetPlanet);
+            AIAttackDemand attackDemand = context.GetAttackDemand(targetPlanet, targetFleet);
             int requiredCombat = attackDemand?.CombatStrength ?? 0;
             int requiredRegiments = GetProjectedRegimentCount(context, targetFleet, targetPlanet);
             int requiredRegimentStrength = GetProjectedRegimentStrength(
@@ -1746,7 +1758,7 @@ namespace Rebellion.AI.Planners
         {
             if (CanBombardMilitaryTargets(context, fleet, targetPlanet))
                 return true;
-            AIAttackDemand demand = context.GetAttackDemand(targetPlanet);
+            AIAttackDemand demand = context.GetAttackDemand(targetPlanet, fleet);
             if (demand?.IsAssaultBlockedByShields != false)
                 return false;
 
@@ -1771,7 +1783,7 @@ namespace Rebellion.AI.Planners
             Planet targetPlanet
         )
         {
-            AIAttackDemand demand = context.GetAttackDemand(targetPlanet);
+            AIAttackDemand demand = context.GetAttackDemand(targetPlanet, fleet);
             return demand?.IsAssaultBlockedByShields == true
                 && context.Assessment.GetFleetBombardmentStrength(fleet)
                     < demand.BombardmentStrength;
@@ -1790,7 +1802,7 @@ namespace Rebellion.AI.Planners
             Planet targetPlanet
         )
         {
-            AIAttackDemand demand = context.GetAttackDemand(targetPlanet);
+            AIAttackDemand demand = context.GetAttackDemand(targetPlanet, fleet);
             int requiredCount = GetProjectedRegimentCount(context, fleet, targetPlanet);
             int requiredStrength = GetProjectedRegimentStrength(context, fleet, targetPlanet);
             return demand != null
@@ -1839,7 +1851,7 @@ namespace Rebellion.AI.Planners
             Planet targetPlanet
         )
         {
-            AIAttackDemand demand = context.GetAttackDemand(targetPlanet);
+            AIAttackDemand demand = context.GetAttackDemand(targetPlanet, fleet);
             if (demand == null)
                 return 0;
             return context.Assessment.CanBombardDefenders(fleet, targetPlanet, false)
@@ -1862,7 +1874,7 @@ namespace Rebellion.AI.Planners
         {
             return context.Assessment.CanBombardDefenders(fleet, targetPlanet, false)
                 ? 0
-                : context.GetAttackDemand(targetPlanet)?.RegimentStrength ?? 0;
+                : context.GetAttackDemand(targetPlanet, fleet)?.RegimentStrength ?? 0;
         }
 
         /// <summary>
@@ -1880,7 +1892,7 @@ namespace Rebellion.AI.Planners
             int additionalBombardmentStrength = 0
         )
         {
-            AIAttackDemand demand = context.GetAttackDemand(targetPlanet);
+            AIAttackDemand demand = context.GetAttackDemand(targetPlanet, fleet);
             if (demand == null)
                 return 0;
             return context.Assessment.CanBombardDefenders(
@@ -1915,7 +1927,7 @@ namespace Rebellion.AI.Planners
                 additionalBombardmentStrength
             )
                 ? 0
-                : context.GetAttackDemand(targetPlanet)?.RegimentStrength ?? 0;
+                : context.GetAttackDemand(targetPlanet, fleet)?.RegimentStrength ?? 0;
         }
     }
 }

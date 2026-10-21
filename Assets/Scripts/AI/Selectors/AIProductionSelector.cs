@@ -235,9 +235,36 @@ namespace Rebellion.AI.Selectors
         internal bool TrySelect(AITurnContext context, AIFacilityRemovalProposal proposal)
         {
             List<AISelectionReservation> reservations = GetReservations(proposal);
+            IReadOnlyList<Building> resources =
+                proposal != null && proposal.ResourceHubType != BuildingType.None
+                    ? proposal.GetResourceFacilities(context)
+                    : Array.Empty<Building>();
+            foreach (Building building in resources)
+                Add(
+                    reservations,
+                    AISelectionReservationKind.ProductionBuildingReplacement,
+                    building.InstanceID
+                );
             if (!_selectionState.CanReserve(reservations) || proposal?.CanSelect(context) != true)
                 return false;
 
+            if (resources.Count > 0)
+            {
+                ResourceProductionQueries economy = new(context.Game);
+                int lostHeadroom = Math.Max(
+                    0,
+                    economy.GetSummary(context.Faction).MaintenanceHeadroom
+                        - economy.GetSummary(context.Faction, resources).MaintenanceHeadroom
+                );
+                if (
+                    context.Assessment.ProjectedMaintenanceHeadroom
+                        - _selectedMaintenanceCost
+                        - lostHeadroom
+                    < context.Game.Config.AI.Selection.MaintenanceHeadroomTarget
+                )
+                    return false;
+                ReserveMaintenanceCost(lostHeadroom);
+            }
             _selectionState.Reserve(reservations);
             return true;
         }

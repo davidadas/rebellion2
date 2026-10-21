@@ -49,7 +49,15 @@ namespace Rebellion.AI.Planners
             {
                 Planet target = context.Assessment.GetKnownPlanet(fleet.Order.TargetPlanetId);
                 Planet origin = context.Assessment.GetKnownPlanet(fleet.Order.OriginPlanetId);
-                if (target != null)
+                if (
+                    target != null
+                    && (
+                        fleet.Order.Status == FleetOrderStatus.Returning
+                        || fleet.Movement != null
+                        || fleet.IsInCombat
+                        || context.Assessment.HasCurrentHeadquartersAttackIntel(target)
+                    )
+                )
                     proposals.Add(new AIOrbitalEngagementProposal(fleet, target, origin));
                 else
                     proposals.Add(new AIClearFleetOrderProposal(fleet, fleet.Order));
@@ -91,6 +99,7 @@ namespace Rebellion.AI.Planners
                 .Any(ship => ship.HasGravityWell);
             return context.Assessment.EnemyPlanets.Where(target =>
                 target.InstanceID != origin.InstanceID
+                && context.Assessment.HasCurrentHeadquartersAttackIntel(target)
                 && (context.Assessment.IsAttackPreparationTarget(target) || hasGravityWell)
                 && context.Assessment.GetStrongestHostileFleetStrength(target) > 0
                 && AIFleetProposalScorer.CanWinOrbitalCombat(context, fleet, target)

@@ -75,7 +75,7 @@ namespace Rebellion.AI.Planners
                     .ToList();
                 Planet target = context.Assessment.GetKnownPlanet(fleet.Order?.TargetPlanetId);
                 AIAttackDemand attack = context.Assessment.IsEnemyPlanet(target)
-                    ? context.GetAttackDemand(target)
+                    ? context.GetAttackDemand(target, fleet)
                     : null;
                 Planet defense =
                     fleet.Order?.OrderType == FleetOrderType.Defend

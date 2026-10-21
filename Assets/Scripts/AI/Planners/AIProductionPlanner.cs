@@ -176,18 +176,252 @@ namespace Rebellion.AI.Planners
         )
         {
             List<AIProductionDemand> expanded = new List<AIProductionDemand>();
+            List<AIProductionDemand> source = demands.ToList();
             AIInfrastructurePlacementScorer placementScorer = new AIInfrastructurePlacementScorer(
                 context
             );
-            foreach (AIProductionDemand demand in demands)
+            var hubLayout = AllocateInfrastructureHubs(context, source, placementScorer);
+            foreach (AIProductionDemand demand in source)
             {
                 if (IsFacilityExpansionDemand(demand) && demand.Destination == null)
-                    AddFacilityExpansionDemands(context, expanded, demand, placementScorer);
+                    AddFacilityExpansionDemands(context, expanded, demand, hubLayout);
                 else
                     expanded.Add(demand);
             }
 
             return ExpandEconomyDemands(context, expanded);
+        }
+
+        /// <summary>
+        /// Compares category ordering alternatives before reserving a sector's industrial sites.
+        /// </summary>
+        /// <param name="context">The current faction turn.</param>
+        /// <param name="demands">The unexpanded production requirements.</param>
+        /// <param name="placementScorer">The existing facility destination scorer.</param>
+        /// <returns>The chosen destinations and targets, keyed by sector, category, and hub index.</returns>
+        private Dictionary<
+            (string SectorId, BuildingType Type, int Index),
+            (Planet Planet, int Target)
+        > AllocateInfrastructureHubs(
+            AITurnContext context,
+            IReadOnlyList<AIProductionDemand> demands,
+            AIInfrastructurePlacementScorer placementScorer
+        )
+        {
+            var result =
+                new Dictionary<
+                    (string SectorId, BuildingType Type, int Index),
+                    (Planet Planet, int Target)
+                >();
+            List<AIProductionDemand> capacityDemands = demands
+                .Where(demand => IsFacilityExpansionDemand(demand) && demand.Destination == null)
+                .ToList();
+            var orders = GetInfrastructureDemandOrders(capacityDemands).ToList();
+            var eligible = capacityDemands.ToDictionary(
+                demand => demand.BuildingType,
+                demand =>
+                    context.StrategicPlan.GetInfrastructurePlanets(demand.BuildingType).ToList()
+            );
+            foreach (
+                string sectorId in eligible
+                    .Values.SelectMany(planets => planets)
+                    .Select(context.Assessment.GetPlanetSystemId)
+                    .Distinct()
+                    .OrderBy(id => id, StringComparer.Ordinal)
+            )
+            {
+                Dictionary<(BuildingType Type, int Index), (Planet Planet, int Target)> best = null;
+                double bestConstructionCoverage = -1;
+                double bestCoverage = -1;
+                int bestRetained = -1;
+                foreach (IReadOnlyList<AIProductionDemand> order in orders)
+                {
+                    var layout =
+                        new Dictionary<
+                            (BuildingType Type, int Index),
+                            (Planet Planet, int Target)
+                        >();
+                    foreach (AIProductionDemand demand in order)
+                    {
+                        BuildingType type = demand.BuildingType;
+                        List<Planet> planets = eligible[type]
+                            .Where(planet =>
+                                context.Assessment.GetPlanetSystemId(planet) == sectorId
+                            )
+                            .ToList();
+                        if (context.StrategicPlan.GetInfrastructureDeficit(planets, type) == 0)
+                            continue;
+                        ManufacturingType production = type switch
+                        {
+                            BuildingType.Shipyard => ManufacturingType.Ship,
+                            BuildingType.TrainingFacility => ManufacturingType.Troop,
+                            _ => ManufacturingType.Building,
+                        };
+                        Planet reference =
+                            demands
+                                .Where(item =>
+                                    item.ManufacturingType == production && item.Kind != demand.Kind
+                                )
+                                .OrderByDescending(item =>
+                                    AIProductionProposalScorer.GetDemandPressure(context, item)
+                                )
+                                .ThenBy(item => item.Id, StringComparer.Ordinal)
+                                .Select(item => GetDestinationPlanet(context, item))
+                                .FirstOrDefault(planet =>
+                                    planet != null
+                                    && context.Assessment.GetPlanetSystemId(planet) == sectorId
+                                )
+                            ?? planets.FirstOrDefault();
+                        int hubTarget = 0;
+                        Func<Planet, int> availableSpace = planet =>
+                            Math.Max(
+                                0,
+                                context.StrategicPlan.GetReclaimableInfrastructureSpace(
+                                    planet,
+                                    type,
+                                    hubTarget
+                                )
+                                    - layout
+                                        .Where(entry =>
+                                            entry.Value.Planet == planet && entry.Key.Type != type
+                                        )
+                                        .Sum(entry =>
+                                            Math.Max(
+                                                0,
+                                                entry.Value.Target
+                                                    - planet.GetTotalBuildingTypeCount(
+                                                        entry.Key.Type
+                                                    )
+                                            )
+                                        )
+                            );
+                        IReadOnlyList<int> targets =
+                            context.StrategicPlan.GetInfrastructureHubTargets(type);
+                        for (int index = 0; index < Math.Min(planets.Count, targets.Count); index++)
+                        {
+                            int preferred = targets[index];
+                            hubTarget = preferred;
+                            if (preferred <= 0)
+                                continue;
+                            Planet destination = placementScorer
+                                .RankHubDestinations(
+                                    planets
+                                        .Where(planet =>
+                                            !layout.Any(entry =>
+                                                entry.Key.Type == type
+                                                && entry.Value.Planet == planet
+                                            )
+                                            && (
+                                                type == BuildingType.ConstructionFacility
+                                                    ? planet.GetTotalBuildingTypeCount(type)
+                                                        + availableSpace(planet)
+                                                        > 0
+                                                    : planet.GetTotalBuildingTypeCount(type)
+                                                        + availableSpace(planet)
+                                                        >= preferred
+                                            )
+                                        )
+                                        .ToList(),
+                                    reference,
+                                    production,
+                                    type,
+                                    preferred,
+                                    availableSpace
+                                )
+                                .FirstOrDefault();
+                            if (destination == null)
+                                continue;
+                            int target =
+                                type == BuildingType.ConstructionFacility
+                                    ? Math.Min(
+                                        preferred,
+                                        destination.GetTotalBuildingTypeCount(type)
+                                            + availableSpace(destination)
+                                    )
+                                    : preferred;
+                            layout.Add((type, index), (destination, target));
+                        }
+                    }
+                    double constructionCoverage = layout
+                        .Where(entry => entry.Key.Type == BuildingType.ConstructionFacility)
+                        .Sum(entry =>
+                            entry.Value.Target
+                            / (double)
+                                context.StrategicPlan.GetInfrastructureHubTargets(entry.Key.Type)[
+                                    entry.Key.Index
+                                ]
+                        );
+                    double coverage = capacityDemands.Sum(demand =>
+                        layout
+                            .Where(entry => entry.Key.Type == demand.BuildingType)
+                            .Sum(entry =>
+                                entry.Value.Target
+                                / (double)
+                                    context.StrategicPlan.GetInfrastructureHubTargets(
+                                        entry.Key.Type
+                                    )[entry.Key.Index]
+                            )
+                    );
+                    int retained = layout.Sum(entry =>
+                        Math.Min(
+                            entry.Value.Target,
+                            entry.Value.Planet.GetTotalBuildingTypeCount(entry.Key.Type)
+                        )
+                    );
+                    if (
+                        constructionCoverage > bestConstructionCoverage
+                        || constructionCoverage == bestConstructionCoverage
+                            && (
+                                coverage > bestCoverage
+                                || coverage == bestCoverage && retained > bestRetained
+                            )
+                    )
+                    {
+                        best = layout;
+                        bestConstructionCoverage = constructionCoverage;
+                        bestCoverage = coverage;
+                        bestRetained = retained;
+                    }
+                }
+                if (best == null)
+                    continue;
+                foreach (var entry in best)
+                    result.Add((sectorId, entry.Key.Type, entry.Key.Index), entry.Value);
+            }
+            foreach (var entry in result.ToList())
+                if (
+                    !context.StrategicPlan.TryAllocateInfrastructureHub(
+                        entry.Value.Planet,
+                        entry.Key.Type,
+                        entry.Value.Target,
+                        reclaimResources: true
+                    )
+                )
+                    result.Remove(entry.Key);
+            return result;
+        }
+
+        /// <summary>
+        /// Enumerates category precedence alternatives without changing manufacturing demand order.
+        /// </summary>
+        /// <param name="demands">The distinct production-capacity categories.</param>
+        /// <returns>Each deterministic category ordering.</returns>
+        private static IEnumerable<IReadOnlyList<AIProductionDemand>> GetInfrastructureDemandOrders(
+            IReadOnlyList<AIProductionDemand> demands
+        )
+        {
+            if (demands.Count == 0)
+            {
+                yield return Array.Empty<AIProductionDemand>();
+                yield break;
+            }
+            foreach (AIProductionDemand first in demands)
+            foreach (
+                var remainder in GetInfrastructureDemandOrders(
+                    demands.Where(demand => demand != first).ToList()
+                )
+            )
+                yield return new[] { first }.Concat(remainder).ToList();
         }
 
         /// <summary>
@@ -352,12 +586,15 @@ namespace Rebellion.AI.Planners
         /// <param name="context">The current AI turn context.</param>
         /// <param name="expanded">The expanded demand list accumulated so far.</param>
         /// <param name="capacityDemand">The score-free facility-capacity deficit.</param>
-        /// <param name="placementScorer">The turn-scoped destination scorer.</param>
+        /// <param name="hubLayout">The jointly allocated industrial destinations.</param>
         private void AddFacilityExpansionDemands(
             AITurnContext context,
             List<AIProductionDemand> expanded,
             AIProductionDemand capacityDemand,
-            AIInfrastructurePlacementScorer placementScorer
+            IReadOnlyDictionary<
+                (string SectorId, BuildingType Type, int Index),
+                (Planet Planet, int Target)
+            > hubLayout
         )
         {
             ManufacturingType supportedType = capacityDemand.Kind switch
@@ -412,47 +649,17 @@ namespace Rebellion.AI.Planners
                     capacityDemand.BuildingType
                 );
                 int hubCount = Math.Min(sectorPlanets.Count, hubTargets.Count);
-                HashSet<string> assignedDestinationIds = new HashSet<string>(
-                    StringComparer.Ordinal
-                );
                 for (int hubIndex = 0; hubIndex < hubCount; hubIndex++)
                 {
-                    int preferredTargetCount = hubTargets[hubIndex];
-                    Func<Planet, int> getTargetCount = planet =>
-                        capacityDemand.BuildingType == BuildingType.ConstructionFacility
-                            ? context.StrategicPlan.GetAchievableInfrastructureHubTarget(
-                                planet,
-                                capacityDemand.BuildingType,
-                                preferredTargetCount
-                            )
-                            : preferredTargetCount;
-                    Planet destination = placementScorer
-                        .RankHubDestinations(
-                            sectorPlanets
-                                .Where(planet =>
-                                    !assignedDestinationIds.Contains(planet.InstanceID)
-                                    && context.StrategicPlan.CanAllocateInfrastructureHub(
-                                        planet,
-                                        capacityDemand.BuildingType,
-                                        getTargetCount(planet)
-                                    )
-                                )
-                                .ToList(),
-                            demandPlanet,
-                            supportedType,
-                            capacityDemand.BuildingType,
-                            preferredTargetCount,
-                            planet =>
-                                context.StrategicPlan.GetAvailableConstructionSpace(
-                                    planet,
-                                    capacityDemand.BuildingType
-                                )
+                    if (
+                        !hubLayout.TryGetValue(
+                            (sector.Key, capacityDemand.BuildingType, hubIndex),
+                            out var hub
                         )
-                        .FirstOrDefault();
-                    if (destination == null)
+                    )
                         continue;
-                    int targetCount = getTargetCount(destination);
-                    assignedDestinationIds.Add(destination.InstanceID);
+                    Planet destination = hub.Planet;
+                    int targetCount = hub.Target;
                     int requestedQuantity = Math.Min(
                         Math.Min(remainingFacilityCount, remainingSectorFacilityCount),
                         Math.Min(

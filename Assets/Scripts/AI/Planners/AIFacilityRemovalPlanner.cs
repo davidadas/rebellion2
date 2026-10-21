@@ -8,7 +8,7 @@ using Rebellion.Game.Units;
 namespace Rebellion.AI.Planners
 {
     /// <summary>
-    /// Builds proposals for genuinely surplus shipyards during maintenance distress.
+    /// Builds proposals for resource reclamation at industrial hubs and surplus shipyard retirement.
     /// </summary>
     public sealed class AIFacilityRemovalPlanner : IAIProposalPlanner
     {
@@ -26,6 +26,30 @@ namespace Rebellion.AI.Planners
                 || context.Manufacturing == null
             )
                 return proposals;
+
+            BuildingType[] hubTypes =
+            {
+                BuildingType.ConstructionFacility,
+                BuildingType.Shipyard,
+                BuildingType.TrainingFacility,
+            };
+            foreach (Planet planet in context.Assessment.OwnedPlanets)
+            foreach (BuildingType hubType in hubTypes)
+            {
+                int target = context.StrategicPlan.GetAllocatedInfrastructureTarget(
+                    planet,
+                    hubType
+                );
+                if (
+                    target <= planet.GetTotalBuildingTypeCount(hubType)
+                    || context
+                        .StrategicPlan.GetResourceFacilitiesToReclaim(planet, hubType, target)
+                        .Count == 0
+                )
+                    continue;
+                proposals.Add(new AIFacilityRemovalProposal(planet, hubType, target));
+                break;
+            }
 
             if (
                 context.Game.Config.AI.Selection.MaintenanceRecovery.Enabled

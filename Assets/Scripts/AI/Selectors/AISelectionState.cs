@@ -78,7 +78,10 @@ namespace Rebellion.AI.Selectors
             if (demand != null && FillsFleetNeed(context, demand, ship))
                 return true;
 
-            AIAttackDemand attack = context.GetAttackDemand(proposal.TargetPlanet);
+            AIAttackDemand attack = context.GetAttackDemand(
+                proposal.TargetPlanet,
+                proposal.TargetFleet
+            );
             if (proposal.TargetFleet.Order?.OrderType == FleetOrderType.Attack && attack != null)
             {
                 _fleetReinforcements.TryGetValue(

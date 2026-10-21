@@ -66,6 +66,10 @@ namespace Rebellion.AI
         private readonly Dictionary<string, AIAttackDemand> _attackDemands = new(
             StringComparer.Ordinal
         );
+        private readonly Dictionary<
+            (string Fleet, string Planet),
+            AIAttackDemand
+        > _fleetAttackDemands = new();
         private readonly List<AIProposal> _proposals = new List<AIProposal>();
         private readonly List<AIProposal> _selectedProposals = new List<AIProposal>();
         private readonly List<GameResult> _results = new List<GameResult>();
@@ -172,6 +176,7 @@ namespace Rebellion.AI
         public void SetAttackDemands(IEnumerable<AIAttackDemand> demands)
         {
             _attackDemands.Clear();
+            _fleetAttackDemands.Clear();
             if (demands == null)
                 return;
 
@@ -187,14 +192,32 @@ namespace Rebellion.AI
         /// Returns the generated attack demand for a known planet.
         /// </summary>
         /// <param name="planet">The known target planet.</param>
+        /// <param name="fleet">Optional attacking fleet whose arrival was assessed.</param>
         /// <returns>The attack demand, or null when the target has no generated demand.</returns>
-        public AIAttackDemand GetAttackDemand(Planet planet)
+        public AIAttackDemand GetAttackDemand(Planet planet, Fleet fleet = null)
         {
+            if (
+                planet != null
+                && fleet != null
+                && _fleetAttackDemands.TryGetValue(
+                    (fleet.InstanceID, planet.InstanceID),
+                    out AIAttackDemand arrivalDemand
+                )
+            )
+                return arrivalDemand;
             return
                 planet != null
                 && _attackDemands.TryGetValue(planet.InstanceID, out AIAttackDemand demand)
                 ? demand
                 : null;
+        }
+
+        /// <summary>Stores an arrival-specific demand during attack assessment.</summary>
+        /// <param name="fleet">The fleet whose travel time was assessed.</param>
+        /// <param name="demand">The measured requirements at that fleet's arrival.</param>
+        internal void SetFleetAttackDemand(Fleet fleet, AIAttackDemand demand)
+        {
+            _fleetAttackDemands[(fleet.InstanceID, demand.TargetPlanet.InstanceID)] = demand;
         }
 
         /// <summary>

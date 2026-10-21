@@ -21,6 +21,46 @@ namespace Rebellion.Tests.AI.Fleets
     [TestFixture]
     public class AIFleetPlannerTests
     {
+        [TestCase(false, 50, true)]
+        [TestCase(false, 51, false)]
+        [TestCase(true, 50, true)]
+        [TestCase(true, 51, false)]
+        public void Plan_HeadquartersIntelAge_FiltersNewAndExistingAttacks(
+            bool existingOrder,
+            int intelAge,
+            bool expectedAttack
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction enemy);
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet staging = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "staging",
+                faction.InstanceID
+            );
+            Planet target = AITestSceneBuilder.AddPlanet(game, sector, "target", enemy.InstanceID);
+            target.IsHeadquarters = true;
+            Fleet fleet = AddBattleFleet(game, staging, faction.InstanceID, "fleet");
+            if (existingOrder)
+                fleet.Order = new FleetOrder
+                {
+                    OrderType = FleetOrderType.Attack,
+                    Status = FleetOrderStatus.Building,
+                    TargetPlanetId = target.InstanceID,
+                };
+            AITestSceneBuilder.RevealPlanet(game, faction, target);
+            game.CurrentTick = intelAge;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
+
+            List<AIProposal> proposals = new AIFleetPlanner().Plan(context);
+
+            Assert.AreEqual(
+                expectedAttack,
+                proposals.OfType<AIFleetAttackProposal>().Any(proposal => proposal.Fleet == fleet)
+            );
+        }
+
         [TestCase(false, 0, false)]
         [TestCase(false, 1, false)]
         [TestCase(false, 5, true)]

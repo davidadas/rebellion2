@@ -1164,7 +1164,7 @@ namespace Rebellion.AI.Demands
                 return 0;
 
             AIAssessment assessment = context.Assessment;
-            AIAttackDemand attackDemand = context.GetAttackDemand(target);
+            AIAttackDemand attackDemand = context.GetAttackDemand(target, fleet);
             int requiredRegiments = GetProjectedRegimentCount(context, fleet, target);
             double readiness = GetFulfillmentRatio(
                 assessment.GetProjectedFleetCombatValueAgainstCapitalShips(fleet),
@@ -1267,14 +1267,15 @@ namespace Rebellion.AI.Demands
                     ? context.Assessment.GetProjectedFleetCombatValueAgainstCapitalShips(fleet)
                     : context.Assessment.GetProjectedFleetCombatValue(fleet);
             int targetCombat =
-                targetPlanet != null ? context.GetAttackDemand(targetPlanet)?.CombatStrength ?? 0
+                targetPlanet != null
+                    ? context.GetAttackDemand(targetPlanet, fleet)?.CombatStrength ?? 0
                 : defenseTarget != null ? context.StrategicPlan.GetDefenseStrength(defenseTarget)
                 : isColonizationFleet || isColonizationOrder ? projectedCombat
                 : context.StrategicPlan.AssemblyFleetCombatStrength;
             int combatDeficit = targetCombat - projectedCombat;
             int targetCapitalFirepower =
                 targetPlanet != null
-                    ? context.GetAttackDemand(targetPlanet)?.CapitalShipFirepower ?? 0
+                    ? context.GetAttackDemand(targetPlanet, fleet)?.CapitalShipFirepower ?? 0
                 : isColonizationFleet || isColonizationOrder
                     ? context.Assessment.GetProjectedFleetFirepowerAgainstCapitalShips(fleet)
                 : targetCombat;
@@ -1286,7 +1287,7 @@ namespace Rebellion.AI.Demands
             int targetStarfighterFirepower =
                 targetPlanet == null
                     ? 0
-                    : context.GetAttackDemand(targetPlanet)?.StarfighterFirepower ?? 0;
+                    : context.GetAttackDemand(targetPlanet, fleet)?.StarfighterFirepower ?? 0;
             int starfighterFirepowerDeficit =
                 targetStarfighterFirepower
                 - context.Assessment.GetProjectedFleetFirepowerAgainstStarfighters(fleet);
@@ -1304,12 +1305,12 @@ namespace Rebellion.AI.Demands
             int targetBombardment =
                 targetPlanet == null || isColonizationFleet
                     ? 0
-                    : context.GetAttackDemand(targetPlanet)?.BombardmentStrength ?? 0;
+                    : context.GetAttackDemand(targetPlanet, fleet)?.BombardmentStrength ?? 0;
             int bombardmentDeficit = targetBombardment - projectedBombardment;
             int targetStarfighterCapacity =
                 targetPlanet == null
                     ? (combatDeficit > 0 ? 1 : 0)
-                    : context.GetAttackDemand(targetPlanet)?.StarfighterCount ?? 0;
+                    : context.GetAttackDemand(targetPlanet, fleet)?.StarfighterCount ?? 0;
             int starfighterCapacityDeficit =
                 targetStarfighterCapacity - fleet.GetStarfighterCapacity();
             int interdictionDeficit =
@@ -1683,7 +1684,7 @@ namespace Rebellion.AI.Demands
             Planet targetPlanet
         )
         {
-            AIAttackDemand demand = context.GetAttackDemand(targetPlanet);
+            AIAttackDemand demand = context.GetAttackDemand(targetPlanet, fleet);
             if (demand == null)
                 return 0;
             return context.Assessment.CanBombardDefenders(fleet, targetPlanet, true)
@@ -1706,7 +1707,7 @@ namespace Rebellion.AI.Demands
         {
             return context.Assessment.CanBombardDefenders(fleet, targetPlanet, true)
                 ? 0
-                : context.GetAttackDemand(targetPlanet)?.RegimentStrength ?? 0;
+                : context.GetAttackDemand(targetPlanet, fleet)?.RegimentStrength ?? 0;
         }
 
         /// <summary>

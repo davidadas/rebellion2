@@ -97,7 +97,7 @@ namespace Rebellion.AI.Scorers
             AIOfficerCommandProposal proposal
         )
         {
-            AIAttackDemand demand = context.GetAttackDemand(proposal.TargetPlanet);
+            AIAttackDemand demand = context.GetAttackDemand(proposal.TargetPlanet, proposal.Fleet);
             if (demand == null)
                 return 0;
             Fleet fleet = proposal.Fleet;
@@ -954,7 +954,7 @@ namespace Rebellion.AI.Scorers
         )
         {
             AIAssessment assessment = context.Assessment;
-            AIAttackDemand demand = context.GetAttackDemand(targetPlanet);
+            AIAttackDemand demand = context.GetAttackDemand(targetPlanet, fleet);
             int requiredRegimentCount = GetRequiredRegimentCount(
                 context,
                 fleet,
@@ -1054,7 +1054,7 @@ namespace Rebellion.AI.Scorers
         )
         {
             AIAssessment assessment = context.Assessment;
-            AIAttackDemand demand = context.GetAttackDemand(targetPlanet);
+            AIAttackDemand demand = context.GetAttackDemand(targetPlanet, targetFleet);
             int additionalBombardment = assessment.GetProjectedCapitalShipBombardmentStrength(
                 targetFleet,
                 capitalShip
@@ -1135,7 +1135,7 @@ namespace Rebellion.AI.Scorers
         )
         {
             AIAssessment assessment = context.Assessment;
-            AIAttackDemand demand = context.GetAttackDemand(targetPlanet);
+            AIAttackDemand demand = context.GetAttackDemand(targetPlanet, fleet);
             int requiredRegimentCount = GetRequiredRegimentCount(
                 context,
                 fleet,
@@ -1281,7 +1281,7 @@ namespace Rebellion.AI.Scorers
             }
 
             int requiredBombardment =
-                context.GetAttackDemand(targetPlanet)?.BombardmentStrength ?? 0;
+                context.GetAttackDemand(targetPlanet, fleet)?.BombardmentStrength ?? 0;
             if (requiredBombardment > 0)
             {
                 risks.Add(
@@ -1474,7 +1474,7 @@ namespace Rebellion.AI.Scorers
             Planet targetPlanet
         )
         {
-            AIAttackDemand demand = context?.GetAttackDemand(targetPlanet);
+            AIAttackDemand demand = context?.GetAttackDemand(targetPlanet, fleet);
             if (demand == null)
                 return 0;
 
@@ -1512,7 +1512,7 @@ namespace Rebellion.AI.Scorers
             Planet targetPlanet
         )
         {
-            int required = context?.GetAttackDemand(targetPlanet)?.OrbitalStrength ?? 0;
+            int required = context?.GetAttackDemand(targetPlanet, fleet)?.OrbitalStrength ?? 0;
             return required > 0
                 && fleet?.HasOperationalCapitalShips() == true
                 && context.Assessment.GetReadyFleetCombatValueAgainstCapitalShips(fleet)
@@ -1536,7 +1536,7 @@ namespace Rebellion.AI.Scorers
             int additionalBombardmentStrength = 0
         )
         {
-            AIAttackDemand demand = context?.GetAttackDemand(targetPlanet);
+            AIAttackDemand demand = context?.GetAttackDemand(targetPlanet, fleet);
             if (demand == null)
                 return 0;
             return context.Assessment.CanBombardDefenders(
@@ -1566,7 +1566,7 @@ namespace Rebellion.AI.Scorers
             int additionalBombardmentStrength = 0
         )
         {
-            AIAttackDemand demand = context?.GetAttackDemand(targetPlanet);
+            AIAttackDemand demand = context?.GetAttackDemand(targetPlanet, fleet);
             return context.Assessment.CanBombardDefenders(
                 fleet,
                 targetPlanet,

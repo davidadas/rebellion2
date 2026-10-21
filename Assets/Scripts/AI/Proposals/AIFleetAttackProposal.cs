@@ -297,7 +297,7 @@ namespace Rebellion.AI.Proposals
             )
                 return false;
 
-            if (context.GetAttackDemand(liveTarget)?.IsAssaultBlockedByShields != false)
+            if (context.GetAttackDemand(liveTarget, Fleet)?.IsAssaultBlockedByShields != false)
                 return false;
 
             int requiredRegimentCount = GetRequiredRegimentCount(context, liveTarget);
@@ -317,7 +317,8 @@ namespace Rebellion.AI.Proposals
         /// <returns>True if the fleet is ready to launch.</returns>
         internal bool CanLaunch(AITurnContext context)
         {
-            return context.StrategicPlan.CanFleetDepart(Fleet)
+            return context.Assessment.HasCurrentHeadquartersAttackIntel(TargetPlanet)
+                && context.StrategicPlan.CanFleetDepart(Fleet)
                 && IsReadyToAttack(context, TargetPlanet);
         }
 
@@ -329,7 +330,7 @@ namespace Rebellion.AI.Proposals
         /// <returns>True when the fleet is ready to attack.</returns>
         private bool IsReadyToAttack(AITurnContext context, Planet targetPlanet)
         {
-            AIAttackDemand demand = context.GetAttackDemand(targetPlanet);
+            AIAttackDemand demand = context.GetAttackDemand(targetPlanet, Fleet);
             if (demand == null)
                 return false;
             int availableCombat = context.Assessment.GetReadyFleetCombatValueAgainstCapitalShips(
@@ -365,7 +366,7 @@ namespace Rebellion.AI.Proposals
         /// <returns>The current regiment count requirement.</returns>
         private int GetRequiredRegimentCount(AITurnContext context, Planet targetPlanet)
         {
-            AIAttackDemand demand = context.GetAttackDemand(targetPlanet);
+            AIAttackDemand demand = context.GetAttackDemand(targetPlanet, Fleet);
             if (demand == null)
                 return 0;
             return context.Assessment.CanBombardDefenders(Fleet, targetPlanet, false)
@@ -383,7 +384,7 @@ namespace Rebellion.AI.Proposals
         {
             return context.Assessment.CanBombardDefenders(Fleet, targetPlanet, false)
                 ? 0
-                : context.GetAttackDemand(targetPlanet)?.RegimentStrength ?? 0;
+                : context.GetAttackDemand(targetPlanet, Fleet)?.RegimentStrength ?? 0;
         }
 
         /// <summary>
@@ -443,6 +444,14 @@ namespace Rebellion.AI.Proposals
         /// <returns>True if the attack target is still valid.</returns>
         private bool IsValidAttackOrder(AITurnContext context)
         {
+            if (
+                Status != FleetOrderStatus.Returning
+                && Fleet.Movement == null
+                && !Fleet.IsInCombat
+                && !context.Assessment.HasCurrentHeadquartersAttackIntel(TargetPlanet)
+            )
+                return false;
+
             string targetOwnerId = TargetPlanet.GetOwnerInstanceID();
             if (
                 targetOwnerId == context.Faction.InstanceID

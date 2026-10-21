@@ -17,6 +17,123 @@ namespace Rebellion.AI
     /// </summary>
     public sealed class AIAssessment
     {
+        private readonly Dictionary<
+            (string Planet, int Ticks),
+            (int Combat, int CapitalFirepower, int FighterFirepower, int Fighters)
+        > _arrivalOrbitalCapabilities = new();
+
+        /// <summary>Measures known orbital defenders expected to finish travelling by arrival.</summary>
+        /// <param name="planet">The faction-visible destination.</param>
+        /// <param name="arrivalTicks">The attacking fleet's remaining travel time.</param>
+        /// <returns>Required orbital capability inputs, without score or safety multipliers.</returns>
+        public (
+            int Combat,
+            int CapitalFirepower,
+            int FighterFirepower,
+            int Fighters
+        ) GetHostileOrbitalCapabilitiesAtArrival(Planet planet, int arrivalTicks)
+        {
+            if (planet == null)
+                return default;
+            int age = GetPlanetIntelAge(planet);
+            int horizon = (int)
+                Math.Min(
+                    int.MaxValue,
+                    (long)Math.Max(0, arrivalTicks) + (age == int.MaxValue ? 0 : age)
+                );
+            var key = (planet.InstanceID, horizon);
+            if (_arrivalOrbitalCapabilities.TryGetValue(key, out var cached))
+                return cached;
+            int combat = 0,
+                capitalFirepower = 0,
+                fighterFirepower = 0,
+                fighters = 0;
+            foreach (
+                Fleet fleet in GetHostileFleets(planet)
+                    .Where(fleet =>
+                        fleet.Movement == null || fleet.Movement.TicksRemaining() <= horizon
+                    )
+            )
+            {
+                List<CapitalShip> ships = fleet
+                    .GetChildren<CapitalShip>()
+                    .Where(ship =>
+                        ship.ManufacturingStatus != ManufacturingStatus.Building
+                        && (ship.Movement == null || ship.Movement.TicksRemaining() <= horizon)
+                        && (ship.MaxHullStrength <= 0 || ship.CurrentHullStrength > 0)
+                    )
+                    .ToList();
+                List<Starfighter> carried = ships
+                    .SelectMany(ship => ship.GetChildren<Starfighter>())
+                    .Where(fighter =>
+                        fighter.ManufacturingStatus != ManufacturingStatus.Building
+                        && fighter.CurrentSquadronSize > 0
+                        && (
+                            fighter.Movement == null || fighter.Movement.TicksRemaining() <= horizon
+                        )
+                    )
+                    .ToList();
+                combat = Math.Max(
+                    combat,
+                    SpaceCombatStrengthCalculator.GetFleetCombatValueAgainstCapitalShipsAtArrival(
+                        fleet,
+                        _game.Config.Combat.SpaceCombat,
+                        horizon
+                    )
+                );
+                capitalFirepower = Math.Max(
+                    capitalFirepower,
+                    ships.Sum(
+                        SpaceCombatStrengthCalculator.GetCapitalShipFirepowerAgainstCapitalShips
+                    )
+                        + carried.Sum(fighter =>
+                            SpaceCombatStrengthCalculator.GetStarfighterFirepowerAgainstCapitalShips(
+                                fighter,
+                                horizon
+                            )
+                        )
+                );
+                fighterFirepower = Math.Max(
+                    fighterFirepower,
+                    ships.Sum(
+                        SpaceCombatStrengthCalculator.GetCapitalShipFirepowerAgainstStarfighters
+                    )
+                        + carried.Sum(fighter =>
+                            SpaceCombatStrengthCalculator.GetStarfighterFirepowerAgainstStarfighters(
+                                fighter,
+                                horizon
+                            )
+                        )
+                );
+                fighters = Math.Max(fighters, carried.Count);
+            }
+            foreach (
+                Starfighter fighter in planet
+                    .GetAllStarfighters()
+                    .Where(fighter =>
+                        !string.IsNullOrEmpty(fighter.GetOwnerInstanceID())
+                        && fighter.GetOwnerInstanceID() != _faction.InstanceID
+                        && fighter.ManufacturingStatus != ManufacturingStatus.Building
+                        && fighter.CurrentSquadronSize > 0
+                        && (
+                            fighter.Movement == null || fighter.Movement.TicksRemaining() <= horizon
+                        )
+                    )
+            )
+            {
+                combat += fighter.CalculateCombatValue(fighter.CurrentSquadronSize);
+                fighterFirepower +=
+                    SpaceCombatStrengthCalculator.GetStarfighterFirepowerAgainstStarfighters(
+                        fighter,
+                        horizon
+                    );
+                fighters++;
+            }
+            var result = (combat, capitalFirepower, fighterFirepower, fighters);
+            _arrivalOrbitalCapabilities.Add(key, result);
+            return result;
+        }
+
         private readonly GameRoot _game;
         private readonly Faction _faction;
         private readonly GalaxyMap _factionView;
@@ -670,6 +787,24 @@ namespace Rebellion.AI
                 return int.MaxValue;
 
             return Math.Max(0, _game.CurrentTick - snapshot.TickCaptured);
+        }
+
+        /// <summary>
+        /// Returns whether intelligence is recent enough to initiate a headquarters attack.
+        /// </summary>
+        /// <param name="planet">The prospective attack target.</param>
+        /// <returns>True for non-headquarters targets or headquarters within the configured age limit.</returns>
+        public bool HasCurrentHeadquartersAttackIntel(Planet planet)
+        {
+            return planet != null
+                && (
+                    !planet.IsHeadquarters
+                    || GetPlanetIntelAge(planet)
+                        <= Math.Max(
+                            0,
+                            _game.Config.AI.FleetDeployment.HeadquartersAttackMaximumIntelAgeTicks
+                        )
+                );
         }
 
         /// <summary>

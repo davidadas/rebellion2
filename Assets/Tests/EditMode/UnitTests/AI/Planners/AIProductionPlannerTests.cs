@@ -21,6 +21,173 @@ namespace Rebellion.Tests.AI.Planners
     [TestFixture]
     public sealed partial class AIProductionPlannerTests
     {
+        [Test]
+        public void Plan_TrainingCompetesWithConstructionBackbone_PreservesFullConstructionHub()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out _);
+            game.Config.AI.Infrastructure.ConstructionFacilityPrimaryHubTargetCount = 5;
+            game.Config.AI.Infrastructure.ConstructionFacilitySecondaryHubTargetCount = 0;
+            game.Config.AI.Infrastructure.TrainingFacilityHubTargetCount = 4;
+            game.Config.AI.Infrastructure.IndustrialShieldTargetCount = 0;
+            game.Config.AI.Infrastructure.PlanetaryWeaponTargetCount = 0;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "planet",
+                faction.InstanceID,
+                energyCapacity: 5
+            );
+            planet.SetPopularSupport(faction.InstanceID, 100);
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "construction",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
+            context.SetProductionDemands(
+                new List<AIProductionDemand>
+                {
+                    new(
+                        "construction",
+                        AIProductionDemandKind.ConstructionFacility,
+                        ManufacturingType.Building,
+                        BuildingType.ConstructionFacility,
+                        null,
+                        4,
+                        targetCount: 5,
+                        baseDemandPercent: 100
+                    ),
+                    new(
+                        "training",
+                        AIProductionDemandKind.TrainingFacility,
+                        ManufacturingType.Building,
+                        BuildingType.TrainingFacility,
+                        null,
+                        4,
+                        targetCount: 4,
+                        baseDemandPercent: 100
+                    ),
+                }
+            );
+
+            new AIProductionPlanner().Plan(context);
+
+            Assert.AreEqual(
+                5,
+                context.StrategicPlan.GetAllocatedInfrastructureTarget(
+                    planet,
+                    BuildingType.ConstructionFacility
+                )
+            );
+            Assert.AreEqual(
+                0,
+                context.StrategicPlan.GetAllocatedInfrastructureTarget(
+                    planet,
+                    BuildingType.TrainingFacility
+                )
+            );
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Plan_OnlyOneSiteFitsShipyardHub_AssignsConstructionToAlternative(
+            bool reverseDemandOrder
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out _);
+            game.Config.AI.Infrastructure.ConstructionFacilityPrimaryHubTargetCount = 5;
+            game.Config.AI.Infrastructure.ConstructionFacilitySecondaryHubTargetCount = 0;
+            game.Config.AI.Infrastructure.ShipyardPrimaryHubTargetCount = 6;
+            game.Config.AI.Infrastructure.ShipyardSecondaryHubTargetCount = 0;
+            game.Config.AI.Infrastructure.IndustrialShieldTargetCount = 0;
+            game.Config.AI.Infrastructure.PlanetaryWeaponTargetCount = 0;
+            PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
+            Planet shipyardSite = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "shipyard-site",
+                faction.InstanceID,
+                energyCapacity: 7
+            );
+            Planet constructionSite = AITestSceneBuilder.AddPlanet(
+                game,
+                sector,
+                "construction-site",
+                faction.InstanceID,
+                energyCapacity: 5
+            );
+            shipyardSite.SetPopularSupport(faction.InstanceID, 100);
+            constructionSite.SetPopularSupport(faction.InstanceID, 100);
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                shipyardSite,
+                "construction",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                shipyardSite,
+                "shipyard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            var demands = new List<AIProductionDemand>
+            {
+                new(
+                    "construction",
+                    AIProductionDemandKind.ConstructionFacility,
+                    ManufacturingType.Building,
+                    BuildingType.ConstructionFacility,
+                    null,
+                    4,
+                    targetCount: 5,
+                    baseDemandPercent: 100
+                ),
+                new(
+                    "shipyard",
+                    AIProductionDemandKind.Shipyard,
+                    ManufacturingType.Building,
+                    BuildingType.Shipyard,
+                    null,
+                    5,
+                    targetCount: 6,
+                    baseDemandPercent: 100
+                ),
+            };
+            if (reverseDemandOrder)
+                demands.Reverse();
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, faction);
+            context.SetProductionDemands(demands);
+
+            new AIProductionPlanner().Plan(context);
+
+            Assert.AreEqual(
+                6,
+                context.StrategicPlan.GetAllocatedInfrastructureTarget(
+                    shipyardSite,
+                    BuildingType.Shipyard
+                )
+            );
+            Assert.AreEqual(
+                5,
+                context.StrategicPlan.GetAllocatedInfrastructureTarget(
+                    constructionSite,
+                    BuildingType.ConstructionFacility
+                )
+            );
+            Assert.AreEqual(
+                0,
+                context.StrategicPlan.GetAllocatedInfrastructureTarget(
+                    shipyardSite,
+                    BuildingType.ConstructionFacility
+                )
+            );
+        }
+
         /// <summary>
         /// Keeps a faction-wide construction shortage from allocating excess yards to another sector.
         /// </summary>
