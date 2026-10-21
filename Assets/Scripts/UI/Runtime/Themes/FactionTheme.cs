@@ -88,3 +88,16 @@ public class FactionTheme
 /// </summary>
 [PersistableObject]
 public sealed class FactionThemes : List<FactionTheme> { }
+
+/// <summary>
+/// Maps one planet-destroying ship type to its presentation movie.
+/// </summary>
+[PersistableObject(Name = "Cutscene")]
+public sealed class PlanetDestructionCutscene
+{
+    [PersistableAttribute]
+    public string ShipTypeID { get; set; }
+
+    [PersistableAttribute]
+    public string Path { get; set; }
+}
