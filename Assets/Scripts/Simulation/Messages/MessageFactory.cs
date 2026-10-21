@@ -2552,9 +2552,7 @@ namespace Rebellion.Simulation
             {
                 if (result?.AttackingFaction == null || result.Planet == null)
                     continue;
-                Faction defender =
-                    result.OwnershipChange?.PreviousOwner
-                    ?? GetCombatFaction(game, result.Planet.OwnerInstanceID);
+                Faction defender = GetCombatFaction(game, GetBombardmentDefenderID(result));
                 AddCombatDelivery(
                     deliveries,
                     result.AttackingFaction,
@@ -2870,9 +2868,17 @@ namespace Rebellion.Simulation
         /// <param name="result">The result.</param>
         /// <returns>The requested bombardment ownership.</returns>
         private static MessagePlanetOwnership GetBombardmentOwnership(BombardmentResult result) =>
-            result?.OwnershipChange != null
-                ? Ownership(result.OwnershipChange.PreviousOwner?.InstanceID)
-                : Ownership(result?.Planet?.OwnerInstanceID);
+            Ownership(GetBombardmentDefenderID(result));
+
+        /// <summary>
+        /// Resolves the defending owner captured before bombardment changed planetary control.
+        /// </summary>
+        /// <param name="result">The bombardment whose defending faction is required.</param>
+        /// <returns>The captured defender ID, with ownership-state fallbacks for older results.</returns>
+        private static string GetBombardmentDefenderID(BombardmentResult result) =>
+            !string.IsNullOrEmpty(result?.DefenderOwnerInstanceID) ? result.DefenderOwnerInstanceID
+            : result?.OwnershipChange != null ? result.OwnershipChange.PreviousOwner?.InstanceID
+            : result?.Planet?.OwnerInstanceID;
 
         /// <summary>
         /// Gets assault ownership.

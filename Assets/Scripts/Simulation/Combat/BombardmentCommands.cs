@@ -681,7 +681,23 @@ namespace Rebellion.Simulation
             }
 
             if (planet.IsHeadquarters)
+            {
                 DestroyHeadquarters(planet, result.DefenderOwnerInstanceID, result);
+                result.Events.Add(
+                    new HeadquartersDestroyedResult
+                    {
+                        Headquarters = result.DestroyedBuildings.FirstOrDefault(building =>
+                            building.BuildingType == BuildingType.Headquarters
+                        ),
+                        Planet = planet,
+                        Defender = _game.GetFactionByOwnerInstanceID(
+                            result.DefenderOwnerInstanceID
+                        ),
+                        Attacker = result.AttackingFaction,
+                        Tick = _game.CurrentTick,
+                    }
+                );
+            }
 
             _game.NeutralizeDestroyedPlanet(planet);
 

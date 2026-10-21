@@ -116,6 +116,9 @@ namespace Rebellion.Simulation
                 {
                     queue[entry.Key] = RestoreQueueOrder(entry.Value);
                 }
+
+                if (planet.IsDestroyed)
+                    ClearPlanetQueues(planet);
             }
         }
 

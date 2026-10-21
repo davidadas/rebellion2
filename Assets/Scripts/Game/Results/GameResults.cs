@@ -177,7 +177,7 @@ namespace Rebellion.Game.Results
     public sealed class HeadquartersCapturedResult : HeadquartersLostResult { }
 
     /// <summary>
-    /// A mobile headquarters was destroyed when its planet fell to an opposing faction.
+    /// A faction's headquarters was destroyed.
     /// </summary>
     public sealed class HeadquartersDestroyedResult : HeadquartersLostResult
     {

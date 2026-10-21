@@ -74,6 +74,47 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void ProcessResults_DestroyedPlanet_TransfersFinalIntelOnlyToDefender()
+        {
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordPlanetSnapshot(_empire, _coruscant, _coreSector, 10);
+            recorder.RecordPlanetSnapshot(_alliance, _coruscant, _coreSector, 10);
+            Faction uninformed = new Faction { InstanceID = "uninformed" };
+            _game.GetFactions().Add(uninformed);
+            _coruscant.IsDestroyed = true;
+            _game.NeutralizeDestroyedPlanet(_coruscant);
+
+            _observer.ProcessResults(
+                new[]
+                {
+                    new BombardmentResult
+                    {
+                        Planet = _coruscant,
+                        PlanetDestroyed = true,
+                        AttackerOwnerInstanceID = _alliance.InstanceID,
+                        DefenderOwnerInstanceID = _empire.InstanceID,
+                        Tick = 20,
+                    },
+                }
+            );
+
+            PlanetSnapshot defender = _empire.Fog.Snapshots[_coreSector.InstanceID].Planets[
+                _coruscant.InstanceID
+            ];
+            PlanetSnapshot other = _alliance.Fog.Snapshots[_coreSector.InstanceID].Planets[
+                _coruscant.InstanceID
+            ];
+            Assert.IsTrue(defender.IsDestroyed);
+            Assert.IsFalse(defender.IsColonized);
+            Assert.IsNull(defender.OwnerInstanceID);
+            Assert.AreEqual(20, defender.TickCaptured);
+            Assert.IsFalse(other.IsDestroyed);
+            Assert.AreEqual(_empire.InstanceID, other.OwnerInstanceID);
+            Assert.AreEqual(10, other.TickCaptured);
+            Assert.IsEmpty(uninformed.Fog.Snapshots);
+        }
+
+        [Test]
         public void Dispose_IntelligenceResult_StopsRecordingObservations()
         {
             _observer.Connect(_results);
