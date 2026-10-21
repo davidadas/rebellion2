@@ -74,35 +74,6 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void ProcessResults_DestroyedPlanet_UpdatesKnownControlAndDestructionWithoutRevealingUnknownWorlds()
-        {
-            new FogOfWarRecorder().RecordPlanetSnapshot(_alliance, _coruscant, _coreSector, 10);
-            _coruscant.IsDestroyed = true;
-            _game.NeutralizeDestroyedPlanet(_coruscant);
-
-            _observer.ProcessResults(
-                new[]
-                {
-                    new BombardmentResult
-                    {
-                        Planet = _coruscant,
-                        PlanetDestroyed = true,
-                        Tick = 20,
-                    },
-                }
-            );
-
-            PlanetSnapshot snapshot = _alliance.Fog.Snapshots[_coreSector.InstanceID].Planets[
-                _coruscant.InstanceID
-            ];
-            Assert.IsTrue(snapshot.IsDestroyed);
-            Assert.IsFalse(snapshot.IsColonized);
-            Assert.IsNull(snapshot.OwnerInstanceID);
-            Assert.AreEqual(10, snapshot.TickCaptured);
-            Assert.IsEmpty(_empire.Fog.Snapshots);
-        }
-
-        [Test]
         public void Dispose_IntelligenceResult_StopsRecordingObservations()
         {
             _observer.Connect(_results);

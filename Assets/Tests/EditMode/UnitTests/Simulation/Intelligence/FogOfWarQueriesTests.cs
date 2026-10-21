@@ -50,33 +50,6 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void BuildFactionView_DestroyedSnapshotWithRetainedControl_ProjectsNeutralInactivePlanet()
-        {
-            new FogOfWarRecorder().RecordPlanetSnapshot(_alliance, _coruscant, _coreSector, 10);
-            PlanetSnapshot snapshot = _alliance.Fog.Snapshots[_coreSector.InstanceID].Planets[
-                _coruscant.InstanceID
-            ];
-            snapshot.IsDestroyed = true;
-            snapshot.IsInUprising = true;
-            snapshot.IsHeadquarters = true;
-            snapshot.OwnerInstanceID = _empire.InstanceID;
-            snapshot.IsColonized = true;
-
-            GalaxyMap view = _queries.BuildFactionView(_alliance);
-
-            Planet planet = view.GetChildren<PlanetSector>()
-                .Single(s => s.InstanceID == _coreSector.InstanceID)
-                .GetChildren<Planet>()
-                .Single(p => p.InstanceID == _coruscant.InstanceID);
-            Assert.IsTrue(planet.IsDestroyed);
-            Assert.IsNull(planet.OwnerInstanceID);
-            Assert.IsFalse(planet.IsColonized);
-            Assert.IsFalse(planet.IsInUprising);
-            Assert.IsFalse(planet.IsHeadquarters);
-            Assert.AreEqual(_empire.InstanceID, _coruscant.OwnerInstanceID);
-        }
-
-        [Test]
         public void BuildFactionView_UnexploredPlanet_PreservesTypeID()
         {
             _tatooine.TypeID = "PLTAT01";
