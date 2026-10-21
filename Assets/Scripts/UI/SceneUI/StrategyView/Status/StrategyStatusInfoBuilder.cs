@@ -183,9 +183,14 @@ internal sealed class StrategyStatusInfoBuilder
         info.Rows.Add(
             new StrategyStatusRow(
                 "Status:",
-                string.IsNullOrEmpty(info.OwnerFactionId) ? "Neutral" : "Active"
+                planet.IsDestroyed ? "Destroyed"
+                    : string.IsNullOrEmpty(info.OwnerFactionId) ? "Neutral"
+                    : "Active"
             )
         );
+        if (planet.IsDestroyed)
+            return info;
+
         AddHeadquartersEtaRow(info, planet);
         info.Rows.Add(
             new StrategyStatusRow("General:", FindPlanetOfficerByRank(planet, OfficerRank.General))

@@ -182,8 +182,8 @@ namespace Rebellion.Simulation
                 ? null
                 : _game.GetSceneNodeByInstanceID<Building>(replacement.InstanceID);
             if (
-                producer == null
-                || destination == null
+                producer?.IsDestroyed != false
+                || destination?.IsDestroyed != false
                 || template == null
                 || registeredReplacement == null
                 || !ReferenceEquals(registeredReplacement, replacement)
@@ -482,9 +482,10 @@ namespace Rebellion.Simulation
             producer = _queries.ResolveRegisteredPlanet(producer);
             destination = _queries.ResolveRegisteredNode(destination) as ContainerNode;
             if (
-                producer == null
+                producer?.IsDestroyed != false
                 || type == ManufacturingType.None
                 || destination == null
+                || destination is Planet { IsDestroyed: true }
                 || string.IsNullOrEmpty(ownerInstanceId)
                 || !string.Equals(
                     producer.GetOwnerInstanceID(),
@@ -527,7 +528,7 @@ namespace Rebellion.Simulation
         {
             producer = _queries.ResolveRegisteredPlanet(producer);
             if (
-                producer == null
+                producer?.IsDestroyed != false
                 || type == ManufacturingType.None
                 || string.IsNullOrEmpty(ownerInstanceId)
                 || !string.Equals(
@@ -899,7 +900,9 @@ namespace Rebellion.Simulation
             if (!ReferenceEquals(liveDestination, destination))
                 return false;
 
-            return destination is Planet || destination.GetParentOfType<Planet>() != null;
+            return destination is Planet planet
+                ? !planet.IsDestroyed
+                : destination.GetParentOfType<Planet>() != null;
         }
 
         /// <summary>
@@ -910,7 +913,11 @@ namespace Rebellion.Simulation
         /// <returns>The owning faction, or null if validation fails.</returns>
         private Faction GetValidatedFaction(Planet planet, IManufacturable item)
         {
-            if (planet == null || item == null)
+            if (
+                planet?.IsDestroyed != false
+                || item == null
+                || !ReferenceEquals(_queries.ResolveRegisteredPlanet(planet), planet)
+            )
                 return null;
 
             string ownerInstanceId = planet.GetOwnerInstanceID();

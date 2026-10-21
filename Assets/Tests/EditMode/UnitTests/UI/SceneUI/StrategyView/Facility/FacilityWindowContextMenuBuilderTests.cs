@@ -10,6 +10,25 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
     public class FacilityWindowContextMenuBuilderTests
     {
         [Test]
+        public void Build_DestroyedPlanet_DisablesConstruction()
+        {
+            Planet planet = CreatePlanet(withBuildingQueue: false);
+            planet.IsDestroyed = true;
+
+            List<StrategyMenuCommand> commands = FacilityWindowContextMenuBuilder.Build(
+                planet,
+                FacilityWindowTab.Manufacturing,
+                FacilityWindowTab.Construction,
+                null,
+                "owner"
+            );
+
+            Assert.IsFalse(
+                commands.Single(command => command.Action == StrategyMenuAction.Build).Enabled
+            );
+        }
+
+        [Test]
         public void Build_ManufacturingLaneWithQueuedItems_EnablesStop()
         {
             Planet planet = CreatePlanet(withBuildingQueue: true);

@@ -274,6 +274,28 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void HandleResults_PlanetDestroyed_ClearsQueuesWithoutOperationalProducer()
+        {
+            Building mine = CreateOrderTestBuildingTemplate("destroyed-planet-order");
+            mine.OwnerInstanceID = _empire.InstanceID;
+            Assert.IsTrue(_manager.Enqueue(_coruscant, mine, _coruscant));
+            _game.DeleteNode(_shipyard);
+            _coruscant.IsDestroyed = true;
+
+            List<GameResult> reactions = _observer.HandleResults(
+                new List<BombardmentResult>
+                {
+                    new BombardmentResult { Planet = _coruscant, PlanetDestroyed = true },
+                }
+            );
+
+            Assert.IsEmpty(reactions);
+            Assert.IsEmpty(_coruscant.GetManufacturingQueue());
+            Assert.IsNull(mine.GetParent());
+            Assert.IsNull(_game.GetSceneNodeByInstanceID<Building>(mine.InstanceID));
+        }
+
+        [Test]
         public void Connect_OwnershipChangePublished_ClearsDestinationPlanetQueues()
         {
             Building mine = CreateOrderTestBuildingTemplate("captured-mine");

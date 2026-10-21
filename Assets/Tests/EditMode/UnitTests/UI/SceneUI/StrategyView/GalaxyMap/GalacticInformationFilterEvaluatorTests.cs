@@ -74,6 +74,29 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsFalse(marker.Mixed);
         }
 
+        [TestCase(GalacticInformationFilterMode.PopularSupport)]
+        [TestCase(GalacticInformationFilterMode.AvailableEnergy)]
+        [TestCase(GalacticInformationFilterMode.AvailableRawMaterial)]
+        public void Evaluate_DestroyedPlanet_DoesNotExposeRetainedSurfaceValues(
+            GalacticInformationFilterMode mode
+        )
+        {
+            Planet planet = CreatePlanet(_playerFactionId);
+            planet.PopularSupport[_playerFactionId] = 100;
+            planet.EnergyCapacity = 10;
+            planet.NumRawResourceNodes = 10;
+            planet.IsDestroyed = true;
+
+            GalacticInformationMarker marker = GalacticInformationFilterEvaluator.Evaluate(
+                _game,
+                planet,
+                _playerFactionId,
+                CreateFilter(mode)
+            );
+
+            Assert.Zero(marker.Index);
+        }
+
         [TestCase(GalacticInformationFilterMode.Uprisings)]
         [TestCase(GalacticInformationFilterMode.AvailableEnergy)]
         [TestCase(GalacticInformationFilterMode.AvailableRawMaterial)]

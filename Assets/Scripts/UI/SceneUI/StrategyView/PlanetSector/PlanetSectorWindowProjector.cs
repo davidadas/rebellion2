@@ -236,9 +236,10 @@ internal sealed class PlanetSectorWindowProjector
     {
         Planet planet = strategyPlanet?.Planet;
         string planetInstanceId = planet?.InstanceID;
-        string ownerFactionId = planet?.OwnerInstanceID;
+        string ownerFactionId = planet?.IsDestroyed == true ? null : planet?.OwnerInstanceID;
         string headquartersFactionId = ResolveHeadquartersFactionId(uiContext, planet);
         bool unexplored = planet?.IsUnexploredView == true;
+        bool showPlanetDetails = !unexplored && planet?.IsDestroyed != true;
         string fleetFactionId = SelectPresentFactionID(
             GetFleetOwnerFactionIDs(planet),
             ownerFactionId
@@ -247,7 +248,7 @@ internal sealed class PlanetSectorWindowProjector
             GetMissionOwnerFactionIDs(planet),
             ownerFactionId
         );
-        bool showUprising = !unexplored && planet?.IsInUprising == true;
+        bool showUprising = showPlanetDetails && planet?.IsInUprising == true;
         int popularSupport = GetPlayerSupport(uiContext, planet);
         Texture2D fleetTexture = string.IsNullOrEmpty(fleetFactionId)
             ? null
@@ -286,23 +287,23 @@ internal sealed class PlanetSectorWindowProjector
                         ?.PlanetOverlayTheme?.PlanetSectorUprisingImagePath
                 )
                 : null,
-            unexplored || !HasFacilities(planet)
+            !showPlanetDetails || !HasFacilities(planet)
                 ? null
                 : GetOverlayTexture(uiContext, ownerFactionId, PlanetIcon.Facility, false),
-            unexplored || !HasFacilities(planet)
+            !showPlanetDetails || !HasFacilities(planet)
                 ? null
                 : GetOverlayTexture(uiContext, ownerFactionId, PlanetIcon.Facility, true),
-            unexplored || !HasDefenses(planet)
+            !showPlanetDetails || !HasDefenses(planet)
                 ? null
                 : GetOverlayTexture(uiContext, ownerFactionId, PlanetIcon.Defense, false),
-            unexplored || !HasDefenses(planet)
+            !showPlanetDetails || !HasDefenses(planet)
                 ? null
                 : GetOverlayTexture(uiContext, ownerFactionId, PlanetIcon.Defense, true),
             fleetTexture,
             fleetPressedTexture,
             missionTexture,
             missionPressedTexture,
-            !string.IsNullOrEmpty(headquartersFactionId)
+            showPlanetDetails && !string.IsNullOrEmpty(headquartersFactionId)
                 ? uiContext.GetTexture(
                     uiContext
                         .GetTheme(headquartersFactionId)
@@ -317,9 +318,11 @@ internal sealed class PlanetSectorWindowProjector
             string.Equals(hoveredPlanetInstanceId, planetInstanceId, StringComparison.Ordinal)
                 ? hoveredIcon
                 : PlanetIcon.None,
-            unexplored ? CreateHiddenBar() : CreateEnergyBar(planet),
-            unexplored ? CreateHiddenBar() : CreateRawResourceBar(planet),
-            unexplored ? CreateHiddenBar() : CreateSupportBar(uiContext, planet, popularSupport),
+            showPlanetDetails ? CreateEnergyBar(planet) : CreateHiddenBar(),
+            showPlanetDetails ? CreateRawResourceBar(planet) : CreateHiddenBar(),
+            showPlanetDetails
+                ? CreateSupportBar(uiContext, planet, popularSupport)
+                : CreateHiddenBar(),
             galacticInformationTexture,
             uiContext.GetTextureContentBounds
         );

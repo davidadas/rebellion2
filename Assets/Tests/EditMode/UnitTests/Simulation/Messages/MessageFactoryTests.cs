@@ -4913,11 +4913,19 @@ namespace Rebellion.Tests.Simulation
             Assert.AreEqual(empire.InstanceID, report.DefenderOwnerInstanceID);
         }
 
-        [Test]
-        public void CreateMessages_DestroyedPlanet_UsesPlanetDestructionDefinition()
+        [TestCase(false)]
+        [TestCase(true)]
+        public void CreateMessages_DestroyedPlanet_UsesPlanetDestructionDefinition(
+            bool releaseControl
+        )
         {
             (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
                 BuildTwoFactionMessageScene();
+            if (releaseControl)
+            {
+                target.IsDestroyed = true;
+                game.NeutralizeDestroyedPlanet(target);
+            }
             MessageDefinition generic = Definition(
                 MessageResultType.Bombardment,
                 MessageType.Conflict,
@@ -4936,22 +4944,29 @@ namespace Rebellion.Tests.Simulation
                 planetDestroyed: true
             );
 
-            Message message = FirstMessageFor(
-                CreateMessages(
-                    game,
-                    new[] { generic, planetDestroyed },
-                    new BombardmentResult
-                    {
-                        AttackingFaction = alliance,
-                        Planet = target,
-                        PlanetDestroyed = true,
-                    }
-                ),
-                empire
+            List<MessageDelivery> deliveries = CreateMessages(
+                game,
+                new[] { generic, planetDestroyed },
+                new BombardmentResult
+                {
+                    AttackingFaction = alliance,
+                    AttackerOwnerInstanceID = alliance.InstanceID,
+                    DefenderOwnerInstanceID = empire.InstanceID,
+                    Planet = target,
+                    PlanetDestroyed = true,
+                }
             );
 
-            Assert.AreEqual("Yavin Destroyed!", message.Title);
-            Assert.AreEqual("The Death Star has destroyed the Empire system Yavin.", message.Body);
+            foreach (Faction recipient in new[] { alliance, empire })
+            {
+                Message message = FirstMessageFor(deliveries, recipient);
+                Assert.AreEqual("Yavin Destroyed!", message.Title);
+                Assert.AreEqual(
+                    "The Death Star has destroyed the Empire system Yavin.",
+                    message.Body
+                );
+                Assert.AreEqual(empire.InstanceID, ((CombatReport)message).DefenderOwnerInstanceID);
+            }
         }
 
         [Test]
