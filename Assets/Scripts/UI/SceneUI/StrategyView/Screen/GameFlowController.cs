@@ -25,6 +25,7 @@ public sealed class GameFlowController : MonoBehaviour
     private GameRoot game;
     private FactionThemeLibrary themeLibrary;
     private UIContext uiContext;
+    private PlanetDestructionCutsceneController planetDestructionCutsceneController;
     private bool campaignEnding;
     private bool cutscenePlaying;
     private bool finishCampaignAfterCutscenes;
@@ -125,6 +126,7 @@ public sealed class GameFlowController : MonoBehaviour
     private void OnDestroy()
     {
         DisposeActiveTick();
+        planetDestructionCutsceneController?.Dispose();
 
         if (activeGameManager != null)
         {
@@ -320,6 +322,13 @@ public sealed class GameFlowController : MonoBehaviour
         }
         session.Pipeline.HeadquartersLost += HandleHeadquartersLost;
         session.Pipeline.VictoryDeclared += HandleVictoryDeclared;
+        planetDestructionCutsceneController?.Dispose();
+        planetDestructionCutsceneController = new PlanetDestructionCutsceneController(
+            session.Pipeline,
+            themeLibrary,
+            () => session.Game.GetPlayerFaction()?.InstanceID,
+            EnqueueCutscene
+        );
 
         strategyController.Initialize(
             session,
@@ -339,6 +348,15 @@ public sealed class GameFlowController : MonoBehaviour
         if (string.IsNullOrWhiteSpace(cutscenePath))
             return;
 
+        EnqueueCutscene(cutscenePath);
+    }
+
+    /// <summary>
+    /// Adds an event movie to the ordered playback queue and starts playback when idle.
+    /// </summary>
+    /// <param name="cutscenePath">The configured movie content address.</param>
+    private void EnqueueCutscene(string cutscenePath)
+    {
         cutsceneQueue.Enqueue(cutscenePath);
         PlayNextQueuedCutscene();
     }

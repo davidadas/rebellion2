@@ -100,11 +100,18 @@ namespace Rebellion.Simulation
             SetBombardmentCombatState(fleets, targetPlanet, true);
             try
             {
-                bool destroysPlanet =
+                CapitalShip planetDestroyer =
                     type == BombardmentType.DestroyPlanet
-                    && BombardmentQueries.HasPlanetDestroyingShip(fleets);
+                        ? BombardmentQueries
+                            .GetActiveCapitalShips(fleets)
+                            .FirstOrDefault(ship => ship.CanDestroyPlanets)
+                        : null;
+                bool destroysPlanet = planetDestroyer != null;
                 if (destroysPlanet)
+                {
+                    result.PlanetDestroyerTypeID = planetDestroyer.TypeID;
                     DestroyPlanet(targetPlanet, result);
+                }
 
                 ResolveBombardmentDefenseFire(fleets, targetPlanet, result);
                 if (!destroysPlanet && BombardmentQueries.GetActiveCapitalShips(fleets).Any())
@@ -122,17 +129,17 @@ namespace Rebellion.Simulation
                     );
 
                     ResolveStrikes(targetPlanet, defenderId, type, result);
+                }
 
-                    if (result.DestroyedRegiments.Count > 0)
-                    {
-                        result.Events.Add(
-                            new PlanetGarrisonChangedResult
-                            {
-                                Planet = targetPlanet,
-                                Tick = _game.CurrentTick,
-                            }
-                        );
-                    }
+                if (result.DestroyedRegiments.Count > 0)
+                {
+                    result.Events.Add(
+                        new PlanetGarrisonChangedResult
+                        {
+                            Planet = targetPlanet,
+                            Tick = _game.CurrentTick,
+                        }
+                    );
                 }
             }
             finally
@@ -196,6 +203,12 @@ namespace Rebellion.Simulation
                 result
                     .DestroyedBuildings.Cast<ISceneNode>()
                     .Concat(result.DestroyedRegiments)
+                    .Concat(
+                        result
+                            .Events.OfType<GameObjectDestroyedResult>()
+                            .Select(destruction => destruction.DestroyedObject)
+                            .OfType<ISceneNode>()
+                    )
                     .Concat(
                         result
                             .Events.OfType<OfficerKilledResult>()
@@ -625,7 +638,7 @@ namespace Rebellion.Simulation
         }
 
         /// <summary>
-        /// Marks a planet destroyed and resolves effects on eligible personnel.
+        /// Destroys stationed planetary assets and resolves effects on eligible personnel.
         /// </summary>
         /// <param name="planet">Planet being destroyed.</param>
         /// <param name="result">Bombardment result receiving personnel consequences.</param>
@@ -633,11 +646,51 @@ namespace Rebellion.Simulation
         {
             planet.IsDestroyed = true;
             result.PlanetDestroyed = true;
+            HashSet<string> capturedUnitIds = result
+                .DefendingUnits.Select(snapshot => snapshot.Unit.GetInstanceID())
+                .ToHashSet();
+
+            foreach (
+                IManufacturable unit in planet
+                    .GetChildren<IManufacturable>()
+                    .Where(BombardmentQueries.IsActiveBombardmentUnit)
+                    .ToList()
+            )
+            {
+                if (capturedUnitIds.Add(unit.GetInstanceID()))
+                    result.DefendingUnits.Add(new CombatUnitSnapshot(unit));
+
+                if (unit is Building building)
+                    result.DestroyedBuildings.Add(building);
+                else if (unit is Regiment regiment)
+                    result.DestroyedRegiments.Add(regiment);
+
+                result.Events.Add(
+                    new GameObjectDestroyedResult
+                    {
+                        DestroyedObject = unit,
+                        Context = planet,
+                        Reason = UnitDestructionReason.Combat,
+                        Tick = _game.CurrentTick,
+                    }
+                );
+                if (string.IsNullOrEmpty(unit.GetOwnerInstanceID()))
+                    _game.DetachNode(unit);
+                else
+                    _game.DeleteNode(unit);
+            }
+
+            if (planet.IsHeadquarters)
+                DestroyHeadquarters(planet, result.DefenderOwnerInstanceID, result);
+
+            _game.NeutralizeDestroyedPlanet(planet);
 
             foreach (
                 Officer officer in planet
                     .GetAllOfficers()
-                    .Where(officer => !officer.IsMain && !officer.IsKilled)
+                    .Where(officer =>
+                        !officer.IsMain && !officer.IsKilled && officer.Movement == null
+                    )
                     .ToList()
             )
             {

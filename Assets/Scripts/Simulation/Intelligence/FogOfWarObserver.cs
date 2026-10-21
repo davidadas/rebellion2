@@ -121,11 +121,19 @@ namespace Rebellion.Simulation
                     result.AttackingUnits.Concat(result.DefendingUnits)
                 );
             foreach (BombardmentResult result in results.OfType<BombardmentResult>())
+            {
                 RecordCombatLosses(
                     result.AttackerOwnerInstanceID,
                     result.DefenderOwnerInstanceID,
                     result.AttackingUnits.Concat(result.DefendingUnits)
                 );
+                if (result.PlanetDestroyed)
+                    _commands.ObservePlanetOwnership(
+                        result.Planet,
+                        Array.Empty<Faction>(),
+                        result.Tick
+                    );
+            }
             foreach (PlanetaryAssaultResult result in results.OfType<PlanetaryAssaultResult>())
                 RecordCombatLosses(
                     result.AttackerOwnerInstanceID,

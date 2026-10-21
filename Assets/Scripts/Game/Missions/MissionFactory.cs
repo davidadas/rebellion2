@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 
@@ -207,6 +208,14 @@ namespace Rebellion.Game.Missions
         {
             mission = null;
             if (_game == null || context == null || string.IsNullOrEmpty(context.MissionTypeID))
+                return false;
+
+            Planet location =
+                context.Location as Planet ?? context.Location?.GetParentOfType<Planet>();
+            if (
+                location?.IsDestroyed == true
+                || _game.GetSceneNodeByInstanceID<Planet>(location?.InstanceID)?.IsDestroyed == true
+            )
                 return false;
 
             MissionOption option = _options.Find(candidate =>

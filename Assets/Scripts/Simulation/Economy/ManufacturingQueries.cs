@@ -213,9 +213,10 @@ namespace Rebellion.Simulation
             string ownerInstanceId
         )
         {
-            return producer != null
+            return producer?.IsDestroyed == false
                 && template != null
                 && destination != null
+                && destination is not Planet { IsDestroyed: true }
                 && count > 0
                 && !string.IsNullOrEmpty(ownerInstanceId)
                 && string.Equals(

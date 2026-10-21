@@ -128,6 +128,19 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
         }
 
         [Test]
+        public void Build_DestroyedPlanet_HidesOperationalStatusRows()
+        {
+            _planet.IsDestroyed = true;
+
+            StrategyStatusInfo info = _builder.Build(new StrategyStatusTarget(_mapPlanet, _planet));
+
+            CollectionAssert.AreEqual(
+                new[] { "Location:|Core Sector", "Status:|Destroyed" },
+                info.Rows.Select(row => row.Left + "|" + row.Right)
+            );
+        }
+
+        [Test]
         public void Build_Planet_ReturnsSystemCommandersButExcludesOrbitingFleetCommanders()
         {
             Officer systemGeneral = EntityFactory.CreateOfficer("system-general", _ownerId);

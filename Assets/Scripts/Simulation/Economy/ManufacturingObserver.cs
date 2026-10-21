@@ -198,7 +198,12 @@ namespace Rebellion.Simulation
             if (results != null)
             {
                 foreach (BombardmentResult result in results)
-                    ClearUnsupportedProduction(result?.Planet, result?.DestroyedBuildings);
+                {
+                    if (result?.PlanetDestroyed == true)
+                        ClearPlanetQueues(result.Planet);
+                    else
+                        ClearUnsupportedProduction(result?.Planet, result?.DestroyedBuildings);
+                }
             }
 
             return new List<GameResult>();

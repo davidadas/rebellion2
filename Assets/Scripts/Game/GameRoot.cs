@@ -435,6 +435,26 @@ namespace Rebellion.Game
         }
 
         /// <summary>
+        /// Releases a destroyed planet's control and clears its population-dependent activity.
+        /// Surviving units keep their owners and locations.
+        /// </summary>
+        /// <param name="planet">The destroyed planet whose active control state is cleared.</param>
+        internal void NeutralizeDestroyedPlanet(Planet planet)
+        {
+            if (planet?.IsDestroyed != true)
+                return;
+
+            Faction previousOwner = string.IsNullOrEmpty(planet.OwnerInstanceID)
+                ? null
+                : GetFactionByOwnerInstanceID(planet.OwnerInstanceID);
+            if (previousOwner?.HQInstanceID == planet.InstanceID)
+                previousOwner.HQInstanceID = null;
+
+            DeregsiterOwnedUnit(planet);
+            planet.ClearDestroyedControl();
+        }
+
+        /// <summary>
         /// Attaches a node to a parent node.
         /// </summary>
         /// <param name="node">The node to attach.</param>
@@ -775,6 +795,9 @@ namespace Rebellion.Game
             ((BaseSceneNode)root).TraverseIncludingDisabled(
                 (ISceneNode node) =>
                 {
+                    if (node is Planet { IsDestroyed: true } planet)
+                        NeutralizeDestroyedPlanet(planet);
+
                     if (!NodesByInstanceID.ContainsKey(node.InstanceID))
                         AddSceneNodeByInstanceID(node);
 

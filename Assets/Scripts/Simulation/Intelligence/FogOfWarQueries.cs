@@ -433,6 +433,7 @@ namespace Rebellion.Simulation
                     : planetSnapshot.IsInUprising;
             viewPlanet.IsDestroyed = planetSnapshot.IsDestroyed;
             viewPlanet.IsHeadquarters = planetSnapshot.IsHeadquarters;
+            viewPlanet.ClearDestroyedControl();
             viewPlanet.EnergyCapacity = planetSnapshot.EnergyCapacity;
             viewPlanet.AllocatedEnergy = planetSnapshot.AllocatedEnergy;
             viewPlanet.NumRawResourceNodes = planetSnapshot.NumRawResourceNodes;

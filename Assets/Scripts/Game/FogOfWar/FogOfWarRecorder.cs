@@ -877,13 +877,20 @@ namespace Rebellion.Game.FogOfWar
         }
 
         /// <summary>
-        /// Updates ownership on a known planet and its known buildings.
+        /// Updates public control and destruction state on a known planet and its known buildings.
         /// </summary>
         /// <param name="planet">The authoritative planet containing the current ownership.</param>
         /// <param name="snapshot">The existing snapshot to update.</param>
         private static void UpdatePlanetOwnership(Planet planet, PlanetSnapshot snapshot)
         {
             snapshot.OwnerInstanceID = planet.OwnerInstanceID;
+            if (planet.IsDestroyed)
+            {
+                snapshot.IsDestroyed = true;
+                snapshot.IsColonized = false;
+                snapshot.IsInUprising = false;
+                snapshot.IsHeadquarters = false;
+            }
             UpdateKnownBuildingOwnership(planet, snapshot);
         }
 

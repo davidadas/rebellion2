@@ -830,6 +830,7 @@ namespace Rebellion.Game.Results
         public int AllocatedEnergyDamage { get; set; }
         public bool HeadquartersDestroyed { get; set; }
         public bool PlanetDestroyed { get; set; }
+        public string PlanetDestroyerTypeID { get; set; }
         public List<Regiment> DestroyedRegiments { get; set; } = new List<Regiment>();
         public List<Building> DestroyedBuildings { get; set; } = new List<Building>();
         public List<CapitalShip> DestroyedCapitalShips { get; set; } = new List<CapitalShip>();

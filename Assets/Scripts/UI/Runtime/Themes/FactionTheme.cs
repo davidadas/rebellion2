@@ -26,6 +26,8 @@ public class FactionTheme
 
     public string HeadquartersDestroyedCutscenePath { get; set; }
 
+    public List<PlanetDestructionCutscene> PlanetDestructionCutscenes { get; set; } = new();
+
     public TacticalHUDLayout TacticalHUDLayout { get; set; }
 
     public StrategyAdvisorTheme StrategyAdvisor { get; set; }
