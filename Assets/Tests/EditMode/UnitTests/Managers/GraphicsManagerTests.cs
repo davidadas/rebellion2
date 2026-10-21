@@ -27,7 +27,7 @@ namespace Rebellion.Tests.Managers
             _owner = new GameObject("Graphics Test Owner");
             _cameraObject = new GameObject("Graphics Test Camera", typeof(Camera));
             _cameraObject.tag = "MainCamera";
-            _manager = new GraphicsManager(_owner.transform);
+            _manager = new GraphicsManager(_owner.transform, () => true);
         }
 
         /// <summary>
@@ -70,6 +70,90 @@ namespace Rebellion.Tests.Managers
                 HDAdditionalCameraData.AntialiasingMode.SubpixelMorphologicalAntiAliasing,
                 cameraData.antialiasing
             );
+        }
+
+        /// <summary>
+        /// Verifies Frame Generation enables its native mode, HDRP pass, and motion inputs while
+        /// preserving the camera's authored overrides when disabled.
+        /// </summary>
+        [Test]
+        public void Apply_FrameGenerationSelected_EnablesAndRestoresRequiredFrameSettings()
+        {
+            UserFrameGenerationMode appliedMode = UserFrameGenerationMode.Off;
+            _manager.Dispose();
+            _manager = new GraphicsManager(
+                _owner.transform,
+                () => true,
+                mode => appliedMode = mode
+            );
+
+            _manager.Apply(
+                new UserVideoSettings
+                {
+                    QualityLevel = _originalQualityLevel,
+                    FullScreenMode = (int)FullScreenMode.FullScreenWindow,
+                    FrameGenerationMode = (int)UserFrameGenerationMode.On,
+                }
+            );
+
+            HDAdditionalCameraData cameraData =
+                _cameraObject.GetComponent<HDAdditionalCameraData>();
+            Assert.AreEqual(UserFrameGenerationMode.On, appliedMode);
+            Assert.IsTrue(
+                cameraData.renderingPathCustomFrameSettings.IsEnabled(FrameSettingsField.CustomPass)
+            );
+            Assert.IsTrue(
+                cameraData.renderingPathCustomFrameSettings.IsEnabled(
+                    FrameSettingsField.MotionVectors
+                )
+            );
+            Assert.IsTrue(
+                cameraData.renderingPathCustomFrameSettings.IsEnabled(
+                    FrameSettingsField.ObjectMotionVectors
+                )
+            );
+
+            _manager.Apply(new UserVideoSettings { QualityLevel = _originalQualityLevel });
+
+            Assert.AreEqual(UserFrameGenerationMode.Off, appliedMode);
+            Assert.IsFalse(
+                cameraData.renderingPathCustomFrameSettingsOverrideMask.mask[
+                    (uint)FrameSettingsField.CustomPass
+                ]
+            );
+            Assert.IsFalse(
+                cameraData.renderingPathCustomFrameSettingsOverrideMask.mask[
+                    (uint)FrameSettingsField.MotionVectors
+                ]
+            );
+            Assert.IsFalse(
+                cameraData.renderingPathCustomFrameSettingsOverrideMask.mask[
+                    (uint)FrameSettingsField.ObjectMotionVectors
+                ]
+            );
+        }
+
+        [Test]
+        public void Apply_FrameGenerationSelectedInExclusiveFullscreen_DisablesEffectiveMode()
+        {
+            UserFrameGenerationMode appliedMode = UserFrameGenerationMode.On;
+            _manager.Dispose();
+            _manager = new GraphicsManager(
+                _owner.transform,
+                () => true,
+                mode => appliedMode = mode
+            );
+            UserVideoSettings settings = new UserVideoSettings
+            {
+                QualityLevel = _originalQualityLevel,
+                FullScreenMode = (int)FullScreenMode.ExclusiveFullScreen,
+                FrameGenerationMode = (int)UserFrameGenerationMode.On,
+            };
+
+            _manager.Apply(settings);
+
+            Assert.AreEqual(UserFrameGenerationMode.Off, appliedMode);
+            Assert.AreEqual((int)UserFrameGenerationMode.On, settings.FrameGenerationMode);
         }
 
         /// <summary>

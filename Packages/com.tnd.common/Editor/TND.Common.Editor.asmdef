@@ -1,0 +1,37 @@
+{
+    "name": "TND.Common.Editor",
+    "rootNamespace": "TND.Common.Editor",
+    "references": [],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "com.unity.modules.xr",
+            "expression": "1.0.0",
+            "define": "ENABLE_XR_MODULE"
+        },
+        {
+            "name": "com.tnd.upscaling",
+            "expression": "1.0.0",
+            "define": "TND_UPSCALING"
+        },
+        {
+            "name": "com.tnd.framegeneration",
+            "expression": "1.0.0",
+            "define": "TND_FRAMEGEN"
+        },
+        {
+            "name": "Unity",
+            "expression": "1.0.0",
+            "define": "TND_ANTILAG"
+        }
+    ],
+    "noEngineReferences": false
+}

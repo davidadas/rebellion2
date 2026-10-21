@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: fc53d371d58bc8b419af58ae12c9680a
+AssemblyDefinitionImporter:
+  externalObjects: {}
+  userData:
+  assetBundleName:
+  assetBundleVariant:
+AssetOrigin:
+  serializedVersion: 1
+  productId: 385490
+  packageName: DLSS 4.5 - Frame Generation for Unity
+  packageVersion: 1.0.4
+  assetPath: Packages/com.tnd.framegeneration/Runtime/Core/TND.FrameGen.Runtime.Core.asmdef
+  uploadId: 1024848

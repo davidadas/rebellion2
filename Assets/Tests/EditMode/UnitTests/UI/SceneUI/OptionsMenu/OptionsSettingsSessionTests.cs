@@ -19,6 +19,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         private InputManager _inputManager;
         private string _settingsPath;
         private OptionsSettingsSession _session;
+        private UserSettingsManager _userSettings;
 
         /// <summary>
         /// Creates a settings session backed by deterministic display and input services.
@@ -45,15 +46,15 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 Path.GetTempPath(),
                 $"rebellion2-options-session-{Guid.NewGuid():N}.json"
             );
-            UserSettingsManager settings = new UserSettingsManager(
+            _userSettings = new UserSettingsManager(
                 _audioManager,
                 _displayManager,
                 _inputManager,
                 _settingsPath
             );
-            settings.Load();
+            _userSettings.Load();
             _session = new OptionsSettingsSession(
-                settings,
+                _userSettings,
                 _displayManager,
                 _audioManager,
                 _inputManager
@@ -103,6 +104,58 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.IsTrue(_session.IsDirty);
             _session.ToggleTactical(UserTacticalOption.Starfield);
             Assert.IsFalse(_session.IsDirty);
+        }
+
+        [TestCase(UserFrameGenerationMode.Off)]
+        [TestCase(UserFrameGenerationMode.On)]
+        public void StepFullScreen_ExclusiveMode_PreservesFrameGenerationPreference(
+            UserFrameGenerationMode preference
+        )
+        {
+            GameObject graphicsOwner = new GameObject("Options Graphics Test Owner");
+            GraphicsManager graphicsManager = new GraphicsManager(
+                graphicsOwner.transform,
+                () => true,
+                _ => { }
+            );
+            OptionsSettingsSession session = new OptionsSettingsSession(
+                _userSettings,
+                _displayManager,
+                _audioManager,
+                _inputManager,
+                graphicsManager
+            );
+            try
+            {
+                session.Begin();
+                session.Video.FullScreenMode = (int)FullScreenMode.FullScreenWindow;
+                session.Video.FrameGenerationMode = (int)preference;
+
+                session.StepFullScreen(-1);
+
+                Assert.AreEqual(
+                    (int)FullScreenMode.ExclusiveFullScreen,
+                    session.Video.FullScreenMode
+                );
+                Assert.AreEqual("Fullscreen", session.FullScreenLabel);
+                Assert.AreEqual((int)preference, session.Video.FrameGenerationMode);
+                OptionsGraphicsValue exclusiveValue = session.GetGraphicsValues()[
+                    UserGraphicsSetting.FrameGeneration
+                ];
+                Assert.IsFalse(exclusiveValue.Available);
+                Assert.AreEqual("Off (Fullscreen)", exclusiveValue.Label);
+
+                session.StepFullScreen(1);
+
+                Assert.AreEqual((int)FullScreenMode.FullScreenWindow, session.Video.FullScreenMode);
+                Assert.AreEqual("Borderless", session.FullScreenLabel);
+                Assert.AreEqual((int)preference, session.Video.FrameGenerationMode);
+            }
+            finally
+            {
+                graphicsManager.Dispose();
+                UnityEngine.Object.DestroyImmediate(graphicsOwner);
+            }
         }
 
         /// <summary>
@@ -201,6 +254,8 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
 
             Assert.IsFalse(values[UserGraphicsSetting.RayTracing].Available);
             Assert.AreEqual("Unavailable", values[UserGraphicsSetting.RayTracing].Label);
+            Assert.IsFalse(values[UserGraphicsSetting.FrameGeneration].Available);
+            Assert.AreEqual("Unavailable", values[UserGraphicsSetting.FrameGeneration].Label);
             Assert.IsFalse(values[UserGraphicsSetting.HdrOutput].Available);
             Assert.AreEqual("Unavailable", values[UserGraphicsSetting.HdrOutput].Label);
             Assert.IsTrue(values[UserGraphicsSetting.Bloom].Available);

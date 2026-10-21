@@ -1,0 +1,39 @@
+{
+    "name": "TND.FrameGen.Runtime.Core",
+    "rootNamespace": "TND.FrameGen",
+    "references": [
+        "GUID:75469ad4d38634e559750d17036d5f7c",
+        "GUID:df380645f10b7bc4b97d4f5eb6303d95",
+        "GUID:43503ea3d80be1247b1b43a614ae752b"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "com.unity.modules.vr",
+            "expression": "1.0.0",
+            "define": "ENABLE_VR_MODULE"
+        },
+        {
+            "name": "com.unity.modules.xr",
+            "expression": "1.0.0",
+            "define": "ENABLE_XR_MODULE"
+        },
+        {
+            "name": "com.unity.inputsystem",
+            "expression": "1.0.0",
+            "define": "UNITY_INPUTSYSTEM"
+        },
+        {
+            "name": "com.unity.render-pipelines.core",
+            "expression": "1.0.0",
+            "define": "TND_SRP_CORE"
+        }
+    ],
+    "noEngineReferences": false
+}

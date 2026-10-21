@@ -1,0 +1,12 @@
+{
+  "name": "com.tnd.framegen.dlss4",
+  "version": "1.0.4",
+  "displayName": "TND DLSS 4 Frame Generation",
+  "description": "Frame Generation Provider for DLSS 4",
+  "unity": "2021.3",
+  "author": "The Naked Dev <https://www.thenakeddev.com> (https://www.thenakeddev.com)",
+  "dependencies": {
+    "com.tnd.framegeneration": "1.0.10",
+    "com.tnd.common": "1.0.5"
+  }
+}
