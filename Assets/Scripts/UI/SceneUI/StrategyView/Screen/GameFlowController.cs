@@ -293,7 +293,7 @@ public sealed class GameFlowController : MonoBehaviour
         GameSession session = loadedGame ? runtime.StartLoadedGame(game) : runtime.StartGame(game);
         ApplyGameLaunchSpeed(
             runtime.GetActiveGameManager(),
-            bootstrap.GetUserSettingsManager().Settings.UserInterface.GameLaunchSpeed
+            bootstrap.GetUserSettingsManager().Settings.Gameplay.GameLaunchSpeed
         );
         return session;
     }

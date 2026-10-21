@@ -195,11 +195,11 @@ namespace Rebellion.Simulation
                 null,
                 result
                     .DestroyedBuildings.Cast<ISceneNode>()
-                    .Concat(result.DestroyedRegiments)
+                    .Concat(result.DestroyedRegiments.Cast<ISceneNode>())
                     .Concat(
                         result
                             .Events.OfType<OfficerKilledResult>()
-                            .Select(killed => killed.TargetOfficer)
+                            .Select(killed => (ISceneNode)killed.TargetOfficer)
                     )
             );
         }

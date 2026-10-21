@@ -316,17 +316,19 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void RestoreDefaults_GameplaySelected_PreservesUserInterfaceSettings()
+        public void RestoreDefaults_GameplaySelected_RestoresGameplayAndPreservesUserInterfaceSettings()
         {
             _session.ToggleUserInterface(UserInterfaceOption.ShowUnitCardStats);
+            _session.SetGameLaunchSpeed(GameLaunchSpeed.Fast);
 
             _session.RestoreDefaults(OptionsMenuTab.Gameplay);
 
             Assert.IsTrue(_session.UserInterface.ShowUnitCardStats);
+            Assert.AreEqual(GameLaunchSpeed.Unchanged, _session.Gameplay.GameLaunchSpeed);
         }
 
         [Test]
-        public void RestoreDefaults_UserInterfaceSelected_RestoresUserInterfaceSettings()
+        public void RestoreDefaults_UserInterfaceSelected_RestoresUserInterfaceAndPreservesGameplaySettings()
         {
             _session.ToggleUserInterface(UserInterfaceOption.ShowIdleBar);
             _session.ToggleUserInterface(UserInterfaceOption.KeepIdleBarOpen);
@@ -342,7 +344,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.IsFalse(_session.UserInterface.ShowUnitCardStats);
             Assert.IsFalse(_session.UserInterface.ShowFrameRate);
             Assert.AreEqual(IdleBarLocation.TopRight, _session.UserInterface.IdleBarLocation);
-            Assert.AreEqual(GameLaunchSpeed.Unchanged, _session.UserInterface.GameLaunchSpeed);
+            Assert.AreEqual(GameLaunchSpeed.Fast, _session.Gameplay.GameLaunchSpeed);
         }
 
         [Test]
