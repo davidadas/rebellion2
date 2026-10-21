@@ -21,6 +21,7 @@ namespace Rebellion.Simulation
     {
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
+        private readonly OrbitalStateNotifications _orbitalStateNotifications;
         private readonly HashSet<string> _shortfallFactions = new HashSet<string>();
         private readonly Dictionary<string, int> _nextAutoscrapTickByFaction =
             new Dictionary<string, int>();
@@ -35,10 +36,17 @@ namespace Rebellion.Simulation
         /// </summary>
         /// <param name="game">The game instance.</param>
         /// <param name="provider">Random number provider for scrap target selection.</param>
-        public MaintenanceCommands(GameRoot game, IRandomNumberProvider provider)
+        /// <param name="orbitalStateNotifications">The completed orbital-state notification source.</param>
+        public MaintenanceCommands(
+            GameRoot game,
+            IRandomNumberProvider provider,
+            OrbitalStateNotifications orbitalStateNotifications = null
+        )
         {
             _game = game ?? throw new System.ArgumentNullException(nameof(game));
             _provider = provider;
+            _orbitalStateNotifications =
+                orbitalStateNotifications ?? OrbitalStateNotifications.Create(game);
         }
 
         /// <summary>
@@ -260,7 +268,7 @@ namespace Rebellion.Simulation
             FleetLifecycle.RemoveEmptyFleet(_game, parentFleet);
             if (wasBlockaded.HasValue)
             {
-                BlockadeTransitions.AddChangedResult(_game, location, wasBlockaded.Value, results);
+                _orbitalStateNotifications.Publish(location, wasBlockaded.Value, results);
             }
 
             if (

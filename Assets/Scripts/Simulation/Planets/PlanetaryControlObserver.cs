@@ -19,6 +19,7 @@ namespace Rebellion.Simulation
         private readonly PlanetaryControlCommands _commands;
         private readonly MovementCommands _movement;
         private readonly PlanetaryControlQueries _queries;
+        private readonly OrbitalStateNotifications _orbitalStateNotifications;
         private readonly ConditionalWeakTable<
             PlanetOwnershipChangedResult,
             List<GameResult>
@@ -34,17 +35,21 @@ namespace Rebellion.Simulation
         /// <param name="commands">The ownership and support operations.</param>
         /// <param name="movement">The movement operations used to evacuate displaced units.</param>
         /// <param name="queries">The planetary-control state queries.</param>
+        /// <param name="orbitalStateNotifications">The completed orbital-state notification source.</param>
         public PlanetaryControlObserver(
             GameRoot game,
             PlanetaryControlCommands commands,
             MovementCommands movement,
-            PlanetaryControlQueries queries
+            PlanetaryControlQueries queries,
+            OrbitalStateNotifications orbitalStateNotifications = null
         )
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
             _commands = commands ?? throw new ArgumentNullException(nameof(commands));
             _movement = movement ?? throw new ArgumentNullException(nameof(movement));
             _queries = queries ?? throw new ArgumentNullException(nameof(queries));
+            _orbitalStateNotifications =
+                orbitalStateNotifications ?? OrbitalStateNotifications.Create(game);
         }
 
         /// <summary>
@@ -466,7 +471,7 @@ namespace Rebellion.Simulation
             }
 
             bool wasBlockaded = change.BlockadedFactionInstanceIDs?.Count > 0;
-            BlockadeTransitions.AddChangedResult(_game, change.Planet, wasBlockaded, results);
+            _orbitalStateNotifications.Publish(change.Planet, wasBlockaded, results);
 
             int shift;
             switch (change.Reason)

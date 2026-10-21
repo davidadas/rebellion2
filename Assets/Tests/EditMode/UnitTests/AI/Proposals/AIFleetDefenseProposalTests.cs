@@ -1,6 +1,7 @@
 using NUnit.Framework;
 using Rebellion.AI;
 using Rebellion.AI.Demands;
+using Rebellion.AI.Phases;
 using Rebellion.AI.Planners;
 using Rebellion.AI.Proposals;
 using Rebellion.AI.Scorers;
@@ -16,9 +17,6 @@ namespace Rebellion.Tests.AI.Fleets
     [TestFixture]
     public class AIFleetDefenseProposalTests
     {
-        /// <summary>
-        /// Verifies that direct defense movement refreshes cached maintenance after starting a blockade.
-        /// </summary>
         [Test]
         public void Execute_DepartureStartsBlockade_RefreshesManufacturingBudget()
         {
@@ -69,7 +67,8 @@ namespace Rebellion.Tests.AI.Fleets
                 headquarters
             );
 
-            proposal.Execute(context);
+            context.SetSelectedProposals(new[] { proposal });
+            new AIExecutionPhase().Execute(context);
 
             Assert.IsNotNull(defendingFleet.Movement);
             Assert.IsTrue(resourcePlanet.IsBlockadedFor(empire.InstanceID));

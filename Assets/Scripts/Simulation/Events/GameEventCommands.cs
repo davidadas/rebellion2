@@ -23,6 +23,7 @@ namespace Rebellion.Simulation
         private readonly DuelCommands _duelCommands;
         private readonly MessageCommands _messageCommands;
         private readonly MissionResolver _missionResolver;
+        private readonly OrbitalStateNotifications _orbitalStateNotifications;
 
         /// <summary>
         /// Creates a new GameEventCommands.
@@ -51,7 +52,8 @@ namespace Rebellion.Simulation
                 planetaryControlCommands,
                 duelCommands,
                 messageCommands,
-                missionResolver: null
+                missionResolver: null,
+                orbitalStateNotifications: null
             ) { }
 
         /// <summary>
@@ -65,6 +67,7 @@ namespace Rebellion.Simulation
         /// <param name="duelCommands">The officer encounter operations.</param>
         /// <param name="messageCommands">The authored message delivery operations.</param>
         /// <param name="missionResolver">The mission lifecycle resolver.</param>
+        /// <param name="orbitalStateNotifications">The completed orbital-state notification source.</param>
         internal GameEventCommands(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -73,7 +76,8 @@ namespace Rebellion.Simulation
             PlanetaryControlCommands planetaryControlCommands,
             DuelCommands duelCommands,
             MessageCommands messageCommands,
-            MissionResolver missionResolver
+            MissionResolver missionResolver,
+            OrbitalStateNotifications orbitalStateNotifications
         )
         {
             _game = game;
@@ -84,6 +88,8 @@ namespace Rebellion.Simulation
             _duelCommands = duelCommands;
             _messageCommands = messageCommands;
             _missionResolver = missionResolver;
+            _orbitalStateNotifications =
+                orbitalStateNotifications ?? OrbitalStateNotifications.Create(game);
         }
 
         /// <summary>
@@ -480,7 +486,8 @@ namespace Rebellion.Simulation
                 _provider,
                 context,
                 _unitFactory,
-                _missionResolver
+                _missionResolver,
+                _orbitalStateNotifications
             );
             results = new List<GameResult>(actionContext.Results);
             if (actionContext.DeferredOperations.Count > 0)
@@ -739,6 +746,7 @@ namespace Rebellion.Simulation
         /// <param name="context">The scoped target, trigger, state, and runtime bindings.</param>
         /// <param name="unitFactory">Factory for actions that create runtime units.</param>
         /// <param name="missionResolver">The mission lifecycle resolver.</param>
+        /// <param name="orbitalStateNotifications">The completed orbital-state notification source.</param>
         /// <returns>The context containing requests and results produced by the actions.</returns>
         private static GameActionContext ExecuteActions(
             GameEvent gameEvent,
@@ -746,7 +754,8 @@ namespace Rebellion.Simulation
             IRandomNumberProvider provider,
             GameEventEvaluationContext context,
             UnitFactory unitFactory = null,
-            MissionResolver missionResolver = null
+            MissionResolver missionResolver = null,
+            OrbitalStateNotifications orbitalStateNotifications = null
         )
         {
             GameActionContext actionContext = new GameActionContext(
@@ -754,7 +763,8 @@ namespace Rebellion.Simulation
                 provider,
                 context,
                 unitFactory,
-                missionResolver
+                missionResolver,
+                orbitalStateNotifications
             );
             ExecuteActions(gameEvent.Actions, actionContext);
             return actionContext;

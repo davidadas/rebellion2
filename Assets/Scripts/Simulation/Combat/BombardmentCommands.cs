@@ -21,6 +21,7 @@ namespace Rebellion.Simulation
         private readonly BombardmentQueries _queries;
         private readonly IRandomNumberProvider _provider;
         private readonly PersonnelCommands _personnelCommands;
+        private readonly OrbitalStateNotifications _orbitalStateNotifications;
 
         /// <summary>
         /// Raised after an immediate bombardment command produces results.
@@ -34,11 +35,13 @@ namespace Rebellion.Simulation
         /// <param name="provider">Random-number provider used by bombardment resolution.</param>
         /// <param name="queries">Bombardment eligibility and strength rules.</param>
         /// <param name="personnelCommands">Personnel lifecycle commands.</param>
+        /// <param name="orbitalStateNotifications">The completed orbital-state notification source.</param>
         public BombardmentCommands(
             GameRoot game,
             IRandomNumberProvider provider,
             BombardmentQueries queries,
-            PersonnelCommands personnelCommands = null
+            PersonnelCommands personnelCommands = null,
+            OrbitalStateNotifications orbitalStateNotifications = null
         )
         {
             _game = game;
@@ -46,6 +49,8 @@ namespace Rebellion.Simulation
             _personnelCommands =
                 personnelCommands ?? new PersonnelCommands(new PersonnelQueries(game));
             _queries = queries ?? throw new ArgumentNullException(nameof(queries));
+            _orbitalStateNotifications =
+                orbitalStateNotifications ?? OrbitalStateNotifications.Create(game);
         }
 
         /// <summary>
@@ -136,7 +141,7 @@ namespace Rebellion.Simulation
                 SetBombardmentCombatState(fleets, targetPlanet, false);
             }
 
-            BlockadeTransitions.AddChangedResult(_game, targetPlanet, wasBlockaded, result.Events);
+            _orbitalStateNotifications.Publish(targetPlanet, wasBlockaded, result.Events);
 
             List<GameResult> results = new List<GameResult> { result };
             results.AddRange(result.Events);

@@ -4,6 +4,7 @@ using System.Linq;
 using NUnit.Framework;
 using Rebellion.AI;
 using Rebellion.AI.Demands;
+using Rebellion.AI.Phases;
 using Rebellion.AI.Planners;
 using Rebellion.AI.Proposals;
 using Rebellion.AI.Scorers;
@@ -570,9 +571,6 @@ namespace Rebellion.Tests.AI.Fleets
             );
         }
 
-        /// <summary>
-        /// Verifies that a successful assault refreshes maintenance after ownership changes.
-        /// </summary>
         [Test]
         public void Execute_WithSuccessfulPlanetaryAssault_RefreshesManufacturingBudget()
         {
@@ -619,7 +617,8 @@ namespace Rebellion.Tests.AI.Fleets
             );
             Assert.AreEqual(0, context.AvailableProjectedMaintenanceHeadroom);
 
-            proposal.Execute(context);
+            context.SetSelectedProposals(new[] { proposal });
+            new AIExecutionPhase().Execute(context);
 
             Assert.AreEqual(empire.InstanceID, target.GetOwnerInstanceID());
             Assert.AreEqual(50, context.AvailableProjectedMaintenanceHeadroom);

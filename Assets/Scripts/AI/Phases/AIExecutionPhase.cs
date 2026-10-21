@@ -30,7 +30,11 @@ namespace Rebellion.AI.Phases
             foreach (AIProposal proposal in context.SelectedProposals)
             {
                 if (proposal?.CanExecute(context) == true)
+                {
                     proposal.Execute(context);
+                    if (proposal is not AIManufactureProposal)
+                        context.InvalidateManufacturingBudget();
+                }
                 yield return proposal;
             }
         }

@@ -82,6 +82,9 @@ namespace Rebellion.Simulation
             services.AddSingleton<PersonnelCommands>();
             services.AddSingleton<DuelCommands>();
             services.AddSingleton<MovementQueries>();
+            services.AddSingleton<OrbitalStateNotifications>(locator =>
+                OrbitalStateNotifications.Create(locator.GetService<GameRoot>())
+            );
             services.AddSingleton<MovementCommands>();
             services.AddSingleton<HeadquartersQueries>();
             services.AddSingleton<HeadquartersCommands>();
@@ -138,7 +141,8 @@ namespace Rebellion.Simulation
                 locator.GetService<PlanetaryControlCommands>(),
                 locator.GetService<DuelCommands>(),
                 locator.GetService<MessageCommands>(),
-                locator.GetService<MissionResolver>()
+                locator.GetService<MissionResolver>(),
+                locator.GetService<OrbitalStateNotifications>()
             ));
 
             return services.BuildServiceLocator();

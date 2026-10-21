@@ -2,6 +2,7 @@ using System.Linq;
 using NUnit.Framework;
 using Rebellion.AI;
 using Rebellion.AI.Demands;
+using Rebellion.AI.Phases;
 using Rebellion.AI.Planners;
 using Rebellion.AI.Proposals;
 using Rebellion.AI.Scorers;
@@ -60,7 +61,8 @@ namespace Rebellion.Tests.AI.Proposals
             AIProposal proposal = new AIFacilityRemovalPlanner().Plan(context).Single();
 
             Assert.IsTrue(proposal.CanExecute(context));
-            proposal.Execute(context);
+            context.SetSelectedProposals(new[] { proposal });
+            new AIExecutionPhase().Execute(context);
 
             int remaining = context
                 .Assessment.OwnedPlanets.SelectMany(planet => planet.GetChildren<Building>())
@@ -68,9 +70,6 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.AreEqual(1, remaining);
         }
 
-        /// <summary>
-        /// Verifies that removing a facility releases maintenance in the active turn budget.
-        /// </summary>
         [Test]
         public void Execute_WithActiveManufacturingBudget_SynchronizesReleasedMaintenance()
         {
@@ -82,7 +81,8 @@ namespace Rebellion.Tests.AI.Proposals
             AIProposal proposal = new AIFacilityRemovalPlanner().Plan(context).Single();
             int initialHeadroom = context.AvailableProjectedMaintenanceHeadroom;
 
-            proposal.Execute(context);
+            context.SetSelectedProposals(new[] { proposal });
+            new AIExecutionPhase().Execute(context);
 
             Assert.AreEqual(initialHeadroom + 10, context.AvailableProjectedMaintenanceHeadroom);
         }

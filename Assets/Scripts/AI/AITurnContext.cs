@@ -76,7 +76,6 @@ namespace Rebellion.AI
         private readonly HashSet<string> _unlockedSpecialForcesMissionTypes;
         private bool _hasManufacturingBudget;
         private int _availableManufacturingHeadroom;
-        private long _manufacturingBudgetRevision = -1;
 
         /// <summary>
         /// Creates a turn context.
@@ -296,7 +295,14 @@ namespace Rebellion.AI
                 - Math.Max(0, addedMaintenance);
             _availableManufacturingHeadroom = (int)
                 Math.Max(int.MinValue, Math.Min(int.MaxValue, available));
-            _manufacturingBudgetRevision = Game?.EconomyRevision ?? -1;
+        }
+
+        /// <summary>
+        /// Invalidates manufacturing headroom after another proposal may have changed economy state.
+        /// </summary>
+        internal void InvalidateManufacturingBudget()
+        {
+            _hasManufacturingBudget = false;
         }
 
         /// <summary>
@@ -304,13 +310,11 @@ namespace Rebellion.AI
         /// </summary>
         private void EnsureManufacturingBudget()
         {
-            long economyRevision = Game?.EconomyRevision ?? -1;
-            if (_hasManufacturingBudget && _manufacturingBudgetRevision == economyRevision)
+            if (_hasManufacturingBudget)
                 return;
 
             _availableManufacturingHeadroom = CalculateAvailableManufacturingHeadroom();
             _hasManufacturingBudget = true;
-            _manufacturingBudgetRevision = economyRevision;
         }
 
         /// <summary>

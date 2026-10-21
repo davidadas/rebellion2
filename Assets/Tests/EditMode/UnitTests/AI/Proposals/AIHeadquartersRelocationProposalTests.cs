@@ -67,9 +67,6 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.IsNotNull(headquarters.Movement);
         }
 
-        /// <summary>
-        /// Verifies that removing a resource facility refreshes maintenance before relocation.
-        /// </summary>
         [Test]
         public void Execute_ResourceFacilityRemoval_RefreshesMaintenanceHeadroom()
         {
@@ -87,7 +84,8 @@ namespace Rebellion.Tests.AI.Proposals
                 .Single();
             int initialHeadroom = context.AvailableProjectedMaintenanceHeadroom;
 
-            proposal.Execute(context);
+            context.SetSelectedProposals(new[] { proposal });
+            new AIExecutionPhase().Execute(context);
 
             Assert.Greater(proposal.MaintenanceHeadroomCost, 0);
             Assert.AreEqual(

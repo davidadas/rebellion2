@@ -27,6 +27,7 @@ namespace Rebellion.Simulation
         private readonly PersonnelCommands _personnelCommands;
         private readonly MovementQueries _queries;
         private readonly IRandomNumberProvider _movementRandom;
+        private readonly OrbitalStateNotifications _orbitalStateNotifications;
         private readonly List<GameResult> _pendingResults = new List<GameResult>();
 
         /// <summary>
@@ -44,6 +45,7 @@ namespace Rebellion.Simulation
         /// <param name="queries">The shared movement eligibility and destination rules.</param>
         /// <param name="random">The random source used for movement consequences.</param>
         /// <param name="personnelCommands">The personnel lifecycle operations.</param>
+        /// <param name="orbitalStateNotifications">The completed orbital-state notification source.</param>
         public MovementCommands(
             GameRoot game,
             FogOfWarCommands fogOfWar,
@@ -51,7 +53,8 @@ namespace Rebellion.Simulation
             FogOfWarQueries fogOfWarQueries,
             MovementQueries queries,
             IRandomNumberProvider random = null,
-            PersonnelCommands personnelCommands = null
+            PersonnelCommands personnelCommands = null,
+            OrbitalStateNotifications orbitalStateNotifications = null
         )
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
@@ -64,6 +67,8 @@ namespace Rebellion.Simulation
             _evacuationLosses = new EvacuationLossResolver(game, _movementRandom);
             _personnelCommands =
                 personnelCommands ?? new PersonnelCommands(new PersonnelQueries(game));
+            _orbitalStateNotifications =
+                orbitalStateNotifications ?? OrbitalStateNotifications.Create(game);
         }
 
         /// <summary>
@@ -2182,7 +2187,7 @@ namespace Rebellion.Simulation
         )
         {
             if (wasBlockaded.HasValue)
-                BlockadeTransitions.AddChangedResult(_game, planet, wasBlockaded.Value, results);
+                _orbitalStateNotifications.Publish(planet, wasBlockaded.Value, results);
         }
 
         /// <summary>
