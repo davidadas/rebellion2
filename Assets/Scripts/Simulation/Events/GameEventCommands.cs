@@ -23,7 +23,7 @@ namespace Rebellion.Simulation
         private readonly DuelCommands _duelCommands;
         private readonly MessageCommands _messageCommands;
         private readonly MissionResolver _missionResolver;
-        private readonly OrbitalStateNotifications _orbitalStateNotifications;
+        private readonly BlockadeTransitionResolver _blockadeTransitionResolver;
 
         /// <summary>
         /// Creates a new GameEventCommands.
@@ -53,7 +53,7 @@ namespace Rebellion.Simulation
                 duelCommands,
                 messageCommands,
                 missionResolver: null,
-                orbitalStateNotifications: null
+                blockadeTransitionResolver: null
             ) { }
 
         /// <summary>
@@ -67,7 +67,7 @@ namespace Rebellion.Simulation
         /// <param name="duelCommands">The officer encounter operations.</param>
         /// <param name="messageCommands">The authored message delivery operations.</param>
         /// <param name="missionResolver">The mission lifecycle resolver.</param>
-        /// <param name="orbitalStateNotifications">The completed orbital-state notification source.</param>
+        /// <param name="blockadeTransitionResolver">Resolves blockade changes after event actions.</param>
         internal GameEventCommands(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -77,7 +77,7 @@ namespace Rebellion.Simulation
             DuelCommands duelCommands,
             MessageCommands messageCommands,
             MissionResolver missionResolver,
-            OrbitalStateNotifications orbitalStateNotifications
+            BlockadeTransitionResolver blockadeTransitionResolver
         )
         {
             _game = game;
@@ -88,8 +88,8 @@ namespace Rebellion.Simulation
             _duelCommands = duelCommands;
             _messageCommands = messageCommands;
             _missionResolver = missionResolver;
-            _orbitalStateNotifications =
-                orbitalStateNotifications ?? OrbitalStateNotifications.Create(game);
+            _blockadeTransitionResolver =
+                blockadeTransitionResolver ?? new BlockadeTransitionResolver(game);
         }
 
         /// <summary>
@@ -487,7 +487,7 @@ namespace Rebellion.Simulation
                 context,
                 _unitFactory,
                 _missionResolver,
-                _orbitalStateNotifications
+                _blockadeTransitionResolver
             );
             results = new List<GameResult>(actionContext.Results);
             if (actionContext.DeferredOperations.Count > 0)
@@ -746,7 +746,7 @@ namespace Rebellion.Simulation
         /// <param name="context">The scoped target, trigger, state, and runtime bindings.</param>
         /// <param name="unitFactory">Factory for actions that create runtime units.</param>
         /// <param name="missionResolver">The mission lifecycle resolver.</param>
-        /// <param name="orbitalStateNotifications">The completed orbital-state notification source.</param>
+        /// <param name="blockadeTransitionResolver">Resolves blockade changes after event actions.</param>
         /// <returns>The context containing requests and results produced by the actions.</returns>
         private static GameActionContext ExecuteActions(
             GameEvent gameEvent,
@@ -755,7 +755,7 @@ namespace Rebellion.Simulation
             GameEventEvaluationContext context,
             UnitFactory unitFactory = null,
             MissionResolver missionResolver = null,
-            OrbitalStateNotifications orbitalStateNotifications = null
+            BlockadeTransitionResolver blockadeTransitionResolver = null
         )
         {
             GameActionContext actionContext = new GameActionContext(
@@ -764,7 +764,7 @@ namespace Rebellion.Simulation
                 context,
                 unitFactory,
                 missionResolver,
-                orbitalStateNotifications
+                blockadeTransitionResolver
             );
             ExecuteActions(gameEvent.Actions, actionContext);
             return actionContext;

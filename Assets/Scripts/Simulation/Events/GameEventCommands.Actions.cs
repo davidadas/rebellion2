@@ -1363,11 +1363,12 @@ namespace Rebellion.Simulation
                     ) == affectedPlanet
                 )
                 {
-                    context.OrbitalStateNotifications.Publish(
+                    BlockadeChangedResult blockade = context.BlockadeTransitionResolver.Resolve(
                         affectedPlanet,
-                        blockadeState.Value,
-                        results
+                        blockadeState.Value
                     );
+                    if (blockade != null)
+                        results.Add(blockade);
                 }
             }
 

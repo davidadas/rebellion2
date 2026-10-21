@@ -17,7 +17,7 @@ namespace Rebellion.Simulation
         public IRandomNumberProvider Random { get; }
         public GameEventEvaluationContext Evaluation { get; }
         public UnitFactory UnitFactory { get; }
-        internal OrbitalStateNotifications OrbitalStateNotifications { get; }
+        internal BlockadeTransitionResolver BlockadeTransitionResolver { get; }
         internal List<(
             string Name,
             string SourceEventInstanceID,
@@ -49,14 +49,14 @@ namespace Rebellion.Simulation
         /// <param name="evaluation">The event evaluation context.</param>
         /// <param name="unitFactory">The runtime unit factory.</param>
         /// <param name="missionResolver">The mission lifecycle resolver.</param>
-        /// <param name="orbitalStateNotifications">The completed orbital-state notification source.</param>
+        /// <param name="blockadeTransitionResolver">Resolves blockade changes after event actions.</param>
         internal GameActionContext(
             GameRoot game,
             IRandomNumberProvider random,
             GameEventEvaluationContext evaluation,
             UnitFactory unitFactory,
             MissionResolver missionResolver,
-            OrbitalStateNotifications orbitalStateNotifications = null
+            BlockadeTransitionResolver blockadeTransitionResolver = null
         )
         {
             Game = game ?? throw new ArgumentNullException(nameof(game));
@@ -64,8 +64,8 @@ namespace Rebellion.Simulation
             Evaluation = evaluation;
             UnitFactory = unitFactory;
             _missionResolver = missionResolver;
-            OrbitalStateNotifications =
-                orbitalStateNotifications ?? OrbitalStateNotifications.Create(game);
+            BlockadeTransitionResolver =
+                blockadeTransitionResolver ?? new BlockadeTransitionResolver(game);
         }
 
         /// <summary>

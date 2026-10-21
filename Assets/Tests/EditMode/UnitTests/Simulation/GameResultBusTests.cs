@@ -123,6 +123,25 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
+        public void ObserveAll_CompletedReactionWaves_ReceivesCompleteSettledBatch()
+        {
+            GameResultBus bus = new GameResultBus();
+            IReadOnlyList<GameResult> observedResults = null;
+            bus.Subscribe<PlanetGarrisonChangedResult>(_ => new List<GameResult>
+            {
+                new PlanetUprisingStartedResult(),
+            });
+            bus.ObserveAll(results => observedResults = results);
+
+            bus.Publish(new PlanetGarrisonChangedResult());
+
+            CollectionAssert.AreEqual(
+                new[] { typeof(PlanetGarrisonChangedResult), typeof(PlanetUprisingStartedResult) },
+                observedResults.Select(result => result.GetType())
+            );
+        }
+
+        [Test]
         public void Publish_MultipleMatchingResults_DeliversOneOrderedBatch()
         {
             GameResultBus processor = new GameResultBus();

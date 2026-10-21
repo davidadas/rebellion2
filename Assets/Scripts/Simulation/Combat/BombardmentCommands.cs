@@ -21,7 +21,7 @@ namespace Rebellion.Simulation
         private readonly BombardmentQueries _queries;
         private readonly IRandomNumberProvider _provider;
         private readonly PersonnelCommands _personnelCommands;
-        private readonly OrbitalStateNotifications _orbitalStateNotifications;
+        private readonly BlockadeTransitionResolver _blockadeTransitionResolver;
 
         /// <summary>
         /// Raised after an immediate bombardment command produces results.
@@ -35,13 +35,13 @@ namespace Rebellion.Simulation
         /// <param name="provider">Random-number provider used by bombardment resolution.</param>
         /// <param name="queries">Bombardment eligibility and strength rules.</param>
         /// <param name="personnelCommands">Personnel lifecycle commands.</param>
-        /// <param name="orbitalStateNotifications">The completed orbital-state notification source.</param>
+        /// <param name="blockadeTransitionResolver">Resolves blockade changes after bombardment.</param>
         public BombardmentCommands(
             GameRoot game,
             IRandomNumberProvider provider,
             BombardmentQueries queries,
             PersonnelCommands personnelCommands = null,
-            OrbitalStateNotifications orbitalStateNotifications = null
+            BlockadeTransitionResolver blockadeTransitionResolver = null
         )
         {
             _game = game;
@@ -49,8 +49,8 @@ namespace Rebellion.Simulation
             _personnelCommands =
                 personnelCommands ?? new PersonnelCommands(new PersonnelQueries(game));
             _queries = queries ?? throw new ArgumentNullException(nameof(queries));
-            _orbitalStateNotifications =
-                orbitalStateNotifications ?? OrbitalStateNotifications.Create(game);
+            _blockadeTransitionResolver =
+                blockadeTransitionResolver ?? new BlockadeTransitionResolver(game);
         }
 
         /// <summary>
@@ -141,7 +141,12 @@ namespace Rebellion.Simulation
                 SetBombardmentCombatState(fleets, targetPlanet, false);
             }
 
-            _orbitalStateNotifications.Publish(targetPlanet, wasBlockaded, result.Events);
+            BlockadeChangedResult blockade = _blockadeTransitionResolver.Resolve(
+                targetPlanet,
+                wasBlockaded
+            );
+            if (blockade != null)
+                result.Events.Add(blockade);
 
             List<GameResult> results = new List<GameResult> { result };
             results.AddRange(result.Events);

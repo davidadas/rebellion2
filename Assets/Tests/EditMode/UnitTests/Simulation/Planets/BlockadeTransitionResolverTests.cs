@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
@@ -11,20 +9,18 @@ using Rebellion.Simulation;
 namespace Rebellion.Tests.Simulation
 {
     [TestFixture]
-    public sealed class BlockadeObserverTests
+    public sealed class BlockadeTransitionResolverTests
     {
         [Test]
-        public void Publish_NewBlockade_AddsStartedResult()
+        public void Resolve_NewBlockade_ReturnsStartedResult()
         {
             (GameRoot game, Planet planet) = BuildScene();
-            OrbitalStateNotifications notifications = OrbitalStateNotifications.Create(game);
+            BlockadeTransitionResolver resolver = new BlockadeTransitionResolver(game);
             bool wasBlockaded = planet.IsBlockaded();
             Fleet fleet = AttachOperationalFleet(game, planet, "alliance");
-            List<GameResult> results = new List<GameResult>();
 
-            notifications.Publish(planet, wasBlockaded, results);
+            BlockadeChangedResult result = resolver.Resolve(planet, wasBlockaded);
 
-            BlockadeChangedResult result = results.OfType<BlockadeChangedResult>().Single();
             Assert.AreSame(planet, result.Planet);
             Assert.AreSame(fleet, result.BlockadingFleet);
             Assert.IsTrue(result.Blockaded);
@@ -32,43 +28,39 @@ namespace Rebellion.Tests.Simulation
         }
 
         [Test]
-        public void Publish_ExistingBlockade_AddsNoResult()
+        public void Resolve_ExistingBlockade_ReturnsNull()
         {
             (GameRoot game, Planet planet) = BuildScene();
-            OrbitalStateNotifications notifications = OrbitalStateNotifications.Create(game);
+            BlockadeTransitionResolver resolver = new BlockadeTransitionResolver(game);
             AttachOperationalFleet(game, planet, "alliance");
-            List<GameResult> results = new List<GameResult>();
 
-            notifications.Publish(planet, wasBlockaded: true, results);
+            BlockadeChangedResult result = resolver.Resolve(planet, wasBlockaded: true);
 
-            Assert.IsEmpty(results);
+            Assert.IsNull(result);
         }
 
         [Test]
-        public void Publish_UnblockadedPlanet_AddsNoResult()
+        public void Resolve_UnblockadedPlanet_ReturnsNull()
         {
             (GameRoot game, Planet planet) = BuildScene();
-            OrbitalStateNotifications notifications = OrbitalStateNotifications.Create(game);
-            List<GameResult> results = new List<GameResult>();
+            BlockadeTransitionResolver resolver = new BlockadeTransitionResolver(game);
 
-            notifications.Publish(planet, wasBlockaded: false, results);
+            BlockadeChangedResult result = resolver.Resolve(planet, wasBlockaded: false);
 
-            Assert.IsEmpty(results);
+            Assert.IsNull(result);
         }
 
         [Test]
-        public void Publish_EndedBlockade_AddsEndedResult()
+        public void Resolve_EndedBlockade_ReturnsEndedResult()
         {
             (GameRoot game, Planet planet) = BuildScene();
-            OrbitalStateNotifications notifications = OrbitalStateNotifications.Create(game);
+            BlockadeTransitionResolver resolver = new BlockadeTransitionResolver(game);
             Fleet fleet = AttachOperationalFleet(game, planet, "alliance");
             bool wasBlockaded = planet.IsBlockaded();
             fleet.Movement = new MovementState { TransitTicks = 1 };
-            List<GameResult> results = new List<GameResult>();
 
-            notifications.Publish(planet, wasBlockaded, results);
+            BlockadeChangedResult result = resolver.Resolve(planet, wasBlockaded);
 
-            BlockadeChangedResult result = results.OfType<BlockadeChangedResult>().Single();
             Assert.AreSame(planet, result.Planet);
             Assert.IsNull(result.BlockadingFleet);
             Assert.IsFalse(result.Blockaded);

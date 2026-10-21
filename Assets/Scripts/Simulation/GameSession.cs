@@ -155,7 +155,8 @@ namespace Rebellion.Simulation
                 Game,
                 _gameData,
                 _randomProvider,
-                messageFactory
+                messageFactory,
+                resultBus
             );
             MessageObserver = GetService<MessageObserver>();
             GetService<MovementQueries>()

@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Generic;
 using Rebellion.AI.Proposals;
+using Rebellion.Simulation;
 
 namespace Rebellion.AI.Phases
 {
@@ -8,6 +10,17 @@ namespace Rebellion.AI.Phases
     /// </summary>
     public sealed class AIExecutionPhase : IAIIncrementalTurnPhase
     {
+        private readonly GameResultBus _results;
+
+        /// <summary>
+        /// Creates an execution phase that observes completed changes between incremental steps.
+        /// </summary>
+        /// <param name="results">The completed game-result bus, when execution can span frames.</param>
+        public AIExecutionPhase(GameResultBus results = null)
+        {
+            _results = results;
+        }
+
         /// <summary>
         /// Executes selected proposals that still pass validation.
         /// </summary>
@@ -27,6 +40,9 @@ namespace Rebellion.AI.Phases
             if (context?.SelectedProposals == null)
                 yield break;
 
+            using IDisposable resultObservation = _results?.ObserveAll(_ =>
+                context.InvalidateManufacturingBudget()
+            );
             foreach (AIProposal proposal in context.SelectedProposals)
             {
                 if (proposal?.CanExecute(context) == true)
